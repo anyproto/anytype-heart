@@ -163,7 +163,7 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
-			log.With("thread", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
+			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
 		}
 	}
 	return
@@ -513,7 +513,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 				b1, _ = msg.Msg.Marshal()
 				b2, _ = msgs[i-1].Msg.Marshal()
 				if bytes.Equal(b1, b2) {
-					log.With("thread", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
+					log.With("objectID", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
 				}
 			}
 		}

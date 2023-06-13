@@ -100,15 +100,17 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		},
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySource.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(url),
+			},
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyBookmark.URL()),
 			},
 		},
 		Limit: 1,
-		ObjectTypeFilter: []string{
-			bundle.TypeKeyBookmark.URL(),
-		},
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("query: %w", err)

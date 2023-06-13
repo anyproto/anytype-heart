@@ -624,7 +624,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {
 			if _, isNull := prevModifiedDate.GetKind().(*types.Value_NullValue); prevModifiedDate == nil || isNull {
-				log.With("thread", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
+				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
 			} else {
 				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
 			}
@@ -656,7 +656,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 
-	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
+	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
 
@@ -706,7 +706,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 			continue
 		}
 		if bytes.Equal(prev, curr) {
-			log.With("thread", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
+			log.With("objectID", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
 			continue
 		}
 		prev = curr
@@ -1194,7 +1194,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 			return true
 		})
 		if err != nil {
-			log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 		}
 	}
 

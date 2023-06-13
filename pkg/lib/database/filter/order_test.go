@@ -140,6 +140,38 @@ func TestCustomOrder_Compare(t *testing.T) {
 	})
 }
 
+func TestTagStatusOrder_Compare(t *testing.T) {
+
+	for _, relation := range []model.RelationFormat{model.RelationFormat_tag, model.RelationFormat_status} {
+		t.Run("eq", func(t *testing.T) {
+			a := testGetter{"k": pbtypes.String("a")}
+			b := testGetter{"k": pbtypes.String("a")}
+			asc := KeyOrder{
+				Key:            "k",
+				Type:           model.BlockContentDataviewSort_Asc,
+				RelationFormat: relation,
+				Options:        map[string]string{"a": "a"},
+			}
+			assert.Equal(t, 0, asc.Compare(a, b))
+		})
+
+		t.Run("asc", func(t *testing.T) {
+			a := testGetter{"k": pbtypes.String("b")}
+			b := testGetter{"k": pbtypes.String("a")}
+			asc := KeyOrder{
+				Key:            "k",
+				Type:           model.BlockContentDataviewSort_Asc,
+				RelationFormat: relation,
+				Options: map[string]string{
+					"b": "a",
+					"a": "b",
+				},
+			}
+			assert.Equal(t, -1, asc.Compare(a, b))
+		})
+	}
+}
+
 func TestIncludeTime_Compare(t *testing.T) {
 	date := time.Unix(1672012800, 0)
 

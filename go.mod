@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.1.5
+	github.com/anyproto/any-sync v0.2.1
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.8
@@ -43,9 +43,7 @@ require (
 	github.com/ipfs/go-block-format v0.1.2
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-datastore v0.6.0
-	github.com/ipfs/go-ds-badger v0.3.1-0.20211203181443-9205b3779632
 	github.com/ipfs/go-ds-flatfs v0.5.1
-	github.com/ipfs/go-ipfs-blockstore v1.3.1
 	github.com/ipfs/go-ipfs-ds-help v1.1.1
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log v1.0.5
@@ -82,7 +80,6 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/textileio/go-ds-badger3 v0.1.0
-	github.com/textileio/go-threads v0.0.0-00010101000000-000000000000
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/yuin/goldmark v1.5.4
 	go.uber.org/multierr v1.11.0
@@ -95,14 +92,13 @@ require (
 	golang.org/x/text v0.9.0
 	google.golang.org/grpc v1.47.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.33
 
 )
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
-	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/sprig v2.15.0+incompatible // indirect
@@ -138,7 +134,6 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/dgraph-io/badger v1.6.2 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dsoprea/go-iptc v0.0.0-20200609062250-162ae6b44feb // indirect
 	github.com/dsoprea/go-logging v0.0.0-20200710184922-b02d349568dd // indirect
@@ -164,17 +159,19 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/pprof v0.0.0-20230510103437-eeec1cb781c3 // indirect
+	github.com/google/pprof v0.0.0-20230602150820-91b7bce49751 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
+	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/huandu/xstrings v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
-	github.com/ipfs/go-blockservice v0.5.1 // indirect
-	github.com/ipfs/go-ipfs-chunker v0.0.5 // indirect
+	github.com/ipfs/go-blockservice v0.5.2 // indirect
+	github.com/ipfs/go-ipfs-blockstore v1.3.1 // indirect
+	github.com/ipfs/go-ipfs-chunker v0.0.6 // indirect
 	github.com/ipfs/go-ipfs-exchange-interface v0.2.1 // indirect
 	github.com/ipfs/go-ipfs-files v0.3.0 // indirect
 	github.com/ipfs/go-ipfs-posinfo v0.0.1 // indirect
@@ -207,7 +204,7 @@ require (
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/mwitkow/go-proto-validators v0.0.0-20180403085117-0950a7990007 // indirect
-	github.com/onsi/ginkgo/v2 v2.9.5 // indirect
+	github.com/onsi/ginkgo/v2 v2.9.7 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
@@ -218,12 +215,13 @@ require (
 	github.com/pseudomuto/protokit v0.2.0 // indirect
 	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
 	github.com/quic-go/qtls-go1-20 v0.2.2 // indirect
-	github.com/quic-go/quic-go v0.34.0 // indirect
+	github.com/quic-go/quic-go v0.35.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/textileio/go-datastore-extensions v1.1.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
@@ -243,12 +241,12 @@ require (
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/tools v0.9.1 // indirect
+	golang.org/x/tools v0.9.3 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
@@ -262,12 +260,6 @@ replace github.com/textileio/go-ds-badger3 => github.com/anyproto/go-ds-badger3 
 replace github.com/dgraph-io/ristretto => github.com/dgraph-io/ristretto v0.1.1-0.20220403145359-8e850b710d6d
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20230314114314-79ca02e55cc2
-
-replace github.com/textileio/go-threads => github.com/anyproto/go-threads v1.1.6-0.20221213174125-89c8cdb03fe8
-
-replace github.com/hsanjuan/ipfs-lite => github.com/anyproto/ipfs-lite v1.4.3-0.20221213154513-adb3ebf9381c
-
-replace github.com/textileio/go-libp2p-pubsub-rpc => github.com/anyproto/go-libp2p-pubsub-rpc v0.0.10-0.20221213171524-df44a6b1795d
 
 replace github.com/msingleton/amplitude-go => github.com/anyproto/amplitude-go v0.0.0-20211130222238-8d16496a9b31
 

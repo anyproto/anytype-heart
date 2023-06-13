@@ -642,6 +642,10 @@
     - [Rpc.Object.ImportList.Request](#anytype.Rpc.Object.ImportList.Request)
     - [Rpc.Object.ImportList.Response](#anytype.Rpc.Object.ImportList.Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype.Rpc.Object.ImportList.Response.Error)
+    - [Rpc.Object.ImportUseCase](#anytype.Rpc.Object.ImportUseCase)
+    - [Rpc.Object.ImportUseCase.Request](#anytype.Rpc.Object.ImportUseCase.Request)
+    - [Rpc.Object.ImportUseCase.Response](#anytype.Rpc.Object.ImportUseCase.Response)
+    - [Rpc.Object.ImportUseCase.Response.Error](#anytype.Rpc.Object.ImportUseCase.Response.Error)
     - [Rpc.Object.ListDelete](#anytype.Rpc.Object.ListDelete)
     - [Rpc.Object.ListDelete.Request](#anytype.Rpc.Object.ListDelete.Request)
     - [Rpc.Object.ListDelete.Response](#anytype.Rpc.Object.ListDelete.Response)
@@ -1055,6 +1059,8 @@
     - [Rpc.Object.Import.Response.Error.Code](#anytype.Rpc.Object.Import.Response.Error.Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype.Rpc.Object.ImportList.ImportResponse.Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype.Rpc.Object.ImportList.Response.Error.Code)
+    - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype.Rpc.Object.ImportUseCase.Request.UseCase)
+    - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype.Rpc.Object.ImportUseCase.Response.Error.Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype.Rpc.Object.ListDelete.Response.Error.Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype.Rpc.Object.ListDuplicate.Response.Error.Code)
     - [Rpc.Object.ListExport.Format](#anytype.Rpc.Object.ListExport.Format)
@@ -1381,8 +1387,6 @@
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
-    - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
-    - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
     - [Account.StatusType](#anytype.model.Account.StatusType)
     - [Block.Align](#anytype.model.Block.Align)
@@ -1505,6 +1509,7 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype.Rpc.Object.Import.Request) | [Rpc.Object.Import.Response](#anytype.Rpc.Object.Import.Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype.Rpc.Object.ImportList.Request) | [Rpc.Object.ImportList.Response](#anytype.Rpc.Object.ImportList.Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype.Rpc.Object.Import.Notion.ValidateToken.Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype.Rpc.Object.Import.Notion.ValidateToken.Response) |  |
+| ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype.Rpc.Object.ImportUseCase.Request) | [Rpc.Object.ImportUseCase.Response](#anytype.Rpc.Object.ImportUseCase.Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype.Rpc.ObjectCollection.Add.Request) | [Rpc.ObjectCollection.Add.Response](#anytype.Rpc.ObjectCollection.Add.Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype.Rpc.ObjectCollection.Remove.Request) | [Rpc.ObjectCollection.Remove.Response](#anytype.Rpc.ObjectCollection.Remove.Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype.Rpc.ObjectCollection.Sort.Request) | [Rpc.ObjectCollection.Sort.Response](#anytype.Rpc.ObjectCollection.Sort.Response) |  |
@@ -10533,7 +10538,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+DEPRECATED |
 | keys | [string](#string) | repeated |  |
 
 
@@ -10956,6 +10963,62 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ImportList.Response.Error.Code](#anytype.Rpc.Object.ImportList.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ImportUseCase"></a>
+
+### Rpc.Object.ImportUseCase
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ImportUseCase.Request"></a>
+
+### Rpc.Object.ImportUseCase.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype.Rpc.Object.ImportUseCase.Request.UseCase) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ImportUseCase.Response"></a>
+
+### Rpc.Object.ImportUseCase.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportUseCase.Response.Error](#anytype.Rpc.Object.ImportUseCase.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ImportUseCase.Response.Error"></a>
+
+### Rpc.Object.ImportUseCase.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype.Rpc.Object.ImportUseCase.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11460,7 +11523,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
-deprecated, to be removed |
+DEPRECATED |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 
 
@@ -16765,6 +16828,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Object.ImportUseCase.Request.UseCase"></a>
+
+### Rpc.Object.ImportUseCase.Request.UseCase
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SKIP | 0 |  |
+| PERSONAL_PROJECTS | 1 |  |
+| KNOWLEDGE_BASE | 2 |  |
+| NOTES_DIARY | 3 |  |
+
+
+
+<a name="anytype.Rpc.Object.ImportUseCase.Response.Error.Code"></a>
+
+### Rpc.Object.ImportUseCase.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Object.ListDelete.Response.Error.Code"></a>
 
 ### Rpc.Object.ListDelete.Response.Error.Code
@@ -20626,11 +20716,11 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| objectTypeUrls | [string](#string) | repeated | deprecated |
+| objectTypeUrls | [string](#string) | repeated | DEPRECATED |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| relations | [Relation](#anytype.model.Relation) | repeated |  |
+| relations | [Relation](#anytype.model.Relation) | repeated | DEPRECATED |
 | snippet | [string](#string) |  |  |
-| hasInboundLinks | [bool](#bool) |  |  |
+| hasInboundLinks | [bool](#bool) |  | DEPRECATED |
 | objectType | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |
 
 
@@ -21808,38 +21898,6 @@ stored |
 | collections | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype.model.RelationLink) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.model.ThreadCreateQueueEntry"></a>
-
-### ThreadCreateQueueEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| collectionThread | [string](#string) |  |  |
-| threadId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.ThreadDeeplinkPayload"></a>
-
-### ThreadDeeplinkPayload
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| addrs | [string](#string) | repeated |  |
 
 
 

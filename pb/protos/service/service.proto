@@ -84,6 +84,7 @@ service ClientCommands {
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
+    rpc ObjectImportUseCase (anytype.Rpc.Object.ImportUseCase.Request) returns (anytype.Rpc.Object.ImportUseCase.Response);
 
     // Collections
     // ***

@@ -199,7 +199,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 
 		err = i.store.SaveLastIndexedHeadsHash(info.Id, headHashToIndex)
 		if err != nil {
-			log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
+			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
 	}
 
@@ -211,14 +211,14 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 
 	lastIndexedHash, err := i.store.GetLastIndexedHeadsHash(info.Id)
 	if err != nil {
-		log.With("thread", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
+		log.With("object", info.Id).Errorf("failed to get last indexed heads hash: %v", err)
 	}
 
 	if opts.SkipIfHeadsNotChanged {
 		if headHashToIndex == "" {
-			log.With("thread", info.Id).Errorf("heads hash is empty")
+			log.With("objectID", info.Id).Errorf("heads hash is empty")
 		} else if lastIndexedHash == headHashToIndex {
-			log.With("thread", info.Id).Debugf("heads not changed, skipping indexing")
+			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
 
 			// todo: the optimization temporarily disabled to see the metrics
 			//return nil
@@ -232,24 +232,24 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	if indexLinks {
 		if err = i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
 			hasError = true
-			log.With("thread", info.Id).Errorf("failed to save object links: %v", err)
+			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
 		}
 	}
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(info.Id, details, false); err != nil {
+		if err := i.store.UpdateObjectDetails(info.Id, details); err != nil {
 			if errors.Is(err, objectstore.ErrDetailsNotChanged) {
 				metrics.ObjectDetailsHeadsNotChangedCounter.Add(1)
-				log.With("objectId", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
+				log.With("objectID", info.Id).With("hashesAreEqual", lastIndexedHash == headHashToIndex).With("lastHashIsEmpty", lastIndexedHash == "").With("skipFlagSet", opts.SkipIfHeadsNotChanged).Debugf("details have not changed")
 			} else {
 				hasError = true
-				log.With("thread", info.Id).Errorf("can't update object store: %v", err)
+				log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
 			}
 		} else {
 			// todo: remove temp log
 			if lastIndexedHash == headHashToIndex {
-				l := log.With("objectId", info.Id).
+				l := log.With("objectID", info.Id).
 					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
 					With("lastHashIsEmpty", lastIndexedHash == "").
 					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
@@ -268,7 +268,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		// todo: the optimization temporarily disabled to see the metrics
 		if true || !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			if err := i.store.AddToIndexQueue(info.Id); err != nil {
-				log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
+				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}
 		}
 
@@ -496,7 +496,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	}
 
 	if flags.bundledTemplates {
-		existing, _, err := i.store.QueryObjectIds(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
+		existing, _, err := i.store.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
 		if err != nil {
 			return err
 		}
@@ -683,7 +683,7 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (succe
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, id)
 		if err != nil {
-			log.With("thread", id).Errorf("failed to reindex: %v", err)
+			log.With("objectID", id).Errorf("failed to reindex: %v", err)
 		} else {
 			successfullyReindexed++
 		}

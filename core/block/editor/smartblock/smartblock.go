@@ -442,7 +442,10 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
-	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
+	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
+	if err != nil {
+		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
+	}
 	go sb.metaListener(recordsCh)
 	return
 }
@@ -482,7 +485,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
 			if len(diff.GetFields()) > 0 {
-				log.With("thread", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
+				log.With("objectID", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
 			}
 		}
 
@@ -550,7 +553,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 		return true
 	})
 	if err != nil {
-		log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 	}
 
 	var det *types.Struct
@@ -768,7 +771,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	afterReportChangeTime := time.Now()
 	if hooks {
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
-			log.With("thread", sb.Id()).Warnf("after apply execHooks error: %v", e)
+			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
 	afterApplyHookTime := time.Now()
@@ -907,9 +910,8 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return nil, nil
 	})
 	if err != nil {
-		log.With("thread", sb.Id()).
-			With("sbType", sb.Type()).
-			Errorf("failed to update pending details: %v", err)
+		log.With("objectID", sb.Id()).
+			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
 	}
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
@@ -926,28 +928,29 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		// inject for both current and parent state
 		p.InjectLocalDetails(storedLocalScopeDetails)
 	}
-	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
-		return nil
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) == "" || pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) == 0 {
+		provider, conforms := sb.source.(source.CreationInfoProvider)
+		if !conforms {
+			return nil
+		}
+
+		creator, createdDate, err := provider.GetCreationInfo()
+		if err != nil {
+			return err
+		}
+
+		if creator != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+		}
+
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	}
 
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		return nil
-	}
-
-	creator, createdDate, err := provider.GetCreationInfo()
-	if err != nil {
-		return err
-	}
-
-	if creator != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
-	}
-
-	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
-	if wsId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
+		wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		if wsId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		}
 	}
 	return nil
 }

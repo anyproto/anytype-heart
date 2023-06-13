@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
 	// nolint: misspell
+	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -17,12 +18,13 @@ import (
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/anyproto/any-sync/net/dialer"
+	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
+	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -65,7 +67,7 @@ type Service interface {
 }
 
 type service struct {
-	conf                 commonspace.Config
+	conf                 commonconfig.Config
 	spaceCache           ocache.OCache
 	commonSpace          commonspace.SpaceService
 	client               coordinatorclient.CoordinatorClient
@@ -73,7 +75,7 @@ type service struct {
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
 	peerStore            peerstore.PeerStore
-	dialer               dialer.Dialer
+	peerService          peerservice.PeerService
 	poolManager          PoolManager
 	streamHandler        *streamHandler
 	accountId            string
@@ -90,7 +92,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
-	s.dialer = a.MustComponent(dialer.CName).(dialer.Dialer)
+	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{s: s}
@@ -230,10 +232,10 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return
 	}
-	ns.SyncStatus().(syncstatus.StatusWatcher).SetUpdateReceiver(&statusReceiver{})
 	if err = ns.Init(ctx); err != nil {
 		return
 	}
+	ns.SyncStatus().(syncstatus.StatusWatcher).SetUpdateReceiver(&statusReceiver{})
 	return ns, nil
 }
 
@@ -250,7 +252,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
-	s.dialer.SetPeerAddrs(peer.PeerId, peer.Addrs)
+	s.peerService.SetPeerAddrs(peer.PeerId, peer.Addrs)
 	ctx := context.Background()
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
 	if err != nil {
@@ -261,12 +263,16 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdi
 		return
 	}
 	log.Debug("sending info about spaces to peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", allIds))
-	resp, err := clientspaceproto.NewDRPCClientSpaceClient(unaryPeer).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
-		SpaceIds: allIds,
-		LocalServer: &clientspaceproto.LocalServer{
-			Ips:  own.Addrs,
-			Port: int32(own.Port),
-		},
+	var resp *clientspaceproto.SpaceExchangeResponse
+	err = unaryPeer.DoDrpc(ctx, func(conn drpc.Conn) error {
+		resp, err = clientspaceproto.NewDRPCClientSpaceClient(conn).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
+			SpaceIds: allIds,
+			LocalServer: &clientspaceproto.LocalServer{
+				Ips:  own.Addrs,
+				Port: int32(own.Port),
+			},
+		})
+		return err
 	})
 	if err != nil {
 		return
@@ -296,7 +302,7 @@ func (s *service) checkOldSpace() (err error) {
 		if tp == "derived.space" {
 			return ErrUsingOldStorage
 		}
-		err = st.Close()
+		err = st.Close(context.Background())
 		if err != nil {
 			return err
 		}

@@ -40,7 +40,7 @@ type localDiscovery struct {
 	port   int
 
 	notifier   Notifier
-	drpcServer clientserver.DRPCServer
+	drpcServer clientserver.ClientServer
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -78,7 +78,7 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
-	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.DRPCServer)
+	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
 	return
 }
 

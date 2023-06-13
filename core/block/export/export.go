@@ -136,9 +136,9 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		for docId := range docs {
 			did := docId
 			if err = queue.Wait(func() {
-				log.With("threadId", did).Debugf("write doc")
+				log.With("objectID", did).Debugf("write doc")
 				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
-					log.With("threadId", did).Warnf("can't export doc: %v", werr)
+					log.With("objectID", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
 				}
@@ -177,9 +177,8 @@ func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchi
 }
 
 func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
-	var res []*model.ObjectInfo
 	docs := make(map[string]*types.Struct)
-	res, _, err := e.objectStore.QueryObjectInfo(database.Query{
+	res, _, err := e.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -197,14 +196,15 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 				Value:       pbtypes.Bool(false),
 			},
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
 	ids := make([]string, 0, len(res))
 	for _, r := range res {
-		docs[r.Id] = r.Details
-		ids = append(ids, r.Id)
+		id := pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
+		docs[id] = r.Details
+		ids = append(ids, id)
 	}
 	if includeNested {
 		for _, id := range ids {
@@ -265,12 +265,12 @@ func (e *export) getExistedObjects(includeArchived bool) (map[string]*types.Stru
 func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
-			log.With("threadId", did).Debugf("write doc")
+			log.With("objectID", did).Debugf("write doc")
 			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
 				return mw.Add(b.NewState().Copy())
 			})
 			if err != nil {
-				log.With("threadId", did).Warnf("can't export doc: %v", werr)
+				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				succeed++
 			}
