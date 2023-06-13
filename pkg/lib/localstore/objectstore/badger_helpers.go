@@ -10,19 +10,22 @@ import (
 func setValue(db *badger.DB, key []byte, value any) error {
 	var (
 		raw []byte
-		err error
 	)
-	switch v := value.(type) {
-	case proto.Message:
-		raw, err = proto.Marshal(v)
-	case string:
-		raw = []byte(v)
-	default:
-		return fmt.Errorf("unsupported type %T", v)
+	if value != nil {
+		var err error
+		switch v := value.(type) {
+		case proto.Message:
+			raw, err = proto.Marshal(v)
+		case string:
+			raw = []byte(v)
+		default:
+			return fmt.Errorf("unsupported type %T", v)
+		}
+		if err != nil {
+			return fmt.Errorf("marshal value: %w", err)
+		}
 	}
-	if err != nil {
-		return fmt.Errorf("marshal value: %w", err)
-	}
+
 	return db.Update(func(txn *badger.Txn) error {
 		return txn.Set(key, raw)
 	})
@@ -47,4 +50,19 @@ func getValue[T any](db *badger.DB, key []byte, unmarshaler func([]byte) (T, err
 		})
 	})
 	return res, txErr
+}
+
+func iterateKeysByPrefix(db *badger.DB, prefix []byte, processKeyFn func(key []byte)) error {
+	return db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = prefix
+		iter := txn.NewIterator(opts)
+		defer iter.Close()
+
+		for iter.Rewind(); iter.Valid(); iter.Next() {
+			key := iter.Item().Key()
+			processKeyFn(key)
+		}
+		return nil
+	})
 }

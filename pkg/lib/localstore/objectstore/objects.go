@@ -394,7 +394,7 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	}
 	defer txn.Discard()
 
-	// todo: remove all indexes with this object
+	// TODO Remove indexed heads state
 	for _, k := range []ds.Key{
 		pagesSnippetBase.ChildString(id),
 		indexQueueBase.ChildString(id),
