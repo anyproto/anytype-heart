@@ -3,10 +3,12 @@ package objectstore
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -50,11 +52,15 @@ func newStoreFixture(t *testing.T) *storeFixture {
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
+	db, err := badger.Open(badger.DefaultOptions(filepath.Join(t.TempDir(), "badger")))
+	require.NoError(t, err)
+
 	return &storeFixture{
 		dsObjectStore: &dsObjectStore{
 			ds:          noCtxDS,
 			sbtProvider: typeProvider,
 			fts:         fullText,
+			db:          db,
 		},
 	}
 }

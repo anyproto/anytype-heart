@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -167,6 +168,7 @@ type dsObjectStore struct {
 	ds            noctxds.DSTxnBatching
 	dsIface       datastore.Datastore
 	sourceService SourceDetailsFromId
+	db            *badger.DB
 
 	fts ftsearch.FTSearch
 
@@ -836,4 +838,9 @@ func (s *dsObjectStore) GetObjectTypes(urls []string) (ots []*model.ObjectType, 
 		}
 	}
 	return
+}
+
+// bytesToString unmarshalls bytes to string
+func bytesToString(b []byte) (string, error) {
+	return string(b), nil
 }
