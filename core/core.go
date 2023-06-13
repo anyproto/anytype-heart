@@ -35,8 +35,9 @@ type Middleware struct {
 	accountSearchCancel context.CancelFunc
 	EventSender         event.Sender
 
-	sessions session.Service
-	app      *app.App
+	sessions      session.Service
+	clientVersion string
+	app           *app.App
 
 	m sync.RWMutex
 }
