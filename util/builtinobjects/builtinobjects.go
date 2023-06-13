@@ -122,7 +122,7 @@ func (b *builtinObjects) InjectMigrationDashboard() error {
 }
 
 func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigration bool) (err error) {
-	path := filepath.Join("./", time.Now().Format("tmp.20060102.150405.99")+".zip")
+	path := filepath.Join(ioutil.TempDir(os.TempDir(), "anytype_tmp*"), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}
