@@ -7,7 +7,6 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -71,13 +70,14 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	service     *block.Service
-	coreService core.Service
-	importer    importer.Importer
-	store       objectstore.ObjectStore
+	service        *block.Service
+	coreService    core.Service
+	importer       importer.Importer
+	store          objectstore.ObjectStore
+	tempDirService *core.TempDirService
 }
 
-func New() BuiltinObjects {
+func New(tempDirService *core.TempDirService) BuiltinObjects {
 	return &builtinObjects{}
 }
 
@@ -123,11 +123,7 @@ func (b *builtinObjects) InjectMigrationDashboard() error {
 }
 
 func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigration bool) (err error) {
-	tempDir, err := ioutil.TempDir(os.TempDir(), "anytype_tmp*")
-	if err != nil {
-	       return err
-	}
-	path := filepath.Join(tempDir, time.Now().Format("tmp.20060102.150405.99")+".zip")
+	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}
