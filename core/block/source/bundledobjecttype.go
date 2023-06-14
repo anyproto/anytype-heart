@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -89,4 +90,8 @@ func (v *bundledObjectType) Heads() []string {
 
 func (s *bundledObjectType) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
+}
+
+func (s *bundledObjectType) GetCreationInfo() (creator string, createdDate int64, err error) {
+	return addr.AnytypeProfileId, 0, nil
 }

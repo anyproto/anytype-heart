@@ -114,3 +114,7 @@ func (v *date) Heads() []string {
 func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
+
+func (s *date) GetCreationInfo() (creator string, createdDate int64, err error) {
+	return s.coreService.ProfileID(), 0, nil
+}
