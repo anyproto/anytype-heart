@@ -893,9 +893,11 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
-		wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
 		if wsId != "" {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		} else {
+			log.With("objectID", sb.Id()).Errorf("injectLocalDetails empty workspace: %v", err)
 		}
 	}
 
