@@ -217,9 +217,8 @@ func validateFileKeys(s *pb.ChangeSnapshot, _ *useCaseInfo) error {
 		}
 	}
 	for _, b := range s.Data.Blocks {
-		switch a := simple.New(b).(type) {
-		case simple.FileHashes:
-			if v, ok := a.(file.Block); ok {
+		if v, ok := simple.New(b).(simple.FileHashes); ok {
+			if v, ok := v.(file.Block); ok {
 				if v.Model().GetFile().Hash == "" {
 					fmt.Printf("file block '%s' has empty hash\n", v.Model().Id)
 					invalidKeyFound = true
@@ -227,7 +226,7 @@ func validateFileKeys(s *pb.ChangeSnapshot, _ *useCaseInfo) error {
 				}
 			}
 			var hashes []string
-			hashes = a.FillFileHashes(hashes)
+			hashes = v.FillFileHashes(hashes)
 			if len(hashes) == 0 {
 				continue
 			}
