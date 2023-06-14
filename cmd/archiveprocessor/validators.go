@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
@@ -18,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/ipfs/go-cid"
 )
 
 type validator func(snapshot *pb.ChangeSnapshot, info *useCaseInfo) error
@@ -197,7 +198,7 @@ func snapshotHasKeyForHash(s *pb.ChangeSnapshot, hash string) bool {
 	return false
 }
 
-func validateFileKeys(s *pb.ChangeSnapshot, info *useCaseInfo) error {
+func validateFileKeys(s *pb.ChangeSnapshot, _ *useCaseInfo) error {
 	invalidKeyFound := false
 	for _, r := range s.Data.RelationLinks {
 		if r.Format == model.RelationFormat_file || r.Key == bundle.RelationKeyCoverId.String() {
@@ -231,9 +232,6 @@ func validateFileKeys(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 				continue
 			}
 			for _, hash := range hashes {
-				if hash == "bafybeigx7dfo2q36r6zycf3esea34s5zxpqw5g2zmcfmnlosgmrjevke7a" {
-					fmt.Println()
-				}
 				if !snapshotHasKeyForHash(s, hash) {
 					fmt.Printf("file block '%s' has hash '%s' which keys are not in the snapshot\n", b.Id, hash)
 					invalidKeyFound = true
