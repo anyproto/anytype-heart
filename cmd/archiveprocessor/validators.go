@@ -218,12 +218,10 @@ func validateFileKeys(s *pb.ChangeSnapshot, _ *useCaseInfo) error {
 	}
 	for _, b := range s.Data.Blocks {
 		if v, ok := simple.New(b).(simple.FileHashes); ok {
-			if v, ok := v.(file.Block); ok {
-				if v.Model().GetFile().Hash == "" {
-					fmt.Printf("file block '%s' has empty hash\n", v.Model().Id)
-					invalidKeyFound = true
-					continue
-				}
+			if v, ok := v.(file.Block); ok && v.Model().GetFile().Hash == "" {
+				fmt.Printf("file block '%s' has empty hash\n", v.Model().Id)
+				invalidKeyFound = true
+				continue
 			}
 			var hashes []string
 			hashes = v.FillFileHashes(hashes)
@@ -234,7 +232,6 @@ func validateFileKeys(s *pb.ChangeSnapshot, _ *useCaseInfo) error {
 				if !snapshotHasKeyForHash(s, hash) {
 					fmt.Printf("file block '%s' has hash '%s' which keys are not in the snapshot\n", b.Id, hash)
 					invalidKeyFound = true
-					continue
 				}
 			}
 		}
