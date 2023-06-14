@@ -202,7 +202,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collectionService).
 		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New()).
+		Register(builtinobjects.New(tempDirService)).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
 		Register(importer.New(tempDirService, sbtProvider)).
