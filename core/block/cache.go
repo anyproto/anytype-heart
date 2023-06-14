@@ -136,7 +136,28 @@ func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartbl
 		opts.spaceId = spaceId
 		return opts
 	})
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var (
+		done    = make(chan struct{})
+		closing bool
+	)
+	var start time.Time
+	go func() {
+		select {
+		case <-done:
+			cancel()
+		case <-s.closing:
+			start = time.Now()
+			cancel()
+			closing = true
+		}
+	}()
 	v, err := s.cache.Get(ctx, id)
+	close(done)
+	if closing && errors.Is(err, context.Canceled) {
+		log.With("close_delay", time.Since(start).Milliseconds()).With("objectID", id).Warnf("object was loading during closing")
+	}
 	if err != nil {
 		return
 	}
