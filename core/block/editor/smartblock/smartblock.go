@@ -1027,6 +1027,10 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 		return ErrIsDeleted
 	}
 	d.(*state.State).InjectDerivedDetails()
+	err = sb.injectLocalDetails(d.(*state.State))
+	if err != nil {
+		log.Errorf("failed to inject local details in StateRebuild: %v", err)
+	}
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
