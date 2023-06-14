@@ -78,7 +78,7 @@ type builtinObjects struct {
 }
 
 func New(tempDirService *core.TempDirService) BuiltinObjects {
-	return &builtinObjects{}
+	return &builtinObjects{tempDirService: tempDirService}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
