@@ -86,3 +86,7 @@ func (s *anytypeProfile) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 func (s *anytypeProfile) PushChange(params PushChangeParams) (id string, err error) {
 	return
 }
+
+func (s *anytypeProfile) GetCreationInfo() (creator string, createdDate int64, err error) {
+	return addr.AnytypeProfileId, 0, nil
+}
