@@ -87,7 +87,7 @@ require (
 	golang.org/x/image v0.8.0
 	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c
 	golang.org/x/net v0.11.0
-	golang.org/x/oauth2 v0.8.0
+	golang.org/x/oauth2 v0.9.0
 	golang.org/x/text v0.10.0
 	google.golang.org/grpc v1.47.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
