@@ -40,16 +40,24 @@ func deleteValue(db *badger.DB, key []byte) error {
 func getValue[T any](db *badger.DB, key []byte, unmarshaler func([]byte) (T, error)) (T, error) {
 	var res T
 	txErr := db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return fmt.Errorf("get item: %w", err)
-		}
-		return item.Value(func(val []byte) error {
-			res, err = unmarshaler(val)
-			return err
-		})
+		var err error
+		res, err = getValueTxn(txn, key, unmarshaler)
+		return err
 	})
 	return res, txErr
+}
+
+func getValueTxn[T any](txn *badger.Txn, key []byte, unmarshaler func([]byte) (T, error)) (T, error) {
+	var res T
+	item, err := txn.Get(key)
+	if err != nil {
+		return res, fmt.Errorf("get item: %w", err)
+	}
+	err = item.Value(func(val []byte) error {
+		res, err = unmarshaler(val)
+		return err
+	})
+	return res, err
 }
 
 func iterateKeysByPrefix(db *badger.DB, prefix []byte, processKeyFn func(key []byte)) error {

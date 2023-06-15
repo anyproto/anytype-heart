@@ -159,7 +159,7 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 		sub.forceSubIds = filterDepIds
 	}
 
-	records, err := s.objectStore.QueryRaw(f)
+	records, err := s.objectStore.QueryRaw(f, 0, 0)
 	if err != nil {
 		return nil, fmt.Errorf("objectStore query error: %v", err)
 	}

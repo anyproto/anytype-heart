@@ -2,14 +2,17 @@ package objectstore
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
@@ -40,22 +43,12 @@ func newNewstore(path string) (*newstore, error) {
 	return &newstore{cache: cache, db: db}, nil
 }
 
-func (s *newstore) GetDetails(id string) (*types.Struct, error) {
-	key := []byte(id)
-	var details *types.Struct
-	err := s.db.View(func(txn *badger.Txn) error {
-		it, err := txn.Get(key)
-		if err != nil {
-			return fmt.Errorf("get item: %w", err)
-		}
-		details, err = s.extractDetails(it)
-		return err
-	})
-	return details, err
-}
+func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
+	if details == nil {
+		return nil
+	}
 
-func (s *newstore) UpdateDetails(id string, details *types.Struct) error {
-	key := []byte(id)
+	key := pagesDetailsBase.ChildString(id).Bytes()
 	return s.db.Update(func(txn *badger.Txn) error {
 		prev, ok := s.cache.Get(key)
 		if !ok {
@@ -64,19 +57,18 @@ func (s *newstore) UpdateDetails(id string, details *types.Struct) error {
 				return fmt.Errorf("get item: %w", err)
 			}
 			if err != badger.ErrKeyNotFound {
-				prev, err = s.extractDetailsFromItem(it)
+				prev, err = s.unmarshalDetailsFromItem(it)
 				if err != nil {
 					return fmt.Errorf("extract details: %w", err)
 				}
 			}
 		}
-
 		if prev != nil && proto.Equal(prev.(*types.Struct), details) {
-			return nil
+			return ErrDetailsNotChanged
 		}
-		if s.onUpdate != nil {
-			s.onUpdate(details)
-		}
+		// Ensure ID is set
+		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+		s.sendUpdatesToSubscriptions(id, details)
 
 		s.cache.Set(key, details, int64(details.Size()))
 		val, err := proto.Marshal(details)
@@ -87,38 +79,61 @@ func (s *newstore) UpdateDetails(id string, details *types.Struct) error {
 	})
 }
 
-func (s *newstore) DeleteDetails(id string) error {
-	key := []byte(id)
+func (s *dsObjectStore) DeleteDetails(id string) error {
+	key := pagesDetailsBase.ChildString(id).Bytes()
 	return s.db.Update(func(txn *badger.Txn) error {
 		s.cache.Del(key)
+
+		for _, k := range []ds.Key{
+			pagesSnippetBase.ChildString(id),
+			pagesDetailsBase.ChildString(id),
+		} {
+			if err := txn.Delete(k.Bytes()); err != nil {
+				return fmt.Errorf("delete key %s: %w", k, err)
+			}
+		}
+
 		return txn.Delete(key)
 	})
 }
 
-func (s *newstore) Query(sch schema.Schema, q database.Query) ([]database.Record, error) {
-	filters, err := database.NewFilters(q, sch, nil)
+func (s *dsObjectStore) Query(sch schema.Schema, q database.Query) ([]database.Record, int, error) {
+	filters, err := s.buildQuery(sch, q)
 	if err != nil {
-		return nil, fmt.Errorf("create filters: %w", err)
+		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
-	return s.QueryRaw(filters)
+	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
+	return recs, 0, err
 }
 
-func (s *newstore) QueryRaw(filters *database.Filters) ([]database.Record, error) {
+func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
+	if filters == nil || filters.FilterObj == nil {
+		return nil, fmt.Errorf("filter cannot be nil or unitialized")
+	}
 	skl := skiplist.New(order{filters.Order})
 
 	err := s.db.View(func(txn *badger.Txn) error {
-		iterator := txn.NewIterator(badger.DefaultIteratorOptions)
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = pagesDetailsBase.Bytes()
+		iterator := txn.NewIterator(opts)
 		defer iterator.Close()
 
 		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
 			it := iterator.Item()
-			details, err := s.extractDetails(it)
+			details, err := s.extractDetailsFromItem(it)
 			if err != nil {
 				return err
 			}
 
 			rec := database.Record{Details: details}
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
+				if offset > 0 {
+					offset--
+					continue
+				}
+				if limit > 0 && skl.Len() >= limit {
+					break
+				}
 				skl.Set(rec, nil)
 			}
 		}
@@ -136,14 +151,14 @@ func (s *newstore) QueryRaw(filters *database.Filters) ([]database.Record, error
 	return records, nil
 }
 
-func (s *newstore) QueryById(ids []string) (records []database.Record, err error) {
+func (s *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		iterator := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iterator.Close()
 
 		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
 			it := iterator.Item()
-			details, err := s.extractDetails(it)
+			details, err := s.extractDetailsFromItem(it)
 			if err != nil {
 				return err
 			}
@@ -161,29 +176,34 @@ func (s *newstore) QueryById(ids []string) (records []database.Record, err error
 	return records, nil
 }
 
-func (s *newstore) extractDetails(it *badger.Item) (*types.Struct, error) {
+func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*types.Struct, error) {
 	key := it.Key()
 	if v, ok := s.cache.Get(key); ok {
 		return v.(*types.Struct), nil
 	} else {
-		return s.extractDetailsFromItem(it)
+		return s.unmarshalDetailsFromItem(it)
 	}
 }
 
-func (s *newstore) extractDetailsFromItem(it *badger.Item) (*types.Struct, error) {
-	details := &types.Struct{}
-	verr := it.Value(func(val []byte) error {
-		uerr := proto.Unmarshal(val, details)
-		if uerr != nil {
-			return uerr
+func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*types.Struct, error) {
+	var details *types.Struct
+	err := it.Value(func(val []byte) error {
+		var err error
+		details, err = unmarshalDetails(detailsKeyToID(it.Key()), val)
+		if err != nil {
+			return fmt.Errorf("unmarshal details: %w", err)
 		}
 		s.cache.Set(it.Key(), details, int64(details.Size()))
 		return nil
 	})
-	if verr != nil {
-		return nil, fmt.Errorf("get iterator value: %w", verr)
+	if err != nil {
+		return nil, fmt.Errorf("get item value: %w", err)
 	}
 	return details, nil
+}
+
+func detailsKeyToID(key []byte) string {
+	return path.Base(string(key))
 }
 
 type order struct {

@@ -11,10 +11,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -89,6 +88,20 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	} else {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
+	s.db, err = s.dsIface.LocalstoreBadger()
+	if err != nil {
+		return fmt.Errorf("get badger: %w", err)
+	}
+
+	cache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 10_000_000,
+		MaxCost:     100_000_000,
+		BufferItems: 64,
+	})
+	if err != nil {
+		return fmt.Errorf("init cache: %w", err)
+	}
+	s.cache = cache
 	return nil
 }
 
@@ -104,7 +117,7 @@ type ObjectStore interface {
 	SubscribeForAll(callback func(rec database.Record))
 
 	Query(schema schema.Schema, q database.Query) (records []database.Record, total int, err error)
-	QueryRaw(f *database.Filters) (records []database.Record, err error)
+	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIDs(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
@@ -168,7 +181,9 @@ type dsObjectStore struct {
 	ds            noctxds.DSTxnBatching
 	dsIface       datastore.Datastore
 	sourceService SourceDetailsFromId
-	db            *badger.DB
+
+	cache *ristretto.Cache
+	db    *badger.DB
 
 	fts ftsearch.FTSearch
 
@@ -267,19 +282,18 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 	}
 }
 
-func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
-	var details model.ObjectDetails
-	if err := proto.Unmarshal(rawValue, &details); err != nil {
+func unmarshalDetails(id string, rawValue []byte) (*types.Struct, error) {
+	details := &types.Struct{}
+	if err := proto.Unmarshal(rawValue, details); err != nil {
 		return nil, err
 	}
-
-	if details.Details == nil || details.Details.Fields == nil {
-		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	if details.Fields == nil {
+		details.Fields = map[string]*types.Value{}
 	} else {
-		pbtypes.StructDeleteEmptyFields(details.Details)
+		pbtypes.StructDeleteEmptyFields(details)
 	}
-	details.Details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	return &details, nil
+	details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+	return details, nil
 }
 
 func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
@@ -289,12 +303,6 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 }
 
 func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
 	det, err := s.GetDetails(id)
 	if err != nil {
 		return nil, err
@@ -340,31 +348,6 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	return rel.Relation, nil
 }
 
-func (s *dsObjectStore) DeleteDetails(id string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	// todo: remove all indexes with this object
-
-	// TODO delete snippet
-	for _, k := range []ds.Key{
-		pagesSnippetBase.ChildString(id),
-		pagesDetailsBase.ChildString(id),
-	} {
-		if err = txn.Delete(k); err != nil {
-			return err
-		}
-	}
-
-	return txn.Commit()
-}
-
 // DeleteObject removes all details, leaving only id and isDeleted
 func (s *dsObjectStore) DeleteObject(id string) error {
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
@@ -380,40 +363,30 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		}
 	}
 
-	s.l.Lock()
-	defer s.l.Unlock()
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
+	txn := s.db.NewTransaction(true)
 	defer txn.Discard()
 
-	// TODO Remove indexed heads state
-	// TODO Remove snippet
 	for _, k := range []ds.Key{
 		pagesSnippetBase.ChildString(id),
 		indexQueueBase.ChildString(id),
 		indexedHeadsState.ChildString(id),
 	} {
-		if err = txn.Delete(k); err != nil {
+		if err = txn.Delete(k.Bytes()); err != nil {
 			return err
 		}
 	}
 
-	badgerTxn := s.db.NewTransaction(true)
-	defer badgerTxn.Discard()
-	badgerTxn, _, err = s.removeByPrefixInTx(badgerTxn, pagesInboundLinksBase.String()+"/"+id+"/")
+	txn, _, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
-	badgerTxn, _, err = s.removeByPrefixInTx(badgerTxn, pagesOutboundLinksBase.String()+"/"+id+"/")
+	txn, _, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
-	err = badgerTxn.Commit()
+	err = txn.Commit()
 	if err != nil {
-		// TODO Fix error string
-		return fmt.Errorf("deleting links: %w", err)
+		return fmt.Errorf("delete object info: %w", err)
 	}
 
 	if s.fts != nil {
@@ -425,58 +398,52 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 			return err
 		}
 	}
-	return txn.Commit()
+	return nil
 }
 
 func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
+	var res *model.ObjectInfoWithLinks
+	err := s.db.View(func(txn *badger.Txn) error {
+		pages, err := s.getObjectsInfo(txn, []string{id})
+		if err != nil {
+			return err
+		}
 
-	pages, err := s.getObjectsInfo(txn, []string{id})
-	if err != nil {
-		return nil, err
-	}
+		if len(pages) == 0 {
+			return fmt.Errorf("page not found")
+		}
+		page := pages[0]
 
-	if len(pages) == 0 {
-		return nil, fmt.Errorf("page not found")
-	}
-	page := pages[0]
-
-	var inboundIds, outboundsIds []string
-	// TODO In one TX
-	err = s.db.View(func(txn *badger.Txn) error {
-		inboundIds, err = findInboundLinks(txn, id)
+		inboundIds, err := findInboundLinks(txn, id)
 		if err != nil {
 			return fmt.Errorf("find inbound links: %w", err)
 		}
-		outboundsIds, err = findOutboundLinks(txn, id)
+		outboundsIds, err := findOutboundLinks(txn, id)
 		if err != nil {
 			return fmt.Errorf("find outbound links: %w", err)
 		}
+
+		inbound, err := s.getObjectsInfo(txn, inboundIds)
+		if err != nil {
+			return err
+		}
+
+		outbound, err := s.getObjectsInfo(txn, outboundsIds)
+		if err != nil {
+			return err
+		}
+
+		res = &model.ObjectInfoWithLinks{
+			Id:   id,
+			Info: page,
+			Links: &model.ObjectLinksInfo{
+				Inbound:  inbound,
+				Outbound: outbound,
+			},
+		}
 		return nil
 	})
-
-	inbound, err := s.getObjectsInfo(txn, inboundIds)
-	if err != nil {
-		return nil, err
-	}
-
-	outbound, err := s.getObjectsInfo(txn, outboundsIds)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.ObjectInfoWithLinks{
-		Id:   id,
-		Info: page,
-		Links: &model.ObjectLinksInfo{
-			Inbound:  inbound,
-			Outbound: outbound,
-		},
-	}, nil
+	return res, err
 }
 
 func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
@@ -500,64 +467,77 @@ func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 }
 
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	var details *types.Struct
+	err := s.db.View(func(txn *badger.Txn) error {
+		it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
+		if err != nil {
+			return fmt.Errorf("get details: %w", err)
+		}
+		details, err = s.extractDetailsFromItem(it)
+		return err
+	})
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return &model.ObjectDetails{
+			Details: &types.Struct{Fields: map[string]*types.Value{}},
+		}, nil
 	}
-	defer txn.Discard()
 
-	return getObjectDetails(txn, id)
-}
-
-func (s *dsObjectStore) List() ([]*model.ObjectInfo, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	ids, err := findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
 	if err != nil {
 		return nil, err
 	}
+	return &model.ObjectDetails{
+		Details: details,
+	}, nil
+}
 
-	return s.getObjectsInfo(txn, ids)
+func (s *dsObjectStore) List() ([]*model.ObjectInfo, error) {
+	var infos []*model.ObjectInfo
+	err := s.db.View(func(txn *badger.Txn) error {
+		ids, err := listIDsByPrefix(txn, pagesDetailsBase.Bytes())
+		if err != nil {
+			return fmt.Errorf("list ids by prefix: %w", err)
+		}
+
+		infos, err = s.getObjectsInfo(txn, ids)
+		return err
+	})
+	return infos, err
 }
 
 func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	for _, id := range ids {
-		if exist, err := hasObjectId(txn, id); err != nil {
-			return nil, err
-		} else if exist {
-			exists = append(exists, id)
+	err = s.db.View(func(txn *badger.Txn) error {
+		for _, id := range ids {
+			_, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
+			if err != nil && err != badger.ErrKeyNotFound {
+				return fmt.Errorf("get %s: %w", id, err)
+			}
+			if err == nil {
+				exists = append(exists, id)
+			}
 		}
-	}
-	return exists, nil
+		return nil
+	})
+	return exists, err
 }
 
 func (s *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return s.getObjectsInfo(txn, ids)
+	var infos []*model.ObjectInfo
+	err := s.db.View(func(txn *badger.Txn) error {
+		var err error
+		infos, err = s.getObjectsInfo(txn, ids)
+		return err
+	})
+	return infos, err
 }
 
 func (s *dsObjectStore) ListIds() ([]string, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
+	var ids []string
+	err := s.db.View(func(txn *badger.Txn) error {
+		var err error
+		ids, err = listIDsByPrefix(txn, pagesDetailsBase.Bytes())
+		return err
+	})
+	return ids, err
 }
 
 func (s *dsObjectStore) Prefix() string {
@@ -569,41 +549,6 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return s.fts
 }
 
-func (s *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query, error) {
-	if s.fts == nil {
-		return dsq, fmt.Errorf("fullText search not configured")
-	}
-	ids, err := s.fts.Search(text)
-	if err != nil {
-		return dsq, err
-	}
-	idsQuery := newIdsFilter(ids)
-	dsq.Filters = append([]query.Filter{idsQuery}, dsq.Filters...)
-	dsq.Orders = append([]query.Order{idsQuery}, dsq.Orders...)
-	return dsq, nil
-}
-
-// getObjectDetails returns empty(not nil) details when not found in the DS
-func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
-	val, err := txn.Get(pagesDetailsBase.ChildString(id))
-	if err != nil {
-		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get relations: %w", err)
-		}
-		// return empty details in case not found
-		return &model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, nil
-	}
-
-	details, err := unmarshalDetails(id, val)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
-	}
-
-	return details, nil
-}
-
 func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	if exists, err := txn.Has(pagesDetailsBase.ChildString(id)); err != nil {
 		return false, fmt.Errorf("failed to get details: %w", err)
@@ -612,7 +557,7 @@ func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	}
 }
 
-func (s *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := s.sbtProvider.Type(id)
 	if err != nil {
 		log.With("objectID", id).Errorf("failed to extract smartblock type %s", id) // todo rq: surpess error?
@@ -631,15 +576,16 @@ func (s *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 			}
 		}
 	} else {
-		detailsWrapped, err := getObjectDetails(txn, id)
+		it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("get details: %w", err)
+		}
+		details, err = s.extractDetailsFromItem(it)
 		if err != nil {
 			return nil, err
 		}
-		details = detailsWrapped.GetDetails()
 	}
-
-	// TODO move to one TX
-	snippet, err := getValue(s.db, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
+	snippet, err := getValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
@@ -652,7 +598,7 @@ func (s *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.Object
 	}, nil
 }
 
-func (s *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, ids []string) ([]*model.ObjectInfo, error) {
 	var objects []*model.ObjectInfo
 	for _, id := range ids {
 		info, err := s.getObjectInfo(txn, id)
@@ -676,33 +622,20 @@ func (s *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.
 
 // Find to which IDs specified one has outbound links.
 func findOutboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	var links []string
-	err := iterateKeysByPrefixTx(txn, pagesOutboundLinksBase.ChildString(id).Bytes(), func(key []byte) {
-		links = append(links, path.Base(string(key)))
-	})
-	return links, err
+	return listIDsByPrefix(txn, pagesOutboundLinksBase.ChildString(id).Bytes())
 }
 
 // Find from which IDs specified one has inbound links.
 func findInboundLinks(txn *badger.Txn, id string) ([]string, error) {
-	var links []string
-	err := iterateKeysByPrefixTx(txn, pagesInboundLinksBase.ChildString(id).Bytes(), func(key []byte) {
-		links = append(links, path.Base(string(key)))
-	})
-	return links, err
+	return listIDsByPrefix(txn, pagesInboundLinksBase.ChildString(id).Bytes())
 }
 
-func findByPrefix(txn noctxds.Txn, prefix string, limit int) ([]string, error) {
-	results, err := txn.Query(query.Query{
-		Prefix:   prefix,
-		Limit:    limit,
-		KeysOnly: true,
+func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
+	var ids []string
+	err := iterateKeysByPrefixTx(txn, prefix, func(key []byte) {
+		ids = append(ids, path.Base(string(key)))
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return localstore.GetLeavesFromResults(results)
+	return ids, err
 }
 
 func (s *dsObjectStore) removeByPrefixInTx(txn *badger.Txn, prefix string) (*badger.Txn, int, error) {
