@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -190,6 +191,10 @@ func (s *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 		return err
 	}
 
+	if pbtypes.GetString(newDetails.Details, bundle.RelationKeyWorkspaceId.String()) == "" {
+		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
+	}
+	
 	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
 		return ErrDetailsNotChanged
 	}

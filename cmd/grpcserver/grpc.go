@@ -4,10 +4,7 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,12 +12,12 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/util/debug"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -125,7 +122,7 @@ func main() {
 				select {
 				case <-doneCh:
 				case <-time.After(defaultUnaryWarningAfter):
-					log.With("method", info.FullMethod).With("in_progress", true).With("goroutines", base64GzippedStack()).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
+					log.With("method", info.FullMethod).With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
 				}
 			}()
 			resp, err = handler(ctx, req)
@@ -293,24 +290,4 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 		},
 	}
 	return resp
-}
-
-func stackAllGoroutines() []byte {
-	buf := make([]byte, 1024)
-	for {
-		n := runtime.Stack(buf, true)
-		if n < len(buf) {
-			return buf[:n]
-		}
-		buf = make([]byte, 2*len(buf))
-	}
-}
-
-func base64GzippedStack() string {
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	_, _ = gz.Write(stackAllGoroutines())
-	_ = gz.Close()
-
-	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }

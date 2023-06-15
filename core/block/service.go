@@ -102,6 +102,7 @@ func New(
 		tempDirProvider: tempDirProvider,
 		sbtProvider:     sbtProvider,
 		layoutConverter: layoutConverter,
+		closing:         make(chan struct{}),
 	}
 }
 
@@ -152,6 +153,7 @@ type Service struct {
 	syncer      *treeSyncer
 	syncStarted bool
 	syncerLock  sync.Mutex
+	closing     chan struct{}
 }
 
 func (s *Service) Name() string {
@@ -761,6 +763,7 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
+	close(s.closing)
 	return s.cache.Close()
 }
 
