@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 
@@ -182,30 +183,29 @@ type dsObjectStore struct {
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-func (s *dsObjectStore) EraseIndexes() (err error) {
-	err = s.eraseLinks()
+func (s *dsObjectStore) EraseIndexes() error {
+	outboundRemoved, inboundRemoved, err := s.eraseLinks()
 	if err != nil {
-		log.Errorf("eraseLinks failed: %s", err.Error())
+		log.Errorf("eraseLinks failed: %s", err)
 	}
-
-	return
+	log.Infof("eraseLinks: removed %d outbound links", outboundRemoved)
+	log.Infof("eraseLinks: removed %d inbound links", inboundRemoved)
+	return nil
 }
 
-func (s *dsObjectStore) eraseLinks() (err error) {
-	n, err := removeByPrefix(s.ds, pagesOutboundLinksBase.String())
+func (s *dsObjectStore) eraseLinks() (outboundRemoved int, inboundRemoved int, err error) {
+	txn := s.db.NewTransaction(true)
+	defer txn.Discard()
+	txn, outboundRemoved, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String())
 	if err != nil {
-		return err
+		return
 	}
-
-	log.Infof("eraseLinks: removed %d outbound links", n)
-	n, err = removeByPrefix(s.ds, pagesInboundLinksBase.String())
+	txn, inboundRemoved, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String())
 	if err != nil {
-		return err
+		return
 	}
-
-	log.Infof("eraseLinks: removed %d inbound links", n)
-
-	return nil
+	err = txn.Commit()
+	return
 }
 
 func (s *dsObjectStore) Run(context.Context) (err error) {
@@ -400,14 +400,20 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		}
 	}
 
-	_, err = removeByPrefixInTx(txn, pagesInboundLinksBase.String()+"/"+id+"/")
+	badgerTxn := s.db.NewTransaction(true)
+	defer badgerTxn.Discard()
+	badgerTxn, _, err = s.removeByPrefixInTx(badgerTxn, pagesInboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
-
-	_, err = removeByPrefixInTx(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
+	badgerTxn, _, err = s.removeByPrefixInTx(badgerTxn, pagesOutboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
+	}
+	err = badgerTxn.Commit()
+	if err != nil {
+		// TODO Fix error string
+		return fmt.Errorf("deleting links: %w", err)
 	}
 
 	if s.fts != nil {
@@ -439,15 +445,19 @@ func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 	}
 	page := pages[0]
 
-	inboundIds, err := findInboundLinks(txn, id)
-	if err != nil {
-		return nil, err
-	}
-
-	outboundsIds, err := findOutboundLinks(txn, id)
-	if err != nil {
-		return nil, err
-	}
+	var inboundIds, outboundsIds []string
+	// TODO In one TX
+	err = s.db.View(func(txn *badger.Txn) error {
+		inboundIds, err = findInboundLinks(txn, id)
+		if err != nil {
+			return fmt.Errorf("find inbound links: %w", err)
+		}
+		outboundsIds, err = findOutboundLinks(txn, id)
+		if err != nil {
+			return fmt.Errorf("find outbound links: %w", err)
+		}
+		return nil
+	})
 
 	inbound, err := s.getObjectsInfo(txn, inboundIds)
 	if err != nil {
@@ -470,23 +480,23 @@ func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 }
 
 func (s *dsObjectStore) GetOutboundLinksByID(id string) ([]string, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return findOutboundLinks(txn, id)
+	var links []string
+	err := s.db.View(func(txn *badger.Txn) error {
+		var err error
+		links, err = findOutboundLinks(txn, id)
+		return err
+	})
+	return links, err
 }
 
 func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
-	txn, err := s.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	return findInboundLinks(txn, id)
+	var links []string
+	err := s.db.View(func(txn *badger.Txn) error {
+		var err error
+		links, err = findInboundLinks(txn, id)
+		return err
+	})
+	return links, err
 }
 
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
@@ -665,13 +675,21 @@ func (s *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.
 }
 
 // Find to which IDs specified one has outbound links.
-func findOutboundLinks(txn noctxds.Txn, id string) ([]string, error) {
-	return findByPrefix(txn, pagesOutboundLinksBase.String()+"/"+id+"/", 0)
+func findOutboundLinks(txn *badger.Txn, id string) ([]string, error) {
+	var links []string
+	err := iterateKeysByPrefixTx(txn, pagesOutboundLinksBase.ChildString(id).Bytes(), func(key []byte) {
+		links = append(links, path.Base(string(key)))
+	})
+	return links, err
 }
 
 // Find from which IDs specified one has inbound links.
-func findInboundLinks(txn noctxds.Txn, id string) ([]string, error) {
-	return findByPrefix(txn, pagesInboundLinksBase.String()+"/"+id+"/", 0)
+func findInboundLinks(txn *badger.Txn, id string) ([]string, error) {
+	var links []string
+	err := iterateKeysByPrefixTx(txn, pagesInboundLinksBase.ChildString(id).Bytes(), func(key []byte) {
+		links = append(links, path.Base(string(key)))
+	})
+	return links, err
 }
 
 func findByPrefix(txn noctxds.Txn, prefix string, limit int) ([]string, error) {
@@ -687,54 +705,32 @@ func findByPrefix(txn noctxds.Txn, prefix string, limit int) ([]string, error) {
 	return localstore.GetLeavesFromResults(results)
 }
 
-// removeByPrefix query prefix and then remove keys in multiple TXs
-func removeByPrefix(d noctxds.DSTxnBatching, prefix string) (int, error) {
-	results, err := d.Query(query.Query{
-		Prefix:   prefix,
-		KeysOnly: true,
+func (s *dsObjectStore) removeByPrefixInTx(txn *badger.Txn, prefix string) (*badger.Txn, int, error) {
+	var toDelete [][]byte
+	err := iterateKeysByPrefixTx(txn, []byte(prefix), func(key []byte) {
+		toDelete = append(toDelete, key)
 	})
 	if err != nil {
-		return 0, err
-	}
-	var keys []ds.Key
-	for res := range results.Next() {
-		keys = append(keys, ds.NewKey(res.Key))
-	}
-	b, err := d.Batch()
-	if err != nil {
-		return 0, err
-	}
-	var removed int
-	for _, key := range keys {
-		err := b.Delete(key)
-		if err != nil {
-			return removed, err
-		}
-		removed++
-	}
-
-	return removed, b.Commit()
-}
-
-func removeByPrefixInTx(txn noctxds.Txn, prefix string) (int, error) {
-	results, err := txn.Query(query.Query{
-		Prefix:   prefix,
-		KeysOnly: true,
-	})
-	if err != nil {
-		return 0, err
+		return txn, 0, fmt.Errorf("iterate keys: %w", err)
 	}
 
 	var removed int
-	for res := range results.Next() {
-		err := txn.Delete(ds.NewKey(res.Key))
+	for _, key := range toDelete {
+		err = txn.Delete(key)
+		if err == badger.ErrTxnTooBig {
+			err = txn.Commit()
+			if err != nil {
+				return txn, removed, fmt.Errorf("commit big transaction: %w", err)
+			}
+			txn = s.db.NewTransaction(true)
+			err = txn.Delete(key)
+		}
 		if err != nil {
-			_ = results.Close()
-			return removed, err
+			return txn, removed, fmt.Errorf("delete key %s: %w", key, err)
 		}
 		removed++
 	}
-	return removed, nil
+	return txn, removed, nil
 }
 
 func pageLinkKeys(id string, out []string) []ds.Key {

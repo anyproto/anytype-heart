@@ -59,19 +59,9 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 }
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	err = s.updateObjectLinks(txn, id, links)
-	if err != nil {
-		return err
-	}
-	return txn.Commit()
+	return s.db.Update(func(txn *badger.Txn) error {
+		return s.updateObjectLinks(txn, id, links)
+	})
 }
 
 func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
@@ -143,7 +133,7 @@ func (s *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*mod
 	return unmarshalDetails(id, val)
 }
 
-func (s *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
+func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []string) error {
 	exLinks, err := findOutboundLinks(txn, id)
 	if err != nil {
 		log.Errorf("error while finding outbound links for %s: %s", id, err)
@@ -153,15 +143,15 @@ func (s *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []st
 	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
 	if len(addedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, addedLinks) {
-			if err := txn.Put(k, nil); err != nil {
-				return err
+			err := txn.Set(k.Bytes(), nil)
+			if err != nil {
+				return fmt.Errorf("setting link %s: %w", k, err)
 			}
 		}
 	}
-
 	if len(removedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, removedLinks) {
-			if err := txn.Delete(k); err != nil {
+			if err := txn.Delete(k.Bytes()); err != nil {
 				return err
 			}
 		}

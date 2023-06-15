@@ -86,18 +86,12 @@ func Test_removeByPrefix(t *testing.T) {
 		require.NoError(t, s.UpdateObjectDetails(objId, nil))
 		require.NoError(t, s.UpdateObjectLinks(objId, links))
 	}
-	tx, err := s.ds.NewTransaction(false)
-	_, err = removeByPrefixInTx(tx, pagesInboundLinksBase.String())
-	require.NotNil(t, err)
-	tx.Discard()
 
-	got, err := removeByPrefix(s.ds, pagesInboundLinksBase.String())
+	// Test huge transactions
+	outboundRemoved, inboundRemoved, err := s.eraseLinks()
+	require.Equal(t, 10*8000, outboundRemoved)
+	require.Equal(t, 10*8000, inboundRemoved)
 	require.NoError(t, err)
-	require.Equal(t, 10*8000, got)
-
-	got, err = removeByPrefix(s.ds, pagesOutboundLinksBase.String())
-	require.NoError(t, err)
-	require.Equal(t, 10*8000, got)
 }
 
 func TestList(t *testing.T) {

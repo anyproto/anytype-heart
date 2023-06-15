@@ -54,15 +54,20 @@ func getValue[T any](db *badger.DB, key []byte, unmarshaler func([]byte) (T, err
 
 func iterateKeysByPrefix(db *badger.DB, prefix []byte, processKeyFn func(key []byte)) error {
 	return db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.Prefix = prefix
-		iter := txn.NewIterator(opts)
-		defer iter.Close()
-
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			key := iter.Item().Key()
-			processKeyFn(key)
-		}
-		return nil
+		return iterateKeysByPrefixTx(txn, prefix, processKeyFn)
 	})
+}
+
+func iterateKeysByPrefixTx(txn *badger.Txn, prefix []byte, processKeyFn func(key []byte)) error {
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = false
+	opts.Prefix = prefix
+	iter := txn.NewIterator(opts)
+	defer iter.Close()
+
+	for iter.Rewind(); iter.Valid(); iter.Next() {
+		key := iter.Item().Key()
+		processKeyFn(key)
+	}
+	return nil
 }
