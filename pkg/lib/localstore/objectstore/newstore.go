@@ -47,6 +47,9 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if details == nil {
 		return nil
 	}
+	if details.Fields == nil {
+		return fmt.Errorf("details fields are nil")
+	}
 
 	key := pagesDetailsBase.ChildString(id).Bytes()
 	return s.db.Update(func(txn *badger.Txn) error {
