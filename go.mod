@@ -86,7 +86,7 @@ require (
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/image v0.8.0
 	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c
-	golang.org/x/net v0.10.0
+	golang.org/x/net v0.11.0
 	golang.org/x/oauth2 v0.8.0
 	golang.org/x/text v0.10.0
 	google.golang.org/grpc v1.47.0
@@ -227,10 +227,10 @@ require (
 	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.9.0 // indirect
+	golang.org/x/crypto v0.10.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/tools v0.9.3 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
