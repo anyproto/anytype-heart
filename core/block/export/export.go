@@ -155,14 +155,14 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 	wr.Close()
 	if req.Zip {
-		return e.renameZipArchive(req, err, wr, succeed)
+		return e.renameZipArchive(req, wr, succeed)
 	}
 	return wr.Path(), succeed, nil
 }
 
-func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, err error, wr writer, succeed int) (string, int, error) {
+func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, wr writer, succeed int) (string, int, error) {
 	zipName := getZipName(req.Path)
-	err = os.Rename(wr.Path(), zipName)
+	err := os.Rename(wr.Path(), zipName)
 	if err != nil {
 		os.Remove(wr.Path())
 		return "", 0, nil
