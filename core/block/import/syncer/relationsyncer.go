@@ -3,6 +3,8 @@ package syncer
 import (
 	"strings"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
@@ -27,11 +29,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 }
 
 func (fs *FileRelationSyncer) Sync(state *state.State, relationName string) []string {
-	return fs.handleFileRelation(state, relationName)
-}
-
-func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) []string {
-	allFiles := fs.getFilesFromRelations(st, name)
+	allFiles := fs.getFilesFromRelations(state, relationName)
 	allFilesHashes := make([]string, 0)
 	filesToDelete := make([]string, 0, len(allFiles))
 	for _, f := range allFiles {
@@ -50,8 +48,7 @@ func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) [
 			}
 		}
 	}
-	fs.updateFileRelationsDetails(st, name, allFilesHashes)
-
+	fs.updateFileRelationsDetails(state, relationName, allFilesHashes)
 	return filesToDelete
 }
 
@@ -73,14 +70,20 @@ func (fs *FileRelationSyncer) uploadFile(file string) string {
 		err  error
 	)
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
-		req := pb.RpcFileUploadRequest{LocalPath: file}
-		req.Url = file
-		req.LocalPath = ""
+		req := pb.RpcFileUploadRequest{Url: file}
 		hash, err = fs.service.UploadFile(req)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
-		} else {
-			file = hash
+		}
+	} else {
+		_, err = cid.Decode(file)
+		if err == nil {
+			return file
+		}
+		req := pb.RpcFileUploadRequest{LocalPath: file}
+		hash, err = fs.service.UploadFile(req)
+		if err != nil {
+			logger.Errorf("file uploading %s", err)
 		}
 	}
 	return hash

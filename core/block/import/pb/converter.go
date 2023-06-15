@@ -67,7 +67,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	}
 	if !params.GetNoCollection() {
 		rootCollection := converter.NewRootCollection(p.service)
-		rootCol, colErr := rootCollection.AddObjects(rootCollectionName, targetObjects)
+		rootCol, colErr := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 		if colErr != nil {
 			allErrors.Add(rootCollectionName, colErr)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

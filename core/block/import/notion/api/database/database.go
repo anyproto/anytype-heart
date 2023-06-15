@@ -297,7 +297,7 @@ func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots []*converter.S
 	}
 
 	rootCollection := converter.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects)
 	if err != nil {
 		return nil, err
 	}

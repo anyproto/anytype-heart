@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	te "github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -21,7 +22,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, useFirstRowForHeader bool, progress process.Progress) (string, []*converter.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -31,9 +32,9 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]strin
 	}).NewState()
 
 	if len(csvTable) != 0 {
-		err := c.createTable(st, csvTable)
+		err := c.createTable(st, csvTable, useFirstRowForHeader)
 		if err != nil {
-			return nil, nil, err
+			return "", nil, err
 		}
 	}
 
@@ -52,10 +53,11 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]strin
 		FileName: path,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 	}
-	return []string{snapshot.Id}, []*converter.Snapshot{snapshot}, nil
+	progress.AddDone(1)
+	return snapshot.Id, []*converter.Snapshot{snapshot}, nil
 }
 
-func (c *TableStrategy) createTable(st *state.State, csvTable [][]string) error {
+func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, useFirstRowForHeader bool) error {
 	tableID, err := c.tableEditor.TableCreate(st, pb.RpcBlockTableCreateRequest{})
 	if err != nil {
 		return err
@@ -65,9 +67,14 @@ func (c *TableStrategy) createTable(st *state.State, csvTable [][]string) error 
 	if err != nil {
 		return err
 	}
-
+	if !useFirstRowForHeader {
+		err = c.createEmptyHeader(st, tableID, columnIDs)
+		if err != nil {
+			return err
+		}
+	}
 	for i, columns := range csvTable {
-		rowID, err := c.createRow(st, tableID, i)
+		rowID, err := c.createRow(st, tableID, i == 0, useFirstRowForHeader)
 		if err != nil {
 			return err
 		}
@@ -76,6 +83,36 @@ func (c *TableStrategy) createTable(st *state.State, csvTable [][]string) error 
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, columnIDs []string) error {
+	rowID, err := c.tableEditor.RowCreate(st, pb.RpcBlockTableRowCreateRequest{
+		Position: model.Block_Inner,
+		TargetId: tableID,
+	})
+	if err != nil {
+		return err
+	}
+	for j := range columnIDs {
+		textBlock := &model.Block{
+			Id: uuid.New().String(),
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: ""},
+			},
+		}
+		_, err = c.tableEditor.CellCreate(st, rowID, columnIDs[j], textBlock)
+		if err != nil {
+			return err
+		}
+	}
+	err = c.tableEditor.RowSetHeader(st, pb.RpcBlockTableRowSetHeaderRequest{
+		IsHeader: true,
+		TargetId: rowID,
+	})
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -96,7 +133,7 @@ func (c *TableStrategy) createCells(columns []string, st *state.State, rowID str
 	return nil
 }
 
-func (c *TableStrategy) createRow(st *state.State, tableID string, i int) (string, error) {
+func (c *TableStrategy) createRow(st *state.State, tableID string, isFirstRow bool, useFirstRowForHeader bool) (string, error) {
 	rowID, err := c.tableEditor.RowCreate(st, pb.RpcBlockTableRowCreateRequest{
 		Position: model.Block_Inner,
 		TargetId: tableID,
@@ -105,7 +142,7 @@ func (c *TableStrategy) createRow(st *state.State, tableID string, i int) (strin
 		return "", err
 	}
 
-	if i == 0 {
+	if isFirstRow && useFirstRowForHeader {
 		err = c.tableEditor.RowSetHeader(st, pb.RpcBlockTableRowSetHeaderRequest{
 			IsHeader: true,
 			TargetId: rowID,
