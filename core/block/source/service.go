@@ -8,9 +8,9 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -70,14 +70,12 @@ func (s *service) Name() (name string) {
 
 type BuildOptions struct {
 	DisableRemoteLoad bool
-	RetryRemoteLoad   bool // anysync only; useful for account cold load from p2p nodes
 	Listener          updatelistener.UpdateListener
 }
 
-func (b *BuildOptions) BuildTreeOpts() commonspace.BuildTreeOpts {
-	return commonspace.BuildTreeOpts{
-		Listener:           b.Listener,
-		WaitTreeRemoteSync: b.RetryRemoteLoad,
+func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
+	return objecttreebuilder.BuildTreeOpts{
+		Listener: b.Listener,
 	}
 }
 
@@ -112,7 +110,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		return
 	}
 	var ot objecttree.ObjectTree
-	ot, err = spc.BuildTree(ctx, id, buildOptions.BuildTreeOpts())
+	ot, err = spc.TreeBuilder().BuildTree(ctx, id, buildOptions.BuildTreeOpts())
 	if err != nil {
 		return
 	}

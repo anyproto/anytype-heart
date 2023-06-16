@@ -123,7 +123,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true, true)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
 
 	derivationResult, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
@@ -154,7 +154,12 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		mw.EventSender,
 	}
 
-	if mw.app, err = anytype.StartNewApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create"), comps...); err != nil {
+	mw.requireClientWithVersion()
+	if mw.app, err = anytype.StartNewApp(
+		context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create"),
+		mw.clientWithVersion,
+		comps...,
+	); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
@@ -293,7 +298,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 
 	comps := []app.Component{
-		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false, false),
+		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false),
 		anytype.BootstrapWallet(mw.rootPath, res),
 		mw.EventSender,
 	}
@@ -303,7 +308,12 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		// if we have created the repo, we need to highlight that we are recovering the account
 		request = request + "_recover"
 	}
-	if mw.app, err = anytype.StartNewApp(context.WithValue(context.Background(), metrics.CtxKeyRequest, request), comps...); err != nil {
+	mw.requireClientWithVersion()
+	if mw.app, err = anytype.StartNewApp(
+		context.WithValue(context.Background(), metrics.CtxKeyRequest, request),
+		mw.clientWithVersion,
+		comps...,
+	); err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
 		}
@@ -655,7 +665,7 @@ func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.Deriv
 
 	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
 	var err error
-	if mw.app, err = anytype.StartNewApp(ctxWithValue, comps...); err != nil {
+	if mw.app, err = anytype.StartNewApp(ctxWithValue, mw.clientWithVersion, comps...); err != nil {
 		return err
 	}
 	return nil
@@ -671,7 +681,7 @@ func (mw *Middleware) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExpo
 		return nil, fmt.Errorf("failed to extract config: %w", err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false, false)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
 	return cfg, nil
 }

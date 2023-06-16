@@ -3,20 +3,12 @@ package helpers
 import (
 	"context"
 	"fmt"
-	"net"
 	gopath "path"
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/net/swarm"
-	ma "github.com/multiformats/go-multiaddr"
-
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers/resolver"
+	"github.com/ipfs/go-cid"
 
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
@@ -140,74 +132,4 @@ type Node struct {
 type Link struct {
 	Name, Hash string
 	Size       uint64
-}
-
-func PermanentConnection(ctx context.Context, addr ma.Multiaddr, host host.Host, retryInterval time.Duration, grpcConnected func() bool) error {
-	addrInfo, err := peer.AddrInfoFromP2pAddr(addr)
-	if err != nil {
-		return fmt.Errorf("PermanentConnection invalid addr: %s", err.Error())
-	}
-
-	var (
-		state       network.Connectedness
-		stateChange time.Time
-	)
-	go func() {
-		d := net.Dialer{Timeout: netTcpHealthCheckTimeout}
-		for {
-			state2 := host.Network().Connectedness(addrInfo.ID)
-			// do not handle CanConnect purposefully
-			if state2 == network.NotConnected || state2 == network.CannotConnect {
-				if swrm, ok := host.Network().(*swarm.Swarm); ok {
-					// clear backoff in order to connect more aggressively
-					swrm.Backoff().Clear(addrInfo.ID)
-				}
-
-				err = host.Connect(ctx, *addrInfo)
-				state2 = host.Network().Connectedness(addrInfo.ID)
-				if err != nil {
-					log.Warnf("PermanentConnection failed: %s", err.Error())
-				} else {
-					log.Debugf("PermanentConnection %s reconnected succesfully", addrInfo.ID.String())
-				}
-			}
-
-			if state2 != state || stateChange.IsZero() {
-				if stateChange.IsZero() {
-					// first iteration
-					stateChange = time.Now()
-				}
-
-				event := metrics.CafeP2PConnectStateChanged{
-					AfterMs:       time.Since(stateChange).Milliseconds(),
-					PrevState:     int(state),
-					NewState:      int(state2),
-					GrpcConnected: grpcConnected(),
-				}
-				if state2 != network.Connected {
-					c, err := d.Dial("tcp", netTcpHealthCheckAddress)
-					if err == nil {
-						_ = c.Close()
-					} else {
-						event.NetCheckError = err.Error()
-					}
-
-					event.NetCheckSuccess = err == nil
-				}
-
-				stateChange = time.Now()
-				state = state2
-				metrics.SharedClient.RecordEvent(event)
-			}
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(retryInterval):
-				continue
-			}
-		}
-	}()
-
-	return nil
 }

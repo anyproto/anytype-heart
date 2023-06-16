@@ -136,7 +136,28 @@ func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartbl
 		opts.spaceId = spaceId
 		return opts
 	})
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var (
+		done    = make(chan struct{})
+		closing bool
+	)
+	var start time.Time
+	go func() {
+		select {
+		case <-done:
+			cancel()
+		case <-s.closing:
+			start = time.Now()
+			cancel()
+			closing = true
+		}
+	}()
 	v, err := s.cache.Get(ctx, id)
+	close(done)
+	if closing && errors.Is(err, context.Canceled) {
+		log.With("close_delay", time.Since(start).Milliseconds()).With("objectID", id).Warnf("object was loading during closing")
+	}
 	if err != nil {
 		return
 	}
@@ -264,7 +285,7 @@ func (s *Service) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Context, 
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	return space.CreateTree(ctx, treePayload)
+	return space.TreeBuilder().CreateTree(ctx, treePayload)
 }
 
 func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
@@ -272,7 +293,7 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload trees
 	if err != nil {
 		return nil, err
 	}
-	tr, err := space.PutTree(ctx, payload, nil)
+	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
@@ -291,7 +312,7 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 		return nil, err
 	}
 
-	tr, err := space.PutTree(ctx, payload, nil)
+	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
@@ -323,7 +344,7 @@ func (s *Service) DeriveTreeCreatePayload(
 		return nil, err
 	}
 	treePayload := derivePayload(space.Id(), s.commonAccount.Account().SignKey, changePayload)
-	create, err := space.CreateTree(context.Background(), treePayload)
+	create, err := space.TreeBuilder().CreateTree(context.Background(), treePayload)
 	return &create, err
 }
 
@@ -348,7 +369,7 @@ func (s *Service) getDerivedObject(
 	space, err := s.clientService.AccountSpace(ctx)
 	if newAccount {
 		var tr objecttree.ObjectTree
-		tr, err = space.PutTree(ctx, *payload, nil)
+		tr, err = space.TreeBuilder().PutTree(ctx, *payload, nil)
 		if err != nil {
 			if !errors.Is(err, treestorage.ErrTreeExists) {
 				err = fmt.Errorf("failed to put tree: %w", err)
@@ -372,7 +393,7 @@ func (s *Service) getDerivedObject(
 		optsKey,
 		cacheOpts{
 			buildOption: source.BuildOptions{
-				RetryRemoteLoad: true,
+				// TODO: revive p2p (right now we are not ready to load from local clients due to the fact that we need to know when local peers connect)
 			},
 		},
 	)

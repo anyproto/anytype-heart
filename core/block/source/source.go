@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -103,7 +102,6 @@ type ObjectTreeProvider interface {
 type source struct {
 	objecttree.ObjectTree
 	id                   string
-	tid                  thread.ID
 	smartblockType       smartblock.SmartBlockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
@@ -212,7 +210,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	// TODO: add creator in profile
+	creator = s.coreService.PredefinedBlocks().Profile
 	return
 }
 

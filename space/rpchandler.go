@@ -16,6 +16,18 @@ type rpcHandler struct {
 	s *service
 }
 
+func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
+	sp, err := r.s.GetSpace(ctx, req.SpaceId)
+	if err != nil {
+		if err != spacesyncproto.ErrSpaceMissing {
+			err = spacesyncproto.ErrUnexpected
+		}
+		return
+	}
+	resp, err = sp.HandleSyncRequest(ctx, req)
+	return
+}
+
 func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceproto.SpaceExchangeRequest) (resp *clientspaceproto.SpaceExchangeResponse, err error) {
 	allIds, err := r.s.spaceStorageProvider.AllSpaceIds()
 	if err != nil {
@@ -30,7 +42,7 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 		for _, ip := range request.LocalServer.Ips {
 			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", ip, request.LocalServer.Port))
 		}
-		r.s.dialer.SetPeerAddrs(peerId, portAddrs)
+		r.s.peerService.SetPeerAddrs(peerId, portAddrs)
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
 		log.Info("updated local peer", zap.Strings("ips", portAddrs), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
 	}
@@ -88,7 +100,7 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 	if err != nil {
 		return nil, spacesyncproto.ErrSpaceMissing
 	}
-	return sp.HeadSync().HandleRangeRequest(ctx, req)
+	return sp.HandleRangeRequest(ctx, req)
 }
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {

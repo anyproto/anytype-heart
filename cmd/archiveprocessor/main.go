@@ -44,6 +44,7 @@ var (
 		model.SmartBlockType_Workspace:   {},
 		model.SmartBlockType_Widget:      {},
 		model.SmartBlockType_ProfilePage: {},
+		model.SmartBlockType_Template:    {},
 	}
 )
 
@@ -138,6 +139,9 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo) error {
 			incorrectFileFound = true
 			continue
 		}
+		if data == nil {
+			continue
+		}
 		nf, err := zw.Create(f.Name)
 		if err != nil {
 			return fmt.Errorf("failed to create new file %s: %v", f.Name, err)
@@ -204,6 +208,7 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.ChangeSnapshot, sbt
 		return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %v", name, err)
 	}
 	if snapshotWithType.SbType == model.SmartBlockType_AccountOld {
+		s = &pb.ChangeSnapshot{}
 		isOldAccount = true
 		if err = s.Unmarshal(data); err != nil {
 			return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %v", name, err)
@@ -264,9 +269,10 @@ func processExtraRelations(s *pb.ChangeSnapshot) {
 }
 
 func processAccountRelatedDetails(s *pb.ChangeSnapshot) {
-	for key, _ := range s.Data.Details.Fields {
+	for key := range s.Data.Details.Fields {
 		switch key {
-		case bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyWorkspaceId.String():
+		case bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyWorkspaceId.String(),
+			bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyLastModifiedDate.String():
 			delete(s.Data.Details.Fields, key)
 		case bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String():
 			s.Data.Details.Fields[key] = pbtypes.String(addr.AnytypeProfileId)

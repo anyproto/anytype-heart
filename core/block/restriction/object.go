@@ -89,7 +89,12 @@ var (
 	}
 
 	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
-		model.SmartBlockType_ProfilePage:    {model.Restrictions_LayoutChange, model.Restrictions_TypeChange, model.Restrictions_Delete},
+		model.SmartBlockType_ProfilePage: {
+			model.Restrictions_LayoutChange,
+			model.Restrictions_TypeChange,
+			model.Restrictions_Delete,
+			model.Restrictions_Duplicate,
+		},
 		model.SmartBlockType_AnytypeProfile: objRestrictAll,
 		model.SmartBlockType_Home: {
 			model.Restrictions_Details,
@@ -194,8 +199,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 			return
 		}
 	}
-	l, has := rh.Layout()
-	log.Warnf("restrctions not found for object: id='%s' type='%v' layout='%v'(%v); fallback to empty", rh.Id(), rh.Type(), l, has)
+
 	return ObjectRestrictions{}
 }
 

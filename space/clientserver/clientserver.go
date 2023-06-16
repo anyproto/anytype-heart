@@ -3,65 +3,55 @@ package clientserver
 import (
 	"context"
 	"errors"
-	"fmt"
-	"go.uber.org/zap"
-	gonet "net"
+	"net"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/net"
-	"github.com/anyproto/any-sync/net/rpc/server"
-	"github.com/anyproto/any-sync/net/secureservice"
+	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/libp2p/go-libp2p/core/sec"
-	"storj.io/drpc"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 )
 
-const CName = server.CName
+const CName = "client.space.clientserver"
 
 var log = logger.NewNamed(CName)
 
 var ErrNoPortAssigned = errors.New("no port assigned to the server")
 
-func New() DRPCServer {
-	return &drpcServer{BaseDrpcServer: server.NewBaseDrpcServer()}
+func New() ClientServer {
+	return &clientServer{}
 }
 
-type DRPCServer interface {
+type ClientServer interface {
 	app.ComponentRunnable
-	drpc.Mux
 	Port() int
 	ServerStarted() bool
 }
 
-type drpcServer struct {
-	config        net.Config
-	transport     secureservice.SecureService
+type clientServer struct {
+	yamux         yamux.Yamux
 	provider      datastore.Datastore
 	port          int
 	storage       *portStorage
 	serverStarted bool
-	*server.BaseDrpcServer
 }
 
-func (s *drpcServer) Init(a *app.App) (err error) {
+func (s *clientServer) Init(a *app.App) (err error) {
 	s.provider = a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.config = a.MustComponent("config").(net.ConfigGetter).GetNet()
-	s.transport = a.MustComponent(secureservice.CName).(secureservice.SecureService)
+	s.yamux = a.MustComponent(yamux.CName).(yamux.Yamux)
 	return nil
 }
 
-func (s *drpcServer) Name() (name string) {
+func (s *clientServer) Name() (name string) {
 	return CName
 }
 
-func (s *drpcServer) Run(ctx context.Context) error {
-	if err := s.startServer(ctx); err != nil {
+func (s *clientServer) Run(ctx context.Context) error {
+	if err := s.startServer(); err != nil {
 		log.InfoCtx(ctx, "failed to start drpc server", zap.Error(err))
 	} else {
 		s.serverStarted = true
@@ -69,11 +59,11 @@ func (s *drpcServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *drpcServer) Port() int {
+func (s *clientServer) Port() int {
 	return s.port
 }
 
-func (s *drpcServer) startServer(ctx context.Context) (err error) {
+func (s *clientServer) startServer() (err error) {
 	db, err := s.provider.SpaceStorage()
 	if err != nil {
 		return
@@ -83,64 +73,42 @@ func (s *drpcServer) startServer(ctx context.Context) (err error) {
 	if err != nil && err != badger.ErrKeyNotFound {
 		return
 	}
-	var updatedAddrs []string
-	if err == nil {
-		for _, addr := range s.config.Server.ListenAddrs {
-			split := strings.Split(addr, ":")
-			updatedAddrs = append(updatedAddrs, fmt.Sprintf("%s:%d", split[0], oldPort))
-		}
-	} else {
-		updatedAddrs = s.config.Server.ListenAddrs
-	}
-	params := server.Params{
-		BufferSizeMb:  s.config.Stream.MaxMsgSizeMb,
-		TimeoutMillis: s.config.Stream.TimeoutMilliseconds,
-		ListenAddrs:   updatedAddrs,
-		Wrapper: func(handler drpc.Handler) drpc.Handler {
-			return handler
-		},
-		Handshake: func(conn gonet.Conn) (cCtx context.Context, sc sec.SecureConn, err error) {
-			ctxWithTimeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-			return s.transport.SecureInbound(ctxWithTimeout, conn)
-		},
-	}
-	// TODO: the logic must be written so that server wouldn't be mandatory for client to work
-	err = s.BaseDrpcServer.Run(ctx, params)
-	if err != nil {
-		// listening random port
-		params.ListenAddrs = []string{":0"}
-		err = s.BaseDrpcServer.Run(ctx, params)
-		if err != nil {
-			return
-		}
-	}
-	s.port, err = s.parsePort()
+	list, err := s.prepareListener(oldPort)
 	if err != nil {
 		return
 	}
+	s.port, err = s.parsePort(list.Addr().String())
+	if err != nil {
+		return
+	}
+	s.yamux.AddListener(list)
 	return s.storage.setPort(s.port)
 }
 
-func (s *drpcServer) parsePort() (int, error) {
-	addrs := s.BaseDrpcServer.ListenAddrs()
-	if len(addrs) == 0 {
-		return 0, ErrNoPortAssigned
-	}
-	split := strings.Split(addrs[0].String(), ":")
+func (s *clientServer) parsePort(addr string) (int, error) {
+	split := strings.Split(addr, ":")
 	if len(split) <= 1 {
 		return 0, ErrNoPortAssigned
 	}
 	return strconv.Atoi(split[len(split)-1])
 }
 
-func (s *drpcServer) ServerStarted() bool {
+func (s *clientServer) ServerStarted() bool {
 	return s.serverStarted
 }
 
-func (s *drpcServer) Close(ctx context.Context) (err error) {
-	if !s.serverStarted {
-		return nil
+func (s *clientServer) prepareListener(port int) (net.Listener, error) {
+	if port != 0 {
+		list, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+		if err == nil {
+			return list, nil
+		}
 	}
-	return s.BaseDrpcServer.Close(ctx)
+	// otherwise listening to new port
+	//nolint: gosec
+	return net.Listen("tcp", ":")
+}
+
+func (s *clientServer) Close(_ context.Context) (err error) {
+	return nil
 }

@@ -67,6 +67,10 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 			return nil
 		}
 	}
+	if len(readers) == 0 {
+		allErrors.Add(importPath, ce.ErrNoObjectsToImport)
+		return nil
+	}
 	for path, rc := range readers {
 		if err = m.fillFilesInfo(importPath, fileInfo, path, rc); err != nil {
 			allErrors.Add(path, err)

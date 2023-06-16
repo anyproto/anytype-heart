@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"sort"
 	"strconv"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/stretchr/testify/require"
 )
+
+var ctx = context.Background()
 
 func spaceTestPayload() spacestorage.SpaceStorageCreatePayload {
 	header := &spacesyncproto.RawSpaceHeaderWithId{
@@ -52,7 +55,7 @@ func TestSpaceStorage_Create(t *testing.T) {
 	require.NoError(t, err)
 
 	testSpace(t, store, payload)
-	require.NoError(t, store.Close())
+	require.NoError(t, store.Close(ctx))
 
 	t.Run("create same storage returns error", func(t *testing.T) {
 		_, err := createSpaceStorage(fx.db, payload)
@@ -67,7 +70,7 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 	payload := spaceTestPayload()
 	store, err := createSpaceStorage(fx.db, payload)
 	require.NoError(t, err)
-	require.NoError(t, store.Close())
+	require.NoError(t, store.Close(ctx))
 	fx.stop(t)
 
 	fx.open(t)
@@ -105,7 +108,7 @@ func TestSpaceStorage_StoredIds(t *testing.T) {
 	store, err := createSpaceStorage(fx.db, payload)
 	require.NoError(t, err)
 	defer func() {
-		require.NoError(t, store.Close())
+		require.NoError(t, store.Close(ctx))
 	}()
 
 	n := 5
