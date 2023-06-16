@@ -58,7 +58,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	result, cancelError := c.CreateObjectsFromCSVFiles(req, progress, params, cErr)
+	result, cancelError := c.createObjectsFromCSVFiles(req, progress, params, cErr)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -84,7 +84,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	return &converter.Response{Snapshots: result.snapshots}, cErr
 }
 
-func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
+func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
 	cErr converter.ConvertError) (*Result, converter.ConvertError) {
@@ -162,6 +162,8 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error) {
 	defer rc.Close()
 	csvReader := csv.NewReader(rc)
+	csvReader.LazyQuotes = true
+	csvReader.ReuseRecord = true
 	if delimiter != "" {
 		characters := []rune(delimiter)
 		csvReader.Comma = characters[0]
