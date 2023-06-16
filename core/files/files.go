@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -60,7 +61,6 @@ type Service interface {
 	ImageAdd(ctx context.Context, options ...AddOption) (Image, error)
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
-	AddToSyncQueue(fileID string) error
 
 	app.Component
 }
@@ -805,10 +805,6 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	return files, nil
 }
 
-func (s *service) AddToSyncQueue(fileID string) error {
-	return s.addToSyncQueue(fileID, false)
-}
-
 func (s *service) addToSyncQueue(fileID string, uploadedByUser bool) error {
 	spaceID := s.spaceService.AccountId()
 
@@ -899,13 +895,17 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 		fileList, err = s.fileIndexInfo(ctx, hash, false)
 		if err != nil {
 			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
+			if errors.Is(err, filestorage.ErrRemoteLoadDisabled) {
+				if err := s.addToSyncQueue(hash, false); err != nil {
+					return nil, fmt.Errorf("remote load disabled: add file %s to sync queue: %w", hash, err)
+				}
+			}
 			return nil, ErrFileNotFound
 		}
 	}
-	if err := s.AddToSyncQueue(hash); err != nil {
+	if err := s.addToSyncQueue(hash, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
 	}
-
 	fileIndex := fileList[0]
 	return &file{
 		hash: hash,

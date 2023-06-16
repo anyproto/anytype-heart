@@ -146,14 +146,24 @@ func versionFromItem(it *badger.Item) (int, error) {
 
 func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser bool) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
+		logger := log.With(zap.String("fileID", fileId), zap.String("spaceID", spaceId), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
 		ok, err := isKeyExists(txn, discardedKey(spaceId, fileId))
 		if err != nil {
-			return err
+			return fmt.Errorf("check discarded key: %w", err)
 		}
 		if ok {
+			logger.Info("add file to upload queue: file is in discarded queue")
 			return nil
 		}
-
+		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
+		if err != nil {
+			return fmt.Errorf("check upload key: %w", err)
+		}
+		if ok {
+			logger.Info("add file to upload queue: file is already in queue, update timestamp")
+		} else {
+			logger.Info("add file to upload queue")
+		}
 		raw, err := createQueueItem(addedByUser)
 		if err != nil {
 			return fmt.Errorf("create queue item: %w", err)

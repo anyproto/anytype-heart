@@ -37,7 +37,6 @@ func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err err
 		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
 		return nil
 	}
-	log.Info("add file to uploading queue", zap.String("fileID", fileId))
 
 	err = f.queue.QueueUpload(spaceId, fileId, uploadedByUser)
 	if err == nil {
@@ -115,6 +114,15 @@ func (f *fileSync) tryToUpload() (string, error) {
 		return fileId, err
 	}
 	log.Info("done upload", zap.String("fileID", fileId))
+	if f.onUpload != nil {
+		err := f.onUpload(spaceId, fileId)
+		if err != nil {
+			log.Warn("on upload callback failed",
+				zap.String("fileID", fileId),
+				zap.String("spaceID", spaceId),
+				zap.Error(err))
+		}
+	}
 
 	f.updateSpaceUsageInformation(spaceId)
 

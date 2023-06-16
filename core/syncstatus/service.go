@@ -29,6 +29,7 @@ const CName = "status"
 type Service interface {
 	Watch(id string, fileFunc func() []string) (new bool, err error)
 	Unwatch(id string)
+	OnFileUpload(spaceID string, fileID string) error
 	app.ComponentRunnable
 }
 
@@ -143,6 +144,14 @@ func (s *service) unwatch(id string) {
 		s.linkedFilesWatcher.UnwatchLinkedFiles(id)
 		s.objectWatcher.Unwatch(id)
 	}
+}
+
+func (s *service) OnFileUpload(spaceID string, fileID string) error {
+	_, err := s.fileWatcher.registry.setFileStatus(fileWithSpace{spaceID: spaceID, fileID: fileID}, fileStatus{
+		status:    FileStatusSynced,
+		updatedAt: time.Now(),
+	})
+	return err
 }
 
 func (s *service) Close(ctx context.Context) (err error) {

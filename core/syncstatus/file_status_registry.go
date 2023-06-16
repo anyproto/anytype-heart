@@ -59,6 +59,8 @@ func (r *fileStatusRegistry) GetFileStatus(ctx context.Context, spaceID string, 
 		fileID:  fileID,
 	}
 
+	// TODO Check that file is deleted
+
 	status, err := r.getFileStatus(key)
 	if err != nil {
 		return status.status, err
