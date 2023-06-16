@@ -237,12 +237,18 @@ func (ou *ObjectIDGetter) removePrefixesFromSubID(subID string) string {
 
 func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
+	layout := pbtypes.GetFloat64(sn.Snapshot.Data.Details, bundle.RelationKeyLayout.String())
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySourceFilePath.String(),
 				Value:       pbtypes.String(source),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Float64(layout),
 			},
 		},
 	}, []sb.SmartBlockType{sn.SbType})
