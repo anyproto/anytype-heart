@@ -445,6 +445,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
 	if err != nil {
 		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
+		err = nil
 	}
 	go sb.metaListener(recordsCh)
 	return
