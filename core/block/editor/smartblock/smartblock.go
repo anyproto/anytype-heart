@@ -892,6 +892,15 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
+		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		if wsId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		} else {
+			log.With("objectID", sb.Id()).Errorf("injectLocalDetails empty workspace: %v", err)
+		}
+	}
+
 	if sb.objectStore == nil {
 		return nil
 	}
@@ -943,15 +952,11 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
 		}
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	}
-
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
-		wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
-		if wsId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		if createdDate != 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 		}
 	}
+
 	return nil
 }
 
@@ -1022,6 +1027,10 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 		return ErrIsDeleted
 	}
 	d.(*state.State).InjectDerivedDetails()
+	err = sb.injectLocalDetails(d.(*state.State))
+	if err != nil {
+		log.Errorf("failed to inject local details in StateRebuild: %v", err)
+	}
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})

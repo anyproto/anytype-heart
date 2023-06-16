@@ -3,6 +3,7 @@ package anytype
 import (
 	"context"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -87,9 +88,9 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
-func StartNewApp(ctx context.Context, clientVersion string, components ...app.Component) (a *app.App, err error) {
+func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
-	a.SetVersionName(appVersion(a, clientVersion))
+	a.SetVersionName(appVersion(a, clientWithVersion))
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
@@ -102,10 +103,11 @@ func StartNewApp(ctx context.Context, clientVersion string, components ...app.Co
 	return
 }
 
-func appVersion(a *app.App, clientVersion string) string {
-	middleVersion := vcs.GetVCSInfo().Version()
+func appVersion(a *app.App, clientWithVersion string) string {
+	clientWithVersion = regexp.MustCompile(`(@|\/)+`).ReplaceAllString(clientWithVersion, "_")
+	middleVersion := MiddlewareVersion()
 	anySyncVersion := a.AnySyncVersion()
-	return "client:" + clientVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
+	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
 func Bootstrap(a *app.App, components ...app.Component) {
@@ -202,7 +204,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collectionService).
 		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New()).
+		Register(builtinobjects.New(tempDirService)).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
 		Register(importer.New(tempDirService, sbtProvider)).
@@ -212,4 +214,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
 		Register(graphRenderer)
 	return
+}
+
+func MiddlewareVersion() string {
+	return vcs.GetVCSInfo().Version()
 }

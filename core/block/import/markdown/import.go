@@ -122,7 +122,7 @@ func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process
 	}
 
 	if len(files) == 0 {
-		allErrors.Add(path, fmt.Errorf("couldn't found md files"))
+		allErrors.Add(path, converter.ErrNoObjectsToImport)
 		return nil, nil
 	}
 	progress.SetTotal(int64(numberOfStages * len(files)))
