@@ -146,7 +146,7 @@ func versionFromItem(it *badger.Item) (int, error) {
 
 func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser bool) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
-		logger := log.With(zap.String("fileID", fileId), zap.String("spaceID", spaceId), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
+		logger := log.With(zap.String("fileID", fileId), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
 		ok, err := isKeyExists(txn, discardedKey(spaceId, fileId))
 		if err != nil {
 			return fmt.Errorf("check discarded key: %w", err)

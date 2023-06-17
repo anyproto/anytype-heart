@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -895,12 +895,22 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 		fileList, err = s.fileIndexInfo(ctx, hash, false)
 		if err != nil {
 			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
-			if errors.Is(err, filestorage.ErrRemoteLoadDisabled) {
-				if err := s.addToSyncQueue(hash, false); err != nil {
-					return nil, fmt.Errorf("remote load disabled: add file %s to sync queue: %w", hash, err)
-				}
-			}
 			return nil, ErrFileNotFound
+		}
+		ok, err := s.fileStore.IsFileImported(hash)
+		if err != nil {
+			return nil, fmt.Errorf("check if file is imported: %w", err)
+		}
+		if ok {
+			err = s.fileStore.SetIsFileImported(hash, false)
+			if err != nil {
+				return nil, fmt.Errorf("set is file imported: %w", err)
+			}
+		} else {
+			err = s.fileStore.SetSyncStatus(hash, int(syncstatus.StatusSynced))
+			if err != nil {
+				return nil, fmt.Errorf("set sync status: %w", err)
+			}
 		}
 	}
 	if err := s.addToSyncQueue(hash, false); err != nil {

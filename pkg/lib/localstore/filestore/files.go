@@ -28,6 +28,7 @@ var (
 	filesKeysBase   = dsCtx.NewKey("/" + filesPrefix + "/keys")
 	chunksCountBase = dsCtx.NewKey("/" + filesPrefix + "/chunks_count")
 	syncStatusBase  = dsCtx.NewKey("/" + filesPrefix + "/sync_status")
+	isImportedBase  = dsCtx.NewKey("/" + filesPrefix + "/is_imported")
 
 	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
@@ -101,6 +102,8 @@ type FileStore interface {
 	SetChunksCount(hash string, chunksCount int) error
 	GetSyncStatus(hash string) (int, error)
 	SetSyncStatus(hash string, syncStatus int) error
+	IsFileImported(hash string) (bool, error)
+	SetIsFileImported(hash string, isImported bool) error
 }
 
 func New() FileStore {
@@ -682,6 +685,24 @@ func (m *dsFileStore) GetSyncStatus(hash string) (int, error) {
 func (m *dsFileStore) SetSyncStatus(hash string, status int) error {
 	key := syncStatusBase.ChildString(hash)
 	return m.setInt(key, status)
+}
+
+func (m *dsFileStore) IsFileImported(hash string) (bool, error) {
+	key := isImportedBase.ChildString(hash)
+	raw, err := m.getInt(key)
+	if err == localstore.ErrNotFound {
+		return false, nil
+	}
+	return raw == 1, err
+}
+
+func (m *dsFileStore) SetIsFileImported(hash string, isImported bool) error {
+	var raw int
+	if isImported {
+		raw = 1
+	}
+	key := isImportedBase.ChildString(hash)
+	return m.setInt(key, raw)
 }
 
 func (ls *dsFileStore) Close(ctx context.Context) (err error) {

@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -46,6 +47,7 @@ type ObjectCreator struct {
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
+	fileStore      filestore.FileStore
 	mu             sync.Mutex
 }
 
@@ -55,6 +57,7 @@ func NewCreator(service *block.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer syncer.RelationSyncer,
+	fileStore filestore.FileStore,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
@@ -63,6 +66,7 @@ func NewCreator(service *block.Service,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
+		fileStore:      fileStore,
 	}
 }
 
@@ -383,7 +387,13 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 }
 
 func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
-	return st.Iterate(func(bl simple.Block) (isContinue bool) {
+	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
+	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if bl != nil {
+			if file := bl.Model().GetFile(); file != nil {
+				fileHashes = append(fileHashes, file.Hash)
+			}
+		}
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
 			if sErr := s.Sync(ctx, newID, bl); sErr != nil {
@@ -392,6 +402,16 @@ func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State
 		}
 		return true
 	})
+	if err != nil {
+		return err
+	}
+	for _, hash := range fileHashes {
+		err = oc.fileStore.SetIsFileImported(hash, true)
+		if err != nil {
+			return fmt.Errorf("failed to set isFileImported for file %s: %s", hash, err)
+		}
+	}
+	return nil
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {

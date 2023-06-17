@@ -87,7 +87,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer)
+	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer, fileStore)
 	return nil
 }
 

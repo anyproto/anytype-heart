@@ -149,17 +149,16 @@ func (s *fileWatcher) close() {
 
 func (s *fileWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
 	status, err := s.registry.GetFileStatus(ctx, key.spaceID, key.fileID)
+	if err == errFileNotFound {
+		s.Unwatch(key.spaceID, key.fileID)
+		return err
+	}
 	if err != nil {
 		return fmt.Errorf("get file status: %w", err)
 	}
 	// Files are immutable, so we can stop watching status updates after file is synced
 	if status == FileStatusSynced {
-		go func() {
-			err = s.Unwatch(key.spaceID, key.fileID)
-			if err != nil {
-				log.Error("unwatching file", zap.String("fileID", key.fileID), zap.Error(err))
-			}
-		}()
+		s.Unwatch(key.spaceID, key.fileID)
 	}
 	if !key.isUploadLimited && status == FileStatusLimited {
 		go s.moveToLimitedQueue(key)
@@ -235,7 +234,16 @@ func (s *fileWatcher) Watch(spaceID, fileID string) error {
 	return nil
 }
 
-func (s *fileWatcher) Unwatch(spaceID, fileID string) error {
+func (s *fileWatcher) Unwatch(spaceID, fileID string) {
+	go func() {
+		err := s.unwatch(spaceID, fileID)
+		if err != nil {
+			log.Error("unwatching file", zap.String("fileID", fileID), zap.Error(err))
+		}
+	}()
+}
+
+func (s *fileWatcher) unwatch(spaceID, fileID string) error {
 	s.filesToWatchLock.Lock()
 	defer s.filesToWatchLock.Unlock()
 

@@ -2,9 +2,9 @@ package indexer
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -41,6 +41,7 @@ func (i *indexer) ftLoop() {
 	}
 }
 
+// TODO maybe use two queues? One for objects, one for files
 func (i *indexer) runFullTextIndexer() {
 	ids, err := i.store.ListIDsFromFullTextQueue()
 	if err != nil {
@@ -71,12 +72,12 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "index_fulltext")
 
-	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
+	// ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
+
 	info, err := i.getObjectInfo(ctx, id)
 	if err != nil {
-		return
+		return ftDoc, fmt.Errorf("get object info: %w", err)
 	}
-
 	sbType, err := i.typeProvider.Type(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage

@@ -53,13 +53,19 @@ func newFileStatusRegistry(
 	}
 }
 
+func (r *fileStatusRegistry) hasFileInStore(fileID string) (bool, error) {
+	roots, err := r.fileStore.ListByTarget(fileID)
+	if err != localstore.ErrNotFound && err != nil {
+		return false, err
+	}
+	return len(roots) > 0, nil
+}
+
 func (r *fileStatusRegistry) GetFileStatus(ctx context.Context, spaceID string, fileID string) (FileStatus, error) {
 	key := fileWithSpace{
 		spaceID: spaceID,
 		fileID:  fileID,
 	}
-
-	// TODO Check that file is deleted
 
 	status, err := r.getFileStatus(key)
 	if err != nil {
@@ -121,6 +127,8 @@ func validStatusTransition(from, to FileStatus) bool {
 	}
 }
 
+var errFileNotFound = fmt.Errorf("file is not found")
+
 func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileStatus, key fileWithSpace) (fileStatus, error) {
 	now := time.Now()
 	if status.status == FileStatusSynced {
@@ -150,6 +158,13 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 		return status, nil
 	}
 
+	ok, err := r.hasFileInStore(key.fileID)
+	if err != nil {
+		return status, fmt.Errorf("check that file is in store: %w", err)
+	}
+	if !ok {
+		return status, errFileNotFound
+	}
 	fstat, err := r.fileSyncService.FileStat(ctx, key.spaceID, key.fileID)
 	if err != nil {
 		return status, fmt.Errorf("file stat: %w", err)
