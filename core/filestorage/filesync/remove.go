@@ -45,6 +45,7 @@ func (f *fileSync) removeOperation() {
 			log.Warn("can't remove file", zap.String("fileID", fileID), zap.Error(err))
 			return
 		}
+		log.Warn("file removed", zap.String("fileID", fileID))
 	}
 }
 

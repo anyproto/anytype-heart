@@ -196,11 +196,13 @@ func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId s
 		return nil, fmt.Errorf("select blocks to upload: %w", err)
 	}
 
-	log.Debug("collecting blocks to upload",
-		zap.String("fileID", fileId),
-		zap.Int("blocksToUpload", len(blocksToUpload)),
-		zap.Int("totalBlocks", len(fileBlocks)),
-	)
+	if len(blocksToUpload) > 0 {
+		log.Info("collecting blocks to upload",
+			zap.String("fileID", fileId),
+			zap.Int("blocksToUpload", len(blocksToUpload)),
+			zap.Int("totalBlocks", len(fileBlocks)),
+		)
+	}
 
 	stat, err := f.SpaceStat(ctx, spaceId)
 	if err != nil {

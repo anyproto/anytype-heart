@@ -72,8 +72,6 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "index_fulltext")
 
-	// ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
-
 	info, err := i.getObjectInfo(ctx, id)
 	if err != nil {
 		return ftDoc, fmt.Errorf("get object info: %w", err)

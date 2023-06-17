@@ -126,9 +126,6 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	if err != nil {
 		return "", nil, err
 	}
-	if err = s.storeChunksCount(ctx, node); err != nil {
-		return "", nil, fmt.Errorf("store chunks count: %w", err)
-	}
 
 	nodeHash := node.Cid().String()
 	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
@@ -143,20 +140,6 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	}
 
 	return nodeHash, fileInfo, nil
-}
-
-func (s *service) storeChunksCount(ctx context.Context, node ipld.Node) error {
-	chunksCount, err := s.fileSync.FetchChunksCount(ctx, node)
-	if err != nil {
-		return fmt.Errorf("count chunks: %w", err)
-	}
-
-	nodeHash := node.Cid().String()
-	if err = s.fileStore.SetChunksCount(nodeHash, chunksCount); err != nil {
-		return fmt.Errorf("store chunks count: %w", err)
-	}
-
-	return nil
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
@@ -902,11 +885,13 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 			return nil, fmt.Errorf("check if file is imported: %w", err)
 		}
 		if ok {
+			// If file is imported we have to sync it, so we don't set sync status to synced
 			err = s.fileStore.SetIsFileImported(hash, false)
 			if err != nil {
 				return nil, fmt.Errorf("set is file imported: %w", err)
 			}
 		} else {
+			// If file is not imported then it's definitely synced
 			err = s.fileStore.SetSyncStatus(hash, int(syncstatus.StatusSynced))
 			if err != nil {
 				return nil, fmt.Errorf("set sync status: %w", err)
