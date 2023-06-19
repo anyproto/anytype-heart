@@ -43,14 +43,14 @@ func newFileSyncStore(db *badger.DB) (*fileSyncStore, error) {
 	return s, nil
 }
 
-type queueItem struct {
+type QueueItem struct {
 	SpaceID     string
 	FileID      string
 	Timestamp   int64
 	AddedByUser bool
 }
 
-func (it *queueItem) less(other *queueItem) bool {
+func (it *QueueItem) less(other *QueueItem) bool {
 	if it.AddedByUser && !other.AddedByUser {
 		return true
 	}
@@ -122,7 +122,7 @@ func migrateItem(txn *badger.Txn, item *badger.Item) error {
 	if err != nil {
 		return fmt.Errorf("get timestamp: %w", err)
 	}
-	it := queueItem{
+	it := QueueItem{
 		Timestamp: int64(timestamp),
 	}
 	raw, err := json.Marshal(it)
@@ -173,7 +173,7 @@ func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser b
 }
 
 func createQueueItem(addedByUser bool) ([]byte, error) {
-	return json.Marshal(queueItem{
+	return json.Marshal(QueueItem{
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: addedByUser,
 	})
@@ -236,11 +236,11 @@ func (s *fileSyncStore) DoneRemove(spaceId, fileId string) (err error) {
 	})
 }
 
-func (s *fileSyncStore) GetUpload() (it *queueItem, err error) {
+func (s *fileSyncStore) GetUpload() (it *QueueItem, err error) {
 	return s.getOne(uploadKeyPrefix)
 }
 
-func (s *fileSyncStore) GetDiscardedUpload() (it *queueItem, err error) {
+func (s *fileSyncStore) GetDiscardedUpload() (it *QueueItem, err error) {
 	return s.getOne(discardedKeyPrefix)
 }
 
@@ -290,12 +290,12 @@ func (s *fileSyncStore) IsFileUploadLimited(spaceId, fileId string) (ok bool, er
 	return
 }
 
-func (s *fileSyncStore) GetRemove() (it *queueItem, err error) {
+func (s *fileSyncStore) GetRemove() (it *QueueItem, err error) {
 	return s.getOne(removeKeyPrefix)
 }
 
 // getOne returns the oldest key from the queue with given prefix
-func (s *fileSyncStore) getOne(prefix []byte) (earliest *queueItem, err error) {
+func (s *fileSyncStore) getOne(prefix []byte) (earliest *QueueItem, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
 			PrefetchSize:   100,
@@ -326,6 +326,35 @@ func (s *fileSyncStore) getOne(prefix []byte) (earliest *queueItem, err error) {
 		return nil, errQueueIsEmpty
 	}
 	return
+}
+
+func (s *fileSyncStore) listItemsByPrefix(prefix []byte) ([]*QueueItem, error) {
+	var items []*QueueItem
+	err := s.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.IteratorOptions{
+			PrefetchSize:   100,
+			PrefetchValues: true,
+			Prefix:         prefix,
+		})
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			qItem, err := getQueueItem(item)
+			if err != nil {
+				return fmt.Errorf("get queue item %s: %w", item.Key(), err)
+			}
+			fileId, spaceId := extractFileAndSpaceID(item)
+			qItem.FileID = fileId
+			qItem.SpaceID = spaceId
+			items = append(items, qItem)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func extractFileAndSpaceID(item *badger.Item) (string, string) {
@@ -403,8 +432,8 @@ func getTimestamp(item *badger.Item) (uint64, error) {
 	return ts, err
 }
 
-func getQueueItem(item *badger.Item) (*queueItem, error) {
-	var it queueItem
+func getQueueItem(item *badger.Item) (*QueueItem, error) {
+	var it QueueItem
 	err := item.Value(func(raw []byte) error {
 		return json.Unmarshal(raw, &it)
 	})

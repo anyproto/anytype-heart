@@ -174,3 +174,24 @@ func (f *fileSync) FetchChunksCount(ctx context.Context, node ipld.Node) (int, e
 	}
 	return count, err
 }
+
+func (f *fileSync) DebugQueue() (*QueueInfo, error) {
+	var (
+		info QueueInfo
+		err  error
+	)
+
+	info.UploadingQueue, err = f.queue.listItemsByPrefix(uploadKeyPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("list items from uploading queue: %w", err)
+	}
+	info.DiscardedQueue, err = f.queue.listItemsByPrefix(discardedKeyPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("list items from discarded queue: %w", err)
+	}
+	info.RemovingQueue, err = f.queue.listItemsByPrefix(removeKeyPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("list items from removing queue: %w", err)
+	}
+	return &info, nil
+}

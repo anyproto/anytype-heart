@@ -126,19 +126,19 @@ func TestMigration(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
 
-	wantUploadItem := &queueItem{
+	wantUploadItem := &QueueItem{
 		SpaceID:     "spaceId1",
 		FileID:      "fileId1",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
-	wantDiscardedItem := &queueItem{
+	wantDiscardedItem := &QueueItem{
 		SpaceID:     "spaceId1",
 		FileID:      "fileId2",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
-	wantRemoveItem := &queueItem{
+	wantRemoveItem := &QueueItem{
 		SpaceID:   "spaceId1",
 		FileID:    "fileId3",
 		Timestamp: time.Now().UnixMilli(),

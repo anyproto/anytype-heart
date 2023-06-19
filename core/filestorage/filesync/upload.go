@@ -74,7 +74,7 @@ func (f *fileSync) addOperation() {
 	}
 }
 
-func (f *fileSync) getUpload() (*queueItem, error) {
+func (f *fileSync) getUpload() (*QueueItem, error) {
 	it, err := f.queue.GetUpload()
 	if err == errQueueIsEmpty {
 		return f.queue.GetDiscardedUpload()

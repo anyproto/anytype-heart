@@ -39,7 +39,14 @@ type FileSync interface {
 	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
 	HasUpload(spaceId, fileId string) (ok bool, err error)
 	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
+	DebugQueue() (*QueueInfo, error)
 	app.ComponentRunnable
+}
+
+type QueueInfo struct {
+	UploadingQueue []*QueueItem
+	DiscardedQueue []*QueueItem
+	RemovingQueue  []*QueueItem
 }
 
 type SyncStatus struct {

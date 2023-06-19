@@ -94,6 +94,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
+	s.runDebugServer()
 	return nil
 }
 
@@ -271,11 +272,6 @@ func (s *service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 	if err != nil {
 		return nil, nil, err
 	}
-
-	/*err = helpers.PinNode(s.node, node, false)
-	if err != nil {
-		return nil, nil, err
-	}*/
 	return node, keys, nil
 }
 
