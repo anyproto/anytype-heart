@@ -11,6 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"golang.org/x/exp/rand"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -321,14 +322,17 @@ func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
 
 func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors converter.ConvertError, mode pb.RpcObjectImportRequestMode) {
 	newIDToOld := make(map[string]string, len(snapshots))
+	fileKeys := make([]string, 0)
 	for _, snapshot := range snapshots {
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		newIDToOld[id] = snapshot.Id
+		fileKeys = append(fileKeys, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
+			return item.Hash
+		})...)
 	}
-
 	for _, snapshot := range snapshots {
 		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
-		err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, snapshot.Id)
+		err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileKeys)
 		if err != nil {
 			allErrors.Add(snapshot.FileName, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

@@ -222,17 +222,28 @@ func (i *Import) createObjects(ctx *session.Context,
 	if err != nil {
 		return nil
 	}
+	fileKeys := i.getFilesKeys(res)
 	numWorkers := workerPoolSize
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(oldIDToNew, createPayloads, ctx)
+	do := NewDataObject(oldIDToNew, createPayloads, fileKeys, ctx)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
 	return details
+}
+
+func (i *Import) getFilesKeys(res *converter.Response) []string {
+	fileKeys := make([]string, 0)
+	for _, snapshot := range res.Snapshots {
+		fileKeys = append(fileKeys, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
+			return item.Hash
+		})...)
+	}
+	return fileKeys
 }
 
 func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (

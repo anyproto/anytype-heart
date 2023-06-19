@@ -31,7 +31,7 @@ type Importer interface {
 // Creator incapsulate logic with creation of given smartblocks
 type Creator interface {
 	//nolint:lll
-	Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload) (*types.Struct, string, error)
+	Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, keys []string) (*types.Struct, string, error)
 }
 
 // IDGetter is interface for updating existing objects

@@ -54,15 +54,15 @@ func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
 	return &types.Struct{Fields: fields}
 }
 
-func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
+func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesKeys []string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch block := bl.(type) {
 		case link.Block:
-			handleLinkBlock(oldIDtoNew, block, st)
+			handleLinkBlock(oldIDtoNew, block, st, filesKeys)
 		case bookmark.Block:
 			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleMarkdownTest(oldIDtoNew, block, st)
+			handleMarkdownTest(oldIDtoNew, block, st, filesKeys)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		}
@@ -165,8 +165,11 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *s
 	st.Set(simple.New(block.Model()))
 }
 
-func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesKeys []string) {
 	targetBlockID := block.Model().GetLink().TargetBlockId
+	if lo.Contains(filesKeys, targetBlockID) {
+		return
+	}
 	newTarget := oldIDtoNew[targetBlockID]
 	if newTarget == "" {
 		if widget.IsPredefinedWidgetTargetId(targetBlockID) {
@@ -194,11 +197,14 @@ func isBundledObjects(targetBlockID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesKeys []string) {
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 			continue
+		}
+		if lo.Contains(filesKeys, mark.Param) {
+			return
 		}
 		newTarget := oldIDtoNew[mark.Param]
 		if newTarget == "" {

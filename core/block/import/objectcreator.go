@@ -70,7 +70,8 @@ func NewCreator(service *block.Service,
 func (oc *ObjectCreator) Create(ctx *session.Context,
 	sn *converter.Snapshot,
 	oldIDtoNew map[string]string,
-	createPayloads map[string]treestorage.TreeStorageCreatePayload) (*types.Struct, string, error) {
+	createPayloads map[string]treestorage.TreeStorageCreatePayload,
+	fileKeys []string) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 
 	var err error
@@ -95,7 +96,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return nil, newID, nil
 	}
 
-	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, newID); err != nil {
+	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileKeys); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
