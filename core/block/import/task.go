@@ -16,7 +16,7 @@ type Task struct {
 type DataObject struct {
 	oldIDtoNew     map[string]string
 	createPayloads map[string]treestorage.TreeStorageCreatePayload
-	fileKeys       []string
+	fileIDs        []string
 	ctx            *session.Context
 }
 
@@ -28,9 +28,9 @@ type Result struct {
 
 func NewDataObject(oldIDtoNew map[string]string,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
-	keys []string,
+	filesIDs []string,
 	ctx *session.Context) *DataObject {
-	return &DataObject{oldIDtoNew: oldIDtoNew, createPayloads: createPayloads, fileKeys: keys, ctx: ctx}
+	return &DataObject{oldIDtoNew: oldIDtoNew, createPayloads: createPayloads, fileIDs: filesIDs, ctx: ctx}
 }
 
 func NewTask(sn *converter.Snapshot, oc Creator) *Task {
@@ -39,7 +39,7 @@ func NewTask(sn *converter.Snapshot, oc Creator) *Task {
 
 func (t *Task) Execute(data interface{}) interface{} {
 	dataObject := data.(*DataObject)
-	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, dataObject.oldIDtoNew, dataObject.createPayloads, dataObject.fileKeys)
+	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, dataObject.oldIDtoNew, dataObject.createPayloads, dataObject.fileIDs)
 	return &Result{
 		details: details,
 		newID:   newID,
