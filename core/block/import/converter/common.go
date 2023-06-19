@@ -54,15 +54,15 @@ func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
 	return &types.Struct{Fields: fields}
 }
 
-func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, pageID string) error {
+func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch block := bl.(type) {
 		case link.Block:
-			handleLinkBlock(oldIDtoNew, block, st)
+			handleLinkBlock(oldIDtoNew, block, st, filesIDs)
 		case bookmark.Block:
 			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleMarkdownTest(oldIDtoNew, block, st)
+			handleMarkdownTest(oldIDtoNew, block, st, filesIDs)
 		case dataview.Block:
 			handleDataviewBlock(block, oldIDtoNew, st)
 		}
@@ -165,8 +165,11 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *s
 	st.Set(simple.New(block.Model()))
 }
 
-func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	targetBlockID := block.Model().GetLink().TargetBlockId
+	if lo.Contains(filesIDs, targetBlockID) {
+		return
+	}
 	newTarget := oldIDtoNew[targetBlockID]
 	if newTarget == "" {
 		if widget.IsPredefinedWidgetTargetId(targetBlockID) {
@@ -194,11 +197,14 @@ func isBundledObjects(targetBlockID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 			continue
+		}
+		if lo.Contains(filesIDs, mark.Param) {
+			return
 		}
 		newTarget := oldIDtoNew[mark.Param]
 		if newTarget == "" {
@@ -210,7 +216,7 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
+func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, filesIDs []string) {
 	rels := st.GetRelationLinks()
 	for k, v := range st.Details().GetFields() {
 		relLink := rels.Get(k)
@@ -227,26 +233,29 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 			// featured relations have incorrect IDs
 			continue
 		}
-		handleObjectRelation(st, oldIDtoNew, v, k)
+		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
 	}
 }
 
-func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string) {
+func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *types.Value, k string, filesIDs []string) {
 	if _, ok := v.GetKind().(*types.Value_StringValue); ok {
 		objectsID := v.GetStringValue()
-		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew)
+		newObjectIDs := getNewObjectsIDForRelation([]string{objectsID}, oldIDtoNew, filesIDs)
 		if len(newObjectIDs) != 0 {
 			st.SetDetail(k, pbtypes.String(newObjectIDs[0]))
 		}
 		return
 	}
 	objectsIDs := pbtypes.GetStringListValue(v)
-	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew)
+	objectsIDs = getNewObjectsIDForRelation(objectsIDs, oldIDtoNew, filesIDs)
 	st.SetDetail(k, pbtypes.StringList(objectsIDs))
 }
 
-func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string) []string {
+func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string, filesIDs []string) []string {
 	for i, val := range objectsIDs {
+		if lo.Contains(filesIDs, val) {
+			continue
+		}
 		newTarget := oldIDtoNew[val]
 		if newTarget == "" {
 			// preserve links to bundled objects
