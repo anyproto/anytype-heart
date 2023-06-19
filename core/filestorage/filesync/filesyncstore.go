@@ -51,12 +51,6 @@ type QueueItem struct {
 }
 
 func (it *QueueItem) less(other *QueueItem) bool {
-	if it.AddedByUser && !other.AddedByUser {
-		return true
-	}
-	if !it.AddedByUser && other.AddedByUser {
-		return false
-	}
 	return it.Timestamp < other.Timestamp
 }
 

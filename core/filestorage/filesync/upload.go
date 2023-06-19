@@ -153,6 +153,12 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 		return err
 	}
 
+	if len(blocksToUpload) == 0 {
+		return nil
+	}
+
+	log.Info("start uploading file", zap.String("fileID", fileId), zap.Int("blocksCount", len(blocksToUpload)))
+
 	go func() {
 		defer func() {
 			_ = batcher.Close()
@@ -275,10 +281,11 @@ func (f *fileSync) selectBlocksToUploadAndBindExisting(ctx context.Context, spac
 		}
 	}
 
-	if bindErr := f.rpcStore.BindCids(ctx, spaceId, fileId, cidsToBind); bindErr != nil {
-		return 0, nil, fmt.Errorf("bind cids: %w", bindErr)
+	if len(cidsToBind) > 0 {
+		if bindErr := f.rpcStore.BindCids(ctx, spaceId, fileId, cidsToBind); bindErr != nil {
+			return 0, nil, fmt.Errorf("bind cids: %w", bindErr)
+		}
 	}
-
 	return bytesToUpload, blocksToUpload, nil
 }
 
