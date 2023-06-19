@@ -197,13 +197,13 @@ func isBundledObjects(targetBlockID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesKeys []string) {
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 			continue
 		}
-		if lo.Contains(filesKeys, mark.Param) {
+		if lo.Contains(filesIDs, mark.Param) {
 			return
 		}
 		newTarget := oldIDtoNew[mark.Param]
