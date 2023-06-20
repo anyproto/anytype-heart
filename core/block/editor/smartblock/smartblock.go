@@ -1294,7 +1294,6 @@ func (sb *smartBlock) onApply(s *state.State) {
 
 	sb.setRestrictionsDetail(s)
 	sb.injectLinksDetails(s)
-	return
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
