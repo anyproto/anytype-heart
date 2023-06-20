@@ -3,6 +3,7 @@ package anytype
 import (
 	"context"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -72,6 +73,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
@@ -86,8 +88,9 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
-func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, err error) {
+func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
+	a.SetVersionName(appVersion(a, clientWithVersion))
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
@@ -98,6 +101,13 @@ func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, 
 	}
 
 	return
+}
+
+func appVersion(a *app.App, clientWithVersion string) string {
+	clientWithVersion = regexp.MustCompile(`(@|\/)+`).ReplaceAllString(clientWithVersion, "_")
+	middleVersion := MiddlewareVersion()
+	anySyncVersion := a.AnySyncVersion()
+	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
 func Bootstrap(a *app.App, components ...app.Component) {
@@ -194,7 +204,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collectionService).
 		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New()).
+		Register(builtinobjects.New(tempDirService)).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
 		Register(importer.New(tempDirService, sbtProvider)).
@@ -204,4 +214,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
 		Register(graphRenderer)
 	return
+}
+
+func MiddlewareVersion() string {
+	return vcs.GetVCSInfo().Version()
 }

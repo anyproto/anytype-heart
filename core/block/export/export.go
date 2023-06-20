@@ -90,7 +90,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived)
+	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
 	if err != nil {
 		return
 	}
@@ -144,30 +144,39 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 				}
 			}); err != nil {
 				e.cleanupFile(wr)
-				succeed = 0
-				return
+				return "", 0, nil
 			}
 		}
 	}
 	queue.SetMessage("export files")
 	if err = queue.Finalize(); err != nil {
 		e.cleanupFile(wr)
-		succeed = 0
-		return
+		return "", 0, nil
 	}
 	wr.Close()
+	if req.Zip {
+		return e.renameZipArchive(req, wr, succeed)
+	}
+	return wr.Path(), succeed, nil
+}
+
+func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, wr writer, succeed int) (string, int, error) {
 	zipName := getZipName(req.Path)
-	err = os.Rename(wr.Path(), zipName)
+	err := os.Rename(wr.Path(), zipName)
 	if err != nil {
 		os.Remove(wr.Path())
-		return
+		return "", 0, nil
 	}
 	return zipName, succeed, nil
 }
 
-func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool) (docs map[string]*types.Struct, err error) {
+func isProtobufExport(format pb.RpcObjectListExportFormat) bool {
+	return format == pb.RpcObjectListExport_Protobuf
+}
+
+func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, isProtobuf bool) (docs map[string]*types.Struct, err error) {
 	if len(reqIds) == 0 {
-		return e.getExistedObjects(includeArchived)
+		return e.getExistedObjects(includeArchived, isProtobuf)
 	}
 
 	if len(reqIds) > 0 {
@@ -243,14 +252,14 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 }
 
-func (e *export) getExistedObjects(includeArchived bool) (map[string]*types.Struct, error) {
+func (e *export) getExistedObjects(includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
 	res, err := e.objectStore.List()
 	if err != nil {
 		return nil, err
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, info := range res {
-		if !e.objectValid(info.Id, info, includeArchived) {
+		if !e.objectValid(info.Id, info, includeArchived, isProtobuf) {
 			continue
 		}
 		objectDetails[info.Id] = info.Details
@@ -431,11 +440,14 @@ func (e *export) createProfileFile(wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool) bool {
+func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
 	if r.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
+	if !isProtobuf && !validTypeForNonProtobuf(smartblock.SmartBlockType(r.ObjectType)) {
+		return false
+	}
+	if isProtobuf && !validType(smartblock.SmartBlockType(r.ObjectType)) {
 		return false
 	}
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
@@ -496,6 +508,11 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget
+}
+
+func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
+	return sbType == smartblock.SmartBlockTypeProfilePage ||
+		sbType == smartblock.SmartBlockTypePage
 }
 
 func (e *export) cleanupFile(wr writer) {

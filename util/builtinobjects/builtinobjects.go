@@ -70,14 +70,15 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	service     *block.Service
-	coreService core.Service
-	importer    importer.Importer
-	store       objectstore.ObjectStore
+	service        *block.Service
+	coreService    core.Service
+	importer       importer.Importer
+	store          objectstore.ObjectStore
+	tempDirService *core.TempDirService
 }
 
-func New() BuiltinObjects {
-	return &builtinObjects{}
+func New(tempDirService *core.TempDirService) BuiltinObjects {
+	return &builtinObjects{tempDirService: tempDirService}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
@@ -122,7 +123,7 @@ func (b *builtinObjects) InjectMigrationDashboard() error {
 }
 
 func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigration bool) (err error) {
-	path := filepath.Join("./", time.Now().Format("tmp.20060102.150405.99")+".zip")
+	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}

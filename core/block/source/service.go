@@ -70,14 +70,12 @@ func (s *service) Name() (name string) {
 
 type BuildOptions struct {
 	DisableRemoteLoad bool
-	RetryRemoteLoad   bool // anysync only; useful for account cold load from p2p nodes
 	Listener          updatelistener.UpdateListener
 }
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	return objecttreebuilder.BuildTreeOpts{
-		Listener:           b.Listener,
-		WaitTreeRemoteSync: b.RetryRemoteLoad,
+		Listener: b.Listener,
 	}
 }
 

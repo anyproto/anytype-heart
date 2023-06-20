@@ -105,6 +105,7 @@ func newFixture(t *testing.T) *fixture {
 
 	coreService := testMock.NewMockService(ctrl)
 	coreService.EXPECT().ProfileID().Return("").AnyTimes()
+	coreService.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
 
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)

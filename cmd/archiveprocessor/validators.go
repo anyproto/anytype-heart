@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -27,6 +30,8 @@ var validators = []validator{
 	validateObjectDetails,
 	validateObjectCustomTypes,
 	validateBlockLinks,
+	validateObjectCustomTypes,
+	validateFileKeys,
 }
 
 func validateRelationLinks(s *pb.ChangeSnapshot, info *useCaseInfo) error {
@@ -180,6 +185,59 @@ func getRelationLinkByKey(links []*model.RelationLink, key string) *model.Relati
 		if l.Key == key {
 			return l
 		}
+	}
+	return nil
+}
+
+func snapshotHasKeyForHash(s *pb.ChangeSnapshot, hash string) bool {
+	for _, k := range s.FileKeys {
+		if k.Hash == hash {
+			return true
+		}
+	}
+	return false
+}
+
+func validateFileKeys(s *pb.ChangeSnapshot, _ *useCaseInfo) error {
+	invalidKeyFound := false
+	for _, r := range s.Data.RelationLinks {
+		if r.Format == model.RelationFormat_file || r.Key == bundle.RelationKeyCoverId.String() {
+			for _, hash := range pbtypes.GetStringList(s.GetData().GetDetails(), r.Key) {
+				if r.Format != model.RelationFormat_file {
+					_, err := cid.Parse(hash)
+					if err != nil {
+						continue
+					}
+				}
+				if !snapshotHasKeyForHash(s, hash) {
+					fmt.Printf("object has file detail '%s' has hash '%s' which keys are not in the snapshot\n", r.Key, hash)
+					invalidKeyFound = true
+				}
+			}
+		}
+	}
+	for _, b := range s.Data.Blocks {
+		if v, ok := simple.New(b).(simple.FileHashes); ok {
+			if v, ok := v.(file.Block); ok && v.Model().GetFile().Hash == "" {
+				fmt.Printf("file block '%s' has empty hash\n", v.Model().Id)
+				invalidKeyFound = true
+				continue
+			}
+			var hashes []string
+			hashes = v.FillFileHashes(hashes)
+			if len(hashes) == 0 {
+				continue
+			}
+			for _, hash := range hashes {
+				if !snapshotHasKeyForHash(s, hash) {
+					fmt.Printf("file block '%s' has hash '%s' which keys are not in the snapshot\n", b.Id, hash)
+					invalidKeyFound = true
+				}
+			}
+		}
+	}
+	if invalidKeyFound {
+		return fmt.Errorf("found invalid blocks with hashes")
 	}
 	return nil
 }

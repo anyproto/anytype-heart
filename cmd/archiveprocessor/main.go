@@ -269,7 +269,7 @@ func processExtraRelations(s *pb.ChangeSnapshot) {
 }
 
 func processAccountRelatedDetails(s *pb.ChangeSnapshot) {
-	for key, _ := range s.Data.Details.Fields {
+	for key := range s.Data.Details.Fields {
 		switch key {
 		case bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyWorkspaceId.String(),
 			bundle.RelationKeyCreatedDate.String(), bundle.RelationKeyLastModifiedDate.String():
