@@ -59,3 +59,23 @@ func (ce ConvertError) Error() error {
 func (ce ConvertError) Get(objectName string) error {
 	return ce[objectName]
 }
+
+func (ce ConvertError) GetResultError() error {
+	if ce.IsEmpty() {
+		return nil
+	}
+	var countNoObjectsToImport int
+	for _, e := range ce {
+		switch {
+		case errors.Is(e, ErrCancel):
+			return ErrCancel
+		case errors.Is(e, ErrNoObjectsToImport):
+			countNoObjectsToImport++
+		}
+	}
+	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
+	if countNoObjectsToImport == len(ce) {
+		return ErrNoObjectsToImport
+	}
+	return ce.Error()
+}
