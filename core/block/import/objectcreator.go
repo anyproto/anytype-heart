@@ -389,15 +389,15 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
 	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
 	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if bl != nil {
-			if file := bl.Model().GetFile(); file != nil {
-				fileHashes = append(fileHashes, file.Hash)
-			}
-		}
 		s := oc.syncFactory.GetSyncer(bl)
 		if s != nil {
 			if sErr := s.Sync(ctx, newID, bl); sErr != nil {
 				log.With(zap.String("object id", newID)).Errorf("sync: %s", sErr)
+			}
+		}
+		if bl != nil {
+			if file := bl.Model().GetFile(); file != nil {
+				fileHashes = append(fileHashes, file.Hash)
 			}
 		}
 		return true
