@@ -662,9 +662,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
 		}
 	}
-	if err = sb.onApply(s); err != nil {
-		return
-	}
+	sb.onApply(s)
 	if sb.coreService != nil {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedBlocks().Profile)
@@ -1279,7 +1277,7 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	}
 }
 
-func (sb *smartBlock) onApply(s *state.State) (err error) {
+func (sb *smartBlock) onApply(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
 	// Run empty check only if any of these flags are present
