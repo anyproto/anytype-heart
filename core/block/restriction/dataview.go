@@ -31,9 +31,8 @@ var (
 	}
 
 	dataviewRestrictionsBySBType = map[model.SmartBlockType]DataviewRestrictions{
-		model.SmartBlockType_Page:      dvRestrictNo,
-		model.SmartBlockType_SubObject: dvRestrictAll,
-		model.SmartBlockType_Date:      dvRestrictAll,
+		model.SmartBlockType_Page: dvRestrictNo,
+		model.SmartBlockType_Date: dvRestrictAll,
 	}
 )
 
