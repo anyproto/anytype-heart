@@ -70,7 +70,8 @@ func NewCreator(service *block.Service,
 func (oc *ObjectCreator) Create(ctx *session.Context,
 	sn *converter.Snapshot,
 	oldIDtoNew map[string]string,
-	createPayloads map[string]treestorage.TreeStorageCreatePayload) (*types.Struct, string, error) {
+	createPayloads map[string]treestorage.TreeStorageCreatePayload,
+	fileIDs []string) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 
 	var err error
@@ -89,13 +90,13 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	converter.UpdateObjectIDsInRelations(st, oldIDtoNew)
+	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
 		oc.handleSubObject(st, newID)
 		return nil, newID, nil
 	}
 
-	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, newID); err != nil {
+	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
