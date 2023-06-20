@@ -697,7 +697,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	pushChange := func() error {
 		fileDetailsKeys := sb.FileRelationKeys(st)
-		fileDetailsKeysFiltered := fileDetailsKeys[:0]
+		var fileDetailsKeysFiltered []string
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
 				if slice.FindPos(fileDetailsKeys, ds.Key) != -1 {
