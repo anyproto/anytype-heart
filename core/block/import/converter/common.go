@@ -185,13 +185,17 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	st.Set(simple.New(block.Model()))
 }
 
-func isBundledObjects(targetBlockID string) bool {
-	ot, err := bundle.TypeKeyFromUrl(targetBlockID)
+func isBundledObjects(targetObjectID string) bool {
+	ot, err := bundle.TypeKeyFromUrl(targetObjectID)
 	if err == nil && bundle.HasObjectType(ot.String()) {
 		return true
 	}
-	rel, err := pbtypes.RelationIdToKey(targetBlockID)
+	rel, err := pbtypes.RelationIdToKey(targetObjectID)
 	if err == nil && bundle.HasRelation(rel) {
+		return true
+	}
+
+	if strings.HasPrefix(targetObjectID, addr.DatePrefix) {
 		return true
 	}
 	return false
