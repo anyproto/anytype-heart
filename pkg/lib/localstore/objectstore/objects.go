@@ -66,10 +66,8 @@ func New(sbtProvider typeprovider.SmartBlockTypeProvider) ObjectStore {
 	}
 }
 
-func NewWithLocalstore(ds noctxds.DSTxnBatching) ObjectStore {
-	return &dsObjectStore{
-		ds: ds,
-	}
+func NewWithLocalstore() ObjectStore {
+	return &dsObjectStore{}
 }
 
 type SourceDetailsFromId interface {
@@ -77,7 +75,6 @@ type SourceDetailsFromId interface {
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
-	s.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
 	src := a.Component("source")
 	if src != nil {
 		s.sourceService = a.MustComponent("source").(SourceDetailsFromId)
@@ -88,7 +85,8 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	} else {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
-	s.db, err = s.dsIface.LocalstoreBadger()
+	datastoreService := a.MustComponent(datastore.CName).(datastore.Datastore)
+	s.db, err = datastoreService.LocalstoreBadger()
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}
@@ -178,8 +176,6 @@ var ErrNotAnObject = fmt.Errorf("not an object")
 
 type dsObjectStore struct {
 	// underlying storage
-	ds            noctxds.DSTxnBatching
-	dsIface       datastore.Datastore
 	sourceService SourceDetailsFromId
 
 	cache *ristretto.Cache
@@ -224,9 +220,7 @@ func (s *dsObjectStore) eraseLinks() (outboundRemoved int, inboundRemoved int, e
 }
 
 func (s *dsObjectStore) Run(context.Context) (err error) {
-	lds, err := s.dsIface.LocalstoreDS()
-	s.ds = noctxds.New(lds)
-	return
+	return nil
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {

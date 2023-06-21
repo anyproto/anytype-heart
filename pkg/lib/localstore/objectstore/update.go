@@ -4,17 +4,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -70,70 +69,51 @@ func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 }
 
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	// todo: review this method. Any other way to do this?
-	for {
-		err := s.updatePendingLocalDetails(id, proc)
-		if errors.Is(err, badger.ErrConflict) {
-			continue
+	return s.updateTxn(func(txn *badger.Txn) error {
+		key := pendingDetailsBase.ChildString(id).Bytes()
+
+		objDetails, err := s.getPendingLocalDetails(txn, key)
+		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+			return fmt.Errorf("get pending details: %w", err)
 		}
+
+		oldDetails := objDetails.GetDetails()
+		if oldDetails == nil {
+			oldDetails = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+		if oldDetails.Fields == nil {
+			oldDetails.Fields = map[string]*types.Value{}
+		}
+		newDetails, err := proc(oldDetails)
 		if err != nil {
-			return err
+			return fmt.Errorf("run a modifier: %w", err)
+		}
+		if newDetails == nil {
+			err = txn.Delete(key)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		if newDetails.Fields == nil {
+			newDetails.Fields = map[string]*types.Value{}
+		}
+		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+		err = setValueTxn(txn, key, &model.ObjectDetails{Details: newDetails})
+		if err != nil {
+			return fmt.Errorf("put pending details: %w", err)
 		}
 		return nil
-	}
+	})
 }
 
-func (s *dsObjectStore) updatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	key := pendingDetailsBase.ChildString(id)
-
-	objDetails, err := s.getPendingLocalDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
-		return fmt.Errorf("get pending details: %w", err)
-	}
-
-	details := objDetails.GetDetails()
-	if details == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	if details.Fields == nil {
-		details.Fields = map[string]*types.Value{}
-	}
-	details, err = proc(details)
-	if err != nil {
-		return fmt.Errorf("run a modifier: %w", err)
-	}
-	if details == nil {
-		err = txn.Delete(key)
-		if err != nil {
-			return err
-		}
-		return txn.Commit()
-	}
-	b, err := proto.Marshal(&model.ObjectDetails{Details: details})
-	if err != nil {
-		return err
-	}
-	err = txn.Put(key, b)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (s *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
-	return nil, nil
-	// TODO Fix
-	// val, err := txn.Get(pendingDetailsBase.ChildString(id))
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return unmarshalDetails(id, val)
+func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
+	return getValueTxn(txn, key, func(raw []byte) (*model.ObjectDetails, error) {
+		var res model.ObjectDetails
+		err := proto.Unmarshal(raw, &res)
+		return &res, err
+	})
 }
 
 func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []string) error {
@@ -194,7 +174,7 @@ func (s *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *mo
 	if pbtypes.GetString(newDetails.Details, bundle.RelationKeyWorkspaceId.String()) == "" {
 		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
 	}
-	
+
 	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
 		return ErrDetailsNotChanged
 	}

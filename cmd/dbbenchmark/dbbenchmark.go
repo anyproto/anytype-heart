@@ -57,7 +57,8 @@ func initObjecStore(o *options) (os objectstore.ObjectStore, closer func(), err 
 	}
 
 	ds2 := noctxds.New(ds)
-	return objectstore.NewWithLocalstore(ds2), closer, nil
+	_ = ds2
+	return objectstore.NewWithLocalstore(), closer, nil
 }
 
 func initBadgerV3(o *options) (*dsbadgerv3.Datastore, error) {

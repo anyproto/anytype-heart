@@ -5,7 +5,6 @@ import (
 	"path"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
@@ -18,30 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-type newstore struct {
-	cache    *ristretto.Cache
-	db       *badger.DB
-	onUpdate func(*types.Struct)
-}
-
-func newNewstore(path string) (*newstore, error) {
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10_000_000,
-		MaxCost:     100_000_000,
-		BufferItems: 64,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("create cache: %w", err)
-	}
-
-	db, err := badger.Open(badger.DefaultOptions(path))
-	if err != nil {
-		return nil, fmt.Errorf("open badgerdb: %w", err)
-	}
-
-	return &newstore{cache: cache, db: db}, nil
-}
 
 func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
 	if details == nil {

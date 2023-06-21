@@ -1,13 +1,33 @@
 package objectstore
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 )
 
+func (s *dsObjectStore) updateTxn(f func(txn *badger.Txn) error) error {
+	for {
+		err := s.db.Update(f)
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, badger.ErrConflict) {
+			continue
+		}
+		return err
+	}
+}
+
 func setValue(db *badger.DB, key []byte, value any) error {
+	return db.Update(func(txn *badger.Txn) error {
+		return setValueTxn(txn, key, value)
+	})
+}
+
+func setValueTxn(txn *badger.Txn, key []byte, value any) error {
 	var (
 		raw []byte
 	)
@@ -25,10 +45,7 @@ func setValue(db *badger.DB, key []byte, value any) error {
 			return fmt.Errorf("marshal value: %w", err)
 		}
 	}
-
-	return db.Update(func(txn *badger.Txn) error {
-		return txn.Set(key, raw)
-	})
+	return txn.Set(key, raw)
 }
 
 func deleteValue(db *badger.DB, key []byte) error {
