@@ -2,6 +2,8 @@ package anytype
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"time"
@@ -22,6 +24,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -88,6 +91,10 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
+type Debuggable interface {
+	DebugRouter(r chi.Router)
+}
+
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
 	a.SetVersionName(appVersion(a, clientWithVersion))
@@ -98,6 +105,23 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 		metrics.SharedClient.Close()
 		a = nil
 		return
+	}
+
+	if port, ok := os.LookupEnv("ANYDEBUG"); ok && port != "" {
+		r := chi.NewRouter()
+		a.IterateComponents(func(c app.Component) {
+			if d, ok := c.(Debuggable); ok {
+				fmt.Println("debug router registered for component: ", c.Name())
+				r.Route("/debug/"+c.Name(), d.DebugRouter)
+			}
+		})
+		// TODO Shutdown server
+		go func() {
+			err := http.ListenAndServe(port, r)
+			if err != nil {
+				fmt.Printf("debug server: %s\n", err)
+			}
+		}()
 	}
 
 	return

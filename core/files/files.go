@@ -94,7 +94,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.runDebugServer()
 	return nil
 }
 
