@@ -230,7 +230,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 				log.Errorf("QueryByIds failed to extract details: %s", id)
 				continue
 			}
-			records = append(records, database.Record{Details: details})
+			records = append(records, database.Record{Details: details.Details})
 		}
 		return nil
 	})

@@ -18,46 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-// func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
-// 	s.l.Lock()
-// 	defer s.l.Unlock()
-// 	txn, err := s.ds.NewTransaction(false)
-// 	if err != nil {
-// 		return fmt.Errorf("error creating txn in datastore: %w", err)
-// 	}
-// 	defer txn.Discard()
-// 	var (
-// 		before model.ObjectInfo
-// 	)
-//
-// 	if details != nil {
-// 		exInfo, err := s.getObjectInfo(txn, id)
-// 		if err != nil {
-// 			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
-// 		}
-//
-// 		if exInfo != nil {
-// 			before = *exInfo
-// 		} else {
-// 			// init an empty state to skip nil checks later
-// 			before = model.ObjectInfo{
-// 				Details: &types.Struct{Fields: map[string]*types.Value{}},
-// 			}
-// 		}
-// 	}
-//
-// 	err = s.updateObjectDetails(txn, id, before, details)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = txn.Commit()
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	return nil
-// }
-
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	return s.db.Update(func(txn *badger.Txn) error {
 		return s.updateObjectLinks(txn, id, links)

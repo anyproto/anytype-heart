@@ -276,18 +276,21 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 	}
 }
 
-func unmarshalDetails(id string, rawValue []byte) (*types.Struct, error) {
-	details := &types.Struct{}
-	if err := proto.Unmarshal(rawValue, details); err != nil {
+func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
+	result := &model.ObjectDetails{}
+	if err := proto.Unmarshal(rawValue, result); err != nil {
 		return nil, err
 	}
-	if details.Fields == nil {
-		details.Fields = map[string]*types.Value{}
-	} else {
-		pbtypes.StructDeleteEmptyFields(details)
+	if result.Details == nil {
+		result.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	return details, nil
+	if result.Details.Fields == nil {
+		result.Details.Fields = map[string]*types.Value{}
+	} else {
+		pbtypes.StructDeleteEmptyFields(result.Details)
+	}
+	result.Details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+	return result, nil
 }
 
 func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
@@ -461,7 +464,7 @@ func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 }
 
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
-	var details *types.Struct
+	var details *model.ObjectDetails
 	err := s.db.View(func(txn *badger.Txn) error {
 		it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
 		if err != nil {
@@ -479,9 +482,7 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.ObjectDetails{
-		Details: details,
-	}, nil
+	return details, nil
 }
 
 func (s *dsObjectStore) List() ([]*model.ObjectInfo, error) {
@@ -574,10 +575,11 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.Object
 		if err != nil {
 			return nil, fmt.Errorf("get details: %w", err)
 		}
-		details, err = s.extractDetailsFromItem(it)
+		detailsModel, err := s.extractDetailsFromItem(it)
 		if err != nil {
 			return nil, err
 		}
+		details = detailsModel.Details
 	}
 	snippet, err := getValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {

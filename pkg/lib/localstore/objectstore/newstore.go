@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -41,15 +42,18 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 				}
 			}
 		}
-		if prev != nil && proto.Equal(prev.(*types.Struct), details) {
+		detailsModel := &model.ObjectDetails{
+			Details: details,
+		}
+		if prev != nil && proto.Equal(prev.(*model.ObjectDetails), detailsModel) {
 			return ErrDetailsNotChanged
 		}
 		// Ensure ID is set
 		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 		s.sendUpdatesToSubscriptions(id, details)
 
-		s.cache.Set(key, details, int64(details.Size()))
-		val, err := proto.Marshal(details)
+		s.cache.Set(key, detailsModel, int64(detailsModel.Size()))
+		val, err := proto.Marshal(detailsModel)
 		if err != nil {
 			return fmt.Errorf("marshal details: %w", err)
 		}
@@ -103,7 +107,7 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 				return err
 			}
 
-			rec := database.Record{Details: details}
+			rec := database.Record{Details: details.Details}
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
 				if offset > 0 {
 					offset--
@@ -141,8 +145,8 @@ func (s *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 				return err
 			}
 
-			if lo.Contains(ids, pbtypes.GetString(details, "id")) {
-				rec := database.Record{Details: details}
+			if lo.Contains(ids, pbtypes.GetString(details.Details, bundle.RelationKeyId.String())) {
+				rec := database.Record{Details: details.Details}
 				records = append(records, rec)
 			}
 		}
@@ -154,17 +158,17 @@ func (s *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	return records, nil
 }
 
-func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*types.Struct, error) {
+func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
 	key := it.Key()
 	if v, ok := s.cache.Get(key); ok {
-		return v.(*types.Struct), nil
+		return v.(*model.ObjectDetails), nil
 	} else {
 		return s.unmarshalDetailsFromItem(it)
 	}
 }
 
-func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*types.Struct, error) {
-	var details *types.Struct
+func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
+	var details *model.ObjectDetails
 	err := it.Value(func(val []byte) error {
 		var err error
 		details, err = unmarshalDetails(detailsKeyToID(it.Key()), val)
