@@ -28,7 +28,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	}
 
 	key := pagesDetailsBase.ChildString(id).Bytes()
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		prev, ok := s.cache.Get(key)
 		if !ok {
 			it, err := txn.Get(key)
@@ -63,7 +63,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 
 func (s *dsObjectStore) DeleteDetails(id string) error {
 	key := pagesDetailsBase.ChildString(id).Bytes()
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		s.cache.Del(key)
 
 		for _, k := range []ds.Key{

@@ -205,17 +205,19 @@ func (s *dsObjectStore) EraseIndexes() error {
 }
 
 func (s *dsObjectStore) eraseLinks() (outboundRemoved int, inboundRemoved int, err error) {
-	txn := s.db.NewTransaction(true)
-	defer txn.Discard()
-	txn, outboundRemoved, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String())
-	if err != nil {
-		return
-	}
-	txn, inboundRemoved, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String())
-	if err != nil {
-		return
-	}
-	err = txn.Commit()
+	err = retryOnConflict(func() error {
+		txn := s.db.NewTransaction(true)
+		defer txn.Discard()
+		txn, outboundRemoved, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String())
+		if err != nil {
+			return fmt.Errorf("remove all outbound links: %w", err)
+		}
+		txn, inboundRemoved, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String())
+		if err != nil {
+			return fmt.Errorf("remove all inbound links: %w", err)
+		}
+		return txn.Commit()
+	})
 	return
 }
 
@@ -360,42 +362,44 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		}
 	}
 
-	txn := s.db.NewTransaction(true)
-	defer txn.Discard()
+	return retryOnConflict(func() error {
+		txn := s.db.NewTransaction(true)
+		defer txn.Discard()
 
-	for _, k := range []ds.Key{
-		pagesSnippetBase.ChildString(id),
-		indexQueueBase.ChildString(id),
-		indexedHeadsState.ChildString(id),
-	} {
-		if err = txn.Delete(k.Bytes()); err != nil {
-			return err
+		for _, k := range []ds.Key{
+			pagesSnippetBase.ChildString(id),
+			indexQueueBase.ChildString(id),
+			indexedHeadsState.ChildString(id),
+		} {
+			if err = txn.Delete(k.Bytes()); err != nil {
+				return err
+			}
 		}
-	}
 
-	txn, _, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String()+"/"+id+"/")
-	if err != nil {
-		return err
-	}
-	txn, _, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
-	if err != nil {
-		return err
-	}
-	err = txn.Commit()
-	if err != nil {
-		return fmt.Errorf("delete object info: %w", err)
-	}
-
-	if s.fts != nil {
-		err = s.removeFromIndexQueue(id)
+		txn, _, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String()+"/"+id+"/")
 		if err != nil {
-			log.Errorf("error removing %s from index queue: %s", id, err)
-		}
-		if err := s.fts.Delete(id); err != nil {
 			return err
 		}
-	}
-	return nil
+		txn, _, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
+		if err != nil {
+			return err
+		}
+		err = txn.Commit()
+		if err != nil {
+			return fmt.Errorf("delete object info: %w", err)
+		}
+
+		if s.fts != nil {
+			err = s.removeFromIndexQueue(id)
+			if err != nil {
+				log.Errorf("error removing %s from index queue: %s", id, err)
+			}
+			if err := s.fts.Delete(id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {

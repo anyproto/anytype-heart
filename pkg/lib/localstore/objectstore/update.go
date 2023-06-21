@@ -19,7 +19,7 @@ import (
 )
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		return s.updateObjectLinks(txn, id, links)
 	})
 }

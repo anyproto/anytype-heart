@@ -9,8 +9,14 @@ import (
 )
 
 func (s *dsObjectStore) updateTxn(f func(txn *badger.Txn) error) error {
+	return retryOnConflict(func() error {
+		return s.db.Update(f)
+	})
+}
+
+func retryOnConflict(proc func() error) error {
 	for {
-		err := s.db.Update(f)
+		err := proc()
 		if err == nil {
 			return nil
 		}

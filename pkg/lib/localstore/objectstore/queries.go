@@ -13,61 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// TODO: objstore: no one uses total
-func (s *dsObjectStore) _Query(sch schema.Schema, q database.Query) (records []database.Record, total int, err error) {
-	// txn, err := s.ds.NewTransaction(true)
-	// if err != nil {
-	// 	return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
-	// }
-	// defer txn.Discard()
-	//
-	// dsq, err := s.buildQuery(sch, q)
-	// if err != nil {
-	// 	return nil, 0, fmt.Errorf("build query: %w", err)
-	// }
-	//
-	// res, err := txn.Query(dsq)
-	// if err != nil {
-	// 	return nil, 0, fmt.Errorf("error when querying ds: %w", err)
-	// }
-	//
-	// var (
-	// 	results []database.Record
-	// 	offset  = q.Offset
-	// )
-	//
-	// // We use own limit/offset implementation in order to find out
-	// // total number of records matching specified filters. Query
-	// // returns this number for handy pagination on clients.
-	// for rec := range res.Next() {
-	// 	total++
-	//
-	// 	if offset > 0 {
-	// 		offset--
-	// 		continue
-	// 	}
-	//
-	// 	if q.Limit > 0 && len(results) >= q.Limit {
-	// 		continue
-	// 	}
-	//
-	// 	key := ds.NewKey(rec.Key)
-	// 	keyList := key.List()
-	// 	id := keyList[len(keyList)-1]
-	//
-	// 	var details *model.ObjectDetails
-	// 	details, err = unmarshalDetails(id, rec.Value)
-	// 	if err != nil {
-	// 		total--
-	// 		log.Errorf("failed to unmarshal: %s", err.Error())
-	// 		continue
-	// 	}
-	// 	results = append(results, database.Record{Details: details.Details})
-	// }
-
-	return nil, total, nil
-}
-
 func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (*database.Filters, error) {
 	filters, err := database.NewFilters(q, sch, s)
 	if err != nil {
@@ -102,42 +47,6 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 	return filters, nil
 }
 
-//
-// func (s *dsObjectStore) QueryRaw(f *database.Filters) (records []database.Record, err error) {
-// 	if f == nil || f.FilterObj == nil {
-// 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
-// 	}
-// 	dsq := query.Query{
-// 		Filters: []query.Filter{f},
-// 	}
-// 	txn, err := s.ds.NewTransaction(true)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-// 	}
-// 	defer txn.Discard()
-// 	dsq.Prefix = pagesDetailsBase.String() + "/"
-//
-// 	res, err := txn.Query(dsq)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error when querying ds: %w", err)
-// 	}
-//
-// 	for rec := range res.Next() {
-// 		key := ds.NewKey(rec.Key)
-// 		keyList := key.List()
-// 		id := keyList[len(keyList)-1]
-//
-// 		var details *model.ObjectDetails
-// 		details, err = unmarshalDetails(id, rec.Value)
-// 		if err != nil {
-// 			log.Errorf("failed to unmarshal: %s", err.Error())
-// 			continue
-// 		}
-// 		records = append(records, database.Record{Details: details.Details})
-// 	}
-// 	return
-// }
-
 // TODO: objstore: no one uses total
 func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
 	filters, err := s.buildQuery(nil, q)
@@ -156,52 +65,6 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smart
 		ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
 	}
 	return ids, 0, nil
-	// txn, err := s.ds.NewTransaction(true)
-	// if err != nil {
-	// 	return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
-	// }
-	// defer txn.Discard()
-	//
-	// dsq, err := s.buildQuery(nil, q)
-	// if err != nil {
-	// 	return
-	// }
-	// if len(smartBlockTypes) > 0 {
-	// 	dsq.Filters = append([]query.Filter{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes)}, dsq.Filters...)
-	// }
-	//
-	// res, err := txn.Query(dsq)
-	// if err != nil {
-	// 	return nil, 0, fmt.Errorf("error when querying ds: %w", err)
-	// }
-	//
-	// var (
-	// 	offset = q.Offset
-	// )
-	//
-	// // We use own limit/offset implementation in order to find out
-	// // total number of records matching specified filters. Query
-	// // returns this number for handy pagination on clients.
-	// for rec := range res.Next() {
-	// 	if rec.Error != nil {
-	// 		return nil, 0, rec.Error
-	// 	}
-	// 	total++
-	//
-	// 	if offset > 0 {
-	// 		offset--
-	// 		continue
-	// 	}
-	//
-	// 	if q.Limit > 0 && len(ids) >= q.Limit {
-	// 		continue
-	// 	}
-	//
-	// 	key := ds.NewKey(rec.Key)
-	// 	keyList := key.List()
-	// 	id := keyList[len(keyList)-1]
-	// 	ids = append(ids, id)
-	// }
 }
 
 func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
