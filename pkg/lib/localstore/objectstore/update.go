@@ -8,15 +8,54 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
+	if details == nil {
+		return nil
+	}
+	if details.Fields == nil {
+		return fmt.Errorf("details fields are nil")
+	}
+
+	key := pagesDetailsBase.ChildString(id).Bytes()
+	return s.updateTxn(func(txn *badger.Txn) error {
+		prev, ok := s.cache.Get(key)
+		if !ok {
+			it, err := txn.Get(key)
+			if err != nil && err != badger.ErrKeyNotFound {
+				return fmt.Errorf("get item: %w", err)
+			}
+			if err != badger.ErrKeyNotFound {
+				prev, err = s.unmarshalDetailsFromItem(it)
+				if err != nil {
+					return fmt.Errorf("extract details: %w", err)
+				}
+			}
+		}
+		detailsModel := &model.ObjectDetails{
+			Details: details,
+		}
+		if prev != nil && proto.Equal(prev.(*model.ObjectDetails), detailsModel) {
+			return ErrDetailsNotChanged
+		}
+		// Ensure ID is set
+		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+		s.sendUpdatesToSubscriptions(id, details)
+
+		s.cache.Set(key, detailsModel, int64(detailsModel.Size()))
+		val, err := proto.Marshal(detailsModel)
+		if err != nil {
+			return fmt.Errorf("marshal details: %w", err)
+		}
+		return txn.Set(key, val)
+	})
+}
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	return s.updateTxn(func(txn *badger.Txn) error {
@@ -98,49 +137,6 @@ func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []st
 				return err
 			}
 		}
-	}
-
-	return nil
-}
-
-func (s *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before model.ObjectInfo, details *types.Struct) error {
-	if details != nil {
-		if err := s.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
-	metrics.ObjectDetailsUpdatedCounter.Inc()
-	detailsKey := pagesDetailsBase.ChildString(id)
-
-	if newDetails.GetDetails().GetFields() == nil {
-		return fmt.Errorf("newDetails is nil")
-	}
-
-	newDetails.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id) // always ensure we have id set
-	b, err := proto.Marshal(newDetails)
-	if err != nil {
-		return err
-	}
-	err = txn.Put(detailsKey, b)
-	if err != nil {
-		return err
-	}
-
-	if pbtypes.GetString(newDetails.Details, bundle.RelationKeyWorkspaceId.String()) == "" {
-		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
-	}
-
-	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
-		return ErrDetailsNotChanged
-	}
-
-	if newDetails != nil && newDetails.Details.Fields != nil {
-		s.sendUpdatesToSubscriptions(id, newDetails.Details)
 	}
 
 	return nil

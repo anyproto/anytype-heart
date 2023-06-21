@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/huandu/skiplist"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -12,6 +14,85 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+func (s *dsObjectStore) Query(sch schema.Schema, q database.Query) ([]database.Record, int, error) {
+	filters, err := s.buildQuery(sch, q)
+	if err != nil {
+		return nil, 0, fmt.Errorf("build query: %w", err)
+	}
+	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
+	return recs, 0, err
+}
+
+func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
+	if filters == nil || filters.FilterObj == nil {
+		return nil, fmt.Errorf("filter cannot be nil or unitialized")
+	}
+	skl := skiplist.New(order{filters.Order})
+
+	err := s.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = pagesDetailsBase.Bytes()
+		iterator := txn.NewIterator(opts)
+		defer iterator.Close()
+
+		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+			it := iterator.Item()
+			details, err := s.extractDetailsFromItem(it)
+			if err != nil {
+				return err
+			}
+
+			rec := database.Record{Details: details.Details}
+			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
+				if offset > 0 {
+					offset--
+					continue
+				}
+				if limit > 0 && skl.Len() >= limit {
+					break
+				}
+				skl.Set(rec, nil)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	records := make([]database.Record, 0, skl.Len())
+	for it := skl.Front(); it != nil; it = it.Next() {
+		records = append(records, it.Key().(database.Record))
+	}
+
+	return records, nil
+}
+
+func (s *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
+	err = s.db.View(func(txn *badger.Txn) error {
+		iterator := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer iterator.Close()
+
+		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+			it := iterator.Item()
+			details, err := s.extractDetailsFromItem(it)
+			if err != nil {
+				return err
+			}
+
+			if lo.Contains(ids, pbtypes.GetString(details.Details, bundle.RelationKeyId.String())) {
+				rec := database.Record{Details: details.Details}
+				records = append(records, rec)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return records, nil
+}
 
 func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (*database.Filters, error) {
 	filters, err := database.NewFilters(q, sch, s)

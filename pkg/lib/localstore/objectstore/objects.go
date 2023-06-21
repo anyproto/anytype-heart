@@ -20,8 +20,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -278,23 +278,6 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 	}
 }
 
-func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
-	result := &model.ObjectDetails{}
-	if err := proto.Unmarshal(rawValue, result); err != nil {
-		return nil, err
-	}
-	if result.Details == nil {
-		result.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	if result.Details.Fields == nil {
-		result.Details.Fields = map[string]*types.Value{}
-	} else {
-		pbtypes.StructDeleteEmptyFields(result.Details)
-	}
-	result.Details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
-	return result, nil
-}
-
 func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.l.Lock()
 	s.onChangeCallback = callback
@@ -345,61 +328,6 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	rel := relationutils.RelationFromStruct(records[0].Details)
 
 	return rel.Relation, nil
-}
-
-// DeleteObject removes all details, leaving only id and isDeleted
-func (s *dsObjectStore) DeleteObject(id string) error {
-	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err := s.UpdateObjectDetails(id, &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():        pbtypes.String(id),
-			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
-		},
-	})
-	if err != nil {
-		if !errors.Is(err, ErrDetailsNotChanged) {
-			return fmt.Errorf("failed to overwrite details and relations: %w", err)
-		}
-	}
-
-	return retryOnConflict(func() error {
-		txn := s.db.NewTransaction(true)
-		defer txn.Discard()
-
-		for _, k := range []ds.Key{
-			pagesSnippetBase.ChildString(id),
-			indexQueueBase.ChildString(id),
-			indexedHeadsState.ChildString(id),
-		} {
-			if err = txn.Delete(k.Bytes()); err != nil {
-				return err
-			}
-		}
-
-		txn, _, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String()+"/"+id+"/")
-		if err != nil {
-			return err
-		}
-		txn, _, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
-		if err != nil {
-			return err
-		}
-		err = txn.Commit()
-		if err != nil {
-			return fmt.Errorf("delete object info: %w", err)
-		}
-
-		if s.fts != nil {
-			err = s.removeFromIndexQueue(id)
-			if err != nil {
-				log.Errorf("error removing %s from index queue: %s", id, err)
-			}
-			if err := s.fts.Delete(id); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
 }
 
 func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
@@ -548,12 +476,77 @@ func (s *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return s.fts
 }
 
-func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
-	if exists, err := txn.Has(pagesDetailsBase.ChildString(id)); err != nil {
-		return false, fmt.Errorf("failed to get details: %w", err)
+func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
+	key := it.Key()
+	if v, ok := s.cache.Get(key); ok {
+		return v.(*model.ObjectDetails), nil
 	} else {
-		return exists, nil
+		return s.unmarshalDetailsFromItem(it)
 	}
+}
+
+func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
+	var details *model.ObjectDetails
+	err := it.Value(func(val []byte) error {
+		var err error
+		details, err = unmarshalDetails(detailsKeyToID(it.Key()), val)
+		if err != nil {
+			return fmt.Errorf("unmarshal details: %w", err)
+		}
+		s.cache.Set(it.Key(), details, int64(details.Size()))
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get item value: %w", err)
+	}
+	return details, nil
+}
+
+func unmarshalDetails(id string, rawValue []byte) (*model.ObjectDetails, error) {
+	result := &model.ObjectDetails{}
+	if err := proto.Unmarshal(rawValue, result); err != nil {
+		return nil, err
+	}
+	if result.Details == nil {
+		result.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	if result.Details.Fields == nil {
+		result.Details.Fields = map[string]*types.Value{}
+	} else {
+		pbtypes.StructDeleteEmptyFields(result.Details)
+	}
+	result.Details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+	return result, nil
+}
+
+func detailsKeyToID(key []byte) string {
+	return path.Base(string(key))
+}
+
+type order struct {
+	filter.Order
+}
+
+func (o order) Compare(lhs, rhs interface{}) (comp int) {
+	le := lhs.(database.Record)
+	re := rhs.(database.Record)
+
+	if o.Order != nil {
+		comp = o.Order.Compare(le, re)
+	}
+	// when order isn't set or equal - sort by id
+	if comp == 0 {
+		if pbtypes.GetString(le.Details, "id") > pbtypes.GetString(re.Details, "id") {
+			return 1
+		} else {
+			return -1
+		}
+	}
+	return comp
+}
+
+func (o order) CalcScore(key interface{}) float64 {
+	return 0
 }
 
 func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.ObjectInfo, error) {
@@ -636,34 +629,6 @@ func listIDsByPrefix(txn *badger.Txn, prefix []byte) ([]string, error) {
 		ids = append(ids, path.Base(string(key)))
 	})
 	return ids, err
-}
-
-func (s *dsObjectStore) removeByPrefixInTx(txn *badger.Txn, prefix string) (*badger.Txn, int, error) {
-	var toDelete [][]byte
-	err := iterateKeysByPrefixTx(txn, []byte(prefix), func(key []byte) {
-		toDelete = append(toDelete, key)
-	})
-	if err != nil {
-		return txn, 0, fmt.Errorf("iterate keys: %w", err)
-	}
-
-	var removed int
-	for _, key := range toDelete {
-		err = txn.Delete(key)
-		if err == badger.ErrTxnTooBig {
-			err = txn.Commit()
-			if err != nil {
-				return txn, removed, fmt.Errorf("commit big transaction: %w", err)
-			}
-			txn = s.db.NewTransaction(true)
-			err = txn.Delete(key)
-		}
-		if err != nil {
-			return txn, removed, fmt.Errorf("delete key %s: %w", key, err)
-		}
-		removed++
-	}
-	return txn, removed, nil
 }
 
 func pageLinkKeys(id string, out []string) []ds.Key {
