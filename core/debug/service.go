@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
+	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -41,12 +43,54 @@ type debug struct {
 	block         *block.Service
 	store         objectstore.ObjectStore
 	clientService space.Service
+
+	server *http.Server
+}
+
+type Debuggable interface {
+	DebugRouter(r chi.Router)
 }
 
 func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	d.clientService = a.MustComponent(space.CName).(space.Service)
 	d.block = a.MustComponent(block.CName).(*block.Service)
+
+	if addr, ok := os.LookupEnv("ANYDEBUG"); ok && addr != "" {
+		r := chi.NewRouter()
+		a.IterateComponents(func(c app.Component) {
+			if d, ok := c.(Debuggable); ok {
+				fmt.Println("debug router registered for component: ", c.Name())
+				r.Route("/debug/"+c.Name(), d.DebugRouter)
+			}
+		})
+		d.server = &http.Server{
+			Addr:    addr,
+			Handler: r,
+		}
+	}
+	return nil
+}
+
+func (d *debug) Run(ctx context.Context) error {
+	if d.server != nil {
+		go func() {
+			err := d.server.ListenAndServe()
+			if err != nil && err != http.ErrServerClosed {
+				logger.Error("debug server error:", err)
+			}
+		}()
+	}
+	return nil
+}
+
+func (d *debug) Close(ctx context.Context) error {
+	if d.server != nil {
+		err := d.server.Shutdown(ctx)
+		if err != nil {
+			return fmt.Errorf("debug server shutdown: %w", err)
+		}
+	}
 	return nil
 }
 
