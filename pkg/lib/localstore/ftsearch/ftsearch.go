@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
@@ -113,10 +114,22 @@ func (f *ftSearch) Index(doc SearchDoc) (err error) {
 }
 
 func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
+	if len(docs) == 0 {
+		return nil
+	}
 	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
 	b := f.index.NewBatch()
+	start := time.Now()
+	defer func() {
+		spentMs := time.Since(start).Milliseconds()
+		l := log.With("objects", len(docs)).With("total", time.Since(start).Milliseconds())
+		if spentMs > 1000 {
+			l.Warnf("ft index took too long")
+		} else {
+			l.Debugf("ft index done")
+		}
+	}()
 	for _, doc := range docs {
-
 		doc.TitleNoTerms = doc.Title
 		doc.TextNoTerms = doc.Text
 		if err := b.Index(doc.Id, doc); err != nil {
@@ -127,13 +140,14 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 }
 
 func (f *ftSearch) Search(qry string) (results []string, err error) {
+	qry = strings.ToLower(qry)
 	var queries = make([]query.Query, 0, 4)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
 
 	queries = append(
 		getFullQueries(qry),
-		bleve.NewQueryStringQuery(qry),
+		bleve.NewMatchQuery(qry),
 	)
 
 	if len(terms) > 0 {

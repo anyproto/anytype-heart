@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
@@ -41,15 +40,13 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	source                 source.Service
-	generatedHash          string
-	createBuiltinTemplates bool
+	source        source.Service
+	generatedHash string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.makeGenHash(4)
-	b.createBuiltinTemplates = a.MustComponent(config.CName).(*config.Config).CreateBuiltinTemplates
 	return
 }
 
@@ -65,9 +62,6 @@ func (b *builtinTemplate) Name() (name string) {
 }
 
 func (b *builtinTemplate) Run(context.Context) (err error) {
-	if !b.createBuiltinTemplates {
-		return nil
-	}
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
 		return
@@ -93,7 +87,11 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	data, err := ioutil.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
 	if err = snapshot.Unmarshal(data); err != nil {
-		return
+		snapshotWithType := &pb.SnapshotWithType{}
+		if err = snapshotWithType.Unmarshal(data); err != nil {
+			return
+		}
+		snapshot = snapshotWithType.Snapshot
 	}
 
 	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)

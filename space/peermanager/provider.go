@@ -32,7 +32,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	p.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	poolService := a.MustComponent(pool.CName).(pool.Service)
 	p.commonPool = poolService
-	p.pool = poolService.NewPool("space_stream")
+	p.pool = poolService
 	p.streamPool = a.MustComponent(space.CName).(space.Service).StreamPool()
 	return nil
 }
@@ -47,7 +47,6 @@ func (p *provider) NewPeerManager(ctx context.Context, spaceId string) (peermana
 		spaceId:   spaceId,
 		peerStore: p.peerStore,
 	}
-	pm.init()
 	return pm, nil
 }
 

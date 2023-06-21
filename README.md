@@ -34,6 +34,8 @@ make protos
 
 ### Run tests
 Generate mocks:
+
+Install Mockery https://vektra.github.io/mockery/installation/
 ```
 make test-deps
 ```
@@ -41,6 +43,11 @@ make test-deps
 GO test:
 ```
 make test
+```
+You'll need to install latest (at least clang 15)
+```
+brew install llvm 
+echo 'export PATH="/<homebrew location>/llvm/bin:$PATH"' >> ~/.zshrc 
 ```
 
 NodeJS addon test:
@@ -125,8 +132,6 @@ https://github.com/njpatel/grpcc
 - `docker-compose up` - run the prometheus/grafana
 - use `ANYTYPE_PROM=0.0.0.0:9094` when running middleware to enable metrics collection. Client commands metrics available only in gRPC mode
 - open http://127.0.0.1:3000 to view collected metrics in Grafana. You can find several dashboards there:
-    - **Threads gRPC client** for go-threads client metrics(when you make requests to other nodes)
-    - **Threads gRPC server** for go-threads server metrics(when other nodes make requests to you)
     - **MW** internal middleware metrics such as changes, added and created threads histograms
     - **MW commands server** metrics for clients commands. Works only in grpc-server mode
     

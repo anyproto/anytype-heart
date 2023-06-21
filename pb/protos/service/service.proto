@@ -84,6 +84,7 @@ service ClientCommands {
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
+    rpc ObjectImportUseCase (anytype.Rpc.Object.ImportUseCase.Request) returns (anytype.Rpc.Object.ImportUseCase.Response);
 
     // Collections
     // ***
@@ -234,6 +235,15 @@ service ClientCommands {
     rpc BlockTableColumnListFill (anytype.Rpc.BlockTable.ColumnListFill.Request) returns (anytype.Rpc.BlockTable.ColumnListFill.Response);
     rpc BlockTableSort (anytype.Rpc.BlockTable.Sort.Request) returns (anytype.Rpc.BlockTable.Sort.Response);
 
+    // Widget commands
+    // ***
+    rpc BlockCreateWidget (anytype.Rpc.Block.CreateWidget.Request) returns (anytype.Rpc.Block.CreateWidget.Response);
+    rpc BlockWidgetSetTargetId (anytype.Rpc.BlockWidget.SetTargetId.Request) returns (anytype.Rpc.BlockWidget.SetTargetId.Response);
+    rpc BlockWidgetSetLayout (anytype.Rpc.BlockWidget.SetLayout.Request) returns (anytype.Rpc.BlockWidget.SetLayout.Response);
+    rpc BlockWidgetSetLimit (anytype.Rpc.BlockWidget.SetLimit.Request) returns (anytype.Rpc.BlockWidget.SetLimit.Response);
+    rpc BlockWidgetSetViewId (anytype.Rpc.BlockWidget.SetViewId.Request) returns (anytype.Rpc.BlockWidget.SetViewId.Response);
+
+
     // Other specific block commands
     // ***
     rpc BlockLinkCreateWithObject (anytype.Rpc.BlockLink.CreateWithObject.Request) returns (anytype.Rpc.BlockLink.CreateWithObject.Response);
@@ -244,7 +254,6 @@ service ClientCommands {
     rpc BlockRelationAdd (anytype.Rpc.BlockRelation.Add.Request) returns (anytype.Rpc.BlockRelation.Add.Response);
     rpc BlockDivListSetStyle (anytype.Rpc.BlockDiv.ListSetStyle.Request) returns (anytype.Rpc.BlockDiv.ListSetStyle.Response);
     rpc BlockLatexSetText (anytype.Rpc.BlockLatex.SetText.Request) returns (anytype.Rpc.BlockLatex.SetText.Response);
-    rpc BlockCreateWidget (anytype.Rpc.Block.CreateWidget.Request) returns (anytype.Rpc.Block.CreateWidget.Response);
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);
 

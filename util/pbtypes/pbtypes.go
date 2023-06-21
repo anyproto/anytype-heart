@@ -545,3 +545,14 @@ func ValidateValue(t *types.Value) error {
 	}
 	return nil
 }
+
+func IsStructEmpty(s *types.Struct) bool {
+	if s == nil {
+		return true
+	} else if s.GetFields() == nil {
+		return true
+	} else if len(s.GetFields()) == 0 {
+		return true
+	}
+	return false
+}

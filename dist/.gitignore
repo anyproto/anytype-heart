@@ -1,6 +1,6 @@
 server
 lib.a
 lib.h
-ios/Lib.xcframework/
-android/lib.aar
+ios/*
+android/*
 cli

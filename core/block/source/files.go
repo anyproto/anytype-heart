@@ -124,7 +124,7 @@ func (f *file) Close() (err error) {
 }
 
 func (f *file) Heads() []string {
-	return nil
+	return []string{f.id}
 }
 
 func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {

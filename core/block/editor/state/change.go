@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
@@ -20,12 +21,20 @@ import (
 
 type snapshotOptions struct {
 	doNotMigrateTypes bool
+	changeId          string
 }
 
 type SnapshotOption func(*snapshotOptions)
 
 func DoNotMigrateTypes(o *snapshotOptions) {
 	o.doNotMigrateTypes = true
+}
+
+func WithChangeId(changeId string) func(*snapshotOptions) {
+	return func(o *snapshotOptions) {
+		o.changeId = changeId
+		return
+	}
 }
 
 func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) Doc {
@@ -73,6 +82,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	}
 
 	s := &State{
+		changeId:        sOpts.changeId,
 		rootId:          rootId,
 		blocks:          blocks,
 		details:         detailsToSave,
@@ -81,6 +91,15 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		fileKeys:        fileKeys,
 		store:           snapshot.Data.Collections,
 		storeKeyRemoved: removedCollectionKeysMap,
+	}
+	if s.store != nil {
+		for collName, coll := range s.store.Fields {
+			if c := coll.GetStructValue(); s != nil {
+				for k := range c.GetFields() {
+					s.setStoreChangeId(collName+addr.SubObjectCollectionIdSeparator+k, s.changeId)
+				}
+			}
+		}
 	}
 
 	if !sOpts.doNotMigrateTypes {
@@ -140,10 +159,11 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	return
 }
 
+// ApplyChangeIgnoreErr should be called with changes from the single pb.Change
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
-			log.With("thread", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
+			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
 		}
 	}
 	return
@@ -493,7 +513,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 				b1, _ = msg.Msg.Marshal()
 				b2, _ = msgs[i-1].Msg.Marshal()
 				if bytes.Equal(b1, b2) {
-					log.With("thread", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
+					log.With("objectID", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
 				}
 			}
 		}
@@ -521,6 +541,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockSetRelation:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetLatex:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockSetWidget:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDelete:
 			delIds = append(delIds, o.BlockDelete.BlockIds...)

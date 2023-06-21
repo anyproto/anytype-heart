@@ -9,15 +9,14 @@ import (
 )
 
 type Task struct {
-	sn        *converter.Snapshot
-	relations []*converter.Relation
-	existing  bool
-	oc        Creator
+	sn *converter.Snapshot
+	oc Creator
 }
 
 type DataObject struct {
 	oldIDtoNew     map[string]string
 	createPayloads map[string]treestorage.TreeStorageCreatePayload
+	fileIDs        []string
 	ctx            *session.Context
 }
 
@@ -27,17 +26,20 @@ type Result struct {
 	err     error
 }
 
-func NewDataObject(oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, ctx *session.Context) *DataObject {
-	return &DataObject{oldIDtoNew: oldIDtoNew, createPayloads: createPayloads, ctx: ctx}
+func NewDataObject(oldIDtoNew map[string]string,
+	createPayloads map[string]treestorage.TreeStorageCreatePayload,
+	filesIDs []string,
+	ctx *session.Context) *DataObject {
+	return &DataObject{oldIDtoNew: oldIDtoNew, createPayloads: createPayloads, fileIDs: filesIDs, ctx: ctx}
 }
 
-func NewTask(sn *converter.Snapshot, relations []*converter.Relation, existing bool, oc Creator) *Task {
-	return &Task{sn: sn, relations: relations, existing: existing, oc: oc}
+func NewTask(sn *converter.Snapshot, oc Creator) *Task {
+	return &Task{sn: sn, oc: oc}
 }
 
 func (t *Task) Execute(data interface{}) interface{} {
 	dataObject := data.(*DataObject)
-	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, t.relations, dataObject.oldIDtoNew, dataObject.createPayloads, t.existing)
+	details, newID, err := t.oc.Create(dataObject.ctx, t.sn, dataObject.oldIDtoNew, dataObject.createPayloads, dataObject.fileIDs)
 	return &Result{
 		details: details,
 		newID:   newID,

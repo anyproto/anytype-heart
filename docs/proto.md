@@ -466,6 +466,23 @@
     - [Rpc.BlockVideo.SetWidth.Request](#anytype-Rpc-BlockVideo-SetWidth-Request)
     - [Rpc.BlockVideo.SetWidth.Response](#anytype-Rpc-BlockVideo-SetWidth-Response)
     - [Rpc.BlockVideo.SetWidth.Response.Error](#anytype-Rpc-BlockVideo-SetWidth-Response-Error)
+    - [Rpc.BlockWidget](#anytype-Rpc-BlockWidget)
+    - [Rpc.BlockWidget.SetLayout](#anytype-Rpc-BlockWidget-SetLayout)
+    - [Rpc.BlockWidget.SetLayout.Request](#anytype-Rpc-BlockWidget-SetLayout-Request)
+    - [Rpc.BlockWidget.SetLayout.Response](#anytype-Rpc-BlockWidget-SetLayout-Response)
+    - [Rpc.BlockWidget.SetLayout.Response.Error](#anytype-Rpc-BlockWidget-SetLayout-Response-Error)
+    - [Rpc.BlockWidget.SetLimit](#anytype-Rpc-BlockWidget-SetLimit)
+    - [Rpc.BlockWidget.SetLimit.Request](#anytype-Rpc-BlockWidget-SetLimit-Request)
+    - [Rpc.BlockWidget.SetLimit.Response](#anytype-Rpc-BlockWidget-SetLimit-Response)
+    - [Rpc.BlockWidget.SetLimit.Response.Error](#anytype-Rpc-BlockWidget-SetLimit-Response-Error)
+    - [Rpc.BlockWidget.SetTargetId](#anytype-Rpc-BlockWidget-SetTargetId)
+    - [Rpc.BlockWidget.SetTargetId.Request](#anytype-Rpc-BlockWidget-SetTargetId-Request)
+    - [Rpc.BlockWidget.SetTargetId.Response](#anytype-Rpc-BlockWidget-SetTargetId-Response)
+    - [Rpc.BlockWidget.SetTargetId.Response.Error](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error)
+    - [Rpc.BlockWidget.SetViewId](#anytype-Rpc-BlockWidget-SetViewId)
+    - [Rpc.BlockWidget.SetViewId.Request](#anytype-Rpc-BlockWidget-SetViewId-Request)
+    - [Rpc.BlockWidget.SetViewId.Response](#anytype-Rpc-BlockWidget-SetViewId-Response)
+    - [Rpc.BlockWidget.SetViewId.Response.Error](#anytype-Rpc-BlockWidget-SetViewId-Response-Error)
     - [Rpc.Debug](#anytype-Rpc-Debug)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
@@ -625,6 +642,10 @@
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
     - [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error)
+    - [Rpc.Object.ImportUseCase](#anytype-Rpc-Object-ImportUseCase)
+    - [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request)
+    - [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response)
+    - [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error)
     - [Rpc.Object.ListDelete](#anytype-Rpc-Object-ListDelete)
     - [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request)
     - [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response)
@@ -992,6 +1013,10 @@
     - [Rpc.BlockText.SetText.Response.Error.Code](#anytype-Rpc-BlockText-SetText-Response-Error-Code)
     - [Rpc.BlockVideo.SetName.Response.Error.Code](#anytype-Rpc-BlockVideo-SetName-Response-Error-Code)
     - [Rpc.BlockVideo.SetWidth.Response.Error.Code](#anytype-Rpc-BlockVideo-SetWidth-Response-Error-Code)
+    - [Rpc.BlockWidget.SetLayout.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLayout-Response-Error-Code)
+    - [Rpc.BlockWidget.SetLimit.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code)
+    - [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code)
+    - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
@@ -1034,6 +1059,8 @@
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
+    - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase)
+    - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
     - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype-Rpc-Object-ListDuplicate-Response-Error-Code)
     - [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format)
@@ -1232,6 +1259,8 @@
     - [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign)
     - [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget)
     - [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout)
+    - [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit)
+    - [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
@@ -1358,8 +1387,6 @@
     - [Restrictions](#anytype-model-Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
-    - [ThreadCreateQueueEntry](#anytype-model-ThreadCreateQueueEntry)
-    - [ThreadDeeplinkPayload](#anytype-model-ThreadDeeplinkPayload)
   
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -1482,6 +1509,7 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
+| ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
@@ -1590,6 +1618,11 @@
 | BlockTableRowListClean | [Rpc.BlockTable.RowListClean.Request](#anytype-Rpc-BlockTable-RowListClean-Request) | [Rpc.BlockTable.RowListClean.Response](#anytype-Rpc-BlockTable-RowListClean-Response) |  |
 | BlockTableColumnListFill | [Rpc.BlockTable.ColumnListFill.Request](#anytype-Rpc-BlockTable-ColumnListFill-Request) | [Rpc.BlockTable.ColumnListFill.Response](#anytype-Rpc-BlockTable-ColumnListFill-Response) |  |
 | BlockTableSort | [Rpc.BlockTable.Sort.Request](#anytype-Rpc-BlockTable-Sort-Request) | [Rpc.BlockTable.Sort.Response](#anytype-Rpc-BlockTable-Sort-Response) |  |
+| BlockCreateWidget | [Rpc.Block.CreateWidget.Request](#anytype-Rpc-Block-CreateWidget-Request) | [Rpc.Block.CreateWidget.Response](#anytype-Rpc-Block-CreateWidget-Response) | Widget commands *** |
+| BlockWidgetSetTargetId | [Rpc.BlockWidget.SetTargetId.Request](#anytype-Rpc-BlockWidget-SetTargetId-Request) | [Rpc.BlockWidget.SetTargetId.Response](#anytype-Rpc-BlockWidget-SetTargetId-Response) |  |
+| BlockWidgetSetLayout | [Rpc.BlockWidget.SetLayout.Request](#anytype-Rpc-BlockWidget-SetLayout-Request) | [Rpc.BlockWidget.SetLayout.Response](#anytype-Rpc-BlockWidget-SetLayout-Response) |  |
+| BlockWidgetSetLimit | [Rpc.BlockWidget.SetLimit.Request](#anytype-Rpc-BlockWidget-SetLimit-Request) | [Rpc.BlockWidget.SetLimit.Response](#anytype-Rpc-BlockWidget-SetLimit-Response) |  |
+| BlockWidgetSetViewId | [Rpc.BlockWidget.SetViewId.Request](#anytype-Rpc-BlockWidget-SetViewId-Request) | [Rpc.BlockWidget.SetViewId.Response](#anytype-Rpc-BlockWidget-SetViewId-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -1598,7 +1631,6 @@
 | BlockRelationAdd | [Rpc.BlockRelation.Add.Request](#anytype-Rpc-BlockRelation-Add-Request) | [Rpc.BlockRelation.Add.Response](#anytype-Rpc-BlockRelation-Add-Response) |  |
 | BlockDivListSetStyle | [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request) | [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response) |  |
 | BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
-| BlockCreateWidget | [Rpc.Block.CreateWidget.Request](#anytype-Rpc-Block-CreateWidget-Request) | [Rpc.Block.CreateWidget.Response](#anytype-Rpc-Block-CreateWidget-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
@@ -2234,7 +2266,7 @@ Front end to middleware request-to-create-an account
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
-| alphaInviteCode | [string](#string) |  |  |
+| alphaInviteCode | [string](#string) |  | DEPRECATED |
 
 
 
@@ -2981,6 +3013,8 @@ common simple block command
 | block | [model.Block](#anytype-model-Block) |  |  |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | widgetLayout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+| objectLimit | [int32](#int32) |  |  |
+| viewId | [string](#string) |  |  |
 
 
 
@@ -8373,6 +8407,252 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-BlockWidget"></a>
+
+### Rpc.BlockWidget
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout"></a>
+
+### Rpc.BlockWidget.SetLayout
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout-Request"></a>
+
+### Rpc.BlockWidget.SetLayout.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| layout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout-Response"></a>
+
+### Rpc.BlockWidget.SetLayout.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetLayout.Response.Error](#anytype-Rpc-BlockWidget-SetLayout-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLayout-Response-Error"></a>
+
+### Rpc.BlockWidget.SetLayout.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetLayout.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLayout-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit"></a>
+
+### Rpc.BlockWidget.SetLimit
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Request"></a>
+
+### Rpc.BlockWidget.SetLimit.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| limit | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Response"></a>
+
+### Rpc.BlockWidget.SetLimit.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetLimit.Response.Error](#anytype-Rpc-BlockWidget-SetLimit-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Response-Error"></a>
+
+### Rpc.BlockWidget.SetLimit.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetLimit.Response.Error.Code](#anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId"></a>
+
+### Rpc.BlockWidget.SetTargetId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Request"></a>
+
+### Rpc.BlockWidget.SetTargetId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Response"></a>
+
+### Rpc.BlockWidget.SetTargetId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetTargetId.Response.Error](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Response-Error"></a>
+
+### Rpc.BlockWidget.SetTargetId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetTargetId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId"></a>
+
+### Rpc.BlockWidget.SetViewId
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Request"></a>
+
+### Rpc.BlockWidget.SetViewId.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| viewId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Response"></a>
+
+### Rpc.BlockWidget.SetViewId.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockWidget.SetViewId.Response.Error](#anytype-Rpc-BlockWidget-SetViewId-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Response-Error"></a>
+
+### Rpc.BlockWidget.SetViewId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug"></a>
 
 ### Rpc.Debug
@@ -9456,6 +9736,7 @@ returns blockShow event for given version
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | platform | [string](#string) |  |  |
+| version | [string](#string) |  |  |
 
 
 
@@ -10258,7 +10539,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+DEPRECATED |
 | keys | [string](#string) | repeated |  |
 
 
@@ -10681,6 +10964,62 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase"></a>
+
+### Rpc.Object.ImportUseCase
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Request"></a>
+
+### Rpc.Object.ImportUseCase.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Response"></a>
+
+### Rpc.Object.ImportUseCase.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Response-Error"></a>
+
+### Rpc.Object.ImportUseCase.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11185,7 +11524,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
-deprecated, to be removed |
+DEPRECATED |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 
 
@@ -14598,7 +14937,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
-| ACCOUNT_IS_DELETED | 109 |  |
 
 
 
@@ -14634,6 +14972,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
 | FAILED_TO_RECOVER_PREDEFINED_BLOCKS | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
+| ACCOUNT_IS_DELETED | 109 |  |
+| FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 
 
 
@@ -15868,6 +16208,58 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockWidget-SetLayout-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetLayout.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetLimit-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetLimit.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetTargetId-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetTargetId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code"></a>
+
+### Rpc.BlockWidget.SetViewId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -16404,6 +16796,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
 
 
 
@@ -16432,6 +16826,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INTERNAL_ERROR | 1 |  |
 | UNKNOWN_ERROR | 2 |  |
 | BAD_INPUT | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Request-UseCase"></a>
+
+### Rpc.Object.ImportUseCase.Request.UseCase
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SKIP | 0 |  |
+| PERSONAL_PROJECTS | 1 |  |
+| KNOWLEDGE_BASE | 2 |  |
+| NOTES_DIARY | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportUseCase-Response-Error-Code"></a>
+
+### Rpc.Object.ImportUseCase.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -19350,6 +19771,8 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | layout | [Event.Block.Set.Widget.Layout](#anytype-Event-Block-Set-Widget-Layout) |  |  |
+| limit | [Event.Block.Set.Widget.Limit](#anytype-Event-Block-Set-Widget-Limit) |  |  |
+| viewId | [Event.Block.Set.Widget.ViewId](#anytype-Event-Block-Set-Widget-ViewId) |  |  |
 
 
 
@@ -19365,6 +19788,36 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Widget-Limit"></a>
+
+### Event.Block.Set.Widget.Limit
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Widget-ViewId"></a>
+
+### Event.Block.Set.Widget.ViewId
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
 
 
 
@@ -20139,6 +20592,7 @@ Precondition: user A and user B opened the same block
 | Syncing | 2 |  |
 | Synced | 3 |  |
 | Failed | 4 |  |
+| IncompatibleVersion | 5 |  |
 
 
 
@@ -20263,11 +20717,11 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| objectTypeUrls | [string](#string) | repeated | deprecated |
+| objectTypeUrls | [string](#string) | repeated | DEPRECATED |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
-| relations | [Relation](#anytype-model-Relation) | repeated |  |
+| relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED |
 | snippet | [string](#string) |  |  |
-| hasInboundLinks | [bool](#bool) |  |  |
+| hasInboundLinks | [bool](#bool) |  | DEPRECATED |
 | objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 
 
@@ -21048,6 +21502,8 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | layout | [Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+| limit | [int32](#int32) |  |  |
+| viewId | [string](#string) |  |  |
 
 
 
@@ -21443,38 +21899,6 @@ stored |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-model-ThreadCreateQueueEntry"></a>
-
-### ThreadCreateQueueEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| collectionThread | [string](#string) |  |  |
-| threadId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-model-ThreadDeeplinkPayload"></a>
-
-### ThreadDeeplinkPayload
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| addrs | [string](#string) | repeated |  |
 
 
 

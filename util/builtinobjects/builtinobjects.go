@@ -4,97 +4,88 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/history"
-	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
-	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
-	"github.com/anyproto/anytype-heart/core/block/simple/link"
-	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
-	"github.com/anyproto/anytype-heart/core/block/simple/text"
-	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
-const CName = "builtinobjects"
+const (
+	CName            = "builtinobjects"
+	injectionTimeout = 30 * time.Second
 
-//go:embed data/bundled_objects.zip
-var objectsZip []byte
+	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
+	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
+)
+
+//go:embed data/skip.zip
+var skipZip []byte
+
+//go:embed data/personal_projects.zip
+var personalProjectsZip []byte
+
+//go:embed data/knowledge_base.zip
+var knowledgeBaseZip []byte
+
+//go:embed data/notes_diary.zip
+var notesDiaryZip []byte
 
 //go:embed data/migration_dashboard.zip
 var migrationDashboardZip []byte
 
-var log = logging.Logger("anytype-mw-builtinobjects")
+var (
+	log = logging.Logger("anytype-mw-builtinobjects")
 
-const (
-	analyticsContext         = "get-started"
-	builtInDashboardObjectID = "bafyreiffhfg6rxuerttu2uhlvd6hlvhh4w3cd3iu6d7pge6eypwhw6mlsa"
-	bookmarkSetObjectID      = "bafyecaocfyfix22kzhfqt42r5xk2ngzwwmxchnhzcsz6akx4pqd6evez"
-	everythingSetObjectID    = "bafyedkxh25dd4ij7nlyogawdc6bsmj7skiqcjiwbckovqzqnacxx57mo"
-	videosViewID             = "c9e117ea-f101-491c-9622-524ec2a4d529"
-	mediaViewID              = "e83e70ab-0601-4ab7-abd9-d4dc09b9e703"
-
-	injectionTimeout = 30 * time.Second
+	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
+		pb.RpcObjectImportUseCaseRequest_SKIP:              skipZip,
+		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
+		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
+		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
+	}
 )
 
 type BuiltinObjects interface {
-	app.ComponentRunnable
+	app.Component
 
+	CreateObjectsForUseCase(*session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 	InjectMigrationDashboard() error
 }
 
 type builtinObjects struct {
-	cancel      func()
-	source      source.Service
-	service     *block.Service
-	relService  relation.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-	coreService core.Service
-
-	createBuiltinObjects bool
-	idsMap               map[string]string
+	service        *block.Service
+	coreService    core.Service
+	importer       importer.Importer
+	store          objectstore.ObjectStore
+	tempDirService *core.TempDirService
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) BuiltinObjects {
-	return &builtinObjects{
-		sbtProvider: sbtProvider,
-	}
+func New(tempDirService *core.TempDirService) BuiltinObjects {
+	return &builtinObjects{tempDirService: tempDirService}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
-	b.source = a.MustComponent(source.CName).(source.Service)
 	b.service = a.MustComponent(block.CName).(*block.Service)
-	b.createBuiltinObjects = a.MustComponent(config.CName).(*config.Config).CreateBuiltinObjects
-	b.relService = a.MustComponent(relation.CName).(relation.Service)
 	b.coreService = a.MustComponent(core.CName).(core.Service)
-	b.cancel = func() {}
+	b.importer = a.MustComponent(importer.CName).(importer.Importer)
+	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 
@@ -102,20 +93,21 @@ func (b *builtinObjects) Name() (name string) {
 	return CName
 }
 
-func (b *builtinObjects) Run(context.Context) (err error) {
-	if !b.createBuiltinObjects {
-		// import only for new accounts
-		return
-	}
-
-	// todo: return fixed builtin objects with correct sbtype
-	var ctx context.Context
-	ctx, b.cancel = context.WithCancel(context.Background())
+func (b *builtinObjects) CreateObjectsForUseCase(
+	ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase,
+) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
 	start := time.Now()
 
-	err = b.inject(ctx)
-	if err != nil {
-		log.Errorf("failed to import builtinObjects: %s", err.Error())
+	archive, found := archives[useCase]
+	if !found {
+		return pb.RpcObjectImportUseCaseResponseError_BAD_INPUT,
+			fmt.Errorf("failed to import builtinObjects: invalid Use Case value: %v", useCase)
+	}
+
+	if err = b.inject(ctx, archive, false); err != nil {
+		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
+			fmt.Errorf("failed to import builtinObjects for Use Case %s: %s",
+				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err.Error())
 	}
 
 	spent := time.Now().Sub(start)
@@ -123,111 +115,116 @@ func (b *builtinObjects) Run(context.Context) (err error) {
 		log.Debugf("built-in objects injection time exceeded timeout of %s and is %s", injectionTimeout.String(), spent.String())
 	}
 
+	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
+}
+
+func (b *builtinObjects) InjectMigrationDashboard() error {
+	return b.inject(nil, migrationDashboardZip, true)
+}
+
+func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigration bool) (err error) {
+	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	if err = os.WriteFile(path, archive, 0644); err != nil {
+		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
+	}
+
+	if err = b.importArchive(ctx, path); err != nil {
+		return err
+	}
+
+	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
+	oldId := migrationDashboardName
+	if !isMigration {
+		oldId, err = b.getOldSpaceDashboardId(archive)
+		if err != nil {
+			log.Errorf("Failed to get old id of space dashboard object: %s", err.Error())
+			return nil
+		}
+	}
+
+	newId, err := b.getNewSpaceDashboardId(oldId)
+	if err != nil {
+		log.Errorf("Failed to get new id of space dashboard object: %s", err.Error())
+		return nil
+	}
+
+	b.handleSpaceDashboard(newId)
+	b.createNotesAndTaskTrackerWidgets()
 	return
 }
 
-func (b *builtinObjects) InjectMigrationDashboard() (err error) {
-	zr, err := zip.NewReader(bytes.NewReader(migrationDashboardZip), int64(len(migrationDashboardZip)))
-	if err != nil {
-		return
-	}
-	if len(zr.File) != 1 {
-		return fmt.Errorf("one file expected in migration_dashboard.zip. Found %d instead", len(zr.File))
-	}
-	ctx := context.Background()
-	obj, err := b.service.CreateTreeObject(ctx, coresb.SmartBlockTypePage, func(id string) *sb.InitContext {
-		return &sb.InitContext{
-			IsNewObject: true,
-			Ctx:         ctx,
-		}
-	})
-	if err != nil {
-		return
+func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err error) {
+	if err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+		UpdateExistingObjects: false,
+		Type:                  pb.RpcObjectImportRequest_Pb,
+		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+		NoProgress:            true,
+		IsMigration:           false,
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
+			PbParams: &pb.RpcObjectImportRequestPbParams{
+				Path:         []string{path},
+				NoCollection: true,
+			}},
+	}); err != nil {
+		return err
 	}
 
-	zf := zr.File[0]
-	newId := obj.Id()
-	b.idsMap = map[string]string{strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name)): newId}
-
-	b.handleSpaceDashboard(newId)
-
-	rd, err := zf.Open()
-	if err != nil {
-		return
+	if err = os.Remove(path); err != nil {
+		log.Errorf("failed to remove temporary file %s: %s", path, err.Error())
 	}
-	if err = b.createObject(rd); err != nil {
-		return
-	}
+
 	return nil
 }
 
-func (b *builtinObjects) inject(ctx context.Context) (err error) {
-	zr, err := zip.NewReader(bytes.NewReader(objectsZip), int64(len(objectsZip)))
+func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err error) {
+	var (
+		rd      io.ReadCloser
+		openErr error
+	)
+	zr, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
 	if err != nil {
-		return
+		return "", err
 	}
-	b.idsMap = make(map[string]string, len(zr.File))
-	isSpaceDashboardIDFound := false
+	profileFound := false
 	for _, zf := range zr.File {
-		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
-		var sbt smartblock.SmartBlockType
-		if id == builtInDashboardObjectID {
-			isSpaceDashboardIDFound = true
-			sbt = smartblock.SmartBlockTypePage
-		} else {
-			sbt, err = b.sbtProvider.Type(id)
-		}
-		if err != nil {
-			sbt, err = SmartBlockTypeFromThreadID(id)
-			if err != nil {
-
-				return err
+		if zf.Name == constant.ProfileFile {
+			profileFound = true
+			rd, openErr = zf.Open()
+			if openErr != nil {
+				return "", openErr
 			}
-		}
-		if err := sbt.Valid(); err != nil {
-			sbt = smartblock.SmartBlockTypePage
-			log.Errorf("failed to get smartblock type for %s: %s; fallback to page", id, err.Error())
-			// todo: this this TEMP! we shouldn't get incorrect ids here, need to fix zip file
-			// return fmt.Errorf("invalid smartblock type: %v %v", sbt, err)
-		}
-		if sbt == smartblock.SmartBlockTypeSubObject {
-			// todo: probably subobjects are broken here
-			// preserve original id for subobjects, it makes no sense to replace them and also it breaks the grouping
-			b.idsMap[id] = id
-			continue
-		}
-
-		// create object
-		obj, err := b.service.CreateTreeObject(ctx, sbt, func(id string) *sb.InitContext {
-			return &sb.InitContext{
-				IsNewObject: true,
-				Ctx:         ctx,
-			}
-		})
-		if err != nil {
-			return err
-		}
-		newId := obj.Id()
-		if id == builtInDashboardObjectID {
-			b.handleSpaceDashboard(newId)
-		}
-		b.idsMap[id] = newId
-	}
-
-	if !isSpaceDashboardIDFound {
-		panic("Workspace dashboard object file was not found in built-in objects")
-	}
-
-	for _, zf := range zr.File {
-		rd, e := zf.Open()
-		if e != nil {
-			return e
-		}
-		if err = b.createObject(rd); err != nil {
-			return
+			break
 		}
 	}
-	return nil
+
+	if !profileFound {
+		return "", fmt.Errorf("no profile file included in archive")
+	}
+
+	defer rd.Close()
+	data, err := io.ReadAll(rd)
+
+	profile := &pb.Profile{}
+	if err = profile.Unmarshal(data); err != nil {
+		return "", err
+	}
+	return profile.SpaceDashboardId, nil
+}
+
+func (b *builtinObjects) getNewSpaceDashboardId(oldId string) (id string, err error) {
+	ids, _, err := b.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
+				Value:       pbtypes.String(oldId),
+			},
+		},
+	}, nil)
+	if err == nil && len(ids) > 0 {
+		return ids[0], nil
+	}
+	return "", err
 }
 
 func (b *builtinObjects) handleSpaceDashboard(id string) {
@@ -246,7 +243,7 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 }
 
 func (b *builtinObjects) createSpaceDashboardWidget(id string) {
-	targetID, err := b.getFirstWidgetBlockId()
+	targetID, err := b.getWidgetBlockIdByNumber(0)
 	if err != nil {
 		log.Errorf(err.Error())
 		return
@@ -275,283 +272,76 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 	}
 }
 
-func (b *builtinObjects) getFirstWidgetBlockId() (string, error) {
+func (b *builtinObjects) createNotesAndTaskTrackerWidgets() {
+	targetID, err := b.getWidgetBlockIdByNumber(1)
+	if err != nil {
+		log.Errorf("Failed to get id of second widget block: %s", err.Error())
+		return
+	}
+	for _, setOf := range []string{bundle.TypeKeyNote.String(), bundle.TypeKeyTask.String()} {
+		id, err := b.getObjectIdBySetOfValue(setOf)
+		if err != nil {
+			log.Errorf("Failed to get id of set by '%s' to create widget object: %s", setOf, err.Error())
+			continue
+		}
+		if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    b.coreService.PredefinedBlocks().Widgets,
+			TargetId:     targetID,
+			Position:     model.Block_Bottom,
+			WidgetLayout: model.BlockContentWidget_CompactList,
+			Block: &model.Block{
+				Id:          "",
+				ChildrenIds: nil,
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: id,
+						Style:         model.BlockContentLink_Page,
+						IconSize:      model.BlockContentLink_SizeNone,
+						CardStyle:     model.BlockContentLink_Inline,
+						Description:   model.BlockContentLink_None,
+					},
+				},
+			},
+		}); err != nil {
+			log.Errorf("Failed to make Widget block for set by '%s': %s", setOf, err.Error())
+		}
+	}
+}
+
+func (b *builtinObjects) getObjectIdBySetOfValue(setOfValue string) (string, error) {
+	ids, _, err := b.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySetOf.String(),
+				Value:       pbtypes.StringList([]string{addr.ObjectTypeKeyToIdPrefix + setOfValue}),
+			},
+		},
+	}, nil)
+	if err == nil && len(ids) > 0 {
+		return ids[0], nil
+	}
+	if len(ids) == 0 {
+		err = fmt.Errorf("no object found")
+	}
+	return "", err
+}
+
+func (b *builtinObjects) getWidgetBlockIdByNumber(index int) (string, error) {
 	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
 	if err != nil {
 		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
 	}
-	if len(w.Blocks()) < 2 {
-		return "", fmt.Errorf("failed to get first block of Widget object: %s", err.Error())
+	root := w.Pick(w.RootId())
+	if root == nil {
+		return "", fmt.Errorf("failed to pick root block of Widget object: %s", err.Error())
 	}
-	if w.Blocks()[1] == nil {
+	if len(root.Model().ChildrenIds) < index+1 {
+		return "", fmt.Errorf("failed to get %d block of Widget object as there olny %d of them", index+1, len(root.Model().ChildrenIds))
+	}
+	target := w.Pick(root.Model().ChildrenIds[index])
+	if target == nil {
 		return "", fmt.Errorf("failed to get id of first block of Widget object: %s", err.Error())
 	}
-	return w.Blocks()[1].Id, nil
-}
-
-func (b *builtinObjects) createObject(rd io.ReadCloser) (err error) {
-	defer rd.Close()
-	data, err := ioutil.ReadAll(rd)
-	snapshot := &pb.ChangeSnapshot{}
-	if err = snapshot.Unmarshal(data); err != nil {
-		snapshotWithType := &pb.SnapshotWithType{}
-		if err = snapshotWithType.Unmarshal(data); err != nil {
-			return
-		}
-		snapshot = snapshotWithType.Snapshot
-	}
-
-	isFavorite := pbtypes.GetBool(snapshot.Data.Details, bundle.RelationKeyIsFavorite.String())
-	isArchived := pbtypes.GetBool(snapshot.Data.Details, bundle.RelationKeyIsArchived.String())
-	if isArchived {
-		return fmt.Errorf("object has isarchived == true")
-	}
-	oldId := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
-	newId, exists := b.idsMap[oldId]
-	if !exists {
-		return fmt.Errorf("new id not found for '%s'", oldId)
-	}
-
-	st := state.NewDocFromSnapshot(oldId, snapshot).(*state.State)
-	st.SetRootId(newId)
-	a := st.Get(newId)
-	m := a.Model()
-	sbt, err := b.sbtProvider.Type(newId)
-	if sbt == smartblock.SmartBlockTypeSubObject {
-		ot, err := bundle.TypeKeyFromUrl(pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyType.String()))
-		if err != nil {
-			return err
-		}
-		_, _, err = b.service.CreateObject(&pb.RpcObjectCreateRequest{Details: st.CombinedDetails()}, ot)
-		if err != nil {
-			return err
-		}
-	}
-
-	f := m.GetFields().GetFields()
-	if f == nil {
-		f = make(map[string]*types.Value)
-	}
-	m.Fields = &types.Struct{Fields: f}
-	f["analyticsContext"] = pbtypes.String(analyticsContext)
-	if f["analyticsOriginalId"] == nil {
-		// in case we already have analyticsOriginalId do not update it
-		f["analyticsOriginalId"] = pbtypes.String(oldId)
-	}
-
-	st.Set(simple.New(m))
-	rels := relationutils.MigrateRelationModels(st.OldExtraRelations())
-	st.AddRelationLinks(rels...)
-
-	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String(), bundle.RelationKeyLastOpenedDate.String(), bundle.RelationKeyLinks.String())
-	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
-	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
-	st.SetLocalDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String(b.service.Anytype().PredefinedBlocks().Account))
-	st.InjectDerivedDetails()
-	if err = b.validate(st); err != nil {
-		return
-	}
-
-	st.Iterate(func(bl simple.Block) (isContinue bool) {
-		switch a := bl.(type) {
-		case link.Block:
-			newTarget := b.idsMap[a.Model().GetLink().TargetBlockId]
-			if newTarget == "" {
-				// maybe we should panic here?
-				log.With("object", st.RootId()).Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
-				return true
-			}
-
-			a.Model().GetLink().TargetBlockId = newTarget
-			st.Set(simple.New(a.Model()))
-		case bookmark.Block:
-			newTarget := b.idsMap[a.Model().GetBookmark().TargetObjectId]
-			if newTarget == "" {
-				// maybe we should panic here?
-				log.With("object", oldId).Errorf("cant find target id for bookmark: %s", a.Model().GetBookmark().TargetObjectId)
-				return true
-			}
-
-			a.Model().GetBookmark().TargetObjectId = newTarget
-			st.Set(simple.New(a.Model()))
-		case text.Block:
-			for i, mark := range a.Model().GetText().GetMarks().GetMarks() {
-				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
-					continue
-				}
-				newTarget := b.idsMap[mark.Param]
-				if newTarget == "" {
-					log.With("object", oldId).Errorf("cant find target id for mention: %s", mark.Param)
-					continue
-				}
-
-				a.Model().GetText().GetMarks().GetMarks()[i].Param = newTarget
-			}
-			st.Set(simple.New(a.Model()))
-		case dataview.Block:
-			// TODO: temporary solution of GO-1034, will be removed after GO-948 merge
-			b.putFirstRelationInViews(st, oldId, &a)
-			oldTarget := a.Model().GetDataview().TargetObjectId
-			if oldTarget == "" {
-				return true
-			}
-			newTarget := b.idsMap[oldTarget]
-			if newTarget == "" {
-				// maybe we should panic here?
-				log.With("object", oldId).Errorf("cant find target id for dataview: %s", oldTarget)
-				return true
-			}
-
-			a.Model().GetDataview().TargetObjectId = newTarget
-			st.Set(simple.New(a.Model()))
-		}
-		return true
-	})
-
-	for k, v := range st.Details().GetFields() {
-		rel, err := bundle.GetRelation(bundle.RelationKey(k))
-		if err != nil {
-			log.With("object", oldId).Errorf("failed to find relation %s: %s", k, err.Error())
-			continue
-		}
-		if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
-			continue
-		}
-
-		vals := pbtypes.GetStringListValue(v)
-		for i, val := range vals {
-			if bundle.HasRelation(val) {
-				continue
-			}
-			newTarget, _ := b.idsMap[val]
-			if newTarget == "" {
-				log.With("object", oldId).Errorf("cant find target id for relation %s: %s", k, val)
-				continue
-			}
-			vals[i] = newTarget
-
-		}
-		st.SetDetail(k, pbtypes.StringList(vals))
-	}
-	start := time.Now()
-	err = b.service.Do(newId, func(sb sb.SmartBlock) error {
-		return history.ResetToVersion(sb, st)
-	})
-	if err != nil {
-		return err
-	}
-	err = b.service.Do(newId, func(b sb.SmartBlock) error {
-		return nil
-	})
-
-	log.With("timeMs", time.Now().Sub(start).Milliseconds()).Info("creating debug obj")
-
-	if isFavorite {
-		err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
-		if err != nil {
-			log.Errorf("failed to set isFavorite when importing object %s(originally %s): %s", newId, oldId, err.Error())
-		}
-	}
-	return err
-}
-
-func (b *builtinObjects) validate(st *state.State) (err error) {
-	var relKeys []string
-	for _, rel := range st.PickRelationLinks() {
-		if !bundle.HasRelation(rel.Key) {
-			// todo: temporarily, make this as error
-			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Key, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
-		}
-	}
-
-	st.Iterate(func(b simple.Block) (isContinue bool) {
-		if rb, ok := b.(relationblock.Block); ok {
-			relKeys = append(relKeys, rb.Model().GetRelation().Key)
-		}
-		return true
-	})
-	for _, rk := range relKeys {
-		if !st.HasRelation(rk) {
-			return fmt.Errorf("bundled template validation: relation '%v' exists in block but not in extra relations", rk)
-		}
-	}
-	return nil
-}
-
-func (b *builtinObjects) Close(ctx context.Context) (err error) {
-	if b.cancel != nil {
-		b.cancel()
-	}
-	return
-}
-
-func (b *builtinObjects) putFirstRelationInViews(st *state.State, oldID string, bl *dataview.Block) {
-	var viewID string
-
-	switch oldID {
-	case bookmarkSetObjectID:
-		viewID = videosViewID
-	case everythingSetObjectID:
-		viewID = mediaViewID
-		(*bl).AddRelation(&model.RelationLink{
-			Key:    bundle.RelationKeySource.String(),
-			Format: model.RelationFormat_url,
-		})
-	default:
-		return
-	}
-
-	if err := (*bl).RemoveViewRelations(viewID, []string{bundle.RelationKeySource.String()}); err != nil {
-		return
-	}
-	v, err := (*bl).GetView(viewID)
-	if err != nil {
-		return
-	}
-
-	v.Relations = append([]*model.BlockContentDataviewRelation{{
-		Key:       bundle.RelationKeySource.String(),
-		IsVisible: true,
-	}}, v.Relations...)
-	st.Set(simple.New((*bl).Model()))
-}
-
-func SmartBlockTypeFromThreadID(id string) (coresb.SmartBlockType, error) {
-	tid, err := thread.Decode(id)
-	if err != nil {
-		return coresb.SmartBlockTypePage, err
-	}
-
-	rawid := tid.KeyString()
-	// skip version
-	_, n := uvarint(rawid)
-	// skip variant
-	_, n2 := uvarint(rawid[n:])
-	blockType, _ := uvarint(rawid[n+n2:])
-
-	// checks in order to detect invalid sb type
-	if err := coresb.SmartBlockType(blockType).Valid(); err != nil {
-		return coresb.SmartBlockTypePage, nil
-		return 0, err
-	}
-
-	return coresb.SmartBlockType(blockType), nil
-}
-
-func uvarint(buf string) (uint64, int) {
-	var x uint64
-	var s uint
-	// we have a binary string so we can't use a range loope
-	for i := 0; i < len(buf); i++ {
-		b := buf[i]
-		if b < 0x80 {
-			if i > 9 || i == 9 && b > 1 {
-				return 0, -(i + 1) // overflow
-			}
-			return x | uint64(b)<<s, i + 1
-		}
-		x |= uint64(b&0x7f) << s
-		s += 7
-	}
-	return 0, 0
+	return target.Model().Id, nil
 }

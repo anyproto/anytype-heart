@@ -3,6 +3,7 @@ package anytype
 import (
 	"context"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -10,10 +11,14 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
-	"github.com/anyproto/any-sync/net/dialer"
+	"github.com/anyproto/any-sync/metric"
+	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/rpc/debugserver"
+	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -58,23 +63,23 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/credentialprovider"
-	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peermanager"
 	"github.com/anyproto/anytype-heart/space/peerstore"
 	"github.com/anyproto/anytype-heart/space/storage"
+	"github.com/anyproto/anytype-heart/space/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
-func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinObjects, createBuiltinTemplates bool) *config.Config {
+func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
-		config.WithCreateBuiltinObjects(createBuiltinObjects),
 		config.WithCreateBuiltinTemplates(createBuiltinTemplates),
 	)
 }
@@ -83,8 +88,9 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
-func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, err error) {
+func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
+	a.SetVersionName(appVersion(a, clientWithVersion))
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
@@ -95,6 +101,13 @@ func StartNewApp(ctx context.Context, components ...app.Component) (a *app.App, 
 	}
 
 	return
+}
+
+func appVersion(a *app.App, clientWithVersion string) string {
+	clientWithVersion = regexp.MustCompile(`(@|\/)+`).ReplaceAllString(clientWithVersion, "_")
+	middleVersion := MiddlewareVersion()
+	anySyncVersion := a.AnySyncVersion()
+	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
 func Bootstrap(a *app.App, components ...app.Component) {
@@ -120,6 +133,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	fileStore := filestore.New()
 
 	datastoreProvider := clientds.New()
+	nodeConf := nodeconf.New()
 
 	const fileWatcherUpdateInterval = 5 * time.Second
 	syncStatusService := syncstatus.New(
@@ -128,6 +142,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		spaceService,
 		coreService,
 		fileSyncService,
+		nodeConf,
 		fileStore,
 		blockService,
 		cfg,
@@ -142,14 +157,19 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	a.Register(datastoreProvider).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
-		Register(nodeconf.New()).
+		Register(nodeConf).
 		Register(peerstore.New()).
+		Register(syncstatusprovider.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
-		Register(dialer.New()).
+		Register(metric.New()).
+		Register(server.New()).
+		Register(debugserver.New()).
 		Register(pool.New()).
-		Register(streampool.New()).
+		Register(peerservice.New()).
+		Register(yamux.New()).
 		Register(clientserver.New()).
+		Register(streampool.New()).
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
@@ -182,10 +202,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New(tempDirService)).
 		Register(restriction.New(sbtProvider, objectStore)).
 		Register(debug.New()).
-		Register(clientdebugrpc.New()).
 		Register(collectionService).
 		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New(sbtProvider)).
+		Register(builtinobjects.New(tempDirService)).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
 		Register(importer.New(tempDirService, sbtProvider)).
@@ -195,4 +214,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
 		Register(graphRenderer)
 	return
+}
+
+func MiddlewareVersion() string {
+	return vcs.GetVCSInfo().Version()
 }

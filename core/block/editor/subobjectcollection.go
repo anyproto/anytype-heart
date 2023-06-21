@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -37,6 +38,7 @@ var (
 type SubObjectImpl interface {
 	smartblock.SmartBlock
 	SetStruct(*types.Struct) error
+	InitState(st *state.State) // InitState normalize state and fill it with simple blocks
 }
 
 var localDetailsAllowedToBeStored = []string{
@@ -108,13 +110,24 @@ func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (
 
 	for _, coll := range objectTypeToCollection {
 		data := st.GetSubObjectCollection(coll)
-		for subId := range data.Fields {
+		if data == nil {
+			continue
+		}
+		// we create the sb impl here in order to call InitState on it
+		subObj, err := c.subObjectFactory.produce(coll)
+		if err != nil {
+			log.Errorf("failed to produce sub object: %v", err)
+			continue
+		}
+		for subId := range data.GetFields() {
 			fullId := c.getId(coll, subId)
-			sub, err := SubState(st, coll, fullId, workspaceID)
+
+			sub, err := subState(st, coll, fullId, workspaceID)
 			if err != nil {
 				log.Errorf("failed to get sub object %s: %v", subId, err)
 				continue
 			}
+			subObj.InitState(sub)
 			if !f(smartblock.DocInfo{
 				Id:    fullId,
 				State: sub,
@@ -173,7 +186,7 @@ func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
 func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (err error) {
 	collection, key := c.getCollectionAndKeyFromId(objectId)
 	// todo: check inbound links
-	links, err := c.objectStore.GetInboundLinksById(objectId)
+	links, err := c.objectStore.GetInboundLinksByID(objectId)
 	if err != nil {
 		return err
 	}
@@ -244,7 +257,7 @@ func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err er
 		} else if keyUnset := ch.GetStoreKeyUnset(); keyUnset != nil {
 			err = c.removeObject(st, strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator))
 			if err != nil {
-				log.With("threadId", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
+				log.With("objectID", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
 				return err
 			}
 		}
@@ -354,7 +367,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		// SubObjectCollection is used only workspaces now so get ID from the workspace object
 		workspaceID = st.RootId()
 	}
-	subState, err := SubState(st, collection, fullId, workspaceID)
+	subState, err := subState(st, collection, fullId, workspaceID)
 	if err != nil {
 		return
 	}
@@ -370,6 +383,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		return fmt.Errorf("new sub-object: %w", err)
 	}
 
+	subObj.InitState(subState)
 	if _, exists := c.collections[collection]; !exists {
 		c.collections[collection] = map[string]SubObjectImpl{}
 	}
@@ -381,10 +395,16 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 		return
 	}
 
+	// we need to call Apply to make sure it propogates to the indexer
+	// BTW, if subObj.InitState made any changes, they will be ignored, cause we do the NewState() call here
+	// todo: decide if this is correct
+	subObj.Apply(subState.NewState())
 	return
 }
 
-func SubState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
+// subState returns a details-only state for a subobject
+// make sure to call sbimpl.initState(st) before using it
+func subState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
 	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
 	data := pbtypes.GetStruct(st.GetSubObjectCollection(collection), subId)
 	if data == nil || data.Fields == nil {
@@ -396,8 +416,20 @@ func SubState(st *state.State, collection string, fullId string, workspaceId str
 	for _, rk := range relationsToCopy {
 		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
 	}
-	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate)
+
+	restrictions := restriction.GetRestrictionsForSubobject(fullId)
+	subst.SetLocalDetail(bundle.RelationKeyRestrictions.String(), restrictions.ToPB())
+	subst.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList([]string{}))
+	changeId := st.StoreChangeIdForPath(collection + addr.SubObjectCollectionIdSeparator + subId)
+	if changeId == "" {
+		log.Errorf("subState %s: no changeId for %s", fullId, collection+addr.SubObjectCollectionIdSeparator+subId)
+	}
+	subst.SetLocalDetail(bundle.RelationKeyLastChangeId.String(), pbtypes.String(changeId))
+
+	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate, bundle.RelationKeyLastModifiedBy)
+	subst.SetDetailAndBundledRelation(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySourceObject.String()}))
 	subst.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+
 	return subst, nil
 }
 
@@ -416,6 +448,7 @@ func structToState(id string, data *types.Struct) *state.State {
 	}
 	subState.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
 	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
+
 	return subState
 }
 

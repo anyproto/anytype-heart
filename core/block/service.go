@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
@@ -17,8 +15,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-datastore/query"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor"
@@ -104,6 +102,7 @@ func New(
 		tempDirProvider: tempDirProvider,
 		sbtProvider:     sbtProvider,
 		layoutConverter: layoutConverter,
+		closing:         make(chan struct{}),
 	}
 }
 
@@ -154,6 +153,7 @@ type Service struct {
 	syncer      *treeSyncer
 	syncStarted bool
 	syncerLock  sync.Mutex
+	closing     chan struct{}
 }
 
 func (s *Service) Name() string {
@@ -214,7 +214,7 @@ func (s *Service) OpenBlock(
 	st := ob.NewState()
 
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-	if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent); err != nil {
+	if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
 	afterApplyTime := time.Now()
@@ -384,7 +384,7 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	workspaceID, err := s.objectStore.GetCurrentWorkspaceId()
+	workspaceID, err := s.objectStore.GetCurrentWorkspaceID()
 	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
 		return "", nil
 	}
@@ -715,6 +715,9 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 	for _, id := range optIds {
 		if checkInObjects {
 			opt, err := workspace.Open(id)
+			if err != nil {
+				return fmt.Errorf("workspace open: %w", err)
+			}
 			relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
 
 			q := database.Query{
@@ -726,13 +729,10 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 					},
 				},
 			}
-			f, err := database.NewFilters(q, nil, s.objectStore, nil)
+			records, _, err := s.objectStore.Query(nil, q)
 			if err != nil {
 				return nil
 			}
-			records, err := s.objectStore.QueryRaw(query.Query{
-				Filters: []query.Filter{f},
-			})
 
 			if len(records) > 0 {
 				return ErrOptionUsedByOtherObjects
@@ -763,6 +763,7 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
+	close(s.closing)
 	return s.cache.Close()
 }
 

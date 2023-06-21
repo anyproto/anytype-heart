@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -115,12 +116,11 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	records, _, err := ds.Query(nil, database.Query{
-		Filters:          req.Filters,
-		Sorts:            req.Sorts,
-		Offset:           int(req.Offset),
-		Limit:            int(req.Limit),
-		FullText:         req.FullText,
-		ObjectTypeFilter: req.ObjectTypeFilter,
+		Filters:  req.Filters,
+		Sorts:    req.Sorts,
+		Offset:   int(req.Offset),
+		Limit:    int(req.Limit),
+		FullText: req.FullText,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
@@ -846,4 +846,26 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
 	errCode, err := importer.ValidateNotionToken(ctx, request)
 	return response(errCode, err)
+}
+
+func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
+	ctx := mw.newContext(cctx)
+
+	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
+		resp := &pb.RpcObjectImportUseCaseResponse{
+			Error: &pb.RpcObjectImportUseCaseResponseError{
+				Code: code,
+			},
+		}
+		if err != nil {
+			resp.Error.Description = err.Error()
+		}
+		return resp
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	return response(objCreator.CreateObjectsForUseCase(ctx, req.UseCase))
 }

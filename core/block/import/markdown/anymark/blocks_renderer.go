@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -112,7 +113,7 @@ func (r *blocksRenderer) AddMark(mark model.BlockContentTextMark) {
 	r.marksBuffer = append(r.marksBuffer, &mark)
 }
 
-func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle) {
+func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle, fields *types.Struct) {
 	if style != model.BlockContentText_Paragraph {
 		r.curStyledBlock = style
 	}
@@ -120,7 +121,8 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle) {
 	id := uuid.New().String()
 
 	newBlock := model.Block{
-		Id: id,
+		Id:     id,
+		Fields: fields,
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{
 				Style: style,
@@ -324,7 +326,6 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 		}
 
 		r.blocks = append(r.blocks, &(closingBlock.Block))
-
 	}
 }
 

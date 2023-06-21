@@ -496,6 +496,8 @@ message Block {
 
         message Widget {
             Layout layout = 1;
+            int32 limit = 2;
+            string viewId = 3;
 
             enum Layout {
                 Link = 0;
@@ -634,16 +636,6 @@ message Restrictions {
         DVCreateObject = 2;
         DVViews = 3;
     }
-}
-
-message ThreadDeeplinkPayload {
-    string key = 1;
-    repeated string addrs = 2;
-}
-
-message ThreadCreateQueueEntry {
-    string collectionThread = 1;
-    string threadId = 2;
 }
 
 message Object {

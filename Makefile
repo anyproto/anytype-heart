@@ -12,7 +12,7 @@ ifndef $(GOROOT)
     export GOROOT
 endif
 
-export PATH:=deps:$(GOPATH)/bin:$(PATH)
+export PATH:=$(pwd)/deps:deps:$(GOPATH)/bin:$(PATH)
 
 all:
 	@set -e;
@@ -43,7 +43,7 @@ lint:
 
 test:
 	@echo 'Running tests...'
-	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go test -cover github.com/anyproto/anytype-heart/...
 
 test-integration:
 	@echo 'Running integration tests...'
@@ -61,6 +61,7 @@ test-deps:
 	@echo 'Generating test mocks...'
 	@go install github.com/golang/mock/mockgen
 	@go generate ./...
+	@mockery --all
 
 clear-test-deps:
 	@echo 'Removing test mocks...'

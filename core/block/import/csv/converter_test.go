@@ -1,6 +1,7 @@
 package csv
 
 import (
+	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,7 +53,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 4) // test + root collection + 2 objects in Journal.csv
+	assert.Len(t, sn.Snapshots, 7) // test + root collection + 2 objects in Journal.csv + 3 relations (Name, Created, Tags)
 	assert.Contains(t, sn.Snapshots[0].FileName, "Journal.csv")
 	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, template.CollectionStoreKey), 2) // 2 objects
 
@@ -111,7 +112,7 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 10) // 8 objects + root collection + semicolon collection
+	assert.Len(t, sn.Snapshots, 13) // 8 objects + root collection + semicolon collection + 3 relations
 	assert.Contains(t, sn.Snapshots[0].FileName, "semicolon.csv")
 	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, template.CollectionStoreKey), 8)
 	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
@@ -135,10 +136,32 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 3) // 1 object + root collection + transpose collection
+	assert.Len(t, sn.Snapshots, 5) // 1 object + root collection + transpose collection + 2 relations
 
-	relations := sn.Relations[sn.Snapshots[0].Id]
-	assert.Len(t, relations, 2)
-	assert.True(t, relations[0].Name == "name" || relations[0].Name == "price")
-	assert.True(t, relations[1].Name == "name" || relations[1].Name == "price")
+	for _, snapshot := range sn.Snapshots {
+		if snapshot.SbType == smartblock2.SmartBlockTypeSubObject {
+			name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+			assert.True(t, name == "name" || name == "price")
+		}
+	}
+}
+
+func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/quotedstrings.csv"},
+				Delimiter:               ",",
+				TransposeRowsAndColumns: true,
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
 }

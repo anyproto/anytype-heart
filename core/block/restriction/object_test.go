@@ -14,7 +14,13 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id: "",
 		tp: model.SmartBlockType_AnytypeProfile,
-	}).Object.Check(model.Restrictions_Blocks),
+	}).Object.Check(
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
+		model.Restrictions_Delete,
+		model.Restrictions_Duplicate,
+	),
 		ErrRestricted,
 	)
 
@@ -51,7 +57,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id:     bundle.TypeKeyBookmark.BundledURL(),
-		tp:     model.SmartBlockType_SubObject,
+		tp:     model.SmartBlockType_BundledObjectType,
 		layout: model.ObjectType_objectType,
 	}).Object.Check(
 		model.Restrictions_Duplicate,
@@ -80,7 +86,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id:     bundle.RelationKeyId.BundledURL(),
-		tp:     model.SmartBlockType_SubObject,
+		tp:     model.SmartBlockType_BundledRelation,
 		layout: model.ObjectType_relation,
 	}).Object.Check(
 		model.Restrictions_Duplicate,

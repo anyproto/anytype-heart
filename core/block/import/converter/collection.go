@@ -66,7 +66,7 @@ func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *st
 }
 
 func (r *RootCollection) addRelations(st *state.State) error {
-	for _, relation := range []*model.Relation{
+	for _, relation := range []*model.RelationLink{
 		{
 			Key:    bundle.RelationKeyTag.String(),
 			Format: model.RelationFormat_tag,
@@ -76,7 +76,7 @@ func (r *RootCollection) addRelations(st *state.State) error {
 			Format: model.RelationFormat_date,
 		},
 	} {
-		err := addRelationsToCollectionDataView(st, relation)
+		err := replaceRelationsToCollectionDataView(st, relation)
 		if err != nil {
 			return err
 		}
@@ -95,28 +95,21 @@ func (r *RootCollection) getCreateCollectionRequest(collectionName string) *type
 	return detailsStruct
 }
 
-func addRelationsToCollectionDataView(st *state.State, rel *model.Relation) error {
+func replaceRelationsToCollectionDataView(st *state.State, rel *model.RelationLink) error {
 	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if dv, ok := bl.(simpleDataview.Block); ok {
 			if len(bl.Model().GetDataview().GetViews()) == 0 {
-				return false
+				return true
 			}
 			for _, view := range bl.Model().GetDataview().GetViews() {
-				err := dv.AddViewRelation(view.GetId(), &model.BlockContentDataviewRelation{
+				err := dv.ReplaceViewRelation(view.Id, rel.Key, &model.BlockContentDataviewRelation{
 					Key:       rel.Key,
 					IsVisible: true,
 					Width:     192,
 				})
 				if err != nil {
-					return false
+					return true
 				}
-			}
-			err := dv.AddRelation(&model.RelationLink{
-				Key:    rel.Key,
-				Format: rel.Format,
-			})
-			if err != nil {
-				return false
 			}
 		}
 		return true

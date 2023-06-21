@@ -81,6 +81,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
+	// todo: this fires debug logs regarding objectType
 	s.InjectDerivedDetails()
 	return s
 }
@@ -104,8 +105,9 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption // deprecated, used for migration
 
-	store           *types.Struct
-	storeKeyRemoved map[string]struct{}
+	store                   *types.Struct
+	storeKeyRemoved         map[string]struct{}
+	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
 	objectTypes          []string
 	objectTypesToMigrate []string
@@ -622,7 +624,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {
 			if _, isNull := prevModifiedDate.GetKind().(*types.Value_NullValue); prevModifiedDate == nil || isNull {
-				log.With("thread", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
+				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
 			} else {
 				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
 			}
@@ -640,13 +642,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
-	if s.parent != nil && s.aggregatedOptionsByRelation != nil {
-		// todo: when we will have an external subscription for the aggregatedOptionsByRelation we should send events here for all relations
-		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
-	}
-
 	if s.parent != nil && s.store != nil {
 		s.parent.store = s.store
+	}
+
+	if s.parent != nil && s.storeLastChangeIdByPath != nil {
+		s.parent.storeLastChangeIdByPath = s.storeLastChangeIdByPath
 	}
 
 	if s.parent != nil && s.storeKeyRemoved != nil {
@@ -655,7 +656,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
 
-	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
+	log.Debugf("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
 
@@ -672,15 +673,11 @@ func (s *State) intermediateApply() {
 	if s.localDetails != nil {
 		s.parent.localDetails = s.localDetails
 	}
-	if s.aggregatedOptionsByRelation != nil {
-		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
-	}
+
 	if s.relationLinks != nil {
 		s.parent.relationLinks = s.relationLinks
 	}
-	if s.extraRelations != nil {
-		s.parent.extraRelations = s.extraRelations
-	}
+
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
 	}
@@ -689,6 +686,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.store != nil {
 		s.parent.store = s.store
+	}
+	if s.storeLastChangeIdByPath != nil {
+		s.parent.storeLastChangeIdByPath = s.storeLastChangeIdByPath
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
@@ -706,7 +706,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 			continue
 		}
 		if bytes.Equal(prev, curr) {
-			log.With("thread", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
+			log.With("objectID", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
 			continue
 		}
 		prev = curr
@@ -907,6 +907,32 @@ func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
 		}
 	}
 	return
+}
+
+func (s *State) setStoreChangeId(path string, changeId string) *State {
+	// do not copy map in purpose
+	// we don't need to make diffs with parent stat
+	s.storeLastChangeIdByPath = s.StoreLastChangeIdByPath()
+	if s.storeLastChangeIdByPath == nil {
+		s.storeLastChangeIdByPath = map[string]string{}
+	}
+	s.storeLastChangeIdByPath[path] = changeId
+	return s
+}
+
+func (s *State) StoreLastChangeIdByPath() map[string]string {
+	if s.storeLastChangeIdByPath == nil && s.parent != nil {
+		return s.parent.StoreLastChangeIdByPath()
+	}
+	return s.storeLastChangeIdByPath
+}
+
+func (s *State) StoreChangeIdForPath(path string) string {
+	m := s.StoreLastChangeIdByPath()
+	if m == nil {
+		return ""
+	}
+	return m[path]
 }
 
 func (s *State) SetObjectType(objectType string) *State {
@@ -1168,7 +1194,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 			return true
 		})
 		if err != nil {
-			log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 		}
 	}
 
@@ -1344,19 +1370,20 @@ func (s *State) Copy() *State {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
-		ctx:                  s.ctx,
-		blocks:               blocks,
-		rootId:               s.rootId,
-		details:              pbtypes.CopyStruct(s.Details()),
-		localDetails:         pbtypes.CopyStruct(s.LocalDetails()),
-		relationLinks:        s.GetRelationLinks(), // Get methods copy inside
-		extraRelations:       pbtypes.CopyRelations(s.OldExtraRelations()),
-		objectTypes:          objTypes,
-		objectTypesToMigrate: objTypesToMigrate,
-		noObjectType:         s.noObjectType,
-		migrationVersion:     s.migrationVersion,
-		store:                pbtypes.CopyStruct(s.Store()),
-		storeKeyRemoved:      storeKeyRemovedCopy,
+		ctx:                     s.ctx,
+		blocks:                  blocks,
+		rootId:                  s.rootId,
+		details:                 pbtypes.CopyStruct(s.Details()),
+		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
+		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
+		extraRelations:          pbtypes.CopyRelations(s.OldExtraRelations()),
+		objectTypes:             objTypes,
+		objectTypesToMigrate:    objTypesToMigrate,
+		noObjectType:            s.noObjectType,
+		migrationVersion:        s.migrationVersion,
+		store:                   pbtypes.CopyStruct(s.Store()),
+		storeLastChangeIdByPath: s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
+		storeKeyRemoved:         storeKeyRemovedCopy,
 	}
 	return copy
 }
@@ -1578,19 +1605,24 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 	if store.Fields == nil {
 		store.Fields = map[string]*types.Value{}
 	}
+
+	pathJoined := strings.Join(path, collectionKeysRemovedSeparator)
 	if value != nil {
 		oldval := store.Fields[path[len(path)-1]]
 		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
+		s.setStoreChangeId(pathJoined, s.changeId)
 		// in case we have previously removed this key
-		delete(s.storeKeyRemoved, strings.Join(path, collectionKeysRemovedSeparator))
+		delete(s.storeKeyRemoved, pathJoined)
 		return
 	}
 	changed = true
 	delete(store.Fields, path[len(path)-1])
+
 	// store all keys that were removed, so we explicitly know this and can make an additional handling
 	s.storeKeyRemoved[strings.Join(path, collectionKeysRemovedSeparator)] = struct{}{}
 	// cleaning empty structs from collection to avoid empty pb values
+	s.setStoreChangeId(pathJoined, s.changeId)
 	idx := len(path) - 2
 	for len(store.Fields) == 0 && idx >= 0 {
 		delete(storeStack[idx].Fields, path[idx])

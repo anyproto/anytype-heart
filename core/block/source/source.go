@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -103,7 +102,6 @@ type ObjectTreeProvider interface {
 type source struct {
 	objecttree.ObjectTree
 	id                   string
-	tid                  thread.ID
 	smartblockType       smartblock.SmartBlockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
@@ -212,7 +210,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	// TODO: add creator in profile
+	creator = s.coreService.PredefinedBlocks().Profile
 	return
 }
 
@@ -278,9 +276,6 @@ func (s *source) ListIds() (ids []string, err error) {
 		return
 	}
 	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
-		if s.coreService.PredefinedBlocks().IsAccount(id) {
-			return false
-		}
 		t, err := s.sbtProvider.Type(id)
 		if err != nil {
 			return false
@@ -438,8 +433,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			if startId == change.Id {
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
-					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot).(*state.State)
-					st.SetChangeId(startId)
+					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
 					return true
 				} else {
 					st = st.NewState()
@@ -453,8 +447,8 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			}
 			ns := st.NewState()
 			appliedContent = append(appliedContent, model.Content...)
-			ns.ApplyChangeIgnoreErr(model.Content...)
 			ns.SetChangeId(change.Id)
+			ns.ApplyChangeIgnoreErr(model.Content...)
 			ns.AddFileKeys(model.FileKeys...)
 			_, _, err = state.ApplyStateFastOne(ns)
 			if err != nil {

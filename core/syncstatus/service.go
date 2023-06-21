@@ -3,10 +3,10 @@ package syncstatus
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -44,10 +44,6 @@ type service struct {
 	objectWatcher      *objectWatcher
 	subObjectsWatcher  *subObjectsWatcher
 	linkedFilesWatcher *linkedFilesWatcher
-
-	isRunning bool
-
-	sync.Mutex
 }
 
 func New(
@@ -56,6 +52,7 @@ func New(
 	spaceService space.Service,
 	coreService core.Service,
 	fileSyncService filesync.FileSync,
+	nodeConfService nodeconf.Service,
 	fileStore filestore.FileStore,
 	picker getblock.Picker,
 	cfg *config.Config,
@@ -65,7 +62,7 @@ func New(
 	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, fileWatcherUpdateInterval)
 	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
 	subObjectsWatcher := newSubObjectsWatcher()
-	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, cfg, sendEvent)
+	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, nodeConfService, cfg, sendEvent)
 	fileWatcher := newFileWatcher(spaceService, dbProvider, fileStatusRegistry, updateReceiver, fileWatcherUpdateInterval)
 	objectWatcher := newObjectWatcher(spaceService, updateReceiver)
 	return &service{
@@ -80,13 +77,10 @@ func New(
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	return nil
+	return s.fileWatcher.init()
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.Lock()
-	defer s.Unlock()
-	s.isRunning = true
 
 	err = s.fileWatcher.run()
 	if err != nil {
@@ -106,21 +100,15 @@ func (s *service) Name() string {
 }
 
 func (s *service) Watch(id string, filesGetter func() []string) (new bool, err error) {
-	s.Lock()
-	defer s.Unlock()
 	return s.watch(id, filesGetter)
 }
 
 func (s *service) Unwatch(id string) {
-	s.Lock()
-	defer s.Unlock()
+
 	s.unwatch(id)
 }
 
 func (s *service) watch(id string, filesGetter func() []string) (new bool, err error) {
-	if !s.isRunning {
-		return false, nil
-	}
 	sbt, err := s.typeProvider.Type(id)
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
@@ -142,9 +130,6 @@ func (s *service) watch(id string, filesGetter func() []string) (new bool, err e
 }
 
 func (s *service) unwatch(id string) {
-	if !s.isRunning {
-		return
-	}
 	sbt, err := s.typeProvider.Type(id)
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
@@ -161,9 +146,6 @@ func (s *service) unwatch(id string) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
-	s.Lock()
-	defer s.Unlock()
-	s.isRunning = false
 	s.unwatch(s.coreService.PredefinedBlocks().Account)
 	s.fileWatcher.close()
 	s.linkedFilesWatcher.close()

@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // Importer incapsulate logic with import
@@ -32,25 +31,11 @@ type Importer interface {
 // Creator incapsulate logic with creation of given smartblocks
 type Creator interface {
 	//nolint:lll
-	Create(ctx *session.Context, sn *converter.Snapshot, relations []*converter.Relation, oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, existing bool) (*types.Struct, string, error)
+	Create(ctx *session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, filesIDs []string) (*types.Struct, string, error)
 }
 
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool) (string, bool, treestorage.TreeStorageCreatePayload, error)
-}
-
-// Updater is interface for updating existing objects
-type Updater interface {
-	//nolint: lll
-	Update(ctx *session.Context, cs *model.SmartBlockSnapshotBase, relations []*converter.Relation, pageID string) (*types.Struct, []string, error)
-}
-
-// RelationCreator incapsulates logic for creation of RelationsIDToFormat
-type RelationCreator interface {
-	//nolint: lll
-	ReplaceRelationBlock(ctx *session.Context, oldRelationBlocksToNew map[string]*model.Block, pageID string)
-	//nolint: lll
-	CreateRelations(ctx *session.Context, snapshot *model.SmartBlockSnapshotBase, pageID string, relations []*converter.Relation) ([]string, map[string]*model.Block, map[string]RelationsIDToFormat, error)
+	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool) (string, treestorage.TreeStorageCreatePayload, error)
 }

@@ -2,19 +2,21 @@ package localstore
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
-	badger "github.com/ipfs/go-ds-badger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	badger "github.com/textileio/go-ds-badger3"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 )
 
 func Test_AddIndex(t *testing.T) {
-	ds2, err := badger.NewDatastore(filepath.Join(os.TempDir(), "anytypetestds"), &badger.DefaultOptions)
+	tempDir, err := os.MkdirTemp(os.TempDir(), "anytypetestds*")
+	require.NoError(t, err)
+
+	ds2, err := badger.NewDatastore(tempDir, &badger.DefaultOptions)
 	require.NoError(t, err)
 
 	ds := noctxds.New(ds2)
@@ -83,6 +85,8 @@ func Test_AddIndex(t *testing.T) {
 
 	require.NoError(t, res.Error)
 	require.Equal(t, "/idx/items/slice/s1/primkey1", res.Key)
+	err = os.RemoveAll(tempDir)
+	require.NoError(t, err)
 }
 
 func TestCarveKeyParts(t *testing.T) {
@@ -125,7 +129,7 @@ func TestCarveKeyParts(t *testing.T) {
 }
 
 func Test_RunLargeOperationWithRetries(t *testing.T) {
-	tempDir, err := ioutil.TempDir(os.TempDir(), "anytypetestds*")
+	tempDir, err := os.MkdirTemp(os.TempDir(), "anytypetestds*")
 	require.NoError(t, err)
 
 	ds2, err := badger.NewDatastore(tempDir, &badger.DefaultOptions)

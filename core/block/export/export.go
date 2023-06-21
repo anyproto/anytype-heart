@@ -90,7 +90,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived)
+	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
 	if err != nil {
 		return
 	}
@@ -136,38 +136,47 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		for docId := range docs {
 			did := docId
 			if err = queue.Wait(func() {
-				log.With("threadId", did).Debugf("write doc")
+				log.With("objectID", did).Debugf("write doc")
 				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
-					log.With("threadId", did).Warnf("can't export doc: %v", werr)
+					log.With("objectID", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
 				}
 			}); err != nil {
 				e.cleanupFile(wr)
-				succeed = 0
-				return
+				return "", 0, nil
 			}
 		}
 	}
 	queue.SetMessage("export files")
 	if err = queue.Finalize(); err != nil {
 		e.cleanupFile(wr)
-		succeed = 0
-		return
+		return "", 0, nil
 	}
 	wr.Close()
+	if req.Zip {
+		return e.renameZipArchive(req, wr, succeed)
+	}
+	return wr.Path(), succeed, nil
+}
+
+func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, wr writer, succeed int) (string, int, error) {
 	zipName := getZipName(req.Path)
-	err = os.Rename(wr.Path(), zipName)
+	err := os.Rename(wr.Path(), zipName)
 	if err != nil {
 		os.Remove(wr.Path())
-		return
+		return "", 0, nil
 	}
 	return zipName, succeed, nil
 }
 
-func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool) (docs map[string]*types.Struct, err error) {
+func isProtobufExport(format pb.RpcObjectListExportFormat) bool {
+	return format == pb.RpcObjectListExport_Protobuf
+}
+
+func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, isProtobuf bool) (docs map[string]*types.Struct, err error) {
 	if len(reqIds) == 0 {
-		return e.getExistedObjects(includeArchived)
+		return e.getExistedObjects(includeArchived, isProtobuf)
 	}
 
 	if len(reqIds) > 0 {
@@ -177,9 +186,8 @@ func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchi
 }
 
 func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
-	var res []*model.ObjectInfo
 	docs := make(map[string]*types.Struct)
-	res, _, err := e.objectStore.QueryObjectInfo(database.Query{
+	res, _, err := e.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -197,14 +205,15 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 				Value:       pbtypes.Bool(false),
 			},
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
 	ids := make([]string, 0, len(res))
 	for _, r := range res {
-		docs[r.Id] = r.Details
-		ids = append(ids, r.Id)
+		id := pbtypes.GetString(r.Details, bundle.RelationKeyId.String())
+		docs[id] = r.Details
+		ids = append(ids, id)
 	}
 	if includeNested {
 		for _, id := range ids {
@@ -215,7 +224,7 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 }
 
 func (e *export) getNested(id string, docs map[string]*types.Struct) {
-	links, err := e.objectStore.GetOutboundLinksById(id)
+	links, err := e.objectStore.GetOutboundLinksByID(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err.Error())
 		return
@@ -230,7 +239,7 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 			if !validType(sbt) {
 				continue
 			}
-			rec, qErr := e.objectStore.QueryById(links)
+			rec, qErr := e.objectStore.QueryByID([]string{link})
 			if qErr != nil {
 				log.Errorf("failed to query id %s, err: %s", qErr, err.Error())
 				continue
@@ -243,14 +252,14 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 }
 
-func (e *export) getExistedObjects(includeArchived bool) (map[string]*types.Struct, error) {
+func (e *export) getExistedObjects(includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
 	res, err := e.objectStore.List()
 	if err != nil {
 		return nil, err
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, info := range res {
-		if !e.objectValid(info.Id, info, includeArchived) {
+		if !e.objectValid(info.Id, info, includeArchived, isProtobuf) {
 			continue
 		}
 		objectDetails[info.Id] = info.Details
@@ -265,12 +274,12 @@ func (e *export) getExistedObjects(includeArchived bool) (map[string]*types.Stru
 func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
-			log.With("threadId", did).Debugf("write doc")
+			log.With("objectID", did).Debugf("write doc")
 			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
 				return mw.Add(b.NewState().Copy())
 			})
 			if err != nil {
-				log.With("threadId", did).Warnf("can't export doc: %v", werr)
+				log.With("objectID", did).Warnf("can't export doc: %v", werr)
 			} else {
 				succeed++
 			}
@@ -431,11 +440,14 @@ func (e *export) createProfileFile(wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool) bool {
+func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
 	if r.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !validType(smartblock.SmartBlockType(r.ObjectType)) {
+	if !isProtobuf && !validTypeForNonProtobuf(smartblock.SmartBlockType(r.ObjectType)) {
+		return false
+	}
+	if isProtobuf && !validType(smartblock.SmartBlockType(r.ObjectType)) {
 		return false
 	}
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
@@ -496,6 +508,11 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget
+}
+
+func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
+	return sbType == smartblock.SmartBlockTypeProfilePage ||
+		sbType == smartblock.SmartBlockTypePage
 }
 
 func (e *export) cleanupFile(wr writer) {

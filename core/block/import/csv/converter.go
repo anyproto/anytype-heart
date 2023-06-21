@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -22,7 +21,6 @@ const (
 type Result struct {
 	objectIDs []string
 	snapshots []*converter.Snapshot
-	relations map[string][]*converter.Relation
 }
 
 func (r *Result) Merge(r2 *Result) {
@@ -31,7 +29,6 @@ func (r *Result) Merge(r2 *Result) {
 	}
 	r.objectIDs = append(r.objectIDs, r2.objectIDs...)
 	r.snapshots = append(r.snapshots, r2.snapshots...)
-	r.relations = mergeRelationsMaps(r.relations, r2.relations)
 }
 
 type CSV struct {
@@ -61,7 +58,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	result, cancelError := c.CreateObjectsFromCSVFiles(req, progress, params, cErr)
+	result, cancelError := c.createObjectsFromCSVFiles(req, progress, params, cErr)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -81,19 +78,13 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}
 	progress.SetTotal(int64(len(result.objectIDs)))
 	if cErr.IsEmpty() {
-		return &converter.Response{
-			Snapshots: result.snapshots,
-			Relations: result.relations,
-		}, nil
+		return &converter.Response{Snapshots: result.snapshots}, nil
 	}
 
-	return &converter.Response{
-		Snapshots: result.snapshots,
-		Relations: result.relations,
-	}, cErr
+	return &converter.Response{Snapshots: result.snapshots}, cErr
 }
 
-func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
+func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
 	cErr converter.ConvertError) (*Result, converter.ConvertError) {
@@ -102,8 +93,7 @@ func (c *CSV) CreateObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	result := &Result{}
 	for _, p := range params.GetPath() {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(p, err)
-			return nil, cancelError
+			return nil, converter.NewCancelError(p, err)
 		}
 		pathResult := c.handlePath(req, p, cErr, str)
 		if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -142,7 +132,6 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 	p string,
 	cErr converter.ConvertError) *Result {
 	allSnapshots := make([]*converter.Snapshot, 0)
-	allRelations := make(map[string][]*converter.Relation, 0)
 	allObjectsIDs := make([]string, 0)
 	for _, rc := range readers {
 		csvTable, err := c.getCSVTable(rc, params.GetDelimiter())
@@ -156,7 +145,7 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 		if c.needToTranspose(params) && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		objectsIDs, snapshots, relations, err := str.CreateObjects(p, csvTable)
+		objectsIDs, snapshots, err := str.CreateObjects(p, csvTable)
 		if err != nil {
 			cErr.Add(p, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -166,14 +155,15 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 		}
 		allObjectsIDs = append(allObjectsIDs, objectsIDs...)
 		allSnapshots = append(allSnapshots, snapshots...)
-		allRelations = mergeRelationsMaps(allRelations, relations)
 	}
-	return &Result{objectIDs: allObjectsIDs, snapshots: allSnapshots, relations: allRelations}
+	return &Result{objectIDs: allObjectsIDs, snapshots: allSnapshots}
 }
 
 func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error) {
 	defer rc.Close()
 	csvReader := csv.NewReader(rc)
+	csvReader.LazyQuotes = true
+	csvReader.ReuseRecord = true
 	if delimiter != "" {
 		characters := []rune(delimiter)
 		csvReader.Comma = characters[0]
@@ -210,37 +200,4 @@ func transpose(csvTable [][]string) [][]string {
 		}
 	}
 	return result
-}
-
-func getDetailsFromCSVTable(csvTable [][]string) []*converter.Relation {
-	if len(csvTable) == 0 {
-		return nil
-	}
-	relations := make([]*converter.Relation, 0, len(csvTable[0]))
-	allRelations := csvTable[0]
-	for _, relation := range allRelations {
-		relations = append(relations, &converter.Relation{
-			Relation: &model.Relation{
-				Format: model.RelationFormat_longtext,
-				Name:   relation,
-			},
-		})
-	}
-	return relations
-}
-
-func mergeRelationsMaps(rel1 map[string][]*converter.Relation, rel2 map[string][]*converter.Relation) map[string][]*converter.Relation {
-	if rel1 != nil {
-		for id, relations := range rel2 {
-			rel1[id] = relations
-		}
-		return rel1
-	}
-	if rel2 != nil {
-		for id, relations := range rel1 {
-			rel2[id] = relations
-		}
-		return rel2
-	}
-	return map[string][]*converter.Relation{}
 }

@@ -21,14 +21,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (
 	emojiAproxRegexp = regexp.MustCompile(`[\x{2194}-\x{329F}\x{1F000}-\x{1FADF}]`)
-
-	log          = logging.Logger("markdown-import")
-	articleIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔", "📒", "📝", "📄", "📑"}
+	log              = logging.Logger("markdown-import")
 )
 
 const numberOfStages = 9 // 8 cycles to get snaphots and 1 cycle to create objects
@@ -125,7 +122,7 @@ func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process
 	}
 
 	if len(files) == 0 {
-		allErrors.Add(path, fmt.Errorf("couldn't found md files"))
+		allErrors.Add(path, converter.ErrNoObjectsToImport)
 		return nil, nil
 	}
 	progress.SetTotal(int64(numberOfStages * len(files)))
@@ -303,8 +300,7 @@ func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.
 	progress.SetProgressMessage("Start linking database file with pages")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return cancellError
+			return converter.NewCancelError(name, err)
 		}
 
 		if !file.IsRootFile || !strings.EqualFold(filepath.Ext(name), ".csv") {
@@ -330,8 +326,7 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo,
 	progress.SetProgressMessage("Start linking database with pages")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(name, err)
-			return cancelError
+			return converter.NewCancelError(name, err)
 		}
 
 		if file.IsRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
@@ -369,8 +364,7 @@ func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Pr
 	progress.SetProgressMessage("Start creating link blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(name, err)
-			return cancelError
+			return converter.NewCancelError(name, err)
 		}
 
 		if file.PageID == "" {
@@ -403,8 +397,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 	progress.SetProgressMessage("Start creating snapshots")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return nil, cancellError
+			return nil, converter.NewCancelError(name, err)
 		}
 
 		if file.PageID == "" {
@@ -433,8 +426,7 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo,
 	progress.SetProgressMessage("Start creating root blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(name, err)
-			return cancelError
+			return converter.NewCancelError(name, err)
 		}
 
 		if file.PageID == "" {
@@ -466,8 +458,7 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo,
 	progress.SetProgressMessage("Start linking blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(name, err)
-			return cancelError
+			return converter.NewCancelError(name, err)
 		}
 
 		if file.PageID == "" {
@@ -523,8 +514,7 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
 	childBlocks := make([]string, 0)
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancellError := converter.NewFromError(name, err)
-			return nil, cancellError
+			return nil, converter.NewCancelError(name, err)
 		}
 
 		if file.PageID == "" {
@@ -551,8 +541,7 @@ func (m *Markdown) setNewID(
 	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
-			cancelError := converter.NewFromError(name, err)
-			return cancelError
+			return converter.NewCancelError(name, err)
 		}
 
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
@@ -565,30 +554,13 @@ func (m *Markdown) setNewID(
 	return nil
 }
 
-func (m *Markdown) setDetails(file *FileInfo, name string, details map[string]*types.Struct) {
+func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[string]*types.Struct) {
 	var title, emoji string
 	if len(file.ParsedBlocks) > 0 {
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
-
-	if emoji == "" {
-		emoji = slice.GetRandomString(articleIcons, name)
-	}
-
-	if title == "" {
-		title = strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
-		titleParts := strings.Split(title, " ")
-		title = strings.Join(titleParts[:len(titleParts)-1], " ")
-	}
-
-	file.Title = title
-	// FIELD-BLOCK
-	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():           pbtypes.String(title),
-		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
-		bundle.RelationKeySourceFilePath.String(): pbtypes.String(file.Source),
-	}
-	details[name] = &types.Struct{Fields: fields}
+	details[fileName] = converter.GetCommonDetails(fileName, title, emoji)
+	file.Title = pbtypes.GetString(details[fileName], bundle.RelationKeyName.String())
 }
 
 func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string) {

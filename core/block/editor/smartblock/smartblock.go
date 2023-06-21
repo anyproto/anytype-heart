@@ -180,7 +180,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx context.Context, info DocInfo) error
+	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -406,7 +406,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	sb.setDependentIDs(depIDs)
 
 	var records []database.Record
-	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub)
+	records, sb.closeRecordsSub, err = sb.objectStore.QueryByIDAndSubscribeForChanges(sb.depIds, sb.recordsSub)
 	if err != nil {
 		// datastore unavailable, cancel the subscription
 		sb.recordsSub.Close()
@@ -442,7 +442,11 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
-	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
+	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
+	if err != nil {
+		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
+		err = nil
+	}
 	go sb.metaListener(recordsCh)
 	return
 }
@@ -482,7 +486,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
 			if len(diff.GetFields()) > 0 {
-				log.With("thread", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
+				log.With("objectID", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
 			}
 		}
 
@@ -517,11 +521,9 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 	return sb.Doc.(*state.State).DepSmartIds(true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
-func (sb *smartBlock) navigationalLinks() []string {
+func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 	includeDetails := true
 	includeRelations := sb.includeRelationObjectsAsDependents
-
-	s := sb.Doc.(*state.State)
 
 	var ids []string
 
@@ -552,7 +554,7 @@ func (sb *smartBlock) navigationalLinks() []string {
 		return true
 	})
 	if err != nil {
-		log.With("thread", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 	}
 
 	var det *types.Struct
@@ -644,7 +646,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return nil
 		}
 	}
-	if checkRestrictions {
+	if checkRestrictions && s.ParentState() != nil {
 		if err = s.ParentState().CheckRestrictions(); err != nil {
 			return
 		}
@@ -660,9 +662,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
 		}
 	}
-	if err = sb.onApply(s); err != nil {
-		return
-	}
+	sb.onApply(s)
 	if sb.coreService != nil {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedBlocks().Profile)
@@ -685,13 +685,17 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
-			sb.runIndexer(st)
+			// means we have only local details changed, so lets index but skip full text
+			sb.runIndexer(st, SkipFullTextIfHeadsNotChanged)
+		} else {
+			// we may skip indexing in case we are sure that we have previously indexed the same version of object
+			sb.runIndexer(st, SkipIfHeadsNotChanged)
 		}
 		return nil
 	}
 	pushChange := func() error {
 		fileDetailsKeys := sb.FileRelationKeys(st)
-		fileDetailsKeysFiltered := fileDetailsKeys[:0]
+		var fileDetailsKeysFiltered []string
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
 				if slice.FindPos(fileDetailsKeys, ds.Key) != -1 {
@@ -739,11 +743,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if changeId != "" || hasDetailsMsgs(msgs) {
-		// if changeId is empty, it means that we didn't push any changes to the source
-		// but we can also have some local details changes, so check the events
+	if changeId == "" && len(msgs) == 0 {
+		// means we probably don't have any actual change being made
+		// in case the heads are not changed, we may skip indexing
+		sb.runIndexer(st, SkipIfHeadsNotChanged)
+	} else {
 		sb.runIndexer(st)
 	}
+
 	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -763,7 +770,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	afterReportChangeTime := time.Now()
 	if hooks {
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
-			log.With("thread", sb.Id()).Warnf("after apply execHooks error: %v", e)
+			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
 	}
 	afterApplyHookTime := time.Now()
@@ -804,7 +811,7 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 		return true
 	}
 	newIDs := sb.recordsSub.Subscribe(sb.depIds)
-	records, err := sb.objectStore.QueryById(newIDs)
+	records, err := sb.objectStore.QueryByID(newIDs)
 	if err != nil {
 		log.Errorf("queryById error: %v", err)
 	}
@@ -876,7 +883,23 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	return
 }
 
+func (sb *smartBlock) injectLinksDetails(s *state.State) {
+	links := sb.navigationalLinks(s)
+	links = slice.Remove(links, sb.Id())
+	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
+	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
+}
+
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
+		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		if wsId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		} else {
+			log.With("objectID", sb.Id()).Errorf("injectLocalDetails empty workspace: %v", err)
+		}
+	}
+
 	if sb.objectStore == nil {
 		return nil
 	}
@@ -885,15 +908,18 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
+	var hasPendingLocalDetails bool
 	// Consume pending details
 	err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+		if len(pending.GetFields()) > 0 {
+			hasPendingLocalDetails = true
+		}
 		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pending, false)
 		return nil, nil
 	})
 	if err != nil {
-		log.With("thread", sb.Id()).
-			With("sbType", sb.Type()).
-			Errorf("failed to update pending details: %v", err)
+		log.With("objectID", sb.Id()).
+			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
 	}
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
@@ -906,29 +932,30 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	s.InjectLocalDetails(storedLocalScopeDetails)
-	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
-		return nil
+	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
+		// inject for both current and parent state
+		p.InjectLocalDetails(storedLocalScopeDetails)
+	}
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) == "" || pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) == 0 {
+		provider, conforms := sb.source.(source.CreationInfoProvider)
+		if !conforms {
+			return nil
+		}
+
+		creator, createdDate, err := provider.GetCreationInfo()
+		if err != nil {
+			return err
+		}
+
+		if creator != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+		}
+
+		if createdDate != 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+		}
 	}
 
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		return nil
-	}
-
-	creator, createdDate, err := provider.GetCreationInfo()
-	if err != nil {
-		return err
-	}
-
-	if creator != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
-	}
-
-	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
-	if wsId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
-	}
 	return nil
 }
 
@@ -999,6 +1026,10 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 		return ErrIsDeleted
 	}
 	d.(*state.State).InjectDerivedDetails()
+	err = sb.injectLocalDetails(d.(*state.State))
+	if err != nil {
+		log.Errorf("failed to inject local details in StateRebuild: %v", err)
+	}
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
@@ -1216,29 +1247,37 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
-	links := sb.navigationalLinks()
-	links = slice.Remove(links, sb.Id())
+	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
+	// todo: heads in source and the state may be inconsistent?
+	heads := sb.source.Heads()
+	if len(heads) == 0 {
+		lastChangeId := pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyLastChangeId.String())
+		if lastChangeId != "" {
+			heads = []string{lastChangeId}
+		}
+	}
 	return DocInfo{
 		Id:         sb.Id(),
 		Links:      links,
-		Heads:      sb.source.Heads(),
+		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
 		State:      st.Copy(),
 	}
 }
 
-func (sb *smartBlock) runIndexer(s *state.State) {
+func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
-	if err := sb.indexer.Index(context.TODO(), docInfo); err != nil {
+
+	if err := sb.indexer.Index(context.TODO(), docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
 }
 
-func (sb *smartBlock) onApply(s *state.State) (err error) {
+func (sb *smartBlock) onApply(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
 	// Run empty check only if any of these flags are present
@@ -1254,7 +1293,7 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 	}
 
 	sb.setRestrictionsDetail(s)
-	return
+	sb.injectLinksDetails(s)
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
@@ -1302,4 +1341,19 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 		}
 	}
 	return false
+}
+
+type IndexOptions struct {
+	SkipIfHeadsNotChanged         bool
+	SkipFullTextIfHeadsNotChanged bool
+}
+
+type IndexOption func(*IndexOptions)
+
+func SkipIfHeadsNotChanged(o *IndexOptions) {
+	o.SkipIfHeadsNotChanged = true
+}
+
+func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
+	o.SkipFullTextIfHeadsNotChanged = true
 }

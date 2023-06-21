@@ -35,8 +35,9 @@ type Middleware struct {
 	accountSearchCancel context.CancelFunc
 	EventSender         event.Sender
 
-	sessions session.Service
-	app      *app.App
+	sessions          session.Service
+	clientWithVersion string
+	app               *app.App
 
 	m sync.RWMutex
 }
@@ -178,4 +179,10 @@ func (mw *Middleware) OnPanic(v interface{}) {
 	stack := debug.Stack()
 	os.Stderr.Write(stack)
 	log.With("stack", stack).Errorf("panic recovered: %v", v)
+}
+
+func (mw *Middleware) requireClientWithVersion() {
+	if mw.clientWithVersion == "" {
+		panic(errors.New("client platform with the version must be set using the MetricsSetParameters method"))
+	}
 }

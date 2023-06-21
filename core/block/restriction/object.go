@@ -2,12 +2,14 @@ package restriction
 
 import (
 	"fmt"
-	"github.com/samber/lo"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 )
 
 var (
@@ -87,7 +89,12 @@ var (
 	}
 
 	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
-		model.SmartBlockType_ProfilePage:    {model.Restrictions_LayoutChange, model.Restrictions_TypeChange, model.Restrictions_Delete},
+		model.SmartBlockType_ProfilePage: {
+			model.Restrictions_LayoutChange,
+			model.Restrictions_TypeChange,
+			model.Restrictions_Delete,
+			model.Restrictions_Duplicate,
+		},
 		model.SmartBlockType_AnytypeProfile: objRestrictAll,
 		model.SmartBlockType_Home: {
 			model.Restrictions_Details,
@@ -129,6 +136,7 @@ var (
 			model.Restrictions_Duplicate,
 		},
 		model.SmartBlockType_MissingObject: objRestrictAll,
+		model.SmartBlockType_Date:          objRestrictAll,
 	}
 )
 
@@ -163,15 +171,22 @@ func (or ObjectRestrictions) Copy() ObjectRestrictions {
 	return obj
 }
 
-func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
+func (or ObjectRestrictions) ToPB() *types.Value {
+	var ints = make([]int, len(or))
+	for i, v := range or {
+		ints[i] = int(v)
+	}
+	return pbtypes.IntList(ints...)
+}
 
+func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
 	layout, hasLayout := rh.Layout()
 	if hasLayout {
 		switch layout {
-		case model.ObjectType_objectType:
-			return s.getObjectRestrictionsForObjectType(rh.Id())
-		case model.ObjectType_relation:
-			return s.getObjectRestrictionsForRelation(rh.Id())
+		case model.ObjectType_objectType, model.ObjectType_relation:
+			if rh.Type() == model.SmartBlockType_SubObject {
+				return GetRestrictionsForSubobject(rh.Id())
+			}
 		}
 	}
 
@@ -185,29 +200,27 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 			return
 		}
 	}
-	l, has := rh.Layout()
-	log.Warnf("restrctions not found for object: id='%s' type='%v' layout='%v'(%v); fallback to empty", rh.Id(), rh.Type(), l, has)
+
 	return ObjectRestrictions{}
 }
 
-func (s *service) getObjectRestrictionsForObjectType(id string) (r ObjectRestrictions) {
+func GetRestrictionsForSubobject(id string) (r ObjectRestrictions) {
 	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
-	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
-		return objRestrictAll
+	sep := addr.SubObjectCollectionIdSeparator
+	parts := strings.Split(id, sep)
+	if len(parts) != 2 {
+		// options
+		return r
 	}
-	if !lo.Contains(bundle.SystemTypes, bundle.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))) {
-		return
+	switch parts[0] + sep {
+	case addr.ObjectTypeKeyToIdPrefix:
+		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(parts[1])) {
+			return sysTypesRestrictions
+		}
+	case addr.RelationKeyToIdPrefix:
+		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(parts[1])) {
+			return sysRelationsRestrictions
+		}
 	}
-	return sysTypesRestrictions
-}
-
-func (s *service) getObjectRestrictionsForRelation(id string) (r ObjectRestrictions) {
-	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
-	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
-		return objRestrictAll
-	}
-	if !lo.Contains(bundle.SystemRelations, bundle.RelationKey(strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))) {
-		return
-	}
-	return sysRelationsRestrictions
+	return
 }

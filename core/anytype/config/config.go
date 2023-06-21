@@ -7,12 +7,15 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace"
+	//nolint:misspell
+	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
-	commonnet "github.com/anyproto/any-sync/net"
+	"github.com/anyproto/any-sync/net/rpc"
+	"github.com/anyproto/any-sync/net/rpc/debugserver"
+	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/kelseyhightower/envconfig"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -50,13 +53,9 @@ type Config struct {
 	DebugAddr       string
 	LocalServerAddr string
 
-	InviteServerURL       string
-	InviteServerPublicKey string
-
 	DS                     clientds.Config
 	FS                     FSConfig
 	DisableFileConfig      bool `ignored:"true"` // set in order to skip reading/writing config from/to file
-	CreateBuiltinObjects   bool
 	CreateBuiltinTemplates bool
 }
 
@@ -65,7 +64,7 @@ type FSConfig struct {
 }
 
 type DebugAPIConfig struct {
-	commonnet.Config
+	debugserver.Config
 	IsEnabled bool
 }
 
@@ -76,10 +75,8 @@ const (
 var DefaultConfig = Config{
 	Offline: false,
 
-	LocalServerAddr:       ":0",
-	DS:                    clientds.DefaultConfig,
-	InviteServerPublicKey: "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw",
-	InviteServerURL:       "https://cafe1.anytype.io",
+	LocalServerAddr: ":0",
+	DS:              clientds.DefaultConfig,
 }
 
 func WithNewAccount(isNewAccount bool) func(*Config) {
@@ -103,12 +100,8 @@ func WithLocalServer(addr string) func(*Config) {
 	}
 }
 
-func WithCreateBuiltinObjects(createBuiltinObjects bool) func(*Config) {
-	return func(c *Config) {
-		c.CreateBuiltinObjects = createBuiltinObjects
-	}
-}
-
+// WithCreateBuiltinTemplates flag had wrong meaning and is no longer used
+// deprecated
 func WithCreateBuiltinTemplates(createBuiltinTemplates bool) func(*Config) {
 	return func(c *Config) {
 		c.CreateBuiltinTemplates = createBuiltinTemplates
@@ -255,8 +248,8 @@ func getRandomPort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-func (c *Config) GetSpace() commonspace.Config {
-	return commonspace.Config{
+func (c *Config) GetSpace() config.Config {
+	return config.Config{
 		GCTTL:                60,
 		SyncPeriod:           20,
 		KeepTreeDataInMemory: true,
@@ -267,31 +260,22 @@ func (c *Config) GetMetric() metric.Config {
 	return metric.Config{}
 }
 
-func (c *Config) GetNet() commonnet.Config {
-	return commonnet.Config{
-		Server: commonnet.ServerConfig{
-			ListenAddrs: []string{c.LocalServerAddr},
-		},
-		Stream: commonnet.StreamConfig{
-			TimeoutMilliseconds: 1000,
-			MaxMsgSizeMb:        256,
+func (c *Config) GetDrpc() rpc.Config {
+	return rpc.Config{
+		Stream: rpc.StreamConfig{
+			MaxMsgSizeMb: 256,
 		},
 	}
 }
 
 func (c *Config) GetDebugAPIConfig() DebugAPIConfig {
 	return DebugAPIConfig{
-		Config: commonnet.Config{
-			Server: commonnet.ServerConfig{
-				ListenAddrs: []string{c.DebugAddr},
-			},
-			Stream: commonnet.StreamConfig{
-				TimeoutMilliseconds: 1000,
-				MaxMsgSizeMb:        256,
-			},
-		},
 		IsEnabled: len(c.DebugAddr) != 0,
 	}
+}
+
+func (c *Config) GetDebugServer() debugserver.Config {
+	return debugserver.Config{ListenAddr: c.DebugAddr}
 }
 
 func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
@@ -303,4 +287,12 @@ func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
 
 func (c *Config) GetNodeConfStorePath() string {
 	return filepath.Join(c.RepoPath, "nodeconf")
+}
+
+func (c *Config) GetYamux() yamux.Config {
+	return yamux.Config{
+		ListenAddrs:     []string{},
+		WriteTimeoutSec: 10,
+		DialTimeoutSec:  10,
+	}
 }
