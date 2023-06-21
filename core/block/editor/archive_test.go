@@ -32,9 +32,7 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 	if err := a.Init(initCtx); err != nil {
 		return nil, err
 	}
-	if err := migration.RunMigrations(a, initCtx); err != nil {
-		return nil, err
-	}
+	migration.RunMigrations(a, initCtx)
 	if err := a.Apply(initCtx.State); err != nil {
 		return nil, err
 	}
