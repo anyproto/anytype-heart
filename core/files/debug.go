@@ -6,13 +6,20 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
 func (s *service) runDebugServer() {
 	if port, ok := os.LookupEnv("ANYDEBUG"); ok && port != "" {
 		go func() {
-			err := http.ListenAndServe(port, s)
+			r := chi.NewRouter()
+			r.Route("/debug/files", func(r chi.Router) {
+				r.Get("/syncstatus", jsonHandler(s.debugFiles))
+				r.Get("/queue", jsonHandler(s.fileSync.DebugQueue))
+			})
+			err := http.ListenAndServe(port, r)
 			if err != nil {
 				log.Errorf("debug server: %s", err)
 			}
@@ -20,37 +27,28 @@ func (s *service) runDebugServer() {
 	}
 }
 
-type errorResponse struct {
-	Error string `json:"error"`
-}
+func jsonHandler[T any](handlerFunc func(req *http.Request) (T, error)) http.HandlerFunc {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
 
-func (s *service) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	rw.Header().Set("Content-Type", "application/json")
-
-	data, err := s.serveHTTP(req)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		err := json.NewEncoder(rw).Encode(errorResponse{Error: err.Error()})
+		data, err := handlerFunc(req)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			err := json.NewEncoder(rw).Encode(errorResponse{Error: err.Error()})
+			if err != nil {
+				log.Errorf("encode debug response for path %s error: %s", req.URL.Path, err)
+			}
+			return
+		}
+		err = json.NewEncoder(rw).Encode(data)
 		if err != nil {
 			log.Errorf("encode debug response for path %s error: %s", req.URL.Path, err)
 		}
-		return
-	}
-	err = json.NewEncoder(rw).Encode(data)
-	if err != nil {
-		log.Errorf("encode debug response for path %s error: %s", req.URL.Path, err)
 	}
 }
 
-func (s *service) serveHTTP(req *http.Request) (interface{}, error) {
-	switch req.URL.Path {
-	case "/debug/files/syncstatus":
-		return s.debugFiles()
-	case "/debug/files/queue":
-		return s.fileSync.DebugQueue()
-	default:
-		return nil, fmt.Errorf("unknown path %s", req.URL.Path)
-	}
+type errorResponse struct {
+	Error string `json:"error"`
 }
 
 type fileDebugInfo struct {
@@ -58,7 +56,7 @@ type fileDebugInfo struct {
 	SyncStatus int
 }
 
-func (s *service) debugFiles() ([]*fileDebugInfo, error) {
+func (s *service) debugFiles(_ *http.Request) ([]*fileDebugInfo, error) {
 	hashes, err := s.fileStore.ListTargets()
 	if err != nil {
 		return nil, fmt.Errorf("list targets: %s", err)

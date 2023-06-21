@@ -3,6 +3,7 @@ package filesync
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/ipfs/go-cid"
@@ -175,7 +176,7 @@ func (f *fileSync) FetchChunksCount(ctx context.Context, node ipld.Node) (int, e
 	return count, err
 }
 
-func (f *fileSync) DebugQueue() (*QueueInfo, error) {
+func (f *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
 	var (
 		info QueueInfo
 		err  error

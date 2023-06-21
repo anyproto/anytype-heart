@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"sync"
 	"time"
 
@@ -39,7 +40,7 @@ type FileSync interface {
 	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
 	HasUpload(spaceId, fileId string) (ok bool, err error)
 	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
-	DebugQueue() (*QueueInfo, error)
+	DebugQueue(*http.Request) (*QueueInfo, error)
 	app.ComponentRunnable
 }
 
