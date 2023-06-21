@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/anyproto/anytype-heart/metrics/clickhouse"
 	"io"
 	"os"
 	"path/filepath"
@@ -328,6 +329,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		}
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
+	getService[clickhouse.Service](mw).AddEvent(clickhouse.TimeSeriesEvent("account_select_failed", 1))
 
 	acc := &model.Account{Id: req.Id}
 	acc.Info = mw.getInfo(mw.app.MustComponent(block.CName).(*block.Service))

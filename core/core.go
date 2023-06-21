@@ -117,9 +117,9 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 }
 
 func getService[T any](mw *Middleware) T {
-	mw.m.RLock()
+	//mw.m.RLock()
 	a := mw.app
-	mw.m.RUnlock()
+	//mw.m.RUnlock()
 	requireApp(a)
 	return app.MustComponent[T](a)
 }

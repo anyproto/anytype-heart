@@ -2,6 +2,7 @@ package anytype
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/metrics/clickhouse"
 	"os"
 	"regexp"
 	"time"
@@ -212,7 +213,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectCreator).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
-		Register(graphRenderer)
+		Register(graphRenderer).
+		Register(clickhouse.New())
 	return
 }
 
