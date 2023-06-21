@@ -20,7 +20,7 @@ func (s *dsObjectStore) removeFromIndexQueue(id string) error {
 func (s *dsObjectStore) ListIDsFromFullTextQueue() ([]string, error) {
 	var ids []string
 	err := iterateKeysByPrefix(s.db, indexQueueBase.Bytes(), func(key []byte) {
-		ids = append(ids, extractIdFromKey(string(key)))
+		ids = append(ids, extractIDFromKey(string(key)))
 	})
 	return ids, err
 }

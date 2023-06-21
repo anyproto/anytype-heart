@@ -5,7 +5,6 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/huandu/skiplist"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -66,31 +65,6 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 		records = append(records, it.Key().(database.Record))
 	}
 
-	return records, nil
-}
-
-func (s *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		iterator := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer iterator.Close()
-
-		for iterator.Rewind(); iterator.Valid(); iterator.Next() {
-			it := iterator.Item()
-			details, err := s.extractDetailsFromItem(it)
-			if err != nil {
-				return err
-			}
-
-			if lo.Contains(ids, pbtypes.GetString(details.Details, bundle.RelationKeyId.String())) {
-				rec := database.Record{Details: details.Details}
-				records = append(records, rec)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
 	return records, nil
 }
 

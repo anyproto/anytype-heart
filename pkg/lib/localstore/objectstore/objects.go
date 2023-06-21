@@ -70,14 +70,14 @@ func NewWithLocalstore() ObjectStore {
 	return &dsObjectStore{}
 }
 
-type SourceDetailsFromId interface {
+type SourceDetailsFromID interface {
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
 	src := a.Component("source")
 	if src != nil {
-		s.sourceService = a.MustComponent("source").(SourceDetailsFromId)
+		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
 	}
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
@@ -107,6 +107,7 @@ func (s *dsObjectStore) Name() (name string) {
 	return CName
 }
 
+// nolint: interfacebloat
 type ObjectStore interface {
 	app.ComponentRunnable
 	IndexerStore
@@ -176,7 +177,7 @@ var ErrNotAnObject = fmt.Errorf("not an object")
 
 type dsObjectStore struct {
 	// underlying storage
-	sourceService SourceDetailsFromId
+	sourceService SourceDetailsFromID
 
 	cache *ristretto.Cache
 	db    *badger.DB
@@ -188,8 +189,7 @@ type dsObjectStore struct {
 
 	onChangeCallback func(record database.Record)
 
-	subscriptions    []database.Subscription
-	depSubscriptions []database.Subscription
+	subscriptions []database.Subscription
 
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
@@ -480,9 +480,8 @@ func (s *dsObjectStore) extractDetailsFromItem(it *badger.Item) (*model.ObjectDe
 	key := it.Key()
 	if v, ok := s.cache.Get(key); ok {
 		return v.(*model.ObjectDetails), nil
-	} else {
-		return s.unmarshalDetailsFromItem(it)
 	}
+	return s.unmarshalDetailsFromItem(it)
 }
 
 func (s *dsObjectStore) unmarshalDetailsFromItem(it *badger.Item) (*model.ObjectDetails, error) {
@@ -538,14 +537,13 @@ func (o order) Compare(lhs, rhs interface{}) (comp int) {
 	if comp == 0 {
 		if pbtypes.GetString(le.Details, "id") > pbtypes.GetString(re.Details, "id") {
 			return 1
-		} else {
-			return -1
 		}
+		return -1
 	}
 	return comp
 }
 
-func (o order) CalcScore(key interface{}) float64 {
+func (o order) CalcScore(_ interface{}) float64 {
 	return 0
 }
 
@@ -560,12 +558,10 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.Object
 	}
 
 	var details *types.Struct
-	if indexDetails, _ := sbt.Indexable(); !indexDetails {
-		if s.sourceService != nil {
-			details, err = s.sourceService.DetailsFromIdBasedSource(id)
-			if err != nil {
-				return nil, ErrObjectNotFound
-			}
+	if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
+		details, err = s.sourceService.DetailsFromIdBasedSource(id)
+		if err != nil {
+			return nil, ErrObjectNotFound
 		}
 	} else {
 		it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
@@ -592,7 +588,7 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.Object
 }
 
 func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, ids []string) ([]*model.ObjectInfo, error) {
-	var objects []*model.ObjectInfo
+	objects := make([]*model.ObjectInfo, 0, len(ids))
 	for _, id := range ids {
 		info, err := s.getObjectInfo(txn, id)
 		if err != nil {
@@ -648,7 +644,7 @@ func inboundLinkKey(from, to string) ds.Key {
 	return pagesInboundLinksBase.ChildString(to).ChildString(from)
 }
 
-func extractIdFromKey(key string) (id string) {
+func extractIDFromKey(key string) (id string) {
 	i := strings.LastIndexByte(key, '/')
 	if i == -1 || len(key)-1 == i {
 		return

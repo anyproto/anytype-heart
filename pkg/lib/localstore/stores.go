@@ -182,6 +182,9 @@ func EraseIndex(index Index, datastore ds.DSTxnBatching) error {
 	}
 
 	keys, err := ExtractKeysFromResults(res)
+	if err != nil {
+		return fmt.Errorf("extract keys from results: %w", err)
+	}
 	b, err := datastore.Batch()
 	if err != nil {
 		return err

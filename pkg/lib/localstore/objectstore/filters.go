@@ -30,17 +30,18 @@ func (f idsFilter) Compare(a, b filter.Getter) int {
 	idB := b.Get(bundle.RelationKeyId.String()).GetStringValue()
 	aIndex := f[idA]
 	bIndex := f[idB]
-	if aIndex == bIndex {
+	switch {
+	case aIndex == bIndex:
 		return 0
-	} else if aIndex < bIndex {
+	case aIndex < bIndex:
 		return -1
-	} else {
+	default:
 		return 1
 	}
 }
 
 func (f idsFilter) String() string {
-	return fmt.Sprintf("idsFilter")
+	return "idsFilter"
 }
 
 type filterSmartblockTypes struct {
