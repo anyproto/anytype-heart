@@ -592,7 +592,7 @@ func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, ids []string) ([]*model.
 	for _, id := range ids {
 		info, err := s.getObjectInfo(txn, id)
 		if err != nil {
-			if strings.HasSuffix(err.Error(), "key not found") || err == ErrObjectNotFound || err == ErrNotAnObject {
+			if errors.Is(err, badger.ErrKeyNotFound) || err == ErrObjectNotFound || err == ErrNotAnObject {
 				continue
 			}
 			return nil, err

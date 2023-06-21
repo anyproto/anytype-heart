@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -9,9 +8,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
-	"github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -50,22 +46,6 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
-}
-
-func TestDsObjectStore_PrefixQuery(t *testing.T) {
-	bds := sync.MutexWrap(ds.NewMapDatastore())
-	err := bds.Put(context.Background(), ds.NewKey("/p1/abc/def/1"), []byte{})
-
-	require.NoError(t, err)
-
-	res, err := bds.Query(context.Background(), query.Query{Prefix: "/p1/abc", KeysOnly: true})
-	require.NoError(t, err)
-
-	entries, err := res.Rest()
-	require.NoError(t, err)
-	require.Len(t, entries, 1)
-	require.Equal(t, "/p1/abc/def/1", entries[0].Key)
-
 }
 
 func Test_removeByPrefix(t *testing.T) {
