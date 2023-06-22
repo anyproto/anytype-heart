@@ -102,7 +102,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	if c, ok := i.converters[req.Type.String()]; ok {
 		res, err := c.GetSnapshots(req, progress)
 		if len(err) != 0 {
-			resultErr := err.GetResultError()
+			resultErr := err.GetResultError(req.Type)
 			if shouldReturnError(resultErr, res, req) {
 				return resultErr
 			}
@@ -118,7 +118,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		}
 
 		i.createObjects(ctx, res, progress, req, allErrors)
-		return allErrors.GetResultError()
+		return allErrors.GetResultError(req.Type)
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		if req.Snapshots != nil {
@@ -134,7 +134,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			}
 			i.createObjects(ctx, res, progress, req, allErrors)
 			if !allErrors.IsEmpty() {
-				return allErrors.GetResultError()
+				return allErrors.GetResultError(req.Type)
 			}
 			return nil
 		}
