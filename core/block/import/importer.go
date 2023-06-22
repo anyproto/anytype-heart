@@ -102,7 +102,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	if c, ok := i.converters[req.Type.String()]; ok {
 		res, err := c.GetSnapshots(req, progress)
 		if len(err) != 0 {
-			e := getResultError(err)
+			e := getResultError(err, req.Type)
 			if shouldReturnError(e, req) {
 				return e
 			}
@@ -118,7 +118,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		}
 
 		i.createObjects(ctx, res, progress, req, allErrors)
-		return getResultError(allErrors)
+		return getResultError(allErrors, req.Type)
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		if req.Snapshots != nil {
@@ -134,7 +134,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			}
 			i.createObjects(ctx, res, progress, req, allErrors)
 			if !allErrors.IsEmpty() {
-				return getResultError(allErrors)
+				return getResultError(allErrors, req.Type)
 			}
 			return nil
 		}
@@ -222,17 +222,28 @@ func (i *Import) createObjects(ctx *session.Context,
 	if err != nil {
 		return nil
 	}
+	filesIDs := i.getFilesIDs(res)
 	numWorkers := workerPoolSize
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(oldIDToNew, createPayloads, ctx)
+	do := NewDataObject(oldIDToNew, createPayloads, filesIDs, ctx)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
 	return details
+}
+
+func (i *Import) getFilesIDs(res *converter.Response) []string {
+	fileIDs := make([]string, 0)
+	for _, snapshot := range res.Snapshots {
+		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
+			return item.Hash
+		})...)
+	}
+	return fileIDs
 }
 
 func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (
@@ -347,7 +358,7 @@ func convertType(cType string) pb.RpcObjectImportListImportResponseType {
 	return pb.RpcObjectImportListImportResponseType(pb.RpcObjectImportListImportResponseType_value[cType])
 }
 
-func getResultError(err converter.ConvertError) error {
+func getResultError(err converter.ConvertError, importType pb.RpcObjectImportRequestType) error {
 	if err.IsEmpty() {
 		return nil
 	}
@@ -355,14 +366,14 @@ func getResultError(err converter.ConvertError) error {
 	for _, e := range err {
 		switch {
 		case errors.Is(e, converter.ErrCancel):
-			return converter.ErrCancel
+			return errors.Wrapf(converter.ErrCancel, "import type: %s", importType.String())
 		case errors.Is(e, converter.ErrNoObjectsToImport):
 			countNoObjectsToImport++
 		}
 	}
 	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
 	if countNoObjectsToImport == len(err) {
-		return converter.ErrNoObjectsToImport
+		return errors.Wrapf(converter.ErrNoObjectsToImport, importType.String())
 	}
-	return err.Error()
+	return errors.Wrapf(err.Error(), importType.String())
 }
