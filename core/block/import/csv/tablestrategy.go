@@ -95,14 +95,14 @@ func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, colum
 	if err != nil {
 		return err
 	}
-	for j := range columnIDs {
+	for _, colID := range columnIDs {
 		textBlock := &model.Block{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{Text: ""},
 			},
 		}
-		_, err = c.tableEditor.CellCreate(st, rowID, columnIDs[j], textBlock)
+		_, err = c.tableEditor.CellCreate(st, rowID, colID, textBlock)
 		if err != nil {
 			return err
 		}

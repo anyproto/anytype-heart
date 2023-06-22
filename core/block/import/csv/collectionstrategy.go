@@ -41,7 +41,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 	}
 
 	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable)
-	objectsSnapshots := getEmptyObjects(csvTable, relations, useFirstRowForRelations)
+	objectsSnapshots := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -102,7 +102,7 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	return details
 }
 
-func getEmptyObjects(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) []*converter.Snapshot {
+func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) []*converter.Snapshot {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
 	for i := 0; i < len(csvTable); i++ {
 		// skip first row if option is turned on
@@ -133,14 +133,15 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 		if len(relations) <= j {
 			break
 		}
-		details.Fields[relations[j].Key] = pbtypes.String(value)
+		relation := relations[j]
+		details.Fields[relation.Key] = pbtypes.String(value)
 		// if first row is an object and relation key is not a name, we create empty relations for this object
-		if isFirstRowObject && relations[j].Key != bundle.RelationKeyName.String() {
-			details.Fields[relations[j].Key] = pbtypes.String("")
+		if isFirstRowObject && relation.Key != bundle.RelationKeyName.String() {
+			details.Fields[relation.Key] = pbtypes.String("")
 		}
 		relationLinks = append(relationLinks, &model.RelationLink{
-			Key:    relations[j].Key,
-			Format: relations[j].Format,
+			Key:    relation.Key,
+			Format: relation.Format,
 		})
 	}
 	return details, relationLinks

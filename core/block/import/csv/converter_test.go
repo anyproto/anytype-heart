@@ -210,25 +210,28 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 6) // Journal.csv collection, root collection + 2 objects in Journal.csv + 2 relations (Created, Tags)
 
-	var emptyObjects []*converter.Snapshot
+	var rowsObjects []*converter.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
 		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
-			emptyObjects = append(emptyObjects, snapshot)
+			rowsObjects = append(rowsObjects, snapshot)
 		}
 	}
 
-	assert.Len(t, emptyObjects, 2)
+	assert.Len(t, rowsObjects, 2)
 
-	for _, value := range emptyObjects[0].Snapshot.Data.Details.Fields {
-		assert.True(t, value.GetStringValue() == "Hawaii Vacation" || value.GetStringValue() == "July 13, 2022 8:54 AM" ||
-			value.GetStringValue() == "Special Event")
+	want := [][]string{
+		{"Hawaii Vacation", "July 13, 2022 8:54 AM", "Special Event"},
+		{"Just another day", "July 13, 2022 8:54 AM", "Daily"},
 	}
+	assertSnapshotsHaveDetails(t, want[0], rowsObjects[0])
+	assertSnapshotsHaveDetails(t, want[1], rowsObjects[1])
+}
 
-	for _, value := range emptyObjects[1].Snapshot.Data.Details.Fields {
-		assert.True(t, value.GetStringValue() == "Just another day" || value.GetStringValue() == "July 13, 2022 8:54 AM" ||
-			value.GetStringValue() == "Daily")
+func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *converter.Snapshot) {
+	for _, value := range objects.Snapshot.Data.Details.Fields {
+		assert.Contains(t, want, value.GetStringValue())
 	}
 }
 
