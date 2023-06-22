@@ -102,9 +102,9 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	if c, ok := i.converters[req.Type.String()]; ok {
 		res, err := c.GetSnapshots(req, progress)
 		if len(err) != 0 {
-			resultError := err.GetResultError()
-			if shouldReturnError(resultError, res, req) {
-				return resultError
+			resultErr := err.GetResultError()
+			if shouldReturnError(resultErr, res, req) {
+				return resultErr
 			}
 			allErrors.Merge(err)
 		}

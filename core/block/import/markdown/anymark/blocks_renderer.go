@@ -214,7 +214,7 @@ func (r *blocksRenderer) AddImageBlock(source string) {
 	}
 
 	r.blocks = append(r.blocks, &newBlock)
-	r.AddChildIDToParentBlock(newBlock.Id)
+	r.addChildIDToParentBlock(newBlock.Id)
 }
 
 func (r *blocksRenderer) AddDivider() {
@@ -231,7 +231,7 @@ func (r *blocksRenderer) AddDivider() {
 		},
 	}
 	r.blocks = append(r.blocks, divider)
-	r.AddChildIDToParentBlock(divider.Id)
+	r.addChildIDToParentBlock(divider.Id)
 }
 
 func isBlockCanHaveChild(block model.Block) bool {
@@ -377,7 +377,7 @@ func (r *blocksRenderer) adjustMarkdownRange(t *model.BlockContentText, adjustNu
 	}
 }
 
-func (r *blocksRenderer) AddChildIDToParentBlock(id string) {
+func (r *blocksRenderer) addChildIDToParentBlock(id string) {
 	if len(r.openedTextBlocks) > 0 {
 		var parentBlock *textBlock
 		for i := len(r.openedTextBlocks) - 1; i >= 0; i-- {

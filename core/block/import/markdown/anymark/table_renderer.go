@@ -94,7 +94,7 @@ func (r *TableRenderer) renderTable(_ util.BufWriter, _ []byte, node ast.Node, e
 		blocksToAdd = append(blocksToAdd, block)
 	}
 
-	r.blockRenderer.AddChildIDToParentBlock(r.tableState.tableID)
+	r.blockRenderer.addChildIDToParentBlock(r.tableState.tableID)
 	r.blockRenderer.blocks = append(r.blockRenderer.blocks, blocksToAdd...)
 	r.blocksState = nil
 	r.tableState.resetState()
