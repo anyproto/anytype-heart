@@ -23,29 +23,20 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if details.Fields == nil {
 		return fmt.Errorf("details fields are nil")
 	}
+	if pbtypes.GetString(details, bundle.RelationKeyWorkspaceId.String()) == "" {
+		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
+	}
 
 	key := pagesDetailsBase.ChildString(id).Bytes()
 	return s.updateTxn(func(txn *badger.Txn) error {
-		oldDetails, ok := s.cache.Get(key)
-		if !ok {
-			it, err := txn.Get(key)
-			if err != nil && err != badger.ErrKeyNotFound {
-				return fmt.Errorf("get item: %w", err)
-			}
-			if err != badger.ErrKeyNotFound {
-				oldDetails, err = s.unmarshalDetailsFromItem(it)
-				if err != nil {
-					return fmt.Errorf("extract details: %w", err)
-				}
-			}
+		oldDetails, err := s.extractDetailsByKey(txn, key)
+		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+			return fmt.Errorf("extract details: %w", err)
 		}
 		newDetails := &model.ObjectDetails{
 			Details: details,
 		}
-		if pbtypes.GetString(newDetails.Details, bundle.RelationKeyWorkspaceId.String()) == "" {
-			log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
-		}
-		if oldDetails != nil && proto.Equal(oldDetails.(*model.ObjectDetails), newDetails) {
+		if oldDetails != nil && proto.Equal(oldDetails, newDetails) {
 			return ErrDetailsNotChanged
 		}
 		// Ensure ID is set
@@ -59,6 +50,19 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		}
 		return txn.Set(key, val)
 	})
+}
+
+func (s *dsObjectStore) extractDetailsByKey(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
+	raw, ok := s.cache.Get(key)
+	if ok {
+		return raw.(*model.ObjectDetails), nil
+	}
+
+	it, err := txn.Get(key)
+	if err != nil {
+		return nil, fmt.Errorf("get item: %w", err)
+	}
+	return s.unmarshalDetailsFromItem(it)
 }
 
 func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
