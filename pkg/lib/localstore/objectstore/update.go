@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
@@ -30,7 +29,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	key := pagesDetailsBase.ChildString(id).Bytes()
 	return s.updateTxn(func(txn *badger.Txn) error {
 		oldDetails, err := s.extractDetailsByKey(txn, key)
-		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		if err != nil && !isNotFound(err) {
 			return fmt.Errorf("extract details: %w", err)
 		}
 		newDetails := &model.ObjectDetails{
@@ -80,7 +79,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		key := pendingDetailsBase.ChildString(id).Bytes()
 
 		objDetails, err := s.getPendingLocalDetails(txn, key)
-		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+		if err != nil && !isNotFound(err) {
 			return fmt.Errorf("get pending details: %w", err)
 		}
 

@@ -103,3 +103,7 @@ func iterateKeysByPrefixTx(txn *badger.Txn, prefix []byte, processKeyFn func(key
 	}
 	return nil
 }
+
+func isNotFound(err error) bool {
+	return errors.Is(err, badger.ErrKeyNotFound)
+}

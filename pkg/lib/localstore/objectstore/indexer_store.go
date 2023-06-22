@@ -1,9 +1,6 @@
 package objectstore
 
 import (
-	"errors"
-
-	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -49,7 +46,7 @@ func (s *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
 func (s *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
 	headsHash, err = getValue(s.db, indexedHeadsState.ChildString(id).Bytes(), bytesToString)
-	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+	if err != nil && !isNotFound(err) {
 		return "", err
 	}
 	return headsHash, nil
