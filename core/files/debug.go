@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,10 +13,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/util/debug"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) DebugRouter(r chi.Router) {
-	r.Get("/syncstatus", debug.JSONHandler(s.debugFiles))
+	r.Get("/status", debug.JSONHandler(s.debugFiles))
 	r.Get("/queue", debug.JSONHandler(s.fileSync.DebugQueue))
 	r.Get("/tree/{rootID}", debug.PlaintextHandler(s.printTree))
 }
@@ -23,6 +25,7 @@ func (s *service) DebugRouter(r chi.Router) {
 type fileDebugInfo struct {
 	Hash       string
 	SyncStatus int
+	IsIndexed  bool
 }
 
 func (s *service) debugFiles(_ *http.Request) ([]*fileDebugInfo, error) {
@@ -40,9 +43,20 @@ func (s *service) debugFiles(_ *http.Request) ([]*fileDebugInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("get status for %s: %s", hash, err)
 		}
+
+		var isIndexed bool
+		details, err := s.objectStore.GetDetails(hash)
+		if err != nil && !errors.Is(err, localstore.ErrNotFound) {
+			return nil, fmt.Errorf("get status for %s: %s", hash, err)
+		}
+		if details != nil && !pbtypes.IsStructEmpty(details.Details) {
+			isIndexed = true
+		}
+
 		result = append(result, &fileDebugInfo{
 			Hash:       hash,
 			SyncStatus: status,
+			IsIndexed:  isIndexed,
 		})
 	}
 	return result, nil

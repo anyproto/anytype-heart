@@ -880,6 +880,7 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 			return nil, fmt.Errorf("check if file is imported: %w", err)
 		}
 		if ok {
+			log.With("fileID", hash).Warn("file is imported, push it to uploading queue")
 			// If file is imported we have to sync it, so we don't set sync status to synced
 			err = s.fileStore.SetIsFileImported(hash, false)
 			if err != nil {

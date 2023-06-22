@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -64,9 +65,38 @@ func (d *debug) Init(a *app.App) (err error) {
 				r.Route("/debug/"+c.Name(), d.DebugRouter)
 			}
 		})
+		routes := r.Routes()
+		r.Get("/debug", func(w http.ResponseWriter, req *http.Request) {
+			err := renderLinksList(w, "/", routes)
+			if err != nil {
+				logger.Error("failed to render links list", err)
+			}
+		})
 		d.server = &http.Server{
 			Addr:    addr,
 			Handler: r,
+		}
+	}
+	return nil
+}
+
+func joinPath(parent string, child string) string {
+	parent = strings.TrimSuffix(parent, "/*")
+	return path.Join(parent, child)
+}
+
+func renderLinksList(w io.Writer, path string, routes []chi.Route) error {
+	for _, r := range routes {
+		if r.SubRoutes != nil {
+			err := renderLinksList(w, joinPath(path, r.Pattern), r.SubRoutes.Routes())
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err := fmt.Fprintf(w, `<a href="%s">%s</a><br>`, joinPath(path, r.Pattern), joinPath(path, r.Pattern))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
