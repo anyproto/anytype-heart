@@ -22,7 +22,7 @@ import (
 func TestService_Search(t *testing.T) {
 
 	var newSub = func(fx *fixture, subId string) {
-		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{
 				{Details: &types.Struct{Fields: map[string]*types.Value{
 					"id":     pbtypes.String("1"),
@@ -126,7 +126,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{
 				{Details: &types.Struct{Fields: map[string]*types.Value{
 					"id":   pbtypes.String("1"),
@@ -177,7 +177,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{
 				{Details: &types.Struct{Fields: map[string]*types.Value{
 					"id":   pbtypes.String("1"),
@@ -244,7 +244,7 @@ func TestService_Search(t *testing.T) {
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
 
-		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{
 				{Details: &types.Struct{Fields: map[string]*types.Value{
 					"id":   pbtypes.String("1"),

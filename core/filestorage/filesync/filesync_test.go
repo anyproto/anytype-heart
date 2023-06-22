@@ -239,6 +239,10 @@ func (b *badgerProvider) LocalstoreDS() (datastore.DSTxnBatching, error) {
 	return nil, nil
 }
 
+func (b *badgerProvider) LocalstoreBadger() (*badger.DB, error) {
+	return b.db, nil
+}
+
 func (b *badgerProvider) SpaceStorage() (*badger.DB, error) {
 	return b.db, nil
 }
