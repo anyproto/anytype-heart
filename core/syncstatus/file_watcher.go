@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -145,6 +146,20 @@ func (s *fileWatcher) run() error {
 
 func (s *fileWatcher) close() {
 	close(s.closeCh)
+}
+
+func (s *fileWatcher) list() []fileWithSpace {
+	s.filesToWatchLock.Lock()
+	defer s.filesToWatchLock.Unlock()
+
+	result := make([]fileWithSpace, 0, len(s.filesToWatch))
+	for key := range s.filesToWatch {
+		result = append(result, key)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].fileID < result[j].fileID
+	})
+	return result
 }
 
 func (s *fileWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
