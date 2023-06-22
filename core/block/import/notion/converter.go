@@ -65,7 +65,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	}
 
 	dbSnapshots, mapRequest, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
-	if errors.Is(dbErr.GetResultError(), converter.ErrCancel) {
+	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
 	if dbErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -81,7 +81,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	}
 
 	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, r, progress)
-	if errors.Is(pgErr.GetResultError(), converter.ErrCancel) {
+	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
 	if pgErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
