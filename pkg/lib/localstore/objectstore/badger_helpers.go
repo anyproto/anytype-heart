@@ -34,24 +34,25 @@ func setValue(db *badger.DB, key []byte, value any) error {
 }
 
 func setValueTxn(txn *badger.Txn, key []byte, value any) error {
-	var (
-		raw []byte
-	)
-	if value != nil {
-		var err error
-		switch v := value.(type) {
-		case proto.Message:
-			raw, err = proto.Marshal(v)
-		case string:
-			raw = []byte(v)
-		default:
-			return fmt.Errorf("unsupported type %T", v)
-		}
-		if err != nil {
-			return fmt.Errorf("marshal value: %w", err)
-		}
+	raw, err := marshalValue(value)
+	if err != nil {
+		return fmt.Errorf("marshal value: %w", err)
 	}
 	return txn.Set(key, raw)
+}
+
+func marshalValue(value any) ([]byte, error) {
+	if value != nil {
+		switch v := value.(type) {
+		case proto.Message:
+			return proto.Marshal(v)
+		case string:
+			return []byte(v), nil
+		default:
+			return nil, fmt.Errorf("unsupported type %T", v)
+		}
+	}
+	return nil, nil
 }
 
 func deleteValue(db *badger.DB, key []byte) error {
