@@ -656,20 +656,25 @@ func (s *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
 		return bundle.GetTypeByUrl(url)
 	}
-	objectInfos, err := s.GetByIDs(url)
+
+	details, err := s.GetDetails(url)
 	if err != nil {
 		return nil, err
 	}
-	if len(objectInfos) == 0 {
-		return nil, fmt.Errorf("object type not found in the index")
-	}
-	details := objectInfos[0].Details
 
-	if pbtypes.GetString(details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
+	if pbtypes.IsStructEmpty(details.GetDetails()) {
+		return nil, ErrObjectNotFound
+	}
+
+	if pbtypes.GetBool(details.GetDetails(), bundle.RelationKeyIsDeleted.String()) {
+		return nil, fmt.Errorf("type was removed")
+	}
+
+	if pbtypes.GetString(details.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
 		return nil, fmt.Errorf("object %s is not an object type", url)
 	}
 
-	return s.extractObjectTypeFromDetails(details, url), nil
+	return s.extractObjectTypeFromDetails(details.Details, url), nil
 }
 
 func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {

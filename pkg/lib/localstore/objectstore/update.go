@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -25,31 +26,34 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 
 	key := pagesDetailsBase.ChildString(id).Bytes()
 	return s.updateTxn(func(txn *badger.Txn) error {
-		prev, ok := s.cache.Get(key)
+		oldDetails, ok := s.cache.Get(key)
 		if !ok {
 			it, err := txn.Get(key)
 			if err != nil && err != badger.ErrKeyNotFound {
 				return fmt.Errorf("get item: %w", err)
 			}
 			if err != badger.ErrKeyNotFound {
-				prev, err = s.unmarshalDetailsFromItem(it)
+				oldDetails, err = s.unmarshalDetailsFromItem(it)
 				if err != nil {
 					return fmt.Errorf("extract details: %w", err)
 				}
 			}
 		}
-		detailsModel := &model.ObjectDetails{
+		newDetails := &model.ObjectDetails{
 			Details: details,
 		}
-		if prev != nil && proto.Equal(prev.(*model.ObjectDetails), detailsModel) {
+		if pbtypes.GetString(newDetails.Details, bundle.RelationKeyWorkspaceId.String()) == "" {
+			log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
+		}
+		if oldDetails != nil && proto.Equal(oldDetails.(*model.ObjectDetails), newDetails) {
 			return ErrDetailsNotChanged
 		}
 		// Ensure ID is set
 		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 		s.sendUpdatesToSubscriptions(id, details)
 
-		s.cache.Set(key, detailsModel, int64(detailsModel.Size()))
-		val, err := proto.Marshal(detailsModel)
+		s.cache.Set(key, newDetails, int64(newDetails.Size()))
+		val, err := proto.Marshal(newDetails)
 		if err != nil {
 			return fmt.Errorf("marshal details: %w", err)
 		}
