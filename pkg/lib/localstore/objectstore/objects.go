@@ -395,6 +395,8 @@ func (s *dsObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 	return links, err
 }
 
+// GetDetails returns empty struct without errors in case details are not found
+// todo: get rid of this or change the name method!
 func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	var details *model.ObjectDetails
 	err := s.db.View(func(txn *badger.Txn) error {

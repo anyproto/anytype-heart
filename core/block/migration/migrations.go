@@ -58,10 +58,10 @@ func Compose(parent, child Migration) Migration {
 	}
 }
 
-func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) error {
+func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) {
 	migrator, ok := sb.(Migrator)
 	if !ok {
-		return nil
+		return
 	}
 
 	if initCtx.IsNewObject {
@@ -79,5 +79,4 @@ func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) er
 			initCtx.State.SetMigrationVersion(m.Version)
 		}
 	}
-	return nil
 }

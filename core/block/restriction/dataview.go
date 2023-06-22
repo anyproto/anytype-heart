@@ -1,8 +1,9 @@
 package restriction
 
 import (
-	"github.com/samber/lo"
 	"strings"
+
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -17,9 +18,21 @@ var (
 			BlockId: DataviewBlockId,
 		},
 	}
+	dvRestrictAll = DataviewRestrictions{
+		model.RestrictionsDataviewRestrictions{
+			BlockId: DataviewBlockId,
+			Restrictions: []model.RestrictionsDataviewRestriction{
+				model.Restrictions_DVRelation,
+				model.Restrictions_DVViews,
+				model.Restrictions_DVRelation,
+				model.Restrictions_DVCreateObject,
+			},
+		},
+	}
 
 	dataviewRestrictionsBySBType = map[model.SmartBlockType]DataviewRestrictions{
 		model.SmartBlockType_Page: dvRestrictNo,
+		model.SmartBlockType_Date: dvRestrictAll,
 	}
 )
 

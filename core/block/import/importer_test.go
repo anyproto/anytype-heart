@@ -42,7 +42,7 @@ func Test_ImportSuccess(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 
 	idGetter := NewMockIDGetter(ctrl)
@@ -108,7 +108,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -149,7 +149,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -192,7 +192,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -217,7 +217,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -354,7 +354,7 @@ func Test_ImportWebSuccess(t *testing.T) {
 	i.converters[web.Name] = web.NewConverter()
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -395,7 +395,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)

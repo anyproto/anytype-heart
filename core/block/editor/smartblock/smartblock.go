@@ -445,6 +445,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
 	if err != nil {
 		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
+		err = nil
 	}
 	go sb.metaListener(recordsCh)
 	return
@@ -661,9 +662,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
 		}
 	}
-	if err = sb.onApply(s); err != nil {
-		return
-	}
+	sb.onApply(s)
 	if sb.coreService != nil {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedBlocks().Profile)
@@ -696,7 +695,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	pushChange := func() error {
 		fileDetailsKeys := sb.FileRelationKeys(st)
-		fileDetailsKeysFiltered := fileDetailsKeys[:0]
+		var fileDetailsKeysFiltered []string
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
 				if slice.FindPos(fileDetailsKeys, ds.Key) != -1 {
@@ -1278,7 +1277,7 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	}
 }
 
-func (sb *smartBlock) onApply(s *state.State) (err error) {
+func (sb *smartBlock) onApply(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
 	// Run empty check only if any of these flags are present
@@ -1295,7 +1294,6 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 
 	sb.setRestrictionsDetail(s)
 	sb.injectLinksDetails(s)
-	return
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
