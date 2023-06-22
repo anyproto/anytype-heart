@@ -210,6 +210,9 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 		if lo.Contains(filesIDs, mark.Param) {
 			return
 		}
+		if isBundledObjects(mark.Param) {
+			return
+		}
 		newTarget := oldIDtoNew[mark.Param]
 		if newTarget == "" {
 			newTarget = addr.MissingObject
