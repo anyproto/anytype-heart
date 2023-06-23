@@ -102,9 +102,9 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	if c, ok := i.converters[req.Type.String()]; ok {
 		res, err := c.GetSnapshots(req, progress)
 		if len(err) != 0 {
-			e := getResultError(err, req.Type)
-			if shouldReturnError(e, req) {
-				return e
+			resultErr := err.GetResultError(req.Type)
+			if shouldReturnError(resultErr, res, req) {
+				return resultErr
 			}
 			allErrors.Merge(err)
 		}
@@ -118,7 +118,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		}
 
 		i.createObjects(ctx, res, progress, req, allErrors)
-		return getResultError(allErrors, req.Type)
+		return allErrors.GetResultError(req.Type)
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		if req.Snapshots != nil {
@@ -134,7 +134,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			}
 			i.createObjects(ctx, res, progress, req, allErrors)
 			if !allErrors.IsEmpty() {
-				return getResultError(allErrors, req.Type)
+				return allErrors.GetResultError(req.Type)
 			}
 			return nil
 		}
@@ -143,10 +143,10 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	return fmt.Errorf("unknown import type %s", req.Type)
 }
 
-func shouldReturnError(e error, req *pb.RpcObjectImportRequest) bool {
+func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		e == converter.ErrNoObjectsToImport ||
-		e == converter.ErrCancel
+		((e == converter.ErrNoObjectsToImport ||
+			e == converter.ErrCancel) && len(res.Snapshots) == 0)
 }
 
 func (i *Import) setupProgressBar(req *pb.RpcObjectImportRequest) process.Progress {
@@ -356,24 +356,4 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {
 	return pb.RpcObjectImportListImportResponseType(pb.RpcObjectImportListImportResponseType_value[cType])
-}
-
-func getResultError(err converter.ConvertError, importType pb.RpcObjectImportRequestType) error {
-	if err.IsEmpty() {
-		return nil
-	}
-	var countNoObjectsToImport int
-	for _, e := range err {
-		switch {
-		case errors.Is(e, converter.ErrCancel):
-			return errors.Wrapf(converter.ErrCancel, "import type: %s", importType.String())
-		case errors.Is(e, converter.ErrNoObjectsToImport):
-			countNoObjectsToImport++
-		}
-	}
-	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
-	if countNoObjectsToImport == len(err) {
-		return errors.Wrapf(converter.ErrNoObjectsToImport, importType.String())
-	}
-	return errors.Wrapf(err.Error(), importType.String())
 }

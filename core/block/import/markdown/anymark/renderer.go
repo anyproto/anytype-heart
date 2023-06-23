@@ -112,8 +112,10 @@ func (r *Renderer) renderBlockquote(_ util.BufWriter,
 	node ast.Node,
 	entering bool) (ast.WalkStatus, error) {
 
-	if !entering {
-		r.AddQuote()
+	if entering {
+		r.OpenNewTextBlock(model.BlockContentText_Quote, nil)
+	} else {
+		r.CloseTextBlock(model.BlockContentText_Quote)
 	}
 	return ast.WalkContinue, nil
 }

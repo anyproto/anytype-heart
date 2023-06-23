@@ -10,48 +10,45 @@ import (
 )
 
 func preprocessBlocks(blocks []*model.Block) (blocksOut []*model.Block) {
-
-	blocksOut = []*model.Block{}
-	accum := []*model.Block{}
-
+	accum := make([]*model.Block, 0)
 	for _, b := range blocks {
 		if t := b.GetText(); t != nil && t.Style == model.BlockContentText_Code {
 			accum = append(accum, b)
 		} else {
 			if len(accum) > 0 {
-				blocksOut = append(blocksOut, combineCodeBlocks(accum)...)
+				result := combineCodeBlocks(accum)
+				blocksOut = append(blocksOut, result...)
 				accum = []*model.Block{}
 			}
-
 			blocksOut = append(blocksOut, b)
 		}
 
 	}
-
 	if len(accum) > 0 {
-		blocksOut = append(blocksOut, combineCodeBlocks(accum)...)
+		result := combineCodeBlocks(accum)
+		blocksOut = append(blocksOut, result...)
 	}
-
 	for _, b := range blocks {
 		for i, cId := range b.ChildrenIds {
-			if len(cId) == 0 {
+			if cId == "" {
 				b.ChildrenIds = append(b.ChildrenIds[:i], b.ChildrenIds[i+1:]...)
 			}
 		}
 	}
-
 	return blocksOut
 }
 
-func combineCodeBlocks(accum []*model.Block) (res []*model.Block) {
+func combineCodeBlocks(accum []*model.Block) []*model.Block {
 	var (
-		textArr         []string
-		currLanguage    string
-		resultCodeBlock []*model.Block
+		textArr          []string
+		currLanguage     string
+		resultCodeBlocks []*model.Block
+		currBlockID      string
 	)
 
 	if len(accum) > 0 {
 		currLanguage = pbtypes.GetString(accum[0].GetFields(), "lang")
+		currBlockID = accum[0].Id
 	}
 	for _, b := range accum {
 		blockLanguage := pbtypes.GetString(b.GetFields(), "lang")
@@ -60,23 +57,27 @@ func combineCodeBlocks(accum []*model.Block) (res []*model.Block) {
 			continue
 		}
 		if blockLanguage != currLanguage {
-			resultCodeBlock = append(resultCodeBlock, provideCodeBlock(textArr, currLanguage))
+			codeBlock := provideCodeBlock(textArr, currLanguage, currBlockID)
+			resultCodeBlocks = append(resultCodeBlocks, codeBlock)
 			textArr = []string{b.GetText().Text}
 			currLanguage = blockLanguage
+			currBlockID = b.Id
 		}
 	}
 	if len(textArr) > 0 {
-		resultCodeBlock = append(resultCodeBlock, provideCodeBlock(textArr, currLanguage))
+		codeBlock := provideCodeBlock(textArr, currLanguage, currBlockID)
+		resultCodeBlocks = append(resultCodeBlocks, codeBlock)
 	}
-	return resultCodeBlock
+	return resultCodeBlocks
 }
 
-func provideCodeBlock(textArr []string, language string) *model.Block {
+func provideCodeBlock(textArr []string, language string, id string) *model.Block {
 	var field *types.Struct
 	if language != "" {
 		field = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
 	}
 	return &model.Block{
+		Id:     id,
 		Fields: field,
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{

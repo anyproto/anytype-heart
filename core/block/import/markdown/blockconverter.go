@@ -52,7 +52,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 	if s == nil {
 		return nil
 	}
-	supportedExtensions := []string{".md"}
+	supportedExtensions := []string{".md", ".csv"}
 	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 	videoFormats := []string{".mp4", ".m4v"}
 	audioFormats := []string{".mp3", ".ogg", ".wav", ".m4a", ".flac"}
