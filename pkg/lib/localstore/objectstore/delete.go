@@ -20,6 +20,7 @@ func (s *dsObjectStore) DeleteDetails(id string) error {
 		for _, k := range []ds.Key{
 			pagesSnippetBase.ChildString(id),
 			pagesDetailsBase.ChildString(id),
+			indexedHeadsState.ChildString(id),
 		} {
 			if err := txn.Delete(k.Bytes()); err != nil {
 				return fmt.Errorf("delete key %s: %w", k, err)
