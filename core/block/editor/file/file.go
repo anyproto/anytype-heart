@@ -154,9 +154,12 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {
-		upl.SetUrl(source.Url)
+		upl.SetUrl(source.Url).
+			SetLastModifiedDate()
 	} else if len(source.Bytes) > 0 {
-		upl.SetBytes(source.Bytes).SetName(source.Name)
+		upl.SetBytes(source.Bytes).
+			SetName(source.Name).
+			SetLastModifiedDate()
 	}
 	if isSync {
 		return upl.Upload(context.TODO())
@@ -519,7 +522,13 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 	upl := NewUploader(dp.s, dp.fileService, dp.tempDirProvider)
-	res := upl.SetName(f.name).AutoType(true).SetFile(f.path).Upload(context.TODO())
+
+	res := upl.
+		SetName(f.name).
+		AutoType(true).
+		SetFile(f.path).
+		Upload(context.TODO())
+
 	if res.Err != nil {
 		log.With("filePath", f.path).Errorf("upload error: %s", res.Err)
 		f.err = fmt.Errorf("upload error: %w", res.Err)

@@ -541,15 +541,16 @@ func (s *service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	}
 
 	fileInfo := &storage.FileInfo{
-		Mill:     mill.ID(),
-		Checksum: check,
-		Source:   source,
-		Opts:     opts,
-		Media:    conf.Media,
-		Name:     conf.Name,
-		Added:    time.Now().Unix(),
-		Meta:     pbtypes.ToStruct(res.Meta),
-		Size_:    int64(readerWithCounter.Count()),
+		Mill:             mill.ID(),
+		Checksum:         check,
+		Source:           source,
+		Opts:             opts,
+		Media:            conf.Media,
+		Name:             conf.Name,
+		LastModifiedDate: conf.LastModifiedDate,
+		Added:            time.Now().Unix(),
+		Meta:             pbtypes.ToStruct(res.Meta),
+		Size_:            int64(readerWithCounter.Count()),
 	}
 
 	var (
