@@ -370,11 +370,13 @@ func (s *Service) getDerivedObject(
 	if newAccount {
 		var tr objecttree.ObjectTree
 		tr, err = space.TreeBuilder().PutTree(ctx, *payload, nil)
+		s.predefinedObjectWasMissing = true
 		if err != nil {
 			if !errors.Is(err, treestorage.ErrTreeExists) {
 				err = fmt.Errorf("failed to put tree: %w", err)
 				return
 			}
+			s.predefinedObjectWasMissing = false
 			// the object exists locally
 			return s.GetAccountObject(ctx, payload.RootRawChange.Id)
 		}

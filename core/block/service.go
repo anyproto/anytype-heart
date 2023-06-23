@@ -1112,3 +1112,11 @@ func (s *Service) replaceLink(id, oldId, newId string) error {
 		return b.ReplaceLink(oldId, newId)
 	})
 }
+
+func (s *Service) GetLogFields() []zap.Field {
+	var fields []zap.Field
+	if s.predefinedObjectWasMissing {
+		fields = append(fields, zap.Bool("predefined_object_was_missing", true))
+	}
+	return fields
+}
