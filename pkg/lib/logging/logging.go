@@ -47,20 +47,18 @@ func LevelsFromStr(s string) (levels []logger.NamedLevel) {
 		var key, value string
 		if len(parts) == 1 {
 			key = "*"
-			value = parts[0]
-			if value == "" {
-				continue
-			}
-			_, err := zap.ParseAtomicLevel(value)
-			if err != nil {
-				fmt.Printf("Can't parse log level %s: %s\n", parts[0], err.Error())
-				continue
-			}
-			levels = append(levels, logger.NamedLevel{Name: key, Level: value})
+			value = strings.TrimSpace(parts[0])
 		} else if len(parts) == 2 {
-			key = parts[0]
-			value = parts[1]
+			key = strings.TrimSpace(parts[0])
+			value = strings.TrimSpace(parts[1])
+		} else {
+			fmt.Printf("invalid log level format. It should be something like `prefix*=LEVEL;*suffix=LEVEL`, where LEVEL is one of valid log levels\n")
+			continue
 		}
+		if key == "" || value == "" {
+			continue
+		}
+
 		_, err := zap.ParseAtomicLevel(value)
 		if err != nil {
 			fmt.Printf("Can't parse log level %s: %s\n", parts[0], err.Error())
