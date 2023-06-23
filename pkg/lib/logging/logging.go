@@ -35,16 +35,28 @@ func LoggerNotSugared(system string) *zap.Logger {
 	return lg.Logger
 }
 
-func LevelsFromStr(s string) map[string]string {
-	levels := make(map[string]string)
+// LevelsFromStr parses a string of the form "name1=DEBUG;prefix*=WARN;*=ERROR" into a slice of NamedLevel
+// it may be useful to parse the log level from the OS env var
+func LevelsFromStr(s string) (levels []logger.NamedLevel) {
 	for _, kv := range strings.Split(s, ";") {
+		if kv == "" {
+			continue
+		}
 		strings.TrimSpace(kv)
 		parts := strings.Split(kv, "=")
 		var key, value string
 		if len(parts) == 1 {
 			key = "*"
 			value = parts[0]
-			levels["*"] = parts[0]
+			if value == "" {
+				continue
+			}
+			_, err := zap.ParseAtomicLevel(value)
+			if err != nil {
+				fmt.Printf("Can't parse log level %s: %s\n", parts[0], err.Error())
+				continue
+			}
+			levels = append(levels, logger.NamedLevel{Name: key, Level: value})
 		} else if len(parts) == 2 {
 			key = parts[0]
 			value = parts[1]
@@ -54,7 +66,7 @@ func LevelsFromStr(s string) map[string]string {
 			fmt.Printf("Can't parse log level %s: %s\n", parts[0], err.Error())
 			continue
 		}
-		levels[key] = value
+		levels = append(levels, logger.NamedLevel{Name: key, Level: value})
 	}
 	return levels
 }
@@ -70,6 +82,6 @@ func init() {
 	} else {
 		registerGelfSink(&cfg)
 	}
-	cfg.Levels = logger.LevelsFromStr(os.Getenv("ANYTYPE_LOG_LEVEL"))
+	cfg.Levels = LevelsFromStr(os.Getenv("ANYTYPE_LOG_LEVEL"))
 	cfg.ApplyGlobal()
 }
