@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -331,7 +331,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 
 func (i *indexer) reindexIfNeeded() error {
 	checksums, err := i.store.GetChecksums()
-	if err != nil && err != ds.ErrNotFound {
+	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return err
 	}
 	if checksums == nil {

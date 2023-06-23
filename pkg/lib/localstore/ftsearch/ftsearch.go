@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
 	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/search/query"
 	"github.com/samber/lo"
-
-	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -141,11 +140,10 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 
 func (f *ftSearch) Search(qry string) (results []string, err error) {
 	qry = strings.ToLower(qry)
-	var queries = make([]query.Query, 0, 4)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
 
-	queries = append(
+	queries := append(
 		getFullQueries(qry),
 		bleve.NewMatchQuery(qry),
 	)

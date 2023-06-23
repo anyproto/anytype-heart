@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"strings"
 
-	ds "github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/util/slice"
-
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	dsCtx "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/multiformats/go-base32"
+
+	ds "github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (
@@ -182,6 +182,9 @@ func EraseIndex(index Index, datastore ds.DSTxnBatching) error {
 	}
 
 	keys, err := ExtractKeysFromResults(res)
+	if err != nil {
+		return fmt.Errorf("extract keys from results: %w", err)
+	}
 	b, err := datastore.Batch()
 	if err != nil {
 		return err
@@ -350,29 +353,6 @@ func GetLeavesFromResults(results query.Results) ([]string, error) {
 	}
 
 	return leaves, nil
-}
-
-func GetKeyPartFromResults(results query.Results, from, to int, removeDuplicates bool) ([]string, error) {
-	var keyParts []string
-	for res := range results.Next() {
-		if res.Error != nil {
-			return nil, res.Error
-		}
-		p, err := CarveKeyParts(res.Key, from, to)
-		if err != nil {
-			// should not happen, lets early-close iterator and return error
-			_ = results.Close()
-			return nil, err
-		}
-		if removeDuplicates {
-			if slice.FindPos(keyParts, p) >= 0 {
-				continue
-			}
-		}
-		keyParts = append(keyParts, p)
-	}
-
-	return keyParts, nil
 }
 
 func ExtractKeysFromResults(results query.Results) ([]string, error) {

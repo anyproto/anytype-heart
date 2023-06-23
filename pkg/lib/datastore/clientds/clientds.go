@@ -177,6 +177,13 @@ func (r *clientds) LocalstoreDS() (datastore.DSTxnBatching, error) {
 	return r.localstoreDS, nil
 }
 
+func (r *clientds) LocalstoreBadger() (*badger.DB, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.localstoreDS.DB, nil
+}
+
 func (r *clientds) Name() (name string) {
 	return CName
 }
