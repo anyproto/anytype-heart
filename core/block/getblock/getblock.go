@@ -13,7 +13,7 @@ type Picker interface {
 }
 
 func Do[t any](p Picker, id string, apply func(sb t) error) error {
-	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
 	if err != nil {
 		return err
 	}

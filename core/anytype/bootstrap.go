@@ -22,6 +22,8 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -76,6 +78,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
+var (
+	log          = logging.LoggerNotSugared("anytype-app")
+	WarningAfter = time.Second * 1
+)
+
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
@@ -91,15 +98,41 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
 	a.SetVersionName(appVersion(a, clientWithVersion))
-	Bootstrap(a, components...)
+	components = Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
+	startTime := time.Now()
 	if err = a.Start(ctx); err != nil {
 		metrics.SharedClient.Close()
 		a = nil
 		return
 	}
+	totalSpent := time.Since(startTime)
+	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
+	if v, ok := ctx.Value(metrics.CtxKeyRPC).(string); ok {
+		l = l.With(zap.String("rpc", v))
+	}
 
+	for comp, spent := range a.StartStat().SpentMsPerComp {
+		if spent == 0 {
+			continue
+		}
+		l = l.With(zap.Int64(comp, spent))
+	}
+	l.With(zap.Int64("totalRun", a.StartStat().SpentMsTotal))
+	for _, comp := range components {
+		if c, ok := comp.(ComponentLogFieldsGetter); ok {
+			for _, field := range c.GetLogFields() {
+				field.Key = comp.Name() + "_" + field.Key
+				l = l.With(field)
+			}
+		}
+	}
+	if totalSpent > WarningAfter {
+		l.Warn("app started")
+	} else {
+		l.Debug("app started")
+	}
 	return
 }
 
@@ -110,7 +143,7 @@ func appVersion(a *app.App, clientWithVersion string) string {
 	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
-func Bootstrap(a *app.App, components ...app.Component) {
+func Bootstrap(a *app.App, components ...app.Component) []app.Component {
 	for _, c := range components {
 		a.Register(c)
 	}
@@ -155,68 +188,82 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	indexerService := indexer.New(blockService, spaceService, fileService)
 
-	a.Register(datastoreProvider).
-		Register(nodeconfsource.New()).
-		Register(nodeconfstore.New()).
-		Register(nodeConf).
-		Register(peerstore.New()).
-		Register(syncstatusprovider.New()).
-		Register(storage.New()).
-		Register(secureservice.New()).
-		Register(metric.New()).
-		Register(server.New()).
-		Register(debugserver.New()).
-		Register(pool.New()).
-		Register(peerservice.New()).
-		Register(yamux.New()).
-		Register(clientserver.New()).
-		Register(streampool.New()).
-		Register(coordinatorclient.New()).
-		Register(credentialprovider.New()).
-		Register(commonspace.New()).
-		Register(rpcstore.New()).
-		Register(fileStore).
-		Register(fileservice.New()).
-		Register(filestorage.New(eventService.Send)).
-		Register(fileSyncService).
-		Register(localdiscovery.New()).
-		Register(spaceService).
-		Register(peermanager.New()).
-		Register(sbtProvider).
-		Register(relationService).
-		Register(ftsearch.New()).
-		Register(objectStore).
-		Register(recordsbatcher.New()).
-		Register(fileService).
-		Register(configfetcher.New()).
-		Register(process.New()).
-		Register(source.New()).
-		Register(coreService).
-		Register(builtintemplate.New()).
-		Register(blockService).
-		Register(indexerService).
-		Register(syncStatusService).
-		Register(history.New()).
-		Register(gateway.New()).
-		Register(export.New(sbtProvider)).
-		Register(linkpreview.New()).
-		Register(unsplash.New(tempDirService)).
-		Register(restriction.New(sbtProvider, objectStore)).
-		Register(debug.New()).
-		Register(collectionService).
-		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New(tempDirService)).
-		Register(bookmark.New(tempDirService)).
-		Register(session.New()).
-		Register(importer.New(tempDirService, sbtProvider)).
-		Register(decorator.New()).
-		Register(objectCreator).
-		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
-		Register(graphRenderer)
-	return
+	// we already registred some required components
+	skipRegister := len(components)
+
+	components = append(components, []app.Component{
+		datastoreProvider,
+		nodeconfsource.New(),
+		nodeconfstore.New(),
+		nodeConf,
+		peerstore.New(),
+		syncstatusprovider.New(),
+		storage.New(),
+		secureservice.New(),
+		metric.New(),
+		server.New(),
+		debugserver.New(),
+		pool.New(),
+		peerservice.New(),
+		yamux.New(),
+		clientserver.New(),
+		streampool.New(),
+		coordinatorclient.New(),
+		credentialprovider.New(),
+		commonspace.New(),
+		rpcstore.New(),
+		fileStore,
+		fileservice.New(),
+		filestorage.New(eventService.Send),
+		fileSyncService,
+		localdiscovery.New(),
+		spaceService,
+		peermanager.New(),
+		sbtProvider,
+		relationService,
+		ftsearch.New(),
+		objectStore,
+		recordsbatcher.New(),
+		fileService,
+		configfetcher.New(),
+		process.New(),
+		source.New(),
+		coreService,
+		builtintemplate.New(),
+		blockService,
+		indexerService,
+		syncStatusService,
+		history.New(),
+		gateway.New(),
+		export.New(sbtProvider),
+		linkpreview.New(),
+		unsplash.New(tempDirService),
+		restriction.New(sbtProvider, objectStore),
+		debug.New(),
+		collectionService,
+		subscription.New(collectionService, sbtProvider),
+		builtinobjects.New(tempDirService),
+		bookmark.New(tempDirService),
+		session.New(),
+		importer.New(tempDirService, sbtProvider),
+		decorator.New(),
+		objectCreator,
+		kanban.New(),
+		editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter),
+		graphRenderer}...)
+
+	for _, component := range components[skipRegister:] {
+		a.Register(component)
+	}
+	return components
 }
 
 func MiddlewareVersion() string {
 	return vcs.GetVCSInfo().Version()
+}
+
+type ComponentLogFieldsGetter interface {
+	// GetLogFields returns additional useful fields for logs to debug long app start/stop duration or something else in the future
+	// You don't need to provide the component name in the field's Key, because it will be added automatically
+	GetLogFields() []zap.Field
 }

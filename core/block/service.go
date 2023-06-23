@@ -154,6 +154,8 @@ type Service struct {
 	syncStarted bool
 	syncerLock  sync.Mutex
 	closing     chan struct{}
+
+	predefinedObjectWasMissing bool
 }
 
 func (s *Service) Name() string {
@@ -195,7 +197,7 @@ func (s *Service) OpenBlock(
 	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
-	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_open"), id)
+	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "object_open"), id)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +261,7 @@ func (s *Service) OpenBlock(
 func (s *Service) ShowBlock(
 	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
-	cctx := context.WithValue(context.TODO(), metrics.CtxKeyRequest, "object_show")
+	cctx := context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "object_show")
 	err2 := s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
@@ -791,7 +793,7 @@ func (s *Service) StateFromTemplate(templateID string, name string) (st *state.S
 }
 
 func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_links_collection"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_links_collection"), id)
 	if err != nil {
 		return err
 	}
@@ -805,7 +807,7 @@ func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations)
 }
 
 func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_clipboard"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_clipboard"), id)
 	if err != nil {
 		return err
 	}
@@ -819,7 +821,7 @@ func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 }
 
 func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_text"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_text"), id)
 	if err != nil {
 		return err
 	}
@@ -833,7 +835,7 @@ func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
 }
 
 func (s *Service) DoFile(id string, apply func(b file.File) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_file"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_file"), id)
 	if err != nil {
 		return err
 	}
@@ -847,7 +849,7 @@ func (s *Service) DoFile(id string, apply func(b file.File) error) error {
 }
 
 func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_bookmark"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_bookmark"), id)
 	if err != nil {
 		return err
 	}
@@ -861,7 +863,7 @@ func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 }
 
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_filenonlock"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_filenonlock"), id)
 	if err != nil {
 		return err
 	}
@@ -873,7 +875,7 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_history"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_history"), id)
 	if err != nil {
 		return err
 	}
@@ -887,7 +889,7 @@ func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error
 }
 
 func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do_dataview"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_dataview"), id)
 	if err != nil {
 		return err
 	}
@@ -901,7 +903,7 @@ func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 }
 
 func (s *Service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
 	if err != nil {
 		return err
 	}
@@ -916,7 +918,7 @@ type Picker interface {
 }
 
 func Do[t any](p Picker, id string, apply func(sb t) error) error {
-	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
 	if err != nil {
 		return err
 	}
@@ -985,7 +987,7 @@ func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.St
 }
 
 func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "do"), id)
+	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
 	if err != nil {
 		return err
 	}

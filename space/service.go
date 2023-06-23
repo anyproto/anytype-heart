@@ -324,3 +324,9 @@ func (s *service) getSpaceType(header *spacesyncproto.RawSpaceHeaderWithId) (tp 
 	tp = payload.SpaceType
 	return
 }
+
+func (s *service) GetLogFields() []zap.Field {
+	return []zap.Field{
+		zap.Bool("newAccount", s.newAccount),
+	}
+}
