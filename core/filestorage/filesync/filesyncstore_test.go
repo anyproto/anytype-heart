@@ -94,7 +94,7 @@ func TestFileSyncStore_PushBackToQueue(t *testing.T) {
 	assert.False(t, it.AddedByUser)
 }
 
-func TestFileSyncStore_PrioritizeAddedByUser(t *testing.T) {
+func TestFileSyncStore_CheckSorting(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
 
@@ -105,8 +105,8 @@ func TestFileSyncStore_PrioritizeAddedByUser(t *testing.T) {
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId1", it.SpaceID)
-	assert.Equal(t, "fileId2", it.FileID)
-	assert.True(t, it.AddedByUser)
+	assert.Equal(t, "fileId1", it.FileID)
+	assert.False(t, it.AddedByUser)
 }
 
 func TestFileSyncStore_IsDone(t *testing.T) {
@@ -126,19 +126,19 @@ func TestMigration(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
 
-	wantUploadItem := &queueItem{
+	wantUploadItem := &QueueItem{
 		SpaceID:     "spaceId1",
 		FileID:      "fileId1",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
-	wantDiscardedItem := &queueItem{
+	wantDiscardedItem := &QueueItem{
 		SpaceID:     "spaceId1",
 		FileID:      "fileId2",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
-	wantRemoveItem := &queueItem{
+	wantRemoveItem := &QueueItem{
 		SpaceID:   "spaceId1",
 		FileID:    "fileId3",
 		Timestamp: time.Now().UnixMilli(),

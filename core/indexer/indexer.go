@@ -679,7 +679,6 @@ func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
-	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, id)
 		if err != nil {

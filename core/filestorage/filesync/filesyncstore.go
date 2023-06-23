@@ -43,20 +43,14 @@ func newFileSyncStore(db *badger.DB) (*fileSyncStore, error) {
 	return s, nil
 }
 
-type queueItem struct {
+type QueueItem struct {
 	SpaceID     string
 	FileID      string
 	Timestamp   int64
 	AddedByUser bool
 }
 
-func (it *queueItem) less(other *queueItem) bool {
-	if it.AddedByUser && !other.AddedByUser {
-		return true
-	}
-	if !it.AddedByUser && other.AddedByUser {
-		return false
-	}
+func (it *QueueItem) less(other *QueueItem) bool {
 	return it.Timestamp < other.Timestamp
 }
 
@@ -122,7 +116,7 @@ func migrateItem(txn *badger.Txn, item *badger.Item) error {
 	if err != nil {
 		return fmt.Errorf("get timestamp: %w", err)
 	}
-	it := queueItem{
+	it := QueueItem{
 		Timestamp: int64(timestamp),
 	}
 	raw, err := json.Marshal(it)
@@ -146,14 +140,24 @@ func versionFromItem(it *badger.Item) (int, error) {
 
 func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser bool) (err error) {
 	return s.db.Update(func(txn *badger.Txn) error {
+		logger := log.With(zap.String("fileID", fileId), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
 		ok, err := isKeyExists(txn, discardedKey(spaceId, fileId))
 		if err != nil {
-			return err
+			return fmt.Errorf("check discarded key: %w", err)
 		}
 		if ok {
+			logger.Info("add file to upload queue: file is in discarded queue")
 			return nil
 		}
-
+		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
+		if err != nil {
+			return fmt.Errorf("check upload key: %w", err)
+		}
+		if ok {
+			logger.Info("add file to upload queue: file is already in queue, update timestamp")
+		} else {
+			logger.Info("add file to upload queue")
+		}
 		raw, err := createQueueItem(addedByUser)
 		if err != nil {
 			return fmt.Errorf("create queue item: %w", err)
@@ -163,7 +167,7 @@ func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser b
 }
 
 func createQueueItem(addedByUser bool) ([]byte, error) {
-	return json.Marshal(queueItem{
+	return json.Marshal(QueueItem{
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: addedByUser,
 	})
@@ -226,11 +230,11 @@ func (s *fileSyncStore) DoneRemove(spaceId, fileId string) (err error) {
 	})
 }
 
-func (s *fileSyncStore) GetUpload() (it *queueItem, err error) {
+func (s *fileSyncStore) GetUpload() (it *QueueItem, err error) {
 	return s.getOne(uploadKeyPrefix)
 }
 
-func (s *fileSyncStore) GetDiscardedUpload() (it *queueItem, err error) {
+func (s *fileSyncStore) GetDiscardedUpload() (it *QueueItem, err error) {
 	return s.getOne(discardedKeyPrefix)
 }
 
@@ -280,12 +284,12 @@ func (s *fileSyncStore) IsFileUploadLimited(spaceId, fileId string) (ok bool, er
 	return
 }
 
-func (s *fileSyncStore) GetRemove() (it *queueItem, err error) {
+func (s *fileSyncStore) GetRemove() (it *QueueItem, err error) {
 	return s.getOne(removeKeyPrefix)
 }
 
 // getOne returns the oldest key from the queue with given prefix
-func (s *fileSyncStore) getOne(prefix []byte) (earliest *queueItem, err error) {
+func (s *fileSyncStore) getOne(prefix []byte) (earliest *QueueItem, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
 			PrefetchSize:   100,
@@ -316,6 +320,35 @@ func (s *fileSyncStore) getOne(prefix []byte) (earliest *queueItem, err error) {
 		return nil, errQueueIsEmpty
 	}
 	return
+}
+
+func (s *fileSyncStore) listItemsByPrefix(prefix []byte) ([]*QueueItem, error) {
+	var items []*QueueItem
+	err := s.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.IteratorOptions{
+			PrefetchSize:   100,
+			PrefetchValues: true,
+			Prefix:         prefix,
+		})
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			qItem, err := getQueueItem(item)
+			if err != nil {
+				return fmt.Errorf("get queue item %s: %w", item.Key(), err)
+			}
+			fileId, spaceId := extractFileAndSpaceID(item)
+			qItem.FileID = fileId
+			qItem.SpaceID = spaceId
+			items = append(items, qItem)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func extractFileAndSpaceID(item *badger.Item) (string, string) {
@@ -393,8 +426,8 @@ func getTimestamp(item *badger.Item) (uint64, error) {
 	return ts, err
 }
 
-func getQueueItem(item *badger.Item) (*queueItem, error) {
-	var it queueItem
+func getQueueItem(item *badger.Item) (*QueueItem, error) {
+	var it QueueItem
 	err := item.Value(func(raw []byte) error {
 		return json.Unmarshal(raw, &it)
 	})

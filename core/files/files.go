@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -60,7 +61,6 @@ type Service interface {
 	ImageAdd(ctx context.Context, options ...AddOption) (Image, error)
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
-	AddToSyncQueue(fileID string) error
 
 	app.Component
 }
@@ -126,9 +126,6 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	if err != nil {
 		return "", nil, err
 	}
-	if err = s.storeChunksCount(ctx, node); err != nil {
-		return "", nil, fmt.Errorf("store chunks count: %w", err)
-	}
 
 	nodeHash := node.Cid().String()
 	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
@@ -143,20 +140,6 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	}
 
 	return nodeHash, fileInfo, nil
-}
-
-func (s *service) storeChunksCount(ctx context.Context, node ipld.Node) error {
-	chunksCount, err := s.fileSync.FetchChunksCount(ctx, node)
-	if err != nil {
-		return fmt.Errorf("count chunks: %w", err)
-	}
-
-	nodeHash := node.Cid().String()
-	if err = s.fileStore.SetChunksCount(nodeHash, chunksCount); err != nil {
-		return fmt.Errorf("store chunks count: %w", err)
-	}
-
-	return nil
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
@@ -288,11 +271,6 @@ func (s *service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 	if err != nil {
 		return nil, nil, err
 	}
-
-	/*err = helpers.PinNode(s.node, node, false)
-	if err != nil {
-		return nil, nil, err
-	}*/
 	return node, keys, nil
 }
 
@@ -805,10 +783,6 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	return files, nil
 }
 
-func (s *service) AddToSyncQueue(fileID string) error {
-	return s.addToSyncQueue(fileID, false)
-}
-
 func (s *service) addToSyncQueue(fileID string, uploadedByUser bool) error {
 	spaceID := s.spaceService.AccountId()
 
@@ -901,11 +875,28 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
 		}
+		ok, err := s.fileStore.IsFileImported(hash)
+		if err != nil {
+			return nil, fmt.Errorf("check if file is imported: %w", err)
+		}
+		if ok {
+			log.With("fileID", hash).Warn("file is imported, push it to uploading queue")
+			// If file is imported we have to sync it, so we don't set sync status to synced
+			err = s.fileStore.SetIsFileImported(hash, false)
+			if err != nil {
+				return nil, fmt.Errorf("set is file imported: %w", err)
+			}
+		} else {
+			// If file is not imported then it's definitely synced
+			err = s.fileStore.SetSyncStatus(hash, int(syncstatus.StatusSynced))
+			if err != nil {
+				return nil, fmt.Errorf("set sync status: %w", err)
+			}
+		}
 	}
-	if err := s.AddToSyncQueue(hash); err != nil {
+	if err := s.addToSyncQueue(hash, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
 	}
-
 	fileIndex := fileList[0]
 	return &file{
 		hash: hash,

@@ -149,6 +149,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		eventService.Send,
 		fileWatcherUpdateInterval,
 	)
+	fileSyncService.OnUpload(syncStatusService.OnFileUpload)
 
 	fileService := files.New(syncStatusService, objectStore)
 

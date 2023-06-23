@@ -5,13 +5,16 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
+	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -41,12 +44,83 @@ type debug struct {
 	block         *block.Service
 	store         objectstore.ObjectStore
 	clientService space.Service
+
+	server *http.Server
+}
+
+type Debuggable interface {
+	DebugRouter(r chi.Router)
 }
 
 func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	d.clientService = a.MustComponent(space.CName).(space.Service)
 	d.block = a.MustComponent(block.CName).(*block.Service)
+
+	if addr, ok := os.LookupEnv("ANYDEBUG"); ok && addr != "" {
+		r := chi.NewRouter()
+		a.IterateComponents(func(c app.Component) {
+			if d, ok := c.(Debuggable); ok {
+				fmt.Println("debug router registered for component: ", c.Name())
+				r.Route("/debug/"+c.Name(), d.DebugRouter)
+			}
+		})
+		routes := r.Routes()
+		r.Get("/debug", func(w http.ResponseWriter, req *http.Request) {
+			err := renderLinksList(w, "/", routes)
+			if err != nil {
+				logger.Error("failed to render links list", err)
+			}
+		})
+		d.server = &http.Server{
+			Addr:    addr,
+			Handler: r,
+		}
+	}
+	return nil
+}
+
+func joinPath(parent string, child string) string {
+	parent = strings.TrimSuffix(parent, "/*")
+	return path.Join(parent, child)
+}
+
+func renderLinksList(w io.Writer, path string, routes []chi.Route) error {
+	for _, r := range routes {
+		if r.SubRoutes != nil {
+			err := renderLinksList(w, joinPath(path, r.Pattern), r.SubRoutes.Routes())
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err := fmt.Fprintf(w, `<a href="%s">%s</a><br>`, joinPath(path, r.Pattern), joinPath(path, r.Pattern))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (d *debug) Run(ctx context.Context) error {
+	if d.server != nil {
+		go func() {
+			err := d.server.ListenAndServe()
+			if err != nil && err != http.ErrServerClosed {
+				logger.Error("debug server error:", err)
+			}
+		}()
+	}
+	return nil
+}
+
+func (d *debug) Close(ctx context.Context) error {
+	if d.server != nil {
+		err := d.server.Shutdown(ctx)
+		if err != nil {
+			return fmt.Errorf("debug server shutdown: %w", err)
+		}
+	}
 	return nil
 }
 
