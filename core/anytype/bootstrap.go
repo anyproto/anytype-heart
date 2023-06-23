@@ -98,7 +98,7 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
 	a.SetVersionName(appVersion(a, clientWithVersion))
-	components = Bootstrap(a, components...)
+	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
 	startTime := time.Now()
@@ -120,14 +120,15 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 		l = l.With(zap.Int64(comp, spent))
 	}
 	l.With(zap.Int64("totalRun", a.StartStat().SpentMsTotal))
-	for _, comp := range components {
+	a.IterateComponents(func(comp app.Component) {
 		if c, ok := comp.(ComponentLogFieldsGetter); ok {
 			for _, field := range c.GetLogFields() {
 				field.Key = comp.Name() + "_" + field.Key
 				l = l.With(field)
 			}
 		}
-	}
+	})
+
 	if totalSpent > WarningAfter {
 		l.Warn("app started")
 	} else {
@@ -143,7 +144,7 @@ func appVersion(a *app.App, clientWithVersion string) string {
 	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
-func Bootstrap(a *app.App, components ...app.Component) []app.Component {
+func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
@@ -183,79 +184,68 @@ func Bootstrap(a *app.App, components ...app.Component) []app.Component {
 		fileWatcherUpdateInterval,
 	)
 	fileSyncService.OnUpload(syncStatusService.OnFileUpload)
-
 	fileService := files.New(syncStatusService, objectStore)
-
 	indexerService := indexer.New(blockService, spaceService, fileService)
 
-	// we already registred some required components
-	skipRegister := len(components)
-
-	components = append(components, []app.Component{
-		datastoreProvider,
-		nodeconfsource.New(),
-		nodeconfstore.New(),
-		nodeConf,
-		peerstore.New(),
-		syncstatusprovider.New(),
-		storage.New(),
-		secureservice.New(),
-		metric.New(),
-		server.New(),
-		debugserver.New(),
-		pool.New(),
-		peerservice.New(),
-		yamux.New(),
-		clientserver.New(),
-		streampool.New(),
-		coordinatorclient.New(),
-		credentialprovider.New(),
-		commonspace.New(),
-		rpcstore.New(),
-		fileStore,
-		fileservice.New(),
-		filestorage.New(eventService.Send),
-		fileSyncService,
-		localdiscovery.New(),
-		spaceService,
-		peermanager.New(),
-		sbtProvider,
-		relationService,
-		ftsearch.New(),
-		objectStore,
-		recordsbatcher.New(),
-		fileService,
-		configfetcher.New(),
-		process.New(),
-		source.New(),
-		coreService,
-		builtintemplate.New(),
-		blockService,
-		indexerService,
-		syncStatusService,
-		history.New(),
-		gateway.New(),
-		export.New(sbtProvider),
-		linkpreview.New(),
-		unsplash.New(tempDirService),
-		restriction.New(sbtProvider, objectStore),
-		debug.New(),
-		collectionService,
-		subscription.New(collectionService, sbtProvider),
-		builtinobjects.New(tempDirService),
-		bookmark.New(tempDirService),
-		session.New(),
-		importer.New(tempDirService, sbtProvider),
-		decorator.New(),
-		objectCreator,
-		kanban.New(),
-		editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter),
-		graphRenderer}...)
-
-	for _, component := range components[skipRegister:] {
-		a.Register(component)
-	}
-	return components
+	a.Register(datastoreProvider).
+		Register(nodeconfsource.New()).
+		Register(nodeconfstore.New()).
+		Register(nodeConf).
+		Register(peerstore.New()).
+		Register(syncstatusprovider.New()).
+		Register(storage.New()).
+		Register(secureservice.New()).
+		Register(metric.New()).
+		Register(server.New()).
+		Register(debugserver.New()).
+		Register(pool.New()).
+		Register(peerservice.New()).
+		Register(yamux.New()).
+		Register(clientserver.New()).
+		Register(streampool.New()).
+		Register(coordinatorclient.New()).
+		Register(credentialprovider.New()).
+		Register(commonspace.New()).
+		Register(rpcstore.New()).
+		Register(fileStore).
+		Register(fileservice.New()).
+		Register(filestorage.New(eventService.Send)).
+		Register(fileSyncService).
+		Register(localdiscovery.New()).
+		Register(spaceService).
+		Register(peermanager.New()).
+		Register(sbtProvider).
+		Register(relationService).
+		Register(ftsearch.New()).
+		Register(objectStore).
+		Register(recordsbatcher.New()).
+		Register(fileService).
+		Register(configfetcher.New()).
+		Register(process.New()).
+		Register(source.New()).
+		Register(coreService).
+		Register(builtintemplate.New()).
+		Register(blockService).
+		Register(indexerService).
+		Register(syncStatusService).
+		Register(history.New()).
+		Register(gateway.New()).
+		Register(export.New(sbtProvider)).
+		Register(linkpreview.New()).
+		Register(unsplash.New(tempDirService)).
+		Register(restriction.New(sbtProvider, objectStore)).
+		Register(debug.New()).
+		Register(collectionService).
+		Register(subscription.New(collectionService, sbtProvider)).
+		Register(builtinobjects.New(tempDirService)).
+		Register(bookmark.New(tempDirService)).
+		Register(session.New()).
+		Register(importer.New(tempDirService, sbtProvider)).
+		Register(decorator.New()).
+		Register(objectCreator).
+		Register(kanban.New()).
+		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
+		Register(graphRenderer)
 }
 
 func MiddlewareVersion() string {
