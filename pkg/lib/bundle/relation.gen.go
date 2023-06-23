@@ -5,11 +5,11 @@ source: pkg/lib/bundle/relations.json
 package bundle
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	addr "github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "add940877a8adadd3313f9eefcd6d89a70d1b10469a7ceed9d3bea0e7dea0eeb"
+const RelationChecksum = "b6e52d7683a3d2ca18daf1deac443b74f95adab1529f72f1e9ec11256e74f253"
 
 type RelationKey string
 
@@ -163,6 +163,7 @@ const (
 	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            RelationKey = "fileSyncStatus"
 	RelationKeyLastChangeId              RelationKey = "lastChangeId"
+	RelationKeyStarred                   RelationKey = "starred"
 )
 
 var (
@@ -1769,6 +1770,19 @@ var (
 			Id:               "_brstakeholders",
 			Key:              "stakeholders",
 			Name:             "Stakeholders",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyStarred: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_checkbox,
+			Id:               "_brstarred",
+			Key:              "starred",
+			MaxCount:         1,
+			Name:             "Starred",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

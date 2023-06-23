@@ -1381,5 +1381,14 @@
     "name": "Last change ID of the object",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "starred",
+    "maxCount": 1,
+    "name": "Starred",
+    "readonly": false,
+    "source": "details"
   }
 ]
