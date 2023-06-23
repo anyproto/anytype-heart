@@ -3,6 +3,7 @@ package anytype
 import (
 	"context"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -21,6 +22,8 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -75,6 +78,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
+var (
+	log          = logging.LoggerNotSugared("anytype-app")
+	WarningAfter = time.Second * 1
+)
+
 func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
@@ -87,25 +95,53 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 	return wallet.NewWithAccountRepo(rootPath, derivationResult)
 }
 
-func StartNewApp(ctx context.Context, clientVersion string, components ...app.Component) (a *app.App, err error) {
+func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
-	a.SetVersionName(appVersion(a, clientVersion))
+	a.SetVersionName(appVersion(a, clientWithVersion))
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
+	startTime := time.Now()
 	if err = a.Start(ctx); err != nil {
 		metrics.SharedClient.Close()
 		a = nil
 		return
 	}
+	totalSpent := time.Since(startTime)
+	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
+	if v, ok := ctx.Value(metrics.CtxKeyRPC).(string); ok {
+		l = l.With(zap.String("rpc", v))
+	}
 
+	for comp, spent := range a.StartStat().SpentMsPerComp {
+		if spent == 0 {
+			continue
+		}
+		l = l.With(zap.Int64(comp, spent))
+	}
+	l.With(zap.Int64("totalRun", a.StartStat().SpentMsTotal))
+	a.IterateComponents(func(comp app.Component) {
+		if c, ok := comp.(ComponentLogFieldsGetter); ok {
+			for _, field := range c.GetLogFields() {
+				field.Key = comp.Name() + "_" + field.Key
+				l = l.With(field)
+			}
+		}
+	})
+
+	if totalSpent > WarningAfter {
+		l.Warn("app started")
+	} else {
+		l.Debug("app started")
+	}
 	return
 }
 
-func appVersion(a *app.App, clientVersion string) string {
-	middleVersion := vcs.GetVCSInfo().Version()
+func appVersion(a *app.App, clientWithVersion string) string {
+	clientWithVersion = regexp.MustCompile(`(@|\/)+`).ReplaceAllString(clientWithVersion, "_")
+	middleVersion := MiddlewareVersion()
 	anySyncVersion := a.AnySyncVersion()
-	return "client:" + clientVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
+	return clientWithVersion + "/middle:" + middleVersion + "/any-sync:" + anySyncVersion
 }
 
 func Bootstrap(a *app.App, components ...app.Component) {
@@ -147,9 +183,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		eventService.Send,
 		fileWatcherUpdateInterval,
 	)
-
+	fileSyncService.OnUpload(syncStatusService.OnFileUpload)
 	fileService := files.New(syncStatusService, objectStore)
-
 	indexerService := indexer.New(blockService, spaceService, fileService)
 
 	a.Register(datastoreProvider).
@@ -202,7 +237,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(collectionService).
 		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New()).
+		Register(builtinobjects.New(tempDirService)).
 		Register(bookmark.New(tempDirService)).
 		Register(session.New()).
 		Register(importer.New(tempDirService, sbtProvider)).
@@ -211,5 +246,14 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
 		Register(graphRenderer)
-	return
+}
+
+func MiddlewareVersion() string {
+	return vcs.GetVCSInfo().Version()
+}
+
+type ComponentLogFieldsGetter interface {
+	// GetLogFields returns additional useful fields for logs to debug long app start/stop duration or something else in the future
+	// You don't need to provide the component name in the field's Key, because it will be added automatically
+	GetLogFields() []zap.Field
 }

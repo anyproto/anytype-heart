@@ -4,10 +4,7 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,12 +12,12 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/util/debug"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -51,7 +48,7 @@ var log = logging.Logger("anytype-grpc-server")
 func main() {
 	var addr string
 	var webaddr string
-
+	app.StartWarningAfter = time.Second * 5
 	fmt.Printf("mw grpc: %s\n", app.VersionDescription())
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
@@ -121,17 +118,21 @@ func main() {
 		unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 			doneCh := make(chan struct{})
 			start := time.Now()
+
+			l := log.With("method", info.FullMethod)
+
 			go func() {
 				select {
 				case <-doneCh:
 				case <-time.After(defaultUnaryWarningAfter):
-					log.With("method", info.FullMethod).With("in_progress", true).With("goroutines", base64GzippedStack()).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
+					l.With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
 				}
 			}()
+			ctx = context.WithValue(ctx, metrics.CtxKeyRPC, info.FullMethod)
 			resp, err = handler(ctx, req)
 			close(doneCh)
 			if time.Since(start) > defaultUnaryWarningAfter {
-				log.With("method", info.FullMethod).With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
+				l.With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
 			}
 			return
 		})
@@ -293,24 +294,4 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 		},
 	}
 	return resp
-}
-
-func stackAllGoroutines() []byte {
-	buf := make([]byte, 1024)
-	for {
-		n := runtime.Stack(buf, true)
-		if n < len(buf) {
-			return buf[:n]
-		}
-		buf = make([]byte, 2*len(buf))
-	}
-}
-
-func base64GzippedStack() string {
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	_, _ = gz.Write(stackAllGoroutines())
-	_ = gz.Close()
-
-	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }

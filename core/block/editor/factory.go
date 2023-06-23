@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -137,11 +136,7 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
-	err = migration.RunMigrations(sb, initCtx)
-	if err != nil {
-		return nil, fmt.Errorf("run migrations: %w", err)
-	}
-
+	migration.RunMigrations(sb, initCtx)
 	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
 
 }

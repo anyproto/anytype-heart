@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -9,9 +8,6 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
-	"github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -52,22 +48,6 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
 }
 
-func TestDsObjectStore_PrefixQuery(t *testing.T) {
-	bds := sync.MutexWrap(ds.NewMapDatastore())
-	err := bds.Put(context.Background(), ds.NewKey("/p1/abc/def/1"), []byte{})
-
-	require.NoError(t, err)
-
-	res, err := bds.Query(context.Background(), query.Query{Prefix: "/p1/abc", KeysOnly: true})
-	require.NoError(t, err)
-
-	entries, err := res.Rest()
-	require.NoError(t, err)
-	require.Len(t, entries, 1)
-	require.Equal(t, "/p1/abc/def/1", entries[0].Key)
-
-}
-
 func Test_removeByPrefix(t *testing.T) {
 	s := newStoreFixture(t)
 	var key = make([]byte, 32)
@@ -86,18 +66,12 @@ func Test_removeByPrefix(t *testing.T) {
 		require.NoError(t, s.UpdateObjectDetails(objId, nil))
 		require.NoError(t, s.UpdateObjectLinks(objId, links))
 	}
-	tx, err := s.ds.NewTransaction(false)
-	_, err = removeByPrefixInTx(tx, pagesInboundLinksBase.String())
-	require.NotNil(t, err)
-	tx.Discard()
 
-	got, err := removeByPrefix(s.ds, pagesInboundLinksBase.String())
+	// Test huge transactions
+	outboundRemoved, inboundRemoved, err := s.eraseLinks()
+	require.Equal(t, 10*8000, outboundRemoved)
+	require.Equal(t, 10*8000, inboundRemoved)
 	require.NoError(t, err)
-	require.Equal(t, 10*8000, got)
-
-	got, err = removeByPrefix(s.ds, pagesOutboundLinksBase.String())
-	require.NoError(t, err)
-	require.Equal(t, 10*8000, got)
 }
 
 func TestList(t *testing.T) {

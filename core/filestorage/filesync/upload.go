@@ -37,7 +37,6 @@ func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err err
 		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
 		return nil
 	}
-	log.Info("add file to uploading queue", zap.String("fileID", fileId))
 
 	err = f.queue.QueueUpload(spaceId, fileId, uploadedByUser)
 	if err == nil {
@@ -75,7 +74,7 @@ func (f *fileSync) addOperation() {
 	}
 }
 
-func (f *fileSync) getUpload() (*queueItem, error) {
+func (f *fileSync) getUpload() (*QueueItem, error) {
 	it, err := f.queue.GetUpload()
 	if err == errQueueIsEmpty {
 		return f.queue.GetDiscardedUpload()
@@ -115,6 +114,15 @@ func (f *fileSync) tryToUpload() (string, error) {
 		return fileId, err
 	}
 	log.Info("done upload", zap.String("fileID", fileId))
+	if f.onUpload != nil {
+		err := f.onUpload(spaceId, fileId)
+		if err != nil {
+			log.Warn("on upload callback failed",
+				zap.String("fileID", fileId),
+				zap.String("spaceID", spaceId),
+				zap.Error(err))
+		}
+	}
 
 	f.updateSpaceUsageInformation(spaceId)
 
@@ -144,6 +152,12 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 	if err != nil {
 		return err
 	}
+
+	if len(blocksToUpload) == 0 {
+		return nil
+	}
+
+	log.Info("start uploading file", zap.String("fileID", fileId), zap.Int("blocksCount", len(blocksToUpload)))
 
 	go func() {
 		defer func() {
@@ -188,11 +202,13 @@ func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId s
 		return nil, fmt.Errorf("select blocks to upload: %w", err)
 	}
 
-	log.Debug("collecting blocks to upload",
-		zap.String("fileID", fileId),
-		zap.Int("blocksToUpload", len(blocksToUpload)),
-		zap.Int("totalBlocks", len(fileBlocks)),
-	)
+	if len(blocksToUpload) > 0 {
+		log.Info("collecting blocks to upload",
+			zap.String("fileID", fileId),
+			zap.Int("blocksToUpload", len(blocksToUpload)),
+			zap.Int("totalBlocks", len(fileBlocks)),
+		)
+	}
 
 	stat, err := f.SpaceStat(ctx, spaceId)
 	if err != nil {
@@ -265,10 +281,11 @@ func (f *fileSync) selectBlocksToUploadAndBindExisting(ctx context.Context, spac
 		}
 	}
 
-	if bindErr := f.rpcStore.BindCids(ctx, spaceId, fileId, cidsToBind); bindErr != nil {
-		return 0, nil, fmt.Errorf("bind cids: %w", bindErr)
+	if len(cidsToBind) > 0 {
+		if bindErr := f.rpcStore.BindCids(ctx, spaceId, fileId, cidsToBind); bindErr != nil {
+			return 0, nil, fmt.Errorf("bind cids: %w", bindErr)
+		}
 	}
-
 	return bytesToUpload, blocksToUpload, nil
 }
 

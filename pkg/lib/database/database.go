@@ -25,6 +25,10 @@ type Record struct {
 	Details *types.Struct
 }
 
+func (r Record) Get(key string) *types.Value {
+	return pbtypes.Get(r.Details, key)
+}
+
 type Query struct {
 	FullText string
 	Filters  []*model.BlockContentDataviewFilter // filters results. apply sequentially

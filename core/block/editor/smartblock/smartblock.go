@@ -445,6 +445,7 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
 	if err != nil {
 		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
+		err = nil
 	}
 	go sb.metaListener(recordsCh)
 	return
@@ -661,9 +662,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
 		}
 	}
-	if err = sb.onApply(s); err != nil {
-		return
-	}
+	sb.onApply(s)
 	if sb.coreService != nil {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedBlocks().Profile)
@@ -696,7 +695,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	pushChange := func() error {
 		fileDetailsKeys := sb.FileRelationKeys(st)
-		fileDetailsKeysFiltered := fileDetailsKeys[:0]
+		var fileDetailsKeysFiltered []string
 		for _, ch := range changes {
 			if ds := ch.GetDetailsSet(); ds != nil {
 				if slice.FindPos(fileDetailsKeys, ds.Key) != -1 {
@@ -892,6 +891,15 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
+		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		if wsId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		} else {
+			log.With("objectID", sb.Id()).Errorf("injectLocalDetails empty workspace: %v", err)
+		}
+	}
+
 	if sb.objectStore == nil {
 		return nil
 	}
@@ -943,15 +951,11 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
 		}
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
-	}
-
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
-		wsId, _ := sb.coreService.GetWorkspaceIdForObject(sb.Id())
-		if wsId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		if createdDate != 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 		}
 	}
+
 	return nil
 }
 
@@ -1022,6 +1026,10 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 		return ErrIsDeleted
 	}
 	d.(*state.State).InjectDerivedDetails()
+	err = sb.injectLocalDetails(d.(*state.State))
+	if err != nil {
+		log.Errorf("failed to inject local details in StateRebuild: %v", err)
+	}
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
@@ -1269,7 +1277,7 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	}
 }
 
-func (sb *smartBlock) onApply(s *state.State) (err error) {
+func (sb *smartBlock) onApply(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
 	// Run empty check only if any of these flags are present
@@ -1286,7 +1294,6 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 
 	sb.setRestrictionsDetail(s)
 	sb.injectLinksDetails(s)
-	return
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {

@@ -55,7 +55,8 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
 	createdTime time.Time,
-	getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+	getExisting bool,
+	oldToNewIDs map[string]string) (string, treestorage.TreeStorageCreatePayload, error) {
 	if sbType == sb.SmartBlockTypeWorkspace {
 		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(sn.Id)
 		if wErr == nil {
@@ -72,7 +73,7 @@ func (ou *ObjectIDGetter) Get(ctx *session.Context,
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 	if sbType == sb.SmartBlockTypeSubObject {
-		id, err = ou.getSubObjectID(sn)
+		id, err = ou.getSubObjectID(sn, oldToNewIDs)
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 
@@ -110,9 +111,8 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 	return "", err
 }
 
-func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot) (string, error) {
-	// in case it already
-	ids, err := ou.getAlreadyExistingSubObject(sn)
+func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, oldToNewIDs map[string]string) (string, error) {
+	ids, err := ou.getAlreadyExistingSubObject(sn, oldToNewIDs)
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
@@ -154,7 +154,7 @@ func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
 	return ""
 }
 
-func (ou *ObjectIDGetter) getAlreadyExistingSubObject(snapshot *converter.Snapshot) ([]string, error) {
+func (ou *ObjectIDGetter) getAlreadyExistingSubObject(snapshot *converter.Snapshot, oldToNewIDs map[string]string) ([]string, error) {
 	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
@@ -174,7 +174,7 @@ func (ou *ObjectIDGetter) getAlreadyExistingSubObject(snapshot *converter.Snapsh
 		return ou.getExistingRelation(snapshot, ids)
 	}
 	if len(ids) == 0 && subObjectType == bundle.TypeKeyRelationOption.URL() {
-		return ou.getExistingRelationOption(snapshot, ids)
+		return ou.getExistingRelationOption(snapshot, ids, oldToNewIDs)
 	}
 	return ids, err
 }
@@ -199,9 +199,13 @@ func (ou *ObjectIDGetter) getExistingRelation(snapshot *converter.Snapshot, ids 
 	return ids, err
 }
 
-func (ou *ObjectIDGetter) getExistingRelationOption(snapshot *converter.Snapshot, ids []string) ([]string, error) {
+func (ou *ObjectIDGetter) getExistingRelationOption(snapshot *converter.Snapshot, ids []string, oldToNewIDs map[string]string) ([]string, error) {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	relationID := addr.RelationKeyToIdPrefix + key
+	if newRelationID, ok := oldToNewIDs[relationID]; ok {
+		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
+	}
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{

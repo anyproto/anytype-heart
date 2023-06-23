@@ -61,7 +61,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		})
 		return res, nil
 	})
-	fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
+	// fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
 	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), spaceId).Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
 	require.NoError(t, fx.AddFile(spaceId, fileId, false))
@@ -237,6 +237,10 @@ func (b *badgerProvider) Close(ctx context.Context) (err error) {
 
 func (b *badgerProvider) LocalstoreDS() (datastore.DSTxnBatching, error) {
 	return nil, nil
+}
+
+func (b *badgerProvider) LocalstoreBadger() (*badger.DB, error) {
+	return b.db, nil
 }
 
 func (b *badgerProvider) SpaceStorage() (*badger.DB, error) {

@@ -52,7 +52,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 	if s == nil {
 		return nil
 	}
-	supportedExtensions := []string{".md"}
+	supportedExtensions := []string{".md", ".csv"}
 	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 	videoFormats := []string{".mp4", ".m4v"}
 	audioFormats := []string{".mp3", ".ogg", ".wav", ".m4a", ".flac"}
@@ -66,6 +66,10 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 			return nil
 		}
+	}
+	if len(readers) == 0 {
+		allErrors.Add(importPath, ce.ErrNoObjectsToImport)
+		return nil
 	}
 	for path, rc := range readers {
 		if err = m.fillFilesInfo(importPath, fileInfo, path, rc); err != nil {

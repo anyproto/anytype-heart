@@ -87,7 +87,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer)
+	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer, fileStore)
 	return nil
 }
 
@@ -102,9 +102,9 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	if c, ok := i.converters[req.Type.String()]; ok {
 		res, err := c.GetSnapshots(req, progress)
 		if len(err) != 0 {
-			e := getResultError(err)
-			if shouldReturnError(e, req) {
-				return e
+			resultErr := err.GetResultError(req.Type)
+			if shouldReturnError(resultErr, res, req) {
+				return resultErr
 			}
 			allErrors.Merge(err)
 		}
@@ -118,7 +118,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		}
 
 		i.createObjects(ctx, res, progress, req, allErrors)
-		return getResultError(allErrors)
+		return allErrors.GetResultError(req.Type)
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		if req.Snapshots != nil {
@@ -134,7 +134,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			}
 			i.createObjects(ctx, res, progress, req, allErrors)
 			if !allErrors.IsEmpty() {
-				return getResultError(allErrors)
+				return allErrors.GetResultError(req.Type)
 			}
 			return nil
 		}
@@ -143,10 +143,10 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	return fmt.Errorf("unknown import type %s", req.Type)
 }
 
-func shouldReturnError(e error, req *pb.RpcObjectImportRequest) bool {
+func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		e == converter.ErrNoObjectsToImport ||
-		e == converter.ErrCancel
+		((e == converter.ErrNoObjectsToImport ||
+			e == converter.ErrCancel) && len(res.Snapshots) == 0)
 }
 
 func (i *Import) setupProgressBar(req *pb.RpcObjectImportRequest) process.Progress {
@@ -222,17 +222,28 @@ func (i *Import) createObjects(ctx *session.Context,
 	if err != nil {
 		return nil
 	}
+	filesIDs := i.getFilesIDs(res)
 	numWorkers := workerPoolSize
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(oldIDToNew, createPayloads, ctx)
+	do := NewDataObject(oldIDToNew, createPayloads, filesIDs, ctx)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
 	return details
+}
+
+func (i *Import) getFilesIDs(res *converter.Response) []string {
+	fileIDs := make([]string, 0)
+	for _, snapshot := range res.Snapshots {
+		fileIDs = append(fileIDs, lo.Map(snapshot.Snapshot.GetFileKeys(), func(item *pb.ChangeFileKeys, index int) string {
+			return item.Hash
+		})...)
+	}
+	return fileIDs
 }
 
 func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (
@@ -294,7 +305,7 @@ func (i *Import) getObjectID(ctx *session.Context,
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, createdTime, updateExisting); err == nil {
+	if id, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, createdTime, updateExisting, oldIDToNew); err == nil {
 		oldIDToNew[snapshot.Id] = id
 		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 			oldIDToNew[snapshot.Id] = snapshot.Id
@@ -345,24 +356,4 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {
 	return pb.RpcObjectImportListImportResponseType(pb.RpcObjectImportListImportResponseType_value[cType])
-}
-
-func getResultError(err converter.ConvertError) error {
-	if err.IsEmpty() {
-		return nil
-	}
-	var countNoObjectsToImport int
-	for _, e := range err {
-		switch {
-		case errors.Is(e, converter.ErrCancel):
-			return converter.ErrCancel
-		case errors.Is(e, converter.ErrNoObjectsToImport):
-			countNoObjectsToImport++
-		}
-	}
-	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
-	if countNoObjectsToImport == len(err) {
-		return converter.ErrNoObjectsToImport
-	}
-	return err.Error()
 }

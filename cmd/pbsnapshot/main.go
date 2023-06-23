@@ -5,12 +5,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/pb"
+	"io/ioutil"
+	"os"
+
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
-	"io/ioutil"
+
+	"github.com/anyproto/anytype-heart/pb"
+
 	_ "net/http/pprof"
-	"os"
 )
 
 func main() {
