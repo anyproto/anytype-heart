@@ -136,6 +136,7 @@ var (
 			model.Restrictions_Duplicate,
 		},
 		model.SmartBlockType_MissingObject: objRestrictAll,
+		model.SmartBlockType_Date:          objRestrictAll,
 	}
 )
 

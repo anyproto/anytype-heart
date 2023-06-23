@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -51,9 +52,10 @@ func (v *date) getDetails() (p *types.Struct) {
 		bundle.RelationKeyId.String():          pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
+		bundle.RelationKeySetOf.String():       pbtypes.String(bundle.RelationKeyLinks.URL()),
 		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
 		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_basic)),
+		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_set)),
 		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
 		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.coreService.PredefinedBlocks().Account),
 	}}
@@ -81,7 +83,58 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	}
 	s := state.NewDoc(v.id, nil).(*state.State)
 	d := v.getDetails()
+	dataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source: []string{bundle.RelationKeyType.URL()},
+			RelationLinks: []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyName.String(),
+					Format: model.RelationFormat_shorttext,
+				},
+				{
+					Key:    bundle.RelationKeyLastModifiedDate.String(),
+					Format: model.RelationFormat_date,
+				},
+			},
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   "1",
+					Type: model.BlockContentDataviewView_Table,
+					Name: "Date backlinks",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+							Type:        model.BlockContentDataviewSort_Desc,
+						},
+					},
+					Filters: []*model.BlockContentDataviewFilter{
+						{
+							RelationKey: bundle.RelationKeyLinks.String(),
+							Condition:   model.BlockContentDataviewFilter_In,
+							Value:       pbtypes.String(v.id),
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{
+						{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+						{
+							Key:       bundle.RelationKeyLastModifiedDate.String(),
+							IsVisible: true,
+						},
+					},
+				},
+			},
+		},
+	}
 
+	template.InitTemplate(s,
+		template.WithTitle,
+		template.WithDefaultFeaturedRelations,
+		template.WithDataview(dataview, true),
+		template.WithAllBlocksEditsRestricted,
+	)
 	s.SetDetails(d)
 	s.SetObjectType(bundle.TypeKeyDate.URL())
 	return s, nil
