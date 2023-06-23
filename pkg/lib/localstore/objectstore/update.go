@@ -35,7 +35,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		if err != nil && !isNotFound(err) {
 			return fmt.Errorf("extract details: %w", err)
 		}
-		if oldDetails != nil && proto.Equal(oldDetails, newDetails) {
+		if oldDetails != nil && oldDetails.Details.Equal(newDetails.Details) {
 			return ErrDetailsNotChanged
 		}
 		// Ensure ID is set
