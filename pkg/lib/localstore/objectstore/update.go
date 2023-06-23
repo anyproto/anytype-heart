@@ -25,15 +25,15 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if pbtypes.GetString(details, bundle.RelationKeyWorkspaceId.String()) == "" {
 		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
 	}
+	newDetails := &model.ObjectDetails{
+		Details: details,
+	}
 
 	key := pagesDetailsBase.ChildString(id).Bytes()
-	return s.updateTxn(func(txn *badger.Txn) error {
+	txErr := s.updateTxn(func(txn *badger.Txn) error {
 		oldDetails, err := s.extractDetailsByKey(txn, key)
 		if err != nil && !isNotFound(err) {
 			return fmt.Errorf("extract details: %w", err)
-		}
-		newDetails := &model.ObjectDetails{
-			Details: details,
 		}
 		if oldDetails != nil && proto.Equal(oldDetails, newDetails) {
 			return ErrDetailsNotChanged
@@ -41,14 +41,17 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		// Ensure ID is set
 		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 		s.sendUpdatesToSubscriptions(id, details)
-
-		s.cache.Set(key, newDetails, int64(newDetails.Size()))
 		val, err := proto.Marshal(newDetails)
 		if err != nil {
 			return fmt.Errorf("marshal details: %w", err)
 		}
 		return txn.Set(key, val)
 	})
+	if txErr != nil {
+		return txErr
+	}
+	s.cache.Set(key, newDetails, int64(newDetails.Size()))
+	return nil
 }
 
 func (s *dsObjectStore) extractDetailsByKey(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
