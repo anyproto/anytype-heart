@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -50,7 +51,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 43
+	ForceIdxRebuildCounter int32 = 45
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -115,7 +116,8 @@ type indexer struct {
 	typeProvider typeprovider.SmartBlockTypeProvider
 	spaceService space.Service
 
-	indexedFiles *sync.Map
+	indexedFiles     *sync.Map
+	reindexLogFields []zap.Field
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -370,7 +372,8 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		flags.enableAll()
 	}
-	return i.reindex(context.WithValue(context.TODO(), metrics.CtxKeyRequest, "reindex_forced"), flags)
+
+	return i.reindex(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "reindex_forced"), flags)
 }
 
 func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
@@ -437,15 +440,9 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		}
 		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-		if metrics.Enabled {
-			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType:    metrics.ReindexTypeThreads,
-				Total:          len(ids),
-				Success:        successfullyReindexed,
-				SpentMs:        int(time.Since(start).Milliseconds()),
-				IndexesRemoved: indexesWereRemoved,
-			})
-		}
+
+		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
+
 		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
 	} else {
 		go func() {
@@ -456,14 +453,8 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 			} else {
 				log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
 			}
-			if metrics.Enabled && total > 0 {
-				metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-					ReindexType:    metrics.ReindexTypeOutdatedHeads,
-					Total:          total,
-					Success:        success,
-					SpentMs:        int(time.Since(start).Milliseconds()),
-					IndexesRemoved: indexesWereRemoved,
-				})
+			if total > 0 {
+				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
 			}
 		}()
 	}
@@ -551,27 +542,14 @@ func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, reindexType 
 func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
 	start := time.Now()
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-	if metrics.Enabled && len(ids) > 0 {
-		metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-			ReindexType:    reindexType,
-			Total:          len(ids),
-			Success:        successfullyReindexed,
-			SpentMs:        int(time.Since(start).Milliseconds()),
-			IndexesRemoved: indexesWereRemoved,
-		})
-	}
-	msg := fmt.Sprintf("%d/%d %s have been successfully reindexed", successfullyReindexed, len(ids), reindexType)
-	if len(ids)-successfullyReindexed != 0 {
-		log.Error(msg)
-	} else {
-		log.Info(msg)
-	}
+	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
 	return nil
 }
 
 func (i *indexer) ensurePreinstalledObjects() error {
 	var objects []*types.Struct
 
+	start := time.Now()
 	for _, ot := range bundle.SystemTypes {
 		t, err := bundle.GetTypeByUrl(ot.BundledURL())
 		if err != nil {
@@ -588,8 +566,9 @@ func (i *indexer) ensurePreinstalledObjects() error {
 		}
 		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
 	}
+	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(objects)
+	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 
-	_, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(objects)
 	if errors.Is(err, editor.ErrSubObjectAlreadyExists) {
 		return nil
 	}
@@ -652,7 +631,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 		}
 	}
 
-	ctx := context.WithValue(context.Background(), metrics.CtxKeyRequest, "reindexOutdatedThreads")
+	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "reindexOutdatedThreads")
 	success = i.reindexIdsIgnoreErr(ctx, idsToReindex...)
 	return len(idsToReindex), success, nil
 }
@@ -722,4 +701,31 @@ func headsHash(heads []string) string {
 
 	sum := sha256.Sum256([]byte(strings.Join(heads, ",")))
 	return fmt.Sprintf("%x", sum)
+}
+
+func (i *indexer) GetLogFields() []zap.Field {
+	return i.reindexLogFields
+}
+
+func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalIds, succeedIds int, spent time.Duration) {
+	i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String(), totalIds))
+	if succeedIds < totalIds {
+		i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String()+"_failed", totalIds-succeedIds))
+	}
+	i.reindexLogFields = append(i.reindexLogFields, zap.Int64("r_"+reindexType.String()+"_spent", spent.Milliseconds()))
+	msg := fmt.Sprintf("%d/%d %s have been successfully reindexed", succeedIds, totalIds, reindexType)
+	if totalIds-succeedIds != 0 {
+		log.Error(msg)
+	} else {
+		log.Info(msg)
+	}
+
+	if metrics.Enabled {
+		metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+			ReindexType: reindexType,
+			Total:       totalIds,
+			Success:     succeedIds,
+			SpentMs:     int(spent.Milliseconds()),
+		})
+	}
 }
