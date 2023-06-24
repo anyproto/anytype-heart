@@ -21,6 +21,7 @@ type updateReceiver struct {
 	nodeConfService    nodeconf.Service
 	sync.Mutex
 	nodeConnected bool
+	lastStatus    pb.EventStatusThreadSyncStatus
 }
 
 func newUpdateReceiver(
@@ -51,7 +52,7 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 	)
 
 	nodeConnected = r.isNodeConnected()
-	linkedFilesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
+	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
 
 	networkStatus := r.nodeConfService.NetworkCompatibilityStatus()
 	switch status {
@@ -71,13 +72,20 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 			objStatus = pb.EventStatusThread_Offline
 		}
 	}
-	generalStatus = objStatus
 
-	r.notify(objId, objStatus, generalStatus, linkedFilesSummary)
+	if objStatus == r.lastStatus && !filesSummary.isUpdated {
+		return
+	}
+
+	generalStatus = objStatus
+	r.lastStatus = objStatus
+
+	log.Warn(objId, " ", objStatus, " ", filesSummary)
+	r.notify(objId, objStatus, generalStatus, filesSummary.pinStatus)
 
 	if objId == r.coreService.PredefinedBlocks().Account {
 		r.subObjectsWatcher.ForEach(func(subObjectID string) {
-			r.notify(subObjectID, objStatus, generalStatus, linkedFilesSummary)
+			r.notify(subObjectID, objStatus, generalStatus, filesSummary.pinStatus)
 		})
 	}
 	return
