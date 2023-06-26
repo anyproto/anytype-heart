@@ -14,10 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -37,7 +35,6 @@ type ObjectFactory struct {
 	objectStore          objectstore.ObjectStore
 	relationService      relation.Service
 	sbtProvider          typeprovider.SmartBlockTypeProvider
-	sendEvent            func(e *pb.Event)
 	sourceService        source.Service
 	tempDirProvider      core.TempDirProvider
 	templateCloner       templateCloner
@@ -68,7 +65,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.relationService = app.MustComponent[relation.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
-	f.sendEvent = app.MustComponent[event.Sender](a).Broadcast
 	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
@@ -182,7 +178,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.fileBlockService,
 			f.bookmarkBlockService,
 			f.bookmarkService,
-			f.sendEvent,
 			f.tempDirProvider,
 			f.layoutConverter,
 			f.fileService,

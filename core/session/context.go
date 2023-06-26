@@ -60,6 +60,7 @@ func WithTraceId(traceId string) ContextOption {
 }
 
 type Sender interface {
+	BroadcastForSpace(spaceID string, event *pb.Event)
 	BroadcastToOtherSessions(token string, e *pb.Event)
 }
 
@@ -79,6 +80,10 @@ func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
 
 func (ctx *Context) GetMessages() []*pb.EventMessage {
 	return ctx.messages
+}
+
+func (ctx *Context) Broadcast(event *pb.Event) {
+	ctx.sessionSender.BroadcastForSpace(ctx.spaceID, event)
 }
 
 func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {

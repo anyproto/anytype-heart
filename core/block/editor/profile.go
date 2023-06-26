@@ -32,8 +32,6 @@ type Profile struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	table.TableEditor
-
-	sendEvent func(e *pb.Event)
 }
 
 func NewProfile(
@@ -43,7 +41,6 @@ func NewProfile(
 	fileBlockService file.BlockService,
 	bookmarkBlockService bookmark.BlockService,
 	bookmarkService bookmark.BookmarkService,
-	sendEvent func(e *pb.Event),
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
@@ -56,7 +53,6 @@ func NewProfile(
 	)
 	return &Profile{
 		SmartBlock:    sb,
-		sendEvent:     sendEvent,
 		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
@@ -110,7 +106,7 @@ func (p *Profile) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDet
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
-	p.sendEvent(&pb.Event{
+	ctx.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfAccountDetails{

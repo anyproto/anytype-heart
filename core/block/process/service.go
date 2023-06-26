@@ -42,16 +42,16 @@ func New() Service {
 }
 
 type service struct {
-	processes map[string]Process
-	sendEvent func(e *pb.Event)
-	waiters   map[string]chan struct{}
-	m         sync.Mutex
+	processes   map[string]Process
+	eventSender event.Sender
+	waiters     map[string]chan struct{}
+	m           sync.Mutex
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.processes = make(map[string]Process)
 	s.waiters = make(map[string]chan struct{})
-	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Broadcast
+	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	return nil
 }
 
@@ -74,7 +74,7 @@ func (s *service) monitor(p Process) {
 		s.m.Unlock()
 	}()
 	info := p.Info()
-	s.sendEvent(&pb.Event{
+	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfProcessNew{
@@ -91,7 +91,7 @@ func (s *service) monitor(p Process) {
 		case <-ticker.C:
 			info := p.Info()
 			if !infoEquals(info, prevInfo) {
-				s.sendEvent(&pb.Event{
+				s.eventSender.Broadcast(&pb.Event{
 					Messages: []*pb.EventMessage{
 						{
 							Value: &pb.EventMessageValueOfProcessUpdate{
@@ -106,7 +106,7 @@ func (s *service) monitor(p Process) {
 			}
 		case <-p.Done():
 			info := p.Info()
-			s.sendEvent(&pb.Event{
+			s.eventSender.Broadcast(&pb.Event{
 				Messages: []*pb.EventMessage{
 					{
 						Value: &pb.EventMessageValueOfProcessDone{
