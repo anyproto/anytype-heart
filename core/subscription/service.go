@@ -76,7 +76,7 @@ type service struct {
 	kanban            kanban.Service
 	collectionService CollectionService
 	sbtProvider       typeprovider.SmartBlockTypeProvider
-	sendEvent         func(e *pb.Event)
+	eventSender       event.Sender
 
 	m      sync.Mutex
 	ctxBuf *opCtx
@@ -89,7 +89,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
-	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Broadcast
+	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
@@ -449,7 +449,8 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	dur := time.Since(st)
 
 	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
-	s.sendEvent(event)
+	// TODO Maybe route object events according to the spaceID?
+	s.eventSender.Broadcast(event)
 	return dur
 }
 
