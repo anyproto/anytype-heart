@@ -19,9 +19,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/storage"
@@ -32,9 +32,9 @@ const FlatfsDirName = "flatfs"
 
 var log = logger.NewNamed(CName)
 
-func New(sendEvent func(event *pb.Event)) FileStorage {
+func New(eventSender event.Sender) FileStorage {
 	return &fileStorage{
-		sendEvent: sendEvent,
+		eventSender: eventSender,
 	}
 }
 
@@ -56,7 +56,7 @@ type fileStorage struct {
 	rpcStore     rpcstore.Service
 	spaceService space.Service
 	spaceStorage storage.ClientStorage
-	sendEvent    func(event *pb.Event)
+	eventSender  event.Sender
 }
 
 var _ fileblockstore.BlockStoreLocal = &fileStorage{}
@@ -94,7 +94,7 @@ func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
-	localStore, err := newFlatStore(f.flatfsPath, f.sendEvent, 1*time.Second)
+	localStore, err := newFlatStore(f.flatfsPath, f.eventSender, 1*time.Second)
 	if err != nil {
 		return fmt.Errorf("flatstore: %w", err)
 	}

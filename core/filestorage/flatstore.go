@@ -16,6 +16,7 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -24,7 +25,7 @@ type flatStore struct {
 	localBytesUsageEventSender *localBytesUsageEventSender
 }
 
-func newFlatStore(path string, sendEvent func(event *pb.Event), sendEventBatchTimeout time.Duration) (*flatStore, error) {
+func newFlatStore(path string, eventSender event.Sender, sendEventBatchTimeout time.Duration) (*flatStore, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return nil, fmt.Errorf("mkdir: %w", err)
@@ -41,7 +42,7 @@ func newFlatStore(path string, sendEvent func(event *pb.Event), sendEventBatchTi
 	}
 	return &flatStore{
 		ds:                         ds,
-		localBytesUsageEventSender: newLocalBytesUsageEventSender(sendEvent, sendEventBatchTimeout, bytesUsage),
+		localBytesUsageEventSender: newLocalBytesUsageEventSender(eventSender, sendEventBatchTimeout, bytesUsage),
 	}, nil
 }
 
@@ -154,7 +155,7 @@ func (f *flatStore) Close() error {
 }
 
 type localBytesUsageEventSender struct {
-	sendEvent   func(event *pb.Event)
+	eventSender event.Sender
 	batchPeriod time.Duration
 
 	sync.Mutex
@@ -162,9 +163,9 @@ type localBytesUsageEventSender struct {
 	localBytesUsage uint64
 }
 
-func newLocalBytesUsageEventSender(sendEvent func(event *pb.Event), batchPeriod time.Duration, initialLocalBytesUsage uint64) *localBytesUsageEventSender {
+func newLocalBytesUsageEventSender(eventSender event.Sender, batchPeriod time.Duration, initialLocalBytesUsage uint64) *localBytesUsageEventSender {
 	d := &localBytesUsageEventSender{
-		sendEvent: sendEvent,
+		eventSender: eventSender,
 
 		batchPeriod:     batchPeriod,
 		localBytesUsage: initialLocalBytesUsage,
@@ -188,7 +189,7 @@ func (d *localBytesUsageEventSender) sendLocalBytesUsageEvent(localBytesUsage ui
 }
 
 func (d *localBytesUsageEventSender) send(usage uint64) {
-	d.sendEvent(&pb.Event{
+	d.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileLocalUsage{
