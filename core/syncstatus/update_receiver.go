@@ -21,7 +21,7 @@ type updateReceiver struct {
 	nodeConfService    nodeconf.Service
 	sync.Mutex
 	nodeConnected bool
-	lastStatus    pb.EventStatusThreadSyncStatus
+	lastStatus    map[string]pb.EventStatusThreadSyncStatus
 }
 
 func newUpdateReceiver(
@@ -41,54 +41,45 @@ func newUpdateReceiver(
 		subObjectsWatcher:  subObjectsWatcher,
 		nodeConfService:    nodeConfService,
 		emitter:            emitter,
+		lastStatus:         make(map[string]pb.EventStatusThreadSyncStatus),
 	}
 }
 
 func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) (err error) {
-	var (
-		nodeConnected bool
-		objStatus     pb.EventStatusThreadSyncStatus
-		generalStatus pb.EventStatusThreadSyncStatus
-	)
-
-	nodeConnected = r.isNodeConnected()
 	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
+	objStatus := r.fetchObjectStatus(status)
 
-	networkStatus := r.nodeConfService.NetworkCompatibilityStatus()
-	switch status {
-	case syncstatus.StatusUnknown:
-		objStatus = pb.EventStatusThread_Unknown
-	case syncstatus.StatusSynced:
-		objStatus = pb.EventStatusThread_Synced
-	case syncstatus.StatusNotSynced:
-		objStatus = pb.EventStatusThread_Syncing
-	}
-
-	switch networkStatus {
-	case nodeconf.NetworkCompatibilityStatusIncompatible:
-		objStatus = pb.EventStatusThread_IncompatibleVersion
-	default:
-		if !nodeConnected {
-			objStatus = pb.EventStatusThread_Offline
-		}
-	}
-
-	if objStatus == r.lastStatus && !filesSummary.isUpdated {
+	if lastObjStatus, found := r.lastStatus[objId]; found && objStatus == lastObjStatus && !filesSummary.isUpdated {
 		return
 	}
+	r.lastStatus[objId] = objStatus
 
-	generalStatus = objStatus
-	r.lastStatus = objStatus
-
-	log.Warn(objId, " ", objStatus, " ", filesSummary)
-	r.notify(objId, objStatus, generalStatus, filesSummary.pinStatus)
+	r.notify(objId, objStatus, filesSummary.pinStatus)
 
 	if objId == r.coreService.PredefinedBlocks().Account {
 		r.subObjectsWatcher.ForEach(func(subObjectID string) {
-			r.notify(subObjectID, objStatus, generalStatus, filesSummary.pinStatus)
+			r.notify(subObjectID, objStatus, filesSummary.pinStatus)
 		})
 	}
 	return
+}
+
+func (r *updateReceiver) fetchObjectStatus(status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+	if r.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
+		return pb.EventStatusThread_IncompatibleVersion
+	}
+
+	if !r.isNodeConnected() {
+		return pb.EventStatusThread_Offline
+	}
+
+	switch status {
+	case syncstatus.StatusUnknown:
+		return pb.EventStatusThread_Unknown
+	case syncstatus.StatusSynced:
+		return pb.EventStatusThread_Synced
+	}
+	return pb.EventStatusThread_Syncing
 }
 
 func (r *updateReceiver) isNodeConnected() bool {
@@ -105,13 +96,13 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 
 func (r *updateReceiver) notify(
 	objId string,
-	objStatus, generalStatus pb.EventStatusThreadSyncStatus,
+	objStatus pb.EventStatusThreadSyncStatus,
 	pinStatus pb.EventStatusThreadCafePinStatus,
 ) {
 	r.sendEvent(objId, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 		Summary: &pb.EventStatusThreadSummary{Status: objStatus},
 		Cafe: &pb.EventStatusThreadCafe{
-			Status: generalStatus,
+			Status: objStatus,
 			Files:  &pinStatus,
 		},
 	}})
