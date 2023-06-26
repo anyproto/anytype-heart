@@ -43,9 +43,24 @@ func Test_GetBookmarkBlock(t *testing.T) {
 
 func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
 	c := &ChildPage{Title: "title"}
-	nameToID := map[string]string{"id": "title"}
-	notionIdsToAnytype := map[string]string{"id": "anytypeId"}
-	bl := c.GetLinkToObjectBlock(notionIdsToAnytype, nameToID)
+	importContext := NewMapRequest()
+	importContext.PageNameToID = map[string]string{"id": "title"}
+	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId"}
+	importContext.ChildIDToPage = map[string]string{"id": "parentID"}
+	bl := c.GetLinkToObjectBlock(importContext, "parentID")
+	assert.NotNil(t, bl)
+	content, ok := bl.Content.(*model.BlockContentOfLink)
+	assert.True(t, ok)
+	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+}
+
+func Test_GetLinkToObjectBlockTwoPagesWithSameName(t *testing.T) {
+	c := &ChildPage{Title: "title"}
+	importContext := NewMapRequest()
+	importContext.PageNameToID = map[string]string{"id": "title", "id1": "title"}
+	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId", "id1": "anytypeId1"}
+	importContext.ChildIDToPage = map[string]string{"id": "parentID"}
+	bl := c.GetLinkToObjectBlock(importContext, "parentID")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
@@ -54,14 +69,15 @@ func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
 
 func Test_GetLinkToObjectBlockFail(t *testing.T) {
 	c := &ChildPage{Title: "title"}
-	bl := c.GetLinkToObjectBlock(nil, nil)
+	bl := c.GetLinkToObjectBlock(NewMapRequest(), "id")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
 	assert.Equal(t, content.Text.Text, notFoundPageMessage)
 
-	nameToID := map[string]string{"id": "title"}
-	bl = c.GetLinkToObjectBlock(nameToID, nil)
+	importContext := NewMapRequest()
+	importContext.PageNameToID = map[string]string{"id": "title"}
+	bl = c.GetLinkToObjectBlock(importContext, "pageID")
 	assert.NotNil(t, bl)
 	content, ok = bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
@@ -70,9 +86,11 @@ func Test_GetLinkToObjectBlockFail(t *testing.T) {
 
 func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
 	c := &ChildDatabase{Title: "title"}
-	nameToID := map[string]string{"id": "title"}
-	notionIdsToAnytype := map[string]string{"id": "anytypeId"}
-	bl := c.GetDataviewBlock(notionIdsToAnytype, nameToID)
+	importContext := NewMapRequest()
+	importContext.DatabaseNameToID = map[string]string{"id": "title"}
+	importContext.NotionDatabaseIdsToAnytype = map[string]string{"id": "anytypeId"}
+	importContext.ChildIDToPage = map[string]string{"id": "parentID"}
+	bl := c.GetDataviewBlock(importContext, "parentID")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfDataview)
 	assert.True(t, ok)
@@ -81,7 +99,7 @@ func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
 
 func Test_GetLinkToObjectBlockInlineCollectionEmpty(t *testing.T) {
 	c := &ChildDatabase{Title: "title"}
-	bl := c.GetDataviewBlock(nil, nil)
+	bl := c.GetDataviewBlock(NewMapRequest(), "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfDataview)
 	assert.True(t, ok)

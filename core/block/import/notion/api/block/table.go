@@ -47,7 +47,7 @@ func (t *TableBlock) SetChildren(children []interface{}) {
 	}
 }
 
-func (t *TableBlock) GetBlocks(req *MapRequest) *MapResponse {
+func (t *TableBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
 	columnsBlocks, columnsBlocksIDs, columnLayoutBlockID, columnLayoutBlock := t.getColumns()
 
 	tableResponse := &MapResponse{}
@@ -106,7 +106,7 @@ func (*TableBlock) getLayoutRowBlock(children []string) (string, *model.Block) {
 	return tableRowBlockID, tableRowLayoutBlock
 }
 
-func (t *TableBlock) getRows(req *MapRequest,
+func (t *TableBlock) getRows(req *NotionImportContext,
 	columnsBlocksIDs []string,
 	tableResponse *MapResponse) ([]*model.Block, []string, []*model.Block) {
 	var (

@@ -39,7 +39,7 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"Select": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -98,7 +98,7 @@ func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 		LastEditedTime: "2022-10-24T22:56:00.000Z",
 	}
 	pr := property.Properties{"LastEditedTime": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -128,7 +128,7 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 
 	p := property.RichTextItem{ID: "id", Type: string(property.PropertyConfigTypeRichText)}
 	pr := property.Properties{"RichText": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -161,7 +161,7 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"Status": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -225,7 +225,7 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 		Number: &num,
 	}
 	pr := property.Properties{"Number": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -260,7 +260,7 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"MultiSelect": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -325,7 +325,7 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 		Checkbox: true,
 	}
 	pr := property.Properties{"Checkbox": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -355,7 +355,7 @@ func Test_handlePagePropertiesEmail(t *testing.T) {
 		Email: &email,
 	}
 	pr := property.Properties{"Email": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -387,7 +387,7 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 	pr := property.Properties{"Relation": &p}
 	notionPageIdsToAnytype := map[string]string{"id": "anytypeID"}
 	notionDatabaseIdsToAnytype := map[string]string{"id": "anytypeID"}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		NotionPageIdsToAnytype:     notionPageIdsToAnytype,
 		NotionDatabaseIdsToAnytype: notionDatabaseIdsToAnytype,
 		RelationsIdsToAnytypeID:    map[string]*model.SmartBlockSnapshotBase{},
@@ -424,7 +424,7 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 		Type:   string(property.PropertyConfigTypePeople),
 	}
 	pr := property.Properties{"People": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -462,7 +462,7 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 		Formula: map[string]interface{}{"type": property.NumberFormula, "number": float64(1)},
 	}
 	pr := property.Properties{"Formula": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -491,7 +491,7 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 		Title: []*api.RichText{{PlainText: "Title"}},
 	}
 	pr := property.Properties{"Title": &p}
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}
@@ -542,7 +542,7 @@ func Test_handleRollupProperties(t *testing.T) {
 
 	pr := property.Properties{"Rollup1": &p1, "Rollup2": &p2, "Rollup3": &p3}
 
-	req := &block.MapRequest{
+	req := &block.NotionImportContext{
 		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
 		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
 	}

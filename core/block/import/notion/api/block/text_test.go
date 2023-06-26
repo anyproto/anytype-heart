@@ -24,7 +24,7 @@ func Test_GetTextBlocksTextSuccess(t *testing.T) {
 		Color: api.RedBackGround,
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{})
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
 	assert.Equal(t, bl.Blocks[0].BackgroundColor, api.AnytypeRed)
@@ -48,7 +48,7 @@ func Test_GetTextBlocksTextUserMention(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{})
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
 	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 0)
@@ -70,7 +70,7 @@ func Test_GetTextBlocksTextPageMention(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{
 		NotionPageIdsToAnytype: map[string]string{"notionID": "anytypeID"},
 		PageNameToID:           map[string]string{"notionID": "Page"},
 	})
@@ -96,7 +96,7 @@ func Test_GetTextBlocksTextPageMentionNotFound(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{
 		NotionPageIdsToAnytype: map[string]string{},
 		PageNameToID:           map[string]string{},
 	})
@@ -120,7 +120,7 @@ func Test_GetTextBlocksDatabaseMention(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{
 		NotionDatabaseIdsToAnytype: map[string]string{},
 		DatabaseNameToID:           map[string]string{},
 	})
@@ -145,7 +145,7 @@ func Test_GetTextBlocksDatabaseMentionWithoutSource(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{
 		NotionDatabaseIdsToAnytype: map[string]string{},
 		DatabaseNameToID:           map[string]string{},
 	})
@@ -169,7 +169,7 @@ func Test_GetTextBlocksDateMention(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{})
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
 	assert.Len(t, bl.Blocks[0].GetText().Marks.Marks, 1)
@@ -192,7 +192,7 @@ func Test_GetTextBlocksLinkPreview(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{})
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Style, model.BlockContentText_Paragraph)
 	assert.NotNil(t, bl.Blocks[0].GetText().Marks)
@@ -213,7 +213,7 @@ func Test_GetTextBlocksEquation(t *testing.T) {
 		},
 	}
 
-	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &MapRequest{})
+	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &NotionImportContext{})
 	assert.Len(t, bl.Blocks, 1)
 	assert.NotNil(t, bl.Blocks[0].GetLatex())
 	assert.Equal(t, bl.Blocks[0].GetLatex().Text, "Equation")
@@ -231,7 +231,7 @@ func Test_GetCodeBlocksSuccess(t *testing.T) {
 			Language: "Go",
 		},
 	}
-	bl := co.GetBlocks(&MapRequest{})
+	bl := co.GetBlocks(&NotionImportContext{}, "")
 	assert.NotNil(t, bl)
 	assert.Len(t, bl.Blocks, 1)
 	assert.Equal(t, bl.Blocks[0].GetText().Text, "Code")

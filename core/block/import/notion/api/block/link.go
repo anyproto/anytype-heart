@@ -18,8 +18,8 @@ type EmbedBlock struct {
 	Embed LinkToWeb `json:"embed"`
 }
 
-func (b *EmbedBlock) GetBlocks(req *MapRequest) *MapResponse {
-	return b.Embed.GetBlocks(req)
+func (b *EmbedBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+	return b.Embed.GetBlocks(req, "")
 }
 
 type LinkToWeb struct {
@@ -31,11 +31,11 @@ type LinkPreviewBlock struct {
 	LinkPreview LinkToWeb `json:"link_preview"`
 }
 
-func (b *LinkPreviewBlock) GetBlocks(req *MapRequest) *MapResponse {
-	return b.LinkPreview.GetBlocks(req)
+func (b *LinkPreviewBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+	return b.LinkPreview.GetBlocks(req, "")
 }
 
-func (b *LinkToWeb) GetBlocks(*MapRequest) *MapResponse {
+func (b *LinkToWeb) GetBlocks(*NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 
 	to := textUtil.UTF16RuneCountString(b.URL)
@@ -76,25 +76,16 @@ type ChildPage struct {
 	Title string `json:"title"`
 }
 
-func (b *ChildPageBlock) GetBlocks(req *MapRequest) *MapResponse {
-	bl := b.ChildPage.GetLinkToObjectBlock(req.NotionPageIdsToAnytype, req.PageNameToID)
+func (b *ChildPageBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+	bl := b.ChildPage.GetLinkToObjectBlock(req, pageID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{bl.Id},
 	}
 }
 
-func (p ChildPage) GetLinkToObjectBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
-	var (
-		targetBlockID string
-		ok            bool
-	)
-	for id, name := range idToName {
-		if strings.EqualFold(name, p.Title) {
-			targetBlockID, ok = notionIdsToAnytype[id]
-			break
-		}
-	}
+func (p ChildPage) GetLinkToObjectBlock(importContext *NotionImportContext, pageID string) *model.Block {
+	targetBlockID, ok := getTargetBlock(importContext.PageNameToID, importContext.ChildIDToPage, importContext.NotionPageIdsToAnytype, pageID, p.Title)
 
 	id := bson.NewObjectId().Hex()
 	if !ok {
@@ -127,8 +118,8 @@ type ChildDatabaseBlock struct {
 	ChildDatabase ChildDatabase `json:"child_database"`
 }
 
-func (b *ChildDatabaseBlock) GetBlocks(req *MapRequest) *MapResponse {
-	bl := b.ChildDatabase.GetDataviewBlock(req.NotionDatabaseIdsToAnytype, req.DatabaseNameToID)
+func (b *ChildDatabaseBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+	bl := b.ChildDatabase.GetDataviewBlock(req, pageID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{bl.Id},
@@ -139,23 +130,14 @@ type ChildDatabase struct {
 	Title string `json:"title"`
 }
 
-func (c *ChildDatabase) GetDataviewBlock(notionIdsToAnytype, idToName map[string]string) *model.Block {
-	var (
-		targetBlockID string
-	)
-	for id, name := range idToName {
-		if strings.EqualFold(name, c.Title) {
-			if len(notionIdsToAnytype) > 0 {
-				targetBlockID = notionIdsToAnytype[id]
-			}
-			break
-		}
-	}
+func (c *ChildDatabase) GetDataviewBlock(importContext *NotionImportContext, pageID string) *model.Block {
+	targetBlockID, _ := getTargetBlock(importContext.DatabaseNameToID,
+		importContext.ChildIDToPage,
+		importContext.NotionDatabaseIdsToAnytype,
+		pageID, c.Title)
 
 	id := bson.NewObjectId().Hex()
-
 	block := template.MakeCollectionDataviewContent()
-
 	block.Dataview.TargetObjectId = targetBlockID
 
 	return &model.Block{
@@ -170,7 +152,7 @@ type LinkToPageBlock struct {
 	LinkToPage api.Parent `json:"link_to_page"`
 }
 
-func (l *LinkToPageBlock) GetBlocks(req *MapRequest) *MapResponse {
+func (l *LinkToPageBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
 	var anytypeID string
 	if l.LinkToPage.PageID != "" {
 		anytypeID = req.NotionPageIdsToAnytype[l.LinkToPage.PageID]
@@ -198,7 +180,7 @@ type BookmarkBlock struct {
 	Bookmark BookmarkObject `json:"bookmark"`
 }
 
-func (b *BookmarkBlock) GetBlocks(*MapRequest) *MapResponse {
+func (b *BookmarkBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
 	bl, id := b.Bookmark.GetBookmarkBlock()
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
@@ -224,4 +206,27 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 				Title: title,
 			},
 		}}, id
+}
+
+func getTargetBlock(nameToID, childIDToParent, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
+	var (
+		targetBlockID    string
+		ok               bool
+		idsWithGivenName []string
+	)
+	for id, name := range nameToID {
+		if strings.EqualFold(name, title) {
+			idsWithGivenName = append(idsWithGivenName, id)
+		}
+	}
+
+	for _, id := range idsWithGivenName {
+		if parentID, exist := childIDToParent[id]; exist {
+			if parentID == pageID {
+				targetBlockID, ok = notionIDsToAnytype[id]
+				break
+			}
+		}
+	}
+	return targetBlockID, ok
 }
