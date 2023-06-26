@@ -381,6 +381,15 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		log.Infof("start store reindex (%s)", flags.String())
 	}
 
+	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
+	if flags.threadObjects && flags.fileObjects {
+		// files will be indexed within object indexing (see indexLinkedFiles)
+		// because we need to do it in the background.
+		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
+		// will be waiting for the linkedFiles background indexing without this flag
+		flags.fileObjects = false
+	}
+
 	if flags.fileKeys {
 		err = i.fileStore.RemoveEmptyFileKeys()
 		if err != nil {

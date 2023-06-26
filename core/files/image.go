@@ -43,7 +43,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	if wantWidth > 1920 {
-		fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/original")
+		fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/original")
 		if err == nil {
 			return &file{
 				hash: fileIndex.Hash,
@@ -54,7 +54,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 // GetOriginalFile doesn't contains Meta
 func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
 	sizeName := "original"
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err == nil {
 		return &file{
 			hash: fileIndex.Hash,
@@ -89,7 +89,7 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 
 	// fallback to large size, because older image nodes don't have an original
 	sizeName := "large"
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (i *image) Hash() string {
 }
 
 func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/exif")
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/exif")
 	if err != nil {
 		return nil, err
 	}
