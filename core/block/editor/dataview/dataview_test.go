@@ -1,6 +1,7 @@
 package dataview
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -90,7 +91,7 @@ func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 	}
 	assertViewPositions := func(viewId string, pos uint32, exp []string) {
 		dv, sb := newTestDv()
-		ctx := session.NewContext("testSpaceID")
+		ctx := session.NewContext(context.TODO(), "testSpaceID")
 		err := dv.SetViewPosition(ctx, "dv", viewId, pos)
 		require.NoError(t, err)
 		views := sb.Doc.Pick("dv").Model().GetDataview().Views

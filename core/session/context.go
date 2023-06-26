@@ -1,8 +1,13 @@
 package session
 
-import "github.com/anyproto/anytype-heart/pb"
+import (
+	"context"
+
+	"github.com/anyproto/anytype-heart/pb"
+)
 
 type Context struct {
+	ctx           context.Context
 	smartBlockId  string
 	spaceID       string
 	traceId       string
@@ -12,7 +17,7 @@ type Context struct {
 	isAsync       bool
 }
 
-func NewContext(spaceID string, opts ...ContextOption) *Context {
+func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) *Context {
 	ctx := &Context{
 		spaceID: spaceID,
 	}
@@ -24,6 +29,7 @@ func NewContext(spaceID string, opts ...ContextOption) *Context {
 
 func NewChildContext(parent *Context) *Context {
 	return &Context{
+		ctx:           parent.ctx,
 		spaceID:       parent.spaceID,
 		smartBlockId:  parent.smartBlockId,
 		traceId:       parent.traceId,
@@ -80,6 +86,10 @@ func (ctx *Context) SpaceID() string {
 
 func (ctx *Context) IsAsync() bool {
 	return ctx.isAsync
+}
+
+func (ctx *Context) Context() context.Context {
+	return ctx.ctx
 }
 
 func (ctx *Context) IsActive() bool {
