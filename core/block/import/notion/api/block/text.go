@@ -375,7 +375,7 @@ type CodeObject struct {
 	Language string         `json:"language"`
 }
 
-func (c *CodeBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
+func (c *CodeBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id: id,
@@ -411,7 +411,7 @@ type EquationBlock struct {
 	Equation api.EquationObject `json:"equation"`
 }
 
-func (e *EquationBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
+func (e *EquationBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
 	bl := e.Equation.HandleEquation()
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},

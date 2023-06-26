@@ -18,7 +18,7 @@ type EmbedBlock struct {
 	Embed LinkToWeb `json:"embed"`
 }
 
-func (b *EmbedBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (b *EmbedBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
 	return b.Embed.GetBlocks(req, "")
 }
 
@@ -31,7 +31,7 @@ type LinkPreviewBlock struct {
 	LinkPreview LinkToWeb `json:"link_preview"`
 }
 
-func (b *LinkPreviewBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (b *LinkPreviewBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
 	return b.LinkPreview.GetBlocks(req, "")
 }
 
@@ -152,7 +152,7 @@ type LinkToPageBlock struct {
 	LinkToPage api.Parent `json:"link_to_page"`
 }
 
-func (l *LinkToPageBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (l *LinkToPageBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
 	var anytypeID string
 	if l.LinkToPage.PageID != "" {
 		anytypeID = req.NotionPageIdsToAnytype[l.LinkToPage.PageID]
