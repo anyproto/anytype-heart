@@ -14,8 +14,8 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 )
@@ -64,17 +64,17 @@ type fileSync struct {
 	removePingCh chan struct{}
 	dagService   ipld.DAGService
 	fileStore    filestore.FileStore
-	sendEvent    func(event *pb.Event)
+	eventSender  event.Sender
 	onUpload     func(spaceID, fileID string) error
 
 	spaceStatsLock sync.Mutex
 	spaceStats     map[string]SpaceStat
 }
 
-func New(sendEvent func(event *pb.Event)) FileSync {
+func New(eventSender event.Sender) FileSync {
 	return &fileSync{
-		sendEvent:  sendEvent,
-		spaceStats: map[string]SpaceStat{},
+		eventSender: eventSender,
+		spaceStats:  map[string]SpaceStat{},
 	}
 }
 

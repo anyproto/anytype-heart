@@ -10,6 +10,7 @@ const CName = "eventSender"
 
 type Sender interface {
 	Broadcast(event *pb.Event)
+	BroadcastForSpace(spaceID string, event *pb.Event)
 	app.Component
 }
 
@@ -30,5 +31,9 @@ func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
 }
 
 func (es *CallbackSender) Broadcast(event *pb.Event) {
+	es.callback(event)
+}
+
+func (es *CallbackSender) BroadcastForSpace(_ string, event *pb.Event) {
 	es.callback(event)
 }

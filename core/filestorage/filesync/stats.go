@@ -53,7 +53,7 @@ func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat,
 		f.spaceStats[spaceId] = newStats
 		// Do not send event if it is first time we get stats
 		if ok {
-			f.sendSpaceUsageEvent(uint64(newStats.BytesUsage))
+			f.sendSpaceUsageEvent(spaceId, uint64(newStats.BytesUsage))
 		}
 	}
 	f.spaceStatsLock.Unlock()
@@ -67,8 +67,8 @@ func (f *fileSync) updateSpaceUsageInformation(spaceId string) {
 	}
 }
 
-func (f *fileSync) sendSpaceUsageEvent(bytesUsage uint64) {
-	f.sendEvent(&pb.Event{
+func (f *fileSync) sendSpaceUsageEvent(spaceID string, bytesUsage uint64) {
+	f.eventSender.BroadcastForSpace(spaceID, &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileSpaceUsage{

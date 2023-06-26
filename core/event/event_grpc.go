@@ -50,6 +50,11 @@ func (es *GrpcSender) Broadcast(event *pb.Event) {
 	es.broadcast(nil, event)
 }
 
+func (es *GrpcSender) BroadcastForSpace(spaceID string, event *pb.Event) {
+	// TODO Use spaceID
+	es.broadcast(nil, event)
+}
+
 // BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
 func (es *GrpcSender) BroadcastToOtherSessions(token string, event *pb.Event) {
 	es.broadcast(&token, event)
