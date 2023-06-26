@@ -18,7 +18,7 @@ type NotionImportContext struct {
 	ChildIDToPage              map[string]string
 }
 
-func NewMapRequest() *NotionImportContext {
+func NewNotionImportContext() *NotionImportContext {
 	return &NotionImportContext{
 		NotionPageIdsToAnytype:     make(map[string]string, 0),
 		NotionDatabaseIdsToAnytype: make(map[string]string, 0),

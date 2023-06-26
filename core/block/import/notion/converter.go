@@ -63,7 +63,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, converter.NewFromError("", converter.ErrNoObjectsToImport)
 	}
 
-	notionImportContext := block.NewMapRequest()
+	notionImportContext := block.NewNotionImportContext()
 	dbSnapshots, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
