@@ -9,14 +9,19 @@ import (
 const CName = "eventSender"
 
 type Sender interface {
+	IsActive(token string) bool
 	Broadcast(event *pb.Event)
 	BroadcastForSpace(spaceID string, event *pb.Event)
+	SendToSession(token string, event *pb.Event)
+	BroadcastToOtherSessions(token string, e *pb.Event)
 	app.Component
 }
 
 type CallbackSender struct {
 	callback func(event *pb.Event)
 }
+
+var _ = Sender(&CallbackSender{})
 
 func (es *CallbackSender) Init(a *app.App) (err error) {
 	return
@@ -28,6 +33,18 @@ func (es *CallbackSender) Name() (name string) {
 
 func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
 	return &CallbackSender{callback: callback}
+}
+
+func (es *CallbackSender) IsActive(_ string) bool {
+	return true
+}
+
+func (es *CallbackSender) BroadcastToOtherSessions(token string, e *pb.Event) {
+	// noop
+}
+
+func (es *CallbackSender) SendToSession(token string, event *pb.Event) {
+	es.callback(event)
 }
 
 func (es *CallbackSender) Broadcast(event *pb.Event) {

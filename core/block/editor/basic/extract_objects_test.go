@@ -189,7 +189,7 @@ func TestExtractObjects(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
-			ctx := session.NewContext(context.TODO(), "testSpaceID")
+			ctx := session.NewContext(context.TODO(), nil, "testSpaceID")
 			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 

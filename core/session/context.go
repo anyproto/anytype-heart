@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -12,14 +13,16 @@ type Context struct {
 	spaceID       string
 	traceId       string
 	messages      []*pb.EventMessage
-	sessionSender Sender
+	sessionSender event.Sender
 	sessionToken  string
 	isAsync       bool
 }
 
-func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) *Context {
+func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, opts ...ContextOption) *Context {
 	ctx := &Context{
-		spaceID: spaceID,
+		spaceID:       spaceID,
+		sessionSender: eventSender,
+		ctx:           cctx,
 	}
 	for _, apply := range opts {
 		apply(ctx)
@@ -52,10 +55,9 @@ func Async() ContextOption {
 	}
 }
 
-func WithSession(token string, sender Sender) ContextOption {
+func WithSession(token string) ContextOption {
 	return func(ctx *Context) {
 		ctx.sessionToken = token
-		ctx.sessionSender = sender
 	}
 }
 
@@ -63,13 +65,6 @@ func WithTraceId(traceId string) ContextOption {
 	return func(ctx *Context) {
 		ctx.traceId = traceId
 	}
-}
-
-type Sender interface {
-	IsActive(token string) bool
-	SendToSession(token string, event *pb.Event)
-	BroadcastForSpace(spaceID string, event *pb.Event)
-	BroadcastToOtherSessions(token string, e *pb.Event)
 }
 
 type Closer interface {
@@ -123,13 +118,11 @@ func (ctx *Context) Broadcast(event *pb.Event) {
 }
 
 func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {
-	if ctx.sessionSender != nil {
-		ctx.sessionSender.BroadcastToOtherSessions(ctx.sessionToken, &pb.Event{
-			Messages:  msgs,
-			ContextId: ctx.smartBlockId,
-			Initiator: nil,
-		})
-	}
+	ctx.sessionSender.BroadcastToOtherSessions(ctx.sessionToken, &pb.Event{
+		Messages:  msgs,
+		ContextId: ctx.smartBlockId,
+		Initiator: nil,
+	})
 }
 
 func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {

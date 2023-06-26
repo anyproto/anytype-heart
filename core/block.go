@@ -679,27 +679,23 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 
 func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) *session.Context {
 	spaceID := getService[space.Service](mw).AccountId()
-	sessionSender, ok := mw.EventSender.(session.Sender)
-	if !ok {
-		return session.NewContext(cctx, spaceID)
-	}
 
 	md, ok := metadata.FromIncomingContext(cctx)
 	if !ok {
-		return session.NewContext(cctx, spaceID)
+		return session.NewContext(cctx, mw.EventSender, spaceID)
 	}
 
 	v := md.Get("token")
 	if len(v) != 1 {
-		return session.NewContext(cctx, spaceID)
+		return session.NewContext(cctx, mw.EventSender, spaceID)
 	}
 
 	tok := v[0]
 	if tok == "" {
-		return session.NewContext(cctx, spaceID)
+		return session.NewContext(cctx, mw.EventSender, spaceID)
 	}
 
-	return session.NewContext(cctx, spaceID, session.WithSession(tok, sessionSender))
+	return session.NewContext(cctx, mw.EventSender, spaceID, session.WithSession(tok))
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
