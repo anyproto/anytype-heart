@@ -27,7 +27,7 @@ func (c *ColumnListBlock) SetChildren(children []interface{}) {
 	c.ColumnList = children
 }
 
-func (c *ColumnListBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (c *ColumnListBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
 	columnsList := c.ColumnList.([]interface{})
 	var (
 		resultResponse = &MapResponse{}
@@ -126,7 +126,7 @@ type ColumnObject struct {
 	Children []interface{} `json:"children"`
 }
 
-func (c *ColumnBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (c *ColumnBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
 	req.Blocks = c.Column.Children
 	resp := MapBlocks(req, "")
 	return resp

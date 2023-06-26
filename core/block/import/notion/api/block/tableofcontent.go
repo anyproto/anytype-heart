@@ -18,7 +18,7 @@ type TableOfContentsObject struct {
 	Color string `json:"color"`
 }
 
-func (t *TableOfContentsBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (t *TableOfContentsBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	var color string
 	// Anytype Table Of Content doesn't support different colors of text, only background

@@ -75,7 +75,7 @@ const unsupportedBlockMessage = "Unsupported block"
 
 type UnsupportedBlock struct{}
 
-func (*UnsupportedBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (*UnsupportedBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id: id,
