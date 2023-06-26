@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"testing"
 
@@ -164,4 +165,40 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
+}
+
+func TestCsv_GetSnapshotsSameRelations(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/samerelations.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+	assert.Len(t, sn.Snapshots, 13) // root collection + samerelations CSV collection + 4 relations + 7 objects
+
+	relations := make([]*converter.Snapshot, 0, 3)
+	for _, snapshot := range sn.Snapshots {
+		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		if name == "Nickname" {
+			relations = append(relations, snapshot)
+		}
+	}
+
+	assert.Len(t, relations, 3)
+	assert.Equal(t, pbtypes.GetString(relations[0].Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String()),
+		"testdata/samerelations.csv/column/Nickname")
+	assert.Equal(t, pbtypes.GetString(relations[1].Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String()),
+		"testdata/samerelations.csv/column/Nickname0")
+	assert.Equal(t, pbtypes.GetString(relations[2].Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String()),
+		"testdata/samerelations.csv/column/Nickname1")
 }

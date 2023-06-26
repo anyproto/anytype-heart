@@ -3,6 +3,8 @@ package html
 import (
 	"fmt"
 	"io"
+	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -106,13 +108,13 @@ func (h *HTML) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
 	return snapshots, targetObjects, nil
 }
 
-func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
-	s := source.GetSource(p)
+func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
+	s := source.GetSource(path)
 	if s == nil {
-		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
+		return nil, nil, fmt.Errorf("failed to identify source: %s", path)
 	}
 
-	readers, err := s.GetFileReaders(p, []string{".html"})
+	readers, err := s.GetFileReaders(path, []string{".html"})
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
@@ -131,7 +133,7 @@ func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([
 			}
 			continue
 		}
-		sn, id := h.getSnapshot(blocks, name)
+		sn, id := h.getSnapshot(blocks, path, name)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}
@@ -151,16 +153,18 @@ func (h *HTML) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
 	return blocks, nil
 }
 
-func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
+func (h *HTML) getSnapshot(blocks []*model.Block, path, shortFileName string) (*converter.Snapshot, string) {
+	name := strings.TrimSuffix(filepath.Base(shortFileName), filepath.Ext(shortFileName))
+	details := converter.GetCommonDetails(name, "", converter.GetSourceDetail(shortFileName))
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", ""),
+		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
 
 	snapshot := &converter.Snapshot{
 		Id:       uuid.New().String(),
-		FileName: p,
+		FileName: path,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 		SbType:   smartblock.SmartBlockTypePage,
 	}

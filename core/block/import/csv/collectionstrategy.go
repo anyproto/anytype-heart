@@ -1,6 +1,8 @@
 package csv
 
 import (
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
@@ -24,6 +26,8 @@ import (
 
 var logger = logging.Logger("import-csv")
 
+const columnPath = "column"
+
 type CollectionStrategy struct {
 	collectionService *collection.Service
 }
@@ -32,17 +36,18 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
+func (c *CollectionStrategy) CreateObjects(path string, fileName string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
-	details := converter.GetCommonDetails(path, "", "")
+	name := strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName))
+	details := converter.GetCommonDetails(name, "", converter.GetSourceDetail(fileName))
 	details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 	_, _, st, err := c.collectionService.CreateCollection(details, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable)
+	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable, fileName)
 	objectsSnapshots := getEmptyObjects(csvTable, relations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
@@ -61,13 +66,14 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]
 	return allObjectsIDs, snapshots, nil
 }
 
-func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converter.Snapshot) {
+func getDetailsFromCSVTable(csvTable [][]string, fileName string) ([]*model.Relation, []*converter.Snapshot) {
 	if len(csvTable) == 0 {
 		return nil, nil
 	}
 	relations := make([]*model.Relation, 0, len(csvTable[0]))
 	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
 	allRelations := csvTable[0]
+	relationsSourceMap := make(map[string]bool, 0)
 	for _, relation := range allRelations {
 		if relation == "" {
 			continue
@@ -78,11 +84,12 @@ func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converte
 			Name:   relation,
 			Key:    id,
 		})
+		source := getRelationSource(relationsSourceMap, fileName, relation)
 		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
 			Id:     addr.RelationKeyToIdPrefix + id,
 			SbType: smartblock.SmartBlockTypeSubObject,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-				Details:     getRelationDetails(relation, id, float64(model.RelationFormat_longtext)),
+				Details:     getRelationDetails(relation, id, source),
 				ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
 			}},
 		})
@@ -90,13 +97,14 @@ func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converte
 	return relations, relationsSnapshots
 }
 
-func getRelationDetails(name, key string, format float64) *types.Struct {
+func getRelationDetails(name, id, source string) *types.Struct {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(format)
+	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(model.RelationFormat_longtext))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
-	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + id)
+	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(id)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(source)
 	return details
 }
 
@@ -188,4 +196,27 @@ func (c *CollectionStrategy) provideCollectionSnapshots(details *types.Struct, s
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot
+}
+
+// getRelationSource return unique source for relations from columns.
+// Need it, if csv file has identical columns, to prevent duplicated relations in case of repeated import
+func getRelationSource(sourceMap map[string]bool, fileName string, relation string) string {
+	source := buildSource(fileName, relation)
+	if _, ok := sourceMap[source]; ok {
+		var i int64
+		for {
+			source = buildSource(fileName, relation) + strconv.FormatInt(i, 10)
+			if _, ok = sourceMap[source]; ok {
+				i++
+				continue
+			}
+			break
+		}
+	}
+	sourceMap[source] = true
+	return source
+}
+
+func buildSource(fileName string, relation string) string {
+	return fileName + string(filepath.Separator) + columnPath + string(filepath.Separator) + relation
 }

@@ -8,14 +8,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -64,7 +62,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, converter.NewFromError("", converter.ErrNoObjectsToImport)
 	}
 
-	dbSnapshots, mapRequest, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
+	dbSnapshots, mapRequest, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
 	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
@@ -72,15 +70,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Merge(dbErr)
 		return nil, ce
 	}
-
-	r := &block.MapRequest{
-		NotionDatabaseIdsToAnytype: mapRequest.NotionDatabaseIdsToAnytype,
-		DatabaseNameToID:           mapRequest.DatabaseNameToID,
-		RelationsIdsToAnytypeID:    mapRequest.RelationsIdsToAnytypeID,
-		RelationsIdsToOptions:      make(map[string][]*model.SmartBlockSnapshotBase, 0),
-	}
-
-	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, r, progress)
+	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, mapRequest, progress, relations)
 	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}

@@ -129,14 +129,14 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 	readers map[string]io.ReadCloser,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
-	p string,
+	path string,
 	cErr converter.ConvertError) *Result {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
-	for _, rc := range readers {
+	for name, rc := range readers {
 		csvTable, err := c.getCSVTable(rc, params.GetDelimiter())
 		if err != nil {
-			cErr.Add(p, err)
+			cErr.Add(path, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}
@@ -145,9 +145,9 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 		if c.needToTranspose(params) && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		objectsIDs, snapshots, err := str.CreateObjects(p, csvTable)
+		objectsIDs, snapshots, err := str.CreateObjects(path, name, csvTable)
 		if err != nil {
-			cErr.Add(p, err)
+			cErr.Add(path, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}

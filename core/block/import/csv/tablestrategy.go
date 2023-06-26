@@ -2,6 +2,8 @@ package csv
 
 import (
 	"github.com/google/uuid"
+	"path/filepath"
+	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	te "github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -21,7 +23,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string, fileName string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -36,8 +38,8 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string) ([]strin
 			return nil, nil, err
 		}
 	}
-
-	details := converter.GetCommonDetails(path, "", "")
+	name := strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName))
+	details := converter.GetCommonDetails(name, "", converter.GetSourceDetail(fileName))
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,

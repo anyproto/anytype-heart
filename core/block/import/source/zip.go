@@ -40,15 +40,15 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string) (map[strin
 			log.Errorf("not expected extension")
 			continue
 		}
-		shortPath := filepath.Clean(f.Name)
+		resultPath := filepath.Clean(f.Name)
 		// remove zip root folder if exists
-		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
+		resultPath = zipName + string(filepath.Separator) + resultPath
 		rc, err := f.Open()
 		if err != nil {
 			log.Errorf("failed to read file: %s", err.Error())
 			continue
 		}
-		files[shortPath] = rc
+		files[resultPath] = rc
 	}
 	return files, nil
 }

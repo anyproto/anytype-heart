@@ -13,7 +13,7 @@ func NewFile() *File {
 }
 
 func (f *File) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
-	shortPath := filepath.Clean(importPath)
+	resultPath := filepath.Clean(importPath)
 	if !isSupportedExtension(filepath.Ext(importPath), expectedExt) {
 		log.Errorf("not expected extension")
 		return nil, nil
@@ -23,6 +23,6 @@ func (f *File) GetFileReaders(importPath string, expectedExt []string) (map[stri
 	if err != nil {
 		return nil, err
 	}
-	files[shortPath] = file
+	files[resultPath] = file
 	return files, nil
 }

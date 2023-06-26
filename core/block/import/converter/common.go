@@ -29,26 +29,21 @@ var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔
 
 var log = logging.Logger("import")
 
-func GetSourceDetail(fileName, importPath string) string {
+func GetSourceDetail(importPath string) string {
 	var source bytes.Buffer
-	source.WriteString(strings.TrimPrefix(filepath.Ext(fileName), "."))
+	source.WriteString(strings.TrimPrefix(filepath.Ext(importPath), "."))
 	source.WriteString(":")
 	source.WriteString(importPath)
-	source.WriteRune(filepath.Separator)
-	source.WriteString(fileName)
 	return source.String()
 }
 
-func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
-	if name == "" {
-		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
-	}
+func GetCommonDetails(name, emoji, source string) *types.Struct {
 	if emoji == "" {
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
 	fields := map[string]*types.Value{
 		bundle.RelationKeyName.String():           pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String(): pbtypes.String(sourcePath),
+		bundle.RelationKeySourceFilePath.String(): pbtypes.String(source),
 		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
 	}
 	return &types.Struct{Fields: fields}

@@ -5,5 +5,5 @@ import (
 )
 
 type Strategy interface {
-	CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error)
+	CreateObjects(path string, fileName string, csvTable [][]string) ([]string, []*converter.Snapshot, error)
 }

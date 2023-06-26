@@ -67,19 +67,14 @@ func (ds *Service) GetPages(ctx context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
 	request *block.MapRequest,
-	progress process.Progress) (*converter.Response, map[string]string, converter.ConvertError) {
-	var (
-		notionPagesIdsToAnytype = make(map[string]string, 0)
-	)
-
+	progress process.Progress,
+	relations *property.PropertiesStore) (*converter.Response, map[string]string, converter.ConvertError) {
+	notionPagesIdsToAnytype := make(map[string]string, 0)
 	progress.SetProgressMessage("Start creating pages from notion")
-
 	convertError := ds.createIDsForPages(pages, progress, notionPagesIdsToAnytype)
 	if convertError != nil {
 		return nil, nil, convertError
 	}
-
-	progress.SetProgressMessage("Start creating blocks")
 	request.PageNameToID = ds.extractTitleFromPages(pages)
 	request.NotionPageIdsToAnytype = notionPagesIdsToAnytype
 	numWorkers := workerPoolSize
@@ -90,7 +85,7 @@ func (ds *Service) GetPages(ctx context.Context,
 
 	go ds.addWorkToPool(pages, pool)
 
-	do := NewDataObject(ctx, apiKey, mode, request)
+	do := NewDataObject(ctx, apiKey, mode, request, relations)
 	go pool.Start(do)
 
 	allSnapshots, converterError := ds.readResultFromPool(pool, mode, progress)
@@ -163,7 +158,6 @@ func (ds *Service) createIDsForPages(pages []Page, progress process.Progress, no
 		if err := progress.TryStep(1); err != nil {
 			return converter.NewCancelError(p.ID, err)
 		}
-
 		notionPagesIdsToAnytype[p.ID] = uuid.New().String()
 	}
 	return nil

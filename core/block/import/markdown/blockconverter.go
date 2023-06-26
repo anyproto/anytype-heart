@@ -72,7 +72,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 		return nil
 	}
 	for path, rc := range readers {
-		if err = m.fillFilesInfo(importPath, fileInfo, path, rc); err != nil {
+		if err = m.fillFilesInfo(fileInfo, path, rc); err != nil {
 			allErrors.Add(path, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 				return nil
@@ -89,13 +89,13 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 	return fileInfo
 }
 
-func (m *mdConverter) fillFilesInfo(importPath string, fileInfo map[string]*FileInfo, path string, rc io.ReadCloser) error {
+func (m *mdConverter) fillFilesInfo(fileInfo map[string]*FileInfo, path string, rc io.ReadCloser) error {
 	fileInfo[path] = &FileInfo{}
 	if err := m.createBlocksFromFile(path, rc, fileInfo); err != nil {
 		log.Errorf("failed to create blocks from file: %s", err)
 		return err
 	}
-	fileInfo[path].Source = ce.GetSourceDetail(path, importPath)
+	fileInfo[path].Source = ce.GetSourceDetail(path)
 	return nil
 }
 

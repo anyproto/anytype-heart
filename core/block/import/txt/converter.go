@@ -3,6 +3,8 @@ package txt
 import (
 	"fmt"
 	"io"
+	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -101,13 +103,13 @@ func (t *TXT) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
 	return snapshots, targetObjects, nil
 }
 
-func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
-	s := source.GetSource(p)
+func (t *TXT) handleImportPath(importPath string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
+	s := source.GetSource(importPath)
 	if s == nil {
-		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
+		return nil, nil, fmt.Errorf("failed to identify source: %s", importPath)
 	}
 
-	readers, err := s.GetFileReaders(p, []string{".txt"})
+	readers, err := s.GetFileReaders(importPath, []string{".txt"})
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
@@ -118,7 +120,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 	}
 	snapshots := make([]*converter.Snapshot, 0, len(readers))
 	targetObjects := make([]string, 0, len(readers))
-	for name, rc := range readers {
+	for fileName, rc := range readers {
 		blocks, err := t.getBlocksForFile(rc)
 		if err != nil {
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -126,7 +128,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 			}
 			continue
 		}
-		sn, id := t.getSnapshot(blocks, name)
+		sn, id := t.getSnapshot(blocks, fileName)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}
@@ -146,16 +148,17 @@ func (t *TXT) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
 	return blocks, nil
 }
 
-func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
+func (t *TXT) getSnapshot(blocks []*model.Block, fileName string) (*converter.Snapshot, string) {
+	name := strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName))
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", ""),
+		Details:     converter.GetCommonDetails(name, "", converter.GetSourceDetail(fileName)),
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
 
 	snapshot := &converter.Snapshot{
 		Id:       uuid.New().String(),
-		FileName: p,
+		FileName: fileName,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 		SbType:   smartblock.SmartBlockTypePage,
 	}

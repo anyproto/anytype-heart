@@ -199,7 +199,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
-		snapshot, err := p.getSnapshotForPbFile(name, profileID, path, file, needToCreateWidgets, isMigration)
+		snapshot, err := p.getSnapshotForPbFile(name, profileID, file, needToCreateWidgets, isMigration)
 		if err != nil {
 			allErrors.Add(name, err)
 			if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -219,10 +219,10 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	return allSnapshots, targetObjects
 }
 
-func (p *Pb) getSnapshotForPbFile(name, profileID, path string,
+func (p *Pb) getSnapshotForPbFile(name, profileID string,
 	file io.ReadCloser,
 	needToCreateWidgets, isMigration bool) (*converter.Snapshot, error) {
-	if name == constant.ProfileFile || name == configFile {
+	if filepath.Base(name) == constant.ProfileFile || filepath.Base(name) == configFile {
 		return nil, nil
 	}
 	id := uuid.New().String()
@@ -251,7 +251,7 @@ func (p *Pb) getSnapshotForPbFile(name, profileID, path string,
 	if snapshot.SbType == model.SmartBlockType_Page {
 		p.cleanupEmptyBlock(snapshot)
 	}
-	p.fillDetails(name, path, snapshot)
+	p.fillDetails(name, snapshot)
 	return &converter.Snapshot{
 		Id:       id,
 		SbType:   smartblock.SmartBlockType(snapshot.SbType),
@@ -283,14 +283,14 @@ func (p *Pb) getIconOption() int64 {
 	return p.iconOption
 }
 
-func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
+func (p *Pb) fillDetails(name string, mo *pb.SnapshotWithType) {
 	if mo.Snapshot.Data.Details == nil || mo.Snapshot.Data.Details.Fields == nil {
 		mo.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 	if id := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String()); id != "" {
 		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyOldAnytypeID.String()] = pbtypes.String(id)
 	}
-	sourceDetail := converter.GetSourceDetail(name, path)
+	sourceDetail := converter.GetSourceDetail(name)
 	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceDetail)
 }
 
