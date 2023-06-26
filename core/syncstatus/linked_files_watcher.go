@@ -107,8 +107,8 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, fil
 
 	updated := true
 	w.Lock()
-	if _, exists := w.linkedFilesSummaries[parentObjectID]; exists {
-		updated = w.linkedFilesSummaries[parentObjectID].pinStatus != pinStatus
+	if summary, exists := w.linkedFilesSummaries[parentObjectID]; exists {
+		updated = summary.pinStatus != pinStatus
 	}
 	w.linkedFilesSummaries[parentObjectID] = linkedFilesSummary{pinStatus: pinStatus, isUpdated: updated}
 	w.Unlock()
