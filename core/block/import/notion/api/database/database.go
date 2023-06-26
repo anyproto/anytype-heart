@@ -67,7 +67,7 @@ func (p *Database) GetObjectType() string {
 }
 
 // GetDatabase makes snapshots from notion Database objects
-func (ds *Service) GetDatabase(ctx context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, progress process.Progress) (
+func (ds *Service) GetDatabase(_ context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, progress process.Progress) (
 	*converter.Response, *block.MapRequest, *property.PropertiesStore, converter.ConvertError) {
 	var (
 		allSnapshots       = make([]*converter.Snapshot, 0)
