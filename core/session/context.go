@@ -2,27 +2,21 @@ package session
 
 import "github.com/anyproto/anytype-heart/pb"
 
+type Context struct {
+	smartBlockId  string
+	traceId       string
+	messages      []*pb.EventMessage
+	sessionSender Sender
+	sessionToken  string
+	isAsync       bool
+}
+
 func NewContext(opts ...ContextOption) *Context {
 	ctx := &Context{}
 	for _, apply := range opts {
 		apply(ctx)
 	}
 	return ctx
-}
-
-type ContextOption func(ctx *Context)
-
-func WithSession(token string, sender Sender) ContextOption {
-	return func(ctx *Context) {
-		ctx.sessionToken = token
-		ctx.sessionSender = sender
-	}
-}
-
-func WithTraceId(traceId string) ContextOption {
-	return func(ctx *Context) {
-		ctx.traceId = traceId
-	}
 }
 
 func NewChildContext(parent *Context) *Context {
@@ -37,20 +31,39 @@ func NewChildContext(parent *Context) *Context {
 	}
 }
 
+func NewAsyncChildContext(parent *Context) *Context {
+	ctx := NewChildContext(parent)
+	ctx.isAsync = true
+	return ctx
+}
+
+type ContextOption func(ctx *Context)
+
+func Async() ContextOption {
+	return func(ctx *Context) {
+		ctx.isAsync = true
+	}
+}
+
+func WithSession(token string, sender Sender) ContextOption {
+	return func(ctx *Context) {
+		ctx.sessionToken = token
+		ctx.sessionSender = sender
+	}
+}
+
+func WithTraceId(traceId string) ContextOption {
+	return func(ctx *Context) {
+		ctx.traceId = traceId
+	}
+}
+
 type Sender interface {
 	SendSession(token string, e *pb.Event)
 }
 
 type Closer interface {
 	CloseSession(token string)
-}
-
-type Context struct {
-	smartBlockId  string
-	traceId       string
-	messages      []*pb.EventMessage
-	sessionSender Sender
-	sessionToken  string
 }
 
 func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
