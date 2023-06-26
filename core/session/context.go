@@ -12,12 +12,6 @@ func NewContext(opts ...ContextOption) *Context {
 
 type ContextOption func(ctx *Context)
 
-func WithSendEvent(se func(e *pb.Event)) ContextOption {
-	return func(ctx *Context) {
-		ctx.sendEvent = se
-	}
-}
-
 func WithSession(token string, sender Sender) ContextOption {
 	return func(ctx *Context) {
 		ctx.sessionToken = token
@@ -38,7 +32,6 @@ func NewChildContext(parent *Context) *Context {
 	return &Context{
 		smartBlockId:  parent.smartBlockId,
 		traceId:       parent.traceId,
-		sendEvent:     parent.sendEvent,
 		sessionSender: parent.sessionSender,
 		sessionToken:  parent.sessionToken,
 	}
@@ -56,7 +49,6 @@ type Context struct {
 	smartBlockId  string
 	traceId       string
 	messages      []*pb.EventMessage
-	sendEvent     func(e *pb.Event)
 	sessionSender Sender
 	sessionToken  string
 }
@@ -64,25 +56,11 @@ type Context struct {
 func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = append(ctx.messages, msgs...)
-	if ctx.sendEvent != nil {
-		ctx.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: smartBlockId,
-			Initiator: nil,
-		})
-	}
 }
 
 func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = msgs
-	if ctx.sendEvent != nil {
-		ctx.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: smartBlockId,
-			Initiator: nil,
-		})
-	}
 }
 
 func (ctx *Context) GetMessages() []*pb.EventMessage {
