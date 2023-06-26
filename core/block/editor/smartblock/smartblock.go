@@ -1037,7 +1037,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc
-		sb.Show(session.NewContext())
+		sb.Show(session.NewContext("TODO"))
 	} else {
 		if len(msgs) > 0 && sb.sendEvent != nil {
 			sb.sendEvent(&pb.Event{

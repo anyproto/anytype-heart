@@ -2,25 +2,25 @@ package basic
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/golang/mock/gomock"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 type testExtractObjects struct {
@@ -189,7 +189,7 @@ func TestExtractObjects(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
-			ctx := session.NewContext()
+			ctx := session.NewContext("testSpaceID")
 			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 

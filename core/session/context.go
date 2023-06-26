@@ -4,6 +4,7 @@ import "github.com/anyproto/anytype-heart/pb"
 
 type Context struct {
 	smartBlockId  string
+	spaceID       string
 	traceId       string
 	messages      []*pb.EventMessage
 	sessionSender Sender
@@ -11,8 +12,10 @@ type Context struct {
 	isAsync       bool
 }
 
-func NewContext(opts ...ContextOption) *Context {
-	ctx := &Context{}
+func NewContext(spaceID string, opts ...ContextOption) *Context {
+	ctx := &Context{
+		spaceID: spaceID,
+	}
 	for _, apply := range opts {
 		apply(ctx)
 	}
@@ -20,10 +23,8 @@ func NewContext(opts ...ContextOption) *Context {
 }
 
 func NewChildContext(parent *Context) *Context {
-	if parent == nil {
-		return NewContext()
-	}
 	return &Context{
+		spaceID:       parent.spaceID,
 		smartBlockId:  parent.smartBlockId,
 		traceId:       parent.traceId,
 		sessionSender: parent.sessionSender,

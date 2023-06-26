@@ -48,7 +48,7 @@ func Test_ImportSuccess(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+	err := i.Import(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -72,7 +72,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	err := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+	err := i.Import(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -113,7 +113,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+	res := i.Import(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -121,7 +121,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	})
 
 	assert.NotNil(t, res)
-	//assert.Contains(t, res.Error(), "creator error")
+	// assert.Contains(t, res.Error(), "creator error")
 }
 
 func Test_ImportIgnoreErrorMode(t *testing.T) {
@@ -154,7 +154,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+	res := i.Import(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -197,7 +197,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+	res := i.Import(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -243,7 +243,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 			Collections:    nil,
 		},
 	})
-	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+	res := i.Import(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                nil,
 		Snapshots:             snapshots,
 		UpdateExistingObjects: false,
@@ -264,7 +264,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+	res := i.Import(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                nil,
 		Snapshots:             nil,
 		UpdateExistingObjects: false,
@@ -286,7 +286,7 @@ func Test_ListImports(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	res, err := i.ListImports(session.NewContext(), &pb.RpcObjectImportListRequest{})
+	res, err := i.ListImports(session.NewContext("testSpaceID"), &pb.RpcObjectImportListRequest{})
 
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
@@ -306,7 +306,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
@@ -335,7 +335,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
@@ -376,7 +376,7 @@ func Test_ImportWebSuccess(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
@@ -417,7 +417,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(session.NewContext(), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(session.NewContext("testSpaceID"), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
