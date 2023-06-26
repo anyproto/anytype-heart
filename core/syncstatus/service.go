@@ -11,8 +11,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -57,13 +57,13 @@ func New(
 	fileStore filestore.FileStore,
 	picker getblock.Picker,
 	cfg *config.Config,
-	sendEvent func(event *pb.Event),
+	eventSender event.Sender,
 	fileWatcherUpdateInterval time.Duration,
 ) Service {
 	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, fileWatcherUpdateInterval)
 	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
 	subObjectsWatcher := newSubObjectsWatcher()
-	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, nodeConfService, cfg, sendEvent)
+	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, nodeConfService, cfg, eventSender)
 	fileWatcher := newFileWatcher(spaceService, dbProvider, fileStatusRegistry, updateReceiver, fileWatcherUpdateInterval)
 	objectWatcher := newObjectWatcher(spaceService, updateReceiver)
 	return &service{

@@ -180,7 +180,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		fileStore,
 		blockService,
 		cfg,
-		eventService.Broadcast,
+		eventService,
 		fileWatcherUpdateInterval,
 	)
 	fileSyncService.OnUpload(syncStatusService.OnFileUpload)

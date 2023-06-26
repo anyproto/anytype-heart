@@ -8,13 +8,14 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
 type updateReceiver struct {
 	coreService core.Service
-	emitter     func(event *pb.Event)
+	eventSender event.Sender
 
 	linkedFilesWatcher *linkedFilesWatcher
 	subObjectsWatcher  *subObjectsWatcher
@@ -29,17 +30,17 @@ func newUpdateReceiver(
 	subObjectsWatcher *subObjectsWatcher,
 	nodeConfService nodeconf.Service,
 	cfg *config.Config,
-	emitter func(event *pb.Event),
+	eventSender event.Sender,
 ) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
-		emitter = nil
+		eventSender = nil
 	}
 	return &updateReceiver{
 		coreService:        coreService,
 		linkedFilesWatcher: linkedFilesWatcher,
 		subObjectsWatcher:  subObjectsWatcher,
 		nodeConfService:    nodeConfService,
-		emitter:            emitter,
+		eventSender:        eventSender,
 	}
 }
 
@@ -110,10 +111,10 @@ func (r *updateReceiver) notify(
 }
 
 func (r *updateReceiver) sendEvent(ctx string, event pb.IsEventMessageValue) {
-	if r.emitter == nil {
+	if r.eventSender == nil {
 		return
 	}
-	r.emitter(&pb.Event{
+	r.eventSender.Broadcast(&pb.Event{
 		Messages:  []*pb.EventMessage{{Value: event}},
 		ContextId: ctx,
 	})
