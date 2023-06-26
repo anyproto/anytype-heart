@@ -44,7 +44,7 @@ type ConfigFetcher interface {
 
 type configFetcher struct {
 	store         objectstore.ObjectStore
-	eventSender   func(event *pbMiddle.Event)
+	eventSender   event.Sender
 	fetched       chan struct{}
 	fetchedClosed sync.Once
 
@@ -83,7 +83,7 @@ func (c *configFetcher) Run(context.Context) error {
 func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
-	c.eventSender = a.MustComponent(event.CName).(event.Sender).Broadcast
+	c.eventSender = a.MustComponent(event.CName).(event.Sender)
 	c.periodicSync = periodicsync.NewPeriodicSync(300, time.Second*10, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	c.spaceService = a.MustComponent(space.CName).(space.Service)
@@ -169,7 +169,7 @@ func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayl
 		},
 	}
 	if c.eventSender != nil {
-		c.eventSender(ev)
+		c.eventSender.Broadcast(ev)
 	}
 }
 
