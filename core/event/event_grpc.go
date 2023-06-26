@@ -46,6 +46,35 @@ func (es *GrpcSender) Name() (name string) {
 	return CName
 }
 
+func (es *GrpcSender) IsActive(token string) bool {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	_, ok := es.Servers[token]
+	return ok
+}
+
+func (es *GrpcSender) SendToSession(token string, event *pb.Event) {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	if s, ok := es.Servers[token]; ok {
+		es.sendEvent(s, event)
+	}
+}
+
+func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
+	go func() {
+		err := server.Server.Send(event)
+		if err != nil {
+			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+				es.shutdownCh <- server.Token
+			}
+			log.With("session", server.Token, "spaceID", server.SpaceID).Errorf("failed to send event: %s", err)
+		}
+	}()
+}
+
 func (es *GrpcSender) Broadcast(event *pb.Event) {
 	es.broadcast(nil, event)
 }
@@ -82,8 +111,10 @@ func (es *GrpcSender) broadcast(ignoreSession *string, event *pb.Event) {
 }
 
 type SessionServer struct {
-	Done   chan struct{}
-	Server service.ClientCommands_ListenSessionEventsServer
+	Token   string
+	SpaceID string
+	Done    chan struct{}
+	Server  service.ClientCommands_ListenSessionEventsServer
 }
 
 func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
@@ -94,8 +125,10 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 		es.Servers = map[string]SessionServer{}
 	}
 	srv := SessionServer{
+		Token:  token,
 		Done:   make(chan struct{}),
 		Server: server,
+		// TODO SpaceID
 	}
 
 	// Old connection with this token will be cancelled automatically

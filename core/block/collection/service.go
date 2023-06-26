@@ -40,7 +40,7 @@ type ObjectCreator interface {
 }
 
 type ObjectDeleter interface {
-	DeleteObject(id string) (err error)
+	DeleteObject(ctx *session.Context, id string) (err error)
 }
 
 func New(

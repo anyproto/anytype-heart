@@ -126,7 +126,7 @@ type TemplateIDGetter interface {
 type Service struct {
 	anytype         core.Service
 	syncStatus      syncstatus.Service
-	sendEvent       func(event *pb.Event)
+	eventSender     event.Sender
 	closed          bool
 	linkPreview     linkpreview.LinkPreview
 	process         process.Service
@@ -167,7 +167,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.syncStatus = a.MustComponent(syncstatus.CName).(syncstatus.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)
-	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Broadcast
+	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.source = a.MustComponent(source.CName).(source.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
@@ -208,7 +208,7 @@ func (s *Service) OpenBlock(
 
 	ob.Lock()
 	defer ob.Unlock()
-	ob.SetEventFunc(s.sendEvent)
+	ob.RegisterSession(ctx)
 	if v, hasOpenListner := ob.(smartblock.SmartObjectOpenListner); hasOpenListner {
 		v.SmartObjectOpened(ctx)
 	}
@@ -275,10 +275,10 @@ func (s *Service) ShowBlock(
 	return
 }
 
-func (s *Service) CloseBlock(id string) error {
+func (s *Service) CloseBlock(ctx *session.Context, id string) error {
 	var isDraft bool
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
-		b.ObjectClose()
+		b.ObjectClose(ctx)
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
 		// workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
@@ -289,10 +289,10 @@ func (s *Service) CloseBlock(id string) error {
 	}
 
 	if isDraft {
-		if err = s.DeleteObject(id); err != nil {
+		if err = s.DeleteObject(ctx, id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
-			s.sendOnRemoveEvent(id)
+			s.sendOnRemoveEvent(ctx.SpaceID(), id)
 		}
 	}
 	return nil
@@ -302,7 +302,7 @@ func (s *Service) CloseBlocks() {
 	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
 		ob := v.(smartblock.SmartBlock)
 		ob.Lock()
-		ob.ObjectClose()
+		ob.ObjectCloseAllSessions()
 		ob.Unlock()
 		return true
 	})
@@ -588,7 +588,7 @@ func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) err
 	return nil
 }
 
-func (s *Service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err error) {
+func (s *Service) DeleteArchivedObjects(ctx *session.Context, req pb.RpcObjectListDeleteRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -599,7 +599,7 @@ func (s *Service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err 
 		var anySucceed bool
 		for _, blockId := range req.ObjectIds {
 			if exists, _ := archive.HasObject(blockId); exists {
-				if err = s.DeleteObject(blockId); err != nil {
+				if err = s.DeleteObject(ctx, blockId); err != nil {
 					merr.Errors = append(merr.Errors, err)
 					continue
 				}
@@ -638,7 +638,7 @@ func (s *Service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
 	return nil, merr.ErrorOrNil()
 }
 
-func (s *Service) DeleteArchivedObject(id string) (err error) {
+func (s *Service) DeleteArchivedObject(ctx *session.Context, id string) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -646,7 +646,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 		}
 
 		if exists, _ := archive.HasObject(id); exists {
-			if err = s.DeleteObject(id); err == nil {
+			if err = s.DeleteObject(ctx, id); err == nil {
 				err = archive.RemoveObject(id)
 				if err != nil {
 					return err
@@ -664,7 +664,7 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) error {
 	)
 
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
-		b.ObjectClose()
+		b.ObjectCloseAllSessions()
 		st := b.NewState()
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 		if isFavorite {
@@ -686,20 +686,18 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) error {
 	return nil
 }
 
-func (s *Service) sendOnRemoveEvent(ids ...string) {
-	if s.sendEvent != nil {
-		s.sendEvent(&pb.Event{
-			Messages: []*pb.EventMessage{
-				&pb.EventMessage{
-					Value: &pb.EventMessageValueOfObjectRemove{
-						ObjectRemove: &pb.EventObjectRemove{
-							Ids: ids,
-						},
+func (s *Service) sendOnRemoveEvent(spaceID string, ids ...string) {
+	s.eventSender.BroadcastForSpace(spaceID, &pb.Event{
+		Messages: []*pb.EventMessage{
+			&pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectRemove{
+					ObjectRemove: &pb.EventObjectRemove{
+						Ids: ids,
 					},
 				},
 			},
-		})
-	}
+		},
+	})
 }
 
 func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
@@ -741,7 +739,7 @@ func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkI
 			}
 		}
 
-		if err := s.DeleteObject(id); err != nil {
+		if err := s.DeleteObject(ctx, id); err != nil {
 			return err
 		}
 	}
@@ -1075,7 +1073,7 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	return nil
 }
 
-func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err error) {
+func (s *Service) ObjectToBookmark(ctx *session.Context, id string, url string) (objectId string, err error) {
 	objectId, _, err = s.objectCreator.CreateObject(&pb.RpcObjectCreateBookmarkRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
@@ -1097,7 +1095,7 @@ func (s *Service) ObjectToBookmark(id string, url string) (objectId string, err 
 			return
 		}
 	}
-	err = s.DeleteObject(id)
+	err = s.DeleteObject(ctx, id)
 	if err != nil {
 		// intentionally do not return error here
 		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())

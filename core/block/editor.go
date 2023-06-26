@@ -664,10 +664,6 @@ func (s *Service) SetObjectTypes(ctx *session.Context, objectId string, objectTy
 	})
 }
 
-func (s *Service) DeleteObjectFromWorkspace(workspaceId string, objectId string) error {
-	return s.DeleteObject(objectId)
-}
-
 func (s *Service) RemoveExtraRelations(ctx *session.Context, objectTypeId string, relationKeys []string) (err error) {
 	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
 		return b.RemoveExtraRelations(ctx, relationKeys)

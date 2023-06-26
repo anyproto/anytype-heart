@@ -117,6 +117,7 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 }
 
 func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRequest) *pb.RpcObjectCloseResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCloseResponseErrorCode, err error) *pb.RpcObjectCloseResponse {
 		m := &pb.RpcObjectCloseResponse{Error: &pb.RpcObjectCloseResponseError{Code: code}}
 		if err != nil {
@@ -125,7 +126,7 @@ func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.CloseBlock(req.ObjectId)
+		return bs.CloseBlock(ctx, req.ObjectId)
 	})
 	if err != nil {
 		return response(pb.RpcObjectCloseResponseError_UNKNOWN_ERROR, err)
@@ -358,6 +359,7 @@ func (mw *Middleware) BlockListSetFields(cctx context.Context, req *pb.RpcBlockL
 }
 
 func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectListDeleteResponseErrorCode, err error) *pb.RpcObjectListDeleteResponse {
 		m := &pb.RpcObjectListDeleteResponse{Error: &pb.RpcObjectListDeleteResponseError{Code: code}}
 		if err != nil {
@@ -366,7 +368,7 @@ func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectLi
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DeleteArchivedObjects(*req)
+		return bs.DeleteArchivedObjects(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectListDeleteResponseError_UNKNOWN_ERROR, err)

@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/session"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	spaceservice "github.com/anyproto/anytype-heart/space"
@@ -195,7 +196,7 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 		return
 	}
 
-	s.sendOnRemoveEvent(treeId)
+	s.sendOnRemoveEvent(spaceId, treeId)
 	_, err = s.cache.Remove(ctx, treeId)
 	return
 }
@@ -213,7 +214,7 @@ func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
 	return nil
 }
 
-func (s *Service) DeleteObject(id string) (err error) {
+func (s *Service) DeleteObject(ctx *session.Context, id string) (err error) {
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
@@ -259,7 +260,7 @@ func (s *Service) DeleteObject(id string) (err error) {
 		return
 	}
 
-	s.sendOnRemoveEvent(id)
+	s.sendOnRemoveEvent(ctx.SpaceID(), id)
 	_, err = s.cache.Remove(context.Background(), id)
 	return
 }

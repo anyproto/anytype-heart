@@ -60,12 +60,34 @@ func WithTraceId(traceId string) ContextOption {
 }
 
 type Sender interface {
+	IsActive(token string) bool
+	SendToSession(token string, event *pb.Event)
 	BroadcastForSpace(spaceID string, event *pb.Event)
 	BroadcastToOtherSessions(token string, e *pb.Event)
 }
 
 type Closer interface {
 	CloseSession(token string)
+}
+
+func (ctx *Context) ID() string {
+	return ctx.sessionToken
+}
+
+func (ctx *Context) SpaceID() string {
+	return ctx.spaceID
+}
+
+func (ctx *Context) IsAsync() bool {
+	return ctx.isAsync
+}
+
+func (ctx *Context) IsActive() bool {
+	// TODO Carefully check this. When session sender is nil?
+	if ctx.sessionSender == nil {
+		return false
+	}
+	return ctx.sessionSender.IsActive(ctx.sessionToken)
 }
 
 func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
@@ -80,6 +102,10 @@ func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
 
 func (ctx *Context) GetMessages() []*pb.EventMessage {
 	return ctx.messages
+}
+
+func (ctx *Context) Send(event *pb.Event) {
+	ctx.sessionSender.SendToSession(ctx.sessionToken, event)
 }
 
 func (ctx *Context) Broadcast(event *pb.Event) {

@@ -710,6 +710,7 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
 		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
 		if err != nil {
@@ -721,7 +722,7 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, err = bs.ObjectToBookmark(req.ContextId, req.Url)
+		id, err = bs.ObjectToBookmark(ctx, req.ContextId, req.Url)
 		return err
 	})
 

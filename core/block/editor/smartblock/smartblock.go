@@ -92,6 +92,7 @@ func New(
 		hooks:     map[Hook][]HookCallback{},
 		hooksOnce: map[string]struct{}{},
 		Locker:    &sync.Mutex{},
+		sessions:  map[string]*session.Context{},
 
 		coreService:        coreService,
 		fileService:        fileService,
@@ -113,7 +114,7 @@ type SmartBlock interface {
 	Id() string
 	Type() model.SmartBlockType
 	Show(*session.Context) (obj *model.ObjectView, err error)
-	SetEventFunc(f func(e *pb.Event))
+	RegisterSession(*session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Relations(s *state.State) relationutils.Relations
@@ -137,7 +138,8 @@ type SmartBlock interface {
 	GetDocInfo() DocInfo
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
-	ObjectClose()
+	ObjectClose(ctx *session.Context)
+	ObjectCloseAllSessions()
 	FileRelationKeys(s *state.State) []string
 	Inner() SmartBlock
 
@@ -188,8 +190,9 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	depIds              []string // slice must be sorted
-	sendEvent           func(e *pb.Event)
+	depIds []string // slice must be sorted
+	// sendEvent           func(e *pb.Event)
+	sessions            map[string]*session.Context
 	undo                undo.History
 	source              source.Source
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
@@ -348,13 +351,17 @@ func (sb *smartBlock) IsDeleted() bool {
 	return sb.isDeleted
 }
 
-func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
-	if sb.sendEvent != nil {
-		sb.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: sb.Id(),
-		})
+func (sb *smartBlock) sendEvent(e *pb.Event) {
+	for _, s := range sb.sessions {
+		s.Send(e)
 	}
+}
+
+func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
+	sb.sendEvent(&pb.Event{
+		Messages:  msgs,
+		ContextId: sb.Id(),
+	})
 }
 
 func (sb *smartBlock) Restrictions() restriction.Restrictions {
@@ -472,9 +479,6 @@ func (sb *smartBlock) metaListener(ch chan *types.Struct) {
 }
 
 func (sb *smartBlock) onMetaChange(details *types.Struct) {
-	if sb.sendEvent == nil {
-		return
-	}
 	if details == nil {
 		return
 	}
@@ -595,12 +599,18 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 	return lo.Uniq(ids)
 }
 
-func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
-	sb.sendEvent = f
+func (sb *smartBlock) RegisterSession(ctx *session.Context) {
+	sb.sessions[ctx.ID()] = ctx
 }
 
 func (sb *smartBlock) IsLocked() bool {
-	return sb.sendEvent != nil
+	var activeCount int
+	for _, s := range sb.sessions {
+		if s.IsActive() {
+			activeCount++
+		}
+	}
+	return activeCount > 0
 }
 
 func (sb *smartBlock) DisableLayouts() {
@@ -756,7 +766,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
 			ctx.SetMessages(sb.Id(), events)
-		} else if sb.sendEvent != nil {
+		} else {
 			sb.sendEvent(&pb.Event{
 				Messages:  events,
 				ContextId: sb.RootId(),
@@ -1004,7 +1014,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		return err
 	}
 	log.Infof("changes: stateAppend: %d events", len(msgs))
-	if len(msgs) > 0 && sb.sendEvent != nil {
+	if len(msgs) > 0 {
 		sb.sendEvent(&pb.Event{
 			Messages:  msgsToEvents(msgs),
 			ContextId: sb.Id(),
@@ -1039,7 +1049,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 		// can't make diff - reopen doc
 		sb.Show(session.NewContext("TODO"))
 	} else {
-		if len(msgs) > 0 && sb.sendEvent != nil {
+		if len(msgs) > 0 {
 			sb.sendEvent(&pb.Event{
 				Messages:  msgsToEvents(msgs),
 				ContextId: sb.Id(),
@@ -1053,9 +1063,14 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	return nil
 }
 
-func (sb *smartBlock) ObjectClose() {
+func (sb *smartBlock) ObjectClose(ctx *session.Context) {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
-	sb.SetEventFunc(nil)
+	delete(sb.sessions, ctx.ID())
+}
+
+func (sb *smartBlock) ObjectCloseAllSessions() {
+	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
+	sb.sessions = make(map[string]*session.Context)
 }
 
 func (sb *smartBlock) TryClose(objectTTL time.Duration) (res bool, err error) {

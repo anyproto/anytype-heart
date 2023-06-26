@@ -91,7 +91,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
-		oc.onFinish(err, st, filesToDelete)
+		oc.onFinish(ctx, err, st, filesToDelete)
 	}()
 
 	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
@@ -225,26 +225,26 @@ func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model
 	}
 }
 
-func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []string) {
+func (oc *ObjectCreator) onFinish(ctx *session.Context, err error, st *state.State, filesToDelete []string) {
 	if err != nil {
 		for _, bl := range st.Blocks() {
 			if f := bl.GetFile(); f != nil {
-				oc.deleteFile(f.Hash)
+				oc.deleteFile(ctx, f.Hash)
 			}
 			for _, hash := range filesToDelete {
-				oc.deleteFile(hash)
+				oc.deleteFile(ctx, hash)
 			}
 		}
 	}
 }
 
-func (oc *ObjectCreator) deleteFile(hash string) {
+func (oc *ObjectCreator) deleteFile(ctx *session.Context, hash string) {
 	inboundLinks, err := oc.objectStore.GetOutboundLinksByID(hash)
 	if err != nil {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
 	}
 	if len(inboundLinks) == 0 {
-		err = oc.service.DeleteObject(hash)
+		err = oc.service.DeleteObject(ctx, hash)
 		if err != nil {
 			log.With("file", hash).Errorf("failed to delete file: %s", err)
 		}
