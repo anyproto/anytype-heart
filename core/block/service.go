@@ -167,7 +167,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.syncStatus = a.MustComponent(syncstatus.CName).(syncstatus.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)
-	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Broadcast
 	s.source = a.MustComponent(source.CName).(source.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)

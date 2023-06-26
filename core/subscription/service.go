@@ -89,7 +89,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
-	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Broadcast
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }

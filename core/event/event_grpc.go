@@ -6,12 +6,13 @@ package event
 import (
 	"sync"
 
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/status"
 	"google.golang.org/grpc/codes"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pb/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-grpc")
@@ -45,12 +46,12 @@ func (es *GrpcSender) Name() (name string) {
 	return CName
 }
 
-func (es *GrpcSender) Send(event *pb.Event) {
+func (es *GrpcSender) Broadcast(event *pb.Event) {
 	es.broadcast(nil, event)
 }
 
-// SendSession broadcasts the event from current session. Do not broadcast to the current session
-func (es *GrpcSender) SendSession(token string, event *pb.Event) {
+// BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
+func (es *GrpcSender) BroadcastToOtherSessions(token string, event *pb.Event) {
 	es.broadcast(&token, event)
 }
 

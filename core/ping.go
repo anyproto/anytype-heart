@@ -33,7 +33,7 @@ func (mw *Middleware) DebugPing(cctx context.Context, req *pb.RpcDebugPingReques
 		n = time.Now()
 		fmt.Printf("%d.%d go send ping event %d\n", n.Unix(), nsToMs(n.UnixNano()), i)
 
-		mw.EventSender.Send(&pb.Event{
+		mw.EventSender.Broadcast(&pb.Event{
 			Messages: []*pb.EventMessage{
 				&pb.EventMessage{
 					Value: &pb.EventMessageValueOfPing{

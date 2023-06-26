@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -67,7 +68,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.relationService = app.MustComponent[relation.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
-	f.sendEvent = app.MustComponent[event.Sender](a).Send
+	f.sendEvent = app.MustComponent[event.Sender](a).Broadcast
 	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)

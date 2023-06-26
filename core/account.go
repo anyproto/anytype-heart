@@ -229,7 +229,7 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 
 	sendAccountAddEvent := func(index int, account *model.Account) {
 		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
-		mw.EventSender.Send(m)
+		mw.EventSender.Broadcast(m)
 	}
 
 	if mw.mnemonic == "" {

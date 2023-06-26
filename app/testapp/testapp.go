@@ -2,6 +2,7 @@ package testapp
 
 import (
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -31,7 +32,7 @@ func (e *EventSender) Name() (name string) {
 	return event.CName
 }
 
-func (e *EventSender) Send(event *pb.Event) {
+func (e *EventSender) Broadcast(event *pb.Event) {
 	if e.F != nil {
 		e.F(event)
 	}

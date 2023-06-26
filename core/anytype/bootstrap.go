@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -62,6 +61,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/credentialprovider"
@@ -163,7 +163,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	relationService := relation.New()
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
-	fileSyncService := filesync.New(eventService.Send)
+	fileSyncService := filesync.New(eventService.Broadcast)
 	fileStore := filestore.New()
 
 	datastoreProvider := clientds.New()
@@ -180,7 +180,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		fileStore,
 		blockService,
 		cfg,
-		eventService.Send,
+		eventService.Broadcast,
 		fileWatcherUpdateInterval,
 	)
 	fileSyncService.OnUpload(syncStatusService.OnFileUpload)
@@ -209,7 +209,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(rpcstore.New()).
 		Register(fileStore).
 		Register(fileservice.New()).
-		Register(filestorage.New(eventService.Send)).
+		Register(filestorage.New(eventService.Broadcast)).
 		Register(fileSyncService).
 		Register(localdiscovery.New()).
 		Register(spaceService).

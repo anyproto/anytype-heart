@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/wallet"
-
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
@@ -14,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	pbMiddle "github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/cafe/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -84,7 +83,7 @@ func (c *configFetcher) Run(context.Context) error {
 func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
-	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
+	c.eventSender = a.MustComponent(event.CName).(event.Sender).Broadcast
 	c.periodicSync = periodicsync.NewPeriodicSync(300, time.Second*10, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	c.spaceService = a.MustComponent(space.CName).(space.Service)

@@ -60,7 +60,7 @@ func WithTraceId(traceId string) ContextOption {
 }
 
 type Sender interface {
-	SendSession(token string, e *pb.Event)
+	BroadcastToOtherSessions(token string, e *pb.Event)
 }
 
 type Closer interface {
@@ -83,7 +83,7 @@ func (ctx *Context) GetMessages() []*pb.EventMessage {
 
 func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {
 	if ctx.sessionSender != nil {
-		ctx.sessionSender.SendSession(ctx.sessionToken, &pb.Event{
+		ctx.sessionSender.BroadcastToOtherSessions(ctx.sessionToken, &pb.Event{
 			Messages:  msgs,
 			ContextId: ctx.smartBlockId,
 			Initiator: nil,

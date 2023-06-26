@@ -2,13 +2,14 @@ package event
 
 import (
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 const CName = "eventSender"
 
 type Sender interface {
-	Send(event *pb.Event)
+	Broadcast(event *pb.Event)
 	app.Component
 }
 
@@ -28,6 +29,6 @@ func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
 	return &CallbackSender{callback: callback}
 }
 
-func (es *CallbackSender) Send(event *pb.Event) {
+func (es *CallbackSender) Broadcast(event *pb.Event) {
 	es.callback(event)
 }
