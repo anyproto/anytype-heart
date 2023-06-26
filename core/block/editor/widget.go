@@ -99,7 +99,7 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (w *WidgetObject) Unlink(ctx *session.Context, ids ...string) (err error) {
+func (w *WidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {
 	st := w.NewStateCtx(ctx)
 	for _, id := range ids {
 		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {

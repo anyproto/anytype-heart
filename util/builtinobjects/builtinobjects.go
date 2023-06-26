@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +25,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+
+	_ "embed"
 )
 
 const (
@@ -65,7 +66,7 @@ var (
 type BuiltinObjects interface {
 	app.Component
 
-	CreateObjectsForUseCase(*session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 	InjectMigrationDashboard() error
 }
 
@@ -94,7 +95,7 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) CreateObjectsForUseCase(
-	ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase,
+	ctx session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
 	start := time.Now()
 
@@ -122,7 +123,7 @@ func (b *builtinObjects) InjectMigrationDashboard() error {
 	return b.inject(nil, migrationDashboardZip, true)
 }
 
-func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigration bool) (err error) {
+func (b *builtinObjects) inject(ctx session.Context, archive []byte, isMigration bool) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
@@ -153,7 +154,7 @@ func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigratio
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err error) {
+func (b *builtinObjects) importArchive(ctx session.Context, path string) (err error) {
 	if err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,

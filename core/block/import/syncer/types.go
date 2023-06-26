@@ -6,5 +6,5 @@ import (
 )
 
 type Syncer interface {
-	Sync(ctx *session.Context, id string, b simple.Block) error
+	Sync(ctx session.Context, id string, b simple.Block) error
 }

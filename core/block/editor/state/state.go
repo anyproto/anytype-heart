@@ -51,7 +51,7 @@ var DetailsFileFields = [...]string{bundle.RelationKeyCoverId.String(), bundle.R
 type Doc interface {
 	RootId() string
 	NewState() *State
-	NewStateCtx(ctx *session.Context) *State
+	NewStateCtx(ctx session.Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
 	Details() *types.Struct
@@ -87,7 +87,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx           *session.Context
+	ctx           session.Context
 	parent        *State
 	blocks        map[string]simple.Block
 	rootId        string
@@ -151,11 +151,11 @@ func (s *State) NewState() *State {
 	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
 }
 
-func (s *State) NewStateCtx(ctx *session.Context) *State {
+func (s *State) NewStateCtx(ctx session.Context) *State {
 	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
 }
 
-func (s *State) Context() *session.Context {
+func (s *State) Context() session.Context {
 	return s.ctx
 }
 
@@ -1799,7 +1799,7 @@ func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 	return 0, false
 }
 
-func (s *State) SetContext(context *session.Context) {
+func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 

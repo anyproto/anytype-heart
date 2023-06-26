@@ -37,23 +37,23 @@ var log = logging.Logger("anytype-mw-editor-dataview")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
-	SetSource(ctx *session.Context, blockId string, source []string) (err error)
+	SetSource(ctx session.Context, blockId string, source []string) (err error)
 
 	// GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 	GetDataview(blockID string) (*model.BlockContentDataview, error)
 
-	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
-	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
-	CreateView(ctx *session.Context, blockID string,
+	DeleteView(ctx session.Context, blockId string, viewId string, showEvent bool) error
+	SetActiveView(ctx session.Context, blockId string, activeViewId string, limit int, offset int) error
+	CreateView(ctx session.Context, blockID string,
 		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
-	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
-	AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
-	DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
-	UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
-	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
-	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
-	DataviewMoveObjectsInView(ctx *session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error
+	SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) error
+	AddRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
+	DeleteRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
+	UpdateView(ctx session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
+	UpdateViewGroupOrder(ctx session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
+	UpdateViewObjectOrder(ctx session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
+	DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error
 
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
@@ -88,7 +88,7 @@ func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.B
 	return getDataviewBlock(s, blockID)
 }
 
-func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []string) (err error) {
+func (d *sdataview) SetSource(ctx session.Context, blockId string, source []string) (err error) {
 	s := d.NewStateCtx(ctx)
 	if blockId == "" {
 		blockId = template.DataviewBlockId
@@ -126,7 +126,7 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 	return d.Apply(s, smartblock.NoRestrictions)
 }
 
-func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationKeys []string, showEvent bool) error {
+func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -146,7 +146,7 @@ func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationK
 	}
 }
 
-func (d *sdataview) DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error {
+func (d *sdataview) DeleteRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -185,7 +185,7 @@ func (d *sdataview) GetDataview(blockID string) (*model.BlockContentDataview, er
 	return tb.Model().GetDataview(), nil
 }
 
-func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error {
+func (d *sdataview) DeleteView(ctx session.Context, blockId string, viewId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -205,7 +205,7 @@ func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error {
+func (d *sdataview) UpdateView(ctx session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(s, blockID)
 	if err != nil {
@@ -222,7 +222,7 @@ func (d *sdataview) UpdateView(ctx *session.Context, blockID string, viewID stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) SetActiveView(ctx *session.Context, id string, activeViewId string, limit int, offset int) error {
+func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string, limit int, offset int) error {
 	s := d.NewStateCtx(ctx)
 
 	dvBlock, err := getDataviewBlock(s, id)
@@ -239,7 +239,7 @@ func (d *sdataview) SetActiveView(ctx *session.Context, id string, activeViewId 
 	return d.Apply(s)
 }
 
-func (d *sdataview) SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) (err error) {
+func (d *sdataview) SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) (err error) {
 	s := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -280,7 +280,7 @@ func (d *sdataview) SetViewPosition(ctx *session.Context, blockId string, viewId
 	return d.Apply(s)
 }
 
-func (d *sdataview) CreateView(ctx *session.Context, id string,
+func (d *sdataview) CreateView(ctx session.Context, id string,
 	view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error) {
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
@@ -333,7 +333,7 @@ func defaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
 	}
 }
 
-func (d *sdataview) UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
+func (d *sdataview) UpdateViewGroupOrder(ctx session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, blockId)
 	if err != nil {
@@ -345,7 +345,7 @@ func (d *sdataview) UpdateViewGroupOrder(ctx *session.Context, blockId string, o
 	return d.Apply(st)
 }
 
-func (d *sdataview) UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error {
+func (d *sdataview) UpdateViewObjectOrder(ctx session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, blockId)
 	if err != nil {
@@ -357,7 +357,7 @@ func (d *sdataview) UpdateViewObjectOrder(ctx *session.Context, blockId string, 
 	return d.Apply(st)
 }
 
-func (d *sdataview) DataviewMoveObjectsInView(ctx *session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error {
+func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, req.BlockId)
 	if err != nil {

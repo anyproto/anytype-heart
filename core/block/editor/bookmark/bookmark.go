@@ -39,8 +39,8 @@ func NewBookmark(
 }
 
 type Bookmark interface {
-	Fetch(ctx *session.Context, id string, url string, isSync bool) (err error)
-	CreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
+	Fetch(ctx session.Context, id string, url string, isSync bool) (err error)
+	CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
 	MigrateBlock(bm bookmark.Block) (err error)
 }
@@ -61,7 +61,7 @@ type BlockService interface {
 	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
-func (b *sbookmark) Fetch(ctx *session.Context, id string, url string, isSync bool) (err error) {
+func (b *sbookmark) Fetch(ctx session.Context, id string, url string, isSync bool) (err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	if err = b.fetch(s, id, url, isSync); err != nil {
 		return
@@ -103,7 +103,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	return err
 }
 
-func (b *sbookmark) CreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
+func (b *sbookmark) CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfBookmark{

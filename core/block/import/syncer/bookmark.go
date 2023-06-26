@@ -17,7 +17,7 @@ func NewBookmarkSyncer(service *block.Service) *BookmarkSyncer {
 	return &BookmarkSyncer{service: service}
 }
 
-func (bs *BookmarkSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
+func (bs *BookmarkSyncer) Sync(ctx session.Context, id string, b simple.Block) error {
 	if b.Model().GetBookmark().TargetObjectId != "" {
 		return nil
 	}

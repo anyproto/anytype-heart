@@ -3,6 +3,7 @@ package basic
 import (
 	"context"
 	"fmt"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -24,7 +25,7 @@ type ObjectCreator interface {
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
-func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
 	newState := bs.NewStateCtx(ctx)
 	rootIds := newState.SelectRoots(req.BlockIds)
 

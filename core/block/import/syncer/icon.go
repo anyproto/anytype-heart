@@ -21,7 +21,7 @@ func NewIconSyncer(service *block.Service) *IconSyncer {
 	return &IconSyncer{service: service}
 }
 
-func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
+func (is *IconSyncer) Sync(ctx session.Context, id string, b simple.Block) error {
 	fileName := b.Model().GetText().GetIconImage()
 	req := pb.RpcFileUploadRequest{LocalPath: fileName}
 	if strings.HasPrefix(fileName, "http://") || strings.HasPrefix(fileName, "https://") {

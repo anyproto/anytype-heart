@@ -40,7 +40,7 @@ type ObjectCreator interface {
 }
 
 type ObjectDeleter interface {
-	DeleteObject(ctx *session.Context, id string) (err error)
+	DeleteObject(ctx session.Context, id string) (err error)
 }
 
 func New(
@@ -67,7 +67,7 @@ func (s *Service) Name() string {
 	return "collection"
 }
 
-func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddRequest) error {
+func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		toAdd := slice.Difference(req.ObjectIds, col)
 		pos := slice.FindPos(col, req.AfterId)
@@ -80,7 +80,7 @@ func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddReques
 	})
 }
 
-func (s *Service) Remove(ctx *session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
+func (s *Service) Remove(ctx session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		col = slice.Filter(col, func(id string) bool {
 			return slice.FindPos(req.ObjectIds, id) == -1
@@ -89,7 +89,7 @@ func (s *Service) Remove(ctx *session.Context, req *pb.RpcObjectCollectionRemove
 	})
 }
 
-func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequest) error {
+func (s *Service) Sort(ctx session.Context, req *pb.RpcObjectCollectionSortRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		exist := map[string]struct{}{}
 		for _, id := range col {
@@ -106,7 +106,7 @@ func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequ
 	})
 }
 
-func (s *Service) updateCollection(ctx *session.Context, contextID string, modifier func(src []string) []string) error {
+func (s *Service) updateCollection(ctx session.Context, contextID string, modifier func(src []string) []string) error {
 	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
 		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)

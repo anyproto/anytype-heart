@@ -81,15 +81,15 @@ func (st *SmartTest) GetFirstTextBlock() (*model.BlockContentOfText, error) {
 	return nil, nil
 }
 
-func (st *SmartTest) SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) error {
+func (st *SmartTest) SetAlign(ctx session.Context, align model.BlockAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) error {
+func (st *SmartTest) SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) error {
+func (st *SmartTest) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) error {
 	return nil
 }
 
@@ -140,7 +140,7 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
+func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
 	for _, key := range relationKeys {
 		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
 			Key:    key,
@@ -158,15 +158,15 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 	return false
 }
 
-func (st *SmartTest) RefreshLocalDetails(ctx *session.Context) error {
+func (st *SmartTest) RefreshLocalDetails(ctx session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error) {
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
+func (st *SmartTest) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	dets := &types.Struct{Fields: map[string]*types.Value{}}
 	for _, d := range details {
 		dets.Fields[d.Key] = d.Value
@@ -202,7 +202,7 @@ func (st *SmartTest) Type() model.SmartBlockType {
 	return model.SmartBlockType_Page
 }
 
-func (st *SmartTest) Show(*session.Context) (obj *model.ObjectView, err error) {
+func (st *SmartTest) Show(session.Context) (obj *model.ObjectView, err error) {
 	return
 }
 

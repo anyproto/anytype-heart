@@ -24,7 +24,7 @@ func NewFileSyncer(
 	}
 }
 
-func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
+func (fs *FileSyncer) Sync(ctx session.Context, id string, b simple.Block) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		return nil
 	}

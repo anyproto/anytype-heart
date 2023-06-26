@@ -214,7 +214,7 @@ func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
 	return nil
 }
 
-func (s *Service) DeleteObject(ctx *session.Context, id string) (err error) {
+func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err

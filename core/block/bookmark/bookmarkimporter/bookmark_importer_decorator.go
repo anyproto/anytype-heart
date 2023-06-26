@@ -19,7 +19,7 @@ const CName = "bookmark-importer"
 var log = logging.Logger("bookmark-importer")
 
 type Importer interface {
-	ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
+	ImportWeb(ctx session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 }
 
 type BookmarkImporterDecorator struct {

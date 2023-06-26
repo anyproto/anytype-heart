@@ -92,7 +92,7 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
+func (i *Import) Import(ctx session.Context, req *pb.RpcObjectImportRequest) error {
 	progress := i.setupProgressBar(req)
 	defer progress.Finish()
 	if i.s != nil && !req.GetNoProgress() {
@@ -168,7 +168,7 @@ func (i *Import) Name() string {
 }
 
 // ListImports return all registered import types
-func (i *Import) ListImports(_ *session.Context,
+func (i *Import) ListImports(_ session.Context,
 	_ *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
 	res := make([]*pb.RpcObjectImportListImportResponse, len(i.converters))
 	var idx int
@@ -187,7 +187,7 @@ func (i *Import) ValidateNotionToken(
 	return tv.Validate(ctx, req.GetToken())
 }
 
-func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
+func (i *Import) ImportWeb(ctx session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	allErrors := make(map[string]error, 0)
@@ -212,7 +212,7 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) createObjects(ctx *session.Context,
+func (i *Import) createObjects(ctx session.Context,
 	res *converter.Response,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
@@ -246,7 +246,7 @@ func (i *Import) getFilesIDs(res *converter.Response) []string {
 	return fileIDs
 }
 
-func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (
+func (i *Import) getIDForAllObjects(ctx session.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (
 	map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	getFileName := func(object *converter.Snapshot) string {
 		if object.FileName != "" {
@@ -288,7 +288,7 @@ func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Respons
 	return oldIDToNew, createPayloads, nil
 }
 
-func (i *Import) getObjectID(ctx *session.Context,
+func (i *Import) getObjectID(ctx session.Context,
 	snapshot *converter.Snapshot,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,

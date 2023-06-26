@@ -7,12 +7,13 @@ package file_test
 import (
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+
 	file "github.com/anyproto/anytype-heart/core/block/editor/file"
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	process "github.com/anyproto/anytype-heart/core/block/process"
 	session "github.com/anyproto/anytype-heart/core/session"
 	pb "github.com/anyproto/anytype-heart/pb"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockBlockService is a mock of BlockService interface.
@@ -39,7 +40,7 @@ func (m *MockBlockService) EXPECT() *MockBlockServiceMockRecorder {
 }
 
 // CreateLinkToTheNewObject mocks base method.
-func (m *MockBlockService) CreateLinkToTheNewObject(arg0 *session.Context, arg1 *pb.RpcBlockLinkCreateWithObjectRequest) (string, string, error) {
+func (m *MockBlockService) CreateLinkToTheNewObject(arg0 session.Context, arg1 *pb.RpcBlockLinkCreateWithObjectRequest) (string, string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateLinkToTheNewObject", arg0, arg1)
 	ret0, _ := ret[0].(string)

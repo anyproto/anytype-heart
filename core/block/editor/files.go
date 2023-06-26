@@ -42,7 +42,7 @@ func detectFileType(mime string) model.BlockContentFileType {
 	return model.BlockContentFile_File
 }
 
-func (p *Files) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) error {
+func (p *Files) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) error {
 	st := p.NewStateCtx(ctx)
 	det := pbtypes.CopyStruct(st.Details())
 	for _, d := range details {

@@ -51,7 +51,7 @@ func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, s
 	}
 }
 
-func (ou *ObjectIDGetter) Get(ctx *session.Context,
+func (ou *ObjectIDGetter) Get(ctx session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
 	createdTime time.Time,

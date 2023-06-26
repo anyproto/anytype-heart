@@ -17,7 +17,7 @@ type DataObject struct {
 	oldIDtoNew     map[string]string
 	createPayloads map[string]treestorage.TreeStorageCreatePayload
 	fileIDs        []string
-	ctx            *session.Context
+	ctx            session.Context
 }
 
 type Result struct {
@@ -29,7 +29,7 @@ type Result struct {
 func NewDataObject(oldIDtoNew map[string]string,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	filesIDs []string,
-	ctx *session.Context) *DataObject {
+	ctx session.Context) *DataObject {
 	return &DataObject{oldIDtoNew: oldIDtoNew, createPayloads: createPayloads, fileIDs: filesIDs, ctx: ctx}
 }
 

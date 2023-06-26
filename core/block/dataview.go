@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Service) AddDataviewFilter(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -25,7 +25,7 @@ func (s *Service) AddDataviewFilter(
 }
 
 func (s *Service) RemoveDataviewFilters(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -42,7 +42,7 @@ func (s *Service) RemoveDataviewFilters(
 }
 
 func (s *Service) ReplaceDataviewFilter(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -60,7 +60,7 @@ func (s *Service) ReplaceDataviewFilter(
 }
 
 func (s *Service) ReorderDataviewFilters(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -77,7 +77,7 @@ func (s *Service) ReorderDataviewFilters(
 }
 
 func (s *Service) AddDataviewSort(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -94,7 +94,7 @@ func (s *Service) AddDataviewSort(
 }
 
 func (s *Service) RemoveDataviewSorts(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -111,7 +111,7 @@ func (s *Service) RemoveDataviewSorts(
 }
 
 func (s *Service) ReplaceDataviewSort(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -129,7 +129,7 @@ func (s *Service) ReplaceDataviewSort(
 }
 
 func (s *Service) ReorderDataviewSorts(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -146,7 +146,7 @@ func (s *Service) ReorderDataviewSorts(
 }
 
 func (s *Service) AddDataviewViewRelation(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -163,7 +163,7 @@ func (s *Service) AddDataviewViewRelation(
 }
 
 func (s *Service) RemoveDataviewViewRelations(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -180,7 +180,7 @@ func (s *Service) RemoveDataviewViewRelations(
 }
 
 func (s *Service) ReplaceDataviewViewRelation(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,
@@ -198,7 +198,7 @@ func (s *Service) ReplaceDataviewViewRelation(
 }
 
 func (s *Service) ReorderDataviewViewRelations(
-	ctx *session.Context,
+	ctx session.Context,
 	contextID string,
 	blockID string,
 	viewID string,

@@ -9,11 +9,12 @@ import (
 	time "time"
 
 	treestorage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	types "github.com/gogo/protobuf/types"
+	gomock "github.com/golang/mock/gomock"
+
 	converter "github.com/anyproto/anytype-heart/core/block/import/converter"
 	session "github.com/anyproto/anytype-heart/core/session"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockCreator is a mock of Creator interface.
@@ -40,7 +41,7 @@ func (m *MockCreator) EXPECT() *MockCreatorMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockCreator) Create(arg0 *session.Context, arg1 *converter.Snapshot, arg2 map[string]string, arg3 map[string]treestorage.TreeStorageCreatePayload, arg4 []string) (*types.Struct, string, error) {
+func (m *MockCreator) Create(arg0 session.Context, arg1 *converter.Snapshot, arg2 map[string]string, arg3 map[string]treestorage.TreeStorageCreatePayload, arg4 []string) (*types.Struct, string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(*types.Struct)
@@ -79,7 +80,7 @@ func (m *MockIDGetter) EXPECT() *MockIDGetterMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockIDGetter) Get(arg0 *session.Context, arg1 *converter.Snapshot, arg2 smartblock.SmartBlockType, arg3 time.Time, arg4 bool, arg5 map[string]string) (string, treestorage.TreeStorageCreatePayload, error) {
+func (m *MockIDGetter) Get(arg0 session.Context, arg1 *converter.Snapshot, arg2 smartblock.SmartBlockType, arg3 time.Time, arg4 bool, arg5 map[string]string) (string, treestorage.TreeStorageCreatePayload, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(string)

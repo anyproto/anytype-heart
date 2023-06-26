@@ -23,7 +23,7 @@ type detailUpdate struct {
 	value *types.Value
 }
 
-func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	s := bs.NewStateCtx(ctx)
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
@@ -116,7 +116,7 @@ func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
 	return nil
 }
 
-func (bs *basic) discardOwnSetDetailsEvent(ctx *session.Context, showEvent bool) {
+func (bs *basic) discardOwnSetDetailsEvent(ctx session.Context, showEvent bool) {
 	if !showEvent && ctx != nil {
 		var filtered []*pb.EventMessage
 		msgs := ctx.GetMessages()
@@ -134,7 +134,7 @@ func (bs *basic) discardOwnSetDetailsEvent(ctx *session.Context, showEvent bool)
 	}
 }
 
-func (bs *basic) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) (err error) {
+func (bs *basic) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error) {
 	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
 		return
 	}
@@ -146,7 +146,7 @@ func (bs *basic) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) 
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
-func (bs *basic) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
+func (bs *basic) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
 	s := bs.NewStateCtx(ctx)
 
 	var toLayout model.ObjectTypeLayout

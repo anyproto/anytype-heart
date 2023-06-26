@@ -51,17 +51,17 @@ func NewFile(
 type BlockService interface {
 	Do(id string, apply func(sb smartblock.SmartBlock) error) error
 	DoFile(id string, apply func(f File) error) error
-	CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
+	CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
 	ProcessAdd(p process.Process) (err error)
 }
 
 type File interface {
 	DropFiles(req pb.RpcFileDropRequest) (err error)
-	Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error)
+	Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error)
 	UploadState(s *state.State, id string, source FileSource, isSync bool) (err error)
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
-	CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
-	SetFileStyle(ctx *session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
+	CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
+	SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
 	UploadFileWithHash(blockID string, source FileSource) (UploadResult, error)
 	dropFilesHandler
 }
@@ -81,7 +81,7 @@ type sfile struct {
 	fileService     files.Service
 }
 
-func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
+func (sf *sfile) Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error) {
 	if source.GroupId == "" {
 		source.GroupId = bson.NewObjectId().Hex()
 	}
@@ -99,7 +99,7 @@ func (sf *sfile) UploadState(s *state.State, id string, source FileSource, isSyn
 	return
 }
 
-func (sf *sfile) SetFileStyle(ctx *session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error) {
+func (sf *sfile) SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error) {
 	s := sf.NewStateCtx(ctx)
 	for _, id := range blockIds {
 		b := s.Get(id)
@@ -118,7 +118,7 @@ func (sf *sfile) SetFileStyle(ctx *session.Context, style model.BlockContentFile
 	return sf.Apply(s)
 }
 
-func (sf *sfile) CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
+func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
 	s := sf.NewStateCtx(ctx)
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfFile{

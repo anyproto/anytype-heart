@@ -7,7 +7,23 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-type Context struct {
+type Context interface {
+	ID() string
+	SpaceID() string
+	ObjectID() string
+	TraceID() string
+	SetIsAsync(bool)
+	Context() context.Context
+	IsActive() bool
+	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
+	Send(event *pb.Event)
+	SendToOtherSessions(msgs []*pb.EventMessage)
+	GetMessages() []*pb.EventMessage
+	Broadcast(event *pb.Event)
+	GetResponseEvent() *pb.ResponseEvent
+}
+
+type sessionContext struct {
 	ctx           context.Context
 	smartBlockId  string
 	spaceID       string
@@ -18,8 +34,8 @@ type Context struct {
 	isAsync       bool
 }
 
-func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, opts ...ContextOption) *Context {
-	ctx := &Context{
+func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, opts ...ContextOption) Context {
+	ctx := &sessionContext{
 		spaceID:       spaceID,
 		sessionSender: eventSender,
 		ctx:           cctx,
@@ -30,39 +46,43 @@ func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, 
 	return ctx
 }
 
-func NewChildContext(parent *Context) *Context {
-	return &Context{
-		ctx:           parent.ctx,
-		spaceID:       parent.spaceID,
-		smartBlockId:  parent.smartBlockId,
-		traceId:       parent.traceId,
-		sessionSender: parent.sessionSender,
-		sessionToken:  parent.sessionToken,
+func NewChildContext(parent Context) Context {
+	child := &sessionContext{
+		ctx:          parent.Context(),
+		spaceID:      parent.SpaceID(),
+		smartBlockId: parent.ObjectID(),
+		traceId:      parent.TraceID(),
+		sessionToken: parent.ID(),
 	}
+	v, ok := parent.(*sessionContext)
+	if ok {
+		child.sessionSender = v.sessionSender
+	}
+	return child
 }
 
-func NewAsyncChildContext(parent *Context) *Context {
+func NewAsyncChildContext(parent *sessionContext) Context {
 	ctx := NewChildContext(parent)
-	ctx.isAsync = true
+	ctx.SetIsAsync(true)
 	return ctx
 }
 
-type ContextOption func(ctx *Context)
+type ContextOption func(ctx *sessionContext)
 
 func Async() ContextOption {
-	return func(ctx *Context) {
+	return func(ctx *sessionContext) {
 		ctx.isAsync = true
 	}
 }
 
 func WithSession(token string) ContextOption {
-	return func(ctx *Context) {
+	return func(ctx *sessionContext) {
 		ctx.sessionToken = token
 	}
 }
 
 func WithTraceId(traceId string) ContextOption {
-	return func(ctx *Context) {
+	return func(ctx *sessionContext) {
 		ctx.traceId = traceId
 	}
 }
@@ -71,53 +91,61 @@ type Closer interface {
 	CloseSession(token string)
 }
 
-func (ctx *Context) ID() string {
+func (ctx *sessionContext) ID() string {
 	return ctx.sessionToken
 }
 
-func (ctx *Context) SpaceID() string {
+func (ctx *sessionContext) ObjectID() string {
+	return ctx.smartBlockId
+}
+
+func (ctx *sessionContext) TraceID() string {
+	return ctx.traceId
+}
+
+func (ctx *sessionContext) SpaceID() string {
 	return ctx.spaceID
 }
 
-func (ctx *Context) IsAsync() bool {
+func (ctx *sessionContext) SetIsAsync(isAsync bool) {
+	ctx.isAsync = isAsync
+}
+
+func (ctx *sessionContext) IsAsync() bool {
 	return ctx.isAsync
 }
 
-func (ctx *Context) Context() context.Context {
+func (ctx *sessionContext) Context() context.Context {
 	return ctx.ctx
 }
 
-func (ctx *Context) IsActive() bool {
-	// TODO Carefully check this. When session sender is nil?
-	if ctx.sessionSender == nil {
-		return false
-	}
+func (ctx *sessionContext) IsActive() bool {
 	return ctx.sessionSender.IsActive(ctx.sessionToken)
 }
 
-func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
+func (ctx *sessionContext) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = append(ctx.messages, msgs...)
 }
 
-func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
+func (ctx *sessionContext) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = msgs
 }
 
-func (ctx *Context) GetMessages() []*pb.EventMessage {
+func (ctx *sessionContext) GetMessages() []*pb.EventMessage {
 	return ctx.messages
 }
 
-func (ctx *Context) Send(event *pb.Event) {
+func (ctx *sessionContext) Send(event *pb.Event) {
 	ctx.sessionSender.SendToSession(ctx.sessionToken, event)
 }
 
-func (ctx *Context) Broadcast(event *pb.Event) {
+func (ctx *sessionContext) Broadcast(event *pb.Event) {
 	ctx.sessionSender.BroadcastForSpace(ctx.spaceID, event)
 }
 
-func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {
+func (ctx *sessionContext) SendToOtherSessions(msgs []*pb.EventMessage) {
 	ctx.sessionSender.BroadcastToOtherSessions(ctx.sessionToken, &pb.Event{
 		Messages:  msgs,
 		ContextId: ctx.smartBlockId,
@@ -125,7 +153,7 @@ func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {
 	})
 }
 
-func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {
+func (ctx *sessionContext) GetResponseEvent() *pb.ResponseEvent {
 	ctx.SendToOtherSessions(ctx.messages)
 	return &pb.ResponseEvent{
 		Messages:  ctx.messages,

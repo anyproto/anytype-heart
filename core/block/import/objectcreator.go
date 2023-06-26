@@ -71,7 +71,7 @@ func NewCreator(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(ctx *session.Context,
+func (oc *ObjectCreator) Create(ctx session.Context,
 	sn *converter.Snapshot,
 	oldIDtoNew map[string]string,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
@@ -139,14 +139,14 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	return respDetails, newID, nil
 }
 
-func (oc *ObjectCreator) updateExistingObject(ctx *session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
+func (oc *ObjectCreator) updateExistingObject(ctx session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
 	if st.Store() != nil {
 		oc.updateLinksInCollections(st, oldIDtoNew, false)
 	}
 	return oc.resetState(ctx, newID, st)
 }
 
-func (oc *ObjectCreator) createNewObject(ctx *session.Context,
+func (oc *ObjectCreator) createNewObject(ctx session.Context,
 	payload treestorage.TreeStorageCreatePayload,
 	st *state.State,
 	newID string,
@@ -225,7 +225,7 @@ func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model
 	}
 }
 
-func (oc *ObjectCreator) onFinish(ctx *session.Context, err error, st *state.State, filesToDelete []string) {
+func (oc *ObjectCreator) onFinish(ctx session.Context, err error, st *state.State, filesToDelete []string) {
 	if err != nil {
 		for _, bl := range st.Blocks() {
 			if f := bl.GetFile(); f != nil {
@@ -238,7 +238,7 @@ func (oc *ObjectCreator) onFinish(ctx *session.Context, err error, st *state.Sta
 	}
 }
 
-func (oc *ObjectCreator) deleteFile(ctx *session.Context, hash string) {
+func (oc *ObjectCreator) deleteFile(ctx session.Context, hash string) {
 	inboundLinks, err := oc.objectStore.GetOutboundLinksByID(hash)
 	if err != nil {
 		log.With("file", hash).Errorf("failed to get inbound links for file: %s", err)
@@ -341,7 +341,7 @@ func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
 	return filesToDelete
 }
 
-func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *state.State) *types.Struct {
+func (oc *ObjectCreator) resetState(ctx session.Context, newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
@@ -386,7 +386,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
+func (oc *ObjectCreator) syncFilesAndLinks(ctx session.Context, st *state.State, newID string) error {
 	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
 	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
 		s := oc.syncFactory.GetSyncer(bl)

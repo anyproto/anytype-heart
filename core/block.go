@@ -677,7 +677,7 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 	return response(pb.RpcBlockTextListSetMarkResponseError_NULL, nil)
 }
 
-func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) *session.Context {
+func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
 	spaceID := getService[space.Service](mw).AccountId()
 
 	md, ok := metadata.FromIncomingContext(cctx)

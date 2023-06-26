@@ -194,7 +194,7 @@ func (s *Service) Anytype() core.Service {
 }
 
 func (s *Service) OpenBlock(
-	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
+	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
 	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "object_open"), id)
@@ -259,7 +259,7 @@ func (s *Service) OpenBlock(
 }
 
 func (s *Service) ShowBlock(
-	ctx *session.Context, id string, includeRelationsAsDependentObjects bool,
+	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	cctx := context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "object_show")
 	err2 := s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
@@ -275,7 +275,7 @@ func (s *Service) ShowBlock(
 	return
 }
 
-func (s *Service) CloseBlock(ctx *session.Context, id string) error {
+func (s *Service) CloseBlock(ctx session.Context, id string) error {
 	var isDraft bool
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
@@ -552,7 +552,7 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
 }
 
-func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
+func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
@@ -560,7 +560,7 @@ func (s *Service) SetSource(ctx *session.Context, req pb.RpcObjectSetSourceReque
 	})
 }
 
-func (s *Service) SetWorkspaceDashboardId(ctx *session.Context, workspaceId string, id string) (setId string, err error) {
+func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
 	err = Do(s, workspaceId, func(ws *editor.Workspaces) error {
 		if ws.Type() != model.SmartBlockType_Workspace {
 			return ErrUnexpectedBlockType
@@ -588,7 +588,7 @@ func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) err
 	return nil
 }
 
-func (s *Service) DeleteArchivedObjects(ctx *session.Context, req pb.RpcObjectListDeleteRequest) (err error) {
+func (s *Service) DeleteArchivedObjects(ctx session.Context, req pb.RpcObjectListDeleteRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -638,7 +638,7 @@ func (s *Service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
 	return nil, merr.ErrorOrNil()
 }
 
-func (s *Service) DeleteArchivedObject(ctx *session.Context, id string) (err error) {
+func (s *Service) DeleteArchivedObject(ctx session.Context, id string) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -700,7 +700,7 @@ func (s *Service) sendOnRemoveEvent(spaceID string, ids ...string) {
 	})
 }
 
-func (s *Service) RemoveListOption(ctx *session.Context, optIds []string, checkInObjects bool) error {
+func (s *Service) RemoveListOption(ctx session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
 	if err := s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		var ok bool
@@ -984,7 +984,7 @@ func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.St
 	})
 }
 
-func DoStateCtx[t any](p Picker, ctx *session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
 	if err != nil {
 		return err
@@ -1073,7 +1073,7 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	return nil
 }
 
-func (s *Service) ObjectToBookmark(ctx *session.Context, id string, url string) (objectId string, err error) {
+func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (objectId string, err error) {
 	objectId, _, err = s.objectCreator.CreateObject(&pb.RpcObjectCreateBookmarkRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{

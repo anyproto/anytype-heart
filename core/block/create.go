@@ -113,7 +113,7 @@ func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceI
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
-func (s *Service) CreateLinkToTheNewObject(ctx *session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, objectID string, err error) {
+func (s *Service) CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, objectID string, err error) {
 	if req.ContextId == req.TemplateId && req.ContextId != "" {
 		err = fmt.Errorf("unable to create link to template from this template")
 		return

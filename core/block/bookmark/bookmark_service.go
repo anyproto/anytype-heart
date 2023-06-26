@@ -53,7 +53,7 @@ type ObjectCreator interface {
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	SetDetails(ctx session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 }
 
 type service struct {

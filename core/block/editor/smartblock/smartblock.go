@@ -92,7 +92,7 @@ func New(
 		hooks:     map[Hook][]HookCallback{},
 		hooksOnce: map[string]struct{}{},
 		Locker:    &sync.Mutex{},
-		sessions:  map[string]*session.Context{},
+		sessions:  map[string]session.Context{},
 
 		coreService:        coreService,
 		fileService:        fileService,
@@ -106,24 +106,24 @@ func New(
 
 type SmartObjectOpenListner interface {
 	// should not do any Do operations inside
-	SmartObjectOpened(*session.Context)
+	SmartObjectOpened(session.Context)
 }
 
 type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
 	Type() model.SmartBlockType
-	Show(*session.Context) (obj *model.ObjectView, err error)
-	RegisterSession(*session.Context)
+	Show(session.Context) (obj *model.ObjectView, err error)
+	RegisterSession(session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Relations(s *state.State) relationutils.Relations
 	HasRelation(s *state.State, relationKey string) bool
-	AddRelationLinks(ctx *session.Context, relationIds ...string) (err error)
+	AddRelationLinks(ctx session.Context, relationIds ...string) (err error)
 	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
-	RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error)
+	RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error)
 	TemplateCreateFromObjectState() (*state.State, error)
-	SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) error
+	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetIsDeleted()
 	IsDeleted() bool
 	IsLocked() bool
@@ -138,7 +138,7 @@ type SmartBlock interface {
 	GetDocInfo() DocInfo
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
-	ObjectClose(ctx *session.Context)
+	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
 	FileRelationKeys(s *state.State) []string
 	Inner() SmartBlock
@@ -192,7 +192,7 @@ type smartBlock struct {
 	Locker
 	depIds []string // slice must be sorted
 	// sendEvent           func(e *pb.Event)
-	sessions            map[string]*session.Context
+	sessions            map[string]session.Context
 	undo                undo.History
 	source              source.Source
 	lastDepDetails      map[string]*pb.EventObjectDetailsSet
@@ -368,7 +368,7 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
 }
 
-func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
+func (sb *smartBlock) Show(ctx session.Context) (*model.ObjectView, error) {
 	if ctx == nil {
 		return nil, nil
 	}
@@ -599,7 +599,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 	return lo.Uniq(ids)
 }
 
-func (sb *smartBlock) RegisterSession(ctx *session.Context) {
+func (sb *smartBlock) RegisterSession(ctx session.Context) {
 	sb.sessions[ctx.ID()] = ctx
 }
 
@@ -851,7 +851,7 @@ func (sb *smartBlock) NewState() *state.State {
 	return s
 }
 
-func (sb *smartBlock) NewStateCtx(ctx *session.Context) *state.State {
+func (sb *smartBlock) NewStateCtx(ctx session.Context) *state.State {
 	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
@@ -869,7 +869,7 @@ func (sb *smartBlock) RelationService() relation.Service {
 	return sb.relationService
 }
 
-func (sb *smartBlock) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
+func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
 		return
@@ -969,7 +969,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	return nil
 }
 
-func (sb *smartBlock) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
+func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	for _, id := range ids {
 		if b := s.Get(id); b != nil {
@@ -992,7 +992,7 @@ func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	return st, nil
 }
 
-func (sb *smartBlock) RemoveExtraRelations(ctx *session.Context, relationIds []string) (err error) {
+func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []string) (err error) {
 	st := sb.NewStateCtx(ctx)
 	st.RemoveRelation(relationIds...)
 
@@ -1063,14 +1063,14 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	return nil
 }
 
-func (sb *smartBlock) ObjectClose(ctx *session.Context) {
+func (sb *smartBlock) ObjectClose(ctx session.Context) {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
 	delete(sb.sessions, ctx.ID())
 }
 
 func (sb *smartBlock) ObjectCloseAllSessions() {
 	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
-	sb.sessions = make(map[string]*session.Context)
+	sb.sessions = make(map[string]session.Context)
 }
 
 func (sb *smartBlock) TryClose(objectTTL time.Duration) (res bool, err error) {
