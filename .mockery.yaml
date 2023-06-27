@@ -10,3 +10,6 @@ packages:
   github.com/anyproto/anytype-heart/core/wallet:
     interfaces:
       Wallet:
+  github.com/anyproto/anytype-heart/core/event:
+    interfaces:
+      Sender:

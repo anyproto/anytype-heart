@@ -6,11 +6,13 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -44,7 +46,10 @@ func TestSmartBlock_Apply(t *testing.T) {
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
 		fx.source.EXPECT().ReadOnly()
 		var event *pb.Event
-		fx.SetEventFunc(func(e *pb.Event) {
+		ctx := session.NewTestContext(t)
+		fx.RegisterSession(ctx)
+		// TODO Test Async context later
+		ctx.Sender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
 			event = e
 		})
 		fx.source.EXPECT().Heads()

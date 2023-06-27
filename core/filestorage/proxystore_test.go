@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 )
 
 var ctx = context.Background()
@@ -297,7 +297,8 @@ func newPSFixture(t *testing.T) *psFixture {
 	require.NoError(t, err)
 
 	fx.flatfsDir = t.TempDir()
-	cache, err := newFlatStore(fx.flatfsDir, func(event *pb.Event) {}, time.Second)
+	sender := mock_event.NewMockSender(t)
+	cache, err := newFlatStore(fx.flatfsDir, sender, time.Second)
 	require.NoError(t, err)
 
 	fx.proxyStore = &proxyStore{

@@ -279,7 +279,7 @@ func (st *SmartTest) FileRelationKeys(s *state.State) []string {
 	return nil
 }
 
-func (st *SmartTest) ObjectClose() {
+func (st *SmartTest) ObjectClose(ctx session.Context) {
 	st.SetEventFunc(nil)
 }
 
@@ -297,6 +297,13 @@ func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
 
 func (st *SmartTest) Inner() smartblock.SmartBlock {
 	return nil
+}
+
+func (st *SmartTest) ObjectCloseAllSessions() {
+}
+
+func (st *SmartTest) RegisterSession(session.Context) {
+
 }
 
 type Results struct {

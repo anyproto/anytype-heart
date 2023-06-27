@@ -7,9 +7,12 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -324,9 +327,13 @@ func newFixture(t *testing.T) *fixture {
 		ctrl:    ctrl,
 		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
 	}
-	fx.sender = &testapp.EventSender{F: func(e *pb.Event) {
+	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Init(mock.Anything).Return(nil)
+	sender.EXPECT().Name().Return(event.CName)
+	sender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
 		fx.events = append(fx.events, e)
-	}}
+	}).Maybe()
+	fx.sender = sender
 	a.Register(fx.Service)
 	a.Register(fx.sender)
 
@@ -340,6 +347,6 @@ type fixture struct {
 	a      *testapp.TestApp
 	ctrl   *gomock.Controller
 	store  *testMock.MockObjectStore
-	sender *testapp.EventSender
+	sender *mock_event.MockSender
 	events []*pb.Event
 }

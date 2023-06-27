@@ -6,11 +6,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -29,18 +29,18 @@ func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
-	app := testapp.New()
-	defer app.Close(context.Background())
+	a := new(app.App)
+	defer a.Close(context.Background())
 	tp := typeprovider.New(nil)
 	tp.Init(nil)
 	ds := objectstore.New(tp)
 	kanbanSrv := New()
-	err := app.With(&config.DefaultConfig).
-		With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
-		With(clientds.New()).
-		With(ftsearch.New()).
-		With(ds).
-		With(kanbanSrv).
+	err := a.Register(&config.DefaultConfig).
+		Register(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
+		Register(clientds.New()).
+		Register(ftsearch.New()).
+		Register(ds).
+		Register(kanbanSrv).
 		Start(context.Background())
 	require.NoError(t, err)
 

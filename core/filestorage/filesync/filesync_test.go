@@ -25,9 +25,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -81,10 +81,9 @@ func TestFileSync_RemoveFile(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
+	sender := mock_event.NewMockSender(t)
 	fx := &fixture{
-		FileSync: New(func(event *pb.Event) {
-			fmt.Println(event)
-		}),
+		FileSync:    New(sender),
 		fileService: fileservice.New(),
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),

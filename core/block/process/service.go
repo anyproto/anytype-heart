@@ -51,7 +51,7 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.processes = make(map[string]Process)
 	s.waiters = make(map[string]chan struct{})
-	s.eventSender = a.MustComponent(event.CName).(event.Sender)
+	s.eventSender = app.MustComponent[event.Sender](a)
 	return nil
 }
 

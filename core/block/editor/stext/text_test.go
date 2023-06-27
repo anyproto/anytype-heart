@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -261,17 +262,18 @@ func TestTextImpl_SetText(t *testing.T) {
 	setTextApplyInterval = time.Second / 2
 
 	t.Run("set text after interval", func(t *testing.T) {
+		ctx := session.NewTestContext(t)
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", " ")).
 			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "12",
 		}))
@@ -281,17 +283,18 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Len(t, sb.Results.Applies, 1)
 	})
 	t.Run("set text and new op", func(t *testing.T) {
+		ctx := session.NewTestContext(t)
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", " ")).
 			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "12",
 		}))
@@ -303,18 +306,19 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Len(t, sb.Results.Applies, 1)
 	})
 	t.Run("set text two blocks", func(t *testing.T) {
+		ctx := session.NewTestContext(t)
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(newTextBlock("2", ""))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
 		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "2",
 		}))
@@ -325,13 +329,14 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Len(t, sb.Results.Applies, 2)
 	})
 	t.Run("flush on mention", func(t *testing.T) {
+		ctx := session.NewTestContext(t)
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(newTextBlock("2", ""))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 			Marks: &model.BlockContentTextMarks{
@@ -348,12 +353,13 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Equal(t, "1", sb.Pick("1").Model().GetText().Text)
 	})
 	t.Run("on error", func(t *testing.T) {
+		ctx := session.NewTestContext(t)
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(simple.New(&model.Block{Id: "2"}))
 		tb := NewText(sb, nil)
-		assert.Error(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		assert.Error(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "",
 		}))
@@ -362,16 +368,18 @@ func TestTextImpl_SetText(t *testing.T) {
 
 func TestTextImpl_TurnInto(t *testing.T) {
 	t.Run("common text style", func(t *testing.T) {
+		ctx := session.NewTestContext(t)
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(newTextBlock("2", ""))
 		tb := NewText(sb, nil)
-		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Header4, "1", "2"))
+		require.NoError(t, tb.TurnInto(ctx, model.BlockContentText_Header4, "1", "2"))
 		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
 	})
 	t.Run("apply only for parents", func(t *testing.T) {
+		ctx := session.NewTestContext(t)
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "", "1.1")).
@@ -379,7 +387,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 			AddBlock(newTextBlock("1.1", "")).
 			AddBlock(newTextBlock("2.2", ""))
 		tb := NewText(sb, nil)
-		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Checkbox, "1", "1.1", "2", "2.2"))
+		require.NoError(t, tb.TurnInto(ctx, model.BlockContentText_Checkbox, "1", "1.1", "2", "2.2"))
 		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.NotEqual(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1.1").Model().GetText().Style)
