@@ -80,7 +80,7 @@ func (p *Dashboard) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
+func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	favoritedIds, err := p.GetIds()
 	if err != nil {
 		return
@@ -106,7 +106,7 @@ func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeFavoritedIds, favoritedIds)
 	for _, removedId := range removedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.DetailsModifier.ModifyLocalDetails(info.State.Context(), id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},
@@ -121,7 +121,7 @@ func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	}
 	for _, addedId := range addedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.DetailsModifier.ModifyLocalDetails(info.State.Context(), id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},

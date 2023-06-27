@@ -27,12 +27,12 @@ func (is *IconSyncer) Sync(ctx session.Context, id string, b simple.Block) error
 	if strings.HasPrefix(fileName, "http://") || strings.HasPrefix(fileName, "https://") {
 		req = pb.RpcFileUploadRequest{Url: fileName}
 	}
-	hash, err := is.service.UploadFile(req)
+	hash, err := is.service.UploadFile(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed uploading icon image file: %s", err)
 	}
 
-	err = is.service.Do(id, func(sb smartblock.SmartBlock) error {
+	err = is.service.Do(ctx, id, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
 		upErr := updater.Update(ctx, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = hash

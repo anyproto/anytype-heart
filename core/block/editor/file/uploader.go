@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -64,8 +65,8 @@ type Uploader interface {
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
-	Upload(ctx context.Context) (result UploadResult)
-	UploadAsync(todo context.Context) (ch chan UploadResult)
+	Upload(ctx session.Context) (result UploadResult)
+	UploadAsync(ctx session.Context) (ch chan UploadResult)
 }
 type UploadResult struct {
 	Name string
@@ -301,7 +302,7 @@ func (u *uploader) AsyncUpdates(smartBlockId string) Uploader {
 	return u
 }
 
-func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
+func (u *uploader) UploadAsync(ctx session.Context) (result chan UploadResult) {
 	result = make(chan UploadResult, 1)
 	if u.block != nil {
 		u.block.SetState(model.BlockContentFile_Uploading)
@@ -314,7 +315,7 @@ func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
 	return
 }
 
-func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
+func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -329,7 +330,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		err = fmt.Errorf("uploader: empty source for upload")
 		return
 	}
-	buf, err := u.getReader(ctx)
+	buf, err := u.getReader(ctx.Context())
 	if err != nil {
 		return
 	}
@@ -368,7 +369,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.fileService.ImageAdd(ctx, opts...)
+		im, e := u.fileService.ImageAdd(ctx.Context(), opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			log.Infof("can't add file '%s' as image: add as file", u.name)
 			e = nil
@@ -385,7 +386,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx, opts...)
+		fl, e := u.fileService.FileAdd(ctx.Context(), opts...)
 		if e != nil {
 			err = e
 			return
@@ -398,7 +399,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	// Touch the file to activate indexing
-	derr := u.service.Do(result.Hash, func(_ smartblock.SmartBlock) error {
+	derr := u.service.Do(ctx, result.Hash, func(_ smartblock.SmartBlock) error {
 		return nil
 	})
 	if derr != nil {

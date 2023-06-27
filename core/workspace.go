@@ -10,6 +10,7 @@ import (
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(workspaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
 		m := &pb.RpcWorkspaceCreateResponse{WorkspaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
 		if err != nil {
@@ -21,7 +22,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 
 	var workspaceId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		workspaceId, err = bs.CreateWorkspace(req)
+		workspaceId, err = bs.CreateWorkspace(ctx, req)
 		return
 	})
 	if err != nil {
@@ -117,6 +118,7 @@ func (mw *Middleware) WorkspaceGetCurrent(cctx context.Context, req *pb.RpcWorks
 }
 
 func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWorkspaceObjectListAddRequest) *pb.RpcWorkspaceObjectListAddResponse {
+	ctx := mw.newContext(cctx)
 	response := func(ids []string, code pb.RpcWorkspaceObjectListAddResponseErrorCode, err error) *pb.RpcWorkspaceObjectListAddResponse {
 		m := &pb.RpcWorkspaceObjectListAddResponse{ObjectIds: ids, Error: &pb.RpcWorkspaceObjectListAddResponseError{Code: code}}
 		if err != nil {
@@ -131,7 +133,7 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		ids, _, err = bs.AddSubObjectsToWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account)
+		ids, _, err = bs.AddSubObjectsToWorkspace(ctx, req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account)
 		return
 	})
 
@@ -143,6 +145,7 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 }
 
 func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorkspaceObjectAddRequest) *pb.RpcWorkspaceObjectAddResponse {
+	ctx := mw.newContext(cctx)
 	response := func(id string, details *types.Struct, code pb.RpcWorkspaceObjectAddResponseErrorCode, err error) *pb.RpcWorkspaceObjectAddResponse {
 		m := &pb.RpcWorkspaceObjectAddResponse{ObjectId: id, Details: details, Error: &pb.RpcWorkspaceObjectAddResponseError{Code: code}}
 		if err != nil {
@@ -158,7 +161,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, details, err = bs.AddSubObjectToWorkspace(req.ObjectId, mw.GetAnytype().PredefinedBlocks().Account)
+		id, details, err = bs.AddSubObjectToWorkspace(ctx, req.ObjectId, mw.GetAnytype().PredefinedBlocks().Account)
 		return
 	})
 
@@ -170,6 +173,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 }
 
 func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.RpcWorkspaceObjectListRemoveRequest) *pb.RpcWorkspaceObjectListRemoveResponse {
+	ctx := mw.newContext(cctx)
 	response := func(ids []string, code pb.RpcWorkspaceObjectListRemoveResponseErrorCode, err error) *pb.RpcWorkspaceObjectListRemoveResponse {
 		m := &pb.RpcWorkspaceObjectListRemoveResponse{Ids: ids, Error: &pb.RpcWorkspaceObjectListRemoveResponseError{Code: code}}
 		if err != nil {
@@ -184,7 +188,7 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.RemoveSubObjectsInWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account, true)
+		err = bs.RemoveSubObjectsInWorkspace(ctx, req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account, true)
 		return
 	})
 

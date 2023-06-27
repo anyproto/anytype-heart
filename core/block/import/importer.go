@@ -24,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -82,12 +81,11 @@ func (i *Import) Init(a *app.App) (err error) {
 	}
 
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s))
-	objCreator := a.MustComponent(objectcreator.CName).(objectCreator)
 	store := app.MustComponent[objectstore.ObjectStore](a)
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer, fileStore)
+	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore)
 	return nil
 }
 

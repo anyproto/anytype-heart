@@ -34,15 +34,8 @@ import (
 
 const relationsLimit = 10
 
-type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
-	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
-}
-
 type ObjectCreator struct {
 	service        *block.Service
-	objCreator     objectCreator
 	core           core.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
@@ -52,7 +45,6 @@ type ObjectCreator struct {
 }
 
 func NewCreator(service *block.Service,
-	objCreator objectCreator,
 	core core.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
@@ -61,7 +53,6 @@ func NewCreator(service *block.Service,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
-		objCreator:     objCreator,
 		core:           core,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
@@ -127,9 +118,9 @@ func (oc *ObjectCreator) Create(ctx session.Context,
 	} else {
 		respDetails = oc.updateExistingObject(ctx, st, oldIDtoNew, newID)
 	}
-	oc.setFavorite(snapshot, newID)
+	oc.setFavorite(ctx, snapshot, newID)
 
-	oc.setArchived(snapshot, newID)
+	oc.setArchived(ctx, snapshot, newID)
 
 	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
 	if syncErr != nil {
@@ -255,7 +246,7 @@ func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace([]string{newID}, oc.core.PredefinedBlocks().Account, true)
+		err := oc.service.RemoveSubObjectsInWorkspace(st.Context(), []string{newID}, oc.core.PredefinedBlocks().Account, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
 		}
@@ -343,7 +334,7 @@ func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
 
 func (oc *ObjectCreator) resetState(ctx session.Context, newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
-	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+	err := oc.service.Do(ctx, newID, func(b sb.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
@@ -365,20 +356,20 @@ func (oc *ObjectCreator) resetState(ctx session.Context, newID string, st *state
 	return respDetails
 }
 
-func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
+func (oc *ObjectCreator) setFavorite(ctx session.Context, snapshot *model.SmartBlockSnapshotBase, newID string) {
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	if isFavorite {
-		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
+		err := oc.service.SetPageIsFavorite(ctx, pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
 		}
 	}
 }
 
-func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
+func (oc *ObjectCreator) setArchived(ctx session.Context, snapshot *model.SmartBlockSnapshotBase, newID string) {
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
 	if isArchive {
-		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
+		err := oc.service.SetPageIsArchived(ctx, pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {
 			log.With(zap.String("object id", newID)).
 				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())

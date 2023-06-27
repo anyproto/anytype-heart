@@ -9,6 +9,7 @@ import (
 )
 
 func (mw *Middleware) ObjectListExport(cctx context.Context, req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
+	ctx := mw.newContext(cctx)
 	response := func(path string, succeed int, err error) (res *pb.RpcObjectListExportResponse) {
 		res = &pb.RpcObjectListExportResponse{
 			Error: &pb.RpcObjectListExportResponseError{
@@ -32,7 +33,7 @@ func (mw *Middleware) ObjectListExport(cctx context.Context, req *pb.RpcObjectLi
 	)
 	err = mw.doBlockService(func(_ *block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
-		path, succeed, err = es.Export(*req)
+		path, succeed, err = es.Export(ctx, *req)
 		return err
 	})
 	return response(path, succeed, err)

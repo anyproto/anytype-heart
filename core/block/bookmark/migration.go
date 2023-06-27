@@ -6,10 +6,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/session"
 )
 
 type BlockMigrator interface {
-	MigrateBlock(bm bookmark.Block) (err error)
+	MigrateBlock(ctx session.Context, bm bookmark.Block) (err error)
 }
 
 func WithFixedBookmarks(bm BlockMigrator) func(st *state.State) {
@@ -29,7 +30,7 @@ func migrateBlocks(bm BlockMigrator, st *state.State) error {
 		}
 
 		block := st.Get(b.Model().Id).(bookmark.Block)
-		if migrateErr = bm.MigrateBlock(block); migrateErr != nil {
+		if migrateErr = bm.MigrateBlock(st.Context(), block); migrateErr != nil {
 			return false
 		}
 		return true

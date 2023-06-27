@@ -202,7 +202,8 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 }
 
 func (s *Service) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
-	err := s.OnDelete(treeId, nil)
+	sctx := session.NewContext(ctx, s.eventSender, spaceId)
+	err := s.OnDelete(sctx, treeId, nil)
 	if err != nil {
 		log.Error("failed to execute on delete for tree", zap.Error(err))
 	}
@@ -215,7 +216,7 @@ func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
 }
 
 func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
-	err = s.Do(id, func(b smartblock.SmartBlock) error {
+	err = s.Do(ctx, id, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
@@ -228,13 +229,13 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 	sbt, _ := s.sbtProvider.Type(id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
-		err = s.OnDelete(id, func() error {
+		err = s.OnDelete(ctx, id, func() error {
 			return Do(s, s.anytype.PredefinedBlocks().Account, func(w *editor.Workspaces) error {
 				return w.DeleteSubObject(id)
 			})
 		})
 	case coresb.SmartBlockTypeFile:
-		err = s.OnDelete(id, func() error {
+		err = s.OnDelete(ctx, id, func() error {
 			if err := s.fileStore.DeleteFile(id); err != nil {
 				return err
 			}

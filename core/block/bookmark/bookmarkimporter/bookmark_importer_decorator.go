@@ -38,14 +38,14 @@ func (bd *BookmarkImporterDecorator) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (bd *BookmarkImporterDecorator) CreateBookmarkObject(details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error) {
+func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx session.Context, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error) {
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 	if objectId, newDetails, err = bd.Importer.ImportWeb(nil, &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: url}},
 		UpdateExistingObjects: true,
 	}); err != nil {
 		log.With(zap.String("function", "BookmarkFetch")).With(zap.String("message", "failed to import bookmark")).Error(err)
-		return bd.Service.CreateBookmarkObject(details, getContent)
+		return bd.Service.CreateBookmarkObject(ctx, details, getContent)
 	}
 	err = bd.Service.UpdateBookmarkObject(objectId, getContent)
 	if err != nil {

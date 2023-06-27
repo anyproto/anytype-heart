@@ -177,8 +177,10 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
 	profileDetails = append(profileDetails, commonDetails...)
 
+	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
+	ctx := mw.newContextWithSpace(cctx, spaceID)
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(pb.RpcFileUploadRequest{
+		hash, err := bs.UploadFile(ctx, pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
 			Type:      model.BlockContentFile_Image,
 		})
@@ -197,14 +199,14 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	newAcc.Info = mw.getInfo(bs)
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   profileDetails,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Account,
 		Details:   commonDetails,
 	}); err != nil {

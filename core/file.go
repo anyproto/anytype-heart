@@ -44,7 +44,7 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DropFiles(*req)
+		return bs.DropFiles(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcFileDropResponseError_UNKNOWN_ERROR, err)
@@ -104,6 +104,7 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 }
 
 func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
+	ctx := mw.newContext(cctx)
 	response := func(hash string, code pb.RpcFileUploadResponseErrorCode, err error) *pb.RpcFileUploadResponse {
 		m := &pb.RpcFileUploadResponse{Error: &pb.RpcFileUploadResponseError{Code: code}, Hash: hash}
 		if err != nil {
@@ -113,7 +114,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var hash string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(*req)
+		hash, err = bs.UploadFile(ctx, *req)
 		return
 	})
 	if err != nil {

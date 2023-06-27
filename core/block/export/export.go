@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/pbc"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -47,7 +48,7 @@ const tempFileName = "temp_anytype_backup"
 var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
-	Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
+	Export(ctx session.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
 	app.Component
 }
 
@@ -77,7 +78,7 @@ func (e *export) Name() (name string) {
 	return CName
 }
 
-func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
+func (e *export) Export(ctx session.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
 	queue := e.bs.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
@@ -115,20 +116,20 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		mc := dot.NewMultiConverter(format, e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter(e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
 		if req.Format == pb.RpcObjectListExport_Protobuf {
 			if len(req.ObjectIds) == 0 {
-				if err = e.createProfileFile(wr); err != nil {
+				if err = e.createProfileFile(ctx, wr); err != nil {
 					log.Errorf("failed to create profile file: %s", err.Error())
 				}
 			}
@@ -137,7 +138,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 			did := docId
 			if err = queue.Wait(func() {
 				log.With("objectID", did).Debugf("write doc")
-				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
+				if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
 					log.With("objectID", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
@@ -271,11 +272,11 @@ func (e *export) getExistedObjects(includeArchived bool, isProtobuf bool) (map[s
 	return objectDetails, nil
 }
 
-func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
+func (e *export) writeMultiDoc(ctx session.Context, mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
-			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
+			werr := e.bs.Do(ctx, did, func(b sb.SmartBlock) error {
 				return mw.Add(b.NewState().Copy())
 			})
 			if err != nil {
@@ -318,8 +319,8 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	return
 }
 
-func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
-	return e.bs.Do(docID, func(b sb.SmartBlock) error {
+func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
+	return e.bs.Do(ctx, docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
@@ -408,13 +409,13 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	return wr.WriteFile(filename, rd)
 }
 
-func (e *export) createProfileFile(wr writer) error {
+func (e *export) createProfileFile(ctx session.Context, wr writer) error {
 	var spaceDashBoardID string
 	pr, err := e.a.LocalProfile()
 	if err != nil {
 		return err
 	}
-	err = e.bs.Do(e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+	err = e.bs.Do(ctx, e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})

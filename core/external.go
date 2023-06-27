@@ -46,6 +46,7 @@ func (mw *Middleware) UnsplashSearch(cctx context.Context, req *pb.RpcUnsplashSe
 }
 
 func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
+	ctx := mw.newContext(cctx)
 	response := func(hash string, err error) *pb.RpcUnsplashDownloadResponse {
 		m := &pb.RpcUnsplashDownloadResponse{
 			Error: &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_NULL},
@@ -73,7 +74,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	defer os.Remove(imagePath)
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(pb.RpcFileUploadRequest{
+		hash, err = bs.UploadFile(ctx, pb.RpcFileUploadRequest{
 			LocalPath: imagePath,
 			Type:      model.BlockContentFile_Image,
 			Style:     model.BlockContentFile_Embed,

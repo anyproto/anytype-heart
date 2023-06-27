@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -18,6 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -162,7 +163,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 }
 
 type templateCloner interface {
-	TemplateClone(id string) (templateID string, err error)
+	TemplateClone(ctx session.Context, id string) (templateID string, err error)
 }
 
 type WorkspaceParameters struct {
@@ -269,7 +270,7 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 	return
 }
 
-func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createObjectType(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
@@ -389,7 +390,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 				continue
 			}
 
-			_, err := w.templateCloner.TemplateClone(id)
+			_, err := w.templateCloner.TemplateClone(ctx, id)
 			if err != nil {
 				log.Errorf("failed to clone template %s: %s", id, err.Error())
 			}
@@ -398,7 +399,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	return
 }
 
-func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createObject(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
@@ -413,7 +414,7 @@ func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id st
 	}
 	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.URL():
-		return w.createObjectType(st, details)
+		return w.createObjectType(ctx, st, details)
 	case bundle.TypeKeyRelation.URL():
 		return w.createRelation(st, details)
 	case bundle.TypeKeyRelationOption.URL():
@@ -423,9 +424,9 @@ func (w *Workspaces) createObject(st *state.State, details *types.Struct) (id st
 	}
 }
 
-func (w *Workspaces) CreateSubObject(details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) CreateSubObject(ctx session.Context, details *types.Struct) (id string, object *types.Struct, err error) {
 	st := w.NewState()
-	id, object, err = w.createObject(st, details)
+	id, object, err = w.createObject(ctx, st, details)
 	if err != nil {
 		return "", nil, err
 	}
@@ -435,14 +436,14 @@ func (w *Workspaces) CreateSubObject(details *types.Struct) (id string, object *
 	return
 }
 
-func (w *Workspaces) CreateSubObjects(details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+func (w *Workspaces) CreateSubObjects(ctx session.Context, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
 	st := w.NewState()
 	var (
 		id     string
 		object *types.Struct
 	)
 	for _, det := range details {
-		id, object, err = w.createObject(st, det)
+		id, object, err = w.createObject(ctx, st, det)
 		if err != nil {
 			if err != ErrSubObjectAlreadyExists {
 				log.Errorf("failed to create sub object: %s", err.Error())

@@ -9,17 +9,17 @@ import (
 
 type Context interface {
 	ID() string
-	SpaceID() string
+	Context() context.Context
 	ObjectID() string
+	SpaceID() string
 	TraceID() string
 	SetIsAsync(bool)
-	Context() context.Context
 	IsActive() bool
-	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
+	Broadcast(event *pb.Event)
 	Send(event *pb.Event)
 	SendToOtherSessions(msgs []*pb.EventMessage)
+	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
 	GetMessages() []*pb.EventMessage
-	Broadcast(event *pb.Event)
 	GetResponseEvent() *pb.ResponseEvent
 }
 

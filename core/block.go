@@ -377,6 +377,7 @@ func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectLi
 }
 
 func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectListSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectListSetIsArchivedResponse {
 		m := &pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: code}}
 		if err != nil {
@@ -385,7 +386,7 @@ func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcO
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPagesIsArchived(*req)
+		return bs.SetPagesIsArchived(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
@@ -393,6 +394,7 @@ func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcO
 	return response(pb.RpcObjectListSetIsArchivedResponseError_NULL, nil)
 }
 func (mw *Middleware) ObjectListSetIsFavorite(cctx context.Context, req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectListSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectListSetIsFavoriteResponse {
 		m := &pb.RpcObjectListSetIsFavoriteResponse{Error: &pb.RpcObjectListSetIsFavoriteResponseError{Code: code}}
 		if err != nil {
@@ -401,7 +403,7 @@ func (mw *Middleware) ObjectListSetIsFavorite(cctx context.Context, req *pb.RpcO
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPagesIsFavorite(*req)
+		return bs.SetPagesIsFavorite(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectListSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
@@ -680,6 +682,10 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
 	spaceID := getService[space.Service](mw).AccountId()
 
+	return mw.newContextWithSpace(cctx, spaceID, opts...)
+}
+
+func (mw *Middleware) newContextWithSpace(cctx context.Context, spaceID string, opts ...session.ContextOption) session.Context {
 	md, ok := metadata.FromIncomingContext(cctx)
 	if !ok {
 		return session.NewContext(cctx, mw.EventSender, spaceID, opts...)

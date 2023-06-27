@@ -20,8 +20,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -89,7 +91,7 @@ type Hasher interface {
 }
 
 type subObjectCreator interface {
-	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+	CreateSubObjectsInWorkspace(ctx session.Context, details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
 
 type syncStarter interface {
@@ -106,6 +108,7 @@ type indexer struct {
 	subObjectCreator subObjectCreator
 	syncStarter      syncStarter
 	fileService      files.Service
+	eventSender      event.Sender
 
 	quit       chan struct{}
 	mu         sync.Mutex
@@ -131,6 +134,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
 	i.syncStarter = app.MustComponent[syncStarter](a)
+	i.eventSender = app.MustComponent[event.Sender](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -223,7 +227,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
 
 			// todo: the optimization temporarily disabled to see the metrics
-			//return nil
+			// return nil
 		}
 	}
 
@@ -255,9 +259,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
 					With("lastHashIsEmpty", lastIndexedHash == "").
 					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
-				//With("old", pbtypes.Sprint(oldDetails.Details)).
-				//With("new", pbtypes.Sprint(info.State.CombinedDetails())).
-				//With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
+				// With("old", pbtypes.Sprint(oldDetails.Details)).
+				// With("new", pbtypes.Sprint(info.State.CombinedDetails())).
+				// With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
 
 				if opts.SkipIfHeadsNotChanged {
 					l.Warnf("details have changed, but heads are equal")
@@ -501,7 +505,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 		}
 	}
 
-	err = i.ensurePreinstalledObjects()
+	err = i.ensurePreinstalledObjects(i.spaceService.AccountId())
 	if err != nil {
 		return fmt.Errorf("ensure preinstalled objects: %w", err)
 	}
@@ -546,7 +550,7 @@ func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexTyp
 	return nil
 }
 
-func (i *indexer) ensurePreinstalledObjects() error {
+func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
 	var objects []*types.Struct
 
 	start := time.Now()
@@ -566,7 +570,8 @@ func (i *indexer) ensurePreinstalledObjects() error {
 		}
 		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
 	}
-	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(objects)
+	ctx := session.NewContext(context.Background(), i.eventSender, spaceID)
+	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(ctx, objects)
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 
 	if errors.Is(err, editor.ErrSubObjectAlreadyExists) {

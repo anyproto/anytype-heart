@@ -38,7 +38,7 @@ const CName = "bookmark"
 type ContentFuture func() *model.BlockContentBookmark
 
 type Service interface {
-	CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	CreateBookmarkObject(ctx session.Context, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
 	Fetch(id string, params bookmark.FetchParams) (err error)
@@ -49,7 +49,7 @@ type Service interface {
 }
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, s *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, s *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 type DetailsSetter interface {
@@ -84,7 +84,7 @@ func (s service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error) {
+func (s *service) CreateBookmarkObject(ctx session.Context, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
@@ -121,7 +121,7 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
-		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, details, nil)
 		if err != nil {
 			return "", nil, fmt.Errorf("create bookmark object: %w", err)
 		}

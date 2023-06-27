@@ -1,7 +1,6 @@
 package block
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
@@ -19,9 +18,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *Service) TemplateCreateFromObject(id string) (templateID string, err error) {
+func (s *Service) TemplateCreateFromObject(ctx session.Context, id string) (templateID string, err error) {
 	var st *state.State
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+	if err = s.Do(ctx, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_Page {
 			return fmt.Errorf("can't make template from this obect type")
 		}
@@ -31,16 +30,16 @@ func (s *Service) TemplateCreateFromObject(id string) (templateID string, err er
 		return
 	}
 
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) TemplateClone(id string) (templateID string, err error) {
+func (s *Service) TemplateClone(ctx session.Context, id string) (templateID string, err error) {
 	var st *state.State
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+	if err = s.Do(ctx, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_BundledTemplate {
 			return fmt.Errorf("can clone bundled templates only")
 		}
@@ -57,19 +56,19 @@ func (s *Service) TemplateClone(id string) (templateID string, err error) {
 	}); err != nil {
 		return
 	}
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) ObjectDuplicate(id string) (objectID string, err error) {
+func (s *Service) ObjectDuplicate(ctx session.Context, id string) (objectID string, err error) {
 	var (
 		st  *state.State
 		sbt coresb.SmartBlockType
 	)
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+	if err = s.Do(ctx, id, func(b smartblock.SmartBlock) error {
 		sbt = coresb.SmartBlockType(b.Type())
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
@@ -81,29 +80,29 @@ func (s *Service) ObjectDuplicate(id string) (objectID string, err error) {
 		return
 	}
 
-	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), sbt, nil, st)
+	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, sbt, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) TemplateCreateFromObjectByObjectType(otID string) (templateID string, err error) {
-	if err = s.Do(otID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
+func (s *Service) TemplateCreateFromObjectByObjectType(ctx session.Context, otID string) (templateID string, err error) {
+	if err = s.Do(ctx, otID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
 		return "", fmt.Errorf("can't open objectType: %v", err)
 	}
 	var st = state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otID))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otID})
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (s *Service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceID string, err error) {
-	id, _, err := s.objectCreator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeWorkspace, &types.Struct{Fields: map[string]*types.Value{
+func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreateRequest) (workspaceID string, err error) {
+	id, _, err := s.objectCreator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypeWorkspace, &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():      pbtypes.String(req.Name),
 		bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
 		bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
@@ -120,7 +119,7 @@ func (s *Service) CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlock
 	}
 
 	s.objectCreator.InjectWorkspaceID(req.Details, req.ContextId)
-	objectID, _, err = s.CreateObject(req, "")
+	objectID, _, err = s.CreateObject(ctx, req, "")
 	if err != nil {
 		return
 	}
@@ -150,8 +149,8 @@ func (s *Service) CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlock
 	return
 }
 
-func (s *Service) ObjectToSet(id string, source []string) error {
-	if err := s.Do(id, func(b smartblock.SmartBlock) error {
+func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) error {
+	if err := s.Do(ctx, id, func(b smartblock.SmartBlock) error {
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
@@ -173,6 +172,6 @@ func (s *Service) ObjectToSet(id string, source []string) error {
 	return nil
 }
 
-func (s *Service) CreateObject(req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
-	return s.objectCreator.CreateObject(req, forcedType)
+func (s *Service) CreateObject(ctx session.Context, req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
+	return s.objectCreator.CreateObject(ctx, req, forcedType)
 }

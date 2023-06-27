@@ -73,7 +73,7 @@ func (ou *ObjectIDGetter) Get(ctx session.Context,
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 	if sbType == sb.SmartBlockTypeSubObject {
-		id, err = ou.getSubObjectID(sn, oldToNewIDs)
+		id, err = ou.getSubObjectID(ctx, sn, oldToNewIDs)
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 
@@ -111,17 +111,17 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 	return "", err
 }
 
-func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot, oldToNewIDs map[string]string) (string, error) {
+func (ou *ObjectIDGetter) getSubObjectID(ctx session.Context, sn *converter.Snapshot, oldToNewIDs map[string]string) (string, error) {
 	ids, err := ou.getAlreadyExistingSubObject(sn, oldToNewIDs)
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
 
-	id := ou.createSubObject(sn)
+	id := ou.createSubObject(ctx, sn)
 	return id, nil
 }
 
-func (ou *ObjectIDGetter) createSubObject(sn *converter.Snapshot) string {
+func (ou *ObjectIDGetter) createSubObject(ctx session.Context, sn *converter.Snapshot) string {
 	ot := sn.Snapshot.Data.ObjectTypes
 	var (
 		objects *types.Struct
@@ -137,7 +137,7 @@ func (ou *ObjectIDGetter) createSubObject(sn *converter.Snapshot) string {
 	}
 
 	req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Data.Details}
-	id, objects, err := ou.service.CreateObject(req, "")
+	id, objects, err := ou.service.CreateObject(ctx, req, "")
 	if err != nil {
 		id = sn.Id
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -39,7 +40,7 @@ func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) [
 			continue
 		}
 		var hash string
-		if hash = fs.uploadFile(f); hash != "" {
+		if hash = fs.uploadFile(st.Context(), f); hash != "" {
 			allFilesHashes = append(allFilesHashes, hash)
 			filesToDelete = append(filesToDelete, hash)
 		}
@@ -67,7 +68,7 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 	return allFiles
 }
 
-func (fs *FileRelationSyncer) uploadFile(file string) string {
+func (fs *FileRelationSyncer) uploadFile(ctx session.Context, file string) string {
 	var (
 		hash string
 		err  error
@@ -76,7 +77,7 @@ func (fs *FileRelationSyncer) uploadFile(file string) string {
 		req := pb.RpcFileUploadRequest{LocalPath: file}
 		req.Url = file
 		req.LocalPath = ""
-		hash, err = fs.service.UploadFile(req)
+		hash, err = fs.service.UploadFile(ctx, req)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		} else {

@@ -1,7 +1,6 @@
 package block
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/ocache"
@@ -415,7 +414,7 @@ func (s *Service) SetAlign(
 func (s *Service) SetVerticalAlign(
 	ctx session.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string,
 ) (err error) {
-	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+	return s.Do(ctx, contextId, func(sb smartblock.SmartBlock) error {
 		return sb.SetVerticalAlign(ctx, align, blockIds...)
 	})
 }
@@ -469,7 +468,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(req pb.RpcFileUploadRequest) (hash string, err error) {
+func (s *Service) UploadFile(ctx session.Context, req pb.RpcFileUploadRequest) (hash string, err error) {
 	upl := file.NewUploader(s, s.fileService, s.tempDirProvider)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -486,16 +485,16 @@ func (s *Service) UploadFile(req pb.RpcFileUploadRequest) (hash string, err erro
 	} else if req.Url != "" {
 		upl.SetUrl(req.Url)
 	}
-	res := upl.Upload(context.TODO())
+	res := upl.Upload(ctx)
 	if res.Err != nil {
 		return "", res.Err
 	}
 	return res.Hash, nil
 }
 
-func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
+func (s *Service) DropFiles(ctx session.Context, req pb.RpcFileDropRequest) (err error) {
 	return s.DoFileNonLock(req.ContextId, func(b file.File) error {
-		return b.DropFiles(req)
+		return b.DropFiles(ctx, req)
 	})
 }
 
@@ -511,7 +510,7 @@ func (s *Service) UploadFileBlockWithHash(
 	ctx session.Context, contextId string, req pb.RpcBlockUploadRequest,
 ) (hash string, err error) {
 	err = s.DoFile(contextId, func(b file.File) error {
-		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
+		res, err := b.UploadFileWithHash(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupId: "",
@@ -586,8 +585,8 @@ func (s *Service) AddRelationBlock(ctx session.Context, req pb.RpcBlockRelationA
 	})
 }
 
-func (s *Service) GetRelations(objectId string) (relations []*model.Relation, err error) {
-	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
+func (s *Service) GetRelations(ctx session.Context, objectId string) (relations []*model.Relation, err error) {
+	err = s.Do(ctx, objectId, func(b smartblock.SmartBlock) error {
 		relations = b.Relations(nil).Models()
 		return nil
 	})
@@ -596,12 +595,14 @@ func (s *Service) GetRelations(objectId string) (relations []*model.Relation, er
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
 func (s *Service) ModifyDetails(
-	objectId string, modifier func(current *types.Struct) (*types.Struct, error),
+	ctx session.Context,
+	objectId string,
+	modifier func(current *types.Struct) (*types.Struct, error),
 ) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
-	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+	return s.Do(ctx, objectId, func(b smartblock.SmartBlock) error {
 		dets, err := modifier(b.CombinedDetails())
 		if err != nil {
 			return err
@@ -614,7 +615,9 @@ func (s *Service) ModifyDetails(
 // ModifyLocalDetails modifies local details of the object in cache,
 // and if it is not found, sets pending details in object store
 func (s *Service) ModifyLocalDetails(
-	objectId string, modifier func(current *types.Struct) (*types.Struct, error),
+	ctx session.Context,
+	objectId string,
+	modifier func(current *types.Struct) (*types.Struct, error),
 ) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
@@ -628,7 +631,7 @@ func (s *Service) ModifyLocalDetails(
 	if err != nil && err != ocache.ErrExists {
 		return err
 	}
-	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
+	err = s.Do(ctx, objectId, func(b smartblock.SmartBlock) error {
 		// we just need to invoke the smartblock so it reads from pending details
 		// no need to call modify twice
 		if err == nil {
@@ -653,7 +656,7 @@ func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relati
 	if len(relationIds) == 0 {
 		return nil
 	}
-	return s.Do(objectId, func(b smartblock.SmartBlock) error { // TODO RQ: check if empty
+	return s.Do(ctx, objectId, func(b smartblock.SmartBlock) error { // TODO RQ: check if empty
 		return b.AddRelationLinks(ctx, relationIds...)
 	})
 }
@@ -665,13 +668,13 @@ func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTyp
 }
 
 func (s *Service) RemoveExtraRelations(ctx session.Context, objectTypeId string, relationKeys []string) (err error) {
-	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
+	return s.Do(ctx, objectTypeId, func(b smartblock.SmartBlock) error {
 		return b.RemoveExtraRelations(ctx, relationKeys)
 	})
 }
 
-func (s *Service) ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error) {
-	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
+func (s *Service) ListAvailableRelations(ctx session.Context, objectId string) (aggregatedRelations []*model.Relation, err error) {
+	err = s.Do(ctx, objectId, func(b smartblock.SmartBlock) error {
 		// TODO: not implemented
 		return nil
 	})
@@ -843,8 +846,10 @@ func (s *Service) CreateWidgetBlock(ctx session.Context, req *pb.RpcBlockCreateW
 	return id, err
 }
 
-func (s *Service) CopyDataviewToBlock(ctx session.Context,
-	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) ([]*model.BlockContentDataviewView, error) {
+func (s *Service) CopyDataviewToBlock(
+	ctx session.Context,
+	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest,
+) ([]*model.BlockContentDataviewView, error) {
 
 	var targetDvContent *model.BlockContentDataview
 
@@ -857,7 +862,7 @@ func (s *Service) CopyDataviewToBlock(ctx session.Context,
 		return nil, err
 	}
 
-	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+	err = s.Do(ctx, req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		block := st.Get(req.BlockId)
 		if block == nil {

@@ -51,6 +51,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 }
 
 func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(templateId string, err error) *pb.RpcObjectDuplicateResponse {
 		m := &pb.RpcObjectDuplicateResponse{
 			Error: &pb.RpcObjectDuplicateResponseError{Code: pb.RpcObjectDuplicateResponseError_NULL},
@@ -64,7 +65,7 @@ func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDup
 	}
 	var objectIds []string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		objectIds, err = bs.ObjectsDuplicate([]string{req.ContextId})
+		objectIds, err = bs.ObjectsDuplicate(ctx, []string{req.ContextId})
 		return
 	})
 	if len(objectIds) == 0 {
@@ -74,6 +75,7 @@ func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDup
 }
 
 func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
+	ctx := mw.newContext(cctx)
 	response := func(objectIds []string, err error) *pb.RpcObjectListDuplicateResponse {
 		m := &pb.RpcObjectListDuplicateResponse{
 			Error: &pb.RpcObjectListDuplicateResponseError{Code: pb.RpcObjectListDuplicateResponseError_NULL},
@@ -87,7 +89,7 @@ func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjec
 	}
 	var objectIds []string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		objectIds, err = bs.ObjectsDuplicate(req.ObjectIds)
+		objectIds, err = bs.ObjectsDuplicate(ctx, req.ObjectIds)
 		return
 	})
 	return response(objectIds, err)
@@ -470,6 +472,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 }
 
 func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcObjectRelationListAvailableResponse {
 		m := &pb.RpcObjectRelationListAvailableResponse{Relations: relations, Error: &pb.RpcObjectRelationListAvailableResponseError{Code: code}}
 		if err != nil {
@@ -479,7 +482,7 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 	}
 	var rels []*model.Relation
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		rels, err = bs.ListAvailableRelations(req.ContextId)
+		rels, err = bs.ListAvailableRelations(ctx, req.ContextId)
 		return
 	})
 
@@ -522,7 +525,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsArchived(*req)
+		return bs.SetPageIsArchived(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
@@ -593,7 +596,7 @@ func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsFavorite(*req)
+		return bs.SetPageIsFavorite(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
@@ -642,6 +645,7 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 }
 
 func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
+	ctx := mw.newContext(cctx)
 	response := func(err error) *pb.RpcObjectToSetResponse {
 		resp := &pb.RpcObjectToSetResponse{
 			Error: &pb.RpcObjectToSetResponseError{
@@ -658,7 +662,7 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		err error
 	)
 	err = mw.doBlockService(func(bs *block.Service) error {
-		if err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
+		if err = bs.ObjectToSet(ctx, req.ContextId, req.Source); err != nil {
 			return err
 		}
 		return nil
@@ -667,6 +671,7 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 }
 
 func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
 		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
 		if err != nil {
@@ -681,7 +686,7 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyBookmark)
+		id, newDetails, err = bs.CreateObject(ctx, req, bundle.TypeKeyBookmark)
 		return err
 	})
 	if err != nil {
@@ -744,7 +749,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
+		return bs.ModifyDetails(ctx, req.ContextId, func(current *types.Struct) (*types.Struct, error) {
 			d := pbtypes.CopyStruct(current)
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})

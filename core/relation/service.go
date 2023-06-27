@@ -42,20 +42,13 @@ type Service interface {
 	ValidateFormat(key string, v *types.Value) error
 	app.Component
 }
-type subObjectCreator interface {
-	CreateSubObjectInWorkspace(details *types.Struct, workspaceId string) (id string, newDetails *types.Struct, err error)
-	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
-}
 
 type service struct {
-	objectStore     objectstore.ObjectStore
-	relationCreator subObjectCreator
+	objectStore objectstore.ObjectStore
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.relationCreator = a.MustComponent("objectCreator").(subObjectCreator)
-
 	return
 }
 

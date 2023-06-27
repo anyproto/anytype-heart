@@ -36,7 +36,7 @@ type Service struct {
 }
 
 type ObjectCreator interface {
-	CreateObject(req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+	CreateObject(ctx session.Context, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
 }
 
 type ObjectDeleter interface {
