@@ -689,7 +689,7 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) error {
 func (s *Service) sendOnRemoveEvent(spaceID string, ids ...string) {
 	s.eventSender.BroadcastForSpace(spaceID, &pb.Event{
 		Messages: []*pb.EventMessage{
-			&pb.EventMessage{
+			{
 				Value: &pb.EventMessageValueOfObjectRemove{
 					ObjectRemove: &pb.EventObjectRemove{
 						Ids: ids,
