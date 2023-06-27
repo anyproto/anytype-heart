@@ -213,8 +213,8 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	return coresb.SmartBlockTypePage, newState.CombinedDetails(), newState, nil
 }
 
-func (s *Service) ObjectToCollection(id string) error {
-	if err := block.Do(s.picker, id, func(b smartblock.SmartBlock) error {
+func (s *Service) ObjectToCollection(ctx session.Context, id string) error {
+	if err := block.Do(s.picker, ctx, id, func(b smartblock.SmartBlock) error {
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)

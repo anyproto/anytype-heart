@@ -564,7 +564,7 @@ func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceReques
 }
 
 func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = Do(s, workspaceId, func(ws *editor.Workspaces) error {
+	err = Do(s, ctx, workspaceId, func(ws *editor.Workspaces) error {
 		if ws.Type() != model.SmartBlockType_Workspace {
 			return ErrUnexpectedBlockType
 		}
@@ -918,7 +918,7 @@ type Picker interface {
 	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 }
 
-func Do[t any](p Picker, id string, apply func(sb t) error) error {
+func Do[t any](p Picker, ctx session.Context, id string, apply func(sb t) error) error {
 	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
 	if err != nil {
 		return err
@@ -1094,7 +1094,7 @@ func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (
 		return
 	}
 	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, objectId); err != nil {
+		if err = s.replaceLink(ctx, il.Id, id, objectId); err != nil {
 			return
 		}
 	}
@@ -1108,8 +1108,8 @@ func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (
 	return
 }
 
-func (s *Service) replaceLink(id, oldId, newId string) error {
-	return Do(s, id, func(b basic.CommonOperations) error {
+func (s *Service) replaceLink(ctx session.Context, id, oldId, newId string) error {
+	return Do(s, ctx, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
 	})
 }

@@ -96,7 +96,7 @@ func (oc *ObjectCreator) Create(ctx session.Context,
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(st)
+		oc.setSpaceDashboardID(ctx, st)
 		return nil, newID, nil
 	}
 
@@ -132,7 +132,7 @@ func (oc *ObjectCreator) Create(ctx session.Context,
 
 func (oc *ObjectCreator) updateExistingObject(ctx session.Context, st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
 	if st.Store() != nil {
-		oc.updateLinksInCollections(st, oldIDtoNew, false)
+		oc.updateLinksInCollections(ctx, st, oldIDtoNew, false)
 	}
 	return oc.resetState(ctx, newID, st)
 }
@@ -155,7 +155,7 @@ func (oc *ObjectCreator) createNewObject(ctx session.Context,
 	respDetails := sb.Details()
 	// update collection after we create it
 	if st.Store() != nil {
-		oc.updateLinksInCollections(st, oldIDtoNew, true)
+		oc.updateLinksInCollections(ctx, st, oldIDtoNew, true)
 		oc.resetState(ctx, newID, st)
 	}
 	return respDetails, nil
@@ -256,7 +256,7 @@ func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
 	// RQ: the rest handling were removed
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(st *state.State) {
+func (oc *ObjectCreator) setSpaceDashboardID(ctx session.Context, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []*pb.RpcObjectSetDetailsDetail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
@@ -283,7 +283,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(st *state.State) {
 		})
 	}
 	if len(details) > 0 {
-		err := block.Do(oc.service, oc.core.PredefinedBlocks().Account, func(ws basic.CommonOperations) error {
+		err := block.Do(oc.service, ctx, oc.core.PredefinedBlocks().Account, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}
@@ -405,8 +405,8 @@ func (oc *ObjectCreator) syncFilesAndLinks(ctx session.Context, st *state.State,
 	return nil
 }
 
-func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {
-	err := block.Do(oc.service, st.RootId(), func(b sb.SmartBlock) error {
+func (oc *ObjectCreator) updateLinksInCollections(ctx session.Context, st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {
+	err := block.Do(oc.service, ctx, st.RootId(), func(b sb.SmartBlock) error {
 		originalState := b.NewState()
 		var existedObjects []string
 		if !isNewCollection {

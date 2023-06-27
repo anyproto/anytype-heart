@@ -230,7 +230,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		err = s.OnDelete(ctx, id, func() error {
-			return Do(s, s.anytype.PredefinedBlocks().Account, func(w *editor.Workspaces) error {
+			return Do(s, ctx, s.anytype.PredefinedBlocks().Account, func(w *editor.Workspaces) error {
 				return w.DeleteSubObject(id)
 			})
 		})

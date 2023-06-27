@@ -15,6 +15,7 @@ import (
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -41,7 +42,7 @@ func New() History {
 type History interface {
 	Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
 	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
-	SetVersion(pageId, versionId string) (err error)
+	SetVersion(ctx session.Context, pageId, versionId string) (err error)
 	app.Component
 }
 
@@ -179,12 +180,12 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	return
 }
 
-func (h *history) SetVersion(pageId, versionId string) (err error) {
+func (h *history) SetVersion(ctx session.Context, pageId, versionId string) (err error) {
 	s, _, _, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
 	}
-	return block.Do(h.picker, pageId, func(sb smartblock2.SmartBlock) error {
+	return block.Do(h.picker, ctx, pageId, func(sb smartblock2.SmartBlock) error {
 		return history2.ResetToVersion(sb, s)
 	})
 }
