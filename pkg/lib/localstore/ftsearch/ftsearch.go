@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -260,7 +261,7 @@ func getStandardMapping() *mapping.FieldMapping {
 func getAllWordsFromQueryConsequently(terms []string, field string) query.Query {
 	terms = lo.Map(
 		terms,
-		func(item string, index int) string { return strings.ReplaceAll(item, "*", `\*`) },
+		func(item string, index int) string { return regexp.QuoteMeta(item) },
 	)
 	qry := strings.Join(terms, ".*")
 	regexpQuery := bleve.NewRegexpQuery(".*" + qry + ".*")
