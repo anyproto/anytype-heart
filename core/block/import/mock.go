@@ -9,12 +9,11 @@ import (
 	time "time"
 
 	treestorage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
-
 	converter "github.com/anyproto/anytype-heart/core/block/import/converter"
 	session "github.com/anyproto/anytype-heart/core/session"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	types "github.com/gogo/protobuf/types"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockCreator is a mock of Creator interface.

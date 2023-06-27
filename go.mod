@@ -17,12 +17,14 @@ require (
 	github.com/dave/jennifer v1.6.1
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v3 v3.2103.5
+	github.com/dgraph-io/ristretto v0.1.1
 	github.com/dgtony/collections v0.1.6
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
 	github.com/disintegration/imaging v1.6.2
 	github.com/dsoprea/go-exif/v3 v3.0.1
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20210512043942-b434301c6836
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
+	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-shiori/go-readability v0.0.0-20220215145315-dd6828d2f09b
 	github.com/goccy/go-graphviz v0.1.1
 	github.com/gogo/protobuf v1.3.2
@@ -85,7 +87,7 @@ require (
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/image v0.8.0
-	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c
+	golang.org/x/mobile v0.0.0-20230531173138-3c911d8e3eda
 	golang.org/x/net v0.11.0
 	golang.org/x/oauth2 v0.9.0
 	golang.org/x/text v0.10.0
@@ -132,7 +134,6 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dsoprea/go-iptc v0.0.0-20200609062250-162ae6b44feb // indirect
 	github.com/dsoprea/go-logging v0.0.0-20200710184922-b02d349568dd // indirect
 	github.com/dsoprea/go-photoshop-info-format v0.0.0-20200609050348-3db9b63b202c // indirect
@@ -140,7 +141,6 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.3.0-java // indirect
 	github.com/fogleman/gg v1.3.0 // indirect
-	github.com/go-chi/chi/v5 v5.0.8 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -262,4 +262,3 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20230114170705-8e2cb769640b
-

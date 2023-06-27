@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
@@ -318,7 +318,7 @@ func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, s
 
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
-	a := testapp.New()
+	a := new(app.App)
 	testMock.RegisterMockObjectStore(ctrl, a)
 	testMock.RegisterMockKanban(ctrl, a)
 	fx := &fixture{
@@ -344,7 +344,7 @@ func newFixture(t *testing.T) *fixture {
 
 type fixture struct {
 	Service
-	a      *testapp.TestApp
+	a      *app.App
 	ctrl   *gomock.Controller
 	store  *testMock.MockObjectStore
 	sender *mock_event.MockSender

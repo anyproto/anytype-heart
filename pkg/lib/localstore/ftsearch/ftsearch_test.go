@@ -6,27 +6,27 @@ import (
 	"os"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
 	"github.com/golang/mock/gomock"
-
-	"github.com/anyproto/anytype-heart/app/testapp"
-	"github.com/anyproto/anytype-heart/core/wallet"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
 type fixture struct {
 	ft   FTSearch
-	ta   *testapp.TestApp
+	ta   *app.App
 	ctrl *gomock.Controller
 }
 
 func newFixture(path string, t *testing.T) *fixture {
 	ft := New()
-	ta := testapp.New().
-		With(wallet.NewWithRepoDirAndRandomKeys(path)).
-		With(ft)
+	ta := new(app.App)
+
+	ta.Register(wallet.NewWithRepoDirAndRandomKeys(path)).
+		Register(ft)
 
 	require.NoError(t, ta.Start(context.Background()))
 	return &fixture{
@@ -172,20 +172,20 @@ func validateSearch(t *testing.T, ft FTSearch, qry string, times int) {
 }
 
 func TestChineseSearch(t *testing.T) {
-	//given
+	// given
 	index := givenPrefilledChineseIndex()
 	defer func() { _ = index.Close() }()
 
 	expected := givenExpectedChinese()
 
-	//when
+	// when
 	queries := []string{
 		"你好世界",
 		"亲口交代",
 		"长江",
 	}
 
-	//then
+	// then
 	result := validateChinese(queries, index)
 	assert.Equal(t, expected, result)
 }

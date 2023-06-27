@@ -682,20 +682,20 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOp
 
 	md, ok := metadata.FromIncomingContext(cctx)
 	if !ok {
-		return session.NewContext(cctx, mw.EventSender, spaceID)
+		return session.NewContext(cctx, mw.EventSender, spaceID, opts...)
 	}
 
 	v := md.Get("token")
 	if len(v) != 1 {
-		return session.NewContext(cctx, mw.EventSender, spaceID)
+		return session.NewContext(cctx, mw.EventSender, spaceID, opts...)
 	}
 
 	tok := v[0]
 	if tok == "" {
-		return session.NewContext(cctx, mw.EventSender, spaceID)
+		return session.NewContext(cctx, mw.EventSender, spaceID, opts...)
 	}
 
-	return session.NewContext(cctx, mw.EventSender, spaceID, session.WithSession(tok))
+	return session.NewContext(cctx, mw.EventSender, spaceID, append(opts, session.WithSession(tok))...)
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
