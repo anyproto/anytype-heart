@@ -190,8 +190,7 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	depIds []string // slice must be sorted
-	// sendEvent           func(e *pb.Event)
+	depIds              []string // slice must be sorted
 	sessions            map[string]session.Context
 	undo                undo.History
 	source              source.Source
