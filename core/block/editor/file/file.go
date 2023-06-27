@@ -52,7 +52,6 @@ func NewFile(
 }
 
 type BlockService interface {
-	DoFile(id string, apply func(f File) error) error
 	CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
 	ProcessAdd(p process.Process) (err error)
 }
@@ -442,7 +441,7 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		if idx >= len(smartBlockIds) {
 			return
 		}
-		err = dp.s.DoFile(smartBlockIds[idx], func(sb File) error {
+		err = getblock.Do(dp.picker, dp.ctx, smartBlockIds[idx], func(sb File) error {
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				isContinue = idx != 0
@@ -551,7 +550,7 @@ func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 			atomic.AddInt64(&dp.done, 1)
 		}
 	}()
-	return dp.s.DoFile(f.pageId, func(sb File) error {
+	return getblock.Do(dp.picker, dp.ctx, f.pageId, func(sb File) error {
 		sbHandler, ok := sb.(dropFilesHandler)
 		if !ok {
 			return fmt.Errorf("(apply) unexpected smartblock interface %T; want dropFilesHandler", sb)

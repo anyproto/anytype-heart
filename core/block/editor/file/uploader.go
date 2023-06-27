@@ -326,7 +326,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 			result.Err = err
 			if u.block != nil {
 				u.block.SetState(model.BlockContentFile_Error).SetName(err.Error())
-				u.updateBlock()
+				u.updateBlock(ctx)
 			}
 		}
 	}()
@@ -419,7 +419,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 			SetSize(result.Size).
 			SetStyle(u.fileStyle).
 			SetMIME(result.MIME)
-		u.updateBlock()
+		u.updateBlock(ctx)
 	}
 	return
 }
@@ -450,9 +450,9 @@ func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
 	return model.BlockContentFile_File
 }
 
-func (u *uploader) updateBlock() {
+func (u *uploader) updateBlock(ctx session.Context) {
 	if u.smartBlockID != "" && u.block != nil {
-		err := u.service.DoFile(u.smartBlockID, func(f File) error {
+		err := getblock.Do(u.picker, ctx, u.smartBlockID, func(f File) error {
 			return f.UpdateFile(u.block.Model().Id, u.groupID, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil

@@ -789,20 +789,6 @@ func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name
 	return
 }
 
-func (s *Service) DoFile(id string, apply func(b file.File) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_file"), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(file.File); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("file operation not available for this block type: %T", sb)
-}
-
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
 	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_filenonlock"), id)
 	if err != nil {

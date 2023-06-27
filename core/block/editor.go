@@ -440,7 +440,7 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 }
 
 func (s *Service) UploadBlockFile(ctx session.Context, req pb.RpcBlockUploadRequest, groupId string) (err error) {
-	return s.DoFile(req.ContextId, func(b file.File) error {
+	return Do(s, ctx, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
@@ -451,7 +451,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req pb.RpcBlockUploadRequ
 }
 
 func (s *Service) UploadBlockFileSync(ctx session.Context, req pb.RpcBlockUploadRequest) (err error) {
-	return s.DoFile(req.ContextId, func(b file.File) error {
+	return Do(s, ctx, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path: req.FilePath,
 			Url:  req.Url,
@@ -463,7 +463,7 @@ func (s *Service) UploadBlockFileSync(ctx session.Context, req pb.RpcBlockUpload
 func (s *Service) CreateAndUploadFile(
 	ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest,
 ) (id string, err error) {
-	err = s.DoFile(req.ContextId, func(b file.File) error {
+	err = Do(s, ctx, req.ContextId, func(b file.File) error {
 		id, err = b.CreateAndUpload(ctx, req)
 		return err
 	})
@@ -503,7 +503,7 @@ func (s *Service) DropFiles(ctx session.Context, req pb.RpcFileDropRequest) (err
 func (s *Service) SetFileStyle(
 	ctx session.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string,
 ) error {
-	return s.DoFile(contextId, func(b file.File) error {
+	return Do(s, ctx, contextId, func(b file.File) error {
 		return b.SetFileStyle(ctx, style, blockIds...)
 	})
 }
@@ -511,7 +511,7 @@ func (s *Service) SetFileStyle(
 func (s *Service) UploadFileBlockWithHash(
 	ctx session.Context, contextId string, req pb.RpcBlockUploadRequest,
 ) (hash string, err error) {
-	err = s.DoFile(contextId, func(b file.File) error {
+	err = Do(s, ctx, contextId, func(b file.File) error {
 		res, err := b.UploadFileWithHash(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
