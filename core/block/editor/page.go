@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -43,7 +44,7 @@ func NewPage(
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
-	bookmarkBlockService bookmark.BlockService,
+	picker getblock.Picker,
 	bookmarkService bookmark.BookmarkService,
 	relationService relation.Service,
 	tempDirProvider core.TempDirProvider,
@@ -75,7 +76,7 @@ func NewPage(
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,
-			bookmarkBlockService,
+			picker,
 			bookmarkService,
 			objectStore,
 		),

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -29,7 +30,7 @@ func NewTemplate(
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
-	bookmarkBlockService bookmark.BlockService,
+	picker getblock.Picker,
 	bookmarkService bookmark.BookmarkService,
 	relationService relation.Service,
 	tempDirProvider core.TempDirProvider,
@@ -42,7 +43,7 @@ func NewTemplate(
 		objectStore,
 		anytype,
 		fileBlockService,
-		bookmarkBlockService,
+		picker,
 		bookmarkService,
 		relationService,
 		tempDirProvider,

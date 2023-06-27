@@ -21,7 +21,6 @@ import (
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -847,20 +846,6 @@ func (s *Service) DoFile(id string, apply func(b file.File) error) error {
 		return apply(bb)
 	}
 	return fmt.Errorf("file operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_bookmark"), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(bookmark.Bookmark); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("bookmark operation not available for this block type: %T", sb)
 }
 
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {

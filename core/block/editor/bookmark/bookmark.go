@@ -10,6 +10,7 @@ import (
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -26,15 +27,15 @@ var log = logging.Logger("bookmark")
 
 func NewBookmark(
 	sb smartblock.SmartBlock,
-	blockService BlockService,
+	picker getblock.Picker,
 	bookmarkSvc BookmarkService,
 	objectStore objectstore.ObjectStore,
 ) Bookmark {
 	return &sbookmark{
-		SmartBlock:   sb,
-		blockService: blockService,
-		bookmarkSvc:  bookmarkSvc,
-		objectStore:  objectStore,
+		SmartBlock:  sb,
+		picker:      picker,
+		bookmarkSvc: bookmarkSvc,
+		objectStore: objectStore,
 	}
 }
 
@@ -52,9 +53,9 @@ type BookmarkService interface {
 
 type sbookmark struct {
 	smartblock.SmartBlock
-	blockService BlockService
-	bookmarkSvc  BookmarkService
-	objectStore  objectstore.ObjectStore
+	picker      getblock.Picker
+	bookmarkSvc BookmarkService
+	objectStore objectstore.ObjectStore
 }
 
 type BlockService interface {
@@ -94,7 +95,7 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 				defer updMu.Unlock()
 				return b.updateBlock(ctx, bm, apply)
 			}
-			return b.blockService.DoBookmark(b.Id(), func(b Bookmark) error {
+			return getblock.Do(b.picker, ctx, b.Id(), func(b Bookmark) error {
 				return b.UpdateBookmark(ctx, id, groupId, apply)
 			})
 		},

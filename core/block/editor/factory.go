@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -26,20 +27,20 @@ import (
 var log = logging.Logger("anytype-mw-editor")
 
 type ObjectFactory struct {
-	anytype              core.Service
-	bookmarkBlockService bookmark.BlockService
-	bookmarkService      bookmark.BookmarkService
-	detailsModifier      DetailsModifier
-	fileBlockService     file.BlockService
-	layoutConverter      converter.LayoutConverter
-	objectStore          objectstore.ObjectStore
-	relationService      relation.Service
-	sbtProvider          typeprovider.SmartBlockTypeProvider
-	sourceService        source.Service
-	tempDirProvider      core.TempDirProvider
-	templateCloner       templateCloner
-	fileService          files.Service
-	config               *config.Config
+	anytype          core.Service
+	bookmarkService  bookmark.BookmarkService
+	detailsModifier  DetailsModifier
+	fileBlockService file.BlockService
+	layoutConverter  converter.LayoutConverter
+	objectStore      objectstore.ObjectStore
+	relationService  relation.Service
+	sbtProvider      typeprovider.SmartBlockTypeProvider
+	sourceService    source.Service
+	tempDirProvider  core.TempDirProvider
+	templateCloner   templateCloner
+	fileService      files.Service
+	config           *config.Config
+	picker           getblock.Picker
 
 	subObjectFactory subObjectFactory
 }
@@ -58,7 +59,6 @@ func NewObjectFactory(
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
-	f.bookmarkBlockService = app.MustComponent[bookmark.BlockService](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
@@ -68,6 +68,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
+	f.picker = app.MustComponent[getblock.Picker](a)
 
 	f.subObjectFactory = subObjectFactory{
 		coreService:        f.anytype,
@@ -147,7 +148,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
-			f.bookmarkBlockService,
+			f.picker,
 			f.bookmarkService,
 			f.relationService,
 			f.tempDirProvider,
@@ -176,7 +177,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.objectStore,
 			f.relationService,
 			f.fileBlockService,
-			f.bookmarkBlockService,
+			f.picker,
 			f.bookmarkService,
 			f.tempDirProvider,
 			f.layoutConverter,
@@ -190,7 +191,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
-			f.bookmarkBlockService,
+			f.picker,
 			f.bookmarkService,
 			f.relationService,
 			f.tempDirProvider,
@@ -204,7 +205,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
-			f.bookmarkBlockService,
+			f.picker,
 			f.bookmarkService,
 			f.relationService,
 			f.tempDirProvider,

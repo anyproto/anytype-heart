@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -39,7 +40,7 @@ func NewProfile(
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	fileBlockService file.BlockService,
-	bookmarkBlockService bookmark.BlockService,
+	picker getblock.Picker,
 	bookmarkService bookmark.BookmarkService,
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,
@@ -69,7 +70,7 @@ func NewProfile(
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,
-			bookmarkBlockService,
+			picker,
 			bookmarkService,
 			objectStore,
 		),
