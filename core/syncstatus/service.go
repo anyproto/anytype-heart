@@ -60,7 +60,7 @@ func New(
 	eventSender event.Sender,
 	fileWatcherUpdateInterval time.Duration,
 ) Service {
-	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, fileWatcherUpdateInterval)
+	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, fileWatcherUpdateInterval, eventSender)
 	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
 	subObjectsWatcher := newSubObjectsWatcher()
 	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, nodeConfService, cfg, eventSender)

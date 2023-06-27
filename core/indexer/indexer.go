@@ -641,6 +641,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 	return len(idsToReindex), success, nil
 }
 
+// TODO Pass spaceID. From where?
 func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 	err := block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
 		d := sb.GetDocInfo()

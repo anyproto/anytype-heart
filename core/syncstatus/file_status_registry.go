@@ -8,7 +8,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
@@ -31,6 +33,7 @@ type fileStatusRegistry struct {
 	fileSyncService filesync.FileSync
 	fileStore       filestore.FileStore
 	picker          getblock.Picker
+	eventSender     event.Sender
 
 	sync.Mutex
 
@@ -43,6 +46,7 @@ func newFileStatusRegistry(
 	fileStore filestore.FileStore,
 	picker getblock.Picker,
 	updateInterval time.Duration,
+	eventSender event.Sender,
 ) *fileStatusRegistry {
 	return &fileStatusRegistry{
 		picker:          picker,
@@ -50,6 +54,7 @@ func newFileStatusRegistry(
 		fileStore:       fileStore,
 		files:           map[fileWithSpace]fileStatus{},
 		updateInterval:  updateInterval,
+		eventSender:     eventSender,
 	}
 }
 
@@ -91,7 +96,8 @@ func (r *fileStatusRegistry) setFileStatus(key fileWithSpace, status fileStatus)
 			return FileStatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
 		}
 		r.files[key] = status
-		go r.indexFileSyncStatus(key.fileID, status.status)
+		ctx := session.NewContext(context.Background(), r.eventSender, key.spaceID)
+		go r.indexFileSyncStatus(ctx, key.fileID, status.status)
 		return status.status, nil
 	}
 	return prevStatus.status, nil
@@ -176,8 +182,8 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 	return status, nil
 }
 
-func (r *fileStatusRegistry) indexFileSyncStatus(fileID string, status FileStatus) {
-	err := getblock.Do(r.picker, fileID, func(b basic.DetailsSettable) (err error) {
+func (r *fileStatusRegistry) indexFileSyncStatus(ctx session.Context, fileID string, status FileStatus) {
+	err := getblock.Do(r.picker, ctx, fileID, func(b basic.DetailsSettable) (err error) {
 		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeyFileSyncStatus.String(),

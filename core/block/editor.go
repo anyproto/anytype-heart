@@ -62,7 +62,7 @@ func (s *Service) DuplicateBlocks(
 	}
 
 	err = DoStateCtx(s, ctx, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
-		return DoState(s, req.TargetContextId, func(targetState *state.State, tb basic.Creatable) error {
+		return DoState(s, ctx, req.TargetContextId, func(targetState *state.State, tb basic.Creatable) error {
 			newIds, err = sb.Duplicate(srcState, targetState, req.TargetId, req.Position, req.BlockIds)
 			return err
 		})
@@ -107,14 +107,14 @@ func (s *Service) TurnInto(
 	})
 }
 
-func (s *Service) SimplePaste(contextId string, anySlot []*model.Block) (err error) {
+func (s *Service) SimplePaste(ctx session.Context, contextId string, anySlot []*model.Block) (err error) {
 	var blocks []simple.Block
 
 	for _, b := range anySlot {
 		blocks = append(blocks, simple.New(b))
 	}
 
-	return DoState(s, contextId, func(s *state.State, b basic.CommonOperations) error {
+	return DoState(s, ctx, contextId, func(s *state.State, b basic.CommonOperations) error {
 		return b.PasteBlocks(s, "", model.Block_Inner, blocks)
 	})
 }
@@ -706,8 +706,8 @@ func (s *Service) MoveBlocksToNewPage(
 	}
 
 	// 2. Move blocks to new page
-	err = DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
-		return DoState(s, objectID, func(destState *state.State, tb basic.Movable) error {
+	err = DoState(s, ctx, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
+		return DoState(s, ctx, objectID, func(destState *state.State, tb basic.Movable) error {
 			return sb.Move(srcState, destState, "", model.Block_Inner, req.BlockIds)
 		})
 	})
@@ -723,7 +723,7 @@ type Movable interface {
 }
 
 func (s *Service) MoveBlocks(ctx session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
-	return DoState2(s, req.ContextId, req.TargetContextId, func(srcState, destState *state.State, sb, tb Movable) error {
+	return DoState2(s, ctx, req.ContextId, req.TargetContextId, func(srcState, destState *state.State, sb, tb Movable) error {
 		if err := sb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 			return restriction.ErrRestricted
 		}

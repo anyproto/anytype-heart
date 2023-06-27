@@ -149,7 +149,7 @@ func (s *Subscription) Close() {
 	close(s.closeCh)
 }
 
-func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
+func (s *Service) SubscribeForCollection(ctx session.Context, collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	var initialObjectIDs []string
 
 	s.lock.Lock()
@@ -160,7 +160,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 		col = map[string]chan []string{}
 		s.collections[collectionID] = col
 	}
-	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoState(s.picker, ctx, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -42,10 +43,10 @@ func New(collectionService CollectionService, sbtProvider typeprovider.SmartBloc
 }
 
 type Service interface {
-	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
+	Search(ctx session.Context, req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
-	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
+	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
 
@@ -62,7 +63,7 @@ type subscription interface {
 }
 
 type CollectionService interface {
-	SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error)
+	SubscribeForCollection(ctx session.Context, collectionID string, subscriptionID string) ([]string, <-chan []string, error)
 	UnsubscribeFromCollection(collectionID string, subscriptionID string)
 }
 
@@ -106,7 +107,7 @@ func (s *service) Run(context.Context) (err error) {
 	return
 }
 
-func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
+func (s *service) Search(ctx session.Context, req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}
@@ -146,7 +147,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 	}
 
 	if req.CollectionId != "" {
-		return s.subscribeForCollection(req, f, filterDepIds)
+		return s.subscribeForCollection(ctx, req, f, filterDepIds)
 	}
 	return s.subscribeForQuery(req, f, filterDepIds)
 }
@@ -195,8 +196,8 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 	}, nil
 }
 
-func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+func (s *service) subscribeForCollection(ctx session.Context, req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
+	sub, err := s.newCollectionSub(ctx, req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +272,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	}, nil
 }
 
-func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	subId := ""
 
 	s.m.Lock()
@@ -296,7 +297,7 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 
 	var colObserver *collectionObserver
 	if req.CollectionId != "" {
-		colObserver, err = s.newCollectionObserver(req.CollectionId, req.SubId)
+		colObserver, err = s.newCollectionObserver(ctx, req.CollectionId, req.SubId)
 		if err != nil {
 			return nil, err
 		}

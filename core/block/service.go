@@ -955,15 +955,16 @@ func DoWithContext[t any](ctx context.Context, p Picker, id string, apply func(s
 	return apply(bb)
 }
 
-func DoState[t any](p Picker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	return DoStateCtx(p, nil, id, apply, flags...)
+// TODO ASYNC context
+func DoState[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	return DoStateCtx(p, ctx, id, apply, flags...)
 }
 
 // DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
 // It correctly handles the case when two ids are the same.
-func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
+func DoState2[t1, t2 any](s *Service, ctx session.Context, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
 	if firstID == secondID {
-		return DoState(s, firstID, func(st *state.State, b t1) error {
+		return DoState(s, ctx, firstID, func(st *state.State, b t1) error {
 			// Check that b satisfies t2
 			b2, ok := any(b).(t2)
 			if !ok {
@@ -974,14 +975,14 @@ func DoState2[t1, t2 any](s *Service, firstID, secondID string, f func(*state.St
 		})
 	}
 	if firstID < secondID {
-		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
-			return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoState(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
+			return DoState(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
 				return f(firstState, secondState, firstBlock, secondBlock)
 			})
 		})
 	}
-	return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
-		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
+	return DoState(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoState(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
 			return f(firstState, secondState, firstBlock, secondBlock)
 		})
 	})
