@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -30,6 +31,7 @@ func NewRelationOption(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	picker getblock.Picker,
 ) *RelationOption {
 	return &RelationOption{
 		SubObject: NewSubObject(
@@ -42,6 +44,7 @@ func NewRelationOption(
 			sbtProvider,
 			layoutConverter,
 			fileService,
+			picker,
 		),
 	}
 }

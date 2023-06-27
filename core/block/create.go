@@ -20,7 +20,7 @@ import (
 
 func (s *Service) TemplateCreateFromObject(ctx session.Context, id string) (templateID string, err error) {
 	var st *state.State
-	if err = s.Do(ctx, id, func(b smartblock.SmartBlock) error {
+	if err = Do(s, ctx, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_Page {
 			return fmt.Errorf("can't make template from this obect type")
 		}
@@ -39,7 +39,7 @@ func (s *Service) TemplateCreateFromObject(ctx session.Context, id string) (temp
 
 func (s *Service) TemplateClone(ctx session.Context, id string) (templateID string, err error) {
 	var st *state.State
-	if err = s.Do(ctx, id, func(b smartblock.SmartBlock) error {
+	if err = Do(s, ctx, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_BundledTemplate {
 			return fmt.Errorf("can clone bundled templates only")
 		}
@@ -68,7 +68,7 @@ func (s *Service) ObjectDuplicate(ctx session.Context, id string) (objectID stri
 		st  *state.State
 		sbt coresb.SmartBlockType
 	)
-	if err = s.Do(ctx, id, func(b smartblock.SmartBlock) error {
+	if err = Do(s, ctx, id, func(b smartblock.SmartBlock) error {
 		sbt = coresb.SmartBlockType(b.Type())
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
@@ -88,7 +88,7 @@ func (s *Service) ObjectDuplicate(ctx session.Context, id string) (objectID stri
 }
 
 func (s *Service) TemplateCreateFromObjectByObjectType(ctx session.Context, otID string) (templateID string, err error) {
-	if err = s.Do(ctx, otID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
+	if err = Do(s, ctx, otID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
 		return "", fmt.Errorf("can't open objectType: %v", err)
 	}
 	var st = state.NewDoc("", nil).(*state.State)
@@ -150,7 +150,7 @@ func (s *Service) CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlock
 }
 
 func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) error {
-	if err := s.Do(ctx, id, func(b smartblock.SmartBlock) error {
+	if err := Do(s, ctx, id, func(b smartblock.SmartBlock) error {
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)

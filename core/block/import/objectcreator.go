@@ -16,6 +16,7 @@ import (
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
@@ -36,6 +37,7 @@ const relationsLimit = 10
 
 type ObjectCreator struct {
 	service        *block.Service
+	picker         getblock.Picker
 	core           core.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
@@ -50,6 +52,7 @@ func NewCreator(service *block.Service,
 	objectStore objectstore.ObjectStore,
 	relationSyncer syncer.RelationSyncer,
 	fileStore filestore.FileStore,
+	picker getblock.Picker,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
@@ -58,6 +61,7 @@ func NewCreator(service *block.Service,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
+		picker:         picker,
 	}
 }
 
@@ -334,7 +338,7 @@ func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
 
 func (oc *ObjectCreator) resetState(ctx session.Context, newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
-	err := oc.service.Do(ctx, newID, func(b sb.SmartBlock) error {
+	err := getblock.Do(oc.picker, ctx, newID, func(b sb.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())

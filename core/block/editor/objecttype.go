@@ -3,12 +3,15 @@ package editor
 import (
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -19,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/gogo/protobuf/types"
 )
 
 type ObjectType struct {
@@ -37,6 +39,7 @@ func NewObjectType(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	picker getblock.Picker,
 ) *ObjectType {
 	return &ObjectType{
 		relationService: relationService,
@@ -50,6 +53,7 @@ func NewObjectType(
 			sbtProvider,
 			layoutConverter,
 			fileService,
+			picker,
 		),
 	}
 }

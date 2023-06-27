@@ -57,6 +57,7 @@ func NewPage(
 		fileBlockService,
 		tempDirProvider,
 		fileService,
+		picker,
 	)
 	return &Page{
 		SmartBlock:    sb,

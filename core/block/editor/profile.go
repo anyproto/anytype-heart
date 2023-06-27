@@ -51,6 +51,7 @@ func NewProfile(
 		fileBlockService,
 		tempDirProvider,
 		fileService,
+		picker,
 	)
 	return &Profile{
 		SmartBlock:    sb,

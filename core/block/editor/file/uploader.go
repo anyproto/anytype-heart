@@ -17,6 +17,7 @@ import (
 	"github.com/h2non/filetype"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -43,9 +44,11 @@ func NewUploader(
 	s BlockService,
 	fileService files.Service,
 	provider core.TempDirProvider,
+	picker getblock.Picker,
 ) Uploader {
 	return &uploader{
 		service:         s,
+		picker:          picker,
 		fileService:     fileService,
 		tempDirProvider: provider,
 	}
@@ -100,6 +103,7 @@ func (ur UploadResult) ToBlock() file.Block {
 
 type uploader struct {
 	service          BlockService
+	picker           getblock.Picker
 	block            file.Block
 	getReader        func(ctx context.Context) (*fileReader, error)
 	name             string
@@ -399,7 +403,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 	}
 
 	// Touch the file to activate indexing
-	derr := u.service.Do(ctx, result.Hash, func(_ smartblock.SmartBlock) error {
+	derr := getblock.Do(u.picker, ctx, result.Hash, func(_ smartblock.SmartBlock) error {
 		return nil
 	})
 	if derr != nil {

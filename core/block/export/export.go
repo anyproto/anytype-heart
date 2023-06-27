@@ -17,6 +17,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/converter/dot"
@@ -54,6 +55,7 @@ type Export interface {
 
 type export struct {
 	bs          *block.Service
+	picker      getblock.Picker
 	objectStore objectstore.ObjectStore
 	a           core.Service
 	sbtProvider typeprovider.SmartBlockTypeProvider
@@ -71,6 +73,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.a = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
+	e.picker = app.MustComponent[getblock.Picker](a)
 	return
 }
 
@@ -276,7 +279,7 @@ func (e *export) writeMultiDoc(ctx session.Context, mw converter.MultiConverter,
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
-			werr := e.bs.Do(ctx, did, func(b sb.SmartBlock) error {
+			werr := getblock.Do(e.picker, ctx, did, func(b sb.SmartBlock) error {
 				return mw.Add(b.NewState().Copy())
 			})
 			if err != nil {
@@ -320,7 +323,7 @@ func (e *export) writeMultiDoc(ctx session.Context, mw converter.MultiConverter,
 }
 
 func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
-	return e.bs.Do(ctx, docID, func(b sb.SmartBlock) error {
+	return getblock.Do(e.picker, ctx, docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
@@ -415,7 +418,7 @@ func (e *export) createProfileFile(ctx session.Context, wr writer) error {
 	if err != nil {
 		return err
 	}
-	err = e.bs.Do(ctx, e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+	err = getblock.Do(e.picker, ctx, e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})

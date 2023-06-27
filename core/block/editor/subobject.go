@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -37,6 +38,7 @@ func NewSubObject(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	picker getblock.Picker,
 ) *SubObject {
 	return &SubObject{
 		SmartBlock:    sb,
@@ -53,6 +55,7 @@ func NewSubObject(
 				fileBlockService,
 				tempDirProvider,
 				fileService,
+				picker,
 			),
 			tempDirProvider,
 			relationService,
