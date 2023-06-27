@@ -9,6 +9,7 @@ import (
 )
 
 func (mw *Middleware) BlockDataviewRelationListAvailable(cctx context.Context, req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockDataviewRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcBlockDataviewRelationListAvailableResponse {
 		m := &pb.RpcBlockDataviewRelationListAvailableResponse{Relations: relations, Error: &pb.RpcBlockDataviewRelationListAvailableResponseError{Code: code}}
 		if err != nil {
@@ -22,7 +23,7 @@ func (mw *Middleware) BlockDataviewRelationListAvailable(cctx context.Context, r
 	)
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		relations, err = bs.GetAggregatedRelations(*req)
+		relations, err = bs.GetAggregatedRelations(ctx, *req)
 		return
 	})
 	if err != nil {

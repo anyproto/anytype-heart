@@ -21,14 +21,11 @@ import (
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -792,48 +789,6 @@ func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name
 	return
 }
 
-func (s *Service) DoLinksCollection(id string, apply func(b basic.AllOperations) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_links_collection"), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(basic.AllOperations); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("basic operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_clipboard"), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(clipboard.Clipboard); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("clipboard operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoText(id string, apply func(b stext.Text) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_text"), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(stext.Text); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("text operation not available for this block type: %T", sb)
-}
-
 func (s *Service) DoFile(id string, apply func(b file.File) error) error {
 	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_file"), id)
 	if err != nil {
@@ -858,34 +813,6 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 		return apply(bb)
 	}
 	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoHistory(id string, apply func(b basic.IHistory) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_history"), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(basic.IHistory); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("undo operation not available for this block type: %T", sb)
-}
-
-func (s *Service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_dataview"), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(dataview.Dataview); ok {
-		sb.Lock()
-		defer sb.Unlock()
-		return apply(bb)
-	}
-	return fmt.Errorf("dataview operation not available for this block type: %T", sb)
 }
 
 func (s *Service) Do(ctx session.Context, id string, apply func(b smartblock.SmartBlock) error) error {

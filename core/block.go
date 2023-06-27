@@ -134,6 +134,7 @@ func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRe
 	return response(pb.RpcObjectCloseResponseError_NULL, nil)
 }
 func (mw *Middleware) BlockCopy(cctx context.Context, req *pb.RpcBlockCopyRequest) *pb.RpcBlockCopyResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockCopyResponseErrorCode, textSlot string, htmlSlot string, anySlot []*model.Block, err error) *pb.RpcBlockCopyResponse {
 		m := &pb.RpcBlockCopyResponse{
 			Error:    &pb.RpcBlockCopyResponseError{Code: code},
@@ -149,7 +150,7 @@ func (mw *Middleware) BlockCopy(cctx context.Context, req *pb.RpcBlockCopyReques
 	var textSlot, htmlSlot string
 	var anySlot []*model.Block
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		textSlot, htmlSlot, anySlot, err = bs.Copy(*req)
+		textSlot, htmlSlot, anySlot, err = bs.Copy(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -246,7 +247,7 @@ func (mw *Middleware) BlockExport(cctx context.Context, req *pb.RpcBlockExportRe
 	}
 	var path string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		path, err = bs.Export(*req)
+		path, err = bs.Export(ctx, *req)
 		return
 	})
 	if err != nil {
