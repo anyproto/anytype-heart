@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -36,7 +37,7 @@ type Service interface {
 	Stop() error
 	IsStarted() bool
 
-	EnsurePredefinedBlocks(ctx context.Context) error
+	EnsurePredefinedBlocks(ctx session.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
 	GetAllWorkspaces() ([]string, error)
@@ -141,7 +142,7 @@ func (a *Anytype) start() {
 	a.isStarted = true
 }
 
-func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
+func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) (err error) {
 	sbTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeProfilePage,
@@ -151,7 +152,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 	}
 	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
 	for i, sbt := range sbTypes {
-		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, sbt)
+		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx.Context(), sbt)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived tree object with error")
 			return
@@ -160,7 +161,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context) (err error) {
 	}
 
 	for _, payload := range payloads {
-		err = a.deriver.DeriveObject(ctx, payload, a.config.NewAccount)
+		err = a.deriver.DeriveObject(ctx.Context(), payload, a.config.NewAccount)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return

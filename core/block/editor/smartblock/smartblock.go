@@ -157,6 +157,7 @@ type DocInfo struct {
 	State      *state.State
 }
 
+// TODO Maybe create constructor? Don't want to forget required fields
 type InitContext struct {
 	IsNewObject    bool
 	Source         source.Source
@@ -182,7 +183,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
+	Index(ctx session.Context, info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -190,6 +191,7 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
+	spaceID             string
 	depIds              []string // slice must be sorted
 	sessions            map[string]session.Context
 	undo                undo.History
@@ -273,6 +275,7 @@ func (sb *smartBlock) Type() model.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
+	sb.spaceID = ctx.SpaceID
 	cctx := ctx.Ctx.Context()
 	if cctx == nil {
 		cctx = context.Background()
@@ -1286,7 +1289,8 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
 
-	if err := sb.indexer.Index(context.TODO(), docInfo, opts...); err != nil {
+	ctx := session.NewContext(context.Background(), nil, sb.spaceID)
+	if err := sb.indexer.Index(ctx, docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
 }

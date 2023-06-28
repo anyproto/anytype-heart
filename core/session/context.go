@@ -34,6 +34,7 @@ type sessionContext struct {
 }
 
 func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, opts ...ContextOption) Context {
+	// TODO Add panic if spaceID is empty when working on the next step
 	ctx := &sessionContext{
 		spaceID:       spaceID,
 		sessionSender: eventSender,

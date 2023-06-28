@@ -82,7 +82,7 @@ func New(
 
 type Indexer interface {
 	ForceFTIndex()
-	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
+	Index(ctx session.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -186,7 +186,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+func (i *indexer) Index(ctx session.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
 	opts := &smartblock2.IndexOptions{}
@@ -304,7 +304,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx session.Context, fileHashes []string) {
 	if len(fileHashes) == 0 {
 		return
 	}
@@ -377,10 +377,15 @@ func (i *indexer) reindexIfNeeded() error {
 		flags.enableAll()
 	}
 
-	return i.reindex(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "reindex_forced"), flags)
+	ctx := session.NewContext(
+		context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "reindex_forced"),
+		i.eventSender,
+		i.spaceService.AccountId(),
+	)
+	return i.reindex(ctx, flags)
 }
 
-func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
+func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
 	}
@@ -535,7 +540,7 @@ func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
 	return i.saveLatestChecksums()
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
+func (i *indexer) reindexIDsForSmartblockTypes(ctx session.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
 	ids, err := i.getIdsForTypes(sbTypes...)
 	if err != nil {
 		return err
@@ -543,7 +548,7 @@ func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, reindexType 
 	return i.reindexIDs(ctx, reindexType, indexesWereRemoved, ids)
 }
 
-func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
+func (i *indexer) reindexIDs(ctx session.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
 	start := time.Now()
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
@@ -636,14 +641,17 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 		}
 	}
 
-	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "reindexOutdatedThreads")
+	ctx := session.NewContext(
+		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "reindexOutdatedThreads"),
+		i.eventSender,
+		spc.Id(),
+	)
 	success = i.reindexIdsIgnoreErr(ctx, idsToReindex...)
 	return len(idsToReindex), success, nil
 }
 
-// TODO Pass spaceID. From where?
-func (i *indexer) reindexDoc(ctx context.Context, id string) error {
-	err := block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
+func (i *indexer) reindexDoc(ctx session.Context, id string) error {
+	err := block.Do(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		d := sb.GetDocInfo()
 		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
 			// index all the subobjects
@@ -663,7 +671,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 	return err
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx session.Context, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, id)
 		if err != nil {
@@ -675,8 +683,8 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (succe
 	return
 }
 
-func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock2.DocInfo, err error) {
-	err = block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
+func (i *indexer) getObjectInfo(ctx session.Context, id string) (info smartblock2.DocInfo, err error) {
+	err = block.Do(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		info = sb.GetDocInfo()
 		return nil
 	})

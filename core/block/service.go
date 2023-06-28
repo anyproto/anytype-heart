@@ -257,8 +257,9 @@ func (s *Service) OpenBlock(
 func (s *Service) ShowBlock(
 	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
-	cctx := context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "object_show")
-	err2 := s.DoWithContext(cctx, id, func(b smartblock.SmartBlock) error {
+	cctx := context.WithValue(ctx.Context(), metrics.CtxKeyEntrypoint, "object_show")
+	ctx.SetContext(cctx)
+	err2 := Do(s, ctx, id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
 		}
@@ -822,26 +823,6 @@ func Do[t any](p Picker, ctx session.Context, id string, apply func(sb t) error)
 	return apply(bb)
 }
 
-func DoWithContext[t any](ctx context.Context, p Picker, id string, apply func(sb t) error) error {
-	sb, err := p.PickBlock(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	callerID, _ := ctx.Value(smartblock.CallerKey).(string)
-	if callerID != id {
-		sb.Lock()
-		defer sb.Unlock()
-	}
-
-	bb, ok := sb.(t)
-	if !ok {
-		var dummy = new(t)
-		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
-	}
-	return apply(bb)
-}
-
 // DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
 // It correctly handles the case when two ids are the same.
 func DoState2[t1, t2 any](s *Service, ctx session.Context, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
@@ -916,20 +897,6 @@ func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *s
 	}
 
 	return sb.Apply(st, flags...)
-}
-
-func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, err := s.PickBlock(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	callerId, _ := ctx.Value(smartblock.CallerKey).(string)
-	if callerId != id {
-		sb.Lock()
-		defer sb.Unlock()
-	}
-	return apply(sb)
 }
 
 func (s *Service) ObjectApplyTemplate(ctx session.Context, contextId, templateId string) error {

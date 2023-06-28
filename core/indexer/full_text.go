@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -70,8 +71,8 @@ func (i *indexer) runFullTextIndexer() {
 
 func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
-	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-
+	cctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
+	ctx := session.NewContext(cctx, i.eventSender, i.spaceService.AccountId())
 	info, err := i.getObjectInfo(ctx, id)
 	if err != nil {
 		return ftDoc, fmt.Errorf("get object info: %w", err)
