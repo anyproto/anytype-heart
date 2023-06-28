@@ -156,8 +156,8 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 }
 
 func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
-	s.l.Lock()
-	defer s.l.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	if sub == nil {
 		err = fmt.Errorf("subscription func is nil")
@@ -176,6 +176,5 @@ func (s *dsObjectStore) QueryByIDAndSubscribeForChanges(ids []string, sub databa
 	}
 
 	s.addSubscriptionIfNotExists(sub)
-
 	return
 }
