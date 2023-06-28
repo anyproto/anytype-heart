@@ -1,161 +1,128 @@
 package objectstore
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
 
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
+	if details == nil {
+		return nil
 	}
-	defer txn.Discard()
-	var (
-		before model.ObjectInfo
-	)
+	if details.Fields == nil {
+		return fmt.Errorf("details fields are nil")
+	}
+	if pbtypes.GetString(details, bundle.RelationKeyWorkspaceId.String()) == "" {
+		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
+	}
+	newDetails := &model.ObjectDetails{
+		Details: details,
+	}
 
-	if details != nil {
-		exInfo, err := s.getObjectInfo(txn, id)
+	key := pagesDetailsBase.ChildString(id).Bytes()
+	txErr := s.updateTxn(func(txn *badger.Txn) error {
+		oldDetails, err := s.extractDetailsByKey(txn, key)
+		if err != nil && !isNotFound(err) {
+			return fmt.Errorf("extract details: %w", err)
+		}
+		if oldDetails != nil && oldDetails.Details.Equal(newDetails.Details) {
+			return ErrDetailsNotChanged
+		}
+		// Ensure ID is set
+		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+		s.sendUpdatesToSubscriptions(id, details)
+		val, err := proto.Marshal(newDetails)
 		if err != nil {
-			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
+			return fmt.Errorf("marshal details: %w", err)
 		}
-
-		if exInfo != nil {
-			before = *exInfo
-		} else {
-			// init an empty state to skip nil checks later
-			before = model.ObjectInfo{
-				Details: &types.Struct{Fields: map[string]*types.Value{}},
-			}
-		}
+		return txn.Set(key, val)
+	})
+	if txErr != nil {
+		return txErr
 	}
-
-	err = s.updateObjectDetails(txn, id, before, details)
-	if err != nil {
-		return err
-	}
-	err = txn.Commit()
-	if err != nil {
-		return err
-	}
-
+	s.cache.Set(key, newDetails, int64(newDetails.Size()))
 	return nil
 }
 
-func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
+func (s *dsObjectStore) extractDetailsByKey(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
+	raw, ok := s.cache.Get(key)
+	if ok {
+		return raw.(*model.ObjectDetails), nil
 	}
-	defer txn.Discard()
 
-	err = s.updateObjectLinks(txn, id, links)
+	it, err := txn.Get(key)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("get item: %w", err)
 	}
-	return txn.Commit()
+	return s.unmarshalDetailsFromItem(it)
+}
+
+func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
+		return s.updateObjectLinks(txn, id, links)
+	})
 }
 
 func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	s.l.Lock()
-	defer s.l.Unlock()
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
-		if err := s.updateSnippet(txn, id, snippet); err != nil {
-			return err
-		}
-	}
-	return txn.Commit()
+	return setValue(s.db, pagesSnippetBase.ChildString(id).Bytes(), snippet)
 }
 
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	// todo: review this method. Any other way to do this?
-	for {
-		err := s.updatePendingLocalDetails(id, proc)
-		if errors.Is(err, badger.ErrConflict) {
-			continue
+	return s.updateTxn(func(txn *badger.Txn) error {
+		key := pendingDetailsBase.ChildString(id).Bytes()
+
+		objDetails, err := s.getPendingLocalDetails(txn, key)
+		if err != nil && !isNotFound(err) {
+			return fmt.Errorf("get pending details: %w", err)
 		}
+
+		oldDetails := objDetails.GetDetails()
+		if oldDetails == nil || oldDetails.Fields == nil {
+			oldDetails = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+		newDetails, err := proc(oldDetails)
 		if err != nil {
-			return err
+			return fmt.Errorf("run a modifier: %w", err)
+		}
+		if newDetails == nil {
+			err = txn.Delete(key)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		if newDetails.Fields == nil {
+			newDetails.Fields = map[string]*types.Value{}
+		}
+		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+		err = setValueTxn(txn, key, &model.ObjectDetails{Details: newDetails})
+		if err != nil {
+			return fmt.Errorf("put pending details: %w", err)
 		}
 		return nil
-	}
+	})
 }
 
-func (s *dsObjectStore) updatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
-	txn, err := s.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-	key := pendingDetailsBase.ChildString(id)
-
-	objDetails, err := s.getPendingLocalDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
-		return fmt.Errorf("get pending details: %w", err)
-	}
-
-	details := objDetails.GetDetails()
-	if details == nil || details.Fields == nil {
-		details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-	details, err = proc(details)
-	if err != nil {
-		return fmt.Errorf("run a modifier: %w", err)
-	}
-	if details == nil {
-		err = txn.Delete(key)
-		if err != nil {
-			return err
-		}
-		return txn.Commit()
-	}
-	b, err := proto.Marshal(&model.ObjectDetails{Details: details})
-	if err != nil {
-		return err
-	}
-	err = txn.Put(key, b)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
+func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
+	return getValueTxn(txn, key, func(raw []byte) (*model.ObjectDetails, error) {
+		var res model.ObjectDetails
+		err := proto.Unmarshal(raw, &res)
+		return &res, err
+	})
 }
 
-func (s *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
-	val, err := txn.Get(pendingDetailsBase.ChildString(id))
-	if err != nil {
-		return nil, err
-	}
-	return unmarshalDetails(id, val)
-}
-
-func (s *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
+func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []string) error {
 	exLinks, err := findOutboundLinks(txn, id)
 	if err != nil {
 		log.Errorf("error while finding outbound links for %s: %s", id, err)
@@ -165,66 +132,18 @@ func (s *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []st
 	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
 	if len(addedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, addedLinks) {
-			if err := txn.Put(k, nil); err != nil {
-				return err
+			err := txn.Set(k.Bytes(), nil)
+			if err != nil {
+				return fmt.Errorf("setting link %s: %w", k, err)
 			}
 		}
 	}
-
 	if len(removedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, removedLinks) {
-			if err := txn.Delete(k); err != nil {
+			if err := txn.Delete(k.Bytes()); err != nil {
 				return err
 			}
 		}
-	}
-
-	return nil
-}
-
-func (s *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before model.ObjectInfo, details *types.Struct) error {
-	if details != nil {
-		if err := s.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
-	metrics.ObjectDetailsUpdatedCounter.Inc()
-	detailsKey := pagesDetailsBase.ChildString(id)
-
-	if newDetails.GetDetails().GetFields() == nil {
-		return fmt.Errorf("newDetails is nil")
-	}
-
-	newDetails.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id) // always ensure we have id set
-	b, err := proto.Marshal(newDetails)
-	if err != nil {
-		return err
-	}
-	err = txn.Put(detailsKey, b)
-	if err != nil {
-		return err
-	}
-
-	if pbtypes.GetString(newDetails.Details, bundle.RelationKeyWorkspaceId.String()) == "" {
-		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
-	}
-	
-	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
-		return ErrDetailsNotChanged
-	}
-
-	err = localstore.UpdateIndexesWithTxn(s, txn, oldDetails, newDetails, id)
-	if err != nil {
-		return err
-	}
-
-	if newDetails != nil && newDetails.Details.Fields != nil {
-		s.sendUpdatesToSubscriptions(id, newDetails.Details)
 	}
 
 	return nil
@@ -244,9 +163,4 @@ func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 			_ = sub.Publish(id, detCopy)
 		}(s.subscriptions[i])
 	}
-}
-
-func (s *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string) error {
-	snippetKey := pagesSnippetBase.ChildString(id)
-	return txn.Put(snippetKey, []byte(snippet))
 }

@@ -43,7 +43,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	if wantWidth > 1920 {
-		fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/original")
+		fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/original")
 		if err == nil {
 			return &file{
 				hash: fileIndex.Hash,
@@ -54,7 +54,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}
 
 	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 // GetOriginalFile doesn't contains Meta
 func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
 	sizeName := "original"
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err == nil {
 		return &file{
 			hash: fileIndex.Hash,
@@ -89,7 +89,7 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 
 	// fallback to large size, because older image nodes don't have an original
 	sizeName := "large"
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (i *image) Hash() string {
 }
 
 func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
-	fileIndex, err := i.service.fileGetInfoForPath("/ipfs/" + i.hash + "/0/exif")
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/exif")
 	if err != nil {
 		return nil, err
 	}
@@ -133,14 +133,22 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 }
 
 func (i *image) Details(ctx context.Context) (*types.Struct, error) {
+	imageExif, err := i.Exif(ctx)
+	if err != nil {
+		log.Errorf("failed to get exif for image: %s", err.Error())
+		imageExif = &mill.ImageExifSchema{}
+	}
+
+	commonDetails := calculateCommonDetails(
+		i.hash,
+		bundle.TypeKeyImage,
+		model.ObjectType_image,
+		i.extractLastModifiedDate(ctx, imageExif),
+	)
+	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.hash)
+
 	details := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():         pbtypes.String(i.hash),
-			bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
-			bundle.RelationKeyIconImage.String():  pbtypes.String(i.hash),
-			bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeyImage.URL()),
-			bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_image)),
-		},
+		Fields: commonDetails,
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
@@ -168,17 +176,10 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
 		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
 		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
-
 	}
 
-	exif, err := i.Exif(ctx)
-	if err != nil {
-		log.Errorf("failed to get exif for image: %s", err.Error())
-		exif = &mill.ImageExifSchema{}
-	}
-
-	if !exif.Created.IsZero() {
-		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(exif.Created.Unix()))
+	if !imageExif.Created.IsZero() {
+		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(imageExif.Created.Unix()))
 	}
 	/*if exif.Latitude != 0.0 {
 		details.Fields["latitude"] = pbtypes.Float64(exif.Latitude)
@@ -186,28 +187,28 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	if exif.Longitude != 0.0 {
 		details.Fields["longitude"] = pbtypes.Float64(exif.Longitude)
 	}*/
-	if exif.CameraModel != "" {
-		details.Fields[bundle.RelationKeyCamera.String()] = pbtypes.String(exif.CameraModel)
+	if imageExif.CameraModel != "" {
+		details.Fields[bundle.RelationKeyCamera.String()] = pbtypes.String(imageExif.CameraModel)
 	}
-	if exif.ExposureTime != "" {
-		details.Fields[bundle.RelationKeyExposure.String()] = pbtypes.String(exif.ExposureTime)
+	if imageExif.ExposureTime != "" {
+		details.Fields[bundle.RelationKeyExposure.String()] = pbtypes.String(imageExif.ExposureTime)
 	}
-	if exif.FNumber != 0 {
-		details.Fields[bundle.RelationKeyFocalRatio.String()] = pbtypes.Float64(exif.FNumber)
+	if imageExif.FNumber != 0 {
+		details.Fields[bundle.RelationKeyFocalRatio.String()] = pbtypes.Float64(imageExif.FNumber)
 	}
-	if exif.ISO != 0 {
-		details.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Float64(float64(exif.ISO))
+	if imageExif.ISO != 0 {
+		details.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Float64(float64(imageExif.ISO))
 	}
-	if exif.Description != "" {
+	if imageExif.Description != "" {
 		// use non-empty image description as an image name, because it much uglier to use file names for objects
-		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(exif.Description)
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(imageExif.Description)
 	}
-	if exif.Artist != "" {
-		artistName, artistUrl := unpackArtist(exif.Artist)
+	if imageExif.Artist != "" {
+		artistName, artistURL := unpackArtist(imageExif.Artist)
 		details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistName)
 
-		if artistUrl != "" {
-			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistUrl)
+		if artistURL != "" {
+			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistURL)
 		}
 	}
 
@@ -262,6 +263,27 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	}
 
 	return nil, ErrFileNotFound
+}
+
+func (i *image) extractLastModifiedDate(ctx context.Context, imageExif *mill.ImageExifSchema) int64 {
+	var lastModifiedDate int64
+	largest, err := i.GetFileForLargestWidth(ctx)
+	if err == nil {
+		lastModifiedDate = largest.Meta().LastModifiedDate
+	}
+	if lastModifiedDate == 0 {
+		lastModifiedDate = imageExif.Created.Unix()
+	}
+
+	if lastModifiedDate == 0 && err == nil {
+		lastModifiedDate = largest.Meta().Added.Unix()
+	}
+
+	if lastModifiedDate == 0 {
+		lastModifiedDate = time.Now().Unix()
+	}
+
+	return lastModifiedDate
 }
 
 var imageWidthByName = map[string]int{

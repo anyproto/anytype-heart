@@ -96,6 +96,11 @@ If you want to change the default port(9999):
 ----
 ### Useful tools for debug
 
+#### Debug server
+Use env var ANYDEBUG=address to enable debugging HTTP server. For example: `ANYDEBUG=:6061` will start debug server on port 6061
+
+You can find all endpoints in `/debug` page. For example: http://localhost:6061/debug
+
 #### gRPC logging
 In order to log mw gRPC requests/responses use `ANYTYPE_GRPC_LOG` env var:
 - `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=1` - log only method names   

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
 	dsbadgerv3 "github.com/textileio/go-ds-badger3"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -29,11 +31,13 @@ var log = logging.Logger("anytype-clientds")
 type clientds struct {
 	running bool
 
-	spaceDS      *dsbadgerv3.Datastore
-	localstoreDS *dsbadgerv3.Datastore
-	cfg          Config
-	repoPath     string
-	migrations   []migration
+	spaceDS                                    *dsbadgerv3.Datastore
+	localstoreDS                               *dsbadgerv3.Datastore
+	cfg                                        Config
+	repoPath                                   string
+	migrations                                 []migration
+	spaceStoreWasMissing, localStoreWasMissing bool
+	spentOnInit                                time.Duration
 }
 
 type Config struct {
@@ -80,6 +84,8 @@ func init() {
 }
 
 func (r *clientds) Init(a *app.App) (err error) {
+	// TODO: looks like we do a lot of stuff on Init here. We should consider moving it to the Run
+	start := time.Now()
 	wl := a.Component(wallet.CName)
 	if wl == nil {
 		return fmt.Errorf("need wallet to be inited first")
@@ -96,6 +102,14 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 	if _, err := os.Stat(filepath.Join(r.getRepoPath(oldLitestoreDir))); !os.IsNotExist(err) {
 		return fmt.Errorf("old repo found")
+	}
+
+	if _, err := os.Stat(r.getRepoPath(localstoreDSDir)); os.IsNotExist(err) {
+		r.localStoreWasMissing = true
+	}
+
+	if _, err := os.Stat(r.getRepoPath(SpaceDSDir)); os.IsNotExist(err) {
+		r.spaceStoreWasMissing = true
 	}
 
 	RemoveExpiredLocks(r.repoPath)
@@ -116,7 +130,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 	}
 
 	r.running = true
-
+	r.spentOnInit = time.Since(start)
 	return nil
 }
 
@@ -163,6 +177,13 @@ func (r *clientds) LocalstoreDS() (datastore.DSTxnBatching, error) {
 	return r.localstoreDS, nil
 }
 
+func (r *clientds) LocalstoreBadger() (*badger.DB, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.localstoreDS.DB, nil
+}
+
 func (r *clientds) Name() (name string) {
 	return CName
 }
@@ -191,4 +212,12 @@ func New() datastore.Datastore {
 
 func (r *clientds) getRepoPath(dir string) string {
 	return filepath.Join(r.repoPath, dir)
+}
+
+func (r *clientds) GetLogFields() []zap.Field {
+	return []zap.Field{
+		zap.Bool("spaceStoreWasMissing", r.spaceStoreWasMissing),
+		zap.Bool("localStoreWasMissing", r.localStoreWasMissing),
+		zap.Int64("spentOnInit", r.spentOnInit.Milliseconds()),
+	}
 }

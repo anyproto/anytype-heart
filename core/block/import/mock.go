@@ -79,9 +79,9 @@ func (m *MockIDGetter) EXPECT() *MockIDGetterMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockIDGetter) Get(arg0 *session.Context, arg1 *converter.Snapshot, arg2 smartblock.SmartBlockType, arg3 time.Time, arg4 bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (m *MockIDGetter) Get(arg0 *session.Context, arg1 *converter.Snapshot, arg2 smartblock.SmartBlockType, arg3 time.Time, arg4 bool, arg5 map[string]string) (string, treestorage.TreeStorageCreatePayload, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(treestorage.TreeStorageCreatePayload)
 	ret2, _ := ret[2].(error)
@@ -89,7 +89,7 @@ func (m *MockIDGetter) Get(arg0 *session.Context, arg1 *converter.Snapshot, arg2
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockIDGetterMockRecorder) Get(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockIDGetterMockRecorder) Get(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockIDGetter)(nil).Get), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockIDGetter)(nil).Get), arg0, arg1, arg2, arg3, arg4, arg5)
 }

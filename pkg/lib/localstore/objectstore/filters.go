@@ -1,11 +1,11 @@
 package objectstore
 
 import (
-	"strings"
+	"fmt"
 
-	"github.com/ipfs/go-datastore/query"
-
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
@@ -19,21 +19,29 @@ func newIdsFilter(ids []string) idsFilter {
 
 type idsFilter map[string]int
 
-func (f idsFilter) Filter(e query.Entry) bool {
-	_, ok := f[extractIdFromKey(e.Key)]
+func (f idsFilter) FilterObject(getter filter.Getter) bool {
+	id := getter.Get(bundle.RelationKeyId.String()).GetStringValue()
+	_, ok := f[id]
 	return ok
 }
 
-func (f idsFilter) Compare(a, b query.Entry) int {
-	aIndex := f[extractIdFromKey(a.Key)]
-	bIndex := f[extractIdFromKey(b.Key)]
-	if aIndex == bIndex {
+func (f idsFilter) Compare(a, b filter.Getter) int {
+	idA := a.Get(bundle.RelationKeyId.String()).GetStringValue()
+	idB := b.Get(bundle.RelationKeyId.String()).GetStringValue()
+	aIndex := f[idA]
+	bIndex := f[idB]
+	switch {
+	case aIndex == bIndex:
 		return 0
-	} else if aIndex < bIndex {
+	case aIndex < bIndex:
 		return -1
-	} else {
+	default:
 		return 1
 	}
+}
+
+func (f idsFilter) String() string {
+	return "idsFilter"
 }
 
 type filterSmartblockTypes struct {
@@ -50,20 +58,21 @@ func newSmartblockTypesFilter(sbtProvider typeprovider.SmartBlockTypeProvider, n
 	}
 }
 
-func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
-	keyParts := strings.Split(e.Key, "/")
-	id := keyParts[len(keyParts)-1]
-
+func (m *filterSmartblockTypes) FilterObject(getter filter.Getter) bool {
+	id := getter.Get(bundle.RelationKeyId.String()).GetStringValue()
 	t, err := m.sbtProvider.Type(id)
 	if err != nil {
 		log.Debugf("failed to detect smartblock type for %s: %s", id, err.Error())
 		return false
 	}
-
 	for _, ot := range m.smartBlockTypes {
 		if t == ot {
 			return !m.not
 		}
 	}
 	return m.not
+}
+
+func (m *filterSmartblockTypes) String() string {
+	return fmt.Sprintf("filterSmartblockTypes %v", m.smartBlockTypes)
 }

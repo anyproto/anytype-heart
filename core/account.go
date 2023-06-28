@@ -156,7 +156,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 
 	mw.requireClientWithVersion()
 	if mw.app, err = anytype.StartNewApp(
-		context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create"),
+		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "account_create"),
 		mw.clientWithVersion,
 		comps...,
 	); err != nil {
@@ -310,7 +310,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 	mw.requireClientWithVersion()
 	if mw.app, err = anytype.StartNewApp(
-		context.WithValue(context.Background(), metrics.CtxKeyRequest, request),
+		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, request),
 		mw.clientWithVersion,
 		comps...,
 	); err != nil {
@@ -663,7 +663,7 @@ func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.Deriv
 		mw.EventSender,
 	}
 
-	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyRequest, "account_create")
+	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "account_create")
 	var err error
 	if mw.app, err = anytype.StartNewApp(ctxWithValue, mw.clientWithVersion, comps...); err != nil {
 		return err

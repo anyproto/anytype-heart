@@ -48,7 +48,7 @@ var log = logging.Logger("anytype-grpc-server")
 func main() {
 	var addr string
 	var webaddr string
-
+	app.StartWarningAfter = time.Second * 5
 	fmt.Printf("mw grpc: %s\n", app.VersionDescription())
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
@@ -118,17 +118,21 @@ func main() {
 		unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 			doneCh := make(chan struct{})
 			start := time.Now()
+
+			l := log.With("method", info.FullMethod)
+
 			go func() {
 				select {
 				case <-doneCh:
 				case <-time.After(defaultUnaryWarningAfter):
-					log.With("method", info.FullMethod).With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
+					l.With("in_progress", true).With("goroutines", debug.StackCompact(true)).With("total", defaultUnaryWarningAfter.Milliseconds()).Warnf("grpc unary request is taking too long")
 				}
 			}()
+			ctx = context.WithValue(ctx, metrics.CtxKeyRPC, info.FullMethod)
 			resp, err = handler(ctx, req)
 			close(doneCh)
 			if time.Since(start) > defaultUnaryWarningAfter {
-				log.With("method", info.FullMethod).With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
+				l.With("error", err).With("in_progress", false).With("total", time.Since(start).Milliseconds()).Warnf("grpc unary request took too long")
 			}
 			return
 		})

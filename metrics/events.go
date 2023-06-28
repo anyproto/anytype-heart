@@ -4,7 +4,10 @@ import (
 	"fmt"
 )
 
-const CtxKeyRequest = "request"
+const (
+	CtxKeyEntrypoint = "entrypoint"
+	CtxKeyRPC        = "rpc"
+)
 
 type RecordAcceptEventAggregated struct {
 	IsNAT      bool
@@ -62,6 +65,7 @@ const (
 	ReindexTypeBundledObjects
 	ReindexTypeBundledTemplates
 	ReindexTypeOutdatedHeads
+	ReindexTypeSystem
 )
 
 func (t ReindexType) String() string {
@@ -80,6 +84,8 @@ func (t ReindexType) String() string {
 		return "bundled_templates"
 	case ReindexTypeOutdatedHeads:
 		return "outdated_heads"
+	case ReindexTypeSystem:
+		return "system"
 	}
 	return "unknown"
 }

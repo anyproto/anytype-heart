@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/ipfs/go-cid"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 func (s *service) FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error) {
@@ -64,15 +64,10 @@ func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
 
 func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
 	if len(fileIDs) == 0 {
-		allFiles, err := s.fileStore.List()
+		fileIDs, err = s.fileStore.ListTargets()
 		if err != nil {
 			return 0, 0, fmt.Errorf("list all files: %w", err)
 		}
-
-		allTargets := lo.Map(allFiles, func(file *storage.FileInfo, _ int) []string {
-			return file.Targets
-		})
-		fileIDs = lo.Uniq(lo.Flatten(allTargets))
 	}
 
 	if !includeNotPinned {
@@ -105,27 +100,26 @@ func (s *service) isFileDeleted(fileID string) (bool, error) {
 }
 
 func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
-	fileStats, err := s.fileSync.FileListStats(context.Background(), s.spaceService.AccountId(), fileIDs)
-	if err != nil {
-		return nil, fmt.Errorf("files stat: %w", err)
-	}
-
-	fileIDs = fileIDs[:0]
-	for _, fileStat := range fileStats {
-		if fileStat.IsPinned() {
-			fileIDs = append(fileIDs, fileStat.FileId)
+	var result []string
+	for _, fileID := range fileIDs {
+		status, err := s.fileStore.GetSyncStatus(fileID)
+		if err != nil && err != localstore.ErrNotFound {
+			return nil, fmt.Errorf("get sync status for file %s: %w", fileID, err)
+		}
+		if status == int(syncstatus.StatusSynced) {
+			result = append(result, fileID)
 			continue
 		}
-		isDeleted, err := s.isFileDeleted(fileStat.FileId)
+		isDeleted, err := s.isFileDeleted(fileID)
 		if err != nil {
-			log.With("fileID", fileStat.FileId).Errorf("failed to check if file is deleted: %s", err)
+			log.With("fileID", fileID).Errorf("failed to check if file is deleted: %s", err)
 			continue
 		}
 		if isDeleted {
-			fileIDs = append(fileIDs, fileStat.FileId)
+			result = append(result, fileID)
 		}
 	}
-	return fileIDs, nil
+	return result, nil
 }
 
 func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
@@ -144,6 +138,7 @@ func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 
 		// here we can be sure that the block is loaded to the blockstore, so 1s should be more than enough
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx = context.WithValue(ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
 		n, err := s.commonFile.DAGService().Get(ctx, c)
 		if err != nil {
 			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
