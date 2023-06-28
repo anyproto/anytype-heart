@@ -295,7 +295,7 @@ func (t *textImpl) sendEvents(ctx session.Context) {
 			filteredMsgs = append(filteredMsgs, msg)
 		} else {
 			t.eventSender.BroadcastToOtherSessions(ctx.ID(), &pb.Event{
-				Messages:  msgs,
+				Messages:  []*pb.EventMessage{msg},
 				ContextId: t.Id(),
 			})
 		}
