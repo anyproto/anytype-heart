@@ -87,11 +87,8 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		}
 
 		oldDetails := objDetails.GetDetails()
-		if oldDetails == nil {
+		if oldDetails == nil || oldDetails.Fields == nil {
 			oldDetails = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-		if oldDetails.Fields == nil {
-			oldDetails.Fields = map[string]*types.Value{}
 		}
 		newDetails, err := proc(oldDetails)
 		if err != nil {

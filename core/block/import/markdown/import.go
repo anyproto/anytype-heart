@@ -95,7 +95,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
 	targetObjects := m.getObjectIDs(allSnapshots)
 	rootCollection := converter.NewRootCollection(m.service)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
 		return nil, err
 	}

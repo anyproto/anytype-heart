@@ -61,7 +61,7 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	}
 
 	rootCollection := converter.NewRootCollection(h.collectionService)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
 		cErr.Add(rootCollectionName, err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

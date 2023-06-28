@@ -82,7 +82,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	newID := oldIDtoNew[sn.Id]
 	oc.setRootBlock(snapshot, newID)
 
-	oc.setWorkspaceID(err, newID, snapshot)
+	oc.setWorkspaceID(newID, snapshot)
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
@@ -211,13 +211,16 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 	})
 }
 
-func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model.SmartBlockSnapshotBase) {
+func (oc *ObjectCreator) setWorkspaceID(newID string, snapshot *model.SmartBlockSnapshotBase) {
 	if oc.core.PredefinedBlocks().Account == newID {
 		return
 	}
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
 	if err != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", newID, err.Error())
+	}
+	if workspaceID == "" {
+		return
 	}
 
 	if snapshot.Details != nil && snapshot.Details.Fields != nil {
