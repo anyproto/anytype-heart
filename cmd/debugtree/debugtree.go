@@ -102,7 +102,7 @@ func main() {
 	if *printState {
 		fmt.Println("Building state...")
 		stt := time.Now()
-		s, err := importer.State()
+		s, err := importer.State(false)
 		if err != nil {
 			log.Fatal("can't build state:", err)
 		}
