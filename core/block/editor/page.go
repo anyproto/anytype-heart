@@ -1,7 +1,6 @@
 package editor
 
 import (
-	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -126,7 +125,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			templates := []template.StateTransformer{
 				template.WithEmpty,
 				template.WithObjectTypesAndLayout(ctx.State.ObjectTypes(), layout),
-				bookmarksvc.WithFixedBookmarks(p.Bookmark), // TODO Seems like we need to remove this
 				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,

@@ -91,7 +91,7 @@ func (oc *ObjectCreator) Create(ctx session.Context,
 
 	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
 	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		oc.handleSubObject(st, newID)
+		oc.handleSubObject(ctx, st, newID)
 		return nil, newID, nil
 	}
 
@@ -107,11 +107,11 @@ func (oc *ObjectCreator) Create(ctx session.Context,
 	converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
 		if link.Format == model.RelationFormat_file {
-			filesToDelete = oc.relationSyncer.Sync(st, link.Key)
+			filesToDelete = oc.relationSyncer.Sync(ctx, st, link.Key)
 		}
 	}
 	oc.updateDetailsKey(st, oldIDtoNew)
-	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
+	filesToDelete = append(filesToDelete, oc.handleCoverRelation(ctx, st)...)
 	var respDetails *types.Struct
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, payload, st, newID, oldIDtoNew)
@@ -246,11 +246,11 @@ func (oc *ObjectCreator) deleteFile(ctx session.Context, hash string) {
 	}
 }
 
-func (oc *ObjectCreator) handleSubObject(st *state.State, newID string) {
+func (oc *ObjectCreator) handleSubObject(ctx session.Context, st *state.State, newID string) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace(st.Context(), []string{newID}, oc.core.PredefinedBlocks().Account, true)
+		err := oc.service.RemoveSubObjectsInWorkspace(ctx, []string{newID}, oc.core.PredefinedBlocks().Account, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
 		}
@@ -328,11 +328,11 @@ func (oc *ObjectCreator) updateRelationLinks(st *state.State, keyToUpdate []stri
 	st.AddRelationLinks(relLinksToUpdate...)
 }
 
-func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
+func (oc *ObjectCreator) handleCoverRelation(ctx session.Context, st *state.State) []string {
 	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
 		return nil
 	}
-	filesToDelete := oc.relationSyncer.Sync(st, bundle.RelationKeyCoverId.String())
+	filesToDelete := oc.relationSyncer.Sync(ctx, st, bundle.RelationKeyCoverId.String())
 	return filesToDelete
 }
 

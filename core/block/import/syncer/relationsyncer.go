@@ -15,7 +15,7 @@ import (
 var logger = logging.Logger("import-file-relation-syncer")
 
 type RelationSyncer interface {
-	Sync(state *state.State, relationName string) []string
+	Sync(ctx session.Context, state *state.State, relationName string) []string
 }
 
 type FileRelationSyncer struct {
@@ -27,11 +27,11 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	return &FileRelationSyncer{service: service, fileStore: fileStore}
 }
 
-func (fs *FileRelationSyncer) Sync(state *state.State, relationName string) []string {
-	return fs.handleFileRelation(state, relationName)
+func (fs *FileRelationSyncer) Sync(ctx session.Context, state *state.State, relationName string) []string {
+	return fs.handleFileRelation(ctx, state, relationName)
 }
 
-func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) []string {
+func (fs *FileRelationSyncer) handleFileRelation(ctx session.Context, st *state.State, name string) []string {
 	allFiles := fs.getFilesFromRelations(st, name)
 	allFilesHashes := make([]string, 0)
 	filesToDelete := make([]string, 0, len(allFiles))
@@ -40,7 +40,7 @@ func (fs *FileRelationSyncer) handleFileRelation(st *state.State, name string) [
 			continue
 		}
 		var hash string
-		if hash = fs.uploadFile(st.Context(), f); hash != "" {
+		if hash = fs.uploadFile(ctx, f); hash != "" {
 			allFilesHashes = append(allFilesHashes, hash)
 			filesToDelete = append(filesToDelete, hash)
 		}

@@ -842,16 +842,11 @@ func DoWithContext[t any](ctx context.Context, p Picker, id string, apply func(s
 	return apply(bb)
 }
 
-// TODO ASYNC context
-func DoState[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	return DoStateCtx(p, ctx, id, apply, flags...)
-}
-
 // DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
 // It correctly handles the case when two ids are the same.
 func DoState2[t1, t2 any](s *Service, ctx session.Context, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
 	if firstID == secondID {
-		return DoState(s, ctx, firstID, func(st *state.State, b t1) error {
+		return DoStateAsync(s, ctx, firstID, func(st *state.State, b t1) error {
 			// Check that b satisfies t2
 			b2, ok := any(b).(t2)
 			if !ok {
@@ -862,17 +857,41 @@ func DoState2[t1, t2 any](s *Service, ctx session.Context, firstID, secondID str
 		})
 	}
 	if firstID < secondID {
-		return DoState(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
-			return DoState(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoStateAsync(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
+			return DoStateAsync(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
 				return f(firstState, secondState, firstBlock, secondBlock)
 			})
 		})
 	}
-	return DoState(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
-		return DoState(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
+	return DoStateAsync(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoStateAsync(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
 			return f(firstState, secondState, firstBlock, secondBlock)
 		})
 	})
+}
+
+func DoStateAsync[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
+	if err != nil {
+		return err
+	}
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+
+	st := sb.NewState()
+	err = apply(st, bb)
+	if err != nil {
+		return fmt.Errorf("apply func: %w", err)
+	}
+
+	return sb.Apply(st, flags...)
 }
 
 func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
