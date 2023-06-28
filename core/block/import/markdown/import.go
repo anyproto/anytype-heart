@@ -78,6 +78,9 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 		}
 		allSnapshots = append(allSnapshots, snapshots...)
 	}
+	if allErrors.IsNoObjectToImportError(len(paths)) {
+		return nil, allErrors
+	}
 	allSnapshots, err := m.createRootCollection(allSnapshots)
 	if err != nil {
 		allErrors.Add(rootCollectionName, err)

@@ -63,7 +63,8 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	}
 	p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
 	p.updateDetails(allSnapshots)
-	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if (!allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
+		allErrors.IsNoObjectToImportError(len(params.GetPath())) {
 		return nil, allErrors
 	}
 	if !params.GetNoCollection() {

@@ -145,8 +145,8 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 
 func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		((e == converter.ErrNoObjectsToImport ||
-			e == converter.ErrCancel) && len(res.Snapshots) == 0)
+		(errors.Is(e, converter.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
+		errors.Is(e, converter.ErrCancel)
 }
 
 func (i *Import) setupProgressBar(req *pb.RpcObjectImportRequest) process.Progress {
