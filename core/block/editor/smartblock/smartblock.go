@@ -168,7 +168,7 @@ type InitContext struct {
 	ObjectStore    objectstore.ObjectStore
 	SpaceID        string
 	BuildOpts      source.BuildOptions
-	Ctx            context.Context
+	Ctx            session.Context
 }
 
 type linkSource interface {
@@ -273,7 +273,7 @@ func (sb *smartBlock) Type() model.SmartBlockType {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	cctx := ctx.Ctx
+	cctx := ctx.Ctx.Context()
 	if cctx == nil {
 		cctx = context.Background()
 	}

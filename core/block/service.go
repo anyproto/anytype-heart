@@ -965,7 +965,7 @@ func (s *Service) ObjectApplyTemplate(ctx session.Context, contextId, templateId
 
 func (s *Service) ResetToState(ctx session.Context, pageID string, st *state.State) (err error) {
 	return Do(s, ctx, pageID, func(sb smartblock.SmartBlock) error {
-		return history.ResetToVersion(sb, st)
+		return history.ResetToVersion(ctx, sb, st)
 	})
 }
 

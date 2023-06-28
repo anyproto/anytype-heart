@@ -106,7 +106,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	p.initTemplate(ctx)
 
-	p.AddHook(p.updateSubObject, smartblock.HookAfterApply)
+	p.AddHook(p.updateSubObject(ctx.Ctx), smartblock.HookAfterApply)
 
 	data := ctx.State.Store()
 	if data != nil && data.Fields != nil {
@@ -116,7 +116,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			}
 			if coll != nil && coll.GetStructValue() != nil {
 				for sub := range coll.GetStructValue().GetFields() {
-					if err = p.initSubObject(ctx.State, collName, sub, false); err != nil {
+					if err = p.initSubObject(ctx.Ctx, ctx.State, collName, sub, false); err != nil {
 						log.Errorf("failed to init sub object %s-%s: %v", collName, sub, err)
 					}
 				}
@@ -129,7 +129,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		if !collectionKeyIsSupported(pathS[0]) {
 			continue
 		}
-		if err = p.initSubObject(ctx.State, pathS[0], strings.Join(pathS[1:], addr.SubObjectCollectionIdSeparator), true); err != nil {
+		if err = p.initSubObject(ctx.Ctx, ctx.State, pathS[0], strings.Join(pathS[1:], addr.SubObjectCollectionIdSeparator), true); err != nil {
 			log.Errorf("failed to init deleted sub object %s: %v", path, err)
 		}
 	}
@@ -175,7 +175,7 @@ func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
 	return wp.IsHighlighted == other.IsHighlighted
 }
 
-func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createRelation(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create relation: no data")
 	}
@@ -224,13 +224,13 @@ func (w *Workspaces) createRelation(st *state.State, details *types.Struct) (id 
 	st.SetInStore([]string{collectionKeyRelations, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyRelations, key, true); err != nil {
+	if err = w.initSubObject(ctx, st, collectionKeyRelations, key, true); err != nil {
 		return
 	}
 	return
 }
 
-func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createRelationOption(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create option: no data")
 	}
@@ -264,7 +264,7 @@ func (w *Workspaces) createRelationOption(st *state.State, details *types.Struct
 	st.SetInStore([]string{collectionKeyRelationOptions, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed relation option. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyRelationOptions, key, true); err != nil {
+	if err = w.initSubObject(ctx, st, collectionKeyRelationOptions, key, true); err != nil {
 		return
 	}
 	return
@@ -284,7 +284,7 @@ func (w *Workspaces) createObjectType(ctx session.Context, st *state.State, deta
 		}
 		rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
 		if rel != nil {
-			_, _, err2 := w.createRelation(st, (&relationutils.Relation{rel}).ToStruct())
+			_, _, err2 := w.createRelation(ctx, st, (&relationutils.Relation{rel}).ToStruct())
 			if err2 != nil && err2 != ErrSubObjectAlreadyExists {
 				err = fmt.Errorf("failed to create relation for objectType: %s", err2.Error())
 				return
@@ -337,7 +337,7 @@ func (w *Workspaces) createObjectType(ctx session.Context, st *state.State, deta
 	st.SetInStore([]string{collectionKeyObjectTypes, key}, pbtypes.Struct(cleanSubObjectDetails(object)))
 	// nolint:errcheck
 	_ = w.objectStore.DeleteDetails(id) // we may have details exist from the previously removed object type. Do it before the init so we will not have existing local details populated
-	if err = w.initSubObject(st, collectionKeyObjectTypes, key, true); err != nil {
+	if err = w.initSubObject(ctx, st, collectionKeyObjectTypes, key, true); err != nil {
 		return
 	}
 
@@ -416,9 +416,9 @@ func (w *Workspaces) createObject(ctx session.Context, st *state.State, details 
 	case bundle.TypeKeyObjectType.URL():
 		return w.createObjectType(ctx, st, details)
 	case bundle.TypeKeyRelation.URL():
-		return w.createRelation(st, details)
+		return w.createRelation(ctx, st, details)
 	case bundle.TypeKeyRelationOption.URL():
-		return w.createRelationOption(st, details)
+		return w.createRelationOption(ctx, st, details)
 	default:
 		return "", nil, fmt.Errorf("invalid type: %s", pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	}

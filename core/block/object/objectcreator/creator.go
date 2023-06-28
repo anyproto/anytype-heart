@@ -179,6 +179,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 		createState.InjectDerivedDetails()
 
 		return &smartblock.InitContext{
+			Ctx:            ctx,
 			ObjectTypeUrls: objectTypes,
 			State:          createState,
 			RelationKeys:   relationKeys,

@@ -148,6 +148,7 @@ func (oc *ObjectCreator) createNewObject(ctx session.Context,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
 	sb, err := oc.service.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
 		return &sb.InitContext{
+			Ctx:         ctx,
 			IsNewObject: true,
 			State:       st,
 		}
@@ -339,7 +340,7 @@ func (oc *ObjectCreator) handleCoverRelation(ctx session.Context, st *state.Stat
 func (oc *ObjectCreator) resetState(ctx session.Context, newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
 	err := getblock.Do(oc.picker, ctx, newID, func(b sb.SmartBlock) error {
-		err := history.ResetToVersion(b, st)
+		err := history.ResetToVersion(ctx, b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
 		}

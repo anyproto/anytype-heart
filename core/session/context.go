@@ -10,6 +10,7 @@ import (
 type Context interface {
 	ID() string
 	Context() context.Context
+	SetContext(context.Context)
 	ObjectID() string
 	SpaceID() string
 	TraceID() string
@@ -117,6 +118,10 @@ func (ctx *sessionContext) IsAsync() bool {
 
 func (ctx *sessionContext) Context() context.Context {
 	return ctx.ctx
+}
+
+func (ctx *sessionContext) SetContext(cctx context.Context) {
+	ctx.ctx = cctx
 }
 
 func (ctx *sessionContext) IsActive() bool {

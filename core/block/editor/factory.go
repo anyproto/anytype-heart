@@ -94,7 +94,7 @@ func (f *ObjectFactory) Name() (name string) {
 }
 
 func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := f.sourceService.NewSource(initCtx.Ctx, id, initCtx.SpaceID, initCtx.BuildOpts)
+	sc, err := f.sourceService.NewSource(initCtx.Ctx.Context(), id, initCtx.SpaceID, initCtx.BuildOpts)
 	if err != nil {
 		return
 	}
@@ -125,9 +125,6 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	}
 
 	// we probably don't need any locks here, because the object is initialized synchronously
-	if initCtx == nil {
-		initCtx = &smartblock.InitContext{}
-	}
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
 	if err != nil {

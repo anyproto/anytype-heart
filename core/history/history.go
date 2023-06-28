@@ -186,7 +186,7 @@ func (h *history) SetVersion(ctx session.Context, pageId, versionId string) (err
 		return
 	}
 	return block.Do(h.picker, ctx, pageId, func(sb smartblock2.SmartBlock) error {
-		return history2.ResetToVersion(sb, s)
+		return history2.ResetToVersion(ctx, sb, s)
 	})
 }
 

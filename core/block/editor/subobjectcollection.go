@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -15,9 +14,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -225,44 +226,46 @@ func (c *SubObjectCollection) Locked() bool {
 	return false
 }
 
-func (c *SubObjectCollection) updateSubObject(info smartblock.ApplyInfo) (err error) {
-	if len(info.Changes) == 0 {
-		return nil
-	}
-	st := c.NewState()
-	for _, ch := range info.Changes {
-		if keySet := ch.GetStoreKeySet(); keySet != nil {
-			if len(keySet.Path) < 2 {
-				continue
-			}
-			var (
-				collName = keySet.Path[0]
-				subId    = keySet.Path[1]
-			)
-			coll, exists := c.collections[collName]
-			if !exists {
-				coll = map[string]SubObjectImpl{}
-				c.collections[collName] = coll
-			}
-			if opt, ok := coll[subId]; ok {
-				if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetSubObjectCollection(collName), subId)); e != nil {
-					log.With("treeId", c.Id()).
-						Errorf("options: can't set struct %s-%s: %v", collName, subId, e)
+func (c *SubObjectCollection) updateSubObject(ctx session.Context) func(info smartblock.ApplyInfo) (err error) {
+	return func(info smartblock.ApplyInfo) (err error) {
+		if len(info.Changes) == 0 {
+			return nil
+		}
+		st := c.NewState()
+		for _, ch := range info.Changes {
+			if keySet := ch.GetStoreKeySet(); keySet != nil {
+				if len(keySet.Path) < 2 {
+					continue
 				}
-			} else {
-				if err = c.initSubObject(st, collName, subId, false); err != nil {
-					return
+				var (
+					collName = keySet.Path[0]
+					subId    = keySet.Path[1]
+				)
+				coll, exists := c.collections[collName]
+				if !exists {
+					coll = map[string]SubObjectImpl{}
+					c.collections[collName] = coll
 				}
-			}
-		} else if keyUnset := ch.GetStoreKeyUnset(); keyUnset != nil {
-			err = c.removeObject(st, strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator))
-			if err != nil {
-				log.With("objectID", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
-				return err
+				if opt, ok := coll[subId]; ok {
+					if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetSubObjectCollection(collName), subId)); e != nil {
+						log.With("treeId", c.Id()).
+							Errorf("options: can't set struct %s-%s: %v", collName, subId, e)
+					}
+				} else {
+					if err = c.initSubObject(ctx, st, collName, subId, false); err != nil {
+						return
+					}
+				}
+			} else if keyUnset := ch.GetStoreKeyUnset(); keyUnset != nil {
+				err = c.removeObject(st, strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator))
+				if err != nil {
+					log.With("objectID", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
+					return err
+				}
 			}
 		}
+		return
 	}
-	return
 }
 
 // cleanSubObjectDetails returns the new type.Struct but the values of fields are passed by reference
@@ -332,7 +335,7 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 	}
 }
 
-func (c *SubObjectCollection) initSubObject(st *state.State, collection string, subId string, justCreated bool) (err error) {
+func (c *SubObjectCollection) initSubObject(ctx session.Context, st *state.State, collection string, subId string, justCreated bool) (err error) {
 	if len(strings.Split(subId, addr.SubObjectCollectionIdSeparator)) > 1 {
 		// handle invalid cases for our own accounts
 		return fmt.Errorf("invalid id: %s", subId)
@@ -390,6 +393,7 @@ func (c *SubObjectCollection) initSubObject(st *state.State, collection string, 
 	c.collections[collection][subId] = subObj
 
 	if err = subObj.Init(&smartblock.InitContext{
+		Ctx:    ctx,
 		Source: c.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, c.onSubObjectChange(collection, subId)),
 	}); err != nil {
 		return

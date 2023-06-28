@@ -61,10 +61,11 @@ func (s *Service) createCache() ocache.OCache {
 	)
 }
 
-func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
+func (s *Service) cacheLoad(cctx context.Context, id string) (value ocache.Object, err error) {
 	// TODO Pass options as parameter?
-	opts := ctx.Value(optsKey).(cacheOpts)
+	opts := cctx.Value(optsKey).(cacheOpts)
 
+	ctx := session.NewContext(cctx, s.eventSender, opts.spaceId)
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
 		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
@@ -90,7 +91,7 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	sbt, _ := s.sbtProvider.Type(id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
-		return s.initSubObject(ctx, id)
+		return s.initSubObject(ctx.Context(), id)
 	default:
 		return buildObject(id)
 	}
@@ -353,9 +354,14 @@ func (s *Service) DeriveTreeCreatePayload(
 // DeriveObject derives the object with id specified in the payload and triggers cache.Get
 // DeriveTreeCreatePayload should be called first to prepare the payload and derive the tree
 func (s *Service) DeriveObject(
-	ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
+	cctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
 ) (err error) {
-	_, err = s.getDerivedObject(ctx, payload, newAccount, func(id string) *smartblock.InitContext {
+	space, err := s.clientService.AccountSpace(cctx)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	_, err = s.getDerivedObject(cctx, space, payload, newAccount, func(id string) *smartblock.InitContext {
+		ctx := session.NewContext(cctx, s.eventSender, space.Id())
 		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 	})
 	if err != nil {
@@ -366,9 +372,8 @@ func (s *Service) DeriveObject(
 }
 
 func (s *Service) getDerivedObject(
-	ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
+	ctx context.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
 ) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
 	if newAccount {
 		var tr objecttree.ObjectTree
 		tr, err = space.TreeBuilder().PutTree(ctx, *payload, nil)
