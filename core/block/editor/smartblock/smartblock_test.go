@@ -1,7 +1,6 @@
 package smartblock
 
 import (
-	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -151,9 +150,13 @@ func (fx *fixture) init(blocks []*model.Block) {
 		bm[b.Id] = simple.New(b)
 	}
 	doc := state.NewDoc(id, bm)
-	fx.source.EXPECT().ReadDoc(context.Background(), gomock.Any(), false).Return(doc, nil)
+	fx.source.EXPECT().ReadDoc(gomock.Any(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.Init(&InitContext{Source: fx.source})
+	ctx := session.NewTestContext(fx.t)
+	err := fx.Init(&InitContext{
+		Ctx:    ctx,
+		Source: fx.source,
+	})
 	require.NoError(fx.t, err)
 }

@@ -270,26 +270,32 @@ func (t *textImpl) newSetTextState(blockId string, ctx session.Context) *state.S
 
 func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
+		// We create new context to avoid sending events to the current session
 		ctx := session.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
 		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
 		}
-		msgs := ctx.GetMessages()
-		filteredMsgs := msgs[:0]
-		for _, msg := range msgs {
-			if msg.GetBlockSetText() == nil {
-				filteredMsgs = append(filteredMsgs, msg)
-			} else {
-				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
-			}
-		}
-		if len(filteredMsgs) > 0 {
-			t.SendEvent(filteredMsgs)
-		}
+		t.sendEvents(ctx)
 		t.cancelSetTextState()
 	}
 	return nil
+}
+
+// sendEvents send BlockSetText events only to the other sessions, other events are sent to all sessions
+func (t *textImpl) sendEvents(ctx session.Context) {
+	msgs := ctx.GetMessages()
+	filteredMsgs := msgs[:0]
+	for _, msg := range msgs {
+		if msg.GetBlockSetText() == nil {
+			filteredMsgs = append(filteredMsgs, msg)
+		} else {
+			ctx.SendToOtherSessions([]*pb.EventMessage{msg})
+		}
+	}
+	if len(filteredMsgs) > 0 {
+		t.SendEvent(filteredMsgs)
+	}
 }
 
 func (t *textImpl) cancelSetTextState() {
@@ -308,6 +314,7 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 			t.cancelSetTextState()
 		}
 	}()
+	// We create new context to avoid sending events to the current session
 	ctx := session.NewChildContext(parentCtx)
 	s := t.newSetTextState(req.BlockId, ctx)
 	wasEmpty := s.IsEmpty(true)
@@ -327,16 +334,7 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 		if err = t.Apply(s); err != nil {
 			return
 		}
-		msgs := ctx.GetMessages()
-		var filtered = msgs[:0]
-		for _, msg := range msgs {
-			if msg.GetBlockSetText() == nil {
-				filtered = append(filtered, msg)
-			} else {
-				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
-			}
-		}
-		t.SendEvent(filtered)
+		t.sendEvents(ctx)
 		return
 	}
 	if len(beforeIds)+len(afterIds) > 0 {

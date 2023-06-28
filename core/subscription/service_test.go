@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -23,7 +24,7 @@ import (
 )
 
 func TestService_Search(t *testing.T) {
-
+	ctx := session.NewTestContext(t)
 	var newSub = func(fx *fixture, subId string) {
 		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{
@@ -51,7 +52,7 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
 			SubId: subId,
 			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
 		})
@@ -158,7 +159,7 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
 			SubId: "subId",
 			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
 			Filters: []*model.BlockContentDataviewFilter{
@@ -202,7 +203,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
 			Sorts: []*model.BlockContentDataviewSort{
 				{
@@ -269,7 +270,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
 			Sorts: []*model.BlockContentDataviewSort{
 				{
@@ -309,7 +310,7 @@ type collectionServiceMock struct {
 	updateCh chan []string
 }
 
-func (c *collectionServiceMock) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
+func (c *collectionServiceMock) SubscribeForCollection(ctx session.Context, collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	return nil, c.updateCh, nil
 }
 

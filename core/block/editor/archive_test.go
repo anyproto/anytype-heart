@@ -20,7 +20,7 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
 	objectStore.EXPECT().Query(gomock.Any(), gomock.Any()).AnyTimes()
 	dm := mockDetailsModifier.NewMockDetailsModifier(ctrl)
-	dm.EXPECT().ModifyLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
+	dm.EXPECT().ModifyLocalDetails(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	a := &Archive{
 		SmartBlock:      sb,
 		DetailsModifier: dm,

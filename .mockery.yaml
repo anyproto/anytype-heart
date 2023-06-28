@@ -13,3 +13,6 @@ packages:
   github.com/anyproto/anytype-heart/core/event:
     interfaces:
       Sender:
+  github.com/anyproto/anytype-heart/core/block/getblock:
+    interfaces:
+      Picker:

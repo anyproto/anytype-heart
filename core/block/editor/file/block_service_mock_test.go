@@ -7,8 +7,6 @@ package file_test
 import (
 	reflect "reflect"
 
-	file "github.com/anyproto/anytype-heart/core/block/editor/file"
-	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	process "github.com/anyproto/anytype-heart/core/block/process"
 	session "github.com/anyproto/anytype-heart/core/session"
 	pb "github.com/anyproto/anytype-heart/pb"
@@ -52,34 +50,6 @@ func (m *MockBlockService) CreateLinkToTheNewObject(arg0 session.Context, arg1 *
 func (mr *MockBlockServiceMockRecorder) CreateLinkToTheNewObject(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLinkToTheNewObject", reflect.TypeOf((*MockBlockService)(nil).CreateLinkToTheNewObject), arg0, arg1)
-}
-
-// Do mocks base method.
-func (m *MockBlockService) Do(arg0 string, arg1 func(smartblock.SmartBlock) error) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Do", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Do indicates an expected call of Do.
-func (mr *MockBlockServiceMockRecorder) Do(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockBlockService)(nil).Do), arg0, arg1)
-}
-
-// DoFile mocks base method.
-func (m *MockBlockService) DoFile(arg0 string, arg1 func(file.File) error) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DoFile", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DoFile indicates an expected call of DoFile.
-func (mr *MockBlockServiceMockRecorder) DoFile(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DoFile", reflect.TypeOf((*MockBlockService)(nil).DoFile), arg0, arg1)
 }
 
 // ProcessAdd mocks base method.

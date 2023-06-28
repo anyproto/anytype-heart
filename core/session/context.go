@@ -14,7 +14,6 @@ type Context interface {
 	ObjectID() string
 	SpaceID() string
 	TraceID() string
-	SetIsAsync(bool)
 	IsActive() bool
 	Broadcast(event *pb.Event)
 	Send(event *pb.Event)
@@ -32,7 +31,6 @@ type sessionContext struct {
 	messages      []*pb.EventMessage
 	sessionSender event.Sender
 	sessionToken  string
-	isAsync       bool
 }
 
 func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, opts ...ContextOption) Context {
@@ -47,6 +45,7 @@ func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, 
 	return ctx
 }
 
+// NewChildContext creates a new child context. The child context has empty messages
 func NewChildContext(parent Context) Context {
 	child := &sessionContext{
 		ctx:          parent.Context(),
@@ -62,19 +61,7 @@ func NewChildContext(parent Context) Context {
 	return child
 }
 
-func NewAsyncChildContext(parent *sessionContext) Context {
-	ctx := NewChildContext(parent)
-	ctx.SetIsAsync(true)
-	return ctx
-}
-
 type ContextOption func(ctx *sessionContext)
-
-func Async() ContextOption {
-	return func(ctx *sessionContext) {
-		ctx.isAsync = true
-	}
-}
 
 func WithSession(token string) ContextOption {
 	return func(ctx *sessionContext) {
@@ -106,14 +93,6 @@ func (ctx *sessionContext) TraceID() string {
 
 func (ctx *sessionContext) SpaceID() string {
 	return ctx.spaceID
-}
-
-func (ctx *sessionContext) SetIsAsync(isAsync bool) {
-	ctx.isAsync = isAsync
-}
-
-func (ctx *sessionContext) IsAsync() bool {
-	return ctx.isAsync
 }
 
 func (ctx *sessionContext) Context() context.Context {

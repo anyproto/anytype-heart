@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/session"
 )
 
 type testPicker struct {
@@ -24,13 +25,14 @@ func (t *testPicker) PickBlock(ctx context.Context, id string) (sb smartblock.Sm
 func TestBroadcast(t *testing.T) {
 	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
+	ctx := session.NewTestContext(t)
 
 	picker := &testPicker{sb: sb}
 	s := New(picker, nil, nil, nil)
 
-	_, subCh1, err := s.SubscribeForCollection(collectionID, "sub1")
+	_, subCh1, err := s.SubscribeForCollection(ctx, collectionID, "sub1")
 	require.NoError(t, err)
-	_, subCh2, err := s.SubscribeForCollection(collectionID, "sub2")
+	_, subCh2, err := s.SubscribeForCollection(ctx, collectionID, "sub2")
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
