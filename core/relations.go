@@ -170,7 +170,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 			m.Details = newDetails
 		}
 		return m

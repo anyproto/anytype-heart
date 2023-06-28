@@ -37,7 +37,7 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -435,7 +435,7 @@ func (mw *Middleware) ObjectRelationAdd(cctx context.Context, req *pb.RpcObjectR
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -460,7 +460,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -502,7 +502,7 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -522,7 +522,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -543,7 +543,7 @@ func (mw *Middleware) ObjectSetSource(cctx context.Context,
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -569,7 +569,7 @@ func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.
 			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
 			resp.Error.Description = err.Error()
 		} else {
-			resp.Event = ctx.GetResponseEvent()
+			resp.Event = mw.getResponseEvent(ctx)
 		}
 		return resp
 	}
@@ -593,7 +593,7 @@ func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjec
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -613,7 +613,7 @@ func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.Rp
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -633,7 +633,7 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -746,7 +746,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}

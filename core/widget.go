@@ -14,7 +14,7 @@ func (mw *Middleware) BlockCreateWidget(cctx context.Context, req *pb.RpcBlockCr
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -36,7 +36,7 @@ func (mw *Middleware) BlockWidgetSetTargetId(cctx context.Context, req *pb.RpcBl
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -57,7 +57,7 @@ func (mw *Middleware) BlockWidgetSetLayout(cctx context.Context, req *pb.RpcBloc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -78,7 +78,7 @@ func (mw *Middleware) BlockWidgetSetLimit(cctx context.Context, req *pb.RpcBlock
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -99,7 +99,7 @@ func (mw *Middleware) BlockWidgetSetViewId(cctx context.Context, req *pb.RpcBloc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}

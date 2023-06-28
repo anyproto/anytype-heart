@@ -21,7 +21,7 @@ func (mw *Middleware) BlockCreate(cctx context.Context, req *pb.RpcBlockCreateRe
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -43,7 +43,7 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -167,7 +167,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -211,7 +211,7 @@ func (mw *Middleware) BlockCut(cctx context.Context, req *pb.RpcBlockCutRequest)
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -241,7 +241,7 @@ func (mw *Middleware) BlockExport(cctx context.Context, req *pb.RpcBlockExportRe
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -264,7 +264,7 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -284,7 +284,7 @@ func (mw *Middleware) BlockListDelete(cctx context.Context, req *pb.RpcBlockList
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -304,7 +304,7 @@ func (mw *Middleware) BlockListDuplicate(cctx context.Context, req *pb.RpcBlockL
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -326,7 +326,7 @@ func (mw *Middleware) BlockSetFields(cctx context.Context, req *pb.RpcBlockSetFi
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -346,7 +346,7 @@ func (mw *Middleware) BlockListSetFields(cctx context.Context, req *pb.RpcBlockL
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -419,7 +419,7 @@ func (mw *Middleware) BlockReplace(cctx context.Context, req *pb.RpcBlockReplace
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -441,7 +441,7 @@ func (mw *Middleware) BlockTextSetColor(cctx context.Context, req *pb.RpcBlockTe
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -461,7 +461,7 @@ func (mw *Middleware) BlockListSetBackgroundColor(cctx context.Context, req *pb.
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -481,7 +481,7 @@ func (mw *Middleware) BlockLinkListSetAppearance(cctx context.Context, req *pb.R
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -501,7 +501,7 @@ func (mw *Middleware) BlockListSetAlign(cctx context.Context, req *pb.RpcBlockLi
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -521,7 +521,7 @@ func (mw *Middleware) BlockListSetVerticalAlign(cctx context.Context, req *pb.Rp
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -541,7 +541,7 @@ func (mw *Middleware) BlockListMoveToExistingObject(cctx context.Context, req *p
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -561,7 +561,7 @@ func (mw *Middleware) BlockListMoveToNewObject(cctx context.Context, req *pb.Rpc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -585,7 +585,7 @@ func (mw *Middleware) BlockListConvertToObjects(cctx context.Context, req *pb.Rp
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -607,7 +607,7 @@ func (mw *Middleware) BlockTextListSetStyle(cctx context.Context, req *pb.RpcBlo
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -627,7 +627,7 @@ func (mw *Middleware) BlockDivListSetStyle(cctx context.Context, req *pb.RpcBloc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -647,7 +647,7 @@ func (mw *Middleware) BlockTextListSetColor(cctx context.Context, req *pb.RpcBlo
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -667,7 +667,7 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -712,7 +712,7 @@ func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcB
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -732,7 +732,7 @@ func (mw *Middleware) BlockTextListClearContent(cctx context.Context, req *pb.Rp
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -753,7 +753,7 @@ func (mw *Middleware) BlockTextSetText(cctx context.Context, req *pb.RpcBlockTex
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -773,7 +773,7 @@ func (mw *Middleware) BlockLatexSetText(cctx context.Context, req *pb.RpcBlockLa
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -793,7 +793,7 @@ func (mw *Middleware) BlockTextSetStyle(cctx context.Context, req *pb.RpcBlockTe
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -813,7 +813,7 @@ func (mw *Middleware) BlockTextSetIcon(cctx context.Context, req *pb.RpcBlockTex
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -833,7 +833,7 @@ func (mw *Middleware) BlockTextSetChecked(cctx context.Context, req *pb.RpcBlock
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -866,7 +866,7 @@ func (mw *Middleware) BlockFileListSetStyle(cctx context.Context, req *pb.RpcBlo
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 
 		return m
@@ -914,7 +914,7 @@ func (mw *Middleware) BlockSplit(cctx context.Context, req *pb.RpcBlockSplitRequ
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -936,7 +936,7 @@ func (mw *Middleware) BlockMerge(cctx context.Context, req *pb.RpcBlockMergeRequ
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -956,7 +956,7 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -976,7 +976,7 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -998,7 +998,7 @@ func (mw *Middleware) BlockFileCreateAndUpload(cctx context.Context, req *pb.Rpc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -1020,7 +1020,7 @@ func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjec
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -1041,7 +1041,7 @@ func (mw *Middleware) BlockRelationSetKey(cctx context.Context, req *pb.RpcBlock
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -1062,7 +1062,7 @@ func (mw *Middleware) BlockRelationAdd(cctx context.Context, req *pb.RpcBlockRel
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -1083,7 +1083,7 @@ func (mw *Middleware) BlockListTurnInto(cctx context.Context, req *pb.RpcBlockLi
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}

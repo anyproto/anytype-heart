@@ -16,7 +16,7 @@ type Context interface {
 	TraceID() string
 	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
 	GetMessages() []*pb.EventMessage
-	GetResponseEvent() *pb.ResponseEvent // TODO Maybe use helper? broadcastToOtherSessions(ctx.GetResponseEvent())
+	GetResponseEvent() *pb.ResponseEvent // TODO Maybe use helper? broadcastToOtherSessions(mw.getResponseEvent(ctx))
 }
 
 type sessionContext struct {
@@ -114,16 +114,7 @@ func (ctx *sessionContext) GetMessages() []*pb.EventMessage {
 	return ctx.messages
 }
 
-func (ctx *sessionContext) SendToOtherSessions(msgs []*pb.EventMessage) {
-	ctx.sessionSender.BroadcastToOtherSessions(ctx.sessionToken, &pb.Event{
-		Messages:  msgs,
-		ContextId: ctx.smartBlockId,
-		Initiator: nil,
-	})
-}
-
 func (ctx *sessionContext) GetResponseEvent() *pb.ResponseEvent {
-	ctx.SendToOtherSessions(ctx.messages)
 	return &pb.ResponseEvent{
 		Messages:  ctx.messages,
 		ContextId: ctx.smartBlockId,
