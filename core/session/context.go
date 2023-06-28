@@ -3,7 +3,6 @@ package session
 import (
 	"context"
 
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -20,21 +19,19 @@ type Context interface {
 }
 
 type sessionContext struct {
-	ctx           context.Context
-	smartBlockId  string
-	spaceID       string
-	traceId       string
-	messages      []*pb.EventMessage
-	sessionSender event.Sender
-	sessionToken  string
+	ctx          context.Context
+	smartBlockId string
+	spaceID      string
+	traceId      string
+	messages     []*pb.EventMessage
+	sessionToken string
 }
 
-func NewContext(cctx context.Context, eventSender event.Sender, spaceID string, opts ...ContextOption) Context {
+func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Context {
 	// TODO Add panic if spaceID is empty when working on the next step
 	ctx := &sessionContext{
-		spaceID:       spaceID,
-		sessionSender: eventSender,
-		ctx:           cctx,
+		spaceID: spaceID,
+		ctx:     cctx,
 	}
 	for _, apply := range opts {
 		apply(ctx)
@@ -50,10 +47,6 @@ func NewChildContext(parent Context) Context {
 		smartBlockId: parent.ObjectID(),
 		traceId:      parent.TraceID(),
 		sessionToken: parent.ID(),
-	}
-	v, ok := parent.(*sessionContext)
-	if ok {
-		child.sessionSender = v.sessionSender
 	}
 	return child
 }

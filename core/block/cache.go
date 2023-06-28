@@ -65,7 +65,7 @@ func (s *Service) cacheLoad(cctx context.Context, id string) (value ocache.Objec
 	// TODO Pass options as parameter?
 	opts := cctx.Value(optsKey).(cacheOpts)
 
-	ctx := session.NewContext(cctx, s.eventSender, opts.spaceId)
+	ctx := session.NewContext(cctx, opts.spaceId)
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
 		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
@@ -203,7 +203,7 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 }
 
 func (s *Service) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
-	sctx := session.NewContext(ctx, s.eventSender, spaceId)
+	sctx := session.NewContext(ctx, spaceId)
 	err := s.OnDelete(sctx, treeId, nil)
 	if err != nil {
 		log.Error("failed to execute on delete for tree", zap.Error(err))
@@ -361,7 +361,7 @@ func (s *Service) DeriveObject(
 		return fmt.Errorf("get space: %w", err)
 	}
 	_, err = s.getDerivedObject(cctx, space, payload, newAccount, func(id string) *smartblock.InitContext {
-		ctx := session.NewContext(cctx, s.eventSender, space.Id())
+		ctx := session.NewContext(cctx, space.Id())
 		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 	})
 	if err != nil {

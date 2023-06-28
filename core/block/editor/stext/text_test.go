@@ -1,6 +1,7 @@
 package stext
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -274,7 +275,7 @@ func TestTextImpl_SetText(t *testing.T) {
 	setTextApplyInterval = time.Second / 2
 
 	t.Run("set text after interval", func(t *testing.T) {
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", " ")).
@@ -296,7 +297,7 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Len(t, sb.Results.Applies, 1)
 	})
 	t.Run("set text and new op", func(t *testing.T) {
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", " ")).
@@ -320,7 +321,7 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Len(t, sb.Results.Applies, 1)
 	})
 	t.Run("set text two blocks", func(t *testing.T) {
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
@@ -344,7 +345,7 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Len(t, sb.Results.Applies, 2)
 	})
 	t.Run("flush on mention", func(t *testing.T) {
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
@@ -369,7 +370,7 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Equal(t, "1", sb.Pick("1").Model().GetText().Text)
 	})
 	t.Run("on error", func(t *testing.T) {
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
@@ -385,7 +386,7 @@ func TestTextImpl_SetText(t *testing.T) {
 
 func TestTextImpl_TurnInto(t *testing.T) {
 	t.Run("common text style", func(t *testing.T) {
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
@@ -397,7 +398,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
 	})
 	t.Run("apply only for parents", func(t *testing.T) {
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "", "1.1")).

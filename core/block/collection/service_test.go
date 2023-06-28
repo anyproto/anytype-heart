@@ -25,7 +25,7 @@ func (t *testPicker) PickBlock(ctx context.Context, id string) (sb smartblock.Sm
 func TestBroadcast(t *testing.T) {
 	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
-	ctx := session.NewTestContext(t)
+	ctx := session.NewContext(context.Background(), "")
 
 	picker := &testPicker{sb: sb}
 	s := New(picker, nil, nil, nil)

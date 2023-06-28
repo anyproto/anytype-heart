@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"context"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
@@ -188,7 +189,7 @@ func TestExtractObjects(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
-			ctx := session.NewTestContext(t)
+			ctx := session.NewContext(context.Background(), "")
 			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 

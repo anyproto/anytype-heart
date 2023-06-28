@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -46,7 +47,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
 		fx.source.EXPECT().ReadOnly()
 		var event *pb.Event
-		ctx := session.NewTestContext(t)
+		ctx := session.NewContext(context.Background(), "")
 		fx.RegisterSession(ctx)
 		// TODO Test Async context later
 		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
@@ -158,7 +159,7 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().ReadDoc(gomock.Any(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	ctx := session.NewTestContext(fx.t)
+	ctx := session.NewContext(context.Background(), "")
 	err := fx.Init(&InitContext{
 		Ctx:    ctx,
 		Source: fx.source,

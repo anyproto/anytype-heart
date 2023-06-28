@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -108,7 +107,6 @@ type indexer struct {
 	subObjectCreator subObjectCreator
 	syncStarter      syncStarter
 	fileService      files.Service
-	eventSender      event.Sender
 
 	quit       chan struct{}
 	mu         sync.Mutex
@@ -134,7 +132,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
 	i.syncStarter = app.MustComponent[syncStarter](a)
-	i.eventSender = app.MustComponent[event.Sender](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -379,7 +376,6 @@ func (i *indexer) reindexIfNeeded() error {
 
 	ctx := session.NewContext(
 		context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "reindex_forced"),
-		i.eventSender,
 		i.spaceService.AccountId(),
 	)
 	return i.reindex(ctx, flags)
@@ -575,7 +571,7 @@ func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
 		}
 		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
 	}
-	ctx := session.NewContext(context.Background(), i.eventSender, spaceID)
+	ctx := session.NewContext(context.Background(), spaceID)
 	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(ctx, objects)
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 
@@ -643,7 +639,6 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 
 	ctx := session.NewContext(
 		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "reindexOutdatedThreads"),
-		i.eventSender,
 		spc.Id(),
 	)
 	success = i.reindexIdsIgnoreErr(ctx, idsToReindex...)

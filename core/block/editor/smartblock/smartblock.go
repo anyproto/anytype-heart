@@ -1058,7 +1058,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc
-		sb.Show(session.NewContext(context.TODO(), nil, "TODO"))
+		sb.Show(session.NewContext(context.TODO(), sb.SpaceID()))
 	} else {
 		if len(msgs) > 0 {
 			sb.sendEvent(&pb.Event{
@@ -1298,7 +1298,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
 
-	ctx := session.NewContext(context.Background(), nil, sb.spaceID)
+	ctx := session.NewContext(context.Background(), sb.SpaceID())
 	if err := sb.indexer.Index(ctx, docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}

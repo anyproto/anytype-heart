@@ -3,6 +3,7 @@
 package file_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,7 +26,7 @@ import (
 )
 
 func TestUploader_Upload(t *testing.T) {
-	ctx := session.NewTestContext(t)
+	ctx := session.NewContext(context.Background(), "")
 	newBlock := func(tp model.BlockContentFileType) file2.Block {
 		return simple.New(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{Type: tp}}}).(file2.Block)
 	}

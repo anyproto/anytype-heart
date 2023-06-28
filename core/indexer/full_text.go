@@ -72,7 +72,7 @@ func (i *indexer) runFullTextIndexer() {
 func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	cctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-	ctx := session.NewContext(cctx, i.eventSender, i.spaceService.AccountId())
+	ctx := session.NewContext(cctx, i.spaceService.AccountId())
 	info, err := i.getObjectInfo(ctx, id)
 	if err != nil {
 		return ftDoc, fmt.Errorf("get object info: %w", err)

@@ -46,7 +46,6 @@ func newFileStatusRegistry(
 	fileStore filestore.FileStore,
 	picker getblock.Picker,
 	updateInterval time.Duration,
-	eventSender event.Sender,
 ) *fileStatusRegistry {
 	return &fileStatusRegistry{
 		picker:          picker,
@@ -54,7 +53,6 @@ func newFileStatusRegistry(
 		fileStore:       fileStore,
 		files:           map[fileWithSpace]fileStatus{},
 		updateInterval:  updateInterval,
-		eventSender:     eventSender,
 	}
 }
 
@@ -96,7 +94,7 @@ func (r *fileStatusRegistry) setFileStatus(key fileWithSpace, status fileStatus)
 			return FileStatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
 		}
 		r.files[key] = status
-		ctx := session.NewContext(context.Background(), r.eventSender, key.spaceID)
+		ctx := session.NewContext(context.Background(), key.spaceID)
 		go r.indexFileSyncStatus(ctx, key.fileID, status.status)
 		return status.status, nil
 	}
