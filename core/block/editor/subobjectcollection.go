@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -75,6 +76,7 @@ func NewSubObjectCollection(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 	subObjectFactory subObjectFactory,
+	eventSender event.Sender,
 ) *SubObjectCollection {
 	return &SubObjectCollection{
 		SmartBlock:    sb,
@@ -83,6 +85,7 @@ func NewSubObjectCollection(
 		Text: stext.NewText(
 			sb,
 			objectStore,
+			eventSender,
 		),
 		Dataview: dataview.NewDataview(
 			sb,

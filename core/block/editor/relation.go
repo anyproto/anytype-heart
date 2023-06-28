@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
@@ -33,6 +34,7 @@ func NewRelation(
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
 	picker getblock.Picker,
+	eventSender event.Sender,
 ) *Relation {
 	return &Relation{
 		SubObject: NewSubObject(
@@ -46,6 +48,7 @@ func NewRelation(
 			layoutConverter,
 			fileService,
 			picker,
+			eventSender,
 		),
 	}
 }

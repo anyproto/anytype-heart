@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -48,7 +49,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		ctx := session.NewTestContext(t)
 		fx.RegisterSession(ctx)
 		// TODO Test Async context later
-		ctx.Sender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
+		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
 			event = e
 		})
 		fx.source.EXPECT().Heads()
@@ -95,12 +96,13 @@ func TestBasic_SetAlign(t *testing.T) {
 }
 
 type fixture struct {
-	t       *testing.T
-	ctrl    *gomock.Controller
-	source  *mockSource.MockSource
-	at      *testMock.MockService
-	store   *testMock.MockObjectStore
-	indexer *MockIndexer
+	t           *testing.T
+	ctrl        *gomock.Controller
+	source      *mockSource.MockSource
+	at          *testMock.MockService
+	store       *testMock.MockObjectStore
+	indexer     *MockIndexer
+	eventSender *mock_event.MockSender
 	SmartBlock
 }
 
@@ -128,14 +130,17 @@ func newFixture(t *testing.T) *fixture {
 
 	fileService := testMock.NewMockFileService(ctrl)
 
+	sender := mock_event.NewMockSender(t)
+
 	return &fixture{
-		SmartBlock: New(coreService, fileService, restrictionService, objectStore, relationService, indexer),
-		t:          t,
-		at:         coreService,
-		ctrl:       ctrl,
-		store:      objectStore,
-		source:     source,
-		indexer:    indexer,
+		SmartBlock:  New(coreService, fileService, restrictionService, objectStore, relationService, indexer, sender),
+		t:           t,
+		at:          coreService,
+		ctrl:        ctrl,
+		store:       objectStore,
+		source:      source,
+		indexer:     indexer,
+		eventSender: sender,
 	}
 }
 

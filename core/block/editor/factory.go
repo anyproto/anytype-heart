@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -41,6 +42,7 @@ type ObjectFactory struct {
 	fileService      files.Service
 	config           *config.Config
 	picker           getblock.Picker
+	eventSender      event.Sender
 
 	subObjectFactory subObjectFactory
 }
@@ -69,7 +71,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
 	f.picker = app.MustComponent[getblock.Picker](a)
-
+	f.eventSender = app.MustComponent[event.Sender](a)
 	f.subObjectFactory = subObjectFactory{
 		coreService:        f.anytype,
 		fileBlockService:   f.fileBlockService,
@@ -82,6 +84,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 		sbtProvider:        f.sbtProvider,
 		sourceService:      f.sourceService,
 		tempDirProvider:    f.tempDirProvider,
+		eventSender:        f.eventSender,
 	}
 
 	return nil
@@ -152,6 +155,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.sbtProvider,
 			f.layoutConverter,
 			f.fileService,
+			f.eventSender,
 		), nil
 	case model.SmartBlockType_Archive:
 		return NewArchive(
@@ -179,6 +183,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.tempDirProvider,
 			f.layoutConverter,
 			f.fileService,
+			f.eventSender,
 		), nil
 	case model.SmartBlockType_File:
 		return NewFiles(sb), nil
@@ -195,6 +200,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.sbtProvider,
 			f.layoutConverter,
 			f.fileService,
+			f.eventSender,
 		), nil
 	case model.SmartBlockType_BundledTemplate:
 		return NewTemplate(
@@ -209,6 +215,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.sbtProvider,
 			f.layoutConverter,
 			f.fileService,
+			f.eventSender,
 		), nil
 	case model.SmartBlockType_Workspace:
 		return NewWorkspace(
@@ -223,6 +230,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.subObjectFactory,
 			f.templateCloner,
 			f.config,
+			f.eventSender,
 		), nil
 	case model.SmartBlockType_MissingObject:
 		return NewMissingObject(sb), nil

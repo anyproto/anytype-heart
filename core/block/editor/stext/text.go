@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -37,11 +38,13 @@ type Text interface {
 func NewText(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
+	eventSender event.Sender,
 ) Text {
 	t := &textImpl{
 		SmartBlock:     sb,
 		objectStore:    objectStore,
 		setTextFlushed: make(chan struct{}),
+		eventSender:    eventSender,
 	}
 
 	t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose, smartblock.HookOnBlockClose)
@@ -53,6 +56,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 type textImpl struct {
 	smartblock.SmartBlock
 	objectStore objectstore.ObjectStore
+	eventSender event.Sender
 
 	lastSetTextId    string
 	lastSetTextState *state.State
@@ -290,7 +294,10 @@ func (t *textImpl) sendEvents(ctx session.Context) {
 		if msg.GetBlockSetText() == nil {
 			filteredMsgs = append(filteredMsgs, msg)
 		} else {
-			ctx.SendToOtherSessions([]*pb.EventMessage{msg})
+			t.eventSender.BroadcastToOtherSessions(ctx.ID(), &pb.Event{
+				Messages:  msgs,
+				ContextId: t.Id(),
+			})
 		}
 	}
 	if len(filteredMsgs) > 0 {

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -73,6 +74,7 @@ func NewWorkspace(
 	smartblockFactory subObjectFactory,
 	templateCloner templateCloner,
 	config *config.Config,
+	eventSender event.Sender,
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
@@ -85,6 +87,7 @@ func NewWorkspace(
 			sbtProvider,
 			layoutConverter,
 			smartblockFactory,
+			eventSender,
 		),
 		DetailsModifier: modifier,
 		anytype:         anytype,

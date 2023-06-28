@@ -14,13 +14,9 @@ type Context interface {
 	ObjectID() string
 	SpaceID() string
 	TraceID() string
-	IsActive() bool
-	Broadcast(event *pb.Event)
-	Send(event *pb.Event)
-	SendToOtherSessions(msgs []*pb.EventMessage)
 	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
 	GetMessages() []*pb.EventMessage
-	GetResponseEvent() *pb.ResponseEvent
+	GetResponseEvent() *pb.ResponseEvent // TODO Maybe use helper? broadcastToOtherSessions(ctx.GetResponseEvent())
 }
 
 type sessionContext struct {
@@ -104,10 +100,6 @@ func (ctx *sessionContext) SetContext(cctx context.Context) {
 	ctx.ctx = cctx
 }
 
-func (ctx *sessionContext) IsActive() bool {
-	return ctx.sessionSender.IsActive(ctx.sessionToken)
-}
-
 func (ctx *sessionContext) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = append(ctx.messages, msgs...)
@@ -120,14 +112,6 @@ func (ctx *sessionContext) SetMessages(smartBlockId string, msgs []*pb.EventMess
 
 func (ctx *sessionContext) GetMessages() []*pb.EventMessage {
 	return ctx.messages
-}
-
-func (ctx *sessionContext) Send(event *pb.Event) {
-	ctx.sessionSender.SendToSession(ctx.sessionToken, event)
-}
-
-func (ctx *sessionContext) Broadcast(event *pb.Event) {
-	ctx.sessionSender.BroadcastForSpace(ctx.spaceID, event)
 }
 
 func (ctx *sessionContext) SendToOtherSessions(msgs []*pb.EventMessage) {

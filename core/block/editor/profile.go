@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -33,6 +34,8 @@ type Profile struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	table.TableEditor
+
+	eventSender event.Sender
 }
 
 func NewProfile(
@@ -45,6 +48,7 @@ func NewProfile(
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	eventSender event.Sender,
 ) *Profile {
 	f := file.NewFile(
 		sb,
@@ -60,6 +64,7 @@ func NewProfile(
 		Text: stext.NewText(
 			sb,
 			objectStore,
+			eventSender,
 		),
 		File: f,
 		Clipboard: clipboard.NewClipboard(
@@ -76,6 +81,7 @@ func NewProfile(
 			objectStore,
 		),
 		TableEditor: table.NewEditor(sb),
+		eventSender: eventSender,
 	}
 }
 
@@ -108,7 +114,8 @@ func (p *Profile) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDeta
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
-	ctx.Broadcast(&pb.Event{
+
+	p.eventSender.BroadcastForSpace(p.SpaceID(), &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfAccountDetails{

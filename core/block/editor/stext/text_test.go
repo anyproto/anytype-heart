@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -41,7 +42,8 @@ func TestTextImpl_UpdateTextBlocks(t *testing.T) {
 		AddBlock(newTextBlock("1", "one")).
 		AddBlock(newTextBlock("2", "two"))
 
-	tb := NewText(sb, nil)
+	sender := mock_event.NewMockSender(t)
+	tb := NewText(sb, nil, sender)
 	err := tb.UpdateTextBlocks(nil, []string{"1", "2"}, true, func(tb text.Block) error {
 		tc := tb.Model().GetText()
 		require.NotNil(t, tc)
@@ -56,7 +58,8 @@ func TestTextImpl_Split(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
 			AddBlock(newTextBlock("1", "onetwo"))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
 			BlockId: "1",
 			Range:   &model.Range{From: 3, To: 3},
@@ -75,7 +78,8 @@ func TestTextImpl_Split(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
 			AddBlock(newTextBlock("1", "onetwo"))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
 			BlockId: "1",
 			Range:   &model.Range{From: 3, To: 3},
@@ -93,7 +97,8 @@ func TestTextImpl_Split(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
 			AddBlock(newTextBlock("1", "onetwo"))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
 			BlockId: "1",
 			Range:   &model.Range{From: 3, To: 3},
@@ -116,7 +121,8 @@ func TestTextImpl_Split(t *testing.T) {
 			AddBlock(stb).
 			AddBlock(newTextBlock("inner2", "111"))
 
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
 			BlockId: "1",
 			Range:   &model.Range{From: 3, To: 3},
@@ -145,7 +151,8 @@ func TestTextImpl_Merge(t *testing.T) {
 			AddBlock(tb2).
 			AddBlock(simple.New(&model.Block{Id: "ch1"})).
 			AddBlock(simple.New(&model.Block{Id: "ch2"}))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
 		err := tb.Merge(nil, "1", "2")
 		require.NoError(t, err)
@@ -170,7 +177,8 @@ func TestTextImpl_Merge(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "ch1"})).
 			AddBlock(simple.New(&model.Block{Id: "ch2"}))
 
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
 		err := tb.Merge(nil, "1", "2")
 		require.NoError(t, err)
@@ -197,7 +205,8 @@ func TestTextImpl_Merge(t *testing.T) {
 			AddBlock(tb1).
 			AddBlock(newTextBlock("123", "one"))
 
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
 		err := tb.Merge(nil, "title", "123")
 		require.NoError(t, err)
@@ -218,7 +227,8 @@ func TestTextImpl_SetMark(t *testing.T) {
 			AddBlock(newTextBlock("1", "one")).
 			AddBlock(newTextBlock("2", "two"))
 		mark := &model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
 		r := sb.NewState()
 		tb1, _ := getText(r, "1")
@@ -232,7 +242,8 @@ func TestTextImpl_SetMark(t *testing.T) {
 			AddBlock(newTextBlock("1", "one")).
 			AddBlock(newTextBlock("2", "two"))
 		mark := &model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
 		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
 		r := sb.NewState()
@@ -247,7 +258,8 @@ func TestTextImpl_SetMark(t *testing.T) {
 			AddBlock(newTextBlock("1", "one")).
 			AddBlock(newTextBlock("2", "two"))
 		mark := &model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		require.NoError(t, tb.SetMark(nil, mark, "1"))
 		require.NoError(t, tb.SetMark(nil, mark, "1", "2"))
 		r := sb.NewState()
@@ -267,7 +279,8 @@ func TestTextImpl_SetText(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", " ")).
 			AddBlock(newTextBlock("2", " "))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
 		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
@@ -288,7 +301,8 @@ func TestTextImpl_SetText(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", " ")).
 			AddBlock(newTextBlock("2", " "))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
 		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
@@ -311,7 +325,8 @@ func TestTextImpl_SetText(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(newTextBlock("2", ""))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
 		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
@@ -334,7 +349,8 @@ func TestTextImpl_SetText(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(newTextBlock("2", ""))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
 		require.NoError(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
@@ -358,7 +374,8 @@ func TestTextImpl_SetText(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(simple.New(&model.Block{Id: "2"}))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		assert.Error(t, tb.SetText(ctx, pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "",
@@ -373,7 +390,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(newTextBlock("2", ""))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		require.NoError(t, tb.TurnInto(ctx, model.BlockContentText_Header4, "1", "2"))
 		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
@@ -386,7 +404,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 			AddBlock(newTextBlock("2", "", "2.2")).
 			AddBlock(newTextBlock("1.1", "")).
 			AddBlock(newTextBlock("2.2", ""))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		require.NoError(t, tb.TurnInto(ctx, model.BlockContentText_Checkbox, "1", "1.1", "2", "2.2"))
 		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
@@ -400,7 +419,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 			AddBlock(newTextBlock("2", "", "2.2")).
 			AddBlock(newTextBlock("1.1", "")).
 			AddBlock(newTextBlock("2.2", ""))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Code, "1", "1.1", "2", "2.2"))
 		assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick("2").Model().GetText().Style)
@@ -424,7 +444,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 					},
 				},
 			}))
-		tb := NewText(sb, os)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, os, sender)
 
 		os.EXPECT().QueryByID([]string{"targetId"}).Return([]database.Record{
 			{

@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -50,6 +51,7 @@ func NewPage(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	eventSender event.Sender,
 ) *Page {
 	f := file.NewFile(
 		sb,
@@ -65,6 +67,7 @@ func NewPage(
 		Text: stext.NewText(
 			sb,
 			objectStore,
+			eventSender,
 		),
 		File: f,
 		Clipboard: clipboard.NewClipboard(

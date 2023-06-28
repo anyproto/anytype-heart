@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
@@ -87,6 +88,7 @@ func New(
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	indexer Indexer,
+	eventSender event.Sender,
 ) SmartBlock {
 	s := &smartBlock{
 		hooks:     map[Hook][]HookCallback{},
@@ -100,6 +102,7 @@ func New(
 		objectStore:        objectStore,
 		relationService:    relationService,
 		indexer:            indexer,
+		eventSender:        eventSender,
 	}
 	return s
 }
@@ -112,6 +115,7 @@ type SmartObjectOpenListner interface {
 type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
+	SpaceID() string
 	Type() model.SmartBlockType
 	Show(session.Context) (obj *model.ObjectView, err error)
 	RegisterSession(session.Context)
@@ -217,6 +221,7 @@ type smartBlock struct {
 	objectStore        objectstore.ObjectStore
 	relationService    relation.Service
 	indexer            Indexer
+	eventSender        event.Sender
 }
 
 type LockerSetter interface {
@@ -250,6 +255,10 @@ func (sb *smartBlock) HasRelation(s *state.State, key string) bool {
 
 func (sb *smartBlock) Id() string {
 	return sb.source.Id()
+}
+
+func (sb *smartBlock) SpaceID() string {
+	return sb.spaceID
 }
 
 func (s *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
@@ -355,7 +364,7 @@ func (sb *smartBlock) IsDeleted() bool {
 
 func (sb *smartBlock) sendEvent(e *pb.Event) {
 	for _, s := range sb.sessions {
-		s.Send(e)
+		sb.eventSender.SendToSession(s.ID(), e)
 	}
 }
 
@@ -608,7 +617,7 @@ func (sb *smartBlock) RegisterSession(ctx session.Context) {
 func (sb *smartBlock) IsLocked() bool {
 	var activeCount int
 	for _, s := range sb.sessions {
-		if s.IsActive() {
+		if sb.eventSender.IsActive(s.ID()) {
 			activeCount++
 		}
 	}

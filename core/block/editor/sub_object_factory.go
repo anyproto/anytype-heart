@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -29,6 +30,7 @@ type subObjectFactory struct {
 	sourceService      source.Service
 	tempDirProvider    core.TempDirProvider
 	picker             getblock.Picker
+	eventSender        event.Sender
 }
 
 func (f subObjectFactory) produceSmartblock() smartblock.SmartBlock {
@@ -39,6 +41,7 @@ func (f subObjectFactory) produceSmartblock() smartblock.SmartBlock {
 		f.objectStore,
 		f.relationService,
 		f.indexer,
+		f.eventSender,
 	)
 }
 
@@ -46,11 +49,11 @@ func (f subObjectFactory) produce(collection string) (SubObjectImpl, error) {
 	sb := f.produceSmartblock()
 	switch collection {
 	case collectionKeyObjectTypes:
-		return NewObjectType(sb, f.objectStore, f.fileBlockService, f.coreService, f.relationService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.picker), nil
+		return NewObjectType(sb, f.objectStore, f.fileBlockService, f.coreService, f.relationService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.picker, f.eventSender), nil
 	case collectionKeyRelations:
-		return NewRelation(sb, f.objectStore, f.fileBlockService, f.coreService, f.relationService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.picker), nil
+		return NewRelation(sb, f.objectStore, f.fileBlockService, f.coreService, f.relationService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.picker, f.eventSender), nil
 	case collectionKeyRelationOptions:
-		return NewRelationOption(sb, f.objectStore, f.fileBlockService, f.coreService, f.relationService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.picker), nil
+		return NewRelationOption(sb, f.objectStore, f.fileBlockService, f.coreService, f.relationService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.picker, f.eventSender), nil
 	default:
 		return nil, fmt.Errorf("unknown collection: %s", collection)
 	}

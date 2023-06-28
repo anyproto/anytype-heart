@@ -49,6 +49,8 @@ type SmartTest struct {
 	hooksOnce map[string]struct{}
 }
 
+func (st *SmartTest) SpaceID() string { return "" }
+
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
 	return
 }

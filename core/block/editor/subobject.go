@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -39,6 +40,7 @@ func NewSubObject(
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
 	picker getblock.Picker,
+	eventSender event.Sender,
 ) *SubObject {
 	return &SubObject{
 		SmartBlock:    sb,
@@ -47,6 +49,7 @@ func NewSubObject(
 		Text: stext.NewText(
 			sb,
 			objectStore,
+			eventSender,
 		),
 		Clipboard: clipboard.NewClipboard(
 			sb,

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -37,6 +38,7 @@ func NewTemplate(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	eventSender event.Sender,
 ) *Template {
 	return &Template{Page: NewPage(
 		sb,
@@ -50,6 +52,7 @@ func NewTemplate(
 		sbtProvider,
 		layoutConverter,
 		fileService,
+		eventSender,
 	)}
 }
 
