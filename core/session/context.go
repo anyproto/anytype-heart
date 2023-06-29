@@ -9,7 +9,7 @@ import (
 type Context interface {
 	ID() string
 	Context() context.Context
-	SetContext(context.Context)
+	WithContext(context.Context) Context
 	ObjectID() string
 	SpaceID() string
 	TraceID() string
@@ -28,6 +28,9 @@ type sessionContext struct {
 }
 
 func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Context {
+	if spaceID == "" {
+		panic("spaceID is empty")
+	}
 	// TODO Add panic if spaceID is empty when working on the next step
 	ctx := &sessionContext{
 		spaceID: spaceID,
@@ -37,6 +40,23 @@ func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Con
 		apply(ctx)
 	}
 	return ctx
+}
+
+func (ctx *sessionContext) shallowCopy() *sessionContext {
+	return &sessionContext{
+		ctx:          ctx.ctx,
+		spaceID:      ctx.spaceID,
+		smartBlockId: ctx.smartBlockId,
+		traceId:      ctx.traceId,
+		messages:     ctx.messages,
+		sessionToken: ctx.sessionToken,
+	}
+}
+
+func (ctx *sessionContext) WithContext(cctx context.Context) Context {
+	child := ctx.shallowCopy()
+	child.ctx = cctx
+	return child
 }
 
 // NewChildContext creates a new child context. The child context has empty messages
@@ -87,10 +107,6 @@ func (ctx *sessionContext) SpaceID() string {
 
 func (ctx *sessionContext) Context() context.Context {
 	return ctx.ctx
-}
-
-func (ctx *sessionContext) SetContext(cctx context.Context) {
-	ctx.ctx = cctx
 }
 
 func (ctx *sessionContext) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {

@@ -495,7 +495,7 @@ func (s *Service) UploadFile(ctx session.Context, req pb.RpcFileUploadRequest) (
 }
 
 func (s *Service) DropFiles(ctx session.Context, req pb.RpcFileDropRequest) (err error) {
-	return s.DoFileNonLock(req.ContextId, func(b file.File) error {
+	return s.DoFileNonLock(ctx, req.ContextId, func(b file.File) error {
 		return b.DropFiles(ctx, req)
 	})
 }

@@ -146,7 +146,7 @@ func (oc *ObjectCreator) createNewObject(ctx session.Context,
 	st *state.State,
 	newID string,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
-	sb, err := oc.service.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
+	sb, err := oc.service.CreateTreeObjectWithPayload(ctx.WithContext(context.Background()), payload, func(id string) *sb.InitContext {
 		return &sb.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,

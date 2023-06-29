@@ -84,9 +84,7 @@ func (ou *ObjectIDGetter) Get(ctx session.Context,
 		}
 	}
 
-	cctx := context.Background()
-
-	payload, err := ou.service.CreateTreePayload(cctx, sbType, createdTime)
+	payload, err := ou.service.CreateTreePayload(ctx.WithContext(context.Background()), sbType, createdTime)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}

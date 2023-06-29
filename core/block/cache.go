@@ -166,17 +166,15 @@ func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartbl
 	return v.(smartblock.SmartBlock), nil
 }
 
-func (s *Service) GetAccountTree(ctx context.Context, id string) (tr objecttree.ObjectTree, err error) {
-	return s.GetTree(ctx, s.clientService.AccountId(), id)
-}
-
-func (s *Service) GetAccountObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
-	if _, ok := ctx.Deadline(); !ok {
+func (s *Service) GetObjectWithTimeout(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
+	cctx := ctx.Context()
+	if _, ok := cctx.Deadline(); !ok {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, objectLoadTimeout)
+		cctx, cancel = context.WithTimeout(cctx, objectLoadTimeout)
 		defer cancel()
+		ctx = ctx.WithContext(cctx)
 	}
-	return s.GetObject(ctx, s.clientService.AccountId(), id)
+	return s.GetObject(ctx.Context(), ctx.SpaceID(), id)
 }
 
 // DeleteTree should only be called by space services
@@ -240,7 +238,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 			if err := s.fileStore.DeleteFile(id); err != nil {
 				return err
 			}
-			if err := s.fileSync.RemoveFile(s.clientService.AccountId(), id); err != nil {
+			if err := s.fileSync.RemoveFile(ctx.SpaceID(), id); err != nil {
 				return fmt.Errorf("failed to remove file from sync: %w", err)
 			}
 			_, err = s.fileService.FileOffload(id, true)
@@ -251,7 +249,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 		})
 	default:
 		var space commonspace.Space
-		space, err = s.clientService.AccountSpace(context.Background())
+		space, err = s.clientService.GetSpace(context.Background(), ctx.SpaceID())
 		if err != nil {
 			return
 		}
@@ -267,12 +265,12 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 	return
 }
 
-func (s *Service) CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
-	space, err := s.clientService.AccountSpace(ctx)
+func (s *Service) CreateTreePayload(ctx session.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
+	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx, space, tp, createdTime)
+	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx.Context(), space, tp, createdTime)
 }
 
 func (s *Service) CreateTreePayloadWithSpace(ctx context.Context, space commonspace.Space, tp coresb.SmartBlockType) (treestorage.TreeStorageCreatePayload, error) {
@@ -291,54 +289,45 @@ func (s *Service) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Context, 
 	return space.TreeBuilder().CreateTree(ctx, treePayload)
 }
 
-func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
+func (s *Service) CreateTreeObjectWithPayload(ctx session.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return nil, err
 	}
-	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
+	tr, err := space.TreeBuilder().PutTree(ctx.Context(), payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
 	tr.Close()
-	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
+	return s.cacheCreatedObject(ctx.Context(), payload.RootRawChange.Id, space.Id(), initFunc)
 }
 
-func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
+func (s *Service) CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return nil, err
 	}
-	payload, err := s.CreateTreePayloadWithSpace(ctx, space, tp)
+	payload, err := s.CreateTreePayloadWithSpace(ctx.Context(), space, tp)
 	if err != nil {
 		return nil, err
 	}
 
-	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
+	tr, err := space.TreeBuilder().PutTree(ctx.Context(), payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
 	tr.Close()
-	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
-}
-
-func (s *Service) ResetTreeObject(ctx context.Context, id string, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
-	if err != nil {
-		return
-	}
-
-	return s.cacheCreatedObject(ctx, id, space.Id(), initFunc)
+	return s.cacheCreatedObject(ctx.Context(), payload.RootRawChange.Id, space.Id(), initFunc)
 }
 
 // DeriveTreeCreatePayload creates payload for the tree of derived object.
 // Method should be called before DeriveObject to prepare payload
 func (s *Service) DeriveTreeCreatePayload(
-	ctx context.Context, tp coresb.SmartBlockType,
+	ctx session.Context, tp coresb.SmartBlockType,
 ) (*treestorage.TreeStorageCreatePayload, error) {
-	space, err := s.clientService.AccountSpace(ctx)
+	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return nil, err
 	}
@@ -354,14 +343,13 @@ func (s *Service) DeriveTreeCreatePayload(
 // DeriveObject derives the object with id specified in the payload and triggers cache.Get
 // DeriveTreeCreatePayload should be called first to prepare the payload and derive the tree
 func (s *Service) DeriveObject(
-	cctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
+	ctx session.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
 ) (err error) {
-	space, err := s.clientService.AccountSpace(cctx)
+	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	_, err = s.getDerivedObject(cctx, space, payload, newAccount, func(id string) *smartblock.InitContext {
-		ctx := session.NewContext(cctx, space.Id())
+	_, err = s.getDerivedObject(ctx, space, payload, newAccount, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 	})
 	if err != nil {
@@ -372,11 +360,11 @@ func (s *Service) DeriveObject(
 }
 
 func (s *Service) getDerivedObject(
-	ctx context.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
+	ctx session.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
 ) (sb smartblock.SmartBlock, err error) {
 	if newAccount {
 		var tr objecttree.ObjectTree
-		tr, err = space.TreeBuilder().PutTree(ctx, *payload, nil)
+		tr, err = space.TreeBuilder().PutTree(ctx.Context(), *payload, nil)
 		s.predefinedObjectWasMissing = true
 		if err != nil {
 			if !errors.Is(err, treestorage.ErrTreeExists) {
@@ -385,10 +373,10 @@ func (s *Service) getDerivedObject(
 			}
 			s.predefinedObjectWasMissing = false
 			// the object exists locally
-			return s.GetAccountObject(ctx, payload.RootRawChange.Id)
+			return s.GetObjectWithTimeout(ctx, payload.RootRawChange.Id)
 		}
 		tr.Close()
-		return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
+		return s.cacheCreatedObject(ctx.Context(), payload.RootRawChange.Id, space.Id(), initFunc)
 	}
 
 	var (
@@ -397,8 +385,8 @@ func (s *Service) getDerivedObject(
 	)
 	// timing out when getting objects from remote
 	// here we set very long timeout, because we must load these documents
-	ctx, cancel = context.WithTimeout(ctx, derivedObjectLoadTimeout)
-	ctx = context.WithValue(ctx,
+	cctx, cancel := context.WithTimeout(ctx.Context(), derivedObjectLoadTimeout)
+	cctx = context.WithValue(cctx,
 		optsKey,
 		cacheOpts{
 			buildOption: source.BuildOptions{
@@ -408,7 +396,7 @@ func (s *Service) getDerivedObject(
 	)
 	defer cancel()
 
-	sb, err = s.GetAccountObject(ctx, id)
+	sb, err = s.GetObjectWithTimeout(ctx.WithContext(cctx), id)
 	if err != nil {
 		if errors.Is(err, treechangeproto.ErrGetTree) {
 			err = spacesyncproto.ErrSpaceMissing
@@ -417,13 +405,6 @@ func (s *Service) getDerivedObject(
 		return
 	}
 	return
-}
-
-func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.SmartBlock) (sb smartblock.SmartBlock, err error) {
-	ctx = context.WithValue(ctx, optsKey, cacheOpts{
-		putObject: obj,
-	})
-	return s.GetAccountObject(ctx, id)
 }
 
 func (s *Service) cacheCreatedObject(ctx context.Context, id, spaceId string, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {

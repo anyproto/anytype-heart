@@ -193,7 +193,7 @@ func (s *Service) OpenBlock(
 	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
-	ob, err := s.getSmartblock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "object_open"), id)
+	ob, err := s.getSmartblock(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func (s *Service) ShowBlock(
 	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	cctx := context.WithValue(ctx.Context(), metrics.CtxKeyEntrypoint, "object_show")
-	ctx.SetContext(cctx)
+	ctx = ctx.WithContext(cctx)
 	err2 := Do(s, ctx, id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
@@ -768,12 +768,12 @@ func (s *Service) Close(ctx context.Context) (err error) {
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *Service) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+func (s *Service) PickBlock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
 	return s.getSmartblock(ctx, id)
 }
 
-func (s *Service) getSmartblock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
-	return s.GetAccountObject(ctx, id)
+func (s *Service) getSmartblock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
+	return s.GetObjectWithTimeout(ctx, id)
 }
 
 func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name string) (st *state.State, err error) {
@@ -790,8 +790,8 @@ func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name
 	return
 }
 
-func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, err := s.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do_filenonlock"), id)
+func (s *Service) DoFileNonLock(ctx session.Context, id string, apply func(b file.File) error) error {
+	sb, err := s.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -803,11 +803,11 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 type Picker interface {
-	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
+	PickBlock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error)
 }
 
 func Do[t any](p Picker, ctx session.Context, id string, apply func(sb t) error) error {
-	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
+	sb, err := p.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -852,7 +852,7 @@ func DoState2[t1, t2 any](s *Service, ctx session.Context, firstID, secondID str
 }
 
 func DoStateAsync[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
+	sb, err := p.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -876,7 +876,7 @@ func DoStateAsync[t any](p Picker, ctx session.Context, id string, apply func(s 
 }
 
 func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
+	sb, err := p.PickBlock(ctx, id)
 	if err != nil {
 		return err
 	}

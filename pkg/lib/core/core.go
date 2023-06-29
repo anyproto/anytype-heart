@@ -53,8 +53,8 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveTreeCreatePayload(ctx context.Context, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
-	DeriveObject(ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
+	DeriveTreeCreatePayload(ctx session.Context, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
+	DeriveObject(ctx session.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
 }
 
 type Anytype struct {
@@ -152,7 +152,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) (err error) {
 	}
 	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
 	for i, sbt := range sbTypes {
-		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx.Context(), sbt)
+		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, sbt)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived tree object with error")
 			return
@@ -161,7 +161,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) (err error) {
 	}
 
 	for _, payload := range payloads {
-		err = a.deriver.DeriveObject(ctx.Context(), payload, a.config.NewAccount)
+		err = a.deriver.DeriveObject(ctx, payload, a.config.NewAccount)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return

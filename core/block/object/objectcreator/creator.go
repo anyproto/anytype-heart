@@ -96,7 +96,7 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(ctx session.Context, templateID, name string) (st *state.State, err error)
-	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
@@ -173,7 +173,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 	}
 
 	cctx := context.WithValue(ctx.Context(), eventCreate, ev)
-	sb, err := c.blockService.CreateTreeObject(cctx, sbType, func(id string) *smartblock.InitContext {
+	sb, err := c.blockService.CreateTreeObject(ctx.WithContext(cctx), sbType, func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()

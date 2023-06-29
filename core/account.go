@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,13 +47,13 @@ func (mw *Middleware) refreshRemoteAccountState() {
 	fetcher.Refetch()
 }
 
-func (mw *Middleware) getAnalyticsId(bs *block.Service, accountId string) (string, error) {
+func (mw *Middleware) getAnalyticsId(ctx session.Context, bs *block.Service, accountId string) (string, error) {
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 	if conf.AnalyticsId != "" {
 		return conf.AnalyticsId, nil
 	}
 	var analyticsId string
-	sb, err := bs.PickBlock(context.Background(), accountId)
+	sb, err := bs.PickBlock(ctx, accountId)
 	if err != nil {
 		return "", err
 	}
@@ -66,14 +67,14 @@ func (mw *Middleware) getAnalyticsId(bs *block.Service, accountId string) (strin
 	return analyticsId, err
 }
 
-func (mw *Middleware) getInfo(bs *block.Service) *model.AccountInfo {
+func (mw *Middleware) getInfo(ctx session.Context, bs *block.Service) *model.AccountInfo {
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
 	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
 	deviceKey := wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().Account()
 
-	analyticsId, err := mw.getAnalyticsId(bs, at.PredefinedBlocks().Account)
+	analyticsId, err := mw.getAnalyticsId(ctx, bs, at.PredefinedBlocks().Account)
 	if err != nil {
 		log.Errorf("failed to get analytics id: %s", err.Error())
 	}
@@ -177,8 +178,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
 	profileDetails = append(profileDetails, commonDetails...)
 
-	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
-	ctx := mw.newContextWithSpace(cctx, spaceID)
+	ctx := mw.newContextNoLock(cctx)
 	if req.GetAvatarLocalPath() != "" {
 		hash, err := bs.UploadFile(ctx, pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
@@ -196,7 +196,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	}
 
 	newAcc.Name = req.Name
-	newAcc.Info = mw.getInfo(bs)
+	newAcc.Info = mw.getInfo(ctx, bs)
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
@@ -272,7 +272,8 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		bs := mw.app.MustComponent(treemanager.CName).(*block.Service)
 		bs.CloseBlocks()
 		acc := &model.Account{Id: req.Id}
-		acc.Info = mw.getInfo(bs)
+		ctx := mw.newContextNoLock(cctx)
+		acc.Info = mw.getInfo(ctx, bs)
 		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 	}
 
@@ -332,7 +333,8 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 
 	acc := &model.Account{Id: req.Id}
-	acc.Info = mw.getInfo(mw.app.MustComponent(block.CName).(*block.Service))
+	ctx := mw.newContextNoLock(cctx)
+	acc.Info = mw.getInfo(ctx, mw.app.MustComponent(block.CName).(*block.Service))
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 

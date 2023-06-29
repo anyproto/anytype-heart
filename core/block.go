@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 	"google.golang.org/grpc/metadata"
 
@@ -682,6 +683,12 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 
 func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
 	spaceID := getService[space.Service](mw).AccountId()
+
+	return mw.newContextWithSpace(cctx, spaceID, opts...)
+}
+
+func (mw *Middleware) newContextNoLock(cctx context.Context, opts ...session.ContextOption) session.Context {
+	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
 
 	return mw.newContextWithSpace(cctx, spaceID, opts...)
 }

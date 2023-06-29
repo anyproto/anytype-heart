@@ -60,7 +60,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	if ctx.BuildOpts.DisableRemoteLoad {
-		ctx.Ctx.SetContext(context.WithValue(ctx.Ctx.Context(), filestorage.CtxKeyRemoteLoadDisabled, true))
+		ctx.Ctx = ctx.Ctx.WithContext(context.WithValue(ctx.Ctx.Context(), filestorage.CtxKeyRemoteLoadDisabled, true))
 	}
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return

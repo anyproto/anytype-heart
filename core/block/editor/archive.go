@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"context"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
@@ -48,9 +50,10 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	p.DisableLayouts()
-	p.AddHook(p.updateObjects(ctx.Ctx), smartblock.HookAfterApply)
+	sessionCtx := ctx.Ctx.WithContext(context.Background())
+	p.AddHook(p.updateObjects(sessionCtx), smartblock.HookAfterApply)
 
-	return p.updateObjects(ctx.Ctx)(smartblock.ApplyInfo{})
+	return p.updateObjects(sessionCtx)(smartblock.ApplyInfo{})
 }
 
 func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
