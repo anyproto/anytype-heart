@@ -4,7 +4,7 @@ source: pkg/lib/bundle/internalRelations.json
 */
 package bundle
 
-const InternalRelationsChecksum = "3c4d85cc0506984e7c1e7441ce0e02bd54c6b520944fc2760f1ee3f6bb800cb9"
+const InternalRelationsChecksum = "252c59332af390d7006506a90fa7617b48082f796e97ad50a74b8fd3a680bc2c"
 
 // RequiredInternalRelations contains internal relations that will be added to EVERY new or existing object
 // if this relation only needs SPECIFIC objects(e.g. of some type) add it to the SystemRelations
@@ -31,6 +31,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyFeaturedRelations,
 	RelationKeyIsFavorite,
 	RelationKeyWorkspaceId,
+	RelationKeySpaceId,
 	RelationKeyLinks,
 	RelationKeyInternalFlags,
 	RelationKeyRestrictions,

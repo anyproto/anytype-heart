@@ -819,6 +819,19 @@
     "source": "local"
   },
   {
+    "description": "Space belongs to",
+    "format": "object",
+    "hidden": true,
+    "key": "spaceId",
+    "maxCount": 1,
+    "name": "SpaceID",
+    "objectTypes": [
+      "space"
+    ],
+    "readonly": true,
+    "source": "local"
+  },
+  {
     "description": "Audio record's genre name",
     "format": "shorttext",
     "hidden": false,

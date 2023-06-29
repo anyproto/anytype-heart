@@ -5,11 +5,11 @@ source: pkg/lib/bundle/relations.json
 package bundle
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	addr "github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "add940877a8adadd3313f9eefcd6d89a70d1b10469a7ceed9d3bea0e7dea0eeb"
+const RelationChecksum = "ae1d127438bc31b70c8a52300b3f67cad754ac7c3345cd3e7cc8d0c37b978fd7"
 
 type RelationKey string
 
@@ -106,6 +106,7 @@ const (
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyWorkspaceId               RelationKey = "workspaceId"
+	RelationKeySpaceId                   RelationKey = "spaceId"
 	RelationKeyAudioGenre                RelationKey = "audioGenre"
 	RelationKeyTelegram                  RelationKey = "telegram"
 	RelationKeyTrailer                   RelationKey = "trailer"
@@ -1758,6 +1759,21 @@ var (
 			MaxCount:         1,
 			Name:             "Space Dashboard ID",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceId: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Space belongs to",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brspaceId",
+			Key:              "spaceId",
+			MaxCount:         1,
+			Name:             "SpaceID",
+			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

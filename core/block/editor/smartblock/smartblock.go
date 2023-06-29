@@ -908,6 +908,10 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()) == "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(sb.spaceID))
+	}
+
 	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
 		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
 		if wsId != "" {
