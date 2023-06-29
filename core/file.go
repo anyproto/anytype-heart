@@ -12,6 +12,7 @@ import (
 )
 
 func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
+	ctx := mw.newContext(cctx)
 	response := func(path string, code pb.RpcFileDownloadResponseErrorCode, err error) *pb.RpcFileDownloadResponse {
 		m := &pb.RpcFileDownloadResponse{Error: &pb.RpcFileDownloadResponseError{Code: code}, LocalPath: path}
 		if err != nil {
@@ -21,7 +22,7 @@ func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownload
 	}
 	var path string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		path, err = bs.DownloadFile(req)
+		path, err = bs.DownloadFile(ctx, req)
 		return
 	})
 	if err != nil {

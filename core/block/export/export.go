@@ -300,7 +300,7 @@ func (e *export) writeMultiDoc(ctx session.Context, mw converter.MultiConverter,
 	for _, fh := range mw.FileHashes() {
 		fileHash := fh
 		if err = queue.Add(func() {
-			if werr := e.saveFile(wr, fileHash); werr != nil {
+			if werr := e.saveFile(ctx, wr, fileHash); werr != nil {
 				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
 			}
 		}); err != nil {
@@ -310,7 +310,7 @@ func (e *export) writeMultiDoc(ctx session.Context, mw converter.MultiConverter,
 	for _, fh := range mw.ImageHashes() {
 		fileHash := fh
 		if err = queue.Add(func() {
-			if werr := e.saveImage(wr, fileHash); werr != nil {
+			if werr := e.saveImage(ctx, wr, fileHash); werr != nil {
 				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
 			}
 		}); err != nil {
@@ -359,7 +359,7 @@ func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportForm
 		for _, fh := range conv.FileHashes() {
 			fileHash := fh
 			if err = queue.Add(func() {
-				if werr := e.saveFile(wr, fileHash); werr != nil {
+				if werr := e.saveFile(ctx, wr, fileHash); werr != nil {
 					log.With("hash", fileHash).Warnf("can't save file: %v", werr)
 				}
 			}); err != nil {
@@ -369,7 +369,7 @@ func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportForm
 		for _, fh := range conv.ImageHashes() {
 			fileHash := fh
 			if err = queue.Add(func() {
-				if werr := e.saveImage(wr, fileHash); werr != nil {
+				if werr := e.saveImage(ctx, wr, fileHash); werr != nil {
 					log.With("hash", fileHash).Warnf("can't save image: %v", werr)
 				}
 			}); err != nil {
@@ -380,8 +380,8 @@ func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportForm
 	})
 }
 
-func (e *export) saveFile(wr writer, hash string) (err error) {
-	file, err := e.fileService.FileByHash(context.TODO(), hash)
+func (e *export) saveFile(ctx session.Context, wr writer, hash string) (err error) {
+	file, err := e.fileService.FileByHash(ctx, hash)
 	if err != nil {
 		return
 	}
@@ -394,8 +394,8 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 	return wr.WriteFile(filename, rd)
 }
 
-func (e *export) saveImage(wr writer, hash string) (err error) {
-	file, err := e.fileService.ImageByHash(context.TODO(), hash)
+func (e *export) saveImage(ctx session.Context, wr writer, hash string) (err error) {
+	file, err := e.fileService.ImageByHash(ctx, hash)
 	if err != nil {
 		return
 	}

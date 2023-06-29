@@ -15,7 +15,7 @@ type Context interface {
 	TraceID() string
 	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
 	GetMessages() []*pb.EventMessage
-	GetResponseEvent() *pb.ResponseEvent // TODO Maybe use helper? broadcastToOtherSessions(mw.getResponseEvent(ctx))
+	GetResponseEvent() *pb.ResponseEvent
 }
 
 type sessionContext struct {

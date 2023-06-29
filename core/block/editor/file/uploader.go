@@ -373,7 +373,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 	}
 
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.fileService.ImageAdd(ctx.Context(), opts...)
+		im, e := u.fileService.ImageAdd(ctx, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			log.Infof("can't add file '%s' as image: add as file", u.name)
 			e = nil
@@ -390,7 +390,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx.Context(), opts...)
+		fl, e := u.fileService.FileAdd(ctx, opts...)
 		if e != nil {
 			err = e
 			return

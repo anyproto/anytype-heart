@@ -285,11 +285,7 @@ func (sb *smartBlock) Type() model.SmartBlockType {
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.spaceID = ctx.SpaceID
-	cctx := ctx.Ctx.Context()
-	if cctx == nil {
-		cctx = context.Background()
-	}
-	if sb.Doc, err = ctx.Source.ReadDoc(cctx, sb, ctx.State != nil); err != nil {
+	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
 

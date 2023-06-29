@@ -1,15 +1,18 @@
 package html
 
 import (
+	"context"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestHTML_Convert(t *testing.T) {
@@ -18,7 +21,7 @@ func TestHTML_Convert(t *testing.T) {
 		s := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{}),
 		}).(*state.State)
-		assert.Empty(t, NewHTMLConverter(nil, s).Convert())
+		assert.Empty(t, NewHTMLConverter(session.NewContext(context.Background(), ""), nil, s).Convert())
 	})
 
 	t.Run("markup", func(t *testing.T) {
@@ -59,7 +62,7 @@ func TestHTML_Convert(t *testing.T) {
 				},
 			}),
 		}).(*state.State)
-		res := NewHTMLConverter(nil, s).Convert()
+		res := NewHTMLConverter(session.NewContext(context.Background(), ""), nil, s).Convert()
 		res = strings.ReplaceAll(res, wrapCopyStart, "")
 		res = strings.ReplaceAll(res, wrapCopyEnd, "")
 		exp := `<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;"><b>0<i>1</b></i><a href="http://test.test">2</a><span style="color:#aca996"><u>3</span></u>456789</div>`
@@ -67,26 +70,26 @@ func TestHTML_Convert(t *testing.T) {
 	})
 
 	t.Run("lists", func(t *testing.T) {
-		//given
+		// given
 		doc := givenLists()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(listExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("lists in lists", func(t *testing.T) {
-		//given
+		// given
 		doc := givenListsInLists()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(listInListExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
@@ -113,7 +116,7 @@ func TestHTML_Convert(t *testing.T) {
 			},
 		}))
 		require.NoError(t, s.InsertTo("1", model.Block_Right, "2"))
-		res := NewHTMLConverter(nil, s).Convert()
+		res := NewHTMLConverter(session.NewContext(context.Background(), ""), nil, s).Convert()
 		res = strings.ReplaceAll(res, wrapCopyStart, "")
 		res = strings.ReplaceAll(res, wrapCopyEnd, "")
 		exp := `<div class="row" style="display: flex"><div class="column" ><div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;">1</div></div><div class="column" ><div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;">2</div></div></div>`
@@ -122,7 +125,7 @@ func TestHTML_Convert(t *testing.T) {
 }
 
 func convertHtml(s *state.State) string {
-	return NewHTMLConverter(nil, s).Convert()
+	return NewHTMLConverter(session.NewContext(context.Background(), ""), nil, s).Convert()
 }
 
 func givenLists() *state.State {

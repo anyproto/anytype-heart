@@ -10,13 +10,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 // TODO Move residual file methods here
 
 // TODO Extract to a new service FileDownloader
-func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
+func (s *Service) DownloadFile(ctx session.Context, req *pb.RpcFileDownloadRequest) (string, error) {
 	if req.Path == "" {
 		req.Path = s.tempDirProvider.TempDir() + string(os.PathSeparator) + "anytype-download"
 	}
@@ -35,12 +36,12 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 
 	progress.SetProgressMessage("saving file")
 	var countReader *datacounter.ReaderCounter
-	ctx, cancel := context.WithCancel(context.Background())
+	cctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-cctx.Done():
 				return
 			case <-progress.Canceled():
 				cancel()
@@ -59,7 +60,7 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 
 	progress.SetTotal(f.Meta().Size)
 
-	r, err := f.Reader(ctx)
+	r, err := f.Reader(cctx)
 	if err != nil {
 		return "", fmt.Errorf("get file reader: %w", err)
 	}
@@ -78,13 +79,13 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 	return path, nil
 }
 
-func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files.File, error) {
+func (s *Service) getFileOrLargestImage(ctx session.Context, hash string) (files.File, error) {
 	image, err := s.fileService.ImageByHash(ctx, hash)
 	if err != nil {
 		return s.fileService.FileByHash(ctx, hash)
 	}
 
-	f, err := image.GetOriginalFile(ctx)
+	f, err := image.GetOriginalFile(ctx.Context())
 	if err != nil {
 		return s.fileService.FileByHash(ctx, hash)
 	}

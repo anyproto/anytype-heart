@@ -288,7 +288,7 @@ func (c *Creator) ObjectCreateBookmark(ctx session.Context, req *pb.RpcObjectCre
 		if err != nil {
 			return "", nil, fmt.Errorf("process uri: %w", err)
 		}
-		res = c.bookmark.FetchBookmarkContent(u)
+		res = c.bookmark.FetchBookmarkContent(ctx, u)
 	} else {
 		res = func() *model.BlockContentBookmark {
 			return nil

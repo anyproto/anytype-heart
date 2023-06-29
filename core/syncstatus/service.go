@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -27,7 +28,7 @@ var log = logging.Logger("anytype-mw-status")
 const CName = "status"
 
 type Service interface {
-	Watch(id string, fileFunc func() []string) (new bool, err error)
+	Watch(ctx session.Context, id string, fileFunc func() []string) (new bool, err error)
 	Unwatch(id string)
 	OnFileUpload(spaceID string, fileID string) error
 	app.ComponentRunnable
@@ -92,7 +93,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	_, err = s.watch(s.coreService.PredefinedBlocks().Account, nil)
+	// TODO multispace: think where to watch predefined blocks
+	accountCtx := session.NewContext(context.Background(), s.spaceService.AccountId())
+	_, err = s.watch(accountCtx, s.coreService.PredefinedBlocks().Account, nil)
 	return
 }
 
@@ -100,8 +103,8 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) Watch(id string, filesGetter func() []string) (new bool, err error) {
-	return s.watch(id, filesGetter)
+func (s *service) Watch(ctx session.Context, id string, filesGetter func() []string) (new bool, err error) {
+	return s.watch(ctx, id, filesGetter)
 }
 
 func (s *service) Unwatch(id string) {
@@ -109,14 +112,14 @@ func (s *service) Unwatch(id string) {
 	s.unwatch(id)
 }
 
-func (s *service) watch(id string, filesGetter func() []string) (new bool, err error) {
+func (s *service) watch(ctx session.Context, id string, filesGetter func() []string) (new bool, err error) {
 	sbt, err := s.typeProvider.Type(id)
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
 	}
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
-		err := s.fileWatcher.Watch(s.spaceService.AccountId(), id)
+		err := s.fileWatcher.Watch(ctx.SpaceID(), id)
 		return false, err
 	case smartblock.SmartBlockTypeSubObject:
 		s.subObjectsWatcher.Watch(id)

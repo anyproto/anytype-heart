@@ -1,13 +1,13 @@
 package source
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -56,7 +56,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	return details, nil
 }
 
-func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledRelation) ReadDoc(_ session.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	d, err := v.getDetails(v.id)
@@ -68,10 +68,6 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	}
 	s.SetObjectType(bundle.TypeKeyRelation.BundledURL())
 	return s, nil
-}
-
-func (v *bundledRelation) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	return v.ReadDoc(ctx, nil, false)
 }
 
 func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {

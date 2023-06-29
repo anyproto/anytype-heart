@@ -25,6 +25,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
@@ -52,21 +53,21 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
-	FileAdd(ctx context.Context, options ...AddOption) (File, error)
-	FileByHash(ctx context.Context, hash string) (File, error)
+	FileAdd(ctx session.Context, options ...AddOption) (File, error)
+	FileByHash(ctx session.Context, hash string) (File, error)
 	FileGetKeys(hash string) (*FileKeys, error)
 	FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
 	FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error)
 	GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error)
-	ImageAdd(ctx context.Context, options ...AddOption) (Image, error)
-	ImageByHash(ctx context.Context, hash string) (Image, error)
+	ImageAdd(ctx session.Context, options ...AddOption) (Image, error)
+	ImageByHash(ctx session.Context, hash string) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
 
 	app.Component
 }
 
 type SyncStatusWatcher interface {
-	Watch(id string, fileFunc func() []string) (new bool, err error)
+	Watch(ctx session.Context, id string, fileFunc func() []string) (new bool, err error)
 }
 
 type service struct {
@@ -116,13 +117,13 @@ var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
-func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storage.FileInfo, error) {
-	fileInfo, err := s.fileAddWithConfig(ctx, &m.Blob{}, opts)
+func (s *service) fileAdd(ctx session.Context, opts AddOptions) (string, *storage.FileInfo, error) {
+	fileInfo, err := s.fileAddWithConfig(ctx.Context(), &m.Blob{}, opts)
 	if err != nil {
 		return "", nil, err
 	}
 
-	node, keys, err := s.fileAddNodeFromFiles(ctx, []*storage.FileInfo{fileInfo})
+	node, keys, err := s.fileAddNodeFromFiles(ctx.Context(), []*storage.FileInfo{fileInfo})
 	if err != nil {
 		return "", nil, err
 	}
@@ -325,9 +326,9 @@ func (s *service) FileGetKeys(hash string) (*FileKeys, error) {
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash string) error {
+func (s *service) fileIndexData(ctx session.Context, inode ipld.Node, hash string) error {
 	for _, link := range inode.Links() {
-		nd, err := helpers.NodeAtLink(ctx, s.dagService, link)
+		nd, err := helpers.NodeAtLink(ctx.Context(), s.dagService, link)
 		if err != nil {
 			return err
 		}
@@ -341,14 +342,14 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash strin
 }
 
 // fileIndexNode walks a file node, indexing file links
-func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string) error {
+func (s *service) fileIndexNode(ctx session.Context, inode ipld.Node, fileID string) error {
 	if looksLikeFileNode(inode) {
 		return s.fileIndexLink(ctx, inode, fileID)
 	}
 
 	links := inode.Links()
 	for _, link := range links {
-		n, err := helpers.NodeAtLink(ctx, s.dagService, link)
+		n, err := helpers.NodeAtLink(ctx.Context(), s.dagService, link)
 		if err != nil {
 			return err
 		}
@@ -363,7 +364,7 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID str
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID string) error {
+func (s *service) fileIndexLink(ctx session.Context, inode ipld.Node, fileID string) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
@@ -372,7 +373,7 @@ func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID str
 	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
 	}
-	if err := s.addToSyncQueue(fileID, true); err != nil {
+	if err := s.addToSyncQueue(ctx, fileID, true); err != nil {
 		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 	}
 	return nil
@@ -784,13 +785,11 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	return files, nil
 }
 
-func (s *service) addToSyncQueue(fileID string, uploadedByUser bool) error {
-	spaceID := s.spaceService.AccountId()
-
-	if err := s.fileSync.AddFile(spaceID, fileID, uploadedByUser); err != nil {
+func (s *service) addToSyncQueue(ctx session.Context, fileID string, uploadedByUser bool) error {
+	if err := s.fileSync.AddFile(ctx.SpaceID(), fileID, uploadedByUser); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
-	if _, err := s.syncStatusWatcher.Watch(fileID, nil); err != nil {
+	if _, err := s.syncStatusWatcher.Watch(ctx, fileID, nil); err != nil {
 		return fmt.Errorf("watch sync status: %w", err)
 	}
 	return nil
@@ -855,7 +854,7 @@ func (s *service) StoreFileKeys(fileKeys ...FileKeys) error {
 
 var ErrFileNotFound = fmt.Errorf("file not found")
 
-func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
+func (s *service) FileByHash(ctx session.Context, hash string) (File, error) {
 	ok, err := s.isDeleted(hash)
 	if err != nil {
 		return nil, fmt.Errorf("check if file is deleted: %w", err)
@@ -871,7 +870,7 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 
 	if len(fileList) == 0 || fileList[0].MetaHash == "" {
 		// info from ipfs
-		fileList, err = s.fileIndexInfo(ctx, hash, false)
+		fileList, err = s.fileIndexInfo(ctx.Context(), hash, false)
 		if err != nil {
 			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
@@ -895,7 +894,7 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 			}
 		}
 	}
-	if err := s.addToSyncQueue(hash, false); err != nil {
+	if err := s.addToSyncQueue(ctx, hash, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
 	}
 	fileIndex := fileList[0]
@@ -914,13 +913,13 @@ func (s *service) isDeleted(fileID string) (bool, error) {
 	return pbtypes.GetBool(d.GetDetails(), bundle.RelationKeyIsDeleted.String()), nil
 }
 
-func (s *service) FileAdd(ctx context.Context, options ...AddOption) (File, error) {
+func (s *service) FileAdd(ctx session.Context, options ...AddOption) (File, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx, &opts)
+	err := s.normalizeOptions(ctx.Context(), &opts)
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	utf16 "github.com/anyproto/anytype-heart/util/text"
@@ -61,11 +62,12 @@ const (
 		</html>`
 )
 
-func NewHTMLConverter(fileService files.Service, s *state.State) *HTML {
-	return &HTML{fileService: fileService, s: s}
+func NewHTMLConverter(ctx session.Context, fileService files.Service, s *state.State) *HTML {
+	return &HTML{ctx: ctx, fileService: fileService, s: s}
 }
 
 type HTML struct {
+	ctx         session.Context // TODO multispace: it's not good, better pass it as function parameter
 	s           *state.State
 	buf         *bytes.Buffer
 	fileService files.Service
@@ -525,7 +527,7 @@ func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell m
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {
-	im, err := h.fileService.ImageByHash(context.TODO(), hash)
+	im, err := h.fileService.ImageByHash(h.ctx, hash)
 	if err != nil {
 		return
 	}

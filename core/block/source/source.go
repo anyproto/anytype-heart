@@ -17,6 +17,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -45,7 +46,7 @@ type Source interface {
 	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
-	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
+	ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
 	Close() (err error)
 }
@@ -169,11 +170,11 @@ func (s *source) Type() model.SmartBlockType {
 	return model.SmartBlockType(s.smartblockType)
 }
 
-func (s *source) ReadDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
-	return s.readDoc(ctx, receiver, allowEmpty)
+func (s *source) ReadDoc(_ session.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+	return s.readDoc(receiver, allowEmpty)
 }
 
-func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	s.receiver = receiver
 	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
 	if !ok {

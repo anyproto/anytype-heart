@@ -249,7 +249,7 @@ func (s *Service) Copy(
 	req pb.RpcBlockCopyRequest,
 ) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = Do(s, ctx, req.ContextId, func(cb clipboard.Clipboard) error {
-		textSlot, htmlSlot, anySlot, err = cb.Copy(req)
+		textSlot, htmlSlot, anySlot, err = cb.Copy(ctx, req)
 		return err
 	})
 
@@ -279,7 +279,7 @@ func (s *Service) Cut(
 
 func (s *Service) Export(ctx session.Context, req pb.RpcBlockExportRequest) (path string, err error) {
 	err = Do(s, ctx, req.ContextId, func(cb clipboard.Clipboard) error {
-		path, err = cb.Export(req)
+		path, err = cb.Export(ctx, req)
 		return err
 	})
 	return path, err

@@ -220,7 +220,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	_, err = s.syncStatus.Watch(id, func() []string {
+	_, err = s.syncStatus.Watch(ctx, id, func() []string {
 		ob.Lock()
 		defer ob.Unlock()
 		bs := ob.NewState()
@@ -936,12 +936,12 @@ func (s *Service) ResetToState(ctx session.Context, pageID string, st *state.Sta
 	})
 }
 
-func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
+func (s *Service) ObjectBookmarkFetch(ctx session.Context, req pb.RpcObjectBookmarkFetchRequest) (err error) {
 	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
-	res := s.bookmark.FetchBookmarkContent(url)
+	res := s.bookmark.FetchBookmarkContent(ctx, url)
 	go func() {
 		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
 			log.Errorf("update bookmark object %s: %s", req.ContextId, err)

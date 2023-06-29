@@ -41,9 +41,9 @@ type Service interface {
 	CreateBookmarkObject(ctx session.Context, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
-	Fetch(id string, params bookmark.FetchParams) (err error)
-	FetchBookmarkContent(url string) ContentFuture
-	ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
+	Fetch(ctx session.Context, id string, params bookmark.FetchParams) (err error)
+	FetchBookmarkContent(ctx session.Context, url string) ContentFuture
+	ContentUpdaters(ctx session.Context, url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
 
 	app.Component
 }
@@ -167,20 +167,20 @@ func (s *service) UpdateBookmarkObject(objectId string, getContent ContentFuture
 	})
 }
 
-func (s *service) Fetch(id string, params bookmark.FetchParams) (err error) {
+func (s *service) Fetch(ctx session.Context, id string, params bookmark.FetchParams) (err error) {
 	if !params.Sync {
 		go func() {
-			if err := s.fetcher(id, params); err != nil {
+			if err := s.fetcher(ctx, id, params); err != nil {
 				log.Errorf("fetch bookmark %s: %s", id, err)
 			}
 		}()
 		return nil
 	}
 
-	return s.fetcher(id, params)
+	return s.fetcher(ctx, id, params)
 }
 
-func (s *service) FetchBookmarkContent(url string) ContentFuture {
+func (s *service) FetchBookmarkContent(ctx session.Context, url string) ContentFuture {
 	contentCh := make(chan *model.BlockContentBookmark, 1)
 	go func() {
 		defer close(contentCh)
@@ -188,7 +188,7 @@ func (s *service) FetchBookmarkContent(url string) ContentFuture {
 		content := &model.BlockContentBookmark{
 			Url: url,
 		}
-		updaters, err := s.ContentUpdaters(url)
+		updaters, err := s.ContentUpdaters(ctx, url)
 		if err != nil {
 			log.Error("fetch bookmark content %s: %s", url, err)
 		}
@@ -203,13 +203,13 @@ func (s *service) FetchBookmarkContent(url string) ContentFuture {
 	}
 }
 
-func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+func (s *service) ContentUpdaters(ctx session.Context, url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
+	cctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	updaters := make(chan func(contentBookmark *model.BlockContentBookmark), 1)
 
-	data, err := s.linkPreview.Fetch(ctx, url)
+	data, err := s.linkPreview.Fetch(cctx, url)
 	if err != nil {
 		updaters <- func(c *model.BlockContentBookmark) {
 			c.State = model.BlockContentBookmark_Error
@@ -239,7 +239,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.fileService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
+			hash, err := loadImage(ctx, s.fileService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
 			if err != nil {
 				log.Errorf("can't load image url %s: %s", data.ImageUrl, err)
 				return
@@ -253,7 +253,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.fileService, s.tempDirService.TempDir(), "", data.FaviconUrl)
+			hash, err := loadImage(ctx, s.fileService, s.tempDirService.TempDir(), "", data.FaviconUrl)
 			if err != nil {
 				log.Errorf("can't load favicon url %s: %s", data.FaviconUrl, err)
 				return
@@ -271,8 +271,8 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 	return updaters, nil
 }
 
-func (s *service) fetcher(id string, params bookmark.FetchParams) error {
-	updaters, err := s.ContentUpdaters(params.Url)
+func (s *service) fetcher(ctx session.Context, id string, params bookmark.FetchParams) error {
+	updaters, err := s.ContentUpdaters(ctx, params.Url)
 	if err != nil {
 		log.Errorf("can't get updates for %s: %s", id, err)
 	}
@@ -293,11 +293,11 @@ func (s *service) fetcher(id string, params bookmark.FetchParams) error {
 	return nil
 }
 
-func loadImage(fileService files.Service, tempDir string, title, url string) (hash string, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+func loadImage(ctx session.Context, fileService files.Service, tempDir string, title, url string) (hash string, err error) {
+	cctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(cctx, http.MethodGet, url, nil)
 	if err != nil {
 		return
 	}
@@ -340,7 +340,8 @@ func loadImage(fileService files.Service, tempDir string, title, url string) (ha
 		fileName = title
 	}
 
-	im, err := fileService.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(fileName))
+	addCtx := ctx.WithContext(context.Background())
+	im, err := fileService.ImageAdd(addCtx, files.WithReader(tmpFile), files.WithName(fileName))
 	if err != nil {
 		return
 	}

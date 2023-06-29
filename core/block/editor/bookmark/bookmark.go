@@ -48,7 +48,7 @@ type Bookmark interface {
 
 type BookmarkService interface {
 	CreateBookmarkObject(ctx session.Context, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
-	Fetch(id string, params bookmark.FetchParams) (err error)
+	Fetch(ctx session.Context, id string, params bookmark.FetchParams) (err error)
 }
 
 type sbookmark struct {
@@ -87,7 +87,7 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 	}
 	bm.SetState(model.BlockContentBookmark_Fetching)
 
-	err = b.bookmarkSvc.Fetch(id, bookmark.FetchParams{
+	err = b.bookmarkSvc.Fetch(ctx, id, bookmark.FetchParams{
 		Url: url,
 		Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
 			if isSync {

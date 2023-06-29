@@ -396,8 +396,9 @@ func (c *SubObjectCollection) initSubObject(ctx session.Context, st *state.State
 	c.collections[collection][subId] = subObj
 
 	if err = subObj.Init(&smartblock.InitContext{
-		Ctx:    ctx,
-		Source: c.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, c.onSubObjectChange(collection, subId)),
+		Ctx:     ctx,
+		SpaceID: c.SpaceID(),
+		Source:  c.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, c.onSubObjectChange(collection, subId)),
 	}); err != nil {
 		return
 	}

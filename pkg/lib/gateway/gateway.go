@@ -16,8 +16,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/netutil"
 )
 
@@ -42,6 +44,7 @@ type Gateway interface {
 
 type gateway struct {
 	fileService     files.Service
+	spaceService    space.Service
 	server          *http.Server
 	listener        net.Listener
 	handler         *http.ServeMux
@@ -81,6 +84,7 @@ func GatewayAddr() string {
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
+	g.spaceService = app.MustComponent[space.Service](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -202,8 +206,9 @@ func enableCors(w http.ResponseWriter) {
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(w)
-	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+	cctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
 	defer cancel()
+	ctx := session.NewContext(cctx, g.spaceService.AccountId())
 	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
 		log.With("path", r.URL.Path).Errorf("error getting file: %s", err)
@@ -223,7 +228,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 
-func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
+func (g *gateway) getFile(ctx session.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	fileHashAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
 	parts := strings.Split(fileHashAndPath, "/")
 	fileHash := parts[0]
@@ -233,7 +238,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 		return nil, nil, fmt.Errorf("get file by hash: %s", err)
 	}
 
-	reader, err := file.Reader(ctx)
+	reader, err := file.Reader(ctx.Context())
 	return file, reader, err
 }
 
@@ -241,9 +246,10 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(w)
 
-	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+	cctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
 	defer cancel()
 
+	ctx := session.NewContext(cctx, g.spaceService.AccountId())
 	file, reader, err := g.getImage(ctx, r)
 	if err != nil {
 		log.With("path", r.URL.Path).Errorf("error getting image: %s", err)
@@ -264,7 +270,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 
-func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
+func (g *gateway) getImage(ctx session.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageHash := urlParts[2]
 	query := r.URL.Query()
@@ -276,7 +282,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	var file files.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
-		file, err = image.GetOriginalFile(ctx)
+		file, err = image.GetOriginalFile(ctx.Context())
 		if err != nil {
 			return nil, nil, fmt.Errorf("get image file: %w", err)
 		}
@@ -285,12 +291,12 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse width: %w", err)
 		}
-		file, err = image.GetFileForWidth(ctx, wantWidth)
+		file, err = image.GetFileForWidth(ctx.Context(), wantWidth)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get image file: %w", err)
 		}
 	}
 
-	reader, err := file.Reader(ctx)
+	reader, err := file.Reader(ctx.Context())
 	return file, reader, err
 }

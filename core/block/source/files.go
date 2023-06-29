@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -47,7 +48,7 @@ func (f *file) Type() model.SmartBlockType {
 	return model.SmartBlockType_File
 }
 
-func (f *file) getDetailsForFileOrImage(ctx context.Context, id string) (p *types.Struct, isImage bool, err error) {
+func (f *file) getDetailsForFileOrImage(ctx session.Context, id string) (p *types.Struct, isImage bool, err error) {
 	file, err := f.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, false, err
@@ -57,24 +58,25 @@ func (f *file) getDetailsForFileOrImage(ctx context.Context, id string) (p *type
 		if err != nil {
 			return nil, false, err
 		}
-		details, err := image.Details(ctx)
+		details, err := image.Details(ctx.Context())
 		if err != nil {
 			return nil, false, err
 		}
 		return details, true, nil
 	}
 
-	d, err := file.Details(ctx)
+	d, err := file.Details(ctx.Context())
 	if err != nil {
 		return nil, false, err
 	}
 	return d, false, nil
 }
 
-func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (f *file) ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(f.id, nil).(*state.State)
 
-	ctx, cancel := context.WithTimeout(ctx, getFileTimeout)
+	cctx, cancel := context.WithTimeout(ctx.Context(), getFileTimeout)
+	ctx = ctx.WithContext(cctx)
 	defer cancel()
 
 	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)
@@ -87,26 +89,6 @@ func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 
 	s.SetDetails(d)
 
-	s.SetObjectTypes(pbtypes.GetStringList(d, bundle.RelationKeyType.String()))
-	return s, nil
-}
-
-func (f *file) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	s := &state.State{}
-
-	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
-	defer cancel()
-
-	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)
-	if err != nil {
-		return nil, err
-	}
-	if d.GetFields() != nil {
-		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedBlocks().Account)
-	}
-
-	s.SetDetails(d)
-	s.SetLocalDetail(bundle.RelationKeyId.String(), pbtypes.String(f.id))
 	s.SetObjectTypes(pbtypes.GetStringList(d, bundle.RelationKeyType.String()))
 	return s, nil
 }
