@@ -54,7 +54,7 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
-	if !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) || cErr.IsNoObjectToImportError(len(paths)) {
 		return nil, cErr
 	}
 	rootCollection := converter.NewRootCollection(t.service)

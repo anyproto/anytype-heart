@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 

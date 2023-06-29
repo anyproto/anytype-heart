@@ -81,3 +81,13 @@ func (ce ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) 
 	}
 	return errors.Wrapf(ce.Error(), "import type: %s", importType.String())
 }
+
+func (ce ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
+	var countNoObjectsToImport int
+	for _, err := range ce {
+		if errors.Is(err, ErrNoObjectsToImport) {
+			countNoObjectsToImport++
+		}
+	}
+	return importPathsCount == countNoObjectsToImport
+}

@@ -62,7 +62,8 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
-	if !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
+		(cErr.IsNoObjectToImportError(len(params.Path))) {
 		return nil, cErr
 	}
 	rootCollection := converter.NewRootCollection(c.collectionService)
