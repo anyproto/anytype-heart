@@ -46,12 +46,10 @@ func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 			BlockId: b.Model().Id,
 		}
 	}
-	hash, err := fs.service.UploadFileBlockWithHash(ctx, id, params)
-
+	_, err := fs.service.UploadFileBlockWithHash(ctx, id, params)
 	if err != nil {
 		return fmt.Errorf("failed syncing file: %s", err)
 	}
-	b.Model().GetFile().Hash = hash
 	os.Remove(b.Model().GetFile().Name)
 	return nil
 }

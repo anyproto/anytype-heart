@@ -45,15 +45,13 @@ func newUpdateReceiver(
 	}
 }
 
-func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) (err error) {
+func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) error {
 	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
-	objStatus := r.fetchObjectStatus(status)
+	objStatus := r.getObjectStatus(status)
 
-	if lastObjStatus, found := r.lastStatus[objId]; found && objStatus == lastObjStatus && !filesSummary.isUpdated {
-		return
+	if !r.isStatusUpdated(objId, objStatus, filesSummary) {
+		return nil
 	}
-	r.lastStatus[objId] = objStatus
-
 	r.notify(objId, objStatus, filesSummary.pinStatus)
 
 	if objId == r.coreService.PredefinedBlocks().Account {
@@ -61,10 +59,20 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 			r.notify(subObjectID, objStatus, filesSummary.pinStatus)
 		})
 	}
-	return
+	return nil
 }
 
-func (r *updateReceiver) fetchObjectStatus(status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStatusThreadSyncStatus, filesSummary linkedFilesSummary) bool {
+	r.Lock()
+	defer r.Unlock()
+	if lastObjStatus, ok := r.lastStatus[objectID]; ok && objStatus == lastObjStatus && !filesSummary.isUpdated {
+		return false
+	}
+	r.lastStatus[objectID] = objStatus
+	return true
+}
+
+func (r *updateReceiver) getObjectStatus(status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
 	if r.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
 		return pb.EventStatusThread_IncompatibleVersion
 	}

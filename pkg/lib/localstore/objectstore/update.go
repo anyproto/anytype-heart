@@ -149,10 +149,11 @@ func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []st
 	return nil
 }
 
-// should be called under the mutex
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+	s.RLock()
+	defer s.RUnlock()
 	if s.onChangeCallback != nil {
 		s.onChangeCallback(database.Record{
 			Details: detCopy,
