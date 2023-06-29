@@ -131,7 +131,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
+	syncErr := oc.syncFilesAndLinks(ctx, newID)
 	if syncErr != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to sync %s: %s", newID, err.Error())
 	}
@@ -389,25 +389,38 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
-	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
-	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-		s := oc.syncFactory.GetSyncer(bl)
-		if s != nil {
-			if sErr := s.Sync(ctx, newID, bl); sErr != nil {
-				log.With(zap.String("object id", newID)).Errorf("sync: %s", sErr)
+func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, newID string) error {
+	tasks := make([]func() error, 0)
+	var fileHashes []string
+
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+		st := b.NewState()
+		return st.Iterate(func(bl simple.Block) (isContinue bool) {
+			fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
+			s := oc.syncFactory.GetSyncer(bl)
+			if s != nil {
+				// We can't run syncer here because it will cause a deadlock, so we defer this operation
+				tasks = append(tasks, func() error {
+					return s.Sync(ctx, newID, bl)
+				})
 			}
-		}
-		if bl != nil {
-			if file := bl.Model().GetFile(); file != nil {
-				fileHashes = append(fileHashes, file.Hash)
+			if bl != nil {
+				if file := bl.Model().GetFile(); file != nil {
+					fileHashes = append(fileHashes, file.Hash)
+				}
 			}
-		}
-		return true
+			return true
+		})
 	})
 	if err != nil {
 		return err
 	}
+	for _, task := range tasks {
+		if err := task(); err != nil {
+			log.With(zap.String("objectID", newID)).Errorf("syncer: %s", err)
+		}
+	}
+
 	for _, hash := range fileHashes {
 		err = oc.fileStore.SetIsFileImported(hash, true)
 		if err != nil {
