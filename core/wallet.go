@@ -145,7 +145,7 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	if mw.mnemonic != req.Mnemonic {
 		return response("", pb.RpcWalletCreateSessionResponseError_BAD_INPUT, fmt.Errorf("incorrect mnemonic"))
 	}
-	tok, err := mw.sessions.StartSession(mw.sessionKey)
+	tok, err := mw.sessions.StartSession(mw.sessionKey, req.SpaceId)
 	if err != nil {
 		return response("", pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR, err)
 	}

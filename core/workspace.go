@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
@@ -30,6 +31,31 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 	}
 
 	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
+}
+
+func (mw *Middleware) WorkspaceInfo(cctx context.Context, req *pb.RpcWorkspaceInfoRequest) *pb.RpcWorkspaceInfoResponse {
+	ctx := mw.newContext(cctx)
+	response := func(info *model.AccountInfo, code pb.RpcWorkspaceInfoResponseErrorCode, err error) *pb.RpcWorkspaceInfoResponse {
+		m := &pb.RpcWorkspaceInfoResponse{
+			Info:  info,
+			Error: &pb.RpcWorkspaceInfoResponseError{Code: code},
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var info *model.AccountInfo
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		info, err = bs.WorkspaceInfo(ctx)
+		return
+	})
+	if err != nil {
+		return response(info, pb.RpcWorkspaceInfoResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(info, pb.RpcWorkspaceInfoResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceSetIsHighlighted(cctx context.Context, req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {

@@ -14,7 +14,7 @@ const CName = "session"
 type Service interface {
 	app.Component
 
-	StartSession(privKey []byte) (string, error)
+	StartSession(privKey []byte, spaceID string) (string, error)
 	ValidateToken(privKey []byte, token string) error
 	CloseSession(token string) error
 	GetSpaceID(token string) (string, error)
@@ -46,7 +46,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) StartSession(privKey []byte) (string, error) {
+func (s *service) StartSession(privKey []byte, spaceID string) (string, error) {
 	token, err := generateToken(privKey)
 	if err != nil {
 		return "", fmt.Errorf("generate token: %w", err)
@@ -59,7 +59,7 @@ func (s *service) StartSession(privKey []byte) (string, error) {
 	}
 	s.sessions[token] = session{
 		token:   token,
-		spaceID: "",
+		spaceID: spaceID,
 	}
 	return token, nil
 }

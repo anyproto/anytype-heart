@@ -892,6 +892,10 @@
     - [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request)
     - [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response)
     - [Rpc.Workspace.GetCurrent.Response.Error](#anytype-Rpc-Workspace-GetCurrent-Response-Error)
+    - [Rpc.Workspace.Info](#anytype-Rpc-Workspace-Info)
+    - [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request)
+    - [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response)
+    - [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error)
     - [Rpc.Workspace.Object](#anytype-Rpc-Workspace-Object)
     - [Rpc.Workspace.Object.Add](#anytype-Rpc-Workspace-Object-Add)
     - [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request)
@@ -1124,6 +1128,7 @@
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype-Rpc-Workspace-GetAll-Response-Error-Code)
     - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype-Rpc-Workspace-GetCurrent-Response-Error-Code)
+    - [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code)
     - [Rpc.Workspace.Object.Add.Response.Error.Code](#anytype-Rpc-Workspace-Object-Add-Response-Error-Code)
     - [Rpc.Workspace.Object.ListAdd.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code)
     - [Rpc.Workspace.Object.ListRemove.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code)
@@ -1462,6 +1467,7 @@
 | WalletSetSessionSpaceID | [Rpc.Wallet.SetSessionSpaceID.Request](#anytype-Rpc-Wallet-SetSessionSpaceID-Request) | [Rpc.Wallet.SetSessionSpaceID.Response](#anytype-Rpc-Wallet-SetSessionSpaceID-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
+| WorkspaceInfo | [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request) | [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response) |  |
 | WorkspaceObjectAdd | [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request) | [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response) |  |
 | WorkspaceObjectListAdd | [Rpc.Workspace.Object.ListAdd.Request](#anytype-Rpc-Workspace-Object-ListAdd-Request) | [Rpc.Workspace.Object.ListAdd.Response](#anytype-Rpc-Workspace-Object-ListAdd-Response) |  |
 | WorkspaceObjectListRemove | [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request) | [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response) |  |
@@ -14177,6 +14183,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -14551,6 +14558,58 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype-Rpc-Workspace-GetCurrent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Info"></a>
+
+### Rpc.Workspace.Info
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Request"></a>
+
+### Rpc.Workspace.Info.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Response"></a>
+
+### Rpc.Workspace.Info.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error) |  |  |
+| info | [model.Account.Info](#anytype-model-Account-Info) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Response-Error"></a>
+
+### Rpc.Workspace.Info.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -17703,6 +17762,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Response-Error-Code"></a>
+
+### Rpc.Workspace.Info.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
