@@ -218,6 +218,21 @@ func processAndValidate(snapshot *pb.ChangeSnapshot, info *useCaseInfo) error {
 	processAccountRelatedDetails(snapshot)
 	processRules(snapshot)
 
+	if id == "bafyreibotqq2olauchses7qgnsrom5epzmwqbonsjqqdsgquvisnpfyqki" {
+		rels := snapshot.Data.Blocks[2].Content.(*model.BlockContentOfDataview).Dataview.Views[1].Relations
+		rels = append(rels[:25], rels[26:]...)
+		snapshot.Data.Blocks[2].Content.(*model.BlockContentOfDataview).Dataview.Views[1].Relations = append([]*model.BlockContentDataviewRelation{
+			{
+				Key:             "picture",
+				IsVisible:       true,
+				Width:           192,
+				DateIncludeTime: false,
+				TimeFormat:      0,
+				DateFormat:      0,
+			},
+		}, rels...)
+	}
+
 	if !strings.HasPrefix(id, addr.RelationKeyToIdPrefix) && !strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
 		isValid := true
 		for _, v := range validators {
