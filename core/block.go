@@ -738,8 +738,8 @@ func getSessionToken(cctx context.Context) (string, bool) {
 
 func (mw *Middleware) newContextWithSpace(cctx context.Context, spaceID string, opts ...session.ContextOption) session.Context {
 	tok, ok := getSessionToken(cctx)
-	if !ok {
-		session.NewContext(cctx, spaceID, append(opts, session.WithSession(tok))...)
+	if ok {
+		return session.NewContext(cctx, spaceID, append(opts, session.WithSession(tok))...)
 	}
 	return session.NewContext(cctx, spaceID, opts...)
 }
