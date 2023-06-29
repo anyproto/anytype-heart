@@ -66,22 +66,13 @@ func (ds *Service) GetPages(ctx context.Context,
 	apiKey string,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
-	request *block.MapRequest,
-	progress process.Progress) (*converter.Response, map[string]string, converter.ConvertError) {
-	var (
-		notionPagesIdsToAnytype = make(map[string]string, 0)
-	)
-
-	progress.SetProgressMessage("Start creating pages from notion")
-
-	convertError := ds.createIDsForPages(pages, progress, notionPagesIdsToAnytype)
+	notionImportContext *block.NotionImportContext,
+	progress process.Progress) (*converter.Response, converter.ConvertError) {
+	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
 	if convertError != nil {
-		return nil, nil, convertError
+		return nil, convertError
 	}
-
 	progress.SetProgressMessage("Start creating blocks")
-	request.PageNameToID = ds.extractTitleFromPages(pages)
-	request.NotionPageIdsToAnytype = notionPagesIdsToAnytype
 	numWorkers := workerPoolSize
 	if len(pages) < workerPoolSize {
 		numWorkers = 1
@@ -90,15 +81,15 @@ func (ds *Service) GetPages(ctx context.Context,
 
 	go ds.addWorkToPool(pages, pool)
 
-	do := NewDataObject(ctx, apiKey, mode, request)
+	do := NewDataObject(ctx, apiKey, mode, notionImportContext)
 	go pool.Start(do)
 
 	allSnapshots, converterError := ds.readResultFromPool(pool, mode, progress)
 	if converterError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, nil
+		return &converter.Response{Snapshots: allSnapshots}, nil
 	}
 
-	return &converter.Response{Snapshots: allSnapshots}, notionPagesIdsToAnytype, converterError
+	return &converter.Response{Snapshots: allSnapshots}, converterError
 }
 
 func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, converter.ConvertError) {
@@ -144,27 +135,31 @@ func (ds *Service) addWorkToPool(pages []Page, pool *workerpool.WorkerPool) {
 	pool.CloseTask()
 }
 
-func (ds *Service) extractTitleFromPages(pages []Page) map[string]string {
+func (ds *Service) extractTitleFromPages(page Page) string {
 	// Need to collect pages title and notion ids mapping for such blocks as ChildPage and ChildDatabase,
 	// because we only get title in those blocks from API
-	pageNameToID := make(map[string]string, 0)
-	for _, p := range pages {
-		for _, v := range p.Properties {
-			if t, ok := v.(*property.TitleItem); ok {
-				pageNameToID[p.ID] = t.GetTitle()
-			}
+	for _, v := range page.Properties {
+		if t, ok := v.(*property.TitleItem); ok {
+			return t.GetTitle()
 		}
 	}
-	return pageNameToID
+	return ""
 }
 
-func (ds *Service) createIDsForPages(pages []Page, progress process.Progress, notionPagesIdsToAnytype map[string]string) converter.ConvertError {
+func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *block.NotionImportContext) converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
 			return converter.NewCancelError(p.ID, err)
 		}
 
-		notionPagesIdsToAnytype[p.ID] = uuid.New().String()
+		importContext.NotionPageIdsToAnytype[p.ID] = uuid.New().String()
+		if p.Parent.PageID != "" {
+			importContext.ChildIDToPage[p.ID] = p.Parent.PageID
+		}
+		if p.Parent.DatabaseID != "" {
+			importContext.ChildIDToPage[p.ID] = p.Parent.DatabaseID
+		}
+		importContext.PageNameToID[p.ID] = ds.extractTitleFromPages(p)
 	}
 	return nil
 }
