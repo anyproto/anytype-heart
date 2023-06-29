@@ -4,6 +4,7 @@
 package event
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -86,6 +87,7 @@ func (es *GrpcSender) BroadcastForSpace(spaceID string, event *pb.Event) {
 
 // BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
 func (es *GrpcSender) BroadcastToOtherSessions(token string, event *pb.Event) {
+	// TODO Use spaceID
 	es.broadcast(&token, event)
 }
 
@@ -134,6 +136,19 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 	// Old connection with this token will be cancelled automatically
 	es.Servers[token] = srv
 	return srv
+}
+
+func (es *GrpcSender) SetSpaceID(token string, spaceID string) error {
+	es.ServerMutex.Lock()
+	defer es.ServerMutex.Unlock()
+
+	s, ok := es.Servers[token]
+	if !ok {
+		return fmt.Errorf("unknown session %s", token)
+	}
+	s.SpaceID = spaceID
+	es.Servers[token] = s
+	return nil
 }
 
 func (es *GrpcSender) CloseSession(token string) {

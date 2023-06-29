@@ -2,11 +2,11 @@ package session
 
 import (
 	"fmt"
-	"github.com/golang-jwt/jwt"
 	"math/rand"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/golang-jwt/jwt"
 )
 
 const CName = "session"
@@ -17,17 +17,24 @@ type Service interface {
 	StartSession(privKey []byte) (string, error)
 	ValidateToken(privKey []byte, token string) error
 	CloseSession(token string) error
+	GetSpaceID(token string) (string, error)
+	SetSpaceID(token string, spaceID string) error
+}
+
+type session struct {
+	token   string
+	spaceID string
 }
 
 type service struct {
 	lock     *sync.RWMutex
-	sessions map[string]struct{}
+	sessions map[string]session
 }
 
 func New() Service {
 	return &service{
 		lock:     &sync.RWMutex{},
-		sessions: map[string]struct{}{},
+		sessions: map[string]session{},
 	}
 }
 
@@ -50,7 +57,10 @@ func (s *service) StartSession(privKey []byte) (string, error) {
 	if _, ok := s.sessions[token]; ok {
 		return "", fmt.Errorf("session is already started")
 	}
-	s.sessions[token] = struct{}{}
+	s.sessions[token] = session{
+		token:   token,
+		spaceID: "",
+	}
 	return token, nil
 }
 
@@ -63,6 +73,28 @@ func (s *service) ValidateToken(privKey []byte, token string) error {
 	}
 
 	return validateToken(privKey, token)
+}
+
+func (s *service) GetSpaceID(token string) (string, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	sess, ok := s.sessions[token]
+	if !ok {
+		return "", fmt.Errorf("unkown session %s", token)
+	}
+	return sess.spaceID, nil
+}
+
+func (s *service) SetSpaceID(token string, spaceID string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	sess, ok := s.sessions[token]
+	if !ok {
+		return fmt.Errorf("unkown session %s", token)
+	}
+	sess.spaceID = spaceID
+	s.sessions[token] = sess
+	return nil
 }
 
 func (s *service) CloseSession(token string) error {

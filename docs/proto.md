@@ -871,6 +871,10 @@
     - [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request)
     - [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response)
     - [Rpc.Wallet.Recover.Response.Error](#anytype-Rpc-Wallet-Recover-Response-Error)
+    - [Rpc.Wallet.SetSessionSpaceID](#anytype-Rpc-Wallet-SetSessionSpaceID)
+    - [Rpc.Wallet.SetSessionSpaceID.Request](#anytype-Rpc-Wallet-SetSessionSpaceID-Request)
+    - [Rpc.Wallet.SetSessionSpaceID.Response](#anytype-Rpc-Wallet-SetSessionSpaceID-Response)
+    - [Rpc.Wallet.SetSessionSpaceID.Response.Error](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error)
     - [Rpc.Workspace](#anytype-Rpc-Workspace)
     - [Rpc.Workspace.Create](#anytype-Rpc-Workspace-Create)
     - [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request)
@@ -1115,6 +1119,7 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype-Rpc-Wallet-Create-Response-Error-Code)
     - [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype-Rpc-Wallet-CreateSession-Response-Error-Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype-Rpc-Wallet-Recover-Response-Error-Code)
+    - [Rpc.Wallet.SetSessionSpaceID.Response.Error.Code](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error-Code)
     - [Rpc.Workspace.Create.Response.Error.Code](#anytype-Rpc-Workspace-Create-Response-Error-Code)
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype-Rpc-Workspace-GetAll-Response-Error-Code)
@@ -1454,6 +1459,7 @@
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request) | [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
+| WalletSetSessionSpaceID | [Rpc.Wallet.SetSessionSpaceID.Request](#anytype-Rpc-Wallet-SetSessionSpaceID-Request) | [Rpc.Wallet.SetSessionSpaceID.Response](#anytype-Rpc-Wallet-SetSessionSpaceID-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
 | WorkspaceObjectAdd | [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request) | [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response) |  |
@@ -14266,6 +14272,62 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Wallet-SetSessionSpaceID"></a>
+
+### Rpc.Wallet.SetSessionSpaceID
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Request"></a>
+
+### Rpc.Wallet.SetSessionSpaceID.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Response"></a>
+
+### Rpc.Wallet.SetSessionSpaceID.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Wallet.SetSessionSpaceID.Response.Error](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error"></a>
+
+### Rpc.Wallet.SetSessionSpaceID.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Wallet.SetSessionSpaceID.Response.Error.Code](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Workspace"></a>
 
 ### Rpc.Workspace
@@ -17576,6 +17638,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 | Root path or mnemonic is wrong |
 | FAILED_TO_CREATE_LOCAL_REPO | 101 |  |
+
+
+
+<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error-Code"></a>
+
+### Rpc.Wallet.SetSessionSpaceID.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

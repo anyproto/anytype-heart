@@ -153,6 +153,29 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 	return response(tok, pb.RpcWalletCreateSessionResponseError_NULL, nil)
 }
 
+func (mw *Middleware) WalletSetSessionSpaceID(cctx context.Context, req *pb.RpcWalletSetSessionSpaceIDRequest) *pb.RpcWalletSetSessionSpaceIDResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcWalletSetSessionSpaceIDResponseErrorCode, err error) *pb.RpcWalletSetSessionSpaceIDResponse {
+		m := &pb.RpcWalletSetSessionSpaceIDResponse{Error: &pb.RpcWalletSetSessionSpaceIDResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	err := mw.sessions.SetSpaceID(ctx.ID(), req.SpaceId)
+	if err != nil {
+		return response(pb.RpcWalletSetSessionSpaceIDResponseError_UNKNOWN_ERROR, fmt.Errorf("session service: %w", err))
+	}
+	err = mw.EventSender.SetSpaceID(ctx.ID(), req.SpaceId)
+	if err != nil {
+		return response(pb.RpcWalletSetSessionSpaceIDResponseError_UNKNOWN_ERROR, fmt.Errorf("event sender: %w", err))
+	}
+
+	return response(pb.RpcWalletSetSessionSpaceIDResponseError_NULL, nil)
+}
+
 func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse {
 	response := func(code pb.RpcWalletCloseSessionResponseErrorCode, err error) *pb.RpcWalletCloseSessionResponse {
 		m := &pb.RpcWalletCloseSessionResponse{Error: &pb.RpcWalletCloseSessionResponseError{Code: code}}

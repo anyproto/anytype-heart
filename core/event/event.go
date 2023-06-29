@@ -14,6 +14,7 @@ type Sender interface {
 	BroadcastForSpace(spaceID string, event *pb.Event)
 	SendToSession(token string, event *pb.Event)
 	BroadcastToOtherSessions(token string, e *pb.Event)
+	SetSpaceID(token string, spaceID string) error
 	app.Component
 }
 
@@ -53,4 +54,9 @@ func (es *CallbackSender) Broadcast(event *pb.Event) {
 
 func (es *CallbackSender) BroadcastForSpace(_ string, event *pb.Event) {
 	es.callback(event)
+}
+
+func (es *CallbackSender) SetSpaceID(_ string, _ string) error {
+	// TODO think
+	return nil
 }

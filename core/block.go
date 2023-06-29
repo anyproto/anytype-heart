@@ -682,34 +682,64 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 }
 
 func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
-	spaceID := getService[space.Service](mw).AccountId()
+	var spaceID string
+	tok, ok := getSessionToken(cctx)
+	if ok {
+		var err error
+		spaceID, err = mw.sessions.GetSpaceID(tok)
+		if err != nil {
+			log.Errorf("failed to get space id from token: %v", err)
+		}
+	}
+	if spaceID == "" {
+		log.Errorf("newContext: set spaceID to accountID")
+		spaceID = getService[space.Service](mw).AccountId()
+	}
 
 	return mw.newContextWithSpace(cctx, spaceID, opts...)
 }
 
 func (mw *Middleware) newContextNoLock(cctx context.Context, opts ...session.ContextOption) session.Context {
-	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
+	var spaceID string
+	tok, ok := getSessionToken(cctx)
+	if ok {
+		var err error
+		spaceID, err = mw.sessions.GetSpaceID(tok)
+		if err != nil {
+			log.Errorf("failed to get space id from token: %v", err)
+		}
+	}
+	if spaceID == "" {
+		log.Errorf("newContextNoLock: set spaceID to accountID")
+		spaceID = app.MustComponent[space.Service](mw.app).AccountId()
+	}
 
 	return mw.newContextWithSpace(cctx, spaceID, opts...)
 }
 
-func (mw *Middleware) newContextWithSpace(cctx context.Context, spaceID string, opts ...session.ContextOption) session.Context {
+func getSessionToken(cctx context.Context) (string, bool) {
 	md, ok := metadata.FromIncomingContext(cctx)
 	if !ok {
-		return session.NewContext(cctx, spaceID, opts...)
+		return "", false
 	}
-
 	v := md.Get("token")
 	if len(v) != 1 {
-		return session.NewContext(cctx, spaceID, opts...)
+		return "", false
 	}
 
 	tok := v[0]
 	if tok == "" {
-		return session.NewContext(cctx, spaceID, opts...)
+		return "", false
 	}
+	return tok, true
+}
 
-	return session.NewContext(cctx, spaceID, append(opts, session.WithSession(tok))...)
+func (mw *Middleware) newContextWithSpace(cctx context.Context, spaceID string, opts ...session.ContextOption) session.Context {
+	tok, ok := getSessionToken(cctx)
+	if !ok {
+		session.NewContext(cctx, spaceID, append(opts, session.WithSession(tok))...)
+	}
+	return session.NewContext(cctx, spaceID, opts...)
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
