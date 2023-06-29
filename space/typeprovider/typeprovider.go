@@ -31,7 +31,9 @@ var (
 
 type SmartBlockTypeProvider interface {
 	app.Component
+	// TODO Add spaceID
 	Type(id string) (smartblock.SmartBlockType, error)
+	TypeWithSpaceID(spaceID string, id string) (smartblock.SmartBlockType, error)
 	RegisterStaticType(id string, tp smartblock.SmartBlockType)
 }
 
@@ -56,12 +58,21 @@ func (p *provider) Name() (name string) {
 	return CName
 }
 
+// Type is DEPRECATED
 func (p *provider) Type(id string) (tp smartblock.SmartBlockType, err error) {
 	tp, err = smartBlockTypeFromID(id)
 	if err == nil && tp != smartblock.SmartBlockTypePage {
 		return
 	}
-	return p.objectTypeFromSpace(id)
+	return p.objectTypeFromSpace(p.spaceService.AccountId(), id)
+}
+
+func (p *provider) TypeWithSpaceID(spaceID string, id string) (tp smartblock.SmartBlockType, err error) {
+	tp, err = smartBlockTypeFromID(id)
+	if err == nil && tp != smartblock.SmartBlockTypePage {
+		return
+	}
+	return p.objectTypeFromSpace(spaceID, id)
 }
 
 func (p *provider) RegisterStaticType(id string, tp smartblock.SmartBlockType) {
@@ -123,7 +134,7 @@ func smartBlockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 	return smartblock.SmartBlockTypePage, smartblock.ErrNoSuchSmartblock
 }
 
-func (p *provider) objectTypeFromSpace(id string) (tp smartblock.SmartBlockType, err error) {
+func (p *provider) objectTypeFromSpace(spaceID string, id string) (tp smartblock.SmartBlockType, err error) {
 	p.Lock()
 	tp, exists := p.cache[id]
 	if exists {
@@ -132,7 +143,7 @@ func (p *provider) objectTypeFromSpace(id string) (tp smartblock.SmartBlockType,
 	}
 	p.Unlock()
 
-	sp, err := p.spaceService.AccountSpace(context.Background())
+	sp, err := p.spaceService.GetSpace(context.Background(), spaceID)
 	if err != nil {
 		return
 	}

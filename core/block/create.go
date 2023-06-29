@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -101,14 +102,43 @@ func (s *Service) TemplateCreateFromObjectByObjectType(ctx session.Context, otID
 	return
 }
 
-func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreateRequest) (workspaceID string, err error) {
-	id, _, err := s.objectCreator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypeWorkspace, &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():      pbtypes.String(req.Name),
-		bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
-		bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
-	}}, nil)
-	return id, err
+func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {
+	spc, err := s.spaceService.CreateSpace(ctx.Context())
+	if err != nil {
+		return "", fmt.Errorf("create space: %w", err)
+	}
+
+	newSpaceCtx := session.NewContext(ctx.Context(), spc.Id())
+	predefinedObjectIDs, err := s.anytype.DerivePredefinedObjects(newSpaceCtx, true)
+	if err != nil {
+		// TODO Delete space?
+		return "", fmt.Errorf("derive workspace object for space %s: %w", spc.Id(), err)
+	}
+
+	accountCtx := session.NewContext(ctx.Context(), s.spaceService.AccountId())
+	err = DoStateAsync(s, accountCtx, s.anytype.PredefinedBlocks().Account, func(st *state.State, b *editor.Workspaces) error {
+		spaces := st.Store().GetFields()["spaces"]
+		if spaces == nil {
+			spaces = pbtypes.Struct(&types.Struct{
+				Fields: map[string]*types.Value{
+					spc.Id(): pbtypes.String(predefinedObjectIDs.Account),
+				},
+			})
+		} else {
+			spaces.GetStructValue().Fields[spc.Id()] = pbtypes.String(predefinedObjectIDs.Account)
+		}
+		st.SetInStore([]string{"spaces"}, spaces)
+		return nil
+	})
+
+	return spc.Id(), err
+	// id, _, err := s.objectCreator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypeWorkspace, &types.Struct{Fields: map[string]*types.Value{
+	// 	bundle.RelationKeyName.String():      pbtypes.String(req.Name),
+	// 	bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
+	// 	bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
+	// 	bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
+	// }}, nil)
+	// return id, err
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block

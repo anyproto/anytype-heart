@@ -37,6 +37,7 @@ type Service interface {
 	Stop() error
 	IsStarted() bool
 
+	DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	EnsurePredefinedBlocks(ctx session.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 
@@ -61,7 +62,7 @@ type Anytype struct {
 	objectStore objectstore.ObjectStore
 	deriver     ObjectsDeriver
 
-	predefinedBlockIds threads.DerivedSmartblockIds
+	accountSpacePredefinedObjectIDs threads.DerivedSmartblockIds
 
 	migrationOnce    sync.Once
 	lock             sync.Mutex
@@ -115,16 +116,16 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	if strings.HasPrefix(objectId, "_") {
 		return addr.AnytypeMarketplaceWorkspace, nil
 	}
-	if a.predefinedBlockIds.IsAccount(objectId) {
+	if a.accountSpacePredefinedObjectIDs.IsAccount(objectId) {
 		return "", ErrObjectDoesNotBelongToWorkspace
 	}
-	return a.predefinedBlockIds.Account, nil
+	return a.accountSpacePredefinedObjectIDs.Account, nil
 }
 
 // PredefinedBlocks returns default blocks like home and archive
 // ⚠️ Will return empty struct in case it runs before Anytype.Start()
 func (a *Anytype) PredefinedBlocks() threads.DerivedSmartblockIds {
-	return a.predefinedBlockIds
+	return a.accountSpacePredefinedObjectIDs
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
@@ -142,7 +143,7 @@ func (a *Anytype) start() {
 	a.isStarted = true
 }
 
-func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) (err error) {
+func (a *Anytype) DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
 	sbTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeProfilePage,
@@ -155,19 +156,27 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) (err error) {
 		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, sbt)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived tree object with error")
-			return
+			return predefinedObjectIDs, fmt.Errorf("derive tree create payload: %w", err)
 		}
-		a.predefinedBlockIds.InsertId(sbt, payloads[i].RootRawChange.Id)
+		predefinedObjectIDs.InsertId(sbt, payloads[i].RootRawChange.Id)
 	}
 
 	for _, payload := range payloads {
-		err = a.deriver.DeriveObject(ctx, payload, a.config.NewAccount)
+		err = a.deriver.DeriveObject(ctx, payload, createTrees)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
-			return
+			return predefinedObjectIDs, fmt.Errorf("derive object: %w", err)
 		}
 	}
+	return
+}
 
+func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) error {
+	predefinedObjectIDs, err := a.DerivePredefinedObjects(ctx, a.config.NewAccount)
+	if err != nil {
+		return err
+	}
+	a.accountSpacePredefinedObjectIDs = predefinedObjectIDs
 	return nil
 }
 

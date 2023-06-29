@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 	"storj.io/drpc"
@@ -58,6 +59,7 @@ type PoolManager interface {
 type Service interface {
 	AccountSpace(ctx context.Context) (commonspace.Space, error)
 	AccountId() string
+	CreateSpace(ctx context.Context) (container commonspace.Space, err error)
 	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
 	DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error)
@@ -168,6 +170,25 @@ func (s *service) AccountSpace(ctx context.Context) (container commonspace.Space
 
 func (s *service) AccountId() string {
 	return s.accountId
+}
+
+func (s *service) CreateSpace(ctx context.Context) (container commonspace.Space, err error) {
+	payload := commonspace.SpaceCreatePayload{
+		SigningKey:     s.wallet.GetAccountPrivkey(),
+		MasterKey:      s.wallet.GetMasterKey(),
+		ReadKey:        crypto.NewAES().Bytes(),
+		SpaceType:      SpaceType,
+		ReplicationKey: 0, // TODO Copy from zero space
+	}
+	id, err := s.commonSpace.CreateSpace(ctx, payload)
+	if err != nil {
+		return
+	}
+	obj, err := s.spaceCache.Get(ctx, id)
+	if err != nil {
+		return
+	}
+	return obj.(commonspace.Space), nil
 }
 
 func (s *service) GetSpace(ctx context.Context, id string) (space commonspace.Space, err error) {

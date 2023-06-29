@@ -19,7 +19,7 @@ type Profile struct {
 func (a *Anytype) LocalProfile() (Profile, error) {
 	var (
 		profile   = Profile{AccountAddr: a.wallet.GetAccountPrivkey().GetPublic().Account()}
-		profileId = a.predefinedBlockIds.Profile
+		profileId = a.accountSpacePredefinedObjectIDs.Profile
 	)
 	if a.objectStore == nil {
 		return profile, errors.New("objectstore not available")
@@ -49,5 +49,5 @@ func (a *Anytype) LocalProfile() (Profile, error) {
 }
 
 func (a *Anytype) ProfileID() string {
-	return a.predefinedBlockIds.Profile
+	return a.accountSpacePredefinedObjectIDs.Profile
 }

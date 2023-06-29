@@ -249,7 +249,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 		})
 	default:
 		var space commonspace.Space
-		space, err = s.clientService.GetSpace(context.Background(), ctx.SpaceID())
+		space, err = s.spaceService.GetSpace(context.Background(), ctx.SpaceID())
 		if err != nil {
 			return
 		}
@@ -266,7 +266,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 }
 
 func (s *Service) CreateTreePayload(ctx session.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
-	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -290,7 +290,7 @@ func (s *Service) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Context, 
 }
 
 func (s *Service) CreateTreeObjectWithPayload(ctx session.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func (s *Service) CreateTreeObjectWithPayload(ctx session.Context, payload trees
 }
 
 func (s *Service) CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (s *Service) CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType
 func (s *Service) DeriveTreeCreatePayload(
 	ctx session.Context, tp coresb.SmartBlockType,
 ) (*treestorage.TreeStorageCreatePayload, error) {
-	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func (s *Service) DeriveTreeCreatePayload(
 func (s *Service) DeriveObject(
 	ctx session.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
 ) (err error) {
-	space, err := s.clientService.GetSpace(ctx.Context(), ctx.SpaceID())
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}

@@ -116,7 +116,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	}
 
 	// TODO: [MR] get this from objectTree directly
-	sbt, err := s.sbtProvider.Type(id)
+	sbt, err := s.sbtProvider.TypeWithSpaceID(spaceID, id)
 	if err != nil {
 		return nil, err
 	}
