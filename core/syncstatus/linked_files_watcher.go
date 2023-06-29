@@ -48,7 +48,7 @@ func (w *linkedFilesWatcher) GetLinkedFilesSummary(parentObjectID string) pb.Eve
 	return w.linkedFilesSummary[parentObjectID]
 }
 
-func (w *linkedFilesWatcher) WatchLinkedFiles(parentObjectID string, filesGetter func() []string) {
+func (w *linkedFilesWatcher) WatchLinkedFiles(spaceID string, parentObjectID string, filesGetter func() []string) {
 	if filesGetter == nil {
 		return
 	}
@@ -63,26 +63,26 @@ func (w *linkedFilesWatcher) WatchLinkedFiles(parentObjectID string, filesGetter
 	w.Unlock()
 
 	go func() {
-		w.updateLinkedFilesSummary(parentObjectID, filesGetter)
+		w.updateLinkedFilesSummary(spaceID, parentObjectID, filesGetter)
 		ticker := time.NewTicker(5 * time.Second)
 		for {
 			select {
 			case <-closeCh:
 				return
 			case <-ticker.C:
-				w.updateLinkedFilesSummary(parentObjectID, filesGetter)
+				w.updateLinkedFilesSummary(spaceID, parentObjectID, filesGetter)
 			}
 		}
 	}()
 }
 
-func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, filesGetter func() []string) {
+func (w *linkedFilesWatcher) updateLinkedFilesSummary(spaceID string, parentObjectID string, filesGetter func() []string) {
 	// TODO Cache linked files list?
 	fileIDs := filesGetter()
 
 	var summary pb.EventStatusThreadCafePinStatus
 	for _, fileID := range fileIDs {
-		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), w.spaceService.AccountId(), fileID)
+		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), spaceID, fileID)
 		if err == errFileNotFound {
 			continue
 		}

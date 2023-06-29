@@ -24,7 +24,7 @@ func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
 		return nil
 	}
 
-	isPinned, err := s.isFilePinned(fileID)
+	isPinned, err := s.isFilePinnedOrDeleted(fileID)
 	if err != nil {
 		return fmt.Errorf("check if file is pinned: %w", err)
 	}
@@ -34,13 +34,20 @@ func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
 	return nil
 }
 
-func (s *service) isFilePinned(fileID string) (bool, error) {
-	stat, err := s.fileSync.FileStat(context.Background(), s.spaceService.AccountId(), fileID)
-	if err != nil {
-		return false, fmt.Errorf("file stat %s: %w", fileID, err)
+func (s *service) isFilePinnedOrDeleted(fileID string) (bool, error) {
+	status, err := s.fileStore.GetSyncStatus(fileID)
+	if err != nil && err != localstore.ErrNotFound {
+		return false, fmt.Errorf("get sync status for file %s: %w", fileID, err)
 	}
-
-	return stat.UploadedChunksCount == stat.TotalChunksCount, nil
+	if status == int(syncstatus.StatusSynced) {
+		return true, nil
+	}
+	isDeleted, err := s.isFileDeleted(fileID)
+	if err != nil {
+		log.With("fileID", fileID).Errorf("failed to check if file is deleted: %s", err)
+		return false, nil
+	}
+	return isDeleted, nil
 }
 
 func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
@@ -101,20 +108,11 @@ func (s *service) isFileDeleted(fileID string) (bool, error) {
 func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 	var result []string
 	for _, fileID := range fileIDs {
-		status, err := s.fileStore.GetSyncStatus(fileID)
-		if err != nil && err != localstore.ErrNotFound {
-			return nil, fmt.Errorf("get sync status for file %s: %w", fileID, err)
-		}
-		if status == int(syncstatus.StatusSynced) {
-			result = append(result, fileID)
-			continue
-		}
-		isDeleted, err := s.isFileDeleted(fileID)
+		ok, err := s.isFilePinnedOrDeleted(fileID)
 		if err != nil {
-			log.With("fileID", fileID).Errorf("failed to check if file is deleted: %s", err)
-			continue
+			return nil, fmt.Errorf("check if file is pinned: %w", err)
 		}
-		if isDeleted {
+		if ok {
 			result = append(result, fileID)
 		}
 	}

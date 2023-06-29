@@ -31,7 +31,6 @@ func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Con
 	if spaceID == "" {
 		panic("spaceID is empty")
 	}
-	// TODO Add panic if spaceID is empty when working on the next step
 	ctx := &sessionContext{
 		spaceID: spaceID,
 		ctx:     cctx,

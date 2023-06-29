@@ -125,6 +125,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 }
 
 func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcFileSpaceUsageResponseErrorCode, err error, usage *pb.RpcFileSpaceUsageResponseUsage) *pb.RpcFileSpaceUsageResponse {
 		m := &pb.RpcFileSpaceUsageResponse{
 			Error: &pb.RpcFileSpaceUsageResponseError{Code: code},
@@ -137,7 +138,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	usage, err := getService[files.Service](mw).GetSpaceUsage(cctx)
+	usage, err := getService[files.Service](mw).GetSpaceUsage(ctx)
 	if err != nil {
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}

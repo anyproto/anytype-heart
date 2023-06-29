@@ -125,7 +125,7 @@ func (s *service) watch(ctx session.Context, id string, filesGetter func() []str
 		s.subObjectsWatcher.Watch(id)
 		return true, nil
 	default:
-		s.linkedFilesWatcher.WatchLinkedFiles(id, filesGetter)
+		s.linkedFilesWatcher.WatchLinkedFiles(ctx.SpaceID(), id, filesGetter)
 		if err = s.objectWatcher.Watch(id); err != nil {
 			return false, err
 		}

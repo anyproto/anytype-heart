@@ -58,7 +58,7 @@ type Service interface {
 	FileGetKeys(hash string) (*FileKeys, error)
 	FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
 	FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error)
-	GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error)
+	GetSpaceUsage(ctx session.Context) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	ImageAdd(ctx session.Context, options ...AddOption) (Image, error)
 	ImageByHash(ctx session.Context, hash string) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
