@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "add940877a8adadd3313f9eefcd6d89a70d1b10469a7ceed9d3bea0e7dea0eeb"
+const RelationChecksum = "a30a07c4418915a9c1eef7f6fd679e4e494ae0031018c8567973158de94ae207"
 
 type RelationKey string
 
@@ -163,6 +163,7 @@ const (
 	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            RelationKey = "fileSyncStatus"
 	RelationKeyLastChangeId              RelationKey = "lastChangeId"
+	RelationKeyDefaultTemplateId         RelationKey = "defaultTemplateId"
 )
 
 var (
@@ -556,6 +557,20 @@ var (
 			Key:              "dateOfBirth",
 			MaxCount:         1,
 			Name:             "Birthday",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDefaultTemplateId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "ID of template chosen as default for particular object type",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdefaultTemplateId",
+			Key:              "defaultTemplateId",
+			MaxCount:         1,
+			Name:             "Default Template ID",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
