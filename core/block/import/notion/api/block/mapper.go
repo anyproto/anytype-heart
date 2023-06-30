@@ -15,7 +15,7 @@ type NotionImportContext struct {
 	DatabaseNameToID           map[string]string
 	RelationsIdsToAnytypeID    map[string]*model.SmartBlockSnapshotBase
 	RelationsIdsToOptions      map[string][]*model.SmartBlockSnapshotBase
-	ChildIDToPage              map[string]string
+	ParentPageToChildIDs       map[string][]string
 }
 
 func NewNotionImportContext() *NotionImportContext {
@@ -26,7 +26,7 @@ func NewNotionImportContext() *NotionImportContext {
 		DatabaseNameToID:           make(map[string]string, 0),
 		RelationsIdsToAnytypeID:    make(map[string]*model.SmartBlockSnapshotBase, 0),
 		RelationsIdsToOptions:      make(map[string][]*model.SmartBlockSnapshotBase, 0),
-		ChildIDToPage:              make(map[string]string, 0),
+		ParentPageToChildIDs:       make(map[string][]string, 0),
 	}
 }
 

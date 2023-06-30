@@ -1,8 +1,6 @@
 package block
 
 import (
-	"strings"
-
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -85,7 +83,7 @@ func (b *ChildPageBlock) GetBlocks(req *NotionImportContext, pageID string) *Map
 }
 
 func (p ChildPage) GetLinkToObjectBlock(importContext *NotionImportContext, pageID string) *model.Block {
-	targetBlockID, ok := getTargetBlock(importContext.PageNameToID, importContext.ChildIDToPage, importContext.NotionPageIdsToAnytype, pageID, p.Title)
+	targetBlockID, ok := getTargetBlock(importContext.ParentPageToChildIDs, importContext.PageNameToID, importContext.NotionPageIdsToAnytype, pageID, p.Title)
 
 	id := bson.NewObjectId().Hex()
 	if !ok {
@@ -131,8 +129,8 @@ type ChildDatabase struct {
 }
 
 func (c *ChildDatabase) GetDataviewBlock(importContext *NotionImportContext, pageID string) *model.Block {
-	targetBlockID, _ := getTargetBlock(importContext.DatabaseNameToID,
-		importContext.ChildIDToPage,
+	targetBlockID, _ := getTargetBlock(importContext.ParentPageToChildIDs,
+		importContext.DatabaseNameToID,
 		importContext.NotionDatabaseIdsToAnytype,
 		pageID, c.Title)
 
@@ -208,22 +206,16 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 		}}, id
 }
 
-func getTargetBlock(nameToID, childIDToParent, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
+func getTargetBlock(parentPageIDToChildIDs map[string][]string, nameToID, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
 	var (
-		targetBlockID    string
-		ok               bool
-		idsWithGivenName []string
+		targetBlockID string
+		ok            bool
 	)
-	for id, name := range nameToID {
-		if strings.EqualFold(name, title) {
-			idsWithGivenName = append(idsWithGivenName, id)
-		}
-	}
-
-	for _, id := range idsWithGivenName {
-		if parentID, exist := childIDToParent[id]; exist {
-			if parentID == pageID {
-				targetBlockID, ok = notionIDsToAnytype[id]
+	if children, exist := parentPageIDToChildIDs[pageID]; exist {
+		for childrenIdx, child := range children {
+			if name, nameExist := nameToID[child]; nameExist && name == title {
+				targetBlockID, ok = notionIDsToAnytype[child]
+				children = append(children[:childrenIdx], children[childrenIdx+1:]...)
 				break
 			}
 		}
