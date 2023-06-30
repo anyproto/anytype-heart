@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 
@@ -87,7 +88,18 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
 	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
-	st.SetLastModified(pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String()), oc.core.ProfileID())
+	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
+	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	if lastModifiedDate == 0 {
+		if createdDate != 0 {
+			lastModifiedDate = createdDate
+		} else {
+			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
+			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
+			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
+		}
+	}
+	st.SetLastModified(lastModifiedDate, oc.core.ProfileID())
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation

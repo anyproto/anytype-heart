@@ -5,6 +5,7 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/util/slice"
 	"github.com/gogo/protobuf/jsonpb"
@@ -293,6 +294,11 @@ func (p *Pb) fillDetails(name string, path string, mo *pb.SnapshotWithType) {
 	}
 	sourceDetail := converter.GetSourceDetail(name, path)
 	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceDetail)
+
+	createdDate := pbtypes.GetInt64(mo.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	if createdDate == 0 {
+		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
+	}
 }
 
 func (p *Pb) Name() string {
