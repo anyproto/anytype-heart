@@ -3,6 +3,9 @@ package space
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -172,13 +175,23 @@ func (s *service) AccountId() string {
 	return s.accountId
 }
 
+func parseReplicationKey(spaceID string) (uint64, error) {
+	parts := strings.Split(spaceID, ".")
+	raw := parts[len(parts)-1]
+	return strconv.ParseUint(raw, 36, 64)
+}
+
 func (s *service) CreateSpace(ctx context.Context) (container commonspace.Space, err error) {
+	replicationKey, err := parseReplicationKey(s.accountId)
+	if err != nil {
+		return nil, fmt.Errorf("parse account's replication key: %w", err)
+	}
 	payload := commonspace.SpaceCreatePayload{
 		SigningKey:     s.wallet.GetAccountPrivkey(),
 		MasterKey:      s.wallet.GetMasterKey(),
 		ReadKey:        crypto.NewAES().Bytes(),
 		SpaceType:      SpaceType,
-		ReplicationKey: 0, // TODO Copy from zero space
+		ReplicationKey: replicationKey,
 	}
 	id, err := s.commonSpace.CreateSpace(ctx, payload)
 	if err != nil {
