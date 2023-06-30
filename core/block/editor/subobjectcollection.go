@@ -126,7 +126,7 @@ func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (
 		for subId := range data.GetFields() {
 			fullId := c.getId(coll, subId)
 
-			sub, err := subState(st, coll, fullId, workspaceID)
+			sub, err := c.subState(st, coll, fullId, workspaceID)
 			if err != nil {
 				log.Errorf("failed to get sub object %s: %v", subId, err)
 				continue
@@ -373,7 +373,7 @@ func (c *SubObjectCollection) initSubObject(ctx session.Context, st *state.State
 		// SubObjectCollection is used only workspaces now so get ID from the workspace object
 		workspaceID = st.RootId()
 	}
-	subState, err := subState(st, collection, fullId, workspaceID)
+	subState, err := c.subState(st, collection, fullId, workspaceID)
 	if err != nil {
 		return
 	}
@@ -412,7 +412,7 @@ func (c *SubObjectCollection) initSubObject(ctx session.Context, st *state.State
 
 // subState returns a details-only state for a subobject
 // make sure to call sbimpl.initState(st) before using it
-func subState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
+func (c *SubObjectCollection) subState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
 	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
 	data := pbtypes.GetStruct(st.GetSubObjectCollection(collection), subId)
 	if data == nil || data.Fields == nil {
@@ -437,6 +437,7 @@ func subState(st *state.State, collection string, fullId string, workspaceId str
 	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate, bundle.RelationKeyLastModifiedBy)
 	subst.SetDetailAndBundledRelation(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySourceObject.String()}))
 	subst.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	subst.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(c.SpaceID()))
 
 	return subst, nil
 }

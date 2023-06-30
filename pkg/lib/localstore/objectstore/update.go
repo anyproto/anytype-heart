@@ -23,7 +23,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		return fmt.Errorf("details fields are nil")
 	}
 	if pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) == "" {
-		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
+		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("spaceID erased")
 	}
 	if pbtypes.GetString(details, bundle.RelationKeyWorkspaceId.String()) == "" {
 		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
