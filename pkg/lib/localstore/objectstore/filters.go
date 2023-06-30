@@ -60,7 +60,8 @@ func newSmartblockTypesFilter(sbtProvider typeprovider.SmartBlockTypeProvider, n
 
 func (m *filterSmartblockTypes) FilterObject(getter filter.Getter) bool {
 	id := getter.Get(bundle.RelationKeyId.String()).GetStringValue()
-	t, err := m.sbtProvider.Type(id)
+	spaceID := getter.Get(bundle.RelationKeySpaceId.String()).GetStringValue()
+	t, err := m.sbtProvider.TypeWithSpaceID(spaceID, id)
 	if err != nil {
 		log.Debugf("failed to detect smartblock type for %s: %s", id, err.Error())
 		return false
