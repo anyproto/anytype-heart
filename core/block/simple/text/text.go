@@ -42,7 +42,7 @@ func NewText(block *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	SetText(text string, marks *model.BlockContentTextMarks) (err error)
+	SetText(text string, marks *model.BlockContentTextMarks)
 	GetText() (text string)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
@@ -227,7 +227,7 @@ func (t *Text) HasMarkForAllText(mark *model.BlockContentTextMark) bool {
 	return false
 }
 
-func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
+func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) {
 	t.content.Text = text
 	if marks == nil {
 		marks = &model.BlockContentTextMarks{}

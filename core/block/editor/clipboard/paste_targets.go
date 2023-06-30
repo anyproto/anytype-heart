@@ -90,9 +90,7 @@ func (c *cellTarget) PasteInside(targetState, clipboardState *state.State, secon
 		marks := tb.Model().GetText().Marks
 		txt := strings.TrimSpace(tb.GetText())
 
-		if err := tb.SetText(sep+txt, marks); err != nil {
-			return fmt.Errorf("set text in block %s: %w", tb.Model().Id, err)
-		}
+		tb.SetText(sep+txt, marks)
 		tb.SetStyle(model.BlockContentText_Paragraph)
 		if err := b.Merge(tb); err != nil {
 			return fmt.Errorf("merge %s into %s: %w", tb.Model().Id, b.Model().Id, err)

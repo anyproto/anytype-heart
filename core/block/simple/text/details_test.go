@@ -47,7 +47,7 @@ func TestTextDetails_ApplyToDetails(t *testing.T) {
 		},
 	}}
 	db.DetailsInit(ds)
-	require.NoError(t, db.SetText("changed", nil))
+	db.SetText("changed", nil)
 	ok, err := db.ApplyToDetails(orig, ds)
 	require.NoError(t, err)
 	assert.True(t, ok)
@@ -75,7 +75,7 @@ func TestTextDetails_Diff(t *testing.T) {
 			},
 		}}
 		db.DetailsInit(ds)
-		require.NoError(t, db.SetText("changed", nil))
+		db.SetText("changed", nil)
 		db.SetChecked(true)
 		ok, err := db.ApplyToDetails(orig, ds)
 		require.NoError(t, err)

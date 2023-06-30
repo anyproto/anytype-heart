@@ -358,7 +358,8 @@ func (s *Service) ClearTextStyle(ctx *session.Context, contextId string, blockId
 func (s *Service) ClearTextContent(ctx *session.Context, contextId string, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
-			return t.SetText("", nil)
+			t.SetText("", nil)
+			return nil
 		})
 	})
 }
