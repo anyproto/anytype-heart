@@ -1,6 +1,8 @@
 package csv
 
 import (
+	"strconv"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -22,6 +24,8 @@ import (
 
 var logger = logging.Logger("import-csv")
 
+const defaultRelationName = "Field"
+
 type CollectionStrategy struct {
 	collectionService *collection.Service
 }
@@ -40,7 +44,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 		return "", nil, err
 	}
 
-	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable)
+	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable, useFirstRowForRelations)
 	objectsSnapshots := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
@@ -58,7 +62,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 	return snapshot.Id, snapshots, nil
 }
 
-func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converter.Snapshot) {
+func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) ([]*model.Relation, []*converter.Snapshot) {
 	if len(csvTable) == 0 {
 		return nil, nil
 	}
@@ -70,26 +74,38 @@ func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converte
 	})
 	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
 	allRelations := csvTable[0]
-	for i := 1; i < len(allRelations); i++ {
+	numberOfRelationsLimit := len(allRelations)
+	if numberOfRelationsLimit > limitForColumns {
+		numberOfRelationsLimit = limitForColumns
+	}
+	for i := 1; i < numberOfRelationsLimit; i++ {
 		if allRelations[i] == "" {
 			continue
+		}
+		relationName := allRelations[i]
+		if !useFirstRowForRelations {
+			relationName = getDefaultRelationName(i)
 		}
 		id := bson.NewObjectId().Hex()
 		relations = append(relations, &model.Relation{
 			Format: model.RelationFormat_longtext,
-			Name:   allRelations[i],
+			Name:   relationName,
 			Key:    id,
 		})
 		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
 			Id:     addr.RelationKeyToIdPrefix + id,
 			SbType: smartblock.SmartBlockTypeSubObject,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-				Details:     getRelationDetails(allRelations[i], id, float64(model.RelationFormat_longtext)),
+				Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
 				ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
 			}},
 		})
 	}
 	return relations, relationsSnapshots
+}
+
+func getDefaultRelationName(i int) string {
+	return defaultRelationName + " " + strconv.FormatInt(int64(i), 10)
 }
 
 func getRelationDetails(name, key string, format float64) *types.Struct {
@@ -104,7 +120,14 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 
 func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) []*converter.Snapshot {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
-	for i := 0; i < len(csvTable); i++ {
+	numberOfObjectsLimit := len(csvTable)
+	if numberOfObjectsLimit >= limitForRows {
+		numberOfObjectsLimit = limitForRows
+		if useFirstRowForRelations {
+			numberOfObjectsLimit++ // because first row is relations, so we need to add plus 1 row
+		}
+	}
+	for i := 0; i < numberOfObjectsLimit; i++ {
 		// skip first row if option is turned on
 		if i == 0 && useFirstRowForRelations {
 			continue
@@ -116,7 +139,7 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 				},
 			}),
 		}).NewState()
-		details, relationLinks := getDetailsForObject(csvTable[i], relations, i == 0)
+		details, relationLinks := getDetailsForObject(csvTable[i], relations)
 		st.SetDetails(details)
 		st.AddRelationLinks(relationLinks...)
 		template.InitTemplate(st, template.WithTitle)
@@ -126,7 +149,7 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 	return snapshots
 }
 
-func getDetailsForObject(relationsValues []string, relations []*model.Relation, isFirstRowObject bool) (*types.Struct, []*model.RelationLink) {
+func getDetailsForObject(relationsValues []string, relations []*model.Relation) (*types.Struct, []*model.RelationLink) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	relationLinks := make([]*model.RelationLink, 0)
 	for j, value := range relationsValues {
@@ -135,10 +158,6 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 		}
 		relation := relations[j]
 		details.Fields[relation.Key] = pbtypes.String(value)
-		// if first row is an object and relation key is not a name, we create empty relations for this object
-		if isFirstRowObject && relation.Key != bundle.RelationKeyName.String() {
-			details.Fields[relation.Key] = pbtypes.String("")
-		}
 		relationLinks = append(relationLinks, &model.RelationLink{
 			Key:    relation.Key,
 			Format: relation.Format,
