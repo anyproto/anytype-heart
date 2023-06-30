@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -140,21 +139,6 @@ func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreat
 	// 	bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
 	// }}, nil)
 	// return id, err
-}
-
-func (s *Service) WorkspaceInfo(ctx session.Context) (*model.AccountInfo, error) {
-	predefinedObjectIDs, err := s.anytype.DerivePredefinedObjects(ctx, false)
-	if err != nil {
-		return nil, fmt.Errorf("derive predefined objects: %w", err)
-	}
-	return &model.AccountInfo{
-		HomeObjectId:           predefinedObjectIDs.Home,
-		AccountSpaceId:         predefinedObjectIDs.Account,
-		WidgetsId:              predefinedObjectIDs.Widgets,
-		ArchiveObjectId:        predefinedObjectIDs.Archive,
-		ProfileObjectId:        predefinedObjectIDs.Profile,
-		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
-	}, nil
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block

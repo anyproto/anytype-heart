@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
@@ -245,7 +246,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectCreator).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
-		Register(graphRenderer)
+		Register(graphRenderer).
+		Register(account.New())
 }
 
 func MiddlewareVersion() string {

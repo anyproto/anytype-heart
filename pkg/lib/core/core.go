@@ -63,6 +63,7 @@ type Anytype struct {
 	deriver     ObjectsDeriver
 
 	accountSpacePredefinedObjectIDs threads.DerivedSmartblockIds
+	predefinedObjectsPerSpace       map[string]threads.DerivedSmartblockIds
 
 	migrationOnce    sync.Once
 	lock             sync.Mutex
@@ -79,7 +80,8 @@ type Anytype struct {
 
 func New() *Anytype {
 	return &Anytype{
-		shutdownStartsCh: make(chan struct{}),
+		shutdownStartsCh:          make(chan struct{}),
+		predefinedObjectsPerSpace: make(map[string]threads.DerivedSmartblockIds),
 	}
 }
 
@@ -144,6 +146,23 @@ func (a *Anytype) start() {
 }
 
 func (a *Anytype) DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	ids, ok := a.predefinedObjectsPerSpace[ctx.SpaceID()]
+	if ok {
+		return ids, nil
+	}
+
+	ids, err = a.derivePredefinedObjects(ctx, createTrees)
+	if err != nil {
+		return threads.DerivedSmartblockIds{}, err
+	}
+	a.predefinedObjectsPerSpace[ctx.SpaceID()] = ids
+	return ids, nil
+}
+
+func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
 	sbTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeProfilePage,

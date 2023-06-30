@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -46,15 +47,10 @@ func (mw *Middleware) WorkspaceInfo(cctx context.Context, req *pb.RpcWorkspaceIn
 		return m
 	}
 
-	var info *model.AccountInfo
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		info, err = bs.WorkspaceInfo(ctx)
-		return
-	})
+	info, err := getService[account.Service](mw).GetInfo(ctx.SpaceID())
 	if err != nil {
 		return response(info, pb.RpcWorkspaceInfoResponseError_UNKNOWN_ERROR, err)
 	}
-
 	return response(info, pb.RpcWorkspaceInfoResponseError_NULL, nil)
 }
 

@@ -692,7 +692,6 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOp
 		}
 	}
 	if spaceID == "" {
-		// spaceID = "bafyreian4fawywbjksy4qhv7kp4374gjs3k4krdkjrpl5gbji6t4t6k3ji.0"
 		log.Errorf("newContext: set spaceID to accountID")
 		spaceID = getService[space.Service](mw).AccountId()
 	}
@@ -711,7 +710,6 @@ func (mw *Middleware) newContextNoLock(cctx context.Context, opts ...session.Con
 		}
 	}
 	if spaceID == "" {
-		// spaceID = "bafyreian4fawywbjksy4qhv7kp4374gjs3k4krdkjrpl5gbji6t4t6k3ji.0"
 		log.Errorf("newContextNoLock: set spaceID to accountID")
 		spaceID = app.MustComponent[space.Service](mw.app).AccountId()
 	}

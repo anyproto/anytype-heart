@@ -19,19 +19,16 @@ import (
 	cp "github.com/otiai10/copy"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
@@ -45,64 +42,6 @@ const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
 func (mw *Middleware) refreshRemoteAccountState() {
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	fetcher.Refetch()
-}
-
-func (mw *Middleware) getAnalyticsId(ctx session.Context, bs *block.Service, accountId string) (string, error) {
-	conf := mw.app.MustComponent(config.CName).(*config.Config)
-	if conf.AnalyticsId != "" {
-		return conf.AnalyticsId, nil
-	}
-	var analyticsId string
-	sb, err := bs.PickBlock(ctx, accountId)
-	if err != nil {
-		return "", err
-	}
-	s := sb.NewState().GetSetting(state.SettingsAnalyticsId)
-	if s == nil {
-		log.Errorf("analytics id not found")
-	} else {
-		analyticsId = s.GetStringValue()
-	}
-
-	return analyticsId, err
-}
-
-func (mw *Middleware) getInfo(ctx session.Context, bs *block.Service) *model.AccountInfo {
-	at := mw.app.MustComponent(core.CName).(core.Service)
-	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
-	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
-	deviceKey := wallet.GetDevicePrivkey()
-	deviceId := deviceKey.GetPublic().Account()
-
-	analyticsId, err := mw.getAnalyticsId(ctx, bs, at.PredefinedBlocks().Account)
-	if err != nil {
-		log.Errorf("failed to get analytics id: %s", err.Error())
-	}
-
-	if gwAddr != "" {
-		gwAddr = "http://" + gwAddr
-	}
-
-	cfg := config.ConfigRequired{}
-	err = config.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg)
-	if err != nil || cfg.CustomFileStorePath == "" {
-		cfg.CustomFileStorePath = wallet.RepoPath()
-	}
-
-	pBlocks := at.PredefinedBlocks()
-	return &model.AccountInfo{
-		HomeObjectId:           pBlocks.Home,
-		ArchiveObjectId:        pBlocks.Archive,
-		ProfileObjectId:        pBlocks.Profile,
-		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
-		AccountSpaceId:         pBlocks.Account,
-		WidgetsId:              pBlocks.Widgets,
-		GatewayUrl:             gwAddr,
-		DeviceId:               deviceId,
-		LocalStoragePath:       cfg.CustomFileStorePath,
-		TimeZone:               cfg.TimeZone,
-		AnalyticsId:            analyticsId,
-	}
 }
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -196,7 +135,10 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	}
 
 	newAcc.Name = req.Name
-	newAcc.Info = mw.getInfo(ctx, bs)
+	newAcc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx.SpaceID())
+	if err != nil {
+		return response(newAcc, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
+	}
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
@@ -273,7 +215,11 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		bs.CloseBlocks()
 		acc := &model.Account{Id: req.Id}
 		ctx := mw.newContextNoLock(cctx)
-		acc.Info = mw.getInfo(ctx, bs)
+		var err error
+		acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx.SpaceID())
+		if err != nil {
+			return response(acc, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+		}
 		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 	}
 
@@ -334,7 +280,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 
 	acc := &model.Account{Id: req.Id}
 	ctx := mw.newContextNoLock(cctx)
-	acc.Info = mw.getInfo(ctx, mw.app.MustComponent(block.CName).(*block.Service))
+	acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx.SpaceID())
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
