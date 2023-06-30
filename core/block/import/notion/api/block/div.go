@@ -11,7 +11,7 @@ type DividerBlock struct {
 	Divider struct{} `json:"divider"`
 }
 
-func (*DividerBlock) GetBlocks(*MapRequest) *MapResponse {
+func (*DividerBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	block := &model.Block{
 		Id: id,

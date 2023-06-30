@@ -38,14 +38,16 @@ func TestUploader_Upload(t *testing.T) {
 		defer fx.tearDown()
 		im := fx.newImage("123")
 		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(im, nil)
-		im.EXPECT().GetOriginalFile(gomock.Any())
+		im.EXPECT().GetOriginalFile(gomock.Any()).Return(fx.file, nil)
 		b := newBlock(model.BlockContentFile_Image)
 		fx.blockService.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil)
+		fx.file.EXPECT().Meta().Return(&files.FileMeta{Media: "image/jpg"}).AnyTimes()
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.Hash, "123")
 		assert.Equal(t, res.Name, "unnamed.jpg")
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
+		assert.Equal(t, res.MIME, "image/jpg")
 	})
 	t.Run("image type detect", func(t *testing.T) {
 		fx := newFixture(t)
@@ -164,12 +166,15 @@ func newFixture(t *testing.T) *uplFixture {
 	fx.blockService = NewMockBlockService(fx.ctrl)
 
 	fx.Uploader = file.NewUploader(fx.blockService, fx.fileService, core.NewTempDirService(nil))
+	fx.file = testMock.NewMockFile(fx.ctrl)
+	fx.file.EXPECT().Hash().Return("123").AnyTimes()
 	return fx
 }
 
 type uplFixture struct {
 	file.Uploader
 	blockService *MockBlockService
+	file         *testMock.MockFile
 	fileService  *testMock.MockFileService
 	ctrl         *gomock.Controller
 }

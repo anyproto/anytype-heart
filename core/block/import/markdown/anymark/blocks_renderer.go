@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
@@ -203,8 +204,8 @@ func (r *blocksRenderer) AddImageBlock(source string) {
 	}
 
 	newBlock := model.Block{
+		Id: bson.NewObjectId().Hex(),
 		Content: &model.BlockContentOfFile{
-
 			File: &model.BlockContentFile{
 				Name:  sourceUnescaped,
 				State: model.BlockContentFile_Empty,
@@ -213,6 +214,7 @@ func (r *blocksRenderer) AddImageBlock(source string) {
 	}
 
 	r.blocks = append(r.blocks, &newBlock)
+	r.addChildIDToParentBlock(newBlock.Id)
 }
 
 func (r *blocksRenderer) AddDivider() {
@@ -220,20 +222,24 @@ func (r *blocksRenderer) AddDivider() {
 	r.marksBuffer = []*model.BlockContentTextMark{}
 	r.textBuffer = ""
 
-	r.blocks = append(r.blocks, &model.Block{
+	divider := &model.Block{
+		Id: bson.NewObjectId().Hex(),
 		Content: &model.BlockContentOfDiv{
 			Div: &model.BlockContentDiv{
 				Style: model.BlockContentDiv_Line,
 			},
 		},
-	})
+	}
+	r.blocks = append(r.blocks, divider)
+	r.addChildIDToParentBlock(divider.Id)
 }
 
 func isBlockCanHaveChild(block model.Block) bool {
 	if t := block.GetText(); t != nil {
 		return t.Style == model.BlockContentText_Numbered ||
 			t.Style == model.BlockContentText_Marked ||
-			t.Style == model.BlockContentText_Toggle
+			t.Style == model.BlockContentText_Toggle ||
+			t.Style == model.BlockContentText_Quote
 	}
 
 	return false
@@ -371,6 +377,21 @@ func (r *blocksRenderer) adjustMarkdownRange(t *model.BlockContentText, adjustNu
 	}
 }
 
+func (r *blocksRenderer) addChildIDToParentBlock(id string) {
+	if len(r.openedTextBlocks) > 0 {
+		var parentBlock *textBlock
+		for i := len(r.openedTextBlocks) - 1; i >= 0; i-- {
+			if isBlockCanHaveChild(r.openedTextBlocks[i].Block) {
+				parentBlock = r.openedTextBlocks[i]
+				break
+			}
+		}
+		if parentBlock != nil {
+			parentBlock.ChildrenIds = append(parentBlock.ChildrenIds, id)
+		}
+	}
+}
+
 func (r *blocksRenderer) ForceCloseTextBlock() {
 	s := r.openedTextBlocks
 	style := model.BlockContentText_Paragraph
@@ -389,8 +410,4 @@ func (r *blocksRenderer) ProcessMarkdownArtifacts() {
 			fmt.Println(res[i])
 		}
 	}
-}
-
-func (r *blocksRenderer) AddQuote() {
-	r.blocks[len(r.blocks)-1].GetText().Style = model.BlockContentText_Quote
 }

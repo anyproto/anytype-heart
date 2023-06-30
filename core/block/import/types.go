@@ -37,5 +37,5 @@ type Creator interface {
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool) (string, treestorage.TreeStorageCreatePayload, error)
+	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool, oldIDToNew map[string]string) (string, treestorage.TreeStorageCreatePayload, error)
 }

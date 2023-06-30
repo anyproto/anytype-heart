@@ -16,11 +16,12 @@ import (
 
 type AddOption func(*AddOptions)
 type AddOptions struct {
-	Reader    io.ReadSeeker
-	Use       string
-	Media     string
-	Name      string
-	Plaintext bool
+	Reader           io.ReadSeeker
+	Use              string
+	Media            string
+	Name             string
+	LastModifiedDate int64
+	Plaintext        bool
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -32,6 +33,12 @@ func WithReader(r io.ReadSeeker) AddOption {
 func WithName(name string) AddOption {
 	return func(args *AddOptions) {
 		args.Name = name
+	}
+}
+
+func WithLastModifiedDate(timestamp int64) AddOption {
+	return func(args *AddOptions) {
+		args.LastModifiedDate = timestamp
 	}
 }
 

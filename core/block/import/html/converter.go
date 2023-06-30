@@ -56,12 +56,13 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
-	if !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
+		(cErr.IsNoObjectToImportError(len(path))) {
 		return nil, cErr
 	}
 
 	rootCollection := converter.NewRootCollection(h.collectionService)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
 		cErr.Add(rootCollectionName, err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

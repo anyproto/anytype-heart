@@ -53,15 +53,15 @@ func (f *file) getDetailsForFileOrImage(ctx context.Context, id string) (p *type
 		return nil, false, err
 	}
 	if strings.HasPrefix(file.Info().Media, "image") {
-		i, err := f.fileService.ImageByHash(ctx, id)
+		image, err := f.fileService.ImageByHash(ctx, id)
 		if err != nil {
 			return nil, false, err
 		}
-		d, err := i.Details(ctx)
+		details, err := image.Details(ctx)
 		if err != nil {
 			return nil, false, err
 		}
-		return d, true, nil
+		return details, true, nil
 	}
 
 	d, err := file.Details(ctx)

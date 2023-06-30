@@ -41,7 +41,7 @@ func (t *GroupTag) InitGroups(f *database.Filters) error {
 		},
 	}}
 
-	records, err := t.store.QueryRaw(f)
+	records, err := t.store.QueryRaw(f, 0, 0)
 	if err != nil {
 		return fmt.Errorf("init kanban by tag, objectStore query error: %v", err)
 	}

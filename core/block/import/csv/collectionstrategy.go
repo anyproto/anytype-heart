@@ -1,8 +1,6 @@
 package csv
 
 import (
-	"strings"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -11,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark/whitespace"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -32,18 +30,18 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
+func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, useFirstRowForRelations bool, progress process.Progress) (string, []*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	details := converter.GetCommonDetails(path, "", "")
 	details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 	_, _, st, err := c.collectionService.CreateCollection(details, nil)
 	if err != nil {
-		return nil, nil, err
+		return "", nil, err
 	}
 
 	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable)
-	objectsSnapshots := getEmptyObjects(csvTable, relations)
+	objectsSnapshots := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -56,9 +54,8 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string) ([]
 	snapshots = append(snapshots, snapshot)
 	snapshots = append(snapshots, objectsSnapshots...)
 	snapshots = append(snapshots, relationsSnapshots...)
-	allObjectsIDs = append(allObjectsIDs, snapshot.Id)
-
-	return allObjectsIDs, snapshots, nil
+	progress.AddDone(1)
+	return snapshot.Id, snapshots, nil
 }
 
 func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converter.Snapshot) {
@@ -66,23 +63,28 @@ func getDetailsFromCSVTable(csvTable [][]string) ([]*model.Relation, []*converte
 		return nil, nil
 	}
 	relations := make([]*model.Relation, 0, len(csvTable[0]))
+	// first column is always a name
+	relations = append(relations, &model.Relation{
+		Format: model.RelationFormat_shorttext,
+		Key:    bundle.RelationKeyName.String(),
+	})
 	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
 	allRelations := csvTable[0]
-	for _, relation := range allRelations {
-		if relation == "" {
+	for i := 1; i < len(allRelations); i++ {
+		if allRelations[i] == "" {
 			continue
 		}
 		id := bson.NewObjectId().Hex()
 		relations = append(relations, &model.Relation{
 			Format: model.RelationFormat_longtext,
-			Name:   relation,
+			Name:   allRelations[i],
 			Key:    id,
 		})
 		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
 			Id:     addr.RelationKeyToIdPrefix + id,
 			SbType: smartblock.SmartBlockTypeSubObject,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-				Details:     getRelationDetails(relation, id, float64(model.RelationFormat_longtext)),
+				Details:     getRelationDetails(allRelations[i], id, float64(model.RelationFormat_longtext)),
 				ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
 			}},
 		})
@@ -100,9 +102,13 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	return details
 }
 
-func getEmptyObjects(csvTable [][]string, relations []*model.Relation) []*converter.Snapshot {
+func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) []*converter.Snapshot {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
-	for i := 1; i < len(csvTable); i++ {
+	for i := 0; i < len(csvTable); i++ {
+		// skip first row if option is turned on
+		if i == 0 && useFirstRowForRelations {
+			continue
+		}
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{
 				Content: &model.BlockContentOfSmartblock{
@@ -110,31 +116,32 @@ func getEmptyObjects(csvTable [][]string, relations []*model.Relation) []*conver
 				},
 			}),
 		}).NewState()
-		details, relationLinks := getDetailsForObject(csvTable, relations, i)
+		details, relationLinks := getDetailsForObject(csvTable[i], relations, i == 0)
 		st.SetDetails(details)
-		template.InitTemplate(st, template.WithTitle)
 		st.AddRelationLinks(relationLinks...)
+		template.InitTemplate(st, template.WithTitle)
 		sn := provideObjectSnapshot(st, details)
 		snapshots = append(snapshots, sn)
 	}
 	return snapshots
 }
 
-func getDetailsForObject(csvTable [][]string, relations []*model.Relation, i int) (*types.Struct, []*model.RelationLink) {
+func getDetailsForObject(relationsValues []string, relations []*model.Relation, isFirstRowObject bool) (*types.Struct, []*model.RelationLink) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	relationLinks := make([]*model.RelationLink, 0)
-	for j, value := range csvTable[i] {
+	for j, value := range relationsValues {
 		if len(relations) <= j {
 			break
 		}
-		name := strings.TrimSpace(whitespace.WhitespaceNormalizeString(relations[j].Name))
-		if strings.EqualFold(name, "name") {
-			relations[j].Key = bundle.RelationKeyName.String()
+		relation := relations[j]
+		details.Fields[relation.Key] = pbtypes.String(value)
+		// if first row is an object and relation key is not a name, we create empty relations for this object
+		if isFirstRowObject && relation.Key != bundle.RelationKeyName.String() {
+			details.Fields[relation.Key] = pbtypes.String("")
 		}
-		details.Fields[relations[j].Key] = pbtypes.String(value)
 		relationLinks = append(relationLinks, &model.RelationLink{
-			Key:    relations[j].Key,
-			Format: relations[j].Format,
+			Key:    relation.Key,
+			Format: relation.Format,
 		})
 	}
 	return details, relationLinks

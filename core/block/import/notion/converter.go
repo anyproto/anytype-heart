@@ -2,6 +2,7 @@ package notion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -24,6 +24,7 @@ const (
 	retryAmount               = 5
 	numberOfStepsForPages     = 4 // 3 cycles to get snapshots and 1 cycle to create objects
 	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
+	stepForSearch             = 1
 )
 
 type Notion struct {
@@ -53,28 +54,29 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
 		return nil, ce
 	}
+	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases+len(pages)*numberOfStepsForPages) + stepForSearch)
+
 	if err = progress.TryStep(1); err != nil {
-		return nil, converter.NewFromError("", err)
+		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
 	if len(db) == 0 && len(pages) == 0 {
 		return nil, converter.NewFromError("", converter.ErrNoObjectsToImport)
 	}
 
-	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases + len(pages)*numberOfStepsForPages))
-	dbSnapshots, mapRequest, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
+	notionImportContext := block.NewNotionImportContext()
+	dbSnapshots, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
+	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
+		return nil, converter.NewFromError("", converter.ErrCancel)
+	}
 	if dbErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(dbErr)
 		return nil, ce
 	}
 
-	r := &block.MapRequest{
-		NotionDatabaseIdsToAnytype: mapRequest.NotionDatabaseIdsToAnytype,
-		DatabaseNameToID:           mapRequest.DatabaseNameToID,
-		RelationsIdsToAnytypeID:    mapRequest.RelationsIdsToAnytypeID,
-		RelationsIdsToOptions:      make(map[string][]*model.SmartBlockSnapshotBase, 0),
+	pgSnapshots, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionImportContext, progress)
+	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
+		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
-
-	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, r, progress)
 	if pgErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(pgErr)
 		return nil, ce
@@ -90,7 +92,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		dbs = dbSnapshots.Snapshots
 	}
 
-	n.dbService.AddPagesToCollections(dbs, pages, db, notionPageIDToAnytype, mapRequest.NotionDatabaseIdsToAnytype)
+	n.dbService.AddPagesToCollections(dbs, pages, db, notionImportContext.NotionPageIdsToAnytype, notionImportContext.NotionDatabaseIdsToAnytype)
 
 	dbs, err = n.dbService.AddObjectsToNotionCollection(dbs, pgs)
 	if err != nil {

@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	Name               = "Csv"
-	rootCollectionName = "CSV Import"
+	Name                  = "Csv"
+	rootCollectionName    = "CSV Import"
+	numberOfProgressSteps = 2
 )
 
 type Result struct {
@@ -56,17 +57,17 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if params == nil {
 		return nil, nil
 	}
-	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
 	result, cancelError := c.createObjectsFromCSVFiles(req, progress, params, cErr)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
-	if !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
+		(cErr.IsNoObjectToImportError(len(params.Path))) {
 		return nil, cErr
 	}
 	rootCollection := converter.NewRootCollection(c.collectionService)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, result.objectIDs)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, result.objectIDs)
 	if err != nil {
 		cErr.Add(rootCollectionName, err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -76,7 +77,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if rootCol != nil {
 		result.snapshots = append(result.snapshots, rootCol)
 	}
-	progress.SetTotal(int64(len(result.objectIDs)))
+	progress.SetTotal(int64(len(result.snapshots)))
 	if cErr.IsEmpty() {
 		return &converter.Response{Snapshots: result.snapshots}, nil
 	}
@@ -92,10 +93,7 @@ func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	str := c.chooseStrategy(csvMode)
 	result := &Result{}
 	for _, p := range params.GetPath() {
-		if err := progress.TryStep(1); err != nil {
-			return nil, converter.NewCancelError(p, err)
-		}
-		pathResult := c.handlePath(req, p, cErr, str)
+		pathResult := c.getSnapshotsFromFiles(req, p, cErr, str, progress)
 		if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil
 		}
@@ -104,7 +102,7 @@ func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	return result, nil
 }
 
-func (c *CSV) handlePath(req *pb.RpcObjectImportRequest, p string, cErr converter.ConvertError, str Strategy) *Result {
+func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, p string, cErr converter.ConvertError, str Strategy, progress process.Progress) *Result {
 	params := req.GetCsvParams()
 	s := source.GetSource(p)
 	if s == nil {
@@ -122,30 +120,37 @@ func (c *CSV) handlePath(req *pb.RpcObjectImportRequest, p string, cErr converte
 		cErr.Add(p, converter.ErrNoObjectsToImport)
 		return nil
 	}
-	return c.handleCSVTables(req.Mode, readers, params, str, p, cErr)
+	return c.getSnapshots(req.Mode, readers, params, str, p, cErr, progress)
 }
 
-func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
+func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 	readers map[string]io.ReadCloser,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
 	p string,
-	cErr converter.ConvertError) *Result {
+	cErr converter.ConvertError,
+	progress process.Progress) *Result {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
-	for _, rc := range readers {
+	progress.SetProgressMessage("Start creating snapshots from files")
+	progress.SetTotal(int64(len(readers) * numberOfProgressSteps))
+	for filePath, rc := range readers {
+		if err := progress.TryStep(1); err != nil {
+			cErr = converter.NewCancelError("", err)
+			return nil
+		}
 		csvTable, err := c.getCSVTable(rc, params.GetDelimiter())
 		if err != nil {
-			cErr.Add(p, err)
+			cErr.Add(filePath, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}
 			continue
 		}
-		if c.needToTranspose(params) && len(csvTable) != 0 {
+		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		objectsIDs, snapshots, err := str.CreateObjects(p, csvTable)
+		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params.UseFirstRowForRelations, progress)
 		if err != nil {
 			cErr.Add(p, err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -153,7 +158,7 @@ func (c *CSV) handleCSVTables(mode pb.RpcObjectImportRequestMode,
 			}
 			continue
 		}
-		allObjectsIDs = append(allObjectsIDs, objectsIDs...)
+		allObjectsIDs = append(allObjectsIDs, collectionID)
 		allSnapshots = append(allSnapshots, snapshots...)
 	}
 	return &Result{objectIDs: allObjectsIDs, snapshots: allSnapshots}
@@ -173,11 +178,6 @@ func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error
 		return nil, err
 	}
 	return csvTable, nil
-}
-
-func (c *CSV) needToTranspose(params *pb.RpcObjectImportRequestCsvParams) bool {
-	return (params.GetTransposeRowsAndColumns() && params.GetUseFirstRowForRelations()) ||
-		(!params.GetUseFirstRowForRelations() && !params.GetTransposeRowsAndColumns())
 }
 
 func (c *CSV) chooseStrategy(mode pb.RpcObjectImportRequestCsvParamsMode) Strategy {

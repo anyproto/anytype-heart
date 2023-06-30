@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 var ErrCancel = fmt.Errorf("import is canceled")
@@ -58,4 +60,34 @@ func (ce ConvertError) Error() error {
 
 func (ce ConvertError) Get(objectName string) error {
 	return ce[objectName]
+}
+
+func (ce ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) error {
+	if ce.IsEmpty() {
+		return nil
+	}
+	var countNoObjectsToImport int
+	for _, e := range ce {
+		switch {
+		case errors.Is(e, ErrCancel):
+			return errors.Wrapf(ErrCancel, "import type: %s", importType.String())
+		case errors.Is(e, ErrNoObjectsToImport):
+			countNoObjectsToImport++
+		}
+	}
+	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
+	if countNoObjectsToImport == len(ce) {
+		return errors.Wrapf(ErrNoObjectsToImport, "import type: %s", importType.String())
+	}
+	return errors.Wrapf(ce.Error(), "import type: %s", importType.String())
+}
+
+func (ce ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
+	var countNoObjectsToImport int
+	for _, err := range ce {
+		if errors.Is(err, ErrNoObjectsToImport) {
+			countNoObjectsToImport++
+		}
+	}
+	return importPathsCount == countNoObjectsToImport
 }

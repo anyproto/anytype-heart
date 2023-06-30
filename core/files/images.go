@@ -88,9 +88,6 @@ func (s *service) imageAdd(ctx context.Context, opts AddOptions) (string, map[in
 	if err != nil {
 		return "", nil, err
 	}
-	if err = s.storeChunksCount(ctx, node); err != nil {
-		return "", nil, fmt.Errorf("store chunks count: %w", err)
-	}
 
 	nodeHash := node.Cid().String()
 	err = s.fileStore.AddFileKeys(filestore.FileKeys{

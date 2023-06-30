@@ -126,6 +126,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
 	prevSnapshot := s.lastSnapshotId
+	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
 		st, changes, sinceSnapshot, err := BuildState(d.(*state.State), ot, s.coreService.PredefinedBlocks().Profile)
 		if prevSnapshot != s.lastSnapshotId {
@@ -394,6 +395,82 @@ func (s *source) Close() (err error) {
 }
 
 func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
+	var (
+		startId    string
+		lastChange *objecttree.Change
+		count      int
+	)
+	// if the state has no first change
+	if initState == nil {
+		startId = ot.Root().Id
+	} else {
+		st = initState
+		startId = st.ChangeId()
+	}
+
+	var lastMigrationVersion uint32
+	err = ot.IterateFrom(startId,
+		func(decrypted []byte) (any, error) {
+			ch := &pb.Change{}
+			err = proto.Unmarshal(decrypted, ch)
+			if err != nil {
+				return nil, err
+			}
+			return ch, nil
+		}, func(change *objecttree.Change) bool {
+			count++
+			lastChange = change
+			// that means that we are starting from tree root
+			if change.Id == ot.Id() {
+				st = state.NewDoc(ot.Id(), nil).(*state.State)
+				st.SetChangeId(change.Id)
+				return true
+			}
+
+			model := change.Model.(*pb.Change)
+			if model.Version > lastMigrationVersion {
+				lastMigrationVersion = model.Version
+			}
+			if startId == change.Id {
+				if st == nil {
+					changesAppliedSinceSnapshot = 0
+					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
+					return true
+				} else {
+					st = st.NewState()
+				}
+				return true
+			}
+			if model.Snapshot != nil {
+				changesAppliedSinceSnapshot = 0
+			} else {
+				changesAppliedSinceSnapshot++
+			}
+			appliedContent = append(appliedContent, model.Content...)
+			st.SetChangeId(change.Id)
+			st.ApplyChangeIgnoreErr(model.Content...)
+			st.AddFileKeys(model.FileKeys...)
+
+			return true
+		})
+	if err != nil {
+		return
+	}
+	_, _, err = state.ApplyStateFastOne(st)
+	if err != nil {
+		return
+	}
+
+	if lastChange != nil && !st.IsTheHeaderChange() {
+		// todo: why do we don't need to set last modified for the header change?
+		st.SetLastModified(lastChange.Timestamp, profileId)
+	}
+	st.SetMigrationVersion(lastMigrationVersion)
+	return
+}
+
+// BuildStateFull is deprecated, used in tests only, use BuildState instead
+func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change

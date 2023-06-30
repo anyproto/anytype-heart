@@ -1,7 +1,6 @@
 package markdown
 
 import (
-	"fmt"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -79,11 +78,9 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 		}
 		allSnapshots = append(allSnapshots, snapshots...)
 	}
-
-	if len(allSnapshots) == 0 {
-		allErrors.Add("", fmt.Errorf("failed to get snaphots from path, no md files"))
+	if allErrors.IsNoObjectToImportError(len(paths)) {
+		return nil, allErrors
 	}
-
 	allSnapshots, err := m.createRootCollection(allSnapshots)
 	if err != nil {
 		allErrors.Add(rootCollectionName, err)
@@ -101,7 +98,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
 	targetObjects := m.getObjectIDs(allSnapshots)
 	rootCollection := converter.NewRootCollection(m.service)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, targetObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +111,7 @@ func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*
 
 func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path string, allErrors converter.ConvertError) ([]*converter.Snapshot, converter.ConvertError) {
 	files, e := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
-	if !e.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if !e.IsEmpty() {
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, e
 		}
@@ -122,7 +119,6 @@ func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process
 	}
 
 	if len(files) == 0 {
-		allErrors.Add(path, converter.ErrNoObjectsToImport)
 		return nil, nil
 	}
 	progress.SetTotal(int64(numberOfStages * len(files)))

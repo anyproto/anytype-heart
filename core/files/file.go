@@ -31,10 +31,11 @@ type file struct {
 }
 
 type FileMeta struct {
-	Media string
-	Name  string
-	Size  int64
-	Added time.Time
+	Media            string
+	Name             string
+	Size             int64
+	LastModifiedDate int64
+	Added            time.Time
 }
 
 func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
@@ -77,19 +78,15 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 func (f *file) Details(ctx context.Context) (*types.Struct, error) {
 	meta := f.Meta()
 
+	commonDetails := calculateCommonDetails(f.hash, bundle.TypeKeyFile, model.ObjectType_file, f.info.LastModifiedDate)
+	commonDetails[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(meta.Media)
+	commonDetails[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name)))
+	commonDetails[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), "."))
+	commonDetails[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(meta.Size))
+	commonDetails[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(meta.Added.Unix()))
+
 	t := &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():               pbtypes.String(f.hash),
-			bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(model.ObjectType_file)),
-			bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(true),
-			bundle.RelationKeyType.String():             pbtypes.String(bundle.TypeKeyFile.URL()),
-			bundle.RelationKeyFileMimeType.String():     pbtypes.String(meta.Media),
-			bundle.RelationKeyName.String():             pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
-			bundle.RelationKeyFileExt.String():          pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), ".")),
-			bundle.RelationKeySizeInBytes.String():      pbtypes.Float64(float64(meta.Size)),
-			bundle.RelationKeyAddedDate.String():        pbtypes.Float64(float64(meta.Added.Unix())),
-			bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(time.Now().Unix()),
-		},
+		Fields: commonDetails,
 	}
 
 	if strings.HasPrefix(meta.Media, "video") {
@@ -112,10 +109,11 @@ func (f *file) Info() *storage.FileInfo {
 
 func (f *file) Meta() *FileMeta {
 	return &FileMeta{
-		Media: f.info.Media,
-		Name:  f.info.Name,
-		Size:  f.info.Size_,
-		Added: time.Unix(f.info.Added, 0),
+		Media:            f.info.Media,
+		Name:             f.info.Name,
+		Size:             f.info.Size_,
+		LastModifiedDate: f.info.LastModifiedDate,
+		Added:            time.Unix(f.info.Added, 0),
 	}
 }
 
@@ -125,4 +123,19 @@ func (f *file) Hash() string {
 
 func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
 	return f.node.getContentReader(ctx, f.info)
+}
+
+func calculateCommonDetails(
+	hash string,
+	typeKey bundle.TypeKey,
+	layout model.ObjectTypeLayout,
+	lastModifiedDate int64,
+) map[string]*types.Value {
+	return map[string]*types.Value{
+		bundle.RelationKeyId.String():               pbtypes.String(hash),
+		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(true),
+		bundle.RelationKeyType.String():             pbtypes.String(typeKey.URL()),
+		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
+		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"sync"
 	"time"
 
@@ -30,6 +31,7 @@ var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 //go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anyproto/anytype-heart/core/filestorage/filesync FileSync
 type FileSync interface {
 	AddFile(spaceId, fileId string, uploadedByUser bool) (err error)
+	OnUpload(func(spaceID, fileID string) error)
 	RemoveFile(spaceId, fileId string) (err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
@@ -38,7 +40,14 @@ type FileSync interface {
 	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
 	HasUpload(spaceId, fileId string) (ok bool, err error)
 	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
+	DebugQueue(*http.Request) (*QueueInfo, error)
 	app.ComponentRunnable
+}
+
+type QueueInfo struct {
+	UploadingQueue []*QueueItem
+	DiscardedQueue []*QueueItem
+	RemovingQueue  []*QueueItem
 }
 
 type SyncStatus struct {
@@ -56,6 +65,7 @@ type fileSync struct {
 	dagService   ipld.DAGService
 	fileStore    filestore.FileStore
 	sendEvent    func(event *pb.Event)
+	onUpload     func(spaceID, fileID string) error
 
 	spaceStatsLock sync.Mutex
 	spaceStats     map[string]SpaceStat
@@ -76,6 +86,10 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return
+}
+
+func (f *fileSync) OnUpload(callback func(spaceID, fileID string) error) {
+	f.onUpload = callback
 }
 
 func (f *fileSync) Name() (name string) {
