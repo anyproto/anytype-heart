@@ -50,6 +50,7 @@ func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
 		bundle.RelationKeyName.String():           pbtypes.String(name),
 		bundle.RelationKeySourceFilePath.String(): pbtypes.String(sourcePath),
 		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
+		bundle.RelationKeyCreatedDate.String():    pbtypes.Int64(time.Now().Unix()), // this relation will be after used in the tree header
 	}
 	return &types.Struct{Fields: fields}
 }
