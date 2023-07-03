@@ -57,17 +57,8 @@ func (p *provider) Name() (name string) {
 	return CName
 }
 
-// Type is DEPRECATED
-// func (p *provider) Type(id string) (tp smartblock.SmartBlockType, err error) {
-// 	tp, err = smartBlockTypeFromID(id)
-// 	if err == nil && tp != smartblock.SmartBlockTypePage {
-// 		return
-// 	}
-// 	return p.objectTypeFromSpace(p.spaceService.AccountId(), id)
-// }
-
 func (p *provider) Type(spaceID string, id string) (tp smartblock.SmartBlockType, err error) {
-	tp, err = smartBlockTypeFromID(id)
+	tp, err = SmartblockTypeFromID(id)
 	if err == nil && tp != smartblock.SmartBlockTypePage {
 		return
 	}
@@ -80,7 +71,7 @@ func (p *provider) RegisterStaticType(id string, tp smartblock.SmartBlockType) {
 	p.cache[id] = tp
 }
 
-func smartBlockTypeFromID(id string) (smartblock.SmartBlockType, error) {
+func SmartblockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return smartblock.SmartBlockTypeBundledRelation, nil
 	}

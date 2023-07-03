@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
+	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -130,7 +131,7 @@ func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err 
 	err = s.db.View(func(txn *badger.Txn) error {
 		for _, id := range ids {
 			// Don't use spaceID because expected objects are virtual
-			if sbt, err := s.sbtProvider.Type("", id); err == nil {
+			if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
 				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 					details, err := s.sourceService.DetailsFromIdBasedSource(id)
 					if err != nil {
