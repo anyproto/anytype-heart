@@ -267,8 +267,8 @@ func (c *Creator) CreateSubObjectInWorkspace(ctx session.Context, details *types
 
 // TODO: it must be in another component
 func (c *Creator) CreateSubObjectsInWorkspace(ctx session.Context, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = block.Do(c.blockPicker, ctx, c.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+
+	err = block.Do(c.blockPicker, ctx, c.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")

@@ -39,7 +39,7 @@ type Service interface {
 	IsStarted() bool
 
 	DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
-	EnsurePredefinedBlocks(ctx session.Context) error
+	EnsurePredefinedBlocks(ctx session.Context) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 
@@ -215,9 +215,8 @@ func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool)
 	return
 }
 
-func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) error {
-	_, err := a.DerivePredefinedObjects(ctx, a.config.NewAccount)
-	return err
+func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) (threads.DerivedSmartblockIds, error) {
+	return a.DerivePredefinedObjects(ctx, a.config.NewAccount)
 }
 
 func (a *Anytype) Close(ctx context.Context) (err error) {

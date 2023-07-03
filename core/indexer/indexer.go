@@ -383,9 +383,7 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) ReindexSpace(ctx session.Context) error {
-	var flags reindexFlags
-	flags.enableAll()
-	return i.reindex(ctx, flags)
+	return i.ensurePreinstalledObjects(ctx)
 }
 
 func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
@@ -428,9 +426,27 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	// We derive or init predefined blocks here in order to ensure consistency of object store.
 	// If we call this method before removing objects from store, we will end up with inconsistent state
 	// because indexing of predefined objects will not run again
-	err = i.anytype.EnsurePredefinedBlocks(ctx)
+	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("ensure predefined objects: %w", err)
+	}
+
+	// spaceID => workspaceID
+	spacesToInit := map[string]string{}
+	err = block.Do(i.picker, ctx, predefinedObjectIDs.Account, func(sb smartblock2.SmartBlock) error {
+		st := sb.NewState()
+		spaces := st.Store().GetFields()["spaces"]
+		for k, v := range spaces.GetStructValue().GetFields() {
+			spacesToInit[k] = v.GetStringValue()
+		}
+		return nil
+	})
+	for spaceID, _ := range spacesToInit {
+		childSpaceCtx := session.NewContext(ctx.Context(), spaceID)
+		_, err := i.anytype.EnsurePredefinedBlocks(childSpaceCtx)
+		if err != nil {
+			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
+		}
 	}
 	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
 	// due to parallel load which can overload the stream
@@ -513,7 +529,7 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 		}
 	}
 
-	err = i.ensurePreinstalledObjects(ctx.SpaceID())
+	err = i.ensurePreinstalledObjects(ctx)
 	if err != nil {
 		return fmt.Errorf("ensure preinstalled objects: %w", err)
 	}
@@ -558,7 +574,7 @@ func (i *indexer) reindexIDs(ctx session.Context, reindexType metrics.ReindexTyp
 	return nil
 }
 
-func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
+func (i *indexer) ensurePreinstalledObjects(ctx session.Context) error {
 	var objects []*types.Struct
 
 	start := time.Now()
@@ -578,7 +594,6 @@ func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
 		}
 		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
 	}
-	ctx := session.NewContext(context.Background(), spaceID)
 	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(ctx, objects)
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 
