@@ -274,7 +274,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.spaceService.AccountSpace(context.Background())
+	spc, err := s.spaceService.GetSpace(context.Background(), s.spaceID)
 	if err != nil {
 		return
 	}

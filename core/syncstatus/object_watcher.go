@@ -26,6 +26,7 @@ func newObjectWatcher(
 }
 
 func (w *objectWatcher) run(ctx context.Context) error {
+	// TODO Spaces!
 	res, err := w.spaceService.AccountSpace(ctx)
 	if err != nil {
 		return err

@@ -41,7 +41,7 @@ func New() History {
 
 type History interface {
 	Show(ctx session.Context, pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
-	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
+	Versions(ctx session.Context, pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(ctx session.Context, pageId, versionId string) (err error)
 	app.Component
 }
@@ -102,7 +102,7 @@ func (h *history) Show(ctx session.Context, pageId, versionId string) (bs *model
 	}, ver, nil
 }
 
-func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
+func (h *history) Versions(ctx session.Context, pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -128,7 +128,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	}
 
 	for len(resp) < limit {
-		tree, _, e := h.treeWithId(pageId, lastVersionId, includeLastId)
+		tree, _, e := h.treeWithId(ctx.SpaceID(), pageId, lastVersionId, includeLastId)
 		if e != nil {
 			return nil, e
 		}
@@ -190,8 +190,8 @@ func (h *history) SetVersion(ctx session.Context, pageId, versionId string) (err
 	})
 }
 
-func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
-	spc, err := h.spaceService.AccountSpace(context.Background())
+func (h *history) treeWithId(spaceID string, id, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+	spc, err := h.spaceService.GetSpace(context.Background(), spaceID)
 	if err != nil {
 		return
 	}
@@ -214,7 +214,7 @@ func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht obje
 }
 
 func (h *history) buildState(spaceID string, pageId, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {
-	tree, sbType, err := h.treeWithId(pageId, versionId, true)
+	tree, sbType, err := h.treeWithId(spaceID, pageId, versionId, true)
 	if err != nil {
 		return
 	}

@@ -46,6 +46,7 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 			rec := database.Record{Details: details.Details}
 			// fmt.Println("scan", pbtypes.GetString(details.Details, bundle.RelationKeyId.String()),
 			// 	pbtypes.GetString(details.Details, bundle.RelationKeyName.String()),
+			// 	pbtypes.GetString(details.Details, bundle.RelationKeyType.String()),
 			// 	pbtypes.GetString(details.Details, bundle.RelationKeyWorkspaceId.String()),
 			// 	pbtypes.GetString(details.Details, bundle.RelationKeySpaceId.String()))
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {

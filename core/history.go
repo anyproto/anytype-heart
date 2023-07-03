@@ -45,6 +45,7 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 }
 
 func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
+	ctx := mw.newContext(cctx)
 	response := func(vers []*pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryGetVersionsResponse) {
 		res = &pb.RpcHistoryGetVersionsResponse{
 			Error: &pb.RpcHistoryGetVersionsResponseError{
@@ -66,7 +67,7 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
-		vers, err = hs.Versions(req.ObjectId, req.LastVersionId, int(req.Limit))
+		vers, err = hs.Versions(ctx, req.ObjectId, req.LastVersionId, int(req.Limit))
 		return
 	}); err != nil {
 		return response(nil, err)

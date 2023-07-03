@@ -52,7 +52,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 47
+	ForceIdxRebuildCounter int32 = 48
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -150,25 +150,8 @@ func (i *indexer) Run(context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	i.migrateRemoveNonindexableObjects()
 	go i.ftLoop()
 	return
-}
-
-func (i *indexer) migrateRemoveNonindexableObjects() {
-	ids, err := i.getIdsForTypes(
-		smartblock.SmartBlockTypeDate,
-	)
-	if err != nil {
-		log.Errorf("migrateRemoveNonindexableObjects: failed to get ids: %s", err.Error())
-	}
-
-	for _, id := range ids {
-		err = i.store.DeleteDetails(id)
-		if err != nil {
-			log.Errorf("migrateRemoveNonindexableObjects: failed to get ids: %s", err.Error())
-		}
-	}
 }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
@@ -456,6 +439,7 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.threadObjects {
 		ids, err := i.getIdsForTypes(
+			ctx.SpaceID(),
 			smartblock.SmartBlockTypePage,
 			smartblock.SmartBlockTypeProfilePage,
 			smartblock.SmartBlockTypeTemplate,
@@ -535,7 +519,7 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	}
 
 	if flags.fulltext {
-		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		ids, err := i.getIdsForTypes(ctx.SpaceID(), smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
 		}
@@ -560,7 +544,7 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 }
 
 func (i *indexer) reindexIDsForSmartblockTypes(ctx session.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
-	ids, err := i.getIdsForTypes(sbTypes...)
+	ids, err := i.getIdsForTypes(ctx.SpaceID(), sbTypes...)
 	if err != nil {
 		return err
 	}
@@ -704,10 +688,10 @@ func (i *indexer) getObjectInfo(ctx session.Context, id string) (info smartblock
 	return
 }
 
-func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, error) {
+func (i *indexer) getIdsForTypes(spaceID string, sbt ...smartblock.SmartBlockType) ([]string, error) {
 	var ids []string
 	for _, t := range sbt {
-		lister, err := i.source.IDsListerBySmartblockType(t)
+		lister, err := i.source.IDsListerBySmartblockType(spaceID, t)
 		if err != nil {
 			return nil, err
 		}
