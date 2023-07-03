@@ -86,13 +86,14 @@ func (s *service) GetInfo(spaceID string) (*model.AccountInfo, error) {
 		ArchiveObjectId:        ids.Archive,
 		ProfileObjectId:        ids.Profile,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
-		AccountSpaceId:         ids.Account,
-		WidgetsId:              ids.Widgets,
-		GatewayUrl:             gwAddr,
-		DeviceId:               deviceId,
-		LocalStoragePath:       cfg.CustomFileStorePath,
-		TimeZone:               cfg.TimeZone,
-		AnalyticsId:            analyticsId,
+		// AccountSpaceId:         ids.Account,
+		AccountSpaceId:   spaceID,
+		WidgetsId:        ids.Widgets,
+		GatewayUrl:       gwAddr,
+		DeviceId:         deviceId,
+		LocalStoragePath: cfg.CustomFileStorePath,
+		TimeZone:         cfg.TimeZone,
+		AnalyticsId:      analyticsId,
 	}, nil
 }
 
