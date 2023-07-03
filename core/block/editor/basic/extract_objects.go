@@ -19,7 +19,7 @@ import (
 
 type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	InjectWorkspaceID(details *types.Struct, objectID string)
+	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -33,7 +33,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 
 		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
 
-		details, err := bs.prepareTargetObjectDetails(req, rootBlock, objectCreator)
+		details, err := bs.prepareTargetObjectDetails(ctx.SpaceID(), req, rootBlock, objectCreator)
 		if err != nil {
 			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}
@@ -60,6 +60,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 }
 
 func (bs *basic) prepareTargetObjectDetails(
+	spaceID string,
 	req pb.RpcBlockListConvertToObjectsRequest,
 	rootBlock simple.Block,
 	objectCreator ObjectCreator,
@@ -70,7 +71,7 @@ func (bs *basic) prepareTargetObjectDetails(
 	}
 
 	details := createTargetObjectDetails(req.ObjectType, rootBlock.Model().GetText().GetText(), objType.Layout)
-	objectCreator.InjectWorkspaceID(details, req.ContextId)
+	objectCreator.InjectWorkspaceID(details, spaceID, req.ContextId)
 	return details, nil
 }
 

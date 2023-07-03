@@ -52,7 +52,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 46
+	ForceIdxRebuildCounter int32 = 47
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -82,6 +82,7 @@ func New(
 type Indexer interface {
 	ForceFTIndex()
 	Index(ctx session.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
+	ReindexSpace(ctx session.Context) error
 	app.ComponentRunnable
 }
 
@@ -381,6 +382,12 @@ func (i *indexer) reindexIfNeeded() error {
 	return i.reindex(ctx, flags)
 }
 
+func (i *indexer) ReindexSpace(ctx session.Context) error {
+	var flags reindexFlags
+	flags.enableAll()
+	return i.reindex(ctx, flags)
+}
+
 func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
@@ -452,7 +459,7 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	} else {
 		go func() {
 			start := time.Now()
-			total, success, err := i.reindexOutdatedThreads()
+			total, success, err := i.reindexOutdatedThreads(ctx)
 			if err != nil {
 				log.Infof("failed to reindex outdated objects: %s", err.Error())
 			} else {
@@ -506,7 +513,7 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 		}
 	}
 
-	err = i.ensurePreinstalledObjects(i.spaceService.AccountId())
+	err = i.ensurePreinstalledObjects(ctx.SpaceID())
 	if err != nil {
 		return fmt.Errorf("ensure preinstalled objects: %w", err)
 	}
@@ -598,9 +605,9 @@ func (i *indexer) saveLatestChecksums() error {
 	return i.store.SaveChecksums(&checksums)
 }
 
-func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
+func (i *indexer) reindexOutdatedThreads(ctx session.Context) (toReindex, success int, err error) {
 	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
-	spc, err := i.spaceService.AccountSpace(context.Background())
+	spc, err := i.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
 	if err != nil {
 		return
 	}
@@ -637,10 +644,6 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 		}
 	}
 
-	ctx := session.NewContext(
-		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "reindexOutdatedThreads"),
-		spc.Id(),
-	)
 	success = i.reindexIdsIgnoreErr(ctx, idsToReindex...)
 	return len(idsToReindex), success, nil
 }

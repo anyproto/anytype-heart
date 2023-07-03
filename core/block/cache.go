@@ -116,20 +116,21 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 func (s *Service) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
 	s.syncerLock.Lock()
 	defer s.syncerLock.Unlock()
-	s.syncer = newTreeSyncer(spaceId, objectLoadTimeout, concurrentTrees, treeManager)
+	syncer := newTreeSyncer(spaceId, objectLoadTimeout, concurrentTrees, treeManager)
+	s.syncer[spaceId] = syncer
 	if s.syncStarted {
-		log.Warn("creating tree syncer after run")
-		s.syncer.Run()
+		log.With("spaceID", spaceId).Warn("creating tree syncer after run")
+		syncer.Run()
 	}
-	return s.syncer
+	return syncer
 }
 
 func (s *Service) StartSync() {
 	s.syncerLock.Lock()
 	defer s.syncerLock.Unlock()
 	s.syncStarted = true
-	if s.syncer != nil {
-		s.syncer.Run()
+	for _, syncer := range s.syncer {
+		syncer.Run()
 	}
 }
 

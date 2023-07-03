@@ -99,12 +99,13 @@ func New(
 		sbtProvider:     sbtProvider,
 		layoutConverter: layoutConverter,
 		closing:         make(chan struct{}),
+		syncer:          map[string]*treeSyncer{},
 	}
 }
 
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	InjectWorkspaceID(details *types.Struct, objectID string)
+	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 
 	CreateObject(ctx session.Context, req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
 }
@@ -117,6 +118,10 @@ type InternalFlagsGetter interface {
 }
 type TemplateIDGetter interface {
 	GetTemplateId() string
+}
+
+type indexer interface {
+	ReindexSpace(ctx session.Context) error
 }
 
 type Service struct {
@@ -133,6 +138,7 @@ type Service struct {
 	bookmark        bookmarksvc.Service
 	relationService relation.Service
 	cache           ocache.OCache
+	indexer         indexer
 
 	objectCreator   objectCreator
 	objectFactory   *editor.ObjectFactory
@@ -146,7 +152,7 @@ type Service struct {
 	fileSync    filesync.FileSync
 	fileService files.Service
 	// TODO: move all this into separate treecache component or something like this
-	syncer      *treeSyncer
+	syncer      map[string]*treeSyncer
 	syncStarted bool
 	syncerLock  sync.Mutex
 	closing     chan struct{}
@@ -176,6 +182,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
+	s.indexer = app.MustComponent[indexer](a)
 	s.cache = s.createCache()
 	s.app = a
 	return

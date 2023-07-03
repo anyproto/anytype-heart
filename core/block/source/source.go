@@ -188,7 +188,7 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedBlocks().Profile)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedObjects(s.spaceID).Profile)
 	if err != nil {
 		return
 	}
@@ -213,7 +213,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	creator = s.coreService.PredefinedBlocks().Profile
+	creator = s.coreService.PredefinedObjects(s.spaceID).Profile
 	return
 }
 

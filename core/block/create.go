@@ -153,6 +153,12 @@ func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreat
 	if err != nil {
 		return "", fmt.Errorf("set details for space %s: %w", spc.Id(), err)
 	}
+
+	err = s.indexer.ReindexSpace(newSpaceCtx)
+	if err != nil {
+		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
+	}
+
 	return spc.Id(), err
 }
 
@@ -163,7 +169,7 @@ func (s *Service) CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlock
 		return
 	}
 
-	s.objectCreator.InjectWorkspaceID(req.Details, req.ContextId)
+	s.objectCreator.InjectWorkspaceID(req.Details, ctx.SpaceID(), req.ContextId)
 	objectID, _, err = s.CreateObject(ctx, req, "")
 	if err != nil {
 		return

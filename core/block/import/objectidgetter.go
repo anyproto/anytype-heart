@@ -58,7 +58,7 @@ func (ou *ObjectIDGetter) Get(ctx session.Context,
 	getExisting bool,
 	oldToNewIDs map[string]string) (string, treestorage.TreeStorageCreatePayload, error) {
 	if sbType == sb.SmartBlockTypeWorkspace {
-		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(sn.Id)
+		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(ctx.SpaceID(), sn.Id)
 		if wErr == nil {
 			return workspaceID, treestorage.TreeStorageCreatePayload{}, nil
 		}

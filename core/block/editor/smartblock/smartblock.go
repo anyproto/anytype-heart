@@ -914,7 +914,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
-		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.SpaceID(), sb.Id())
 		if wsId != "" {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
 		} else {

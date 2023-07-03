@@ -196,8 +196,8 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 	return id, sb.CombinedDetails(), nil
 }
 
-func (c *Creator) InjectWorkspaceID(details *types.Struct, objectID string) {
-	workspaceID, err := c.anytype.GetWorkspaceIdForObject(objectID)
+func (c *Creator) InjectWorkspaceID(details *types.Struct, spaceID string, objectID string) {
+	workspaceID, err := c.anytype.GetWorkspaceIdForObject(spaceID, objectID)
 	if err != nil {
 		workspaceID = ""
 	}

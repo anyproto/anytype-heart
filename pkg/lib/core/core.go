@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 var log = logging.Logger("anytype-core")
@@ -40,9 +41,10 @@ type Service interface {
 	DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	EnsurePredefinedBlocks(ctx session.Context) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
+	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 
 	GetAllWorkspaces() ([]string, error)
-	GetWorkspaceIdForObject(objectId string) (string, error)
+	GetWorkspaceIdForObject(spaceID string, objectID string) (string, error)
 
 	ProfileInfo
 
@@ -59,6 +61,7 @@ type ObjectsDeriver interface {
 }
 
 type Anytype struct {
+	space       space.Service
 	objectStore objectstore.ObjectStore
 	deriver     ObjectsDeriver
 
@@ -66,7 +69,7 @@ type Anytype struct {
 	predefinedObjectsPerSpace       map[string]threads.DerivedSmartblockIds
 
 	migrationOnce    sync.Once
-	lock             sync.Mutex
+	lock             sync.RWMutex
 	isStarted        bool // use under the lock
 	shutdownStartsCh chan struct {
 	} // closed when node shutdown starts
@@ -91,6 +94,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
 	a.deriver = ap.MustComponent(treemanager.CName).(ObjectsDeriver)
+	a.space = app.MustComponent[space.Service](ap)
 	return
 }
 
@@ -114,20 +118,33 @@ func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 	return nil, nil
 }
 
-func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
-	if strings.HasPrefix(objectId, "_") {
+func (a *Anytype) GetWorkspaceIdForObject(spaceID string, objectID string) (string, error) {
+	if strings.HasPrefix(objectID, "_") {
 		return addr.AnytypeMarketplaceWorkspace, nil
 	}
-	if a.accountSpacePredefinedObjectIDs.IsAccount(objectId) {
+	a.lock.RLock()
+	ids := a.predefinedObjectsPerSpace[spaceID]
+	a.lock.RUnlock()
+
+	if ids.IsAccount(objectID) {
 		return "", ErrObjectDoesNotBelongToWorkspace
 	}
-	return a.accountSpacePredefinedObjectIDs.Account, nil
+	return ids.Account, nil
 }
 
 // PredefinedBlocks returns default blocks like home and archive
 // ⚠️ Will return empty struct in case it runs before Anytype.Start()
+// TODO Its deprecated
 func (a *Anytype) PredefinedBlocks() threads.DerivedSmartblockIds {
-	return a.accountSpacePredefinedObjectIDs
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.predefinedObjectsPerSpace[a.space.AccountId()]
+}
+
+func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.predefinedObjectsPerSpace[spaceID]
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
@@ -146,19 +163,16 @@ func (a *Anytype) start() {
 }
 
 func (a *Anytype) DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
+	a.lock.RLock()
 	ids, ok := a.predefinedObjectsPerSpace[ctx.SpaceID()]
-	if ok {
+	a.lock.RUnlock()
+	if ok && ids.IsFilled() {
 		return ids, nil
 	}
-
 	ids, err = a.derivePredefinedObjects(ctx, createTrees)
 	if err != nil {
 		return threads.DerivedSmartblockIds{}, err
 	}
-	a.predefinedObjectsPerSpace[ctx.SpaceID()] = ids
 	return ids, nil
 }
 
@@ -172,12 +186,23 @@ func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool)
 	}
 	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
 	for i, sbt := range sbTypes {
+		a.lock.RLock()
+		exists := a.predefinedObjectsPerSpace[ctx.SpaceID()].HasID(sbt)
+		a.lock.RUnlock()
+
+		if exists {
+			continue
+		}
 		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, sbt)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived tree object with error")
 			return predefinedObjectIDs, fmt.Errorf("derive tree create payload: %w", err)
 		}
 		predefinedObjectIDs.InsertId(sbt, payloads[i].RootRawChange.Id)
+
+		a.lock.Lock()
+		a.predefinedObjectsPerSpace[ctx.SpaceID()] = predefinedObjectIDs
+		a.lock.Unlock()
 	}
 
 	for _, payload := range payloads {
@@ -191,12 +216,8 @@ func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool)
 }
 
 func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) error {
-	predefinedObjectIDs, err := a.DerivePredefinedObjects(ctx, a.config.NewAccount)
-	if err != nil {
-		return err
-	}
-	a.accountSpacePredefinedObjectIDs = predefinedObjectIDs
-	return nil
+	_, err := a.DerivePredefinedObjects(ctx, a.config.NewAccount)
+	return err
 }
 
 func (a *Anytype) Close(ctx context.Context) (err error) {
