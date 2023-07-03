@@ -82,10 +82,11 @@ type sourceDeps struct {
 	fileService    files.Service
 }
 
-func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
+func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err error) {
 	return &source{
 		ObjectTree:     deps.ot,
 		id:             id,
+		spaceID:        spaceID,
 		coreService:    deps.coreService,
 		spaceService:   deps.spaceService,
 		openedAt:       time.Now(),
@@ -103,6 +104,7 @@ type ObjectTreeProvider interface {
 type source struct {
 	objecttree.ObjectTree
 	id                   string
+	spaceID              string
 	smartblockType       smartblock.SmartBlockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
@@ -277,7 +279,7 @@ func (s *source) ListIds() (ids []string, err error) {
 		return
 	}
 	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
-		t, err := s.sbtProvider.Type(id)
+		t, err := s.sbtProvider.Type(s.spaceID, id)
 		if err != nil {
 			return false
 		}

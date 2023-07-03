@@ -125,7 +125,8 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smart
 func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		for _, id := range ids {
-			if sbt, err := s.sbtProvider.Type(id); err == nil {
+			// Don't use spaceID because expected objects are virtual
+			if sbt, err := s.sbtProvider.Type("", id); err == nil {
 				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 					details, err := s.sourceService.DetailsFromIdBasedSource(id)
 					if err != nil {

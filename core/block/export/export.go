@@ -94,7 +94,7 @@ func (e *export) Export(ctx session.Context, req pb.RpcObjectListExportRequest) 
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
+	docs, err := e.docsForExport(ctx.SpaceID(), req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
 	if err != nil {
 		return
 	}
@@ -178,18 +178,18 @@ func isProtobufExport(format pb.RpcObjectListExportFormat) bool {
 	return format == pb.RpcObjectListExport_Protobuf
 }
 
-func (e *export) docsForExport(reqIds []string, includeNested bool, includeArchived bool, isProtobuf bool) (docs map[string]*types.Struct, err error) {
+func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bool, includeArchived bool, isProtobuf bool) (docs map[string]*types.Struct, err error) {
 	if len(reqIds) == 0 {
-		return e.getExistedObjects(includeArchived, isProtobuf)
+		return e.getExistedObjects(spaceID, includeArchived, isProtobuf)
 	}
 
 	if len(reqIds) > 0 {
-		return e.getObjectsByIDs(reqIds, includeNested)
+		return e.getObjectsByIDs(spaceID, reqIds, includeNested)
 	}
 	return
 }
 
-func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
+func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
 	res, _, err := e.objectStore.Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -221,13 +221,13 @@ func (e *export) getObjectsByIDs(reqIds []string, includeNested bool) (map[strin
 	}
 	if includeNested {
 		for _, id := range ids {
-			e.getNested(id, docs)
+			e.getNested(spaceID, id, docs)
 		}
 	}
 	return docs, err
 }
 
-func (e *export) getNested(id string, docs map[string]*types.Struct) {
+func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
 	links, err := e.objectStore.GetOutboundLinksByID(id)
 	if err != nil {
 		log.Errorf("export failed to get outbound links for id: %s", err.Error())
@@ -235,7 +235,7 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 	}
 	for _, link := range links {
 		if _, exists := docs[link]; !exists {
-			sbt, sbtErr := e.sbtProvider.Type(link)
+			sbt, sbtErr := e.sbtProvider.Type(spaceID, link)
 			if sbtErr != nil {
 				log.Errorf("failed to get smartblocktype of id %s", link)
 				continue
@@ -250,14 +250,14 @@ func (e *export) getNested(id string, docs map[string]*types.Struct) {
 			}
 			if len(rec) > 0 {
 				docs[link] = rec[0].Details
-				e.getNested(link, docs)
+				e.getNested(spaceID, link, docs)
 			}
 		}
 	}
 }
 
-func (e *export) getExistedObjects(includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
-	res, err := e.objectStore.List()
+func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
+	res, err := e.objectStore.List(spaceID)
 	if err != nil {
 		return nil, err
 	}

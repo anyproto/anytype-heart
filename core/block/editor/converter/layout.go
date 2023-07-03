@@ -131,7 +131,7 @@ func (c *LayoutConverter) fromAnyToSet(st *state.State) error {
 
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, _, err := dataview.DataviewBlockBySource(c.sbtProvider, c.objectStore, source)
+	dvBlock, _, err := dataview.DataviewBlockBySource(st.SpaceID(), c.sbtProvider, c.objectStore, source)
 	if err != nil {
 		return err
 	}

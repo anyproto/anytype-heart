@@ -86,7 +86,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	if id == addr.MissingObject {
 		return NewMissingObject(), nil
 	}
-	st, err := s.sbtProvider.Type(id)
+	st, err := s.sbtProvider.Type(spaceID, id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
 		return NewFile(s.coreService, s.fileStore, s.fileService, id), nil
@@ -116,7 +116,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	}
 
 	// TODO: [MR] get this from objectTree directly
-	sbt, err := s.sbtProvider.TypeWithSpaceID(spaceID, id)
+	sbt, err := s.sbtProvider.Type(spaceID, id)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		sbtProvider:    s.sbtProvider,
 		fileService:    s.fileService,
 	}
-	return newTreeSource(id, deps)
+	return newTreeSource(spaceID, id, deps)
 }
 
 func (s *service) IDsListerBySmartblockType(blockType smartblock.SmartBlockType) (IDsLister, error) {

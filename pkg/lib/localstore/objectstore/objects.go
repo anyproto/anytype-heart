@@ -122,8 +122,8 @@ type ObjectStore interface {
 	QueryObjectIDs(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
 
 	HasIDs(ids ...string) (exists []string, err error)
-	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
-	List() ([]*model.ObjectInfo, error)
+	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
+	List(spaceID string) ([]*model.ObjectInfo, error)
 	ListIds() ([]string, error)
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
@@ -144,7 +144,7 @@ type ObjectStore interface {
 	GetOutboundLinksByID(id string) ([]string, error)
 	GetRelationByID(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (relation *model.Relation, err error)
-	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 	GetObjectType(url string) (*model.ObjectType, error)
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
 }
@@ -330,10 +330,10 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 	return rel.Relation, nil
 }
 
-func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
+func (s *dsObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
 	var res *model.ObjectInfoWithLinks
 	err := s.db.View(func(txn *badger.Txn) error {
-		pages, err := s.getObjectsInfo(txn, []string{id})
+		pages, err := s.getObjectsInfo(txn, spaceID, []string{id})
 		if err != nil {
 			return err
 		}
@@ -352,12 +352,12 @@ func (s *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 			return fmt.Errorf("find outbound links: %w", err)
 		}
 
-		inbound, err := s.getObjectsInfo(txn, inboundIds)
+		inbound, err := s.getObjectsInfo(txn, spaceID, inboundIds)
 		if err != nil {
 			return err
 		}
 
-		outbound, err := s.getObjectsInfo(txn, outboundsIds)
+		outbound, err := s.getObjectsInfo(txn, spaceID, outboundsIds)
 		if err != nil {
 			return err
 		}
@@ -419,7 +419,7 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	return details, nil
 }
 
-func (s *dsObjectStore) List() ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) List(spaceID string) ([]*model.ObjectInfo, error) {
 	var infos []*model.ObjectInfo
 	err := s.db.View(func(txn *badger.Txn) error {
 		ids, err := listIDsByPrefix(txn, pagesDetailsBase.Bytes())
@@ -427,7 +427,7 @@ func (s *dsObjectStore) List() ([]*model.ObjectInfo, error) {
 			return fmt.Errorf("list ids by prefix: %w", err)
 		}
 
-		infos, err = s.getObjectsInfo(txn, ids)
+		infos, err = s.getObjectsInfo(txn, spaceID, ids)
 		return err
 	})
 	return infos, err
@@ -449,11 +449,11 @@ func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
 	return exists, err
 }
 
-func (s *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
 	var infos []*model.ObjectInfo
 	err := s.db.View(func(txn *badger.Txn) error {
 		var err error
-		infos, err = s.getObjectsInfo(txn, ids)
+		infos, err = s.getObjectsInfo(txn, spaceID, ids)
 		return err
 	})
 	return infos, err
@@ -549,8 +549,8 @@ func (o order) CalcScore(_ interface{}) float64 {
 	return 0
 }
 
-func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.ObjectInfo, error) {
-	sbt, err := s.sbtProvider.Type(id)
+func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string) (*model.ObjectInfo, error) {
+	sbt, err := s.sbtProvider.Type(spaceID, id)
 	if err != nil {
 		log.With("objectID", id).Errorf("failed to extract smartblock type %s", id) // todo rq: surpess error?
 		return nil, ErrNotAnObject
@@ -589,10 +589,10 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.Object
 	}, nil
 }
 
-func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, ids []string) ([]*model.ObjectInfo, error) {
+func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, spaceID string, ids []string) ([]*model.ObjectInfo, error) {
 	objects := make([]*model.ObjectInfo, 0, len(ids))
 	for _, id := range ids {
-		info, err := s.getObjectInfo(txn, id)
+		info, err := s.getObjectInfo(txn, spaceID, id)
 		if err != nil {
 			if isNotFound(err) || err == ErrObjectNotFound || err == ErrNotAnObject {
 				continue

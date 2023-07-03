@@ -384,6 +384,7 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 }
 
 func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
+	ctx := mw.newContext(cctx)
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 
@@ -396,7 +397,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		)
 	}
 
-	nodes, edges, err := getService[objectgraph.Service](mw).ObjectGraph(req)
+	nodes, edges, err := getService[objectgraph.Service](mw).ObjectGraph(ctx.SpaceID(), req)
 	if err != nil {
 		return unknownError(err)
 	}

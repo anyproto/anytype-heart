@@ -154,6 +154,7 @@ type SmartBlock interface {
 
 type DocInfo struct {
 	Id         string
+	SpaceID    string
 	Links      []string
 	FileHashes []string
 	Heads      []string
@@ -1287,6 +1288,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	}
 	return DocInfo{
 		Id:         sb.Id(),
+		SpaceID:    sb.SpaceID(),
 		Links:      links,
 		Heads:      heads,
 		FileHashes: fileHashes,

@@ -27,7 +27,7 @@ var (
 
 type Service interface {
 	GetRestrictions(RestrictionHolder) Restrictions
-	CheckRestrictions(id string, cr ...model.RestrictionsObjectRestriction) error
+	CheckRestrictions(spaceID string, id string, cr ...model.RestrictionsObjectRestriction) error
 	app.Component
 }
 
@@ -58,8 +58,8 @@ func (s *service) GetRestrictions(rh RestrictionHolder) (r Restrictions) {
 	}
 }
 
-func (s *service) CheckRestrictions(id string, cr ...model.RestrictionsObjectRestriction) error {
-	r, err := s.getRestrictionsById(id)
+func (s *service) CheckRestrictions(spaceID, id string, cr ...model.RestrictionsObjectRestriction) error {
+	r, err := s.getRestrictionsById(spaceID, id)
 	if err != nil {
 		return err
 	}
@@ -69,8 +69,8 @@ func (s *service) CheckRestrictions(id string, cr ...model.RestrictionsObjectRes
 	return nil
 }
 
-func (s *service) getRestrictionsById(id string) (r Restrictions, err error) {
-	sbType, err := s.sbtProvider.Type(id)
+func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions, err error) {
+	sbType, err := s.sbtProvider.Type(spaceID, id)
 	if err != nil {
 		return Restrictions{}, fmt.Errorf("get smartblock type: %w", err)
 	}

@@ -88,7 +88,7 @@ func (s *Service) cacheLoad(cctx context.Context, id string) (value ocache.Objec
 		break
 	}
 
-	sbt, _ := s.sbtProvider.Type(id)
+	sbt, _ := s.sbtProvider.Type(opts.spaceId, id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		return s.initSubObject(ctx.Context(), id)
@@ -225,7 +225,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 		return
 	}
 
-	sbt, _ := s.sbtProvider.Type(id)
+	sbt, _ := s.sbtProvider.Type(ctx.SpaceID(), id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		err = s.OnDelete(ctx, id, func() error {

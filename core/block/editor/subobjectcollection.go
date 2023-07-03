@@ -133,8 +133,9 @@ func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (
 			}
 			subObj.InitState(sub)
 			if !f(smartblock.DocInfo{
-				Id:    fullId,
-				State: sub,
+				Id:      fullId,
+				SpaceID: c.SpaceID(),
+				State:   sub,
 			}) {
 				break
 			}

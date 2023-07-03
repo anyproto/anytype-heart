@@ -108,7 +108,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := DataviewBlockBySource(d.sbtProvider, d.objectStore, source)
+	dvContent, _, err := DataviewBlockBySource(s.SpaceID(), d.sbtProvider, d.objectStore, source)
 	if err != nil {
 		return
 	}
@@ -304,7 +304,7 @@ func (d *sdataview) CreateView(ctx session.Context, id string,
 		view.Sorts = defaultLastModifiedDateSort()
 	}
 
-	sbType, err := d.sbtProvider.Type(d.Id())
+	sbType, err := d.sbtProvider.Type(d.SpaceID(), d.Id())
 	if err != nil {
 		return nil, err
 	}
@@ -371,11 +371,11 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
 	var hasRelations, hasType bool
 
 	for _, source := range sources {
-		sbt, err := sbtProvider.Type(source)
+		sbt, err := sbtProvider.Type(spaceID, source)
 		if err != nil {
 			return nil, err
 		}
@@ -448,7 +448,7 @@ func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []
 }
 
 func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
-	return SchemaBySources(d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
+	return SchemaBySources(d.SpaceID(), d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -580,8 +580,8 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func DataviewBlockBySource(sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
-	if schema, err = SchemaBySources(sbtProvider, source, store, nil); err != nil {
+func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
+	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store, nil); err != nil {
 		return
 	}
 

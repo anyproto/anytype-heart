@@ -67,7 +67,7 @@ type Service interface {
 }
 
 type SyncStatusWatcher interface {
-	Watch(ctx session.Context, id string, fileFunc func() []string) (new bool, err error)
+	Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error)
 }
 
 type service struct {
@@ -789,7 +789,7 @@ func (s *service) addToSyncQueue(ctx session.Context, fileID string, uploadedByU
 	if err := s.fileSync.AddFile(ctx.SpaceID(), fileID, uploadedByUser); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
-	if _, err := s.syncStatusWatcher.Watch(ctx, fileID, nil); err != nil {
+	if _, err := s.syncStatusWatcher.Watch(ctx.SpaceID(), fileID, nil); err != nil {
 		return fmt.Errorf("watch sync status: %w", err)
 	}
 	return nil

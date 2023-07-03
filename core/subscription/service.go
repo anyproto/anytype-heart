@@ -462,12 +462,9 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 		if source == "" {
 			continue
 		}
-		sbt, err := s.sbtProvider.Type(source)
-		if err != nil {
-			return nil, err
-		}
+		sbt, err := s.sbtProvider.Type("", source)
 		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		if sbt == smartblock.SmartBlockTypeBundledObjectType {
+		if err == nil && sbt == smartblock.SmartBlockTypeBundledObjectType {
 			objTypeIds = append(objTypeIds, source)
 		} else {
 			if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {

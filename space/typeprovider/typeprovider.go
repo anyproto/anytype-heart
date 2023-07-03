@@ -32,8 +32,7 @@ var (
 type SmartBlockTypeProvider interface {
 	app.Component
 	// TODO Add spaceID
-	Type(id string) (smartblock.SmartBlockType, error)
-	TypeWithSpaceID(spaceID string, id string) (smartblock.SmartBlockType, error)
+	Type(spaceID string, id string) (smartblock.SmartBlockType, error)
 	RegisterStaticType(id string, tp smartblock.SmartBlockType)
 }
 
@@ -59,15 +58,15 @@ func (p *provider) Name() (name string) {
 }
 
 // Type is DEPRECATED
-func (p *provider) Type(id string) (tp smartblock.SmartBlockType, err error) {
-	tp, err = smartBlockTypeFromID(id)
-	if err == nil && tp != smartblock.SmartBlockTypePage {
-		return
-	}
-	return p.objectTypeFromSpace(p.spaceService.AccountId(), id)
-}
+// func (p *provider) Type(id string) (tp smartblock.SmartBlockType, err error) {
+// 	tp, err = smartBlockTypeFromID(id)
+// 	if err == nil && tp != smartblock.SmartBlockTypePage {
+// 		return
+// 	}
+// 	return p.objectTypeFromSpace(p.spaceService.AccountId(), id)
+// }
 
-func (p *provider) TypeWithSpaceID(spaceID string, id string) (tp smartblock.SmartBlockType, err error) {
+func (p *provider) Type(spaceID string, id string) (tp smartblock.SmartBlockType, err error) {
 	tp, err = smartBlockTypeFromID(id)
 	if err == nil && tp != smartblock.SmartBlockTypePage {
 		return

@@ -220,7 +220,7 @@ func (c *Creator) CreateSet(ctx session.Context, req *pb.RpcObjectCreateSetReque
 	if len(source) == 0 {
 		source = []string{converter.DefaultSetSource.URL()}
 	}
-	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(c.sbtProvider, c.objectStore, source); err != nil {
+	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(ctx.SpaceID(), c.sbtProvider, c.objectStore, source); err != nil {
 		return
 	}
 

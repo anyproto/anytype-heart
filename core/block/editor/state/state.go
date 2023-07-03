@@ -168,6 +168,10 @@ func (s *State) GroupId() string {
 	return s.groupId
 }
 
+func (s *State) SpaceID() string {
+	return pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String())
+}
+
 func (s *State) Add(b simple.Block) (ok bool) {
 	id := b.Model().Id
 	if s.Pick(id) == nil {

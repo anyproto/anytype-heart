@@ -77,7 +77,8 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 	if err != nil {
 		return ftDoc, fmt.Errorf("get object info: %w", err)
 	}
-	sbType, err := i.typeProvider.Type(info.Id)
+	// TODO Parametrize with actual SpaceID: GO-1625
+	sbType, err := i.typeProvider.Type(i.spaceService.AccountId(), info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}

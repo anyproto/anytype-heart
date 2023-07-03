@@ -220,7 +220,7 @@ func (s *Service) OpenBlock(
 		return
 	}
 	afterShowTime := time.Now()
-	_, err = s.syncStatus.Watch(ctx, id, func() []string {
+	_, err = s.syncStatus.Watch(ctx.SpaceID(), id, func() []string {
 		ob.Lock()
 		defer ob.Unlock()
 		bs := ob.NewState()
@@ -229,7 +229,7 @@ func (s *Service) OpenBlock(
 	})
 	if err == nil {
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
-			s.syncStatus.Unwatch(id)
+			s.syncStatus.Unwatch(ctx.SpaceID(), id)
 			return nil
 		}, smartblock.HookOnClose)
 	}
@@ -237,7 +237,7 @@ func (s *Service) OpenBlock(
 		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
 	}
 
-	sbType, err := s.sbtProvider.Type(id)
+	sbType, err := s.sbtProvider.Type(ctx.SpaceID(), id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get smartblock type: %w", err)
 	}
@@ -365,7 +365,7 @@ func (s *Service) AddSubObjectsToWorkspace(
 
 func (s *Service) RemoveSubObjectsInWorkspace(ctx session.Context, objectIds []string, workspaceId string, orphansGC bool) (err error) {
 	for _, objectID := range objectIds {
-		if err = s.restriction.CheckRestrictions(objectID, model.Restrictions_Delete); err != nil {
+		if err = s.restriction.CheckRestrictions(ctx.SpaceID(), objectID, model.Restrictions_Delete); err != nil {
 			return err
 		}
 	}
@@ -462,7 +462,7 @@ func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSe
 		}
 		for _, id := range ids {
 			var err error
-			if restrErr := s.checkArchivedRestriction(req.IsArchived, id); restrErr != nil {
+			if restrErr := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), id); restrErr != nil {
 				err = restrErr
 			} else {
 				if req.IsArchived {
@@ -546,7 +546,7 @@ func (s *Service) SetPageIsFavorite(ctx session.Context, req pb.RpcObjectSetIsFa
 }
 
 func (s *Service) SetPageIsArchived(ctx session.Context, req pb.RpcObjectSetIsArchivedRequest) (err error) {
-	if err := s.checkArchivedRestriction(req.IsArchived, req.ContextId); err != nil {
+	if err := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), req.ContextId); err != nil {
 		return err
 	}
 	return s.objectLinksCollectionModify(ctx, s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
@@ -578,11 +578,11 @@ func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 	return id, err
 }
 
-func (s *Service) checkArchivedRestriction(isArchived bool, objectId string) error {
+func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, objectId string) error {
 	if !isArchived {
 		return nil
 	}
-	if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); err != nil {
+	if err := s.restriction.CheckRestrictions(spaceID, objectId, model.Restrictions_Delete); err != nil {
 		return err
 	}
 	return nil
@@ -963,7 +963,7 @@ func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (
 	}
 
 	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	res, err := oStore.GetWithLinksInfoByID(id)
+	res, err := oStore.GetWithLinksInfoByID(ctx.SpaceID(), id)
 	if err != nil {
 		return
 	}

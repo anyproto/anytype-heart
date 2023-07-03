@@ -19,7 +19,7 @@ import (
 )
 
 type Service interface {
-	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
+	ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
 }
 
 type Builder struct {
@@ -56,7 +56,7 @@ func (gr *Builder) Name() (name string) {
 	return CName
 }
 
-func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
+func (gr *Builder) ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
 	records, err := gr.queryRecords(req)
 	if err != nil {
 		return nil, nil, err
@@ -72,11 +72,12 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 		return nil, nil, err
 	}
 
-	nodes, edges = gr.extractGraph(records, nodes, req, relations, edges, existedNodes)
+	nodes, edges = gr.extractGraph(spaceID, records, nodes, req, relations, edges, existedNodes)
 	return nodes, edges, nil
 }
 
 func (gr *Builder) extractGraph(
+	spaceID string,
 	records []database.Record,
 	nodes []*types.Struct,
 	req *pb.RpcObjectGraphRequest,
@@ -97,7 +98,7 @@ func (gr *Builder) extractGraph(
 			}
 		}
 
-		edges = gr.appendLinks(rec, outgoingRelationLink, existedNodes, edges, id)
+		edges = gr.appendLinks(spaceID, rec, outgoingRelationLink, existedNodes, edges, id)
 	}
 	return nodes, edges
 }
@@ -165,6 +166,7 @@ func unallowedRelation(rel *relationutils.Relation) bool {
 }
 
 func (gr *Builder) appendLinks(
+	spaceID string,
 	rec database.Record,
 	outgoingRelationLink map[string]struct{},
 	existedNodes map[string]struct{},
@@ -173,7 +175,7 @@ func (gr *Builder) appendLinks(
 ) []*pb.RpcObjectGraphEdge {
 	links := pbtypes.GetStringList(rec.Details, bundle.RelationKeyLinks.String())
 	for _, link := range links {
-		sbType, err := gr.sbtProvider.Type(link)
+		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {
 			log.Error(err)
 		}

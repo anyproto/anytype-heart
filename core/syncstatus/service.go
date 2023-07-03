@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -28,8 +27,8 @@ var log = logging.Logger("anytype-mw-status")
 const CName = "status"
 
 type Service interface {
-	Watch(ctx session.Context, id string, fileFunc func() []string) (new bool, err error)
-	Unwatch(id string)
+	Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error)
+	Unwatch(spaceID string, id string)
 	OnFileUpload(spaceID string, fileID string) error
 	app.ComponentRunnable
 }
@@ -94,8 +93,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	}
 
 	// TODO multispace: think where to watch predefined blocks
-	accountCtx := session.NewContext(context.Background(), s.spaceService.AccountId())
-	_, err = s.watch(accountCtx, s.coreService.PredefinedBlocks().Account, nil)
+	_, err = s.watch(s.spaceService.AccountId(), s.coreService.PredefinedBlocks().Account, nil)
 	return
 }
 
@@ -103,29 +101,28 @@ func (s *service) Name() string {
 	return CName
 }
 
-func (s *service) Watch(ctx session.Context, id string, filesGetter func() []string) (new bool, err error) {
-	return s.watch(ctx, id, filesGetter)
+func (s *service) Watch(spaceID string, id string, filesGetter func() []string) (new bool, err error) {
+	return s.watch(spaceID, id, filesGetter)
 }
 
-func (s *service) Unwatch(id string) {
-
-	s.unwatch(id)
+func (s *service) Unwatch(spaceID string, id string) {
+	s.unwatch(spaceID, id)
 }
 
-func (s *service) watch(ctx session.Context, id string, filesGetter func() []string) (new bool, err error) {
-	sbt, err := s.typeProvider.Type(id)
+func (s *service) watch(spaceID string, id string, filesGetter func() []string) (new bool, err error) {
+	sbt, err := s.typeProvider.Type(spaceID, id)
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
 	}
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
-		err := s.fileWatcher.Watch(ctx.SpaceID(), id)
+		err := s.fileWatcher.Watch(spaceID, id)
 		return false, err
 	case smartblock.SmartBlockTypeSubObject:
 		s.subObjectsWatcher.Watch(id)
 		return true, nil
 	default:
-		s.linkedFilesWatcher.WatchLinkedFiles(ctx.SpaceID(), id, filesGetter)
+		s.linkedFilesWatcher.WatchLinkedFiles(spaceID, id, filesGetter)
 		if err = s.objectWatcher.Watch(id); err != nil {
 			return false, err
 		}
@@ -133,8 +130,8 @@ func (s *service) watch(ctx session.Context, id string, filesGetter func() []str
 	}
 }
 
-func (s *service) unwatch(id string) {
-	sbt, err := s.typeProvider.Type(id)
+func (s *service) unwatch(spaceID string, id string) {
+	sbt, err := s.typeProvider.Type(spaceID, id)
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
 	}
@@ -158,7 +155,7 @@ func (s *service) OnFileUpload(spaceID string, fileID string) error {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
-	s.unwatch(s.coreService.PredefinedBlocks().Account)
+	s.unwatch(s.spaceService.AccountId(), s.coreService.PredefinedBlocks().Account)
 	s.fileWatcher.close()
 	s.linkedFilesWatcher.close()
 

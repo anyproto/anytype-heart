@@ -190,7 +190,7 @@ func (i *indexer) Index(ctx session.Context, info smartblock2.DocInfo, options .
 	for _, o := range options {
 		o(opts)
 	}
-	sbType, err := i.typeProvider.Type(info.Id)
+	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
