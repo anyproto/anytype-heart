@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	xnetutil "golang.org/x/net/netutil"
 
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
@@ -21,11 +22,13 @@ import (
 	"github.com/anyproto/anytype-heart/util/netutil"
 )
 
-const CName = "gateway"
+const (
+	CName = "gateway"
 
-const defaultPort = 47800
-
-const getFileTimeout = 1 * time.Minute
+	defaultPort        = 47800
+	getFileTimeout     = 1 * time.Minute
+	maximumConnections = 100
+)
 
 var log = logging.Logger("anytype-gateway")
 
@@ -154,7 +157,7 @@ func (g *gateway) startServer() {
 		return
 	}
 
-	g.listener = ln
+	g.listener = xnetutil.LimitListener(ln, maximumConnections)
 
 	g.server = &http.Server{
 		Addr:    g.addr,
