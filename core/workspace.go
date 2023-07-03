@@ -155,7 +155,7 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		ids, _, err = bs.AddSubObjectsToWorkspace(ctx, req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account)
+		ids, _, err = bs.AddSubObjectsToWorkspace(ctx, req.ObjectIds)
 		return
 	})
 
@@ -183,7 +183,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, details, err = bs.AddSubObjectToWorkspace(ctx, req.ObjectId, mw.GetAnytype().PredefinedBlocks().Account)
+		id, details, err = bs.AddSubObjectToWorkspace(ctx, req.ObjectId)
 		return
 	})
 
@@ -210,7 +210,7 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.RemoveSubObjectsInWorkspace(ctx, req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account, true)
+		err = bs.RemoveSubObjectsInWorkspace(ctx, req.ObjectIds, true)
 		return
 	})
 

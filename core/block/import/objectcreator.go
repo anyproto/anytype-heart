@@ -251,7 +251,7 @@ func (oc *ObjectCreator) handleSubObject(ctx session.Context, st *state.State, n
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace(ctx, []string{newID}, oc.core.PredefinedObjects(ctx.SpaceID()).Account, true)
+		err := oc.service.RemoveSubObjectsInWorkspace(ctx, []string{newID}, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
 		}

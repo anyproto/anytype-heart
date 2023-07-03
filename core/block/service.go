@@ -314,9 +314,9 @@ func (s *Service) CloseBlocks() {
 
 func (s *Service) AddSubObjectToWorkspace(
 	ctx session.Context,
-	sourceObjectId, workspaceId string,
+	sourceObjectId string,
 ) (id string, object *types.Struct, err error) {
-	ids, details, err := s.AddSubObjectsToWorkspace(ctx, []string{sourceObjectId}, workspaceId)
+	ids, details, err := s.AddSubObjectsToWorkspace(ctx, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -330,15 +330,16 @@ func (s *Service) AddSubObjectToWorkspace(
 func (s *Service) AddSubObjectsToWorkspace(
 	ctx session.Context,
 	sourceObjectIds []string,
-	workspaceId string,
 ) (ids []string, objects []*types.Struct, err error) {
+	workspaceID := s.anytype.PredefinedObjects(ctx.SpaceID()).Account
+
 	// todo: we should add route to object via workspace
 	var details = make([]*types.Struct, 0, len(sourceObjectIds))
 
 	for _, sourceObjectId := range sourceObjectIds {
 		err = Do(s, ctx, sourceObjectId, func(b smartblock.SmartBlock) error {
 			d := pbtypes.CopyStruct(b.Details())
-			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceId {
+			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceID {
 				return errors.New("object already in collection")
 			}
 			d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
@@ -358,7 +359,7 @@ func (s *Service) AddSubObjectsToWorkspace(
 		}
 	}
 
-	err = Do(s, ctx, workspaceId, func(b smartblock.SmartBlock) error {
+	err = Do(s, ctx, workspaceID, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")
@@ -370,13 +371,14 @@ func (s *Service) AddSubObjectsToWorkspace(
 	return
 }
 
-func (s *Service) RemoveSubObjectsInWorkspace(ctx session.Context, objectIds []string, workspaceId string, orphansGC bool) (err error) {
+func (s *Service) RemoveSubObjectsInWorkspace(ctx session.Context, objectIds []string, orphansGC bool) (err error) {
+	workspaceID := s.anytype.PredefinedObjects(ctx.SpaceID()).Account
 	for _, objectID := range objectIds {
 		if err = s.restriction.CheckRestrictions(ctx.SpaceID(), objectID, model.Restrictions_Delete); err != nil {
 			return err
 		}
 	}
-	err = Do(s, ctx, workspaceId, func(b smartblock.SmartBlock) error {
+	err = Do(s, ctx, workspaceID, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")

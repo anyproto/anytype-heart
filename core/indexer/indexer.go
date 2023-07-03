@@ -52,7 +52,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 49
+	ForceIdxRebuildCounter int32 = 50
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -358,18 +358,14 @@ func (i *indexer) reindexIfNeeded() error {
 		flags.enableAll()
 	}
 
-	ctx := session.NewContext(
-		context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "reindex_forced"),
-		i.spaceService.AccountId(),
-	)
-	return i.reindex(ctx, flags)
+	return i.reindex(flags)
 }
 
 func (i *indexer) ReindexSpace(ctx session.Context) error {
 	return i.ensurePreinstalledObjects(ctx)
 }
 
-func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
+func (i *indexer) reindex(flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
 	}
@@ -409,14 +405,16 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	// We derive or init predefined blocks here in order to ensure consistency of object store.
 	// If we call this method before removing objects from store, we will end up with inconsistent state
 	// because indexing of predefined objects will not run again
-	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(ctx)
+	accountCtx := session.NewContext(context.Background(), i.spaceService.AccountId())
+	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(accountCtx)
 	if err != nil {
 		return fmt.Errorf("ensure predefined objects: %w", err)
 	}
+	spaceIDs := []string{i.spaceService.AccountId()}
 
 	// spaceID => workspaceID
 	spacesToInit := map[string]string{}
-	err = block.Do(i.picker, ctx, predefinedObjectIDs.Account, func(sb smartblock2.SmartBlock) error {
+	err = block.Do(i.picker, accountCtx, predefinedObjectIDs.Account, func(sb smartblock2.SmartBlock) error {
 		st := sb.NewState()
 		spaces := st.Store().GetFields()["spaces"]
 		for k, v := range spaces.GetStructValue().GetFields() {
@@ -425,7 +423,8 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 		return nil
 	})
 	for spaceID, _ := range spacesToInit {
-		childSpaceCtx := session.NewContext(ctx.Context(), spaceID)
+		spaceIDs = append(spaceIDs, spaceID)
+		childSpaceCtx := session.NewContext(context.Background(), spaceID)
 		_, err := i.anytype.EnsurePredefinedBlocks(childSpaceCtx)
 		if err != nil {
 			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
@@ -435,6 +434,17 @@ func (i *indexer) reindex(ctx session.Context, flags reindexFlags) (err error) {
 	// due to parallel load which can overload the stream
 	i.syncStarter.StartSync()
 
+	for _, spaceID := range spaceIDs {
+		err = i.reindexSpace(spaceID, indexesWereRemoved, flags)
+		if err != nil {
+			return fmt.Errorf("reindex space %s: %w", spaceID, err)
+		}
+	}
+	return nil
+}
+
+func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags reindexFlags) (err error) {
+	ctx := session.NewContext(context.Background(), spaceID)
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.threadObjects {
