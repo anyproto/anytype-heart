@@ -122,7 +122,7 @@ func (d *dot) Add(st *state.State) error {
 		objIds := pbtypes.GetStringList(st.Details(), rel.Key)
 
 		for _, objId := range objIds {
-			t, err := d.sbtProvider.Type(objId)
+			t, err := d.sbtProvider.Type(st.SpaceID(), objId)
 			if err != nil {
 				continue
 			}
@@ -144,7 +144,7 @@ func (d *dot) Add(st *state.State) error {
 	}
 
 	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
-		t, err := d.sbtProvider.Type(depID)
+		t, err := d.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
 			continue
 		}
