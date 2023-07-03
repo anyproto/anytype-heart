@@ -10,6 +10,7 @@ import (
 )
 
 func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
+	ctx := mw.newContext(cctx)
 	response := func(obj *model.ObjectView, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
 		res = &pb.RpcHistoryShowVersionResponse{
 			Error: &pb.RpcHistoryShowVersionResponseError{
@@ -34,7 +35,7 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
-		obj, ver, err = hs.Show(req.ObjectId, req.VersionId)
+		obj, ver, err = hs.Show(ctx, req.ObjectId, req.VersionId)
 		return
 	}); err != nil {
 		return response(nil, nil, err)

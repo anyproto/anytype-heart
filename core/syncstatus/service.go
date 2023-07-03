@@ -92,7 +92,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	// TODO multispace: think where to watch predefined blocks
+	// TODO Iterate all spaces?
 	_, err = s.watch(s.spaceService.AccountId(), s.coreService.PredefinedBlocks().Account, nil)
 	return
 }
@@ -155,6 +155,7 @@ func (s *service) OnFileUpload(spaceID string, fileID string) error {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	// TODO Iterate all spaces?
 	s.unwatch(s.spaceService.AccountId(), s.coreService.PredefinedBlocks().Account)
 	s.fileWatcher.close()
 	s.linkedFilesWatcher.close()

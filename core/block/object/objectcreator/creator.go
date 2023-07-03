@@ -155,7 +155,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 
 	// if we don't have anything in details then check the object store
 	if workspaceID == "" {
-		workspaceID = c.anytype.PredefinedBlocks().Account
+		workspaceID = c.anytype.PredefinedObjects(ctx.SpaceID()).Account
 	}
 
 	if workspaceID != "" {
@@ -346,15 +346,15 @@ func (c *Creator) CreateObject(ctx session.Context, req block.DetailsGetter, for
 		return c.CreateSmartBlockFromState(ctx, sbType, details, st)
 	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedBlocks().Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(ctx.SpaceID()).Account)
 
 	case bundle.TypeKeyRelation.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedBlocks().Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(ctx.SpaceID()).Account)
 
 	case bundle.TypeKeyRelationOption.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedBlocks().Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(ctx.SpaceID()).Account)
 
 	case bundle.TypeKeyTemplate.URL():
 		sbType = coresb.SmartBlockTypeTemplate

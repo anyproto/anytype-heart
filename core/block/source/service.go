@@ -91,7 +91,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	case smartblock.SmartBlockTypeFile:
 		return NewFile(s.coreService, s.fileStore, s.fileService, id), nil
 	case smartblock.SmartBlockTypeDate:
-		return NewDate(id, s.coreService), nil
+		return NewDate(spaceID, id, s.coreService), nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return NewBundledObjectType(id), nil
 	case smartblock.SmartBlockTypeBundledRelation:
@@ -163,7 +163,7 @@ func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
 	if !strings.HasPrefix(id, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}
-	ss := NewDate(id, s.coreService)
+	ss := NewDate("", id, s.coreService)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()

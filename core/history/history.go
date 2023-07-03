@@ -40,7 +40,7 @@ func New() History {
 }
 
 type History interface {
-	Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
+	Show(ctx session.Context, pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
 	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(ctx session.Context, pageId, versionId string) (err error)
 	app.Component
@@ -67,8 +67,8 @@ func (h *history) Name() (name string) {
 	return CName
 }
 
-func (h *history) Show(pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error) {
-	s, sbType, ver, err := h.buildState(pageId, versionId)
+func (h *history) Show(ctx session.Context, pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error) {
+	s, sbType, ver, err := h.buildState(ctx.SpaceID(), pageId, versionId)
 	if err != nil {
 		return
 	}
@@ -181,7 +181,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 }
 
 func (h *history) SetVersion(ctx session.Context, pageId, versionId string) (err error) {
-	s, _, _, err := h.buildState(pageId, versionId)
+	s, _, _, err := h.buildState(ctx.SpaceID(), pageId, versionId)
 	if err != nil {
 		return
 	}
@@ -213,13 +213,13 @@ func (h *history) treeWithId(id, beforeId string, includeBeforeId bool) (ht obje
 	return
 }
 
-func (h *history) buildState(pageId, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {
+func (h *history) buildState(spaceID string, pageId, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {
 	tree, sbType, err := h.treeWithId(pageId, versionId, true)
 	if err != nil {
 		return
 	}
 
-	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedBlocks().Profile)
+	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedObjects(spaceID).Profile)
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(id string, coreService core.Service) (s Source) {
+func NewDate(spaceID string, id string, coreService core.Service) (s Source) {
 	return &date{
 		id:          id,
 		coreService: coreService,
@@ -27,6 +27,7 @@ func NewDate(id string, coreService core.Service) (s Source) {
 
 type date struct {
 	id          string
+	spaceID     string
 	t           time.Time
 	coreService core.Service
 }
@@ -58,7 +59,7 @@ func (v *date) getDetails() (p *types.Struct) {
 		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_set)),
 		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
-		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.coreService.PredefinedBlocks().Account),
+		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.coreService.PredefinedObjects(v.spaceID).Account),
 	}}
 }
 

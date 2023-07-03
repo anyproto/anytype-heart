@@ -149,8 +149,8 @@ func (b *builtinObjects) inject(ctx session.Context, archive []byte, isMigration
 		return nil
 	}
 
-	b.handleSpaceDashboard(newId)
-	b.createNotesAndTaskTrackerWidgets()
+	b.handleSpaceDashboard(ctx.SpaceID(), newId)
+	b.createNotesAndTaskTrackerWidgets(ctx.SpaceID())
 	return
 }
 
@@ -228,9 +228,9 @@ func (b *builtinObjects) getNewSpaceDashboardId(oldId string) (id string, err er
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(id string) {
+func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: b.coreService.PredefinedBlocks().Account,
+		ContextId: b.coreService.PredefinedObjects(spaceID).Account,
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -240,18 +240,18 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 	}); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err.Error())
 	}
-	b.createSpaceDashboardWidget(id)
+	b.createSpaceDashboardWidget(spaceID, id)
 }
 
-func (b *builtinObjects) createSpaceDashboardWidget(id string) {
-	targetID, err := b.getWidgetBlockIdByNumber(0)
+func (b *builtinObjects) createSpaceDashboardWidget(spaceID string, id string) {
+	targetID, err := b.getWidgetBlockIdByNumber(spaceID, 0)
 	if err != nil {
 		log.Errorf(err.Error())
 		return
 	}
 
 	if _, err := b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
-		ContextId:    b.coreService.PredefinedBlocks().Widgets,
+		ContextId:    b.coreService.PredefinedObjects(spaceID).Widgets,
 		TargetId:     targetID,
 		Position:     model.Block_Top,
 		WidgetLayout: model.BlockContentWidget_Link,
@@ -273,8 +273,8 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 	}
 }
 
-func (b *builtinObjects) createNotesAndTaskTrackerWidgets() {
-	targetID, err := b.getWidgetBlockIdByNumber(1)
+func (b *builtinObjects) createNotesAndTaskTrackerWidgets(spaceID string) {
+	targetID, err := b.getWidgetBlockIdByNumber(spaceID, 1)
 	if err != nil {
 		log.Errorf("Failed to get id of second widget block: %s", err.Error())
 		return
@@ -286,7 +286,7 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets() {
 			continue
 		}
 		if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    b.coreService.PredefinedBlocks().Widgets,
+			ContextId:    b.coreService.PredefinedObjects(spaceID).Widgets,
 			TargetId:     targetID,
 			Position:     model.Block_Bottom,
 			WidgetLayout: model.BlockContentWidget_CompactList,
@@ -328,8 +328,8 @@ func (b *builtinObjects) getObjectIdBySetOfValue(setOfValue string) (string, err
 	return "", err
 }
 
-func (b *builtinObjects) getWidgetBlockIdByNumber(index int) (string, error) {
-	w, err := b.service.GetObject(context.Background(), b.coreService.PredefinedBlocks().Account, b.coreService.PredefinedBlocks().Widgets)
+func (b *builtinObjects) getWidgetBlockIdByNumber(spaceID string, index int) (string, error) {
+	w, err := b.service.GetObject(context.Background(), spaceID, b.coreService.PredefinedObjects(spaceID).Widgets)
 	if err != nil {
 		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
 	}

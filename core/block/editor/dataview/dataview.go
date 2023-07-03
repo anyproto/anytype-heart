@@ -308,7 +308,7 @@ func (d *sdataview) CreateView(ctx session.Context, id string,
 	if err != nil {
 		return nil, err
 	}
-	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.anytype.PredefinedBlocks().Account {
+	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.anytype.PredefinedObjects(d.SpaceID()).Account {
 		view.Filters = []*model.BlockContentDataviewFilter{{
 			RelationKey: bundle.RelationKeyWorkspaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,

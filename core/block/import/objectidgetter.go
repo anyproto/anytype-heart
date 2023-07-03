@@ -64,7 +64,7 @@ func (ou *ObjectIDGetter) Get(ctx session.Context,
 		}
 	}
 	if sbType == sb.SmartBlockTypeWidget {
-		widgetID := ou.core.PredefinedBlocks().Widgets
+		widgetID := ou.core.PredefinedObjects(ctx.SpaceID()).Widgets
 		return widgetID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 

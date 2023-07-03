@@ -160,7 +160,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedObjectTypes([]string{bundle.TypeKeySpace.URL()}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
-		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedBlocks().Profile)),
+		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedObjects(p.SpaceID()).Profile)),
 		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 	)
 }

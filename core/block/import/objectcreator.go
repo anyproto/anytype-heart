@@ -208,7 +208,7 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 }
 
 func (oc *ObjectCreator) setWorkspaceID(err error, spaceID string, newID string, snapshot *model.SmartBlockSnapshotBase) {
-	if oc.core.PredefinedBlocks().Account == newID {
+	if oc.core.PredefinedObjects(spaceID).Account == newID {
 		return
 	}
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(spaceID, newID)
@@ -251,7 +251,7 @@ func (oc *ObjectCreator) handleSubObject(ctx session.Context, st *state.State, n
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace(ctx, []string{newID}, oc.core.PredefinedBlocks().Account, true)
+		err := oc.service.RemoveSubObjectsInWorkspace(ctx, []string{newID}, oc.core.PredefinedObjects(ctx.SpaceID()).Account, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
 		}
@@ -288,7 +288,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(ctx session.Context, st *state.Stat
 		})
 	}
 	if len(details) > 0 {
-		err := block.Do(oc.service, ctx, oc.core.PredefinedBlocks().Account, func(ws basic.CommonOperations) error {
+		err := block.Do(oc.service, ctx, oc.core.PredefinedObjects(ctx.SpaceID()).Account, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}

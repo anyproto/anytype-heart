@@ -455,7 +455,7 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 
 // SetPagesIsArchived is deprecated
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
-	return Do(s, ctx, s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -498,7 +498,7 @@ func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSe
 
 // SetPagesIsFavorite is deprecated
 func (s *Service) SetPagesIsFavorite(ctx session.Context, req pb.RpcObjectListSetIsFavoriteRequest) error {
-	return Do(s, ctx, s.anytype.PredefinedBlocks().Home, func(b smartblock.SmartBlock) error {
+	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, func(b smartblock.SmartBlock) error {
 		fav, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected home block type: %T", b)
@@ -549,14 +549,14 @@ func (s *Service) objectLinksCollectionModify(ctx session.Context, collectionId 
 }
 
 func (s *Service) SetPageIsFavorite(ctx session.Context, req pb.RpcObjectSetIsFavoriteRequest) (err error) {
-	return s.objectLinksCollectionModify(ctx, s.anytype.PredefinedBlocks().Home, req.ContextId, req.IsFavorite)
+	return s.objectLinksCollectionModify(ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, req.ContextId, req.IsFavorite)
 }
 
 func (s *Service) SetPageIsArchived(ctx session.Context, req pb.RpcObjectSetIsArchivedRequest) (err error) {
 	if err := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), req.ContextId); err != nil {
 		return err
 	}
-	return s.objectLinksCollectionModify(ctx, s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
+	return s.objectLinksCollectionModify(ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, req.ContextId, req.IsArchived)
 }
 
 func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
@@ -596,7 +596,7 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 }
 
 func (s *Service) DeleteArchivedObjects(ctx session.Context, req pb.RpcObjectListDeleteRequest) (err error) {
-	return Do(s, ctx, s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -646,7 +646,7 @@ func (s *Service) ObjectsDuplicate(ctx session.Context, ids []string) (newIds []
 }
 
 func (s *Service) DeleteArchivedObject(ctx session.Context, id string) (err error) {
-	return Do(s, ctx, s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -709,7 +709,7 @@ func (s *Service) sendOnRemoveEvent(spaceID string, ids ...string) {
 
 func (s *Service) RemoveListOption(ctx session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
-	if err := Do(s, ctx, s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+	if err := Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
 		var ok bool
 		if workspace, ok = b.(*editor.Workspaces); !ok {
 			return fmt.Errorf("incorrect object with workspace id")

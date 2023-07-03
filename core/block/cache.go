@@ -91,7 +91,7 @@ func (s *Service) cacheLoad(cctx context.Context, id string) (value ocache.Objec
 	sbt, _ := s.sbtProvider.Type(opts.spaceId, id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
-		return s.initSubObject(ctx.Context(), id)
+		return s.initSubObject(ctx, id)
 	default:
 		return buildObject(id)
 	}
@@ -230,7 +230,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		err = s.OnDelete(ctx, id, func() error {
-			return Do(s, ctx, s.anytype.PredefinedBlocks().Account, func(w *editor.Workspaces) error {
+			return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(w *editor.Workspaces) error {
 				return w.DeleteSubObject(id)
 			})
 		})
@@ -417,8 +417,8 @@ func (s *Service) cacheCreatedObject(ctx context.Context, id, spaceId string, in
 	return s.GetObject(ctx, spaceId, id)
 }
 
-func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.Object, err error) {
-	if account, err = s.cache.Get(ctx, s.anytype.PredefinedBlocks().Account); err != nil {
+func (s *Service) initSubObject(ctx session.Context, id string) (account ocache.Object, err error) {
+	if account, err = s.cache.Get(ctx.Context(), s.anytype.PredefinedObjects(ctx.SpaceID()).Account); err != nil {
 		return
 	}
 	return account.(SmartblockOpener).Open(id)

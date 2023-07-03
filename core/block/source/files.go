@@ -84,7 +84,7 @@ func (f *file) ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool)
 		return nil, err
 	}
 	if d.GetFields() != nil {
-		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedBlocks().Account)
+		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedObjects(ctx.SpaceID()).Account)
 	}
 
 	s.SetDetails(d)
