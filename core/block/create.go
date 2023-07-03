@@ -131,14 +131,29 @@ func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreat
 		return nil
 	})
 
+	err = Do(s, newSpaceCtx, predefinedObjectIDs.Account, func(b basic.DetailsSettable) error {
+		// TODO Details from request
+		// details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details))
+		details := []*pb.RpcObjectSetDetailsDetail{
+			{
+				Key:   bundle.RelationKeyName.String(),
+				Value: pbtypes.String(req.Name),
+			},
+			{
+				Key:   bundle.RelationKeyIconEmoji.String(),
+				Value: pbtypes.String("🌎"),
+			},
+			{
+				Key:   bundle.RelationKeyLayout.String(),
+				Value: pbtypes.Float64(float64(model.ObjectType_space)),
+			},
+		}
+		return b.SetDetails(nil, details, true)
+	})
+	if err != nil {
+		return "", fmt.Errorf("set details for space %s: %w", spc.Id(), err)
+	}
 	return spc.Id(), err
-	// id, _, err := s.objectCreator.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypeWorkspace, &types.Struct{Fields: map[string]*types.Value{
-	// 	bundle.RelationKeyName.String():      pbtypes.String(req.Name),
-	// 	bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
-	// 	bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
-	// 	bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
-	// }}, nil)
-	// return id, err
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
