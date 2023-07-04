@@ -25,32 +25,32 @@ func newListStorage(spaceId string, db *badger.DB, txn *badger.Txn) (ls liststor
 		return
 	}
 
-	stringId := string(rootId)
-	value, err := getTxn(txn, keys.RawRecordKey(stringId))
+	stringID := string(rootId)
+	value, err := getTxn(txn, keys.RawRecordKey(stringID))
 	if err != nil {
 		return
 	}
 
-	rootWithId := &consensusproto.RawRecordWithId{
+	rootWithID := &consensusproto.RawRecordWithId{
 		Payload: value,
-		Id:      stringId,
+		Id:      stringID,
 	}
 
 	ls = &listStorage{
 		db:   db,
 		keys: keys,
-		id:   stringId,
-		root: rootWithId,
+		id:   stringID,
+		root: rootWithID,
 	}
 	return
 }
 
-func createListStorage(spaceId string, db *badger.DB, txn *badger.Txn, root *consensusproto.RawRecordWithId) (ls liststorage.ListStorage, err error) {
-	keys := newAclKeys(spaceId)
+func createListStorage(spaceID string, db *badger.DB, txn *badger.Txn, root *consensusproto.RawRecordWithId) (ls liststorage.ListStorage, err error) {
+	keys := newAclKeys(spaceID)
 	_, err = getTxn(txn, keys.RootIdKey())
 	if err != badger.ErrKeyNotFound {
 		if err == nil {
-			return newListStorage(spaceId, db, txn)
+			return newListStorage(spaceID, db, txn)
 		}
 		return
 	}
@@ -95,7 +95,7 @@ func (l *listStorage) Head() (head string, err error) {
 	return
 }
 
-func (l *listStorage) GetRawRecord(ctx context.Context, id string) (raw *consensusproto.RawRecordWithId, err error) {
+func (l *listStorage) GetRawRecord(_ context.Context, id string) (raw *consensusproto.RawRecordWithId, err error) {
 	res, err := getDB(l.db, l.keys.RawRecordKey(id))
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
@@ -115,6 +115,6 @@ func (l *listStorage) SetHead(headId string) (err error) {
 	return putDB(l.db, l.keys.HeadIdKey(), []byte(headId))
 }
 
-func (l *listStorage) AddRawRecord(ctx context.Context, rec *consensusproto.RawRecordWithId) error {
+func (l *listStorage) AddRawRecord(_ context.Context, rec *consensusproto.RawRecordWithId) error {
 	return putDB(l.db, l.keys.RawRecordKey(rec.Id), rec.Payload)
 }

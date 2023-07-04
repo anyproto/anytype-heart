@@ -3,21 +3,20 @@ package zipaclstorage
 import (
 	"archive/zip"
 	"context"
+	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
-
-	"strings"
 )
 
-type zipAclWriteStorage struct {
+type zipACLWriteStorage struct {
 	id   string
 	head string
 	zw   *zip.Writer
 }
 
-func NewAclWriteStorage(root *consensusproto.RawRecordWithId, zw *zip.Writer) (ls liststorage.ListStorage, err error) {
-	ls = &zipAclWriteStorage{
+func NewACLWriteStorage(root *consensusproto.RawRecordWithId, zw *zip.Writer) (ls liststorage.ListStorage, err error) {
+	ls = &zipACLWriteStorage{
 		id:   root.Id,
 		head: root.Id,
 		zw:   zw,
@@ -26,28 +25,29 @@ func NewAclWriteStorage(root *consensusproto.RawRecordWithId, zw *zip.Writer) (l
 	return
 }
 
-func (z *zipAclWriteStorage) Id() string {
+// nolint:revive
+func (z *zipACLWriteStorage) Id() string {
 	return z.id
 }
 
-func (z *zipAclWriteStorage) Root() (*consensusproto.RawRecordWithId, error) {
+func (z *zipACLWriteStorage) Root() (*consensusproto.RawRecordWithId, error) {
 	panic("should not be called")
 }
 
-func (z *zipAclWriteStorage) Head() (string, error) {
+func (z *zipACLWriteStorage) Head() (string, error) {
 	return z.id, nil
 }
 
-func (z *zipAclWriteStorage) SetHead(headId string) error {
+func (z *zipACLWriteStorage) SetHead(_ string) error {
 	// TODO: As soon as our acls are writeable, this should be implemented
 	panic("should not be called")
 }
 
-func (z *zipAclWriteStorage) GetRawRecord(ctx context.Context, id string) (*consensusproto.RawRecordWithId, error) {
+func (z *zipACLWriteStorage) GetRawRecord(_ context.Context, _ string) (*consensusproto.RawRecordWithId, error) {
 	panic("should not be called")
 }
 
-func (z *zipAclWriteStorage) AddRawRecord(ctx context.Context, rec *consensusproto.RawRecordWithId) (err error) {
+func (z *zipACLWriteStorage) AddRawRecord(_ context.Context, rec *consensusproto.RawRecordWithId) (err error) {
 	wr, err := z.zw.Create(strings.Join([]string{z.id, rec.Id}, "/"))
 	if err != nil {
 		return
@@ -56,6 +56,6 @@ func (z *zipAclWriteStorage) AddRawRecord(ctx context.Context, rec *consensuspro
 	return
 }
 
-func (z *zipAclWriteStorage) FlushStorage() error {
+func (z *zipACLWriteStorage) FlushStorage() error {
 	return nil
 }

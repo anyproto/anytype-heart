@@ -4,12 +4,11 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
-
-	"io"
-	"strings"
 )
 
 type zipAclReadStorage struct {
@@ -53,11 +52,11 @@ func (z *zipAclReadStorage) SetHead(headId string) error {
 	panic("should not be called")
 }
 
-func (z *zipAclReadStorage) GetRawRecord(ctx context.Context, id string) (*consensusproto.RawRecordWithId, error) {
+func (z *zipAclReadStorage) GetRawRecord(_ context.Context, id string) (*consensusproto.RawRecordWithId, error) {
 	return z.readRecord(id)
 }
 
-func (z *zipAclReadStorage) AddRawRecord(ctx context.Context, rec *consensusproto.RawRecordWithId) (err error) {
+func (z *zipAclReadStorage) AddRawRecord(_ context.Context, _ *consensusproto.RawRecordWithId) (err error) {
 	panic("should not be called")
 }
 

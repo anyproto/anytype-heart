@@ -3,6 +3,8 @@ package treearchive
 import (
 	"archive/zip"
 	"encoding/json"
+	"io/fs"
+	"os"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -11,9 +13,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/debug/treearchive/zipaclstorage"
 	"github.com/anyproto/anytype-heart/core/debug/treearchive/ziptreestorage"
-
-	"io/fs"
-	"os"
 )
 
 type ExportedObjectsJson struct {
@@ -61,7 +60,7 @@ func (e *ArchiveWriter) TreeStorage(root *treechangeproto.RawTreeChangeWithId) (
 
 func (e *ArchiveWriter) ListStorage(root *consensusproto.RawRecordWithId) (liststorage.ListStorage, error) {
 	e.aclId = root.Id
-	st, err := zipaclstorage.NewAclWriteStorage(root, e.zw)
+	st, err := zipaclstorage.NewACLWriteStorage(root, e.zw)
 	if err != nil {
 		return nil, err
 	}
