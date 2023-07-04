@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "ae1d127438bc31b70c8a52300b3f67cad754ac7c3345cd3e7cc8d0c37b978fd7"
+const RelationChecksum = "ceac179a5d2b46583a281094f398d74ce45e0b7a112f7fa455dfbdb1dace23bd"
 
 type RelationKey string
 
@@ -164,6 +164,8 @@ const (
 	RelationKeySourceFilePath            RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            RelationKey = "fileSyncStatus"
 	RelationKeyLastChangeId              RelationKey = "lastChangeId"
+	RelationKeyStarred                   RelationKey = "starred"
+	RelationKeyDefaultTemplateId         RelationKey = "defaultTemplateId"
 )
 
 var (
@@ -557,6 +559,20 @@ var (
 			Key:              "dateOfBirth",
 			MaxCount:         1,
 			Name:             "Birthday",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDefaultTemplateId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "ID of template chosen as default for particular object type",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdefaultTemplateId",
+			Key:              "defaultTemplateId",
+			MaxCount:         1,
+			Name:             "Default Template ID",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1785,6 +1801,19 @@ var (
 			Id:               "_brstakeholders",
 			Key:              "stakeholders",
 			Name:             "Stakeholders",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyStarred: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_checkbox,
+			Id:               "_brstarred",
+			Key:              "starred",
+			MaxCount:         1,
+			Name:             "Starred",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -33,7 +33,6 @@ const (
 	CName = "anytype"
 )
 
-//go:generate mockgen -package mock_core -destination ./mock_core/service_mock.go github.com/anyproto/anytype-heart/pkg/lib/core Service
 type Service interface {
 	Stop() error
 	IsStarted() bool

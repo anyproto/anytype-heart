@@ -370,7 +370,6 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 		log.Infof("start store reindex (%s)", flags.String())
 	}
 
-	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
 	if flags.threadObjects && flags.fileObjects {
 		// files will be indexed within object indexing (see indexLinkedFiles)
 		// because we need to do it in the background.
@@ -453,7 +452,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 }
 
 func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags reindexFlags) (err error) {
-	ctx := session.NewContext(context.Background(), spaceID)
+	ctx := session.NewContext(block.CacheOptsWithRemoteLoadDisabled(context.Background()), spaceID)
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.threadObjects {
