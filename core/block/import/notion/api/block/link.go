@@ -2,6 +2,7 @@ package block
 
 import (
 	"github.com/globalsign/mgo/bson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
@@ -206,19 +207,33 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 		}}, id
 }
 
-func getTargetBlock(parentPageIDToChildIDs map[string][]string, nameToID, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
+// getTargetBlock has the logic, that each page in Notion can have many child pages inside, which can also have the same name.
+// But the Notion API sends us only the names of these pages. Therefore, as a result, we can get an approximate answers like
+//
+//	parentPage {
+//	      childPage: “Title”,
+//	      childPage: “Title”,
+//	      childPage: "Title"
+//	}
+//
+// And these pages are different. Therefore, we get children of given page and compare its name with those
+// returned to us by the Notion API. As a result we get Anytype ID of child page and make it targetBlockID
+// But we can end up with 3 links to the same page, and to avoid that,
+// we remove the childID from the parentIDToChildrenID map. So it helps to not create links with the same targetBlockID.
+func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
 	var (
 		targetBlockID string
 		ok            bool
 	)
-	if children, exist := parentPageIDToChildIDs[pageID]; exist {
-		for childrenIdx, child := range children {
-			if name, nameExist := nameToID[child]; nameExist && name == title {
-				targetBlockID, ok = notionIDsToAnytype[child]
-				children = append(children[:childrenIdx], children[childrenIdx+1:]...)
+	if childIDs, exist := parentPageIDToChildIDs[pageID]; exist {
+		for childIdx, childID := range childIDs {
+			if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
+				targetBlockID, ok = notionIDsToAnytype[childID]
+				childIDs = slices.Delete(childIDs, childIdx, childIdx+1)
 				break
 			}
 		}
+		parentPageIDToChildIDs[pageID] = childIDs
 	}
 	return targetBlockID, ok
 }
