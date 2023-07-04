@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/hash"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -140,6 +141,7 @@ type SmartBlock interface {
 	ObjectClose()
 	FileRelationKeys(s *state.State) []string
 	Inner() SmartBlock
+	Delete() error
 
 	ocache.Object
 	state.Doc
@@ -182,6 +184,10 @@ type Locker interface {
 type Indexer interface {
 	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
+}
+
+type StateDeleter interface {
+	DeleteState(id string) error
 }
 
 type smartBlock struct {
@@ -1238,6 +1244,13 @@ func (sb *smartBlock) execHooks(event Hook, info ApplyInfo) (err error) {
 
 func (sb *smartBlock) GetDocInfo() DocInfo {
 	return sb.getDocInfo(sb.NewState())
+}
+
+func (sb *smartBlock) Delete() error {
+	if stateDeleter, ok := sb.source.(StateDeleter); ok {
+		return stateDeleter.DeleteState(hash.HeadsHash(sb.source.Heads()))
+	}
+	return nil
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {

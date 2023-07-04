@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
@@ -245,7 +246,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectCreator).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
-		Register(graphRenderer)
+		Register(graphRenderer).
+		Register(state.NewCache())
 }
 
 func MiddlewareVersion() string {

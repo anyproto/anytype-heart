@@ -17,6 +17,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -54,6 +55,9 @@ var (
 
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
+
+	statePrefix  = "state"
+	currentState = ds.NewKey("/" + statePrefix + "/current")
 
 	ErrObjectNotFound = errors.New("object not found")
 
@@ -108,6 +112,7 @@ type ObjectStore interface {
 	app.ComponentRunnable
 	IndexerStore
 	AccountStore
+	StateStore
 
 	SubscribeForAll(callback func(rec database.Record))
 
@@ -167,6 +172,12 @@ type AccountStore interface {
 	GetCurrentWorkspaceID() (string, error)
 	SetCurrentWorkspaceID(workspaceID string) (err error)
 	RemoveCurrentWorkspaceID() (err error)
+}
+
+type StateStore interface {
+	SaveState(objectID string, csh *pb.ChangeSnapshot) error
+	GetState(objectID string) (*pb.ChangeSnapshot, error)
+	DeleteState(objectID string) error
 }
 
 var ErrNotAnObject = fmt.Errorf("not an object")

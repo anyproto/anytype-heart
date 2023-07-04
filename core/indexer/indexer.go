@@ -2,10 +2,8 @@ package indexer
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,7 +11,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -35,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/util/hash"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -193,7 +191,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-	headHashToIndex := headsHash(info.Heads)
+	headHashToIndex := hash.HeadsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
 			return
@@ -631,7 +629,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 			continue
 		}
 
-		hh := headsHash(heads)
+		hh := hash.HeadsHash(heads)
 		if lastHash != hh {
 			if lastHash != "" {
 				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
@@ -700,16 +698,6 @@ func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, er
 		ids = append(ids, idsT...)
 	}
 	return ids, nil
-}
-
-func headsHash(heads []string) string {
-	if len(heads) == 0 {
-		return ""
-	}
-	slices.Sort(heads)
-
-	sum := sha256.Sum256([]byte(strings.Join(heads, ",")))
-	return fmt.Sprintf("%x", sum)
 }
 
 func (i *indexer) GetLogFields() []zap.Field {

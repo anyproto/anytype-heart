@@ -671,6 +671,9 @@ func (s *Service) OnDelete(id string, workspaceRemove func() error) error {
 			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
 		}
 		b.SetIsDeleted()
+		if err := b.Delete(); err != nil {
+			log.Warn("failed to delete state from cache", zap.Error(err))
+		}
 		if workspaceRemove != nil {
 			return workspaceRemove()
 		}
