@@ -2,6 +2,7 @@ package block
 
 import (
 	"github.com/globalsign/mgo/bson"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
@@ -206,19 +207,21 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 		}}, id
 }
 
-func getTargetBlock(parentPageIDToChildIDs map[string][]string, nameToID, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
+func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
 	var (
 		targetBlockID string
 		ok            bool
 	)
-	if children, exist := parentPageIDToChildIDs[pageID]; exist {
-		for childrenIdx, child := range children {
-			if name, nameExist := nameToID[child]; nameExist && name == title {
-				targetBlockID, ok = notionIDsToAnytype[child]
-				children = append(children[:childrenIdx], children[childrenIdx+1:]...)
+	if childrenID, exist := parentPageIDToChildIDs[pageID]; exist {
+		childrenID := childrenID
+		for childrenIdx, childID := range childrenID {
+			if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
+				targetBlockID, ok = notionIDsToAnytype[childID]
+				childrenID = slices.Delete(childrenID, childrenIdx, childrenIdx+1)
 				break
 			}
 		}
+		parentPageIDToChildIDs[pageID] = childrenID
 	}
 	return targetBlockID, ok
 }
