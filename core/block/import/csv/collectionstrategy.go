@@ -79,7 +79,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		numberOfRelationsLimit = limitForColumns
 	}
 	for i := 1; i < numberOfRelationsLimit; i++ {
-		if allRelations[i] == "" {
+		if allRelations[i] == "" && useFirstRowForRelations {
 			continue
 		}
 		relationName := allRelations[i]
