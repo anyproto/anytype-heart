@@ -2,15 +2,15 @@ package storage
 
 import (
 	"context"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"testing"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/require"
 )
 
-func testList(t *testing.T, store liststorage.ListStorage, root *aclrecordproto.RawAclRecordWithId, head string) {
+func testList(t *testing.T, store liststorage.ListStorage, root *consensusproto.RawRecordWithId, head string) {
 	require.Equal(t, store.Id(), root.Id)
 
 	aclRoot, err := store.Root()
@@ -27,7 +27,7 @@ func TestListStorage(t *testing.T) {
 	fx.open(t)
 	defer fx.stop(t)
 	spaceId := "spaceId"
-	aclRoot := &aclrecordproto.RawAclRecordWithId{Payload: []byte("root"), Id: "someRootId"}
+	aclRoot := &consensusproto.RawRecordWithId{Payload: []byte("root"), Id: "someRootId"}
 
 	fx.db.Update(func(txn *badger.Txn) error {
 		_, err := createListStorage(spaceId, fx.db, txn, aclRoot)
@@ -64,7 +64,7 @@ func TestListStorage(t *testing.T) {
 	})
 
 	t.Run("add raw record and get raw record", func(t *testing.T) {
-		newRec := &aclrecordproto.RawAclRecordWithId{Payload: []byte("rec"), Id: "someRecId"}
+		newRec := &consensusproto.RawRecordWithId{Payload: []byte("rec"), Id: "someRecId"}
 		require.NoError(t, listStore.AddRawRecord(context.Background(), newRec))
 		aclRec, err := listStore.GetRawRecord(context.Background(), newRec.Id)
 		require.NoError(t, err)
