@@ -2,11 +2,11 @@ package storage
 
 import (
 	"context"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"sort"
 	"strconv"
 	"testing"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -20,7 +20,7 @@ func spaceTestPayload() spacestorage.SpaceStorageCreatePayload {
 		RawHeader: []byte("header"),
 		Id:        "headerId",
 	}
-	aclRoot := &aclrecordproto.RawAclRecordWithId{
+	aclRoot := &consensusproto.RawRecordWithId{
 		Payload: []byte("aclRoot"),
 		Id:      "aclRootId",
 	}

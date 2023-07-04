@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -329,6 +330,7 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 				Delimiter:               ",",
 				TransposeRowsAndColumns: true,
 				UseFirstRowForRelations: true,
+				Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
 			},
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
@@ -354,7 +356,8 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
+	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded))
 	assert.NotNil(t, sn)
 
 	var objects []*converter.Snapshot
