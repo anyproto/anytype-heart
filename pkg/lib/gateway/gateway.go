@@ -238,7 +238,7 @@ func (g *gateway) getFile(ctx session.Context, r *http.Request) (files.File, io.
 		return nil, nil, fmt.Errorf("get file by hash: %s", err)
 	}
 
-	reader, err := file.Reader(ctx.Context())
+	reader, err := file.Reader(ctx)
 	return file, reader, err
 }
 
@@ -297,6 +297,6 @@ func (g *gateway) getImage(ctx session.Context, r *http.Request) (files.File, io
 		}
 	}
 
-	reader, err := file.Reader(ctx.Context())
+	reader, err := file.Reader(ctx)
 	return file, reader, err
 }

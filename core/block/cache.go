@@ -242,7 +242,7 @@ func (s *Service) DeleteObject(ctx session.Context, id string) (err error) {
 			if err := s.fileSync.RemoveFile(ctx.SpaceID(), id); err != nil {
 				return fmt.Errorf("failed to remove file from sync: %w", err)
 			}
-			_, err = s.fileService.FileOffload(id, true)
+			_, err = s.fileService.FileOffload(ctx, id, true)
 			if err != nil {
 				return err
 			}

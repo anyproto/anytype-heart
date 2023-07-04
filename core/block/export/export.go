@@ -387,7 +387,7 @@ func (e *export) saveFile(ctx session.Context, wr writer, hash string) (err erro
 	}
 	origName := file.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := file.Reader(context.TODO())
+	rd, err := file.Reader(ctx.WithContext(context.Background()))
 	if err != nil {
 		return
 	}
@@ -405,7 +405,7 @@ func (e *export) saveImage(ctx session.Context, wr writer, hash string) (err err
 	}
 	origName := orig.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := orig.Reader(context.TODO())
+	rd, err := orig.Reader(ctx.WithContext(context.Background()))
 	if err != nil {
 		return
 	}

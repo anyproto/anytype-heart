@@ -60,7 +60,7 @@ func (s *service) ImageAdd(ctx session.Context, options ...AddOption) (Image, er
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx.Context(), &opts)
+	err := s.normalizeOptions(ctx, &opts)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (s *service) ImageAdd(ctx session.Context, options ...AddOption) (Image, er
 }
 
 func (s *service) imageAdd(ctx session.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
-	dir, err := s.fileBuildDirectory(ctx.Context(), opts.Reader, opts.Name, opts.Plaintext, anytype.ImageNode())
+	dir, err := s.fileBuildDirectory(ctx, opts.Reader, opts.Name, opts.Plaintext, anytype.ImageNode())
 	if err != nil {
 		return "", nil, err
 	}

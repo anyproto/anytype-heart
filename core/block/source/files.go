@@ -65,7 +65,7 @@ func (f *file) getDetailsForFileOrImage(ctx session.Context, id string) (p *type
 		return details, true, nil
 	}
 
-	d, err := file.Details(ctx.Context())
+	d, err := file.Details(ctx)
 	if err != nil {
 		return nil, false, err
 	}

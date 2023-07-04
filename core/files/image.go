@@ -32,6 +32,8 @@ type Image interface {
 	GetOriginalFile(ctx session.Context) (File, error)
 }
 
+var _ Image = (*image)(nil)
+
 type image struct {
 	hash            string // directory hash
 	variantsByWidth map[int]*storage.FileInfo
@@ -117,7 +119,7 @@ func (i *image) Exif(ctx session.Context) (*mill.ImageExifSchema, error) {
 		info: fileIndex,
 		node: i.service,
 	}
-	r, err := f.Reader(ctx.Context())
+	r, err := f.Reader(ctx)
 	if err != nil {
 		return nil, err
 	}

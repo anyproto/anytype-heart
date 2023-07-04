@@ -62,12 +62,12 @@ const (
 		</html>`
 )
 
-func NewHTMLConverter(ctx session.Context, fileService files.Service, s *state.State) *HTML {
-	return &HTML{ctx: ctx, fileService: fileService, s: s}
+func NewHTMLConverter(spaceID string, fileService files.Service, s *state.State) *HTML {
+	return &HTML{spaceID: spaceID, fileService: fileService, s: s}
 }
 
 type HTML struct {
-	ctx         session.Context // TODO multispace: it's not good, better pass it as function parameter
+	spaceID     string
 	s           *state.State
 	buf         *bytes.Buffer
 	fileService files.Service
@@ -527,15 +527,16 @@ func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell m
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {
-	im, err := h.fileService.ImageByHash(h.ctx, hash)
+	ctx := session.NewContext(context.Background(), h.spaceID)
+	im, err := h.fileService.ImageByHash(ctx, hash)
 	if err != nil {
 		return
 	}
-	f, err := im.GetFileForWidth(h.ctx, 1024)
+	f, err := im.GetFileForWidth(ctx, 1024)
 	if err != nil {
 		return
 	}
-	rd, err := f.Reader(context.TODO())
+	rd, err := f.Reader(ctx)
 	if err != nil {
 		return
 	}

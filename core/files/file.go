@@ -1,7 +1,6 @@
 package files
 
 import (
-	"context"
 	"io"
 	"path/filepath"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/dhowden/tag"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -19,10 +19,12 @@ import (
 type File interface {
 	Meta() *FileMeta
 	Hash() string
-	Reader(ctx context.Context) (io.ReadSeeker, error)
-	Details(ctx context.Context) (*types.Struct, error)
+	Reader(ctx session.Context) (io.ReadSeeker, error)
+	Details(ctx session.Context) (*types.Struct, error)
 	Info() *storage.FileInfo
 }
+
+var _ File = (*file)(nil)
 
 type file struct {
 	hash string
@@ -38,7 +40,7 @@ type FileMeta struct {
 	Added            time.Time
 }
 
-func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
+func (f *file) audioDetails(ctx session.Context) (*types.Struct, error) {
 	r, err := f.Reader(ctx)
 	if err != nil {
 		return nil, err
@@ -75,7 +77,7 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 	return d, nil
 }
 
-func (f *file) Details(ctx context.Context) (*types.Struct, error) {
+func (f *file) Details(ctx session.Context) (*types.Struct, error) {
 	meta := f.Meta()
 
 	commonDetails := calculateCommonDetails(f.hash, bundle.TypeKeyFile, model.ObjectType_file, f.info.LastModifiedDate)
@@ -121,7 +123,7 @@ func (f *file) Hash() string {
 	return f.hash
 }
 
-func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
+func (f *file) Reader(ctx session.Context) (io.ReadSeeker, error) {
 	return f.node.getContentReader(ctx, f.info)
 }
 

@@ -190,7 +190,7 @@ func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) 
 
 func (sf *sfile) DropFiles(ctx session.Context, req pb.RpcFileDropRequest) (err error) {
 	proc := &dropFilesProcess{
-		ctx:             ctx,
+		spaceID:         ctx.SpaceID(),
 		s:               sf.fileSource,
 		fileService:     sf.fileService,
 		tempDirProvider: sf.tempDirProvider,
@@ -306,7 +306,7 @@ type dropFilesHandler interface {
 
 type dropFilesProcess struct {
 	id              string
-	ctx             session.Context
+	spaceID         string
 	s               BlockService
 	picker          getblock.Picker
 	fileService     files.Service
@@ -441,7 +441,8 @@ func (dp *dropFilesProcess) Start(rootId, targetId string, pos model.BlockPositi
 		if idx >= len(smartBlockIds) {
 			return
 		}
-		err = getblock.Do(dp.picker, dp.ctx, smartBlockIds[idx], func(sb File) error {
+		ctx := session.NewContext(context.Background(), dp.spaceID)
+		err = getblock.Do(dp.picker, ctx, smartBlockIds[idx], func(sb File) error {
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				isContinue = idx != 0
@@ -528,12 +529,12 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 	upl := NewUploader(dp.s, dp.fileService, dp.tempDirProvider, dp.picker)
-
+	ctx := session.NewContext(context.Background(), dp.spaceID)
 	res := upl.
 		SetName(f.name).
 		AutoType(true).
 		SetFile(f.path).
-		Upload(dp.ctx)
+		Upload(ctx)
 
 	if res.Err != nil {
 		log.With("filePath", f.path).Errorf("upload error: %s", res.Err)
@@ -550,7 +551,8 @@ func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 			atomic.AddInt64(&dp.done, 1)
 		}
 	}()
-	return getblock.Do(dp.picker, dp.ctx, f.pageId, func(sb File) error {
+	ctx := session.NewContext(context.Background(), dp.spaceID)
+	return getblock.Do(dp.picker, ctx, f.pageId, func(sb File) error {
 		sbHandler, ok := sb.(dropFilesHandler)
 		if !ok {
 			return fmt.Errorf("(apply) unexpected smartblock interface %T; want dropFilesHandler", sb)

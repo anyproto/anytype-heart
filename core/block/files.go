@@ -37,6 +37,7 @@ func (s *Service) DownloadFile(ctx session.Context, req *pb.RpcFileDownloadReque
 	progress.SetProgressMessage("saving file")
 	var countReader *datacounter.ReaderCounter
 	cctx, cancel := context.WithCancel(context.Background())
+	ctx = ctx.WithContext(cctx)
 	defer cancel()
 	go func() {
 		for {
@@ -60,7 +61,7 @@ func (s *Service) DownloadFile(ctx session.Context, req *pb.RpcFileDownloadReque
 
 	progress.SetTotal(f.Meta().Size)
 
-	r, err := f.Reader(cctx)
+	r, err := f.Reader(ctx)
 	if err != nil {
 		return "", fmt.Errorf("get file reader: %w", err)
 	}

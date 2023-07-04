@@ -1,7 +1,6 @@
 package files
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,6 +10,7 @@ import (
 	"github.com/h2non/filetype"
 	ipfspath "github.com/ipfs/go-path"
 
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
@@ -42,7 +42,7 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 	}
 }
 
-func (s *service) normalizeOptions(ctx context.Context, opts *AddOptions) error {
+func (s *service) normalizeOptions(ctx session.Context, opts *AddOptions) error {
 	if opts.Use != "" {
 		ref, err := ipfspath.ParsePath(opts.Use)
 		if err != nil {

@@ -56,8 +56,8 @@ type Service interface {
 	FileAdd(ctx session.Context, options ...AddOption) (File, error)
 	FileByHash(ctx session.Context, hash string) (File, error)
 	FileGetKeys(ctx session.Context, hash string) (*FileKeys, error)
-	FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
-	FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error)
+	FileListOffload(ctx session.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
+	FileOffload(ctx session.Context, ileID string, includeNotPinned bool) (totalSize uint64, err error)
 	GetSpaceUsage(ctx session.Context) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	ImageAdd(ctx session.Context, options ...AddOption) (Image, error)
 	ImageByHash(ctx session.Context, hash string) (Image, error)
@@ -118,7 +118,7 @@ var ValidContentLinkNames = []string{"content"}
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
 func (s *service) fileAdd(ctx session.Context, opts AddOptions) (string, *storage.FileInfo, error) {
-	fileInfo, err := s.fileAddWithConfig(ctx.Context(), &m.Blob{}, opts)
+	fileInfo, err := s.fileAddWithConfig(ctx, &m.Blob{}, opts)
 	if err != nil {
 		return "", nil, err
 	}
@@ -384,8 +384,7 @@ func (s *service) fileIndexLink(ctx session.Context, inode ipld.Node, fileID str
 }
 
 func (s *service) fileInfoFromPath(ctx session.Context, target string, path string, key string) (*storage.FileInfo, error) {
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
-	id, r, err := helpers.DataAtPath(ctx.Context(), dagService, s.commonFile, path+"/"+MetaLinkName)
+	id, r, err := s.dataAtPath(ctx, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
 	}
@@ -452,7 +451,7 @@ func (s *service) fileInfoFromPath(ctx session.Context, target string, path stri
 	return &file, nil
 }
 
-func (s *service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, *storage.FileInfo, error) {
+func (s *service) fileContent(ctx session.Context, hash string) (io.ReadSeeker, *storage.FileInfo, error) {
 	var err error
 	var file *storage.FileInfo
 	var reader io.ReadSeeker
@@ -464,12 +463,12 @@ func (s *service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, 
 	return reader, file, err
 }
 
-func (s *service) getContentReader(ctx context.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
+func (s *service) getContentReader(ctx session.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
 		return nil, err
 	}
-	fd, err := s.commonFile.GetFile(ctx, fileCid)
+	fd, err := s.getFile(ctx, fileCid)
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +489,7 @@ func (s *service) getContentReader(ctx context.Context, file *storage.FileInfo) 
 	return dec.DecryptReader(fd)
 }
 
-func (s *service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+func (s *service) fileAddWithConfig(ctx session.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -581,7 +580,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		contentReader = res.File
 	}
 
-	contentNode, err := s.commonFile.AddFile(ctx, contentReader)
+	contentNode, err := s.addFile(ctx, contentReader)
 	if err != nil {
 		return nil, err
 	}
@@ -602,7 +601,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		metaReader = bytes.NewReader(plaintext)
 	}
 
-	metaNode, err := s.commonFile.AddFile(ctx, metaReader)
+	metaNode, err := s.addFile(ctx, metaReader)
 	if err != nil {
 		return nil, err
 	}
@@ -649,7 +648,7 @@ func (s *service) fileNode(ctx session.Context, file *storage.FileInfo, dir uio.
 	return helpers.AddLinkToDirectory(ctx.Context(), dagService, dir, link, node.Cid().String())
 }
 
-func (s *service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *service) fileBuildDirectory(ctx session.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -926,7 +925,7 @@ func (s *service) FileAdd(ctx session.Context, options ...AddOption) (File, erro
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx.Context(), &opts)
+	err := s.normalizeOptions(ctx, &opts)
 	if err != nil {
 		return nil, err
 	}

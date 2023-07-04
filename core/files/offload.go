@@ -9,15 +9,16 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
-func (s *service) FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error) {
+func (s *service) FileOffload(ctx session.Context, fileID string, includeNotPinned bool) (totalSize uint64, err error) {
 	if err := s.checkIfPinned(fileID, includeNotPinned); err != nil {
 		return 0, err
 	}
 
-	return s.fileOffload(fileID)
+	return s.fileOffload(ctx, fileID)
 }
 
 func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
@@ -51,15 +52,16 @@ func (s *service) isFilePinnedOrDeleted(fileID string) (bool, error) {
 	return isDeleted, nil
 }
 
-func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
+func (s *service) fileOffload(ctx session.Context, hash string) (totalSize uint64, err error) {
 	log.With("fileID", hash).Info("offload file")
-	totalSize, cids, err := s.getAllExistingFileBlocksCids(hash)
+	totalSize, cids, err := s.getAllExistingFileBlocksCids(ctx, hash)
 	if err != nil {
 		return 0, err
 	}
 
+	dagService := s.dagServiceForSpace(ctx.SpaceID())
 	for _, c := range cids {
-		err = s.commonFile.DAGService().Remove(context.Background(), c)
+		err = dagService.Remove(context.Background(), c)
 		if err != nil {
 			// no need to check for cid not exists
 			return 0, err
@@ -69,7 +71,7 @@ func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
 	return totalSize, nil
 }
 
-func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
+func (s *service) FileListOffload(ctx session.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
 	if len(fileIDs) == 0 {
 		fileIDs, err = s.fileStore.ListTargets()
 		if err != nil {
@@ -85,7 +87,7 @@ func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 	}
 
 	for _, fileID := range fileIDs {
-		bytesRemoved, err := s.fileOffload(fileID)
+		bytesRemoved, err := s.fileOffload(ctx, fileID)
 		if err != nil {
 			log.Errorf("failed to offload file %s: %s", fileID, err.Error())
 			continue
@@ -120,12 +122,13 @@ func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 	return result, nil
 }
 
-func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
+func (s *service) getAllExistingFileBlocksCids(ctx session.Context, hash string) (totalSize uint64, cids []cid.Cid, err error) {
 	var getCidsLinksRecursively func(c cid.Cid) (err error)
+	dagService := s.dagServiceForSpace(ctx.SpaceID())
 
 	var visitedMap = make(map[string]struct{})
 	getCidsLinksRecursively = func(c cid.Cid) (err error) {
-		if exists, err := s.commonFile.HasCid(context.Background(), c); err != nil {
+		if exists, err := s.hasCid(ctx, c); err != nil {
 			return err
 		} else if !exists {
 			// double-check the blockstore, if we don't have the block - we have not yet downloaded it
@@ -137,7 +140,7 @@ func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 		// here we can be sure that the block is loaded to the blockstore, so 1s should be more than enough
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		ctx = context.WithValue(ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
-		n, err := s.commonFile.DAGService().Get(ctx, c)
+		n, err := dagService.Get(ctx, c)
 		if err != nil {
 			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
 		}
