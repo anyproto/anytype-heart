@@ -225,16 +225,15 @@ func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, no
 		targetBlockID string
 		ok            bool
 	)
-	if childrenID, exist := parentPageIDToChildIDs[pageID]; exist {
-		childrenID := childrenID
-		for childrenIdx, childID := range childrenID {
+	if childIDs, exist := parentPageIDToChildIDs[pageID]; exist {
+		for childIdx, childID := range childIDs {
 			if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
 				targetBlockID, ok = notionIDsToAnytype[childID]
-				childrenID = slices.Delete(childrenID, childrenIdx, childrenIdx+1)
+				childIDs = slices.Delete(childIDs, childIdx, childIdx+1)
 				break
 			}
 		}
-		parentPageIDToChildIDs[pageID] = childrenID
+		parentPageIDToChildIDs[pageID] = childIDs
 	}
 	return targetBlockID, ok
 }
