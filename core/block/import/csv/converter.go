@@ -158,7 +158,6 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}
-			continue
 		}
 		allObjectsIDs = append(allObjectsIDs, collectionID)
 		allSnapshots = append(allSnapshots, snapshots...)

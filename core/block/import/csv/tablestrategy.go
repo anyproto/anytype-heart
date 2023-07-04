@@ -73,11 +73,7 @@ func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, useFir
 			return err
 		}
 	}
-	rowLimit := len(csvTable)
-	if rowLimit > limitForRows {
-		rowLimit = limitForRows
-	}
-	for i := 0; i < rowLimit; i++ {
+	for i := 0; i < len(csvTable); i++ {
 		rowID, err := c.createRow(st, tableID, i == 0, useFirstRowForHeader)
 		if err != nil {
 			return err
@@ -122,11 +118,7 @@ func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, colum
 }
 
 func (c *TableStrategy) createCells(columns []string, st *state.State, rowID string, columnIDs []string) error {
-	numberOfColumnsLimit := len(columns)
-	if numberOfColumnsLimit > limitForColumns {
-		numberOfColumnsLimit = limitForColumns
-	}
-	for i := 0; i < numberOfColumnsLimit; i++ {
+	for i := 0; i < len(columns); i++ {
 		textBlock := &model.Block{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfText{
@@ -164,11 +156,7 @@ func (c *TableStrategy) createRow(st *state.State, tableID string, isFirstRow bo
 
 func (c *TableStrategy) createColumns(csvTable [][]string, st *state.State, tableID string) ([]string, error) {
 	columnIDs := make([]string, 0, len(csvTable[0]))
-	numberOfColumnsLimit := len(csvTable[0])
-	if numberOfColumnsLimit > limitForColumns {
-		numberOfColumnsLimit = limitForColumns
-	}
-	for i := 0; i < numberOfColumnsLimit; i++ {
+	for i := 0; i < len(csvTable[0]); i++ {
 		colID, err := c.tableEditor.ColumnCreate(st, pb.RpcBlockTableColumnCreateRequest{
 			Position: model.Block_Inner,
 			TargetId: tableID,

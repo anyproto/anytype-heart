@@ -43,9 +43,8 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 	if err != nil {
 		return "", nil, err
 	}
-
-	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable, useFirstRowForRelations)
-	objectsSnapshots := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
+	relations, relationsSnapshots, errRelationLimit := getDetailsFromCSVTable(csvTable, useFirstRowForRelations)
+	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -59,12 +58,15 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 	snapshots = append(snapshots, objectsSnapshots...)
 	snapshots = append(snapshots, relationsSnapshots...)
 	progress.AddDone(1)
+	if errRelationLimit != nil || errRowLimit != nil {
+		return snapshot.Id, snapshots, converter.ErrLimitExceeded
+	}
 	return snapshot.Id, snapshots, nil
 }
 
-func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) ([]*model.Relation, []*converter.Snapshot) {
+func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) ([]*model.Relation, []*converter.Snapshot, error) {
 	if len(csvTable) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	relations := make([]*model.Relation, 0, len(csvTable[0]))
 	// first column is always a name
@@ -74,8 +76,10 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 	})
 	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
 	allRelations := csvTable[0]
+	var err error
 	numberOfRelationsLimit := len(allRelations)
 	if numberOfRelationsLimit > limitForColumns {
+		err = converter.ErrLimitExceeded
 		numberOfRelationsLimit = limitForColumns
 	}
 	for i := 1; i < numberOfRelationsLimit; i++ {
@@ -101,7 +105,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 			}},
 		})
 	}
-	return relations, relationsSnapshots
+	return relations, relationsSnapshots, err
 }
 
 func getDefaultRelationName(i int) string {
@@ -118,10 +122,12 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	return details
 }
 
-func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) []*converter.Snapshot {
+func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) ([]*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
 	numberOfObjectsLimit := len(csvTable)
+	var err error
 	if numberOfObjectsLimit >= limitForRows {
+		err = converter.ErrLimitExceeded
 		numberOfObjectsLimit = limitForRows
 		if useFirstRowForRelations {
 			numberOfObjectsLimit++ // because first row is relations, so we need to add plus 1 row
@@ -146,7 +152,7 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 		sn := provideObjectSnapshot(st, details)
 		snapshots = append(snapshots, sn)
 	}
-	return snapshots
+	return snapshots, err
 }
 
 func getDetailsForObject(relationsValues []string, relations []*model.Relation) (*types.Struct, []*model.RelationLink) {
