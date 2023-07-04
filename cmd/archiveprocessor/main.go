@@ -37,16 +37,7 @@ type useCaseInfo struct {
 
 const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 
-var (
-	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
-
-	sbTypesToBeExcluded = map[model.SmartBlockType]struct{}{
-		model.SmartBlockType_Workspace:   {},
-		model.SmartBlockType_Widget:      {},
-		model.SmartBlockType_ProfilePage: {},
-		model.SmartBlockType_Template:    {},
-	}
-)
+var errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 
 func main() {
 	if err := run(); err != nil {
@@ -174,8 +165,7 @@ func processFile(r io.ReadCloser, name string, info *useCaseInfo) ([]byte, error
 		return nil, err
 	}
 
-	if _, found := sbTypesToBeExcluded[sbType]; found {
-		fmt.Printf("Smartblock '%s' is excluded as has type %s\n", id, sbType.String())
+	if shouldBeExcluded(id, sbType) {
 		return nil, nil
 	}
 	fmt.Println(id, "\t", snapshot.Data.Details.Fields[bundle.RelationKeyName.String()].GetStringValue())
@@ -227,6 +217,19 @@ func processAndValidate(snapshot *pb.ChangeSnapshot, info *useCaseInfo) error {
 	processExtraRelations(snapshot)
 	processAccountRelatedDetails(snapshot)
 	processRules(snapshot)
+
+	if id == "bafyreibop22didlfnzyoplncnhd5cqrevjw5nwud3maqrzeq6h7jzedhmi" {
+		snapshot.Data.Blocks[15].Content.(*model.BlockContentOfBookmark).Bookmark = &model.BlockContentBookmark{
+			TargetObjectId: "bafyreidj2g3i6lc3udtlrr5ytcsgusywcyecepcirk5cans6aoxw2nnmhy",
+			Type:           model.LinkPreview_Page,
+			State:          model.BlockContentBookmark_Done,
+			Url:            "https://community.anytype.io/",
+			Title:          "Anytype Community",
+			Description:    "Place to share feedback, write bug reports, and connect with Anytype users from all over the globe!",
+			ImageHash:      "bafybeib4mags3wtdcpnlwcysqby6kdhvy2hbk3s54owcqmpvjwlv4xe7ky",
+			FaviconHash:    "bafybeiasl27gslws4hpvzufm467zjhxb3klodj53rt6dpola67bmvep3x4",
+		}
+	}
 
 	if !strings.HasPrefix(id, addr.RelationKeyToIdPrefix) && !strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
 		isValid := true

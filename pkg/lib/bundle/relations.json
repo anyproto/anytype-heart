@@ -1382,6 +1382,15 @@
     "source": "derived"
   },
   {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "starred",
+    "maxCount": 1,
+    "name": "Starred",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "ID of template chosen as default for particular object type",
     "format": "object",
     "key": "defaultTemplateId",
