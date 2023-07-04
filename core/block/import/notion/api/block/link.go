@@ -207,6 +207,19 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 		}}, id
 }
 
+// getTargetBlock has the logic, that each page in Notion can have many child pages inside, which can also have the same name.
+// But the Notion API sends us only the names of these pages. Therefore, as a result, we can get an approximate answers like
+//
+//	parentPage {
+//	      childPage: “Title”,
+//	      childPage: “Title”,
+//	      childPage: "Title"
+//	}
+//
+// And these pages are different. Therefore, we get children of given page and compare its name with those
+// returned to us by the Notion API. As a result we get Anytype ID of child page and make it targetBlockID
+// But we can end up with 3 links to the same page, and to avoid that,
+// we remove the childID from the parentIDToChildrenID map. So it helps to not create links with the same targetBlockID.
 func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
 	var (
 		targetBlockID string
