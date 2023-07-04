@@ -173,6 +173,35 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 				Path:                    []string{"testdata/transpose.csv"},
 				Delimiter:               ";",
 				TransposeRowsAndColumns: true,
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+	assert.Len(t, sn.Snapshots, 4) // 2 object + root collection + transpose collection + 1 relations
+
+	for _, snapshot := range sn.Snapshots {
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+			assert.True(t, name == "name" || name == "price")
+		}
+	}
+}
+
+func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/transpose.csv"},
+				Delimiter:               ";",
+				TransposeRowsAndColumns: true,
+				UseFirstRowForRelations: false,
 			},
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
@@ -186,7 +215,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	for _, snapshot := range sn.Snapshots {
 		if snapshot.SbType == sb.SmartBlockTypeSubObject {
 			name := pbtypes.GetString(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
-			assert.True(t, name == "name" || name == "price")
+			assert.True(t, name == "Field 1" || name == "Field 2")
 		}
 	}
 }
@@ -253,30 +282,41 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 7) // Journal.csv collection, root collection + 3 objects in Journal.csv + 2 relations (Created, Tags)
 
-	var emptyObjects []*converter.Snapshot
+	var objects []*converter.Snapshot
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
 		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
 			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
-			emptyObjects = append(emptyObjects, snapshot)
+			objects = append(objects, snapshot)
 		}
 	}
 
-	assert.Len(t, emptyObjects, 3) // first row is also an object
+	assert.Len(t, objects, 3) // first row is also an object
 
-	for _, value := range emptyObjects[0].Snapshot.Data.Details.Fields {
-		assert.True(t, value.GetStringValue() == "Name" || value.GetStringValue() == "")
+	want := [][]string{
+		{"Name", "Created", "Tags"},
+		{"Hawaii Vacation", "July 13, 2022 8:54 AM", "Special Event"},
+		{"Just another day", "July 13, 2022 8:54 AM", "Daily"},
+	}
+	assertSnapshotsHaveDetails(t, want[0], objects[0])
+	assertSnapshotsHaveDetails(t, want[1], objects[1])
+	assertSnapshotsHaveDetails(t, want[2], objects[2])
+
+	var subObjects []*converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		// only objects created from rows
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			subObjects = append(subObjects, snapshot)
+		}
 	}
 
-	for _, value := range emptyObjects[1].Snapshot.Data.Details.Fields {
-		assert.True(t, value.GetStringValue() == "Hawaii Vacation" || value.GetStringValue() == "July 13, 2022 8:54 AM" ||
-			value.GetStringValue() == "Special Event")
-	}
+	assert.Len(t, subObjects, 2)
 
-	for _, value := range emptyObjects[2].Snapshot.Data.Details.Fields {
-		assert.True(t, value.GetStringValue() == "Just another day" || value.GetStringValue() == "July 13, 2022 8:54 AM" ||
-			value.GetStringValue() == "Daily")
-	}
+	name := pbtypes.GetString(subObjects[0].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 1")
+
+	name = pbtypes.GetString(subObjects[1].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 2")
 }
 
 func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
@@ -297,4 +337,37 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
+}
+
+func TestCsv_GetSnapshotsBigFile(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/bigfile.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+
+	var objects []*converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		// only objects created from rows
+		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
+			objects = append(objects, snapshot)
+		}
+	}
+
+	assert.Len(t, objects, limitForRows)
+	for _, object := range objects {
+		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
+	}
 }

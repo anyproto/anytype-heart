@@ -73,13 +73,17 @@ func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, useFir
 			return err
 		}
 	}
-	for i, columns := range csvTable {
+	rowLimit := len(csvTable)
+	if rowLimit > limitForRows {
+		rowLimit = limitForRows
+	}
+	for i := 0; i < rowLimit; i++ {
 		rowID, err := c.createRow(st, tableID, i == 0, useFirstRowForHeader)
 		if err != nil {
 			return err
 		}
 
-		err = c.createCells(columns, st, rowID, columnIDs)
+		err = c.createCells(csvTable[i], st, rowID, columnIDs)
 		if err != nil {
 			return err
 		}
@@ -118,14 +122,18 @@ func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, colum
 }
 
 func (c *TableStrategy) createCells(columns []string, st *state.State, rowID string, columnIDs []string) error {
-	for j, column := range columns {
+	numberOfColumnsLimit := len(columns)
+	if numberOfColumnsLimit > limitForColumns {
+		numberOfColumnsLimit = limitForColumns
+	}
+	for i := 0; i < numberOfColumnsLimit; i++ {
 		textBlock := &model.Block{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Text: column},
+				Text: &model.BlockContentText{Text: columns[i]},
 			},
 		}
-		_, err := c.tableEditor.CellCreate(st, rowID, columnIDs[j], textBlock)
+		_, err := c.tableEditor.CellCreate(st, rowID, columnIDs[i], textBlock)
 		if err != nil {
 			return err
 		}
@@ -156,7 +164,11 @@ func (c *TableStrategy) createRow(st *state.State, tableID string, isFirstRow bo
 
 func (c *TableStrategy) createColumns(csvTable [][]string, st *state.State, tableID string) ([]string, error) {
 	columnIDs := make([]string, 0, len(csvTable[0]))
-	for range csvTable[0] {
+	numberOfColumnsLimit := len(csvTable[0])
+	if numberOfColumnsLimit > limitForColumns {
+		numberOfColumnsLimit = limitForColumns
+	}
+	for i := 0; i < numberOfColumnsLimit; i++ {
 		colID, err := c.tableEditor.ColumnCreate(st, pb.RpcBlockTableColumnCreateRequest{
 			Position: model.Block_Inner,
 			TargetId: tableID,

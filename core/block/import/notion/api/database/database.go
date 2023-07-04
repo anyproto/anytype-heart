@@ -74,18 +74,18 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	progress process.Progress,
 	req *block.NotionImportContext) (*converter.Response, converter.ConvertError) {
 	var (
-		allSnapshots       = make([]*converter.Snapshot, 0)
-		notionIdsToAnytype = make(map[string]string, 0)
-		databaseNameToID   = make(map[string]string, 0)
-		childIDToParent    = make(map[string]string, 0)
-		convertError       = converter.ConvertError{}
+		allSnapshots         = make([]*converter.Snapshot, 0)
+		notionIdsToAnytype   = make(map[string]string, 0)
+		databaseNameToID     = make(map[string]string, 0)
+		parentPageToChildIDs = make(map[string][]string, 0)
+		convertError         = converter.ConvertError{}
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
 			return nil, converter.NewCancelError(d.ID, err)
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, req, notionIdsToAnytype, databaseNameToID, childIDToParent)
+		snapshot, err := ds.makeDatabaseSnapshot(d, req, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, converter.NewFromError(d.ID, err)
 		}
@@ -96,14 +96,14 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	}
 	req.NotionDatabaseIdsToAnytype = notionIdsToAnytype
 	req.DatabaseNameToID = databaseNameToID
-	req.ChildIDToPage = childIDToParent
+	req.ParentPageToChildIDs = parentPageToChildIDs
 	if convertError.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots}, nil
 	}
 	return &converter.Response{Snapshots: allSnapshots}, convertError
 }
 
-func (ds *Service) makeDatabaseSnapshot(d Database, request *block.NotionImportContext, notionIdsToAnytype, databaseNameToID, childIDToParent map[string]string) ([]*converter.Snapshot, error) {
+func (ds *Service) makeDatabaseSnapshot(d Database, request *block.NotionImportContext, notionIdsToAnytype, databaseNameToID map[string]string, parentPageToChildIDs map[string][]string) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
 	detailsStruct := &types.Struct{Fields: details}
@@ -125,10 +125,10 @@ func (ds *Service) makeDatabaseSnapshot(d Database, request *block.NotionImportC
 	notionIdsToAnytype[d.ID] = id
 	databaseNameToID[d.ID] = pbtypes.GetString(converterSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	if d.Parent.DatabaseID != "" {
-		childIDToParent[d.ID] = d.Parent.DatabaseID
+		parentPageToChildIDs[d.Parent.DatabaseID] = append(parentPageToChildIDs[d.Parent.DatabaseID], d.ID)
 	}
 	if d.Parent.PageID != "" {
-		childIDToParent[d.ID] = d.Parent.PageID
+		parentPageToChildIDs[d.Parent.PageID] = append(parentPageToChildIDs[d.Parent.PageID], d.ID)
 	}
 	snapshots = append(snapshots, converterSnapshot)
 	return snapshots, nil

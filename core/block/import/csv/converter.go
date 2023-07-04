@@ -17,6 +17,8 @@ const (
 	Name                  = "Csv"
 	rootCollectionName    = "CSV Import"
 	numberOfProgressSteps = 2
+	limitForColumns       = 10
+	limitForRows          = 1000
 )
 
 type Result struct {
