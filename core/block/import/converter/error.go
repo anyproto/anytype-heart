@@ -69,28 +69,25 @@ func (ce ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) 
 		return nil
 	}
 	var (
-		countNoObjectsToImport          int
-		limitErrorString                strings.Builder
-		limitError, noObjectImportError error
+		countNoObjectsToImport int
+		limitErrorString       strings.Builder
 	)
 	for path, e := range ce {
 		switch {
 		case errors.Is(e, ErrCancel):
 			return errors.Wrapf(ErrCancel, "import type: %s", importType.String())
 		case errors.Is(e, ErrLimitExceeded):
-			limitError = ErrLimitExceeded
 			limitErrorString.WriteString(fmt.Sprintf("import path: %s\n", path))
 		case errors.Is(e, ErrNoObjectsToImport):
-			noObjectImportError = ErrNoObjectsToImport
 			countNoObjectsToImport++
 		}
 	}
 	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
-	if (countNoObjectsToImport == len(ce)) && noObjectImportError != nil {
-		return errors.Wrapf(noObjectImportError, "import type: %s", importType.String())
+	if countNoObjectsToImport == len(ce) {
+		return errors.Wrapf(ErrNoObjectsToImport, "import type: %s", importType.String())
 	}
-	if limitError != nil {
-		return errors.Wrap(limitError, limitErrorString.String())
+	if limitErrorString.String() != "" {
+		return errors.Wrap(ErrLimitExceeded, limitErrorString.String())
 	}
 	return errors.Wrapf(ce.Error(), "import type: %s", importType.String())
 }
