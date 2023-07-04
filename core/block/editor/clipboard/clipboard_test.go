@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
@@ -665,7 +667,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			},
 			SelectedTextRange: &model.Range{From: 1, To: 3},
 		}
-		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, req)
+		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(context.Background(), "space1"), req)
 		require.NoError(t, err)
 		assert.Equal(t, "tle", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
 		assert.Equal(t, "it", textSlot)
@@ -694,7 +696,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			SelectedTextRange: &model.Range{From: 0, To: 11},
 			Blocks:            []*model.Block{textBlock, bookmark},
 		}
-		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, blockCutReq)
+		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(context.Background(), "space1"), blockCutReq)
 		require.NoError(t, err)
 		assert.Equal(t, result, textSlot)
 		assert.Len(t, anySlot, 2)
@@ -726,7 +728,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			SelectedTextRange: &model.Range{From: 0, To: 11},
 			Blocks:            []*model.Block{textBlock, bookmark, lastTextBlock},
 		}
-		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, blockCutReq)
+		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(context.Background(), "space1"), blockCutReq)
 		require.NoError(t, err)
 		assert.Equal(t, result, textSlot)
 		assert.Len(t, anySlot, 3)
