@@ -57,7 +57,7 @@ func (h *Heading1Block) GetID() string {
 }
 
 func (h *Heading1Block) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
-	resp := h.Heading1.GetTextBlocks(model.BlockContentText_Header3, nil, req)
+	resp := h.Heading1.GetTextBlocks(model.BlockContentText_Header1, nil, req)
 	if h.Heading1.IsToggleable {
 		mapper := ChildrenMapper(&h.Heading1)
 		childResp := mapper.MapChildren(req)
@@ -84,7 +84,7 @@ func (h *Heading2Block) GetID() string {
 }
 
 func (h *Heading2Block) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
-	resp := h.Heading2.GetTextBlocks(model.BlockContentText_Header3, nil, req)
+	resp := h.Heading2.GetTextBlocks(model.BlockContentText_Header2, nil, req)
 	if h.Heading2.IsToggleable {
 		mapper := ChildrenMapper(&h.Heading2)
 		childResp := mapper.MapChildren(req)

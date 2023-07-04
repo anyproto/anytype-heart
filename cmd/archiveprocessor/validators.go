@@ -191,7 +191,7 @@ func getRelationLinkByKey(links []*model.RelationLink, key string) *model.Relati
 
 func snapshotHasKeyForHash(s *pb.ChangeSnapshot, hash string) bool {
 	for _, k := range s.FileKeys {
-		if k.Hash == hash {
+		if k.Hash == hash && len(k.Keys) > 0 {
 			return true
 		}
 	}

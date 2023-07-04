@@ -3,14 +3,16 @@ package treearchive
 import (
 	"archive/zip"
 	"encoding/json"
-	"github.com/anyproto/anytype-heart/core/debug/treearchive/zipaclstorage"
-	"github.com/anyproto/anytype-heart/core/debug/treearchive/ziptreestorage"
-	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
+	"io/fs"
+	"os"
+
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"io/fs"
-	"os"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
+
+	"github.com/anyproto/anytype-heart/core/debug/treearchive/zipaclstorage"
+	"github.com/anyproto/anytype-heart/core/debug/treearchive/ziptreestorage"
 )
 
 type ExportedObjectsJson struct {
@@ -56,9 +58,9 @@ func (e *ArchiveWriter) TreeStorage(root *treechangeproto.RawTreeChangeWithId) (
 	return st, nil
 }
 
-func (e *ArchiveWriter) ListStorage(root *aclrecordproto.RawAclRecordWithId) (liststorage.ListStorage, error) {
+func (e *ArchiveWriter) ListStorage(root *consensusproto.RawRecordWithId) (liststorage.ListStorage, error) {
 	e.aclId = root.Id
-	st, err := zipaclstorage.NewAclWriteStorage(root, e.zw)
+	st, err := zipaclstorage.NewACLWriteStorage(root, e.zw)
 	if err != nil {
 		return nil, err
 	}
