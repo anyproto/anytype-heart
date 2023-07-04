@@ -52,13 +52,8 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 	}, k); err != nil {
 		return
 	}
-	select {
-	case res := <-ready:
-		if res.err != nil {
-			return nil, res.err
-		}
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if err := waitResult(ctx, ready); err != nil {
+		return nil, err
 	}
 	return blocks.NewBlockWithCid(data, k)
 }
@@ -158,38 +153,64 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileID string, bs
 	return nil
 }
 
-func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error) {
-	var ready = make(chan result, 1)
-	// check blocks availability
-	ctx = context.WithValue(ctx, operationNameKey, "checkAvailability")
-	if err = s.cm.WriteOp(ctx, ready, func(c *client) (err error) {
-		checkResult, err = c.checkBlocksAvailability(ctx, spaceID, cids...)
-		return err
-	}, cid.Cid{}); err != nil {
-		return
-	}
-	// wait availability result
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case res := <-ready:
-		if res.err != nil {
-			return checkResult, err
-		}
-	}
-	return
+func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
+	return writeOperation(ctx, s, "checkAvailability", func(c *client) ([]*fileproto.BlockAvailability, error) {
+		return c.checkBlocksAvailability(ctx, spaceID, cids...)
+	})
 }
 
-func (s *store) BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error) {
-	var ready = make(chan result, 1)
-	// check blocks availability
-	ctx = context.WithValue(ctx, operationNameKey, "bindCids")
-	if err = s.cm.WriteOp(ctx, ready, func(c *client) (err error) {
-		return c.bind(ctx, spaceID, fileID, cids...)
+func (s *store) BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) error {
+	_, err := writeOperation(ctx, s, "bindCids", func(c *client) (interface{}, error) {
+		return nil, c.bind(ctx, spaceID, fileID, cids...)
+	})
+	return err
+}
+
+func (s *store) Delete(ctx context.Context, c cid.Cid) error {
+	return ErrUnsupported
+}
+
+func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) error {
+	_, err := writeOperation(ctx, s, "deleteFiles", func(c *client) (interface{}, error) {
+		return nil, c.delete(ctx, spaceId, fileIds...)
+	})
+	return err
+}
+
+func (s *store) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
+	return writeOperation(ctx, s, "spaceInfo", func(c *client) (*fileproto.SpaceInfoResponse, error) {
+		return c.spaceInfo(ctx, spaceId)
+	})
+}
+
+func (s *store) FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error) {
+	return writeOperation(ctx, s, "filesInfo", func(c *client) ([]*fileproto.FileInfo, error) {
+		return c.filesInfo(ctx, spaceId, fileIds)
+	})
+}
+
+func (s *store) Close() (err error) {
+	return s.cm.Close()
+}
+
+func writeOperation[T any](ctx context.Context, s *store, operationName string, fn func(c *client) (T, error)) (T, error) {
+	ready := make(chan result, 1)
+	ctx = context.WithValue(ctx, operationNameKey, operationName)
+	var res T
+	if err := s.cm.WriteOp(ctx, ready, func(c *client) error {
+		var opErr error
+		res, opErr = fn(c)
+		return opErr
 	}, cid.Cid{}); err != nil {
-		return
+		return res, err
 	}
-	// wait availability result
+	if err := waitResult(ctx, ready); err != nil {
+		return res, err
+	}
+	return res, nil
+}
+
+func waitResult(ctx context.Context, ready chan result) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -199,67 +220,4 @@ func (s *store) BindCids(ctx context.Context, spaceID string, fileID string, cid
 		}
 	}
 	return nil
-}
-
-func (s *store) Delete(ctx context.Context, c cid.Cid) error {
-	return ErrUnsupported
-}
-
-func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) error {
-	var ready = make(chan result, 1)
-	ctx = context.WithValue(ctx, operationNameKey, "deleteFiles")
-	if err := s.cm.WriteOp(ctx, ready, func(c *client) error {
-		return c.delete(ctx, spaceId, fileIds...)
-	}, cid.Cid{}); err != nil {
-		return err
-	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case res := <-ready:
-		return res.err
-	}
-}
-func (s *store) SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
-	var ready = make(chan result, 1)
-	ctx = context.WithValue(ctx, operationNameKey, "spaceInfo")
-	if err = s.cm.WriteOp(ctx, ready, func(c *client) error {
-		info, err = c.spaceInfo(ctx, spaceId)
-		return err
-	}, cid.Cid{}); err != nil {
-		return nil, err
-	}
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case res := <-ready:
-		if res.err != nil {
-			return nil, res.err
-		}
-	}
-	return
-}
-
-func (s *store) FilesInfo(ctx context.Context, spaceId string, fileIds ...string) (info []*fileproto.FileInfo, err error) {
-	var ready = make(chan result, 1)
-	ctx = context.WithValue(ctx, operationNameKey, "filesInfo")
-	if err = s.cm.WriteOp(ctx, ready, func(c *client) error {
-		info, err = c.filesInfo(ctx, spaceId, fileIds)
-		return err
-	}, cid.Cid{}); err != nil {
-		return nil, err
-	}
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case res := <-ready:
-		if res.err != nil {
-			return nil, res.err
-		}
-	}
-	return
-}
-
-func (s *store) Close() (err error) {
-	return s.cm.Close()
 }

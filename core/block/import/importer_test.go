@@ -426,3 +426,116 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Equal(t, "couldn't create objects", err.Error())
 }
+
+func Test_ImportCancelError(t *testing.T) {
+	i := Import{}
+	ctrl := gomock.NewController(t)
+	converter := cv.NewMockConverter(ctrl)
+	e := cv.NewCancelError("path", fmt.Errorf("converter error"))
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: nil}, e).Times(1)
+	i.converters = make(map[string]cv.Converter, 0)
+	i.converters["Notion"] = converter
+	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	})
+
+	assert.NotNil(t, res)
+	assert.True(t, errors.Is(res, cv.ErrCancel))
+}
+
+func Test_ImportNoObjectToImportError(t *testing.T) {
+	i := Import{}
+	ctrl := gomock.NewController(t)
+	converter := cv.NewMockConverter(ctrl)
+	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: nil}, e).Times(1)
+	i.converters = make(map[string]cv.Converter, 0)
+	i.converters["Notion"] = converter
+	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	})
+
+	assert.NotNil(t, res)
+	assert.True(t, errors.Is(res, cv.ErrNoObjectsToImport))
+}
+
+func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
+	i := Import{}
+	ctrl := gomock.NewController(t)
+	converter := cv.NewMockConverter(ctrl)
+	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{&model.Block{
+					Id: "1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text:  "test",
+							Style: model.BlockContentText_Numbered,
+						},
+					},
+				},
+				},
+			},
+		},
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+	i.converters = make(map[string]cv.Converter, 0)
+	i.converters["Notion"] = converter
+	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+	})
+
+	assert.NotNil(t, res)
+	assert.True(t, errors.Is(res, cv.ErrNoObjectsToImport))
+}
+
+func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
+	i := Import{}
+	ctrl := gomock.NewController(t)
+	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	converter := cv.NewMockConverter(ctrl)
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{&model.Block{
+					Id: "1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text:  "test",
+							Style: model.BlockContentText_Numbered,
+						},
+					},
+				},
+				},
+			},
+		},
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+	i.converters = make(map[string]cv.Converter, 0)
+	i.converters["Notion"] = converter
+	creator := NewMockCreator(ctrl)
+	//nolint:lll
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	i.oc = creator
+	idGetter := NewMockIDGetter(ctrl)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	i.objectIDGetter = idGetter
+	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	})
+
+	assert.NotNil(t, res)
+	assert.True(t, errors.Is(res, cv.ErrNoObjectsToImport))
+}

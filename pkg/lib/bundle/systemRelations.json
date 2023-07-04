@@ -59,5 +59,6 @@
   "fileExt",
   "sizeInBytes",
   "sourceFilePath",
-  "fileSyncStatus"
+  "fileSyncStatus",
+  "defaultTemplateId"
 ]

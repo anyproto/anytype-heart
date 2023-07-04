@@ -4,6 +4,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/opentracing/opentracing-go/log"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
@@ -17,6 +18,17 @@ import (
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+// relationsSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
+var relationsSkipList = []bundle.RelationKey{
+	bundle.RelationKeyType,
+	bundle.RelationKeySetOf,
+	bundle.RelationKeyCreator,
+	bundle.RelationKeyLastModifiedBy,
+	bundle.RelationKeyWorkspaceId,
+	bundle.RelationKeyIconImage,
+	bundle.RelationKeyCoverId,
+}
 
 type Service interface {
 	ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
@@ -76,6 +88,10 @@ func (gr *Builder) ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([
 	return nodes, edges, nil
 }
 
+func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
+	return rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !lo.Contains(relationsSkipList, bundle.RelationKey(rel.Key))
+}
+
 func (gr *Builder) extractGraph(
 	spaceID string,
 	records []database.Record,
@@ -93,9 +109,11 @@ func (gr *Builder) extractGraph(
 		outgoingRelationLink := make(map[string]struct{}, 10)
 		for k, v := range rec.Details.GetFields() {
 			rel := relations.GetByKey(k)
-			if rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) {
-				edges = appendRelations(v, existedNodes, rel, edges, id, outgoingRelationLink)
+			if !isRelationShouldBeIncludedAsEdge(rel) {
+				continue
 			}
+
+			edges = appendRelations(v, existedNodes, rel, edges, id, outgoingRelationLink)
 		}
 
 		edges = gr.appendLinks(spaceID, rec, outgoingRelationLink, existedNodes, edges, id)

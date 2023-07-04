@@ -21379,6 +21379,7 @@ Bookmark is to keep a web-link and to preview a content.
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 | pageLimit | [int32](#int32) |  |  |
+| defaultTemplateId | [string](#string) |  |  |
 
 
 

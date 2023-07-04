@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
@@ -135,6 +136,7 @@ func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 
 		// here we can be sure that the block is loaded to the blockstore, so 1s should be more than enough
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx = context.WithValue(ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
 		n, err := s.commonFile.DAGService().Get(ctx, c)
 		if err != nil {
 			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())

@@ -95,9 +95,11 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	// clean-up local details from the template state
 	st.SetLocalDetails(nil)
 
-	st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
-	if title := st.Get(template.TitleBlockId); title != nil {
-		title.Model().GetText().Text = ""
+	if name != "" {
+		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
+		if title := st.Get(template.TitleBlockId); title != nil {
+			title.Model().GetText().Text = ""
+		}
 	}
 	return
 }

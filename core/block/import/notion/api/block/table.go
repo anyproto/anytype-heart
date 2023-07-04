@@ -47,11 +47,11 @@ func (t *TableBlock) SetChildren(children []interface{}) {
 	}
 }
 
-func (t *TableBlock) GetBlocks(req *MapRequest) *MapResponse {
+func (t *TableBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
 	columnsBlocks, columnsBlocksIDs, columnLayoutBlockID, columnLayoutBlock := t.getColumns()
 
 	tableResponse := &MapResponse{}
-	tableRowBlocks, tableRowBlocksIDs, rowTextBlocks := t.getRows(req, columnsBlocksIDs, tableResponse)
+	tableRowBlocks, tableRowBlocksIDs, rowTextBlocks := t.getRows(req, columnsBlocksIDs)
 
 	tableRowBlockID, tableRowLayoutBlock := t.getLayoutRowBlock(tableRowBlocksIDs)
 
@@ -106,9 +106,8 @@ func (*TableBlock) getLayoutRowBlock(children []string) (string, *model.Block) {
 	return tableRowBlockID, tableRowLayoutBlock
 }
 
-func (t *TableBlock) getRows(req *MapRequest,
-	columnsBlocksIDs []string,
-	tableResponse *MapResponse) ([]*model.Block, []string, []*model.Block) {
+func (t *TableBlock) getRows(req *NotionImportContext,
+	columnsBlocksIDs []string) ([]*model.Block, []string, []*model.Block) {
 	var (
 		needHeader        = true
 		tableRowBlocks    = make([]*model.Block, 0, len(t.Table.Children))

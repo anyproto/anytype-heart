@@ -66,10 +66,6 @@ func New(sbtProvider typeprovider.SmartBlockTypeProvider) ObjectStore {
 	}
 }
 
-func NewWithLocalstore() ObjectStore {
-	return &dsObjectStore{}
-}
-
 type SourceDetailsFromID interface {
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
@@ -176,7 +172,6 @@ type AccountStore interface {
 var ErrNotAnObject = fmt.Errorf("not an object")
 
 type dsObjectStore struct {
-	// underlying storage
 	sourceService SourceDetailsFromID
 
 	cache *ristretto.Cache
@@ -184,14 +179,11 @@ type dsObjectStore struct {
 
 	fts ftsearch.FTSearch
 
-	// serializing page updates
-	l sync.Mutex
-
-	onChangeCallback func(record database.Record)
-
-	subscriptions []database.Subscription
-
 	sbtProvider typeprovider.SmartBlockTypeProvider
+
+	sync.RWMutex
+	onChangeCallback func(record database.Record)
+	subscriptions    []database.Subscription
 }
 
 func (s *dsObjectStore) EraseIndexes() error {
@@ -266,8 +258,8 @@ func (s *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (e
 }
 
 func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscription) {
-	s.l.Lock()
-	defer s.l.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	subscription.Close()
 
 	for i, sub := range s.subscriptions {
@@ -279,9 +271,9 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 }
 
 func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
-	s.l.Lock()
+	s.Lock()
 	s.onChangeCallback = callback
-	s.l.Unlock()
+	s.Unlock()
 }
 
 func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {

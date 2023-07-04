@@ -11,13 +11,18 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 )
 
+type linkedFilesSummary struct {
+	pinStatus pb.EventStatusThreadCafePinStatus
+	isUpdated bool
+}
+
 type linkedFilesWatcher struct {
 	spaceService       space.Service
 	fileStatusRegistry *fileStatusRegistry
 
 	sync.Mutex
-	linkedFilesSummary map[string]pb.EventStatusThreadCafePinStatus
-	linkedFilesCloseCh map[string]chan struct{}
+	linkedFilesSummaries map[string]linkedFilesSummary
+	linkedFilesCloseCh   map[string]chan struct{}
 }
 
 func newLinkedFilesWatcher(
@@ -25,10 +30,10 @@ func newLinkedFilesWatcher(
 	fileStatusRegistry *fileStatusRegistry,
 ) *linkedFilesWatcher {
 	return &linkedFilesWatcher{
-		linkedFilesSummary: make(map[string]pb.EventStatusThreadCafePinStatus),
-		linkedFilesCloseCh: make(map[string]chan struct{}),
-		spaceService:       spaceService,
-		fileStatusRegistry: fileStatusRegistry,
+		linkedFilesSummaries: make(map[string]linkedFilesSummary),
+		linkedFilesCloseCh:   make(map[string]chan struct{}),
+		spaceService:         spaceService,
+		fileStatusRegistry:   fileStatusRegistry,
 	}
 }
 
@@ -42,10 +47,10 @@ func (w *linkedFilesWatcher) close() {
 	}
 }
 
-func (w *linkedFilesWatcher) GetLinkedFilesSummary(parentObjectID string) pb.EventStatusThreadCafePinStatus {
+func (w *linkedFilesWatcher) GetLinkedFilesSummary(parentObjectID string) linkedFilesSummary {
 	w.Lock()
 	defer w.Unlock()
-	return w.linkedFilesSummary[parentObjectID]
+	return w.linkedFilesSummaries[parentObjectID]
 }
 
 func (w *linkedFilesWatcher) WatchLinkedFiles(spaceID string, parentObjectID string, filesGetter func() []string) {
@@ -80,7 +85,7 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(spaceID string, parentObje
 	// TODO Cache linked files list?
 	fileIDs := filesGetter()
 
-	var summary pb.EventStatusThreadCafePinStatus
+	var pinStatus pb.EventStatusThreadCafePinStatus
 	for _, fileID := range fileIDs {
 		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), spaceID, fileID)
 		if err == errFileNotFound {
@@ -92,16 +97,20 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(spaceID string, parentObje
 
 		switch status {
 		case FileStatusUnknown, FileStatusSyncing:
-			summary.Pinning++
+			pinStatus.Pinning++
 		case FileStatusLimited:
-			summary.Failed++
+			pinStatus.Failed++
 		case FileStatusSynced:
-			summary.Pinned++
+			pinStatus.Pinned++
 		}
 	}
 
+	updated := true
 	w.Lock()
-	w.linkedFilesSummary[parentObjectID] = summary
+	if summary, exists := w.linkedFilesSummaries[parentObjectID]; exists {
+		updated = summary.pinStatus != pinStatus
+	}
+	w.linkedFilesSummaries[parentObjectID] = linkedFilesSummary{pinStatus: pinStatus, isUpdated: updated}
 	w.Unlock()
 }
 

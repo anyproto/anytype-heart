@@ -929,6 +929,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	if err != nil {
 		return err
 	}
+	details := storedDetails.GetDetails()
 
 	var hasPendingLocalDetails bool
 	// Consume pending details
@@ -936,7 +937,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		if len(pending.GetFields()) > 0 {
 			hasPendingLocalDetails = true
 		}
-		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pending, false)
+		details = pbtypes.StructMerge(details, pending, false)
 		return nil, nil
 	})
 	if err != nil {
@@ -947,7 +948,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
 	keys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)
-	storedLocalScopeDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), keys)
+	storedLocalScopeDetails := pbtypes.StructFilterKeys(details, keys)
 	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
 	if pbtypes.StructEqualIgnore(sbLocalScopeDetails, storedLocalScopeDetails, nil) {
 		return nil

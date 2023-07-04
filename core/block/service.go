@@ -911,11 +911,15 @@ func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *s
 func (s *Service) ObjectApplyTemplate(ctx session.Context, contextId, templateId string) error {
 	return Do(s, ctx, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		ts, err := s.StateFromTemplate(ctx, templateId, pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String()))
+		name := pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String())
+		ts, err := s.StateFromTemplate(ctx, templateId, name)
 		if err != nil {
 			return err
 		}
 		ts.SetRootId(contextId)
+		if name == "" {
+			orig.SetDetail(bundle.RelationKeyName.String(), ts.Details().Fields[bundle.RelationKeyName.String()])
+		}
 		ts.SetParent(orig)
 
 		fromLayout, _ := orig.Layout()

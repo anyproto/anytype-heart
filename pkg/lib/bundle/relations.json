@@ -1337,7 +1337,6 @@
   {
     "description": "Space Dashboard object ID",
     "format": "object",
-    "hidden": false,
     "key": "spaceDashboardId",
     "maxCount": 1,
     "hidden": true,
@@ -1394,5 +1393,24 @@
     "name": "Last change ID of the object",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "starred",
+    "maxCount": 1,
+    "name": "Starred",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "ID of template chosen as default for particular object type",
+    "format": "object",
+    "key": "defaultTemplateId",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Default Template ID",
+    "readonly": false,
+    "source": "details"
   }
 ]

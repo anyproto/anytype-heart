@@ -36,12 +36,42 @@ func newFixture(path string, t *testing.T) *fixture {
 }
 
 func TestNewFTSearch(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "")
-	assertSearch(t, tmpDir)
-	assertThaiSubstrFound(t, tmpDir)
-	assertChineseFound(t, tmpDir)
-	assertFoundPartsOfTheWords(t, tmpDir)
-	assertFoundCaseSensitivePartsOfTheWords(t, tmpDir)
+	testCases := []struct {
+		name   string
+		tester func(t *testing.T, tmpDir string)
+	}{
+		{
+			name:   "assertSearch",
+			tester: assertSearch,
+		},
+		{
+			name:   "assertThaiSubstrFound",
+			tester: assertThaiSubstrFound,
+		},
+		{
+			name:   "assertChineseFound",
+			tester: assertChineseFound,
+		},
+		{
+			name:   "assertFoundPartsOfTheWords",
+			tester: assertFoundPartsOfTheWords,
+		},
+		{
+			name:   "assertFoundCaseSensitivePartsOfTheWords",
+			tester: assertFoundCaseSensitivePartsOfTheWords,
+		},
+		{
+			name:   "assertNonEscapedQuery",
+			tester: assertNonEscapedQuery,
+		},
+	}
+
+	for _, testCase := range testCases {
+		tmpDir, _ := os.MkdirTemp("", "")
+		t.Run(testCase.name, func(t *testing.T) {
+			testCase.tester(t, tmpDir)
+		})
+	}
 }
 
 func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
@@ -67,6 +97,7 @@ func assertFoundCaseSensitivePartsOfTheWords(t *testing.T, tmpDir string) {
 	}))
 
 	validateSearch(t, ft, "Advanced", 1)
+
 	validateSearch(t, ft, "advanced", 1)
 	validateSearch(t, ft, "Advanc", 1)
 	validateSearch(t, ft, "advanc", 1)
@@ -260,4 +291,25 @@ func givenPrefilledChineseIndex() bleve.Index {
 		}
 	}
 	return index
+}
+
+func assertNonEscapedQuery(t *testing.T, tmpDir string) {
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "1",
+		Title: "This is the title",
+		Text:  "two",
+	}))
+
+	validateSearch(t, ft, ".*?([])", 0)
+
+	require.NoError(t, ft.Index(SearchDoc{
+		Id:    "1",
+		Title: "This is the title",
+		Text:  ".*?([])",
+	}))
+	validateSearch(t, ft, ".*?([])", 1)
+
+	_ = ft.Close(nil)
 }

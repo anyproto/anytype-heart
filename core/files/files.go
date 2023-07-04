@@ -275,7 +275,7 @@ func (s *service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 	return node, keys, nil
 }
 
-func (s *service) fileGetInfoForPath(pth string) (*storage.FileInfo, error) {
+func (s *service) fileGetInfoForPath(ctx context.Context, pth string) (*storage.FileInfo, error) {
 	if !strings.HasPrefix(pth, "/ipfs/") {
 		return nil, fmt.Errorf("path should starts with '/dagService/...'")
 	}
@@ -291,7 +291,7 @@ func (s *service) fileGetInfoForPath(pth string) (*storage.FileInfo, error) {
 	}
 
 	if key, exists := keys.Keys["/"+strings.Join(pthParts[3:], "/")+"/"]; exists {
-		return s.fileInfoFromPath("", pth, key)
+		return s.fileInfoFromPath(ctx, "", pth, key)
 	}
 
 	return nil, fmt.Errorf("key not found")
@@ -379,8 +379,8 @@ func (s *service) fileIndexLink(ctx session.Context, inode ipld.Node, fileID str
 	return nil
 }
 
-func (s *service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
-	cid, r, err := helpers.DataAtPath(context.TODO(), s.commonFile, path+"/"+MetaLinkName)
+func (s *service) fileInfoFromPath(ctx context.Context, target string, path string, key string) (*storage.FileInfo, error) {
+	cid, r, err := helpers.DataAtPath(ctx, s.commonFile, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
 	}
@@ -756,7 +756,7 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 				key = keys["/"+index.Name+"/"]
 			}
 
-			fileIndex, err := s.fileInfoFromPath(hash, hash+"/"+index.Name, key)
+			fileIndex, err := s.fileInfoFromPath(ctx, hash, hash+"/"+index.Name, key)
 			if err != nil {
 				return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
 			}
@@ -768,7 +768,7 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 					key = keys["/"+index.Name+"/"+link.Name+"/"]
 				}
 
-				fileIndex, err := s.fileInfoFromPath(hash, hash+"/"+index.Name+"/"+link.Name, key)
+				fileIndex, err := s.fileInfoFromPath(ctx, hash, hash+"/"+index.Name+"/"+link.Name, key)
 				if err != nil {
 					return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
 				}

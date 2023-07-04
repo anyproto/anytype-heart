@@ -90,11 +90,8 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		}
 
 		oldDetails := objDetails.GetDetails()
-		if oldDetails == nil {
+		if oldDetails == nil || oldDetails.Fields == nil {
 			oldDetails = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-		if oldDetails.Fields == nil {
-			oldDetails.Fields = map[string]*types.Value{}
 		}
 		newDetails, err := proc(oldDetails)
 		if err != nil {
@@ -155,10 +152,11 @@ func (s *dsObjectStore) updateObjectLinks(txn *badger.Txn, id string, links []st
 	return nil
 }
 
-// should be called under the mutex
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+	s.RLock()
+	defer s.RUnlock()
 	if s.onChangeCallback != nil {
 		s.onChangeCallback(database.Record{
 			Details: detCopy,
