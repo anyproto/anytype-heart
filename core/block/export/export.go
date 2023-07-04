@@ -399,7 +399,7 @@ func (e *export) saveImage(ctx session.Context, wr writer, hash string) (err err
 	if err != nil {
 		return
 	}
-	orig, err := file.GetOriginalFile(context.TODO())
+	orig, err := file.GetOriginalFile(ctx)
 	if err != nil {
 		return
 	}

@@ -364,9 +364,10 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 }
 
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
+	ctx := session.NewContext(context.Background(), s.spaceID)
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(h)
+		fk, err := s.fileService.FileGetKeys(ctx, h)
 		if err != nil {
 			log.Warnf("can't get file key for hash: %v: %v", h, err)
 			continue

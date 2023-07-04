@@ -282,7 +282,7 @@ func (g *gateway) getImage(ctx session.Context, r *http.Request) (files.File, io
 	var file files.File
 	wantWidthStr := query.Get("width")
 	if wantWidthStr == "" {
-		file, err = image.GetOriginalFile(ctx.Context())
+		file, err = image.GetOriginalFile(ctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get image file: %w", err)
 		}
@@ -291,7 +291,7 @@ func (g *gateway) getImage(ctx session.Context, r *http.Request) (files.File, io
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse width: %w", err)
 		}
-		file, err = image.GetFileForWidth(ctx.Context(), wantWidth)
+		file, err = image.GetFileForWidth(ctx, wantWidth)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get image file: %w", err)
 		}

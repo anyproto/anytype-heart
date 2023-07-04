@@ -531,7 +531,7 @@ func (h *HTML) getImageBase64(hash string) (res string) {
 	if err != nil {
 		return
 	}
-	f, err := im.GetFileForWidth(context.TODO(), 1024)
+	f, err := im.GetFileForWidth(h.ctx, 1024)
 	if err != nil {
 		return
 	}

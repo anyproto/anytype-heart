@@ -11,6 +11,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -23,12 +24,12 @@ const (
 )
 
 type Image interface {
-	Exif(ctx context.Context) (*mill.ImageExifSchema, error)
+	Exif(ctx session.Context) (*mill.ImageExifSchema, error)
 	Hash() string
-	Details(ctx context.Context) (*types.Struct, error)
-	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
-	GetFileForLargestWidth(ctx context.Context) (File, error)
-	GetOriginalFile(ctx context.Context) (File, error)
+	Details(ctx session.Context) (*types.Struct, error)
+	GetFileForWidth(ctx session.Context, wantWidth int) (File, error)
+	GetFileForLargestWidth(ctx session.Context) (File, error)
+	GetOriginalFile(ctx session.Context) (File, error)
 }
 
 type image struct {
@@ -37,7 +38,7 @@ type image struct {
 	service         *service
 }
 
-func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
+func (i *image) GetFileForWidth(ctx session.Context, wantWidth int) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(wantWidth)
 	}
@@ -67,7 +68,7 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 }
 
 // GetOriginalFile doesn't contains Meta
-func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
+func (i *image) GetOriginalFile(ctx session.Context) (File, error) {
 	sizeName := "original"
 	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err == nil {
@@ -82,7 +83,7 @@ func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
 	return i.GetFileForLargestWidth(ctx)
 }
 
-func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
+func (i *image) GetFileForLargestWidth(ctx session.Context) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(math.MaxInt32)
 	}
@@ -105,7 +106,7 @@ func (i *image) Hash() string {
 	return i.hash
 }
 
-func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
+func (i *image) Exif(ctx session.Context) (*mill.ImageExifSchema, error) {
 	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/exif")
 	if err != nil {
 		return nil, err
@@ -116,7 +117,7 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 		info: fileIndex,
 		node: i.service,
 	}
-	r, err := f.Reader(ctx)
+	r, err := f.Reader(ctx.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +133,7 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 	return &exif, nil
 }
 
-func (i *image) Details(ctx context.Context) (*types.Struct, error) {
+func (i *image) Details(ctx session.Context) (*types.Struct, error) {
 	imageExif, err := i.Exif(ctx)
 	if err != nil {
 		log.Errorf("failed to get exif for image: %s", err.Error())
@@ -151,7 +152,8 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		Fields: commonDetails,
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	cctx, cancel := context.WithTimeout(ctx.Context(), 1*time.Minute)
+	ctx = ctx.WithContext(cctx)
 	defer cancel()
 
 	largest, err := i.GetFileForLargestWidth(ctx)
@@ -265,7 +267,7 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 	return nil, ErrFileNotFound
 }
 
-func (i *image) extractLastModifiedDate(ctx context.Context, imageExif *mill.ImageExifSchema) int64 {
+func (i *image) extractLastModifiedDate(ctx session.Context, imageExif *mill.ImageExifSchema) int64 {
 	var lastModifiedDate int64
 	largest, err := i.GetFileForLargestWidth(ctx)
 	if err == nil {

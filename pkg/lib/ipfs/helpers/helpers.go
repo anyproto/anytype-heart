@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers/resolver"
 	"github.com/ipfs/go-cid"
-
 	ipld "github.com/ipfs/go-ipld-format"
 	ipfspath "github.com/ipfs/go-path"
 	uio "github.com/ipfs/go-unixfs/io"
@@ -17,7 +15,7 @@ import (
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
-
+	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers/resolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -29,8 +27,8 @@ const (
 )
 
 // DataAtPath return bytes under an ipfs path
-func DataAtPath(ctx context.Context, fs fileservice.FileService, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
-	resolvedPath, err := ResolvePath(ctx, fs.DAGService(), path.New(pth))
+func DataAtPath(ctx context.Context, dagService ipld.DAGService, fs fileservice.FileService, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
+	resolvedPath, err := ResolvePath(ctx, dagService, path.New(pth))
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}

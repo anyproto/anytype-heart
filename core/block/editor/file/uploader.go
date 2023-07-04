@@ -384,7 +384,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 			return
 		}
 		result.Hash = im.Hash()
-		orig, _ := im.GetOriginalFile(context.TODO())
+		orig, _ := im.GetOriginalFile(ctx)
 		if orig != nil {
 			result.MIME = orig.Meta().Media
 			result.Size = orig.Meta().Size
