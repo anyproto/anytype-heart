@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -10,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/util/testMock"
 	"github.com/anyproto/anytype-heart/util/testMock/mockDetailsModifier"
 )
@@ -28,7 +30,10 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 		objectStore:     objectStore,
 	}
 
-	initCtx := &smartblock.InitContext{IsNewObject: true}
+	initCtx := &smartblock.InitContext{
+		IsNewObject: true,
+		Ctx:         session.NewContext(context.Background(), "space1"),
+	}
 	if err := a.Init(initCtx); err != nil {
 		return nil, err
 	}

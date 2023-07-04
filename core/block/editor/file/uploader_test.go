@@ -26,7 +26,7 @@ import (
 )
 
 func TestUploader_Upload(t *testing.T) {
-	ctx := session.NewContext(context.Background(), "")
+	ctx := session.NewContext(context.Background(), "space1")
 	newBlock := func(tp model.BlockContentFileType) file2.Block {
 		return simple.New(&model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{Type: tp}}}).(file2.Block)
 	}

@@ -14,14 +14,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -31,8 +31,7 @@ func Test_GrouperTags(t *testing.T) {
 
 	a := new(app.App)
 	defer a.Close(context.Background())
-	tp := typeprovider.New(nil)
-	tp.Init(nil)
+	tp := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	ds := objectstore.New(tp)
 	kanbanSrv := New()
 	err := a.Register(&config.DefaultConfig).
@@ -44,6 +43,7 @@ func Test_GrouperTags(t *testing.T) {
 		Start(context.Background())
 	require.NoError(t, err)
 
+	tp.EXPECT().Type("", "rel-tag").Return(smartblock.SmartBlockTypeSubObject, nil)
 	require.NoError(t, ds.UpdateObjectDetails("rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":             pbtypes.String("rel-tag"),
@@ -84,10 +84,6 @@ func Test_GrouperTags(t *testing.T) {
 	id2 := bson.NewObjectId().Hex()
 	id3 := bson.NewObjectId().Hex()
 	id4 := bson.NewObjectId().Hex()
-	tp.RegisterStaticType(id1, smartblock2.SmartBlockTypePage)
-	tp.RegisterStaticType(id2, smartblock2.SmartBlockTypePage)
-	tp.RegisterStaticType(id3, smartblock2.SmartBlockTypePage)
-	tp.RegisterStaticType(id4, smartblock2.SmartBlockTypePage)
 
 	require.NoError(t, ds.UpdateObjectDetails(id1, &types.Struct{
 		Fields: map[string]*types.Value{"name": pbtypes.String("one")},

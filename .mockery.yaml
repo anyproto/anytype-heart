@@ -16,3 +16,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/getblock:
     interfaces:
       Picker:
+  github.com/anyproto/anytype-heart/pkg/lib/core:
+    interfaces:
+      Service:

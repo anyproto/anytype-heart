@@ -16,8 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 	"github.com/anyproto/anytype-heart/util/testMock/mockRelation"
@@ -38,7 +40,8 @@ func TestSmartBlock_Init(t *testing.T) {
 func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		fx := newFixture(t)
-		fx.at.EXPECT().PredefinedBlocks()
+		fx.at.EXPECT().ProfileID().Return("profile1")
+		fx.at.EXPECT().PredefinedObjects("space1").Return(threads.DerivedSmartblockIds{})
 		defer fx.tearDown()
 
 		fx.init([]*model.Block{{Id: "1"}})
@@ -47,7 +50,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
 		fx.source.EXPECT().ReadOnly()
 		var event *pb.Event
-		ctx := session.NewContext(context.Background(), "")
+		ctx := session.NewContext(context.Background(), "space1")
 		fx.RegisterSession(ctx)
 		// TODO Test Async context later
 		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
@@ -100,7 +103,7 @@ type fixture struct {
 	t           *testing.T
 	ctrl        *gomock.Controller
 	source      *mockSource.MockSource
-	at          *testMock.MockService
+	at          *mock_core.MockService
 	store       *testMock.MockObjectStore
 	indexer     *MockIndexer
 	eventSender *mock_event.MockSender
@@ -110,9 +113,8 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 
-	coreService := testMock.NewMockService(ctrl)
-	coreService.EXPECT().ProfileID().Return("").AnyTimes()
-	coreService.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
+	coreService := mock_core.NewMockService(t)
+	coreService.EXPECT().GetWorkspaceIdForObject(mock.Anything, mock.Anything).Return("workspace1", nil)
 
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
@@ -159,10 +161,11 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().ReadDoc(gomock.Any(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	ctx := session.NewContext(context.Background(), "")
+	ctx := session.NewContext(context.Background(), "space1")
 	err := fx.Init(&InitContext{
-		Ctx:    ctx,
-		Source: fx.source,
+		Ctx:     ctx,
+		SpaceID: "space1",
+		Source:  fx.source,
 	})
 	require.NoError(fx.t, err)
 }

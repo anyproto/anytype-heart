@@ -42,7 +42,8 @@ func (t testExtractObjects) CreateSmartBlockFromState(ctx session.Context, sbTyp
 	return id, nil, nil
 }
 
-func (t testExtractObjects) InjectWorkspaceID(details *types.Struct, objectID string) {}
+func (t testExtractObjects) InjectWorkspaceID(details *types.Struct, spaceID string, objectID string) {
+}
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
 	got := slice.Difference(a, b)
@@ -189,7 +190,7 @@ func TestExtractObjects(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
-			ctx := session.NewContext(context.Background(), "")
+			ctx := session.NewContext(context.Background(), "space1")
 			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
