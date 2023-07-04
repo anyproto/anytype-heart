@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/dgraph-io/badger/v3"
 )
 
@@ -15,7 +15,7 @@ type listStorage struct {
 	db   *badger.DB
 	keys aclKeys
 	id   string
-	root *aclrecordproto.RawAclRecordWithId
+	root *consensusproto.RawRecordWithId
 }
 
 func newListStorage(spaceId string, db *badger.DB, txn *badger.Txn) (ls liststorage.ListStorage, err error) {
@@ -31,7 +31,7 @@ func newListStorage(spaceId string, db *badger.DB, txn *badger.Txn) (ls liststor
 		return
 	}
 
-	rootWithId := &aclrecordproto.RawAclRecordWithId{
+	rootWithId := &consensusproto.RawRecordWithId{
 		Payload: value,
 		Id:      stringId,
 	}
@@ -45,7 +45,7 @@ func newListStorage(spaceId string, db *badger.DB, txn *badger.Txn) (ls liststor
 	return
 }
 
-func createListStorage(spaceId string, db *badger.DB, txn *badger.Txn, root *aclrecordproto.RawAclRecordWithId) (ls liststorage.ListStorage, err error) {
+func createListStorage(spaceId string, db *badger.DB, txn *badger.Txn, root *consensusproto.RawRecordWithId) (ls liststorage.ListStorage, err error) {
 	keys := newAclKeys(spaceId)
 	_, err = getTxn(txn, keys.RootIdKey())
 	if err != badger.ErrKeyNotFound {
@@ -82,7 +82,7 @@ func (l *listStorage) Id() string {
 	return l.id
 }
 
-func (l *listStorage) Root() (*aclrecordproto.RawAclRecordWithId, error) {
+func (l *listStorage) Root() (*consensusproto.RawRecordWithId, error) {
 	return l.root, nil
 }
 
@@ -95,7 +95,7 @@ func (l *listStorage) Head() (head string, err error) {
 	return
 }
 
-func (l *listStorage) GetRawRecord(ctx context.Context, id string) (raw *aclrecordproto.RawAclRecordWithId, err error) {
+func (l *listStorage) GetRawRecord(ctx context.Context, id string) (raw *consensusproto.RawRecordWithId, err error) {
 	res, err := getDB(l.db, l.keys.RawRecordKey(id))
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
@@ -104,7 +104,7 @@ func (l *listStorage) GetRawRecord(ctx context.Context, id string) (raw *aclreco
 		return
 	}
 
-	raw = &aclrecordproto.RawAclRecordWithId{
+	raw = &consensusproto.RawRecordWithId{
 		Payload: res,
 		Id:      id,
 	}
@@ -115,6 +115,6 @@ func (l *listStorage) SetHead(headId string) (err error) {
 	return putDB(l.db, l.keys.HeadIdKey(), []byte(headId))
 }
 
-func (l *listStorage) AddRawRecord(ctx context.Context, rec *aclrecordproto.RawAclRecordWithId) error {
+func (l *listStorage) AddRawRecord(ctx context.Context, rec *consensusproto.RawRecordWithId) error {
 	return putDB(l.db, l.keys.RawRecordKey(rec.Id), rec.Payload)
 }
