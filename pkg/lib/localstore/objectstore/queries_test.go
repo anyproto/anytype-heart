@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
@@ -31,7 +32,7 @@ type storeFixture struct {
 
 func newStoreFixture(t *testing.T) *storeFixture {
 	typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	typeProvider.EXPECT().Type(mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+	typeProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
 
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
@@ -69,8 +70,9 @@ func generateSimpleObject(index int) testObject {
 
 func makeObjectWithName(id string, name string) testObject {
 	return testObject{
-		bundle.RelationKeyId:   pbtypes.String(id),
-		bundle.RelationKeyName: pbtypes.String(name),
+		bundle.RelationKeyId:      pbtypes.String(id),
+		bundle.RelationKeyName:    pbtypes.String(name),
+		bundle.RelationKeySpaceId: pbtypes.String("space1"),
 	}
 }
 
@@ -79,6 +81,7 @@ func makeObjectWithNameAndDescription(id string, name string, description string
 		bundle.RelationKeyId:          pbtypes.String(id),
 		bundle.RelationKeyName:        pbtypes.String(name),
 		bundle.RelationKeyDescription: pbtypes.String(description),
+		bundle.RelationKeySpaceId:     pbtypes.String("space1"),
 	}
 }
 
@@ -291,22 +294,25 @@ func TestQuery(t *testing.T) {
 		s.sbtProvider = typeProvider
 
 		obj1 := testObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
-			bundle.RelationKeyName: pbtypes.String("Favorites page"),
+			bundle.RelationKeyId:      pbtypes.String("id1"),
+			bundle.RelationKeyName:    pbtypes.String("Favorites page"),
+			bundle.RelationKeySpaceId: pbtypes.String("space1"),
 		}
-		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeHome, nil)
+		typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypeHome, nil)
 
 		obj2 := testObject{
-			bundle.RelationKeyId:   pbtypes.String("id2"),
-			bundle.RelationKeyName: pbtypes.String("name2"),
+			bundle.RelationKeyId:      pbtypes.String("id2"),
+			bundle.RelationKeyName:    pbtypes.String("name2"),
+			bundle.RelationKeySpaceId: pbtypes.String("space1"),
 		}
-		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
+		typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypePage, nil)
 
 		obj3 := testObject{
-			bundle.RelationKeyId:   pbtypes.String("id3"),
-			bundle.RelationKeyName: pbtypes.String("Archive page"),
+			bundle.RelationKeyId:      pbtypes.String("id3"),
+			bundle.RelationKeyName:    pbtypes.String("Archive page"),
+			bundle.RelationKeySpaceId: pbtypes.String("space1"),
 		}
-		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypeArchive, nil)
+		typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypeArchive, nil)
 
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
@@ -512,13 +518,13 @@ func TestQueryObjectIds(t *testing.T) {
 		s.sbtProvider = typeProvider
 
 		obj1 := makeObjectWithName("id1", "file1")
-		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeFile, nil)
+		typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypeFile, nil)
 
 		obj2 := makeObjectWithName("id2", "type2")
-		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypeSubObject, nil)
+		typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypeSubObject, nil)
 
 		obj3 := makeObjectWithName("id3", "page3")
-		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+		typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypePage, nil)
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
 		ids, _, err := s.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
@@ -548,13 +554,13 @@ func TestQueryObjectIds(t *testing.T) {
 		s.sbtProvider = typeProvider
 
 		obj1 := makeObjectWithNameAndDescription("id1", "file1", "foo")
-		typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypeFile, nil)
+		typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypeFile, nil)
 
 		obj2 := makeObjectWithNameAndDescription("id2", "page2", "foo")
-		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
+		typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypePage, nil)
 
 		obj3 := makeObjectWithNameAndDescription("id3", "page3", "bar")
-		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+		typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypePage, nil)
 
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
@@ -665,31 +671,20 @@ func TestQueryById(t *testing.T) {
 
 	t.Run("some objects are not indexable and derive details from its source", func(t *testing.T) {
 		s := newStoreFixture(t)
-		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		s.sbtProvider = typeProvider
 
-		obj1 := makeObjectWithName("id1", "name1")
-		// TODO WHy is was ok?
-		// typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypePage, nil)
-
-		obj2 := makeObjectWithName("id2", "name2")
-		typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypePage, nil)
-
-		obj3 := makeObjectWithName("id3", "name3")
-		// TODO WHy is was ok?
-		// typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+		obj1 := makeObjectWithName("id1", "name2")
 
 		// obj4 is not indexable, so don't try to add it to store
-		obj4 := makeObjectWithName("id4", "i'm special")
-		typeProvider.EXPECT().Type("id4").Return(smartblock.SmartBlockTypeDate, nil)
+		dateID := addr.DatePrefix + "01_02_2005"
+		obj2 := makeObjectWithName(dateID, "i'm special")
 
-		s.addObjects(t, []testObject{obj1, obj2, obj3})
+		s.addObjects(t, []testObject{obj1})
 
-		s.sourceService = dummySourceService{objectToReturn: obj4}
+		s.sourceService = dummySourceService{objectToReturn: obj2}
 
-		recs, err := s.QueryByID([]string{"id2", "id4"})
+		recs, err := s.QueryByID([]string{"id1", dateID})
 		require.NoError(t, err)
-		assertRecordsEqual(t, []testObject{obj2, obj4}, recs)
+		assertRecordsEqual(t, []testObject{obj1, obj2}, recs)
 	})
 }
 

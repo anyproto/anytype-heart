@@ -283,6 +283,49 @@ func (_c *MockSender_SendToSession_Call) RunAndReturn(run func(string, *pb.Event
 	return _c
 }
 
+// SetSpaceID provides a mock function with given fields: token, spaceID
+func (_m *MockSender) SetSpaceID(token string, spaceID string) error {
+	ret := _m.Called(token, spaceID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(token, spaceID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSender_SetSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSpaceID'
+type MockSender_SetSpaceID_Call struct {
+	*mock.Call
+}
+
+// SetSpaceID is a helper method to define mock.On call
+//   - token string
+//   - spaceID string
+func (_e *MockSender_Expecter) SetSpaceID(token interface{}, spaceID interface{}) *MockSender_SetSpaceID_Call {
+	return &MockSender_SetSpaceID_Call{Call: _e.mock.On("SetSpaceID", token, spaceID)}
+}
+
+func (_c *MockSender_SetSpaceID_Call) Run(run func(token string, spaceID string)) *MockSender_SetSpaceID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockSender_SetSpaceID_Call) Return(_a0 error) *MockSender_SetSpaceID_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSender_SetSpaceID_Call) RunAndReturn(run func(string, string) error) *MockSender_SetSpaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 type mockConstructorTestingTNewMockSender interface {
 	mock.TestingT
 	Cleanup(func())

@@ -139,23 +139,23 @@ func (_c *MockSmartBlockTypeProvider_RegisterStaticType_Call) RunAndReturn(run f
 	return _c
 }
 
-// Type provides a mock function with given fields: id
-func (_m *MockSmartBlockTypeProvider) Type(id string) (smartblock.SmartBlockType, error) {
-	ret := _m.Called(id)
+// Type provides a mock function with given fields: spaceID, id
+func (_m *MockSmartBlockTypeProvider) Type(spaceID string, id string) (smartblock.SmartBlockType, error) {
+	ret := _m.Called(spaceID, id)
 
 	var r0 smartblock.SmartBlockType
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (smartblock.SmartBlockType, error)); ok {
-		return rf(id)
+	if rf, ok := ret.Get(0).(func(string, string) (smartblock.SmartBlockType, error)); ok {
+		return rf(spaceID, id)
 	}
-	if rf, ok := ret.Get(0).(func(string) smartblock.SmartBlockType); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(string, string) smartblock.SmartBlockType); ok {
+		r0 = rf(spaceID, id)
 	} else {
 		r0 = ret.Get(0).(smartblock.SmartBlockType)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceID, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -169,14 +169,15 @@ type MockSmartBlockTypeProvider_Type_Call struct {
 }
 
 // Type is a helper method to define mock.On call
+//   - spaceID string
 //   - id string
-func (_e *MockSmartBlockTypeProvider_Expecter) Type(id interface{}) *MockSmartBlockTypeProvider_Type_Call {
-	return &MockSmartBlockTypeProvider_Type_Call{Call: _e.mock.On("Type", id)}
+func (_e *MockSmartBlockTypeProvider_Expecter) Type(spaceID interface{}, id interface{}) *MockSmartBlockTypeProvider_Type_Call {
+	return &MockSmartBlockTypeProvider_Type_Call{Call: _e.mock.On("Type", spaceID, id)}
 }
 
-func (_c *MockSmartBlockTypeProvider_Type_Call) Run(run func(id string)) *MockSmartBlockTypeProvider_Type_Call {
+func (_c *MockSmartBlockTypeProvider_Type_Call) Run(run func(spaceID string, id string)) *MockSmartBlockTypeProvider_Type_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -186,7 +187,7 @@ func (_c *MockSmartBlockTypeProvider_Type_Call) Return(_a0 smartblock.SmartBlock
 	return _c
 }
 
-func (_c *MockSmartBlockTypeProvider_Type_Call) RunAndReturn(run func(string) (smartblock.SmartBlockType, error)) *MockSmartBlockTypeProvider_Type_Call {
+func (_c *MockSmartBlockTypeProvider_Type_Call) RunAndReturn(run func(string, string) (smartblock.SmartBlockType, error)) *MockSmartBlockTypeProvider_Type_Call {
 	_c.Call.Return(run)
 	return _c
 }

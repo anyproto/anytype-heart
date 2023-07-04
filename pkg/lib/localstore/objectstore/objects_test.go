@@ -82,18 +82,18 @@ func TestList(t *testing.T) {
 	obj1 := makeObjectWithName("id1", "name1")
 	err := s.UpdateObjectSnippet("id1", "snippet1")
 	require.NoError(t, err)
-	typeProvider.EXPECT().Type("id1").Return(smartblock.SmartBlockTypePage, nil)
+	typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypePage, nil)
 
 	obj2 := makeObjectWithName("id2", "name2")
-	typeProvider.EXPECT().Type("id2").Return(smartblock.SmartBlockTypeFile, nil)
+	typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypeFile, nil)
 
 	obj3 := makeObjectWithName("id3", "date")
 	obj3[bundle.RelationKeyIsDeleted] = pbtypes.Bool(true)
-	typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
+	typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypePage, nil)
 
 	s.addObjects(t, []testObject{obj1, obj2, obj3})
 
-	got, err := s.List()
+	got, err := s.List("space1")
 	require.NoError(t, err)
 
 	want := []*model.ObjectInfo{
@@ -319,7 +319,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("links of first object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("id1")
+		got, err := s.GetWithLinksInfoByID("space1", "id1")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj1), got.Info.Details)
@@ -329,7 +329,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	})
 
 	t.Run("links of second object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("id2")
+		got, err := s.GetWithLinksInfoByID("space1", "id2")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj2), got.Info.Details)
@@ -338,7 +338,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 	})
 
 	t.Run("links of third object", func(t *testing.T) {
-		got, err := s.GetWithLinksInfoByID("id3")
+		got, err := s.GetWithLinksInfoByID("space1", "id3")
 		require.NoError(t, err)
 
 		assert.Equal(t, makeDetails(obj3), got.Info.Details)
@@ -414,7 +414,7 @@ func TestDeleteObject(t *testing.T) {
 			}),
 		}, got)
 
-		objects, err := s.GetByIDs("id1")
+		objects, err := s.GetByIDs("space1", []string{"id1"})
 		require.NoError(t, err)
 		assert.Empty(t, objects)
 
