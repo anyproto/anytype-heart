@@ -11,6 +11,7 @@ import (
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
@@ -48,6 +49,7 @@ type Service interface {
 	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
+	SubscriptionIDs() []string
 
 	app.ComponentRunnable
 }
@@ -389,6 +391,12 @@ func (s *service) UnsubscribeAll() (err error) {
 	}
 	s.subscriptions = make(map[string]subscription)
 	return
+}
+
+func (s *service) SubscriptionIDs() []string {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return lo.Keys(s.subscriptions)
 }
 
 func (s *service) recordsHandler() {
