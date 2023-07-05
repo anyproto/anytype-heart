@@ -140,7 +140,7 @@ func (oc *ObjectCreator) Create(ctx session.Context,
 
 	syncErr := oc.syncFilesAndLinks(ctx, newID)
 	if syncErr != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to sync %s: %s", newID, err.Error())
+		log.With(zap.String("object id", newID)).Errorf("failed to sync %s: %s", newID, syncErr)
 	}
 
 	return respDetails, newID, nil
