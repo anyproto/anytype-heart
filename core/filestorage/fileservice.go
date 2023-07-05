@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/storage"
 )
 
@@ -54,7 +53,6 @@ type fileStorage struct {
 
 	provider     datastore.Datastore
 	rpcStore     rpcstore.Service
-	spaceService space.Service
 	spaceStorage storage.ClientStorage
 	eventSender  event.Sender
 }
@@ -72,7 +70,6 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
-	f.spaceService = a.MustComponent(space.CName).(space.Service)
 	if fileCfg.IPFSStorageAddr == "" {
 		f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), FlatfsDirName)
 	} else {
@@ -87,10 +84,6 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 
 func (f *fileStorage) Name() (name string) {
 	return CName
-}
-
-func (f *fileStorage) patchAccountIdCtx(ctx context.Context) context.Context {
-	return fileblockstore.CtxWithSpaceId(ctx, f.spaceService.AccountId())
 }
 
 func (f *fileStorage) Run(ctx context.Context) (err error) {
@@ -128,27 +121,27 @@ func (f *fileStorage) LocalDiskUsage(ctx context.Context) (uint64, error) {
 }
 
 func (f *fileStorage) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
-	return f.proxy.Get(f.patchAccountIdCtx(ctx), k)
+	return f.proxy.Get(ctx, k)
 }
 
 func (f *fileStorage) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
-	return f.proxy.GetMany(f.patchAccountIdCtx(ctx), ks)
+	return f.proxy.GetMany(ctx, ks)
 }
 
 func (f *fileStorage) Add(ctx context.Context, bs []blocks.Block) (err error) {
-	return f.proxy.Add(f.patchAccountIdCtx(ctx), bs)
+	return f.proxy.Add(ctx, bs)
 }
 
 func (f *fileStorage) Delete(ctx context.Context, k cid.Cid) error {
-	return f.proxy.Delete(f.patchAccountIdCtx(ctx), k)
+	return f.proxy.Delete(ctx, k)
 }
 
 func (f *fileStorage) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
-	return f.proxy.ExistsCids(f.patchAccountIdCtx(ctx), ks)
+	return f.proxy.ExistsCids(ctx, ks)
 }
 
 func (f *fileStorage) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
-	return f.proxy.NotExistsBlocks(f.patchAccountIdCtx(ctx), bs)
+	return f.proxy.NotExistsBlocks(ctx, bs)
 }
 
 func (f *fileStorage) Close(ctx context.Context) (err error) {
