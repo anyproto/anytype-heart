@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -37,7 +38,6 @@ type FileSync interface {
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)
 	SyncStatus() (ss SyncStatus, err error)
-	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
 	HasUpload(spaceId, fileId string) (ok bool, err error)
 	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
@@ -86,6 +86,10 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return
+}
+
+func (s *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
+	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
 
 func (f *fileSync) OnUpload(callback func(spaceID, fileID string) error) {

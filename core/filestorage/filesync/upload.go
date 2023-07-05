@@ -192,7 +192,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 }
 
 func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId string) ([]blocks.Block, error) {
-	fileBlocks, err := f.collectFileBlocks(ctx, fileId)
+	fileBlocks, err := f.collectFileBlocks(ctx, spaceId, fileId)
 	if err != nil {
 		return nil, fmt.Errorf("collect file blocks: %w", err)
 	}
@@ -289,17 +289,18 @@ func (f *fileSync) selectBlocksToUploadAndBindExisting(ctx context.Context, spac
 	return bytesToUpload, blocksToUpload, nil
 }
 
-func (f *fileSync) collectFileBlocks(ctx context.Context, fileId string) (result []blocks.Block, err error) {
-	fileCid, err := cid.Parse(fileId)
+func (f *fileSync) collectFileBlocks(ctx context.Context, spaceID string, fileID string) (result []blocks.Block, err error) {
+	fileCid, err := cid.Parse(fileID)
 	if err != nil {
 		return
 	}
-	node, err := f.dagService.Get(ctx, fileCid)
+	dagService := f.dagServiceForSpace(spaceID)
+	node, err := dagService.Get(ctx, fileCid)
 	if err != nil {
 		return
 	}
 
-	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
+	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, dagService))
 	err = walker.Iterate(func(node ipld.NavigableNode) error {
 		b, err := blocks.NewBlockWithCid(node.GetIPLDNode().RawData(), node.GetIPLDNode().Cid())
 		if err != nil {
