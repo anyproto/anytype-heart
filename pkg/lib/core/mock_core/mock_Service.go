@@ -6,13 +6,10 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-
-	core "github.com/anyproto/anytype-heart/pkg/lib/core"
-
 	mock "github.com/stretchr/testify/mock"
 
 	session "github.com/anyproto/anytype-heart/core/session"
-
+	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
@@ -459,7 +456,7 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 }
 
 // PredefinedBlocks provides a mock function with given fields:
-func (_m *MockService) PredefinedBlocks() threads.DerivedSmartblockIds {
+func (_m *MockService) AccountObjects() threads.DerivedSmartblockIds {
 	ret := _m.Called()
 
 	var r0 threads.DerivedSmartblockIds
@@ -472,14 +469,14 @@ func (_m *MockService) PredefinedBlocks() threads.DerivedSmartblockIds {
 	return r0
 }
 
-// MockService_PredefinedBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PredefinedBlocks'
+// MockService_PredefinedBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountObjects'
 type MockService_PredefinedBlocks_Call struct {
 	*mock.Call
 }
 
 // PredefinedBlocks is a helper method to define mock.On call
 func (_e *MockService_Expecter) PredefinedBlocks() *MockService_PredefinedBlocks_Call {
-	return &MockService_PredefinedBlocks_Call{Call: _e.mock.On("PredefinedBlocks")}
+	return &MockService_PredefinedBlocks_Call{Call: _e.mock.On("AccountObjects")}
 }
 
 func (_c *MockService_PredefinedBlocks_Call) Run(run func()) *MockService_PredefinedBlocks_Call {

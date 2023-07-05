@@ -56,7 +56,7 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 	r.notify(objId, objStatus, filesSummary.pinStatus)
 
 	// TODO For each space?
-	if objId == r.coreService.PredefinedBlocks().Account {
+	if objId == r.coreService.AccountObjects().Account {
 		r.subObjectsWatcher.ForEach(func(subObjectID string) {
 			r.notify(subObjectID, objStatus, filesSummary.pinStatus)
 		})

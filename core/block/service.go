@@ -422,7 +422,7 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 	return "", fmt.Errorf("not implemented")
 	// workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
 	// if err == core.ErrObjectDoesNotBelongToWorkspace {
-	//	workspaceId = s.Anytype().PredefinedBlocks().Account
+	//	workspaceId = s.Anytype().AccountObjects().Account
 	// }
 	// var key string
 	// var addrs []string

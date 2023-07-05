@@ -142,14 +142,14 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.PredefinedBlocks().Profile,
+		ContextId: coreService.AccountObjects().Profile,
 		Details:   profileDetails,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
 	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.PredefinedBlocks().Account,
+		ContextId: coreService.AccountObjects().Account,
 		Details:   commonDetails,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
@@ -642,13 +642,13 @@ func (mw *Middleware) setDetails(profile *pb.Profile, icon int64) error {
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.PredefinedBlocks().Profile,
+		ContextId: coreService.AccountObjects().Profile,
 		Details:   profileDetails,
 	}); err != nil {
 		return err
 	}
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.PredefinedBlocks().Account,
+		ContextId: coreService.AccountObjects().Account,
 		Details:   accountDetails,
 	}); err != nil {
 		return err

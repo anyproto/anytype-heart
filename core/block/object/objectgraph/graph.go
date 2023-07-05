@@ -79,7 +79,7 @@ func (gr *Builder) ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([
 
 	existedNodes := fillExistedNodes(records)
 
-	relations, err := gr.provideRelations()
+	relations, err := gr.provideRelations(spaceID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,8 +121,8 @@ func (gr *Builder) extractGraph(
 	return nodes, edges
 }
 
-func (gr *Builder) provideRelations() (relationutils.Relations, error) {
-	relations, err := gr.relationService.ListAll(relation.WithWorkspaceId(gr.coreService.PredefinedBlocks().Account))
+func (gr *Builder) provideRelations(spaceID string) (relationutils.Relations, error) {
+	relations, err := gr.relationService.ListAll(relation.WithWorkspaceId(gr.coreService.PredefinedObjects(spaceID).Account))
 	return relations, err
 }
 

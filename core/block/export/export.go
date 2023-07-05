@@ -347,7 +347,7 @@ func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportForm
 			}
 			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docID == e.a.PredefinedBlocks().Home {
+		if docID == e.a.PredefinedObjects(ctx.SpaceID()).Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -418,7 +418,7 @@ func (e *export) createProfileFile(ctx session.Context, wr writer) error {
 	if err != nil {
 		return err
 	}
-	err = getblock.Do(e.picker, ctx, e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+	err = getblock.Do(e.picker, ctx, e.a.PredefinedObjects(ctx.SpaceID()).Account, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})

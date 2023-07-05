@@ -102,7 +102,7 @@ func (s *service) getAnalyticsID() (string, error) {
 		return s.config.AnalyticsId, nil
 	}
 	accountCtx := session.NewContext(context.Background(), s.spaceService.AccountId())
-	accountObjectID := s.coreService.PredefinedBlocks().Account
+	accountObjectID := s.coreService.AccountObjects().Account
 	sb, err := s.blockService.PickBlock(accountCtx, accountObjectID)
 	if err != nil {
 		return "", err

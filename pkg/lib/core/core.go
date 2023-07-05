@@ -39,7 +39,7 @@ type Service interface {
 
 	DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	EnsurePredefinedBlocks(ctx session.Context) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
-	PredefinedBlocks() threads.DerivedSmartblockIds
+	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 
 	GetAllWorkspaces() ([]string, error)
@@ -133,7 +133,7 @@ func (a *Anytype) GetWorkspaceIdForObject(spaceID string, objectID string) (stri
 // PredefinedBlocks returns default blocks like home and archive
 // ⚠️ Will return empty struct in case it runs before Anytype.Start()
 // TODO Its deprecated
-func (a *Anytype) PredefinedBlocks() threads.DerivedSmartblockIds {
+func (a *Anytype) AccountObjects() threads.DerivedSmartblockIds {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 	return a.predefinedObjectsPerSpace[a.space.AccountId()]

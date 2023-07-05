@@ -220,7 +220,7 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 }
 
 func (oc *ObjectCreator) setWorkspaceID(spaceID string, newID string, snapshot *model.SmartBlockSnapshotBase) {
-	if oc.core.PredefinedBlocks().Account == newID {
+	if oc.core.PredefinedObjects(spaceID).Account == newID {
 		return
 	}
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(spaceID, newID)

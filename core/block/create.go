@@ -116,7 +116,7 @@ func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreat
 	}
 
 	accountCtx := session.NewContext(ctx.Context(), s.spaceService.AccountId())
-	err = DoStateAsync(s, accountCtx, s.anytype.PredefinedBlocks().Account, func(st *state.State, b *editor.Workspaces) error {
+	err = DoStateAsync(s, accountCtx, s.anytype.AccountObjects().Account, func(st *state.State, b *editor.Workspaces) error {
 		spaces := pbtypes.CopyVal(st.Store().GetFields()["spaces"])
 		if spaces == nil {
 			spaces = pbtypes.Struct(&types.Struct{
