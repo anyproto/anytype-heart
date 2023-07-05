@@ -14,7 +14,7 @@ import (
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
 	ctx := mw.newContext(cctx)
 	response := func(workspaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
-		m := &pb.RpcWorkspaceCreateResponse{WorkspaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
+		m := &pb.RpcWorkspaceCreateResponse{SpaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}

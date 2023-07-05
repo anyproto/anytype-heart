@@ -14363,7 +14363,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
+| useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
 
 
 
@@ -14379,7 +14380,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Workspace.Create.Response.Error](#anytype-Rpc-Workspace-Create-Response-Error) |  |  |
-| workspaceId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 

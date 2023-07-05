@@ -618,12 +618,13 @@ message Rpc {
 
         message Create {
             message Request {
-                string name = 1;
+                google.protobuf.Struct details = 1; // object details
+                anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
             }
 
             message Response {
                 Error error = 1;
-                string workspaceId = 2;
+                string spaceId = 2;
 
                 message Error {
                     Code code = 1;

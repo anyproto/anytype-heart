@@ -124,6 +124,10 @@ type indexer interface {
 	ReindexSpace(ctx session.Context) error
 }
 
+type builtinObjects interface {
+	CreateObjectsForUseCase(session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+}
+
 type Service struct {
 	anytype         core.Service
 	syncStatus      syncstatus.Service
@@ -140,14 +144,15 @@ type Service struct {
 	cache           ocache.OCache
 	indexer         indexer
 
-	objectCreator   objectCreator
-	objectFactory   *editor.ObjectFactory
-	spaceService    space.Service
-	commonAccount   accountservice.Service
-	fileStore       filestore.FileStore
-	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	layoutConverter converter.LayoutConverter
+	objectCreator        objectCreator
+	objectFactory        *editor.ObjectFactory
+	spaceService         space.Service
+	commonAccount        accountservice.Service
+	fileStore            filestore.FileStore
+	tempDirProvider      core.TempDirProvider
+	sbtProvider          typeprovider.SmartBlockTypeProvider
+	layoutConverter      converter.LayoutConverter
+	builtinObjectService builtinObjects
 
 	fileSync    filesync.FileSync
 	fileService files.Service
@@ -183,6 +188,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.indexer = app.MustComponent[indexer](a)
+	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.cache = s.createCache()
 	s.app = a
 	return

@@ -132,21 +132,12 @@ func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreat
 	})
 
 	err = Do(s, newSpaceCtx, predefinedObjectIDs.Account, func(b basic.DetailsSettable) error {
-		// TODO Details from request
-		// details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details))
-		details := []*pb.RpcObjectSetDetailsDetail{
-			{
-				Key:   bundle.RelationKeyName.String(),
-				Value: pbtypes.String(req.Name),
-			},
-			{
-				Key:   bundle.RelationKeyIconEmoji.String(),
-				Value: pbtypes.String("🌎"),
-			},
-			{
-				Key:   bundle.RelationKeyLayout.String(),
-				Value: pbtypes.Float64(float64(model.ObjectType_space)),
-			},
+		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
+		for k, v := range req.Details.GetFields() {
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
+				Key:   k,
+				Value: v,
+			})
 		}
 		return b.SetDetails(nil, details, true)
 	})
@@ -159,6 +150,10 @@ func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreat
 		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
 	}
 
+	_, err = s.builtinObjectService.CreateObjectsForUseCase(ctx, req.UseCase)
+	if err != nil {
+		return "", fmt.Errorf("import use-case: %w", err)
+	}
 	return spc.Id(), err
 }
 
