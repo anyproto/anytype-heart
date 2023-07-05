@@ -6,10 +6,13 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
+
+	core "github.com/anyproto/anytype-heart/pkg/lib/core"
+
 	mock "github.com/stretchr/testify/mock"
 
 	session "github.com/anyproto/anytype-heart/core/session"
-	core "github.com/anyproto/anytype-heart/pkg/lib/core"
+
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
@@ -24,6 +27,47 @@ type MockService_Expecter struct {
 
 func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
+}
+
+// AccountObjects provides a mock function with given fields:
+func (_m *MockService) AccountObjects() threads.DerivedSmartblockIds {
+	ret := _m.Called()
+
+	var r0 threads.DerivedSmartblockIds
+	if rf, ok := ret.Get(0).(func() threads.DerivedSmartblockIds); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(threads.DerivedSmartblockIds)
+	}
+
+	return r0
+}
+
+// MockService_AccountObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountObjects'
+type MockService_AccountObjects_Call struct {
+	*mock.Call
+}
+
+// AccountObjects is a helper method to define mock.On call
+func (_e *MockService_Expecter) AccountObjects() *MockService_AccountObjects_Call {
+	return &MockService_AccountObjects_Call{Call: _e.mock.On("AccountObjects")}
+}
+
+func (_c *MockService_AccountObjects_Call) Run(run func()) *MockService_AccountObjects_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_AccountObjects_Call) Return(_a0 threads.DerivedSmartblockIds) *MockService_AccountObjects_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_AccountObjects_Call) RunAndReturn(run func() threads.DerivedSmartblockIds) *MockService_AccountObjects_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Close provides a mock function with given fields: ctx
@@ -451,47 +495,6 @@ func (_c *MockService_Name_Call) Return(name string) *MockService_Name_Call {
 }
 
 func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Name_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// PredefinedBlocks provides a mock function with given fields:
-func (_m *MockService) AccountObjects() threads.DerivedSmartblockIds {
-	ret := _m.Called()
-
-	var r0 threads.DerivedSmartblockIds
-	if rf, ok := ret.Get(0).(func() threads.DerivedSmartblockIds); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(threads.DerivedSmartblockIds)
-	}
-
-	return r0
-}
-
-// MockService_PredefinedBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountObjects'
-type MockService_PredefinedBlocks_Call struct {
-	*mock.Call
-}
-
-// PredefinedBlocks is a helper method to define mock.On call
-func (_e *MockService_Expecter) PredefinedBlocks() *MockService_PredefinedBlocks_Call {
-	return &MockService_PredefinedBlocks_Call{Call: _e.mock.On("AccountObjects")}
-}
-
-func (_c *MockService_PredefinedBlocks_Call) Run(run func()) *MockService_PredefinedBlocks_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockService_PredefinedBlocks_Call) Return(_a0 threads.DerivedSmartblockIds) *MockService_PredefinedBlocks_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_PredefinedBlocks_Call) RunAndReturn(run func() threads.DerivedSmartblockIds) *MockService_PredefinedBlocks_Call {
 	_c.Call.Return(run)
 	return _c
 }
