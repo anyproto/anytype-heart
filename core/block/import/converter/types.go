@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
@@ -17,7 +18,7 @@ type ObjectTreeCreator interface {
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*Response, ConvertError)
+	GetSnapshots(ctx session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*Response, ConvertError)
 	Name() string
 }
 

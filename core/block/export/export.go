@@ -414,7 +414,7 @@ func (e *export) saveImage(ctx session.Context, wr writer, hash string) (err err
 
 func (e *export) createProfileFile(ctx session.Context, wr writer) error {
 	var spaceDashBoardID string
-	pr, err := e.a.LocalProfile()
+	pr, err := e.a.LocalProfile(ctx.SpaceID())
 	if err != nil {
 		return err
 	}
@@ -425,7 +425,7 @@ func (e *export) createProfileFile(ctx session.Context, wr writer) error {
 	if err != nil {
 		return err
 	}
-	profileID := e.a.ProfileID()
+	profileID := e.a.ProfileID(ctx.SpaceID())
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,

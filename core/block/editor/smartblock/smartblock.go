@@ -1271,7 +1271,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
-		creator = sb.coreService.ProfileID()
+		creator = sb.coreService.ProfileID(sb.SpaceID())
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only

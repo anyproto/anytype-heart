@@ -106,7 +106,7 @@ func (h *history) Versions(ctx session.Context, pageId, lastVersionId string, li
 	if limit <= 0 {
 		limit = 100
 	}
-	profileId, profileName, err := h.getProfileInfo()
+	profileId, profileName, err := h.getProfileInfo(ctx.SpaceID())
 	if err != nil {
 		return
 	}
@@ -226,7 +226,7 @@ func (h *history) buildState(spaceID string, pageId, versionId string) (st *stat
 
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
-		profileId, profileName, e := h.getProfileInfo()
+		profileId, profileName, e := h.getProfileInfo(spaceID)
 		if e != nil {
 			err = e
 			return
@@ -242,9 +242,9 @@ func (h *history) buildState(spaceID string, pageId, versionId string) (st *stat
 	return
 }
 
-func (h *history) getProfileInfo() (profileId, profileName string, err error) {
-	profileId = h.a.ProfileID()
-	lp, err := h.a.LocalProfile()
+func (h *history) getProfileInfo(spaceID string) (profileId, profileName string, err error) {
+	profileId = h.a.ProfileID(spaceID)
+	lp, err := h.a.LocalProfile(spaceID)
 	if err != nil {
 		return
 	}

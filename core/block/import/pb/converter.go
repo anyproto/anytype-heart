@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -53,12 +54,12 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 	}
 }
 
-func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (p *Pb) GetSnapshots(ctx session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	params, e := p.GetParams(req.Params)
 	if e != nil || params == nil {
 		return nil, converter.NewFromError("", fmt.Errorf("wrong parameters"))
 	}
-	allSnapshots, targetObjects, allErrors := p.getSnapshots(req, progress, params.GetPath(), req.IsMigration)
+	allSnapshots, targetObjects, allErrors := p.getSnapshots(ctx.SpaceID(), req, progress, params.GetPath(), req.IsMigration)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
@@ -88,10 +89,13 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	return &converter.Response{Snapshots: allSnapshots}, allErrors
 }
 
-func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest,
+func (p *Pb) getSnapshots(
+	spaceID string,
+	req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	allPaths []string,
-	isMigration bool) ([]*converter.Snapshot, []string, converter.ConvertError) {
+	isMigration bool,
+) ([]*converter.Snapshot, []string, converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allErrors := converter.NewError()
@@ -99,7 +103,7 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest,
 		if err := progress.TryStep(1); err != nil {
 			return nil, nil, converter.NewCancelError(path, err)
 		}
-		snapshots, objects := p.handlePath(req, path, allErrors, isMigration)
+		snapshots, objects := p.handlePath(spaceID, req, path, allErrors, isMigration)
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, allErrors
 		}
@@ -109,10 +113,13 @@ func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest,
 	return allSnapshots, targetObjects, allErrors
 }
 
-func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
+func (p *Pb) handlePath(
+	spaceID string,
+	req *pb.RpcObjectImportRequest,
 	path string,
 	allErrors converter.ConvertError,
-	isMigration bool) ([]*converter.Snapshot, []string) {
+	isMigration bool,
+) ([]*converter.Snapshot, []string) {
 	files, err := p.readFile(path)
 	if err != nil {
 		allErrors.Add(path, err)
@@ -135,7 +142,7 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 		}
 	}
 	if profile != nil {
-		pr, e := p.core.LocalProfile()
+		pr, e := p.core.LocalProfile(spaceID)
 		if e != nil {
 			allErrors.Add(constant.ProfileFile, e)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -145,7 +152,7 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
 		profileID = profile.ProfileId
 	}
-	snapshots, objects := p.getSnapshotsFromFiles(req, files, allErrors, path, profileID, needToImportWidgets, isMigration)
+	snapshots, objects := p.getSnapshotsFromFiles(spaceID, req, files, allErrors, path, profileID, needToImportWidgets, isMigration)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, nil
 	}
@@ -193,15 +200,18 @@ func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Sna
 	}
 
 }
-func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
+func (p *Pb) getSnapshotsFromFiles(
+	spaceID string,
+	req *pb.RpcObjectImportRequest,
 	pbFiles map[string]io.ReadCloser,
 	allErrors converter.ConvertError,
 	path, profileID string,
-	needToCreateWidgets, isMigration bool) ([]*converter.Snapshot, []string) {
+	needToCreateWidgets, isMigration bool,
+) ([]*converter.Snapshot, []string) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	for name, file := range pbFiles {
-		snapshot, err := p.getSnapshotForPbFile(name, profileID, path, file, needToCreateWidgets, isMigration)
+		snapshot, err := p.getSnapshotForPbFile(spaceID, name, profileID, path, file, needToCreateWidgets, isMigration)
 		if err != nil {
 			allErrors.Add(name, err)
 			if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -221,7 +231,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	return allSnapshots, targetObjects
 }
 
-func (p *Pb) getSnapshotForPbFile(name, profileID, path string,
+func (p *Pb) getSnapshotForPbFile(spaceID string, name, profileID, path string,
 	file io.ReadCloser,
 	needToCreateWidgets, isMigration bool) (*converter.Snapshot, error) {
 	if name == constant.ProfileFile || name == configFile {
@@ -247,7 +257,7 @@ func (p *Pb) getSnapshotForPbFile(name, profileID, path string,
 		id = p.getIDForSubObject(snapshot, id)
 	}
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
-		id = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
+		id = p.getIDForUserProfile(spaceID, snapshot, profileID, id, isMigration)
 		p.setProfileIconOption(snapshot, profileID)
 	}
 	if snapshot.SbType == model.SmartBlockType_Page {
@@ -262,10 +272,10 @@ func (p *Pb) getSnapshotForPbFile(name, profileID, path string,
 	}, nil
 }
 
-func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
+func (p *Pb) getIDForUserProfile(spaceID string, mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	if objectID == profileID && isMigration {
-		return p.core.ProfileID()
+		return p.core.ProfileID(spaceID)
 	}
 	return id
 }

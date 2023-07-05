@@ -5,8 +5,8 @@ import (
 )
 
 type ProfileInfo interface {
-	LocalProfile() (Profile, error)
-	ProfileID() string
+	LocalProfile(spaceID string) (Profile, error)
+	ProfileID(spaceID string) string
 }
 
 type Profile struct {
@@ -16,16 +16,15 @@ type Profile struct {
 	IconColor   string
 }
 
-func (a *Anytype) LocalProfile() (Profile, error) {
-	var (
-		profile   = Profile{AccountAddr: a.wallet.GetAccountPrivkey().GetPublic().Account()}
-		profileId = a.accountSpacePredefinedObjectIDs.Profile
-	)
+func (a *Anytype) LocalProfile(spaceID string) (Profile, error) {
+	profile := Profile{AccountAddr: a.wallet.GetAccountPrivkey().GetPublic().Account()}
+	profileID := a.PredefinedObjects(spaceID).Profile
+
 	if a.objectStore == nil {
 		return profile, errors.New("objectstore not available")
 	}
 
-	profileDetails, err := a.objectStore.GetDetails(profileId)
+	profileDetails, err := a.objectStore.GetDetails(profileID)
 	if err != nil {
 		return profile, err
 	}
@@ -48,6 +47,6 @@ func (a *Anytype) LocalProfile() (Profile, error) {
 	return profile, nil
 }
 
-func (a *Anytype) ProfileID() string {
-	return a.accountSpacePredefinedObjectIDs.Profile
+func (a *Anytype) ProfileID(spaceID string) string {
+	return a.PredefinedObjects(spaceID).Profile
 }

@@ -100,7 +100,7 @@ func (i *Import) Import(ctx session.Context, req *pb.RpcObjectImportRequest) err
 	}
 	allErrors := converter.NewError()
 	if c, ok := i.converters[req.Type.String()]; ok {
-		res, err := c.GetSnapshots(req, progress)
+		res, err := c.GetSnapshots(ctx, req, progress)
 		if len(err) != 0 {
 			resultErr := err.GetResultError(req.Type)
 			if shouldReturnError(resultErr, res, req) {
@@ -194,7 +194,7 @@ func (i *Import) ImportWeb(ctx session.Context, req *pb.RpcObjectImportRequest) 
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(req, progress)
+	res, err := w.GetSnapshots(ctx, req, progress)
 
 	if err != nil {
 		return "", nil, err.Error()

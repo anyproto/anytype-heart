@@ -64,8 +64,7 @@ type Anytype struct {
 	objectStore objectstore.ObjectStore
 	deriver     ObjectsDeriver
 
-	accountSpacePredefinedObjectIDs threads.DerivedSmartblockIds
-	predefinedObjectsPerSpace       map[string]threads.DerivedSmartblockIds
+	predefinedObjectsPerSpace map[string]threads.DerivedSmartblockIds
 
 	migrationOnce    sync.Once
 	lock             sync.RWMutex
