@@ -16919,6 +16919,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
 | NO_OBJECTS_TO_IMPORT | 5 |  |
 | IMPORT_IS_CANCELED | 6 |  |
+| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 
 
 

@@ -17,6 +17,8 @@ const (
 	Name                  = "Csv"
 	rootCollectionName    = "CSV Import"
 	numberOfProgressSteps = 2
+	limitForColumns       = 10
+	limitForRows          = 1000
 )
 
 type Result struct {
@@ -156,7 +158,6 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}
-			continue
 		}
 		allObjectsIDs = append(allObjectsIDs, collectionID)
 		allSnapshots = append(allSnapshots, snapshots...)

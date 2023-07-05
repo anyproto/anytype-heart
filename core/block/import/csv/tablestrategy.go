@@ -73,13 +73,13 @@ func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, useFir
 			return err
 		}
 	}
-	for i, columns := range csvTable {
+	for i := 0; i < len(csvTable); i++ {
 		rowID, err := c.createRow(st, tableID, i == 0, useFirstRowForHeader)
 		if err != nil {
 			return err
 		}
 
-		err = c.createCells(columns, st, rowID, columnIDs)
+		err = c.createCells(csvTable[i], st, rowID, columnIDs)
 		if err != nil {
 			return err
 		}
@@ -118,14 +118,14 @@ func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, colum
 }
 
 func (c *TableStrategy) createCells(columns []string, st *state.State, rowID string, columnIDs []string) error {
-	for j, column := range columns {
+	for i := 0; i < len(columns); i++ {
 		textBlock := &model.Block{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Text: column},
+				Text: &model.BlockContentText{Text: columns[i]},
 			},
 		}
-		_, err := c.tableEditor.CellCreate(st, rowID, columnIDs[j], textBlock)
+		_, err := c.tableEditor.CellCreate(st, rowID, columnIDs[i], textBlock)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func (c *TableStrategy) createRow(st *state.State, tableID string, isFirstRow bo
 
 func (c *TableStrategy) createColumns(csvTable [][]string, st *state.State, tableID string) ([]string, error) {
 	columnIDs := make([]string, 0, len(csvTable[0]))
-	for range csvTable[0] {
+	for i := 0; i < len(csvTable[0]); i++ {
 		colID, err := c.tableEditor.ColumnCreate(st, pb.RpcBlockTableColumnCreateRequest{
 			Position: model.Block_Inner,
 			TargetId: tableID,

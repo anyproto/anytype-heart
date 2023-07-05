@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -15,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ErrCantRequestHeaderModel = errors.New("can't request header model")
@@ -93,7 +92,7 @@ func (t *treeImporter) State(fullStateChain bool) (*state.State, error) {
 }
 
 func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
-	aclList, err := list.BuildAclList(t.listStorage)
+	aclList, err := list.BuildAclList(t.listStorage, list.NoOpAcceptorVerifier{})
 	if err != nil {
 		return
 	}

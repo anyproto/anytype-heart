@@ -539,3 +539,38 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrNoObjectsToImport))
 }
+
+func Test_ImportErrLimitExceeded(t *testing.T) {
+	i := Import{}
+	ctrl := gomock.NewController(t)
+	converter := cv.NewMockConverter(ctrl)
+	e := cv.NewFromError("test", cv.ErrLimitExceeded)
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{&model.Block{
+					Id: "1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text:  "test",
+							Style: model.BlockContentText_Numbered,
+						},
+					},
+				},
+				},
+			},
+		},
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+	i.converters = make(map[string]cv.Converter, 0)
+	i.converters["Notion"] = converter
+	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+	})
+
+	assert.NotNil(t, res)
+	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
+	assert.Contains(t, res.Error(), "import path: test")
+}
