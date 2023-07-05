@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	xnetutil "golang.org/x/net/netutil"
+	"golang.org/x/time/rate"
 
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
@@ -25,9 +25,9 @@ import (
 const (
 	CName = "gateway"
 
-	defaultPort        = 47800
-	getFileTimeout     = 1 * time.Minute
-	maximumConnections = 100
+	defaultPort              = 47800
+	getFileTimeout           = 1 * time.Minute
+	maximumRequestsPerSecond = 100
 )
 
 var log = logging.Logger("anytype-gateway")
@@ -51,6 +51,7 @@ type gateway struct {
 	addr            string
 	mu              sync.Mutex
 	isServerStarted bool
+	limiter         *rate.Limiter
 }
 
 func getRandomPort() (int, error) {
@@ -102,6 +103,7 @@ func (g *gateway) Run(context.Context) error {
 	g.handler = http.NewServeMux()
 	g.handler.HandleFunc("/file/", g.fileHandler)
 	g.handler.HandleFunc("/image/", g.imageHandler)
+	g.limiter = rate.NewLimiter(maximumRequestsPerSecond, maximumRequestsPerSecond)
 
 	// check port first
 	listener, err := net.Listen("tcp", g.addr)
@@ -157,7 +159,7 @@ func (g *gateway) startServer() {
 		return
 	}
 
-	g.listener = xnetutil.LimitListener(ln, maximumConnections)
+	g.listener = ln
 
 	g.server = &http.Server{
 		Addr:    g.addr,
@@ -204,6 +206,10 @@ func enableCors(w http.ResponseWriter) {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
+	if !g.limiter.Allow() {
+		log.Warnf("maximum number of http requests exceeded. Stopping processing of particular request '%s'", r.URL.Path)
+		return
+	}
 	enableCors(w)
 	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
 	defer cancel()
@@ -240,8 +246,12 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	return file, reader, err
 }
 
-// fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
+// imageHandler gets image meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+	if !g.limiter.Allow() {
+		log.Warnf("maximum number of http requests exceeded. Stopping processing of particular request '%s'", r.URL.Path)
+		return
+	}
 	enableCors(w)
 
 	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
