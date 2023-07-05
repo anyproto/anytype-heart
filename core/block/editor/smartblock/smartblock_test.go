@@ -40,7 +40,7 @@ func TestSmartBlock_Init(t *testing.T) {
 func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		fx := newFixture(t)
-		fx.at.EXPECT().ProfileID().Return("profile1")
+		fx.at.EXPECT().ProfileID("space1").Return("profile1")
 		fx.at.EXPECT().PredefinedObjects("space1").Return(threads.DerivedSmartblockIds{})
 		defer fx.tearDown()
 

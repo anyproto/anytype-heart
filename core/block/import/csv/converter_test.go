@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -21,7 +23,7 @@ import (
 func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/test.csv"}},
 		},
@@ -46,7 +48,7 @@ func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 func TestCsv_GetSnapshots(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/Journal.csv"},
@@ -79,7 +81,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 func TestCsv_GetSnapshotsTable(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path: []string{"testdata/Journal.csv"},
@@ -108,7 +110,7 @@ func TestCsv_GetSnapshotsTable(t *testing.T) {
 func TestCsv_GetSnapshotsTableUseFirstColumnForRelationsOn(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/Journal.csv"},
@@ -149,7 +151,7 @@ func TestCsv_GetSnapshotsTableUseFirstColumnForRelationsOn(t *testing.T) {
 func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{Path: []string{"testdata/semicolon.csv"}, Delimiter: ";", UseFirstRowForRelations: true},
 		},
@@ -168,7 +170,7 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/transpose.csv"},
@@ -196,7 +198,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/transpose.csv"},
@@ -224,7 +226,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/Journal.csv"},
@@ -268,7 +270,7 @@ func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *converter.
 func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:      []string{"testdata/Journal.csv"},
@@ -323,7 +325,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/quotedstrings.csv"},
@@ -344,7 +346,7 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := csv.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/bigfile.csv"},

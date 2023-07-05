@@ -9,8 +9,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/mock_converter"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
@@ -23,8 +25,8 @@ func Test_ImportSuccess(t *testing.T) {
 	i := Import{}
 
 	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter := mock_converter.NewMockConverter(t)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -63,10 +65,10 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	i := Import{}
 
 	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
+	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(nil, e).Times(1)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
@@ -88,8 +90,8 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i := Import{}
 
 	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter := mock_converter.NewMockConverter(t)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -129,10 +131,10 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i := Import{}
 
 	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
+	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
 				Id: "1",
@@ -170,10 +172,10 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i := Import{}
 
 	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
+	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewError()
 	e.Add("error", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -429,10 +431,9 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 
 func Test_ImportCancelError(t *testing.T) {
 	i := Import{}
-	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
+	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewCancelError("path", fmt.Errorf("converter error"))
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: nil}, e).Times(1)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
@@ -448,10 +449,9 @@ func Test_ImportCancelError(t *testing.T) {
 
 func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
-	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
+	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: nil}, e).Times(1)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
@@ -467,10 +467,9 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
-	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
+	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -503,8 +502,8 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
 	ctrl := gomock.NewController(t)
 	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
-	converter := cv.NewMockConverter(ctrl)
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter := mock_converter.NewMockConverter(t)
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{
@@ -542,10 +541,9 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 
 func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
-	ctrl := gomock.NewController(t)
-	converter := cv.NewMockConverter(ctrl)
+	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewFromError("test", cv.ErrLimitExceeded)
-	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks: []*model.Block{&model.Block{

@@ -1,20 +1,24 @@
 package txt
 
 import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestTXT_GetSnapshots(t *testing.T) {
 	h := &TXT{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := h.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := h.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfTxtParams{
 			TxtParams: &pb.RpcObjectImportRequestTxtParams{Path: []string{"testdata/test.txt", "testdata/test"}},
 		},

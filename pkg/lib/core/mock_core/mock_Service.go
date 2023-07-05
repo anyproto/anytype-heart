@@ -365,23 +365,23 @@ func (_c *MockService_IsStarted_Call) RunAndReturn(run func() bool) *MockService
 	return _c
 }
 
-// LocalProfile provides a mock function with given fields:
-func (_m *MockService) LocalProfile() (core.Profile, error) {
-	ret := _m.Called()
+// LocalProfile provides a mock function with given fields: spaceID
+func (_m *MockService) LocalProfile(spaceID string) (core.Profile, error) {
+	ret := _m.Called(spaceID)
 
 	var r0 core.Profile
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (core.Profile, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) (core.Profile, error)); ok {
+		return rf(spaceID)
 	}
-	if rf, ok := ret.Get(0).(func() core.Profile); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) core.Profile); ok {
+		r0 = rf(spaceID)
 	} else {
 		r0 = ret.Get(0).(core.Profile)
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(spaceID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -395,13 +395,14 @@ type MockService_LocalProfile_Call struct {
 }
 
 // LocalProfile is a helper method to define mock.On call
-func (_e *MockService_Expecter) LocalProfile() *MockService_LocalProfile_Call {
-	return &MockService_LocalProfile_Call{Call: _e.mock.On("LocalProfile")}
+//   - spaceID string
+func (_e *MockService_Expecter) LocalProfile(spaceID interface{}) *MockService_LocalProfile_Call {
+	return &MockService_LocalProfile_Call{Call: _e.mock.On("LocalProfile", spaceID)}
 }
 
-func (_c *MockService_LocalProfile_Call) Run(run func()) *MockService_LocalProfile_Call {
+func (_c *MockService_LocalProfile_Call) Run(run func(spaceID string)) *MockService_LocalProfile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -411,7 +412,7 @@ func (_c *MockService_LocalProfile_Call) Return(_a0 core.Profile, _a1 error) *Mo
 	return _c
 }
 
-func (_c *MockService_LocalProfile_Call) RunAndReturn(run func() (core.Profile, error)) *MockService_LocalProfile_Call {
+func (_c *MockService_LocalProfile_Call) RunAndReturn(run func(string) (core.Profile, error)) *MockService_LocalProfile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -540,13 +541,13 @@ func (_c *MockService_PredefinedObjects_Call) RunAndReturn(run func(string) thre
 	return _c
 }
 
-// ProfileID provides a mock function with given fields:
-func (_m *MockService) ProfileID() string {
-	ret := _m.Called()
+// ProfileID provides a mock function with given fields: spaceID
+func (_m *MockService) ProfileID(spaceID string) string {
+	ret := _m.Called(spaceID)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(spaceID)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -560,13 +561,14 @@ type MockService_ProfileID_Call struct {
 }
 
 // ProfileID is a helper method to define mock.On call
-func (_e *MockService_Expecter) ProfileID() *MockService_ProfileID_Call {
-	return &MockService_ProfileID_Call{Call: _e.mock.On("ProfileID")}
+//   - spaceID string
+func (_e *MockService_Expecter) ProfileID(spaceID interface{}) *MockService_ProfileID_Call {
+	return &MockService_ProfileID_Call{Call: _e.mock.On("ProfileID", spaceID)}
 }
 
-func (_c *MockService_ProfileID_Call) Run(run func()) *MockService_ProfileID_Call {
+func (_c *MockService_ProfileID_Call) Run(run func(spaceID string)) *MockService_ProfileID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -576,7 +578,7 @@ func (_c *MockService_ProfileID_Call) Return(_a0 string) *MockService_ProfileID_
 	return _c
 }
 
-func (_c *MockService_ProfileID_Call) RunAndReturn(run func() string) *MockService_ProfileID_Call {
+func (_c *MockService_ProfileID_Call) RunAndReturn(run func(string) string) *MockService_ProfileID_Call {
 	_c.Call.Return(run)
 	return _c
 }
