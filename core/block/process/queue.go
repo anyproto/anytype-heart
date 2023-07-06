@@ -112,10 +112,7 @@ func (p *queue) Wait(ts ...Task) (err error) {
 	p.m.Unlock()
 	var done = make(chan struct{}, len(ts))
 	for _, t := range ts {
-		if err = p.msgs.Add(func() {
-			t()
-			done <- struct{}{}
-		}); err != nil {
+		if err = p.msgs.Add(taskFunction(t, done)); err != nil {
 			return ErrQueueDone
 		}
 		atomic.AddInt64(&p.pTotal, 1)
@@ -130,6 +127,13 @@ func (p *queue) Wait(ts ...Task) (err error) {
 		}
 	}
 	return
+}
+
+func taskFunction(t Task, done chan struct{}) func() {
+	return func() {
+		t()
+		done <- struct{}{}
+	}
 }
 
 func (p *queue) Finalize() (err error) {
