@@ -71,7 +71,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *block.NotionImportContext) (*converter.Response, converter.ConvertError) {
+	req *block.NotionImportContext) (*converter.Response, *property.PropertiesStore, converter.ConvertError) {
 	var (
 		allSnapshots         = make([]*converter.Snapshot, 0)
 		notionIdsToAnytype   = make(map[string]string, 0)
@@ -86,11 +86,11 @@ func (ds *Service) GetDatabase(_ context.Context,
 	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, converter.NewCancelError(d.ID, err)
+			return nil, nil, converter.NewCancelError(d.ID, err)
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, req, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs, relations)
+		snapshot, err := ds.makeDatabaseSnapshot(d, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs, relations)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, converter.NewFromError(d.ID, err)
+			return nil, nil, converter.NewFromError(d.ID, err)
 		}
 		if err != nil {
 			continue
@@ -101,12 +101,15 @@ func (ds *Service) GetDatabase(_ context.Context,
 	req.DatabaseNameToID = databaseNameToID
 	req.ParentPageToChildIDs = parentPageToChildIDs
 	if convertError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, nil
+		return &converter.Response{Snapshots: allSnapshots}, relations, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, convertError
+	return &converter.Response{Snapshots: allSnapshots}, relations, convertError
 }
 
-func (ds *Service) makeDatabaseSnapshot(d Database, notionIdsToAnytype, databaseNameToID map[string]string, parentPageToChildIDs map[string][]string, relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
+func (ds *Service) makeDatabaseSnapshot(d Database,
+	notionIdsToAnytype, databaseNameToID map[string]string,
+	parentPageToChildIDs map[string][]string,
+	relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
 	detailsStruct := &types.Struct{Fields: details}
@@ -126,16 +129,16 @@ func (ds *Service) makeDatabaseSnapshot(d Database, notionIdsToAnytype, database
 			snapshots = append(snapshots, snapshot)
 		}
 	}
-	id, converterSnapshot := ds.provideSnapshot(d, st, detailsStruct)
+	id, databaseSnapshot := ds.provideSnapshot(d, st, detailsStruct)
 	notionIdsToAnytype[d.ID] = id
-	databaseNameToID[d.ID] = pbtypes.GetString(converterSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+	databaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	if d.Parent.DatabaseID != "" {
 		parentPageToChildIDs[d.Parent.DatabaseID] = append(parentPageToChildIDs[d.Parent.DatabaseID], d.ID)
 	}
 	if d.Parent.PageID != "" {
 		parentPageToChildIDs[d.Parent.PageID] = append(parentPageToChildIDs[d.Parent.PageID], d.ID)
 	}
-	snapshots = append(snapshots, converterSnapshot)
+	snapshots = append(snapshots, databaseSnapshot)
 	return snapshots, nil
 }
 
@@ -154,7 +157,6 @@ func (ds *Service) handleNameProperty(databaseProperty property.DatabaseProperty
 }
 
 func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.PropertiesStore,
-	req *block.NotionImportContext,
 	databaseProperty property.DatabasePropertyHandler,
 	key string,
 	st *state.State) *converter.Snapshot {
@@ -250,13 +252,13 @@ func (ds *Service) provideSnapshot(d Database, st *state.State, detailsStruct *t
 	}
 
 	id := uuid.New().String()
-	converterSnapshot := &converter.Snapshot{
+	databaseSnapshot := &converter.Snapshot{
 		Id:       id,
 		FileName: d.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		SbType:   sb.SmartBlockTypePage,
 	}
-	return id, converterSnapshot
+	return id, databaseSnapshot
 }
 
 func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {

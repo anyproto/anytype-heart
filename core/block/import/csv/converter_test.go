@@ -464,7 +464,7 @@ func TestCsv_GetSnapshotsSameRelations(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 13) // root collection + samerelations CSV collection + 4 relations + 7 objects
+	assert.Len(t, sn.Snapshots, 12) // root collection + samerelations CSV collection + 3 relations + 7 objects
 
 	relations := make([]*converter.Snapshot, 0, 3)
 	for _, snapshot := range sn.Snapshots {

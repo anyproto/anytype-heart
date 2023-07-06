@@ -27,7 +27,7 @@ import (
 var logger = logging.Logger("import-csv")
 
 const (
-	columnPath = "column"
+	columnPath          = "column"
 	defaultRelationName = "Field"
 )
 
@@ -103,7 +103,7 @@ func getDetailsFromCSVTable(csvTable [][]string, fileName string, useFirstRowFor
 			Name:   relationName,
 			Key:    id,
 		})
-		source := getRelationSource(relationsSourceMap, fileName, relation)
+		source := getRelationSource(relationsSourceMap, fileName, relationName)
 		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
 			Id:     addr.RelationKeyToIdPrefix + id,
 			SbType: smartblock.SmartBlockTypeSubObject,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
@@ -63,7 +64,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	}
 
 	notionImportContext := block.NewNotionImportContext()
-	dbSnapshots, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
+	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
@@ -72,7 +73,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 
-	pgSnapshots, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionImportContext, progress)
+	pgSnapshots, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionImportContext, relations, progress)
 	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}

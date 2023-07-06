@@ -13,6 +13,7 @@ type NotionImportContext struct {
 	NotionDatabaseIdsToAnytype map[string]string
 	PageNameToID               map[string]string
 	DatabaseNameToID           map[string]string
+	ParentPageToChildIDs       map[string][]string
 }
 
 func NewNotionImportContext() *NotionImportContext {
