@@ -4,10 +4,11 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
-	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
-	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"io"
 	"strings"
+
+	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
 )
 
 type zipAclReadStorage struct {
@@ -39,7 +40,7 @@ func (z *zipAclReadStorage) Id() string {
 	return z.id
 }
 
-func (z *zipAclReadStorage) Root() (*aclrecordproto.RawAclRecordWithId, error) {
+func (z *zipAclReadStorage) Root() (*consensusproto.RawRecordWithId, error) {
 	return z.readRecord(z.id)
 }
 
@@ -51,15 +52,15 @@ func (z *zipAclReadStorage) SetHead(headId string) error {
 	panic("should not be called")
 }
 
-func (z *zipAclReadStorage) GetRawRecord(ctx context.Context, id string) (*aclrecordproto.RawAclRecordWithId, error) {
+func (z *zipAclReadStorage) GetRawRecord(_ context.Context, id string) (*consensusproto.RawRecordWithId, error) {
 	return z.readRecord(id)
 }
 
-func (z *zipAclReadStorage) AddRawRecord(ctx context.Context, rec *aclrecordproto.RawAclRecordWithId) (err error) {
+func (z *zipAclReadStorage) AddRawRecord(_ context.Context, _ *consensusproto.RawRecordWithId) (err error) {
 	panic("should not be called")
 }
 
-func (z *zipAclReadStorage) readRecord(id string) (rec *aclrecordproto.RawAclRecordWithId, err error) {
+func (z *zipAclReadStorage) readRecord(id string) (rec *consensusproto.RawRecordWithId, err error) {
 	file, ok := z.files[id]
 	if !ok {
 		err = fmt.Errorf("object not found in storage")
@@ -75,6 +76,6 @@ func (z *zipAclReadStorage) readRecord(id string) (rec *aclrecordproto.RawAclRec
 	if err != nil {
 		return
 	}
-	rec = &aclrecordproto.RawAclRecordWithId{Payload: buf, Id: id}
+	rec = &consensusproto.RawRecordWithId{Payload: buf, Id: id}
 	return
 }

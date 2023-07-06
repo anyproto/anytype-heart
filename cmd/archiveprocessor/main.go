@@ -218,19 +218,6 @@ func processAndValidate(snapshot *pb.ChangeSnapshot, info *useCaseInfo) error {
 	processAccountRelatedDetails(snapshot)
 	processRules(snapshot)
 
-	if id == "bafyreibop22didlfnzyoplncnhd5cqrevjw5nwud3maqrzeq6h7jzedhmi" {
-		snapshot.Data.Blocks[15].Content.(*model.BlockContentOfBookmark).Bookmark = &model.BlockContentBookmark{
-			TargetObjectId: "bafyreidj2g3i6lc3udtlrr5ytcsgusywcyecepcirk5cans6aoxw2nnmhy",
-			Type:           model.LinkPreview_Page,
-			State:          model.BlockContentBookmark_Done,
-			Url:            "https://community.anytype.io/",
-			Title:          "Anytype Community",
-			Description:    "Place to share feedback, write bug reports, and connect with Anytype users from all over the globe!",
-			ImageHash:      "bafybeib4mags3wtdcpnlwcysqby6kdhvy2hbk3s54owcqmpvjwlv4xe7ky",
-			FaviconHash:    "bafybeiasl27gslws4hpvzufm467zjhxb3klodj53rt6dpola67bmvep3x4",
-		}
-	}
-
 	if !strings.HasPrefix(id, addr.RelationKeyToIdPrefix) && !strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
 		isValid := true
 		for _, v := range validators {

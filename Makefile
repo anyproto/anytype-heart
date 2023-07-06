@@ -43,7 +43,7 @@ lint:
 
 test:
 	@echo 'Running tests...'
-	@ANYTYPE_LOG_NOGELF=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go test -cover github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go test -race -cover github.com/anyproto/anytype-heart/...
 
 test-integration:
 	@echo 'Running integration tests...'

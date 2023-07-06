@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b4fb721c0937e69e97e0d5be67e5fab27a674afdc3a4e9a0c4323b4e7e5414ec"
+const RelationChecksum = "165040560b4a08b762713b5f5f4bdecb02432de64306c5b475421ffff0efa0c6"
 
 type RelationKey string
 
@@ -212,7 +212,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_braperture",
 			Key:              "aperture",
 			MaxCount:         1,
@@ -225,7 +225,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Name of artist",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_brartist",
 			Key:              "artist",
 			MaxCount:         1,
@@ -264,7 +264,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Audio record's album name",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_braudioAlbum",
 			Key:              "audioAlbum",
 			MaxCount:         1,
@@ -290,7 +290,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "The artist that performed this album or recording",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_braudioArtist",
 			Key:              "audioArtist",
 			MaxCount:         1,
@@ -303,7 +303,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Audio record's genre name",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_braudioGenre",
 			Key:              "audioGenre",
 			MaxCount:         1,
@@ -355,7 +355,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Camera used to capture image or video",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_brcamera",
 			Key:              "camera",
 			MaxCount:         1,
@@ -443,7 +443,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_brcomposer",
 			Key:              "composer",
 			MaxCount:         1,
@@ -456,7 +456,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Can contains image hash, color or prebuild bg id, depends on coverType relation",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_brcoverId",
 			Key:              "coverId",
@@ -670,7 +670,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_brexposure",
 			Key:              "exposure",
 			MaxCount:         1,
@@ -710,7 +710,7 @@ var (
 
 			DataSource:       model.Relation_derived,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_brfileExt",
 			Key:              "fileExt",
 			MaxCount:         1,
@@ -723,7 +723,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Mime type of object",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_brfileMimeType",
 			Key:              "fileMimeType",
@@ -1047,7 +1047,7 @@ var (
 
 			DataSource:       model.Relation_derived,
 			Description:      "Last change ID",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_brlastChangeId",
 			Key:              "lastChangeId",
@@ -1460,7 +1460,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Id:               "_brrelationDefaultValue",
 			Key:              "relationDefaultValue",
 			MaxCount:         1,
@@ -1500,7 +1500,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Relation key",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_brrelationKey",
 			Key:              "relationKey",
@@ -1527,7 +1527,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Relation option color",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_brrelationOptionColor",
 			Key:              "relationOptionColor",
