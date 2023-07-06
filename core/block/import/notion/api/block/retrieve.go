@@ -78,8 +78,8 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	return allBlocks, nil
 }
 
-func (s *Service) MapNotionBlocksToAnytype(req *MapRequest) *MapResponse {
-	return MapBlocks(req)
+func (s *Service) MapNotionBlocksToAnytype(req *NotionImportContext, pageID string) *MapResponse {
+	return MapBlocks(req, pageID)
 }
 
 func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, pagination int64) ([]interface{}, error) {

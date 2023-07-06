@@ -62,7 +62,8 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, converter.NewFromError("", converter.ErrNoObjectsToImport)
 	}
 
-	dbSnapshots, mapRequest, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress)
+	notionImportContext := block.NewNotionImportContext()
+	dbSnapshots, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
@@ -70,7 +71,8 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Merge(dbErr)
 		return nil, ce
 	}
-	pgSnapshots, notionPageIDToAnytype, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, mapRequest, progress, relations)
+
+	pgSnapshots, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionImportContext, progress)
 	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
@@ -89,7 +91,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		dbs = dbSnapshots.Snapshots
 	}
 
-	n.dbService.AddPagesToCollections(dbs, pages, db, notionPageIDToAnytype, mapRequest.NotionDatabaseIdsToAnytype)
+	n.dbService.AddPagesToCollections(dbs, pages, db, notionImportContext.NotionPageIdsToAnytype, notionImportContext.NotionDatabaseIdsToAnytype)
 
 	dbs, err = n.dbService.AddObjectsToNotionCollection(dbs, pgs)
 	if err != nil {

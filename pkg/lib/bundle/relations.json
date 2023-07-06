@@ -10,7 +10,7 @@
   },
   {
     "description": "Camera used to capture image or video",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "camera",
     "maxCount": 1,
@@ -60,7 +60,7 @@
   },
   {
     "description": "Relation key",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": true,
     "key": "relationKey",
     "maxCount": 1,
@@ -70,7 +70,7 @@
   },
   {
     "description": "Relation option color",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": true,
     "key": "relationOptionColor",
     "maxCount": 1,
@@ -175,7 +175,7 @@
   },
   {
     "description": "The artist that performed this album or recording",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "audioArtist",
     "maxCount": 1,
@@ -314,7 +314,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "relationDefaultValue",
     "maxCount": 1,
@@ -337,7 +337,7 @@
   },
   {
     "description": "Audio record's album name",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "audioAlbum",
     "maxCount": 1,
@@ -503,7 +503,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "aperture",
     "maxCount": 1,
@@ -615,7 +615,7 @@
   },
   {
     "description": "Name of artist",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "artist",
     "maxCount": 1,
@@ -756,7 +756,7 @@
     ]
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "exposure",
     "maxCount": 1,
@@ -820,7 +820,7 @@
   },
   {
     "description": "Audio record's genre name",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "audioGenre",
     "maxCount": 1,
@@ -929,7 +929,7 @@
   },
   {
     "description": "Mime type of object",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": true,
     "key": "fileMimeType",
     "maxCount": 1,
@@ -980,7 +980,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "composer",
     "maxCount": 1,
@@ -1135,7 +1135,7 @@
   },
   {
     "description": "Can contains image hash, color or prebuild bg id, depends on coverType relation",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": true,
     "key": "coverId",
     "maxCount": 1,
@@ -1227,7 +1227,7 @@
     "source": "account"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "fileExt",
     "maxCount": 1,
@@ -1324,7 +1324,6 @@
   {
     "description": "Space Dashboard object ID",
     "format": "object",
-    "hidden": false,
     "key": "spaceDashboardId",
     "maxCount": 1,
     "hidden": true,
@@ -1374,12 +1373,31 @@
   },
   {
     "description": "Last change ID",
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": true,
     "key": "lastChangeId",
     "maxCount": 1,
     "name": "Last change ID of the object",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "starred",
+    "maxCount": 1,
+    "name": "Starred",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "ID of template chosen as default for particular object type",
+    "format": "object",
+    "key": "defaultTemplateId",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Default Template ID",
+    "readonly": false,
+    "source": "details"
   }
 ]

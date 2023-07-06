@@ -68,14 +68,14 @@ type ChildSetter interface {
 }
 
 type Getter interface {
-	GetBlocks(req *MapRequest) *MapResponse
+	GetBlocks(req *NotionImportContext, pageID string) *MapResponse
 }
 
 const unsupportedBlockMessage = "Unsupported block"
 
 type UnsupportedBlock struct{}
 
-func (*UnsupportedBlock) GetBlocks(req *MapRequest) *MapResponse {
+func (*UnsupportedBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id: id,

@@ -3,9 +3,8 @@ package treearchive
 import (
 	"errors"
 	"fmt"
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -14,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ErrCantRequestHeaderModel = errors.New("can't request header model")
@@ -44,7 +44,7 @@ func (m MarshalledJsonChange) MarshalJSON() ([]byte, error) {
 
 type TreeImporter interface {
 	ObjectTree() objecttree.ReadableObjectTree
-	State() (*state.State, error)
+	State(fullStateChain bool) (*state.State, error) // set fullStateChain to true to get full state chain, otherwise only the last state will be returned
 	Import(fromRoot bool, beforeId string) error
 	Json() (TreeJson, error)
 	ChangeAt(idx int) (IdChange, error)
@@ -67,10 +67,22 @@ func (t *treeImporter) ObjectTree() objecttree.ReadableObjectTree {
 	return t.objectTree
 }
 
-func (t *treeImporter) State() (*state.State, error) {
-	st, _, _, err := source.BuildState(nil, t.objectTree, "")
-	if err != nil {
-		return nil, err
+func (t *treeImporter) State(fullStateChain bool) (*state.State, error) {
+	var (
+		st  *state.State
+		err error
+	)
+
+	if fullStateChain {
+		st, _, _, err = source.BuildStateFull(nil, t.objectTree, "")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		st, _, _, err = source.BuildState(nil, t.objectTree, "")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if _, _, err = state.ApplyStateFast(st); err != nil {
@@ -80,7 +92,7 @@ func (t *treeImporter) State() (*state.State, error) {
 }
 
 func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
-	aclList, err := list.BuildAclList(t.listStorage)
+	aclList, err := list.BuildAclList(t.listStorage, list.NoOpAcceptorVerifier{})
 	if err != nil {
 		return
 	}
@@ -91,6 +103,7 @@ func (t *treeImporter) Import(fullTree bool, beforeId string) (err error) {
 		IncludeBeforeId: true,
 		BuildFullTree:   fullTree,
 	})
+
 	return
 }
 

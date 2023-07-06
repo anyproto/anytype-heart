@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 
@@ -82,12 +83,23 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 	newID := oldIDtoNew[sn.Id]
 	oc.setRootBlock(snapshot, newID)
 
-	oc.setWorkspaceID(err, newID, snapshot)
+	oc.setWorkspaceID(newID, snapshot)
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
 	st.SetRootId(newID)
 	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
-	st.SetLastModified(pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String()), oc.core.ProfileID())
+	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
+	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	if lastModifiedDate == 0 {
+		if createdDate != 0 {
+			lastModifiedDate = createdDate
+		} else {
+			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
+			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
+			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
+		}
+	}
+	st.SetLastModified(lastModifiedDate, oc.core.ProfileID())
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -131,7 +143,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(ctx, st, newID)
+	syncErr := oc.syncFilesAndLinks(ctx, newID)
 	if syncErr != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to sync %s: %s", newID, err.Error())
 	}
@@ -211,13 +223,16 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 	})
 }
 
-func (oc *ObjectCreator) setWorkspaceID(err error, newID string, snapshot *model.SmartBlockSnapshotBase) {
+func (oc *ObjectCreator) setWorkspaceID(newID string, snapshot *model.SmartBlockSnapshotBase) {
 	if oc.core.PredefinedBlocks().Account == newID {
 		return
 	}
 	workspaceID, err := oc.core.GetWorkspaceIdForObject(newID)
 	if err != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", newID, err.Error())
+	}
+	if workspaceID == "" {
+		return
 	}
 
 	if snapshot.Details != nil && snapshot.Details.Fields != nil {
@@ -386,25 +401,38 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, st *state.State, newID string) error {
-	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
-	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-		s := oc.syncFactory.GetSyncer(bl)
-		if s != nil {
-			if sErr := s.Sync(ctx, newID, bl); sErr != nil {
-				log.With(zap.String("object id", newID)).Errorf("sync: %s", sErr)
+func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, newID string) error {
+	tasks := make([]func() error, 0)
+	var fileHashes []string
+
+	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
+		st := b.NewState()
+		return st.Iterate(func(bl simple.Block) (isContinue bool) {
+			fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
+			s := oc.syncFactory.GetSyncer(bl)
+			if s != nil {
+				// We can't run syncer here because it will cause a deadlock, so we defer this operation
+				tasks = append(tasks, func() error {
+					return s.Sync(ctx, newID, bl)
+				})
 			}
-		}
-		if bl != nil {
-			if file := bl.Model().GetFile(); file != nil {
-				fileHashes = append(fileHashes, file.Hash)
+			if bl != nil {
+				if file := bl.Model().GetFile(); file != nil {
+					fileHashes = append(fileHashes, file.Hash)
+				}
 			}
-		}
-		return true
+			return true
+		})
 	})
 	if err != nil {
 		return err
 	}
+	for _, task := range tasks {
+		if err := task(); err != nil {
+			log.With(zap.String("objectID", newID)).Errorf("syncer: %s", err)
+		}
+	}
+
 	for _, hash := range fileHashes {
 		err = oc.fileStore.SetIsFileImported(hash, true)
 		if err != nil {

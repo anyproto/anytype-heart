@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +32,7 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	ds := database.New(nil)
-	databases, _, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import))
+	databases, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import), block.NewNotionImportContext())
 
 	assert.NotNil(t, databases)
 	assert.Len(t, databases.Snapshots, 17) //1 database + 16 properties (name doesn't count)

@@ -22,7 +22,7 @@ const (
 )
 
 type ChildrenMapper interface {
-	MapChildren(req *MapRequest) *MapResponse
+	MapChildren(req *NotionImportContext) *MapResponse
 }
 
 type TextObject struct {
@@ -30,7 +30,7 @@ type TextObject struct {
 	Color    string         `json:"color"`
 }
 
-func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds []string, req *MapRequest) *MapResponse {
+func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds []string, req *NotionImportContext) *MapResponse {
 	var marks []*model.BlockContentTextMark
 	id := bson.NewObjectId().Hex()
 	allBlocks := make([]*model.Block, 0)
@@ -122,7 +122,7 @@ func (t *TextObject) handleTextType(rt api.RichText,
 
 func (t *TextObject) handleMentionType(rt api.RichText,
 	text *strings.Builder,
-	req *MapRequest) []*model.BlockContentTextMark {
+	req *NotionImportContext) []*model.BlockContentTextMark {
 	if rt.Mention.Type == api.UserMention {
 		return t.handleUserMention(rt, text)
 	}
@@ -261,9 +261,9 @@ type TextObjectWithChildren struct {
 	Children []interface{} `json:"children"`
 }
 
-func (t *TextObjectWithChildren) MapChildren(req *MapRequest) *MapResponse {
+func (t *TextObjectWithChildren) MapChildren(req *NotionImportContext) *MapResponse {
 	childReq := *req
 	childReq.Blocks = t.Children
-	resp := MapBlocks(&childReq)
+	resp := MapBlocks(&childReq, "")
 	return resp
 }

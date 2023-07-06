@@ -67,13 +67,17 @@ func (p *Database) GetObjectType() string {
 }
 
 // GetDatabase makes snapshots from notion Database objects
-func (ds *Service) GetDatabase(_ context.Context, mode pb.RpcObjectImportRequestMode, databases []Database, progress process.Progress) (
-	*converter.Response, *block.MapRequest, *property.PropertiesStore, converter.ConvertError) {
+func (ds *Service) GetDatabase(_ context.Context,
+	mode pb.RpcObjectImportRequestMode,
+	databases []Database,
+	progress process.Progress,
+	req *block.NotionImportContext) (*converter.Response, converter.ConvertError) {
 	var (
-		allSnapshots       = make([]*converter.Snapshot, 0)
-		notionIdsToAnytype = make(map[string]string, 0)
-		databaseNameToID   = make(map[string]string, 0)
-		convertError       = converter.ConvertError{}
+		allSnapshots         = make([]*converter.Snapshot, 0)
+		notionIdsToAnytype   = make(map[string]string, 0)
+		databaseNameToID     = make(map[string]string, 0)
+		parentPageToChildIDs = make(map[string][]string, 0)
+		convertError         = converter.ConvertError{}
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	relations := &property.PropertiesStore{
@@ -82,28 +86,27 @@ func (ds *Service) GetDatabase(_ context.Context, mode pb.RpcObjectImportRequest
 	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, nil, converter.NewCancelError(d.ID, err)
+			return nil, converter.NewCancelError(d.ID, err)
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, notionIdsToAnytype, databaseNameToID, relations)
+		snapshot, err := ds.makeDatabaseSnapshot(d, req, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs, relations)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, nil, converter.NewFromError(d.ID, err)
+			return nil, converter.NewFromError(d.ID, err)
 		}
 		if err != nil {
 			continue
 		}
 		allSnapshots = append(allSnapshots, snapshot...)
 	}
-	mapRequest := &block.MapRequest{
-		NotionDatabaseIdsToAnytype: notionIdsToAnytype,
-		DatabaseNameToID:           databaseNameToID,
-	}
+	req.NotionDatabaseIdsToAnytype = notionIdsToAnytype
+	req.DatabaseNameToID = databaseNameToID
+	req.ParentPageToChildIDs = parentPageToChildIDs
 	if convertError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, mapRequest, relations, nil
+		return &converter.Response{Snapshots: allSnapshots}, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, mapRequest, relations, convertError
+	return &converter.Response{Snapshots: allSnapshots}, convertError
 }
 
-func (ds *Service) makeDatabaseSnapshot(d Database, notionIdsToAnytype, databaseNameToID map[string]string, relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
+func (ds *Service) makeDatabaseSnapshot(d Database, notionIdsToAnytype, databaseNameToID map[string]string, parentPageToChildIDs map[string][]string, relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
 	detailsStruct := &types.Struct{Fields: details}
@@ -126,6 +129,12 @@ func (ds *Service) makeDatabaseSnapshot(d Database, notionIdsToAnytype, database
 	id, converterSnapshot := ds.provideSnapshot(d, st, detailsStruct)
 	notionIdsToAnytype[d.ID] = id
 	databaseNameToID[d.ID] = pbtypes.GetString(converterSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+	if d.Parent.DatabaseID != "" {
+		parentPageToChildIDs[d.Parent.DatabaseID] = append(parentPageToChildIDs[d.Parent.DatabaseID], d.ID)
+	}
+	if d.Parent.PageID != "" {
+		parentPageToChildIDs[d.Parent.PageID] = append(parentPageToChildIDs[d.Parent.PageID], d.ID)
+	}
 	snapshots = append(snapshots, converterSnapshot)
 	return snapshots, nil
 }
@@ -144,7 +153,11 @@ func (ds *Service) handleNameProperty(databaseProperty property.DatabaseProperty
 	return nil
 }
 
-func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.PropertiesStore, databaseProperty property.DatabasePropertyHandler, key string, st *state.State) *converter.Snapshot {
+func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.PropertiesStore,
+	req *block.NotionImportContext,
+	databaseProperty property.DatabasePropertyHandler,
+	key string,
+	st *state.State) *converter.Snapshot {
 	var (
 		rel *model.SmartBlockSnapshotBase
 		sn  *converter.Snapshot
@@ -287,7 +300,7 @@ func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots []*converter.S
 	}
 
 	rootCollection := converter.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.AddObjects(rootCollectionName, allObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects)
 	if err != nil {
 		return nil, err
 	}

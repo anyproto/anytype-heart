@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark/whitespace"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -26,7 +26,10 @@ import (
 
 var logger = logging.Logger("import-csv")
 
-const columnPath = "column"
+const (
+	columnPath = "column"
+	defaultRelationName = "Field"
+)
 
 type CollectionStrategy struct {
 	collectionService *collection.Service
@@ -36,7 +39,7 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(path string, fileName string, csvTable [][]string) ([]string, []*converter.Snapshot, error) {
+func (c *CollectionStrategy) CreateObjects(path string, fileName string, csvTable [][]string, useFirstRowForRelations bool, progress process.Progress) (string, []*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	name := strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName))
@@ -44,11 +47,10 @@ func (c *CollectionStrategy) CreateObjects(path string, fileName string, csvTabl
 	details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 	_, _, st, err := c.collectionService.CreateCollection(details, nil)
 	if err != nil {
-		return nil, nil, err
+		return "", nil, err
 	}
-
-	relations, relationsSnapshots := getDetailsFromCSVTable(csvTable, fileName)
-	objectsSnapshots := getEmptyObjects(csvTable, relations)
+	relations, relationsSnapshots, errRelationLimit := getDetailsFromCSVTable(csvTable, fileName, useFirstRowForRelations)
+	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -61,27 +63,44 @@ func (c *CollectionStrategy) CreateObjects(path string, fileName string, csvTabl
 	snapshots = append(snapshots, snapshot)
 	snapshots = append(snapshots, objectsSnapshots...)
 	snapshots = append(snapshots, relationsSnapshots...)
-	allObjectsIDs = append(allObjectsIDs, snapshot.Id)
-
-	return allObjectsIDs, snapshots, nil
+	progress.AddDone(1)
+	if errRelationLimit != nil || errRowLimit != nil {
+		return snapshot.Id, snapshots, converter.ErrLimitExceeded
+	}
+	return snapshot.Id, snapshots, nil
 }
 
-func getDetailsFromCSVTable(csvTable [][]string, fileName string) ([]*model.Relation, []*converter.Snapshot) {
+func getDetailsFromCSVTable(csvTable [][]string, fileName string, useFirstRowForRelations bool) ([]*model.Relation, []*converter.Snapshot, error) {
 	if len(csvTable) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	relations := make([]*model.Relation, 0, len(csvTable[0]))
+	// first column is always a name
+	relations = append(relations, &model.Relation{
+		Format: model.RelationFormat_shorttext,
+		Key:    bundle.RelationKeyName.String(),
+	})
 	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
 	allRelations := csvTable[0]
+	var err error
+	numberOfRelationsLimit := len(allRelations)
+	if numberOfRelationsLimit > limitForColumns {
+		err = converter.ErrLimitExceeded
+		numberOfRelationsLimit = limitForColumns
+	}
 	relationsSourceMap := make(map[string]bool, 0)
-	for _, relation := range allRelations {
-		if relation == "" {
+	for i := 1; i < numberOfRelationsLimit; i++ {
+		if allRelations[i] == "" && useFirstRowForRelations {
 			continue
+		}
+		relationName := allRelations[i]
+		if !useFirstRowForRelations {
+			relationName = getDefaultRelationName(i)
 		}
 		id := bson.NewObjectId().Hex()
 		relations = append(relations, &model.Relation{
 			Format: model.RelationFormat_longtext,
-			Name:   relation,
+			Name:   relationName,
 			Key:    id,
 		})
 		source := getRelationSource(relationsSourceMap, fileName, relation)
@@ -89,12 +108,16 @@ func getDetailsFromCSVTable(csvTable [][]string, fileName string) ([]*model.Rela
 			Id:     addr.RelationKeyToIdPrefix + id,
 			SbType: smartblock.SmartBlockTypeSubObject,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
-				Details:     getRelationDetails(relation, id, source),
+				Details:     getRelationDetails(relationName, id, source),
 				ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
 			}},
 		})
 	}
-	return relations, relationsSnapshots
+	return relations, relationsSnapshots, err
+}
+
+func getDefaultRelationName(i int) string {
+	return defaultRelationName + " " + strconv.FormatInt(int64(i), 10)
 }
 
 func getRelationDetails(name, id, source string) *types.Struct {
@@ -108,9 +131,22 @@ func getRelationDetails(name, id, source string) *types.Struct {
 	return details
 }
 
-func getEmptyObjects(csvTable [][]string, relations []*model.Relation) []*converter.Snapshot {
+func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) ([]*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
-	for i := 1; i < len(csvTable); i++ {
+	numberOfObjectsLimit := len(csvTable)
+	var err error
+	if numberOfObjectsLimit >= limitForRows {
+		err = converter.ErrLimitExceeded
+		numberOfObjectsLimit = limitForRows
+		if useFirstRowForRelations {
+			numberOfObjectsLimit++ // because first row is relations, so we need to add plus 1 row
+		}
+	}
+	for i := 0; i < numberOfObjectsLimit; i++ {
+		// skip first row if option is turned on
+		if i == 0 && useFirstRowForRelations {
+			continue
+		}
 		st := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{
 				Content: &model.BlockContentOfSmartblock{
@@ -118,31 +154,28 @@ func getEmptyObjects(csvTable [][]string, relations []*model.Relation) []*conver
 				},
 			}),
 		}).NewState()
-		details, relationLinks := getDetailsForObject(csvTable, relations, i)
+		details, relationLinks := getDetailsForObject(csvTable[i], relations)
 		st.SetDetails(details)
-		template.InitTemplate(st, template.WithTitle)
 		st.AddRelationLinks(relationLinks...)
+		template.InitTemplate(st, template.WithTitle)
 		sn := provideObjectSnapshot(st, details)
 		snapshots = append(snapshots, sn)
 	}
-	return snapshots
+	return snapshots, err
 }
 
-func getDetailsForObject(csvTable [][]string, relations []*model.Relation, i int) (*types.Struct, []*model.RelationLink) {
+func getDetailsForObject(relationsValues []string, relations []*model.Relation) (*types.Struct, []*model.RelationLink) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	relationLinks := make([]*model.RelationLink, 0)
-	for j, value := range csvTable[i] {
+	for j, value := range relationsValues {
 		if len(relations) <= j {
 			break
 		}
-		name := strings.TrimSpace(whitespace.WhitespaceNormalizeString(relations[j].Name))
-		if strings.EqualFold(name, "name") {
-			relations[j].Key = bundle.RelationKeyName.String()
-		}
-		details.Fields[relations[j].Key] = pbtypes.String(value)
+		relation := relations[j]
+		details.Fields[relation.Key] = pbtypes.String(value)
 		relationLinks = append(relationLinks, &model.RelationLink{
-			Key:    relations[j].Key,
-			Format: relations[j].Format,
+			Key:    relation.Key,
+			Format: relation.Format,
 		})
 	}
 	return details, relationLinks

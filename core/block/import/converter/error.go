@@ -3,6 +3,7 @@ package converter
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -11,6 +12,7 @@ import (
 
 var ErrCancel = fmt.Errorf("import is canceled")
 var ErrNoObjectsToImport = fmt.Errorf("source path doesn't contain objects to import")
+var ErrLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
 
 type ConvertError map[string]error
 
@@ -66,11 +68,16 @@ func (ce ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) 
 	if ce.IsEmpty() {
 		return nil
 	}
-	var countNoObjectsToImport int
-	for _, e := range ce {
+	var (
+		countNoObjectsToImport int
+		limitErrorString       strings.Builder
+	)
+	for path, e := range ce {
 		switch {
 		case errors.Is(e, ErrCancel):
 			return errors.Wrapf(ErrCancel, "import type: %s", importType.String())
+		case errors.Is(e, ErrLimitExceeded):
+			limitErrorString.WriteString(fmt.Sprintf("import path: %s\n", path))
 		case errors.Is(e, ErrNoObjectsToImport):
 			countNoObjectsToImport++
 		}
@@ -79,5 +86,18 @@ func (ce ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) 
 	if countNoObjectsToImport == len(ce) {
 		return errors.Wrapf(ErrNoObjectsToImport, "import type: %s", importType.String())
 	}
+	if limitErrorString.String() != "" {
+		return errors.Wrap(ErrLimitExceeded, limitErrorString.String())
+	}
 	return errors.Wrapf(ce.Error(), "import type: %s", importType.String())
+}
+
+func (ce ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
+	var countNoObjectsToImport int
+	for _, err := range ce {
+		if errors.Is(err, ErrNoObjectsToImport) {
+			countNoObjectsToImport++
+		}
+	}
+	return importPathsCount == countNoObjectsToImport
 }

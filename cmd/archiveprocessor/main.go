@@ -37,16 +37,7 @@ type useCaseInfo struct {
 
 const anytypeProfileFilename = addr.AnytypeProfileId + ".pb"
 
-var (
-	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
-
-	sbTypesToBeExcluded = map[model.SmartBlockType]struct{}{
-		model.SmartBlockType_Workspace:   {},
-		model.SmartBlockType_Widget:      {},
-		model.SmartBlockType_ProfilePage: {},
-		model.SmartBlockType_Template:    {},
-	}
-)
+var errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 
 func main() {
 	if err := run(); err != nil {
@@ -174,8 +165,7 @@ func processFile(r io.ReadCloser, name string, info *useCaseInfo) ([]byte, error
 		return nil, err
 	}
 
-	if _, found := sbTypesToBeExcluded[sbType]; found {
-		fmt.Printf("Smartblock '%s' is excluded as has type %s\n", id, sbType.String())
+	if shouldBeExcluded(id, sbType) {
 		return nil, nil
 	}
 	fmt.Println(id, "\t", snapshot.Data.Details.Fields[bundle.RelationKeyName.String()].GetStringValue())

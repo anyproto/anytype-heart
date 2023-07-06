@@ -5,6 +5,7 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/util/slice"
 	"github.com/gogo/protobuf/jsonpb"
@@ -63,12 +64,13 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	}
 	p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
 	p.updateDetails(allSnapshots)
-	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+	if (!allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
+		allErrors.IsNoObjectToImportError(len(params.GetPath())) {
 		return nil, allErrors
 	}
 	if !params.GetNoCollection() {
 		rootCollection := converter.NewRootCollection(p.service)
-		rootCol, colErr := rootCollection.AddObjects(rootCollectionName, targetObjects)
+		rootCol, colErr := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 		if colErr != nil {
 			allErrors.Add(rootCollectionName, colErr)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -292,6 +294,11 @@ func (p *Pb) fillDetails(name string, mo *pb.SnapshotWithType) {
 	}
 	sourceDetail := converter.GetSourceDetail(name)
 	mo.Snapshot.Data.Details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(sourceDetail)
+
+	createdDate := pbtypes.GetInt64(mo.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	if createdDate == 0 {
+		mo.Snapshot.Data.Details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
+	}
 }
 
 func (p *Pb) Name() string {
