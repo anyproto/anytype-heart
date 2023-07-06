@@ -1,3 +1,4 @@
+// Package metrics used to record technical metrics, e.g. app start
 package metrics
 
 import (
