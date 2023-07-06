@@ -47,19 +47,19 @@ func (es *GrpcSender) Name() (name string) {
 	return CName
 }
 
-func (es *GrpcSender) IsActive(token string) bool {
+func (es *GrpcSender) IsActive(spaceID string, token string) bool {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
-	_, ok := es.Servers[token]
-	return ok
+	s, ok := es.Servers[token]
+	return ok && s.SpaceID == spaceID
 }
 
-func (es *GrpcSender) SendToSession(token string, event *pb.Event) {
+func (es *GrpcSender) SendToSession(spaceID string, token string, event *pb.Event) {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
-	if s, ok := es.Servers[token]; ok {
+	if s, ok := es.Servers[token]; ok && s.SpaceID == spaceID {
 		es.sendEvent(s, event)
 	}
 }
@@ -77,38 +77,34 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 }
 
 func (es *GrpcSender) Broadcast(event *pb.Event) {
-	es.broadcast(nil, event)
-}
-
-func (es *GrpcSender) BroadcastForSpace(spaceID string, event *pb.Event) {
-	// TODO Use spaceID
-	es.broadcast(nil, event)
-}
-
-// BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
-func (es *GrpcSender) BroadcastToOtherSessions(token string, event *pb.Event) {
-	// TODO Use spaceID
-	es.broadcast(&token, event)
-}
-
-// broadcast to all servers except server registered by ignoreSession token
-func (es *GrpcSender) broadcast(ignoreSession *string, event *pb.Event) {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
-	for id, s := range es.Servers {
-		if ignoreSession != nil && *ignoreSession == id {
-			continue
+	for _, s := range es.Servers {
+		es.sendEvent(s, event)
+	}
+}
+
+func (es *GrpcSender) BroadcastForSpace(spaceID string, event *pb.Event) {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	for _, s := range es.Servers {
+		if s.SpaceID == spaceID {
+			es.sendEvent(s, event)
 		}
-		go func(s SessionServer, id string) {
-			err := s.Server.Send(event)
-			if err != nil {
-				if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
-					es.shutdownCh <- id
-				}
-				log.Errorf("failed to send event: %s", err.Error())
-			}
-		}(s, id)
+	}
+}
+
+// BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
+func (es *GrpcSender) BroadcastToOtherSessions(spaceID string, token string, event *pb.Event) {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	for _, s := range es.Servers {
+		if s.Token != token && s.SpaceID == spaceID {
+			es.sendEvent(s, event)
+		}
 	}
 }
 
@@ -119,7 +115,7 @@ type SessionServer struct {
 	Server  service.ClientCommands_ListenSessionEventsServer
 }
 
-func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
+func (es *GrpcSender) SetSessionServer(spaceID string, token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
 	log.Warnf("listening %s\n", token)
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
@@ -127,10 +123,10 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 		es.Servers = map[string]SessionServer{}
 	}
 	srv := SessionServer{
-		Token:  token,
-		Done:   make(chan struct{}),
-		Server: server,
-		// TODO SpaceID
+		Token:   token,
+		Done:    make(chan struct{}),
+		Server:  server,
+		SpaceID: spaceID,
 	}
 
 	// Old connection with this token will be cancelled automatically

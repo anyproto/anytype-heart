@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// To be renamed to ObjectSetDetails
 func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetDetailsResponseErrorCode, err error) *pb.RpcObjectSetDetailsResponse {

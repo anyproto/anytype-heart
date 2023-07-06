@@ -10,7 +10,7 @@ import (
 
 func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {
 	ev := ctx.GetResponseEvent()
-	mw.EventSender.BroadcastToOtherSessions(ctx.ID(), &pb.Event{
+	mw.EventSender.BroadcastToOtherSessions(ctx.SpaceID(), ctx.ID(), &pb.Event{
 		Messages:  ev.Messages,
 		ContextId: ev.ContextId,
 	})

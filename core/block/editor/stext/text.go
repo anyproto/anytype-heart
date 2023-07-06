@@ -294,7 +294,7 @@ func (t *textImpl) sendEvents(ctx session.Context) {
 		if msg.GetBlockSetText() == nil {
 			filteredMsgs = append(filteredMsgs, msg)
 		} else {
-			t.eventSender.BroadcastToOtherSessions(ctx.ID(), &pb.Event{
+			t.eventSender.BroadcastToOtherSessions(ctx.SpaceID(), ctx.ID(), &pb.Event{
 				Messages:  []*pb.EventMessage{msg},
 				ContextId: t.Id(),
 			})

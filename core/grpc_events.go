@@ -21,7 +21,7 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 
 	var srv event.SessionServer
 	if sender, ok := mw.EventSender.(*event.GrpcSender); ok {
-		srv = sender.SetSessionServer(req.Token, server)
+		srv = sender.SetSessionServer(req.SpaceId, req.Token, server)
 	} else {
 		log.Fatal("failed to ListenEvents: has a wrong Sender")
 		return

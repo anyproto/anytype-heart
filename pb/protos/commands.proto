@@ -5540,4 +5540,5 @@ message Empty {
 
 message StreamRequest {
     string token = 1;
+    string spaceId = 2;
 }

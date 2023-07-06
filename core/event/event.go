@@ -9,11 +9,11 @@ import (
 const CName = "eventSender"
 
 type Sender interface {
-	IsActive(token string) bool
+	IsActive(spaceID string, token string) bool
 	Broadcast(event *pb.Event)
 	BroadcastForSpace(spaceID string, event *pb.Event)
-	SendToSession(token string, event *pb.Event)
-	BroadcastToOtherSessions(token string, e *pb.Event)
+	SendToSession(spaceID string, token string, event *pb.Event)
+	BroadcastToOtherSessions(spaceID, token string, e *pb.Event)
 	SetSpaceID(token string, spaceID string) error
 	app.Component
 }
@@ -36,15 +36,15 @@ func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
 	return &CallbackSender{callback: callback}
 }
 
-func (es *CallbackSender) IsActive(_ string) bool {
+func (es *CallbackSender) IsActive(spaceID string, token string) bool {
 	return true
 }
 
-func (es *CallbackSender) BroadcastToOtherSessions(token string, e *pb.Event) {
+func (es *CallbackSender) BroadcastToOtherSessions(spaceID string, token string, e *pb.Event) {
 	// noop
 }
 
-func (es *CallbackSender) SendToSession(token string, event *pb.Event) {
+func (es *CallbackSender) SendToSession(spaceID string, token string, event *pb.Event) {
 	es.callback(event)
 }
 
