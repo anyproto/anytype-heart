@@ -2277,8 +2277,9 @@ message Rpc {
 
                     enum Code {
                         NULL = 0;
-                        INTERNAL_ERROR = 1;
-                        BAD_INPUT = 2;
+                        UNKNOWN_ERROR = 1;
+                        INTERNAL_ERROR = 2;
+                        BAD_INPUT = 3;
                     }
                 }
             }
