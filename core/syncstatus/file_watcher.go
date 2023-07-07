@@ -65,8 +65,8 @@ func newFileWatcher(
 
 const filesToWatchPrefix = "/files_to_watch/"
 
-func (s *fileWatcher) loadFilesToWatch() error {
-	return s.badger.View(func(txn *badger.Txn) error {
+func (s *fileWatcher) loadFilesToWatch() (filesToMigrate []string, err error) {
+	return filesToMigrate, s.badger.View(func(txn *badger.Txn) error {
 		iter := txn.NewIterator(badger.IteratorOptions{
 			Prefix: []byte(filesToWatchPrefix),
 		})
@@ -75,7 +75,11 @@ func (s *fileWatcher) loadFilesToWatch() error {
 		for iter.Rewind(); iter.Valid(); iter.Next() {
 			it := iter.Item()
 			fileID := bytes.TrimPrefix(it.Key(), []byte(filesToWatchPrefix))
-			s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: s.spaceService.AccountId()}] = struct{}{}
+			if spaceID, copyErr := it.ValueCopy(nil); copyErr != nil && len(spaceID) != 0 {
+				s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: string(spaceID)}] = struct{}{}
+				continue
+			}
+			filesToMigrate = append(filesToMigrate, string(fileID))
 		}
 		return nil
 	})
@@ -93,9 +97,13 @@ func (s *fileWatcher) init() error {
 }
 
 func (s *fileWatcher) run() error {
-	err := s.loadFilesToWatch()
+	filesToMigrate, err := s.loadFilesToWatch()
 	if err != nil {
 		return fmt.Errorf("load files to watch: %w", err)
+	}
+
+	if err = s.migrateFiles(filesToMigrate); err != nil {
+		log.Errorf("failed to migrate files in space store: %v", err)
 	}
 
 	ctx := context.Background()
@@ -141,6 +149,17 @@ func (s *fileWatcher) run() error {
 		}
 	}()
 
+	return nil
+}
+
+func (s *fileWatcher) migrateFiles(files []string) error {
+	spaceID := s.spaceService.AccountId()
+	for _, fileID := range files {
+		err := s.Watch(spaceID, fileID)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -239,7 +258,7 @@ func (s *fileWatcher) Watch(spaceID, fileID string) error {
 	if _, ok := s.filesToWatch[key]; !ok {
 		s.filesToWatch[key] = struct{}{}
 		err := s.badger.Update(func(txn *badger.Txn) error {
-			return txn.Set([]byte(filesToWatchPrefix+key.fileID), nil)
+			return txn.Set([]byte(filesToWatchPrefix+key.fileID), []byte(key.spaceID))
 		})
 		if err != nil {
 			return fmt.Errorf("add file to watch store: %w", err)
