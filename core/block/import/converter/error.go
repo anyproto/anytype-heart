@@ -3,8 +3,10 @@ package converter
 import (
 	"bytes"
 	"fmt"
-	"github.com/anyproto/anytype-heart/pb"
+
 	"github.com/pkg/errors"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 var ErrCancel = fmt.Errorf("import is canceled")
