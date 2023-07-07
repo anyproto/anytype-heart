@@ -525,3 +525,102 @@ func TestState_GetChangedStoreKeys(t *testing.T) {
 	changed = s.GetChangedStoreKeys("one", "two", "v2")
 	assert.Len(t, changed, 1)
 }
+
+func TestState_GetSetting(t *testing.T) {
+	st := NewDoc("test", nil).(*State)
+	assert.Nil(t, st.GetSetting("setting"))
+
+	st.SetInStore([]string{SettingsStoreKey}, nil)
+	assert.Nil(t, st.GetSetting("setting"))
+
+	settings := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{"setting": pbtypes.String("setting")}})
+	st.SetInStore([]string{SettingsStoreKey}, settings)
+	assert.NotNil(t, st.GetSetting("setting"))
+	assert.Equal(t, settings.GetStructValue().GetFields()["setting"], st.GetSetting("setting"))
+}
+
+func TestState_GetStoreSlice(t *testing.T) {
+	st := NewDoc("test", nil).(*State)
+	assert.Nil(t, st.GetStoreSlice("collection"))
+
+	st.SetInStore([]string{"collection"}, nil)
+	assert.Nil(t, st.GetStoreSlice("collection"))
+
+	st.SetInStore([]string{"collection"}, pbtypes.StringList([]string{"object1", "object2"}))
+	assert.NotNil(t, st.GetStoreSlice("collection"))
+	assert.Equal(t, []string{"object1", "object2"}, st.GetStoreSlice("collection"))
+}
+
+func TestState_GetSubObjectCollection(t *testing.T) {
+	const collectionName = "subcollection"
+	st := NewDoc("test", nil).(*State)
+	assert.Nil(t, st.GetSubObjectCollection(collectionName))
+
+	st.SetInStore([]string{collectionName}, nil)
+	assert.Nil(t, st.GetSubObjectCollection(collectionName))
+
+	subObjectDetails := pbtypes.Struct(
+		&types.Struct{
+			Fields: map[string]*types.Value{
+				"subobject1": pbtypes.Struct(nil),
+				"subobject2": pbtypes.Struct(nil),
+			},
+		})
+	st.SetInStore([]string{collectionName}, subObjectDetails)
+	assert.NotNil(t, st.GetSubObjectCollection(collectionName))
+	assert.Equal(t, subObjectDetails.GetStructValue(), st.GetSubObjectCollection(collectionName))
+}
+
+func TestState_ContainsInStore(t *testing.T) {
+	const collectionName = "subcollection"
+	st := NewDoc("test", nil).(*State)
+	assert.False(t, st.ContainsInStore([]string{collectionName, "subobject1"}))
+
+	st.SetInStore([]string{collectionName}, nil)
+	assert.False(t, st.ContainsInStore([]string{collectionName, "subobject2"}))
+
+	subObjectDetails := pbtypes.Struct(
+		&types.Struct{
+			Fields: map[string]*types.Value{
+				"subobject1": pbtypes.Struct(&types.Struct{}),
+				"subobject2": pbtypes.Struct(&types.Struct{
+					Fields: map[string]*types.Value{
+						"subobject3": pbtypes.Struct(nil),
+					},
+				}),
+			},
+		})
+	st.SetInStore([]string{collectionName}, subObjectDetails)
+	assert.False(t, st.ContainsInStore([]string{collectionName, "subobject3"}))
+	//nested
+	assert.False(t, st.ContainsInStore([]string{collectionName, "subobject1", "subobject3"}))
+	assert.True(t, st.ContainsInStore([]string{collectionName, "subobject2", "subobject3"}))
+	assert.True(t, st.ContainsInStore([]string{collectionName, "subobject1"}))
+}
+
+func TestState_HasInStore(t *testing.T) {
+	const collectionName = "subcollection"
+	st := NewDoc("test", nil).(*State)
+	assert.False(t, st.HasInStore([]string{collectionName, "subobject1"}))
+
+	st.SetInStore([]string{collectionName}, nil)
+	assert.False(t, st.HasInStore([]string{collectionName, "subobject2"}))
+
+	subObjectDetails := pbtypes.Struct(
+		&types.Struct{
+			Fields: map[string]*types.Value{
+				"subobject1": pbtypes.Struct(&types.Struct{}),
+				"subobject2": pbtypes.Struct(&types.Struct{
+					Fields: map[string]*types.Value{
+						"subobject3": pbtypes.Struct(nil),
+					},
+				}),
+			},
+		})
+	st.SetInStore([]string{collectionName}, subObjectDetails)
+	assert.False(t, st.HasInStore([]string{collectionName, "subobject3"}))
+	//nested
+	assert.False(t, st.HasInStore([]string{collectionName, "subobject1", "subobject3"}))
+	assert.True(t, st.HasInStore([]string{collectionName, "subobject2", "subobject3"}))
+	assert.True(t, st.HasInStore([]string{collectionName, "subobject1"}))
+}
