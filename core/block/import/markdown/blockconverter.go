@@ -37,7 +37,7 @@ func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*FileInfo, ce.ConvertError) {
+func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*FileInfo, *ce.ConvertError) {
 	allErrors := ce.NewError()
 	files := m.processFiles(importPath, mode, allErrors)
 
@@ -46,7 +46,7 @@ func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*Fil
 	return files, allErrors
 }
 
-func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce.ConvertError) map[string]*FileInfo {
 	fileInfo := make(map[string]*FileInfo, 0)
 	s := source.GetSource(importPath)
 	if s == nil {
@@ -62,18 +62,18 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors ce.
 	supportedExtensions = append(supportedExtensions, audioFormats...)
 	readers, err := s.GetFileReaders(importPath, supportedExtensions)
 	if err != nil {
-		allErrors.Add(importPath, err)
+		allErrors.Add(err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 			return nil
 		}
 	}
 	if len(readers) == 0 {
-		allErrors.Add(importPath, ce.ErrNoObjectsToImport)
+		allErrors.Add(ce.ErrNoObjectsToImport)
 		return nil
 	}
 	for path, rc := range readers {
 		if err = m.fillFilesInfo(importPath, fileInfo, path, rc); err != nil {
-			allErrors.Add(path, err)
+			allErrors.Add(err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 				return nil
 			}

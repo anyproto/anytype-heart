@@ -45,7 +45,7 @@ func (h *HTML) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	path := h.GetParams(req)
 	if len(path) == 0 {
 		return nil, nil
@@ -64,7 +64,7 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	rootCollection := converter.NewRootCollection(h.collectionService)
 	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
-		cErr.Add(rootCollectionName, err)
+		cErr.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, cErr
 		}
@@ -83,19 +83,16 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	}, cErr
 }
 
-func (h *HTML) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
-	progress process.Progress,
-	path []string,
-	cErr converter.ConvertError) ([]*converter.Snapshot, []string, converter.ConvertError) {
+func (h *HTML) getSnapshotsForImport(req *pb.RpcObjectImportRequest, progress process.Progress, path []string, cErr *converter.ConvertError) ([]*converter.Snapshot, []string, *converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, converter.NewCancelError(p, err)
+			return nil, nil, converter.NewCancelError(err)
 		}
 		sn, to, err := h.handleImportPath(p, req.GetMode())
 		if err != nil {
-			cErr.Add(p, err)
+			cErr.Add(err)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil, nil
 			}

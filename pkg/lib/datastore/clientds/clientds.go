@@ -116,12 +116,12 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 	r.localstoreDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(localstoreDSDir), &r.cfg.Localstore)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init lccal datastore")
 	}
 
 	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(SpaceDSDir), &r.cfg.Spacestore)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init space datastore")
 	}
 
 	err = r.migrateIfNeeded()

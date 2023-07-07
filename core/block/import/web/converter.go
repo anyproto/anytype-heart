@@ -31,24 +31,24 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
 	progress.SetTotal(1)
 	if err != nil {
-		we.Add(url, err)
+		we.Add(err)
 		return nil, we
 	}
 	p := c.GetParser(url)
 	if p == nil {
-		we.Add(url, fmt.Errorf("unknown url format"))
+		we.Add(fmt.Errorf("unknown url format"))
 		return nil, we
 	}
 	snapshots, err := p.ParseUrl(url)
 	progress.AddDone(1)
 
 	if err != nil {
-		we.Add(url, err)
+		we.Add(err)
 		return nil, we
 	}
 

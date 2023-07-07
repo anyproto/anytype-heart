@@ -253,7 +253,6 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 	if err != nil {
 		return "", err
 	}
-	log.Debug("Export output. filepath:", filepath.Join(dir, fileName))
 
 	return filePath, nil
 }

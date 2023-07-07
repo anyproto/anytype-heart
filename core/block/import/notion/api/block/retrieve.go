@@ -47,12 +47,12 @@ type Response struct {
 func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	pageID, apiKey string,
 	pageSize int64,
-	mode pb.RpcObjectImportRequestMode) ([]interface{}, converter.ConvertError) {
-	ce := converter.ConvertError{}
+	mode pb.RpcObjectImportRequestMode) ([]interface{}, *converter.ConvertError) {
+	ce := converter.NewError()
 	allBlocks := make([]interface{}, 0)
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
-		ce.Add(endpoint, err)
+		ce.Add(err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, ce
 		}

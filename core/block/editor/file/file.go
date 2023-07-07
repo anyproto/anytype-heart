@@ -356,7 +356,7 @@ func (dp *dropFilesProcess) Init(paths []string) (err error) {
 		entry := &dropFileEntry{path: path, name: filepath.Base(path)}
 		ok, e := dp.readdir(entry, true)
 		if e != nil {
-			return e
+			return fmt.Errorf("failed to read file path")
 		}
 		if ok {
 			dp.root.child = append(dp.root.child, entry)

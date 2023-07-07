@@ -485,9 +485,6 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 		if id == sb.Id() {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
-			if len(diff.GetFields()) > 0 {
-				log.With("objectID", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
-			}
 		}
 
 		msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)

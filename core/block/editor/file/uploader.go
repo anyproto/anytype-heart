@@ -258,7 +258,7 @@ func (u *uploader) SetFile(path string) Uploader {
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to open file")
 		}
 
 		buf := bufio.NewReaderSize(f, bufSize)

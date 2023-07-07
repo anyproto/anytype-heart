@@ -3,98 +3,87 @@ package converter
 import (
 	"bytes"
 	"fmt"
-	"strings"
-
-	"github.com/pkg/errors"
-
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/pkg/errors"
 )
 
 var ErrCancel = fmt.Errorf("import is canceled")
 var ErrNoObjectsToImport = fmt.Errorf("source path doesn't contain objects to import")
 var ErrLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
 
-type ConvertError map[string]error
-
-func NewError() ConvertError {
-	return ConvertError{}
+type ConvertError struct {
+	errors []error
 }
 
-func NewFromError(name string, initialError error) ConvertError {
-	ce := ConvertError{}
+func NewError() *ConvertError {
+	return &ConvertError{
+		errors: make([]error, 0),
+	}
+}
 
-	ce.Add(name, initialError)
+func NewFromError(initialError error) *ConvertError {
+	ce := &ConvertError{}
+
+	ce.Add(initialError)
 
 	return ce
 }
 
-func NewCancelError(path string, err error) ConvertError {
+func NewCancelError(err error) *ConvertError {
 	wrappedError := errors.Wrap(ErrCancel, err.Error())
-	cancelError := NewFromError(path, wrappedError)
+	cancelError := NewFromError(wrappedError)
 	return cancelError
 }
 
-func (ce ConvertError) Add(objectName string, err error) {
-	ce[objectName] = err
+func (ce *ConvertError) Add(err error) {
+	ce.errors = append(ce.errors, err)
 }
 
-func (ce ConvertError) Merge(err ConvertError) {
-	for fileName, errPb := range err {
-		ce[fileName] = errPb
-	}
+func (ce *ConvertError) Merge(err *ConvertError) {
+	ce.errors = append(ce.errors, err.errors...)
 }
 
-func (ce ConvertError) IsEmpty() bool {
-	return len(ce) == 0
+func (ce *ConvertError) IsEmpty() bool {
+	return ce == nil || len(ce.errors) == 0
 }
 
-func (ce ConvertError) Error() error {
-	var pattern = "source: %s, error: %s" + "\n"
+func (ce *ConvertError) Error() error {
+	var pattern = "error: %s" + "\n"
 	var errorString bytes.Buffer
 	if ce.IsEmpty() {
 		return nil
 	}
-	for name, err := range ce {
-		errorString.WriteString(fmt.Sprintf(pattern, name, err.Error()))
+	for _, err := range ce.errors {
+		errorString.WriteString(fmt.Sprintf(pattern, err.Error()))
 	}
 	return fmt.Errorf(errorString.String())
 }
 
-func (ce ConvertError) Get(objectName string) error {
-	return ce[objectName]
-}
-
-func (ce ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) error {
+func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType) error {
 	if ce.IsEmpty() {
 		return nil
 	}
-	var (
-		countNoObjectsToImport int
-		limitErrorString       strings.Builder
-	)
-	for path, e := range ce {
+	var countNoObjectsToImport int
+	for _, e := range ce.errors {
 		switch {
 		case errors.Is(e, ErrCancel):
 			return errors.Wrapf(ErrCancel, "import type: %s", importType.String())
 		case errors.Is(e, ErrLimitExceeded):
-			limitErrorString.WriteString(fmt.Sprintf("import path: %s\n", path))
+			return errors.Wrapf(ErrLimitExceeded, "import type: %s", importType.String())
 		case errors.Is(e, ErrNoObjectsToImport):
 			countNoObjectsToImport++
 		}
 	}
 	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
-	if countNoObjectsToImport == len(ce) {
+	if countNoObjectsToImport == len(ce.errors) {
 		return errors.Wrapf(ErrNoObjectsToImport, "import type: %s", importType.String())
-	}
-	if limitErrorString.String() != "" {
-		return errors.Wrap(ErrLimitExceeded, limitErrorString.String())
 	}
 	return errors.Wrapf(ce.Error(), "import type: %s", importType.String())
 }
 
-func (ce ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
+func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
 	var countNoObjectsToImport int
-	for _, err := range ce {
+	for _, err := range ce.errors {
 		if errors.Is(err, ErrNoObjectsToImport) {
 			countNoObjectsToImport++
 		}

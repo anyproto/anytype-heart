@@ -23,7 +23,7 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 
 	err := os.MkdirAll(req.Path, 0755)
 	if err != nil {
-		return "", fmt.Errorf("mkdir -p %s: %w", req.Path, err)
+		return "", fmt.Errorf("mkdir -p: %w", err)
 	}
 	progress := process.NewProgress(pb.ModelProcess_SaveFile)
 	defer progress.Finish()

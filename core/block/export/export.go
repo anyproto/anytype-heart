@@ -3,6 +3,7 @@ package export
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -98,10 +99,12 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	var wr writer
 	if req.Zip {
 		if wr, err = newZipWriter(req.Path, tempFileName); err != nil {
+			err = fmt.Errorf("failed to create zip file")
 			return
 		}
 	} else {
 		if wr, err = newDirWriter(req.Path, req.IncludeFiles); err != nil {
+			err = fmt.Errorf("failed to create direcotory file")
 			return
 		}
 	}
