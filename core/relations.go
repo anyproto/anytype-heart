@@ -155,10 +155,10 @@ func (mw *Middleware) ObjectTypeSetDefaultTemplate(cctx context.Context, req *pb
 		if err != nil {
 			return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_INTERNAL_ERROR, fmt.Errorf("failed to get template object: %s", err.Error()))
 		}
-		if template.CombinedDetails().Fields[bundle.RelationKeyType.String()].GetStringValue() != bundle.TypeKeyTemplate.URL() {
+		if pbtypes.GetString(template.CombinedDetails(), bundle.RelationKeyType.String()) != bundle.TypeKeyTemplate.URL() {
 			return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_BAD_INPUT, fmt.Errorf("object '%s' does not have 'ot-template' type", req.TemplateId))
 		}
-		targetObjectType := template.CombinedDetails().Fields[bundle.RelationKeyTargetObjectType.String()].GetStringValue()
+		targetObjectType := pbtypes.GetString(template.CombinedDetails(), bundle.RelationKeyTargetObjectType.String())
 		if targetObjectType != req.ObjectTypeId {
 			return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_BAD_INPUT,
 				fmt.Errorf("template '%s' has '%s' as target object type instead of '%s'", req.TemplateId, targetObjectType, req.ObjectTypeId))
