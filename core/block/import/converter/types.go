@@ -4,16 +4,16 @@ import (
 	"context"
 	"io"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 type ObjectTreeCreator interface {
-	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
+	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc space.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
 }
 
 // Converter incapsulate logic with transforming some data to smart blocks

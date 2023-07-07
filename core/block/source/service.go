@@ -20,8 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
 const CName = "source"
@@ -31,7 +29,7 @@ func New() Service {
 }
 
 type Service interface {
-	NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
+	NewSource(ctx context.Context, id string, spaceID string, sbt smartblock.SmartBlockType, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(id string, s Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
@@ -42,12 +40,10 @@ type Service interface {
 }
 
 type service struct {
-	coreService  core.Service
-	sbtProvider  typeprovider.SmartBlockTypeProvider
-	account      accountservice.Service
-	fileStore    filestore.FileStore
-	spaceService space.Service
-	fileService  files.Service
+	coreService core.Service
+	account     accountservice.Service
+	fileStore   filestore.FileStore
+	fileService files.Service
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -56,10 +52,8 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]Source)
 	s.coreService = a.MustComponent(core.CName).(core.Service)
-	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceService = app.MustComponent[space.Service](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	return
 }
@@ -69,8 +63,10 @@ func (s *service) Name() (name string) {
 }
 
 type BuildOptions struct {
+	BuildTree         func(ctx context.Context) (objecttree.ObjectTree, error)
 	DisableRemoteLoad bool
-	Listener          updatelistener.UpdateListener
+	// TODO Listener is unused, why?
+	Listener updatelistener.UpdateListener
 }
 
 func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
@@ -79,15 +75,14 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	}
 }
 
-func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
+func (s *service) NewSource(ctx context.Context, id string, spaceID string, sbt smartblock.SmartBlockType, buildOptions BuildOptions) (source Source, err error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
 	if id == addr.MissingObject {
 		return NewMissingObject(), nil
 	}
-	st, err := s.sbtProvider.Type(spaceID, id)
-	switch st {
+	switch sbt {
 	case smartblock.SmartBlockTypeFile:
 		return NewFile(s.coreService, s.fileStore, s.fileService, id), nil
 	case smartblock.SmartBlockTypeDate:
@@ -105,28 +100,16 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		return staticSrc, nil
 	}
 
-	spc, err := s.spaceService.GetSpace(ctx, spaceID)
+	ot, err := buildOptions.BuildTree(ctx)
 	if err != nil {
-		return
-	}
-	var ot objecttree.ObjectTree
-	ot, err = spc.TreeBuilder().BuildTree(ctx, id, buildOptions.BuildTreeOpts())
-	if err != nil {
-		return
+		return nil, fmt.Errorf("build tree: %w", err)
 	}
 
-	// TODO: [MR] get this from objectTree directly
-	sbt, err := s.sbtProvider.Type(spaceID, id)
-	if err != nil {
-		return nil, err
-	}
 	deps := sourceDeps{
 		coreService:    s.coreService,
 		accountService: s.account,
 		sbt:            sbt,
 		ot:             ot,
-		spaceService:   s.spaceService,
-		sbtProvider:    s.sbtProvider,
 		fileService:    s.fileService,
 	}
 	return newTreeSource(spaceID, id, deps)
@@ -154,8 +137,6 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 			spaceID:        spaceID,
 			smartblockType: blockType,
 			coreService:    s.coreService,
-			spaceService:   s.spaceService,
-			sbtProvider:    s.sbtProvider,
 		}, nil
 	}
 }
@@ -177,7 +158,7 @@ func (s *service) RegisterStaticSource(id string, src Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[id] = src
-	s.sbtProvider.RegisterStaticType(id, smartblock.SmartBlockType(src.Type()))
+	// s.sbtProvider.RegisterStaticType(id, smartblock.SmartBlockType(src.Type()))
 }
 
 func (s *service) RemoveStaticSource(id string) {

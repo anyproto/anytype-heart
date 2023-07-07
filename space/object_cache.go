@@ -49,11 +49,20 @@ func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts)
 }
 
 func (s *clientSpace) cacheLoad(cctx context.Context, id string) (value ocache.Object, err error) {
-	opts := cctx.Value(optsKey).(cacheOpts)
+	opts, ok := cctx.Value(optsKey).(cacheOpts)
+	if !ok {
+		opts.spaceId = s.Id()
+	}
+
+	sbt, _ := s.sbtProvider.Type(opts.spaceId, id)
+
+	opts.buildOption.BuildTree = func(ctx context.Context) (objecttree.ObjectTree, error) {
+		return s.TreeBuilder().BuildTree(ctx, id, opts.buildOption.BuildTreeOpts())
+	}
 
 	ctx := session.NewContext(cctx, opts.spaceId)
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
-		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
+		return s.objectFactory.InitObject(id, sbt, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
 	createObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)
@@ -61,7 +70,7 @@ func (s *clientSpace) cacheLoad(cctx context.Context, id string) (value ocache.O
 		initCtx.Ctx = ctx
 		initCtx.SpaceID = opts.spaceId
 		initCtx.BuildOpts = opts.buildOption
-		return s.objectFactory.InitObject(id, initCtx)
+		return s.objectFactory.InitObject(id, sbt, initCtx)
 	}
 
 	switch {
@@ -74,7 +83,6 @@ func (s *clientSpace) cacheLoad(cctx context.Context, id string) (value ocache.O
 		break
 	}
 
-	sbt, _ := s.sbtProvider.Type(opts.spaceId, id)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
 		return s.initSubObject(ctx, id)

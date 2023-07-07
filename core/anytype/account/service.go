@@ -77,7 +77,11 @@ func (s *service) GetInfo(spaceID string) (*model.AccountInfo, error) {
 	}
 
 	ctx := session.NewContext(context.Background(), spaceID)
-	ids, err := s.coreService.DerivePredefinedObjects(ctx, false)
+	spc, err := s.spaceService.GetSpace(context.Background(), spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	ids, err := spc.DerivePredefinedObjects(ctx, false)
 	if err != nil {
 		return nil, fmt.Errorf("derive predefined objects: %w", err)
 	}

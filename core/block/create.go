@@ -109,7 +109,7 @@ func (s *Service) CreateWorkspace(ctx session.Context, req *pb.RpcWorkspaceCreat
 	}
 
 	newSpaceCtx := session.NewContext(ctx.Context(), spc.Id())
-	predefinedObjectIDs, err := s.anytype.DerivePredefinedObjects(newSpaceCtx, true)
+	predefinedObjectIDs, err := spc.DerivePredefinedObjects(newSpaceCtx, true)
 	if err != nil {
 		// TODO Delete space?
 		return "", fmt.Errorf("derive workspace object for space %s: %w", spc.Id(), err)

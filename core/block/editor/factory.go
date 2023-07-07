@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -96,8 +97,8 @@ func (f *ObjectFactory) Name() (name string) {
 	return CName
 }
 
-func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := f.sourceService.NewSource(initCtx.Ctx.Context(), id, initCtx.SpaceID, initCtx.BuildOpts)
+func (f *ObjectFactory) InitObject(id string, sbt coresb.SmartBlockType, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
+	sc, err := f.sourceService.NewSource(initCtx.Ctx.Context(), id, initCtx.SpaceID, sbt, initCtx.BuildOpts)
 	if err != nil {
 		return
 	}

@@ -125,6 +125,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	}
 
 	b.source.RegisterStaticSource(id, b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil))
+	// TODO Register static smartblock type
 	return
 }
 

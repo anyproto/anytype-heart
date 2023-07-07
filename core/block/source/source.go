@@ -23,9 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("anytype-mw-source")
@@ -77,8 +74,6 @@ type sourceDeps struct {
 
 	coreService    core.Service
 	accountService accountservice.Service
-	spaceService   space.Service
-	sbtProvider    typeprovider.SmartBlockTypeProvider
 	fileService    files.Service
 }
 
@@ -88,11 +83,9 @@ func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err er
 		id:             id,
 		spaceID:        spaceID,
 		coreService:    deps.coreService,
-		spaceService:   deps.spaceService,
 		openedAt:       time.Now(),
 		smartblockType: deps.sbt,
 		accountService: deps.accountService,
-		sbtProvider:    deps.sbtProvider,
 		fileService:    deps.fileService,
 	}, nil
 }
@@ -117,8 +110,6 @@ type source struct {
 	coreService    core.Service
 	fileService    files.Service
 	accountService accountservice.Service
-	spaceService   space.Service
-	sbtProvider    typeprovider.SmartBlockTypeProvider
 }
 
 func (s *source) Tree() objecttree.ObjectTree {
@@ -275,18 +266,19 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.spaceService.GetSpace(context.Background(), s.spaceID)
-	if err != nil {
-		return
-	}
-	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
-		t, err := s.sbtProvider.Type(s.spaceID, id)
-		if err != nil {
-			return false
-		}
-		return t == s.smartblockType
-	})
-	// exclude account thread id
+	// TODO It shouldn't belong here
+	// spc, err := s.spaceService.GetSpace(context.Background(), s.spaceID)
+	// if err != nil {
+	// 	return
+	// }
+	// ids = slice.Filter(spc.StoredIds(), func(id string) bool {
+	// 	t, err := s.sbtProvider.Type(s.spaceID, id)
+	// 	if err != nil {
+	// 		return false
+	// 	}
+	// 	return t == s.smartblockType
+	// })
+	// // exclude account thread id
 	return ids, nil
 }
 

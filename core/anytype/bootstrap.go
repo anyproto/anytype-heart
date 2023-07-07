@@ -71,7 +71,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/peerstore"
 	"github.com/anyproto/anytype-heart/space/storage"
 	"github.com/anyproto/anytype-heart/space/syncstatusprovider"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -155,7 +154,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	tempDirService := core.NewTempDirService(walletService)
 	spaceService := space.New()
-	sbtProvider := typeprovider.New(spaceService)
+	sbtProvider := spaceService
 	objectStore := objectstore.New(sbtProvider)
 	objectCreator := objectcreator.NewCreator(sbtProvider)
 	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
@@ -215,7 +214,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(localdiscovery.New()).
 		Register(spaceService).
 		Register(peermanager.New()).
-		Register(sbtProvider).
 		Register(relationService).
 		Register(ftsearch.New()).
 		Register(objectStore).

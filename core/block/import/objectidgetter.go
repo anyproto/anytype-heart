@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -41,6 +43,7 @@ type ObjectIDGetter struct {
 	core          core.Service
 	createPayload map[string]treestorage.TreeStorageCreatePayload
 	service       *block.Service
+	spaceService  space.Service
 }
 
 func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDGetter {
@@ -84,7 +87,11 @@ func (ou *ObjectIDGetter) Get(ctx session.Context,
 		}
 	}
 
-	payload, err := ou.service.CreateTreePayload(ctx.WithContext(context.Background()), sbType, createdTime)
+	spc, err := ou.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space: %w", err)
+	}
+	payload, err := spc.CreateTreePayload(context.Background(), sbType, createdTime)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}

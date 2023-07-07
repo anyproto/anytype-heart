@@ -35,11 +35,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peerstore"
 	"github.com/anyproto/anytype-heart/space/storage"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
 const (
@@ -53,7 +53,9 @@ var ErrUsingOldStorage = errors.New("using old storage")
 var log = logger.NewNamed(CName)
 
 func New() Service {
-	return &service{}
+	return &service{
+		provider: &provider{},
+	}
 }
 
 type PoolManager interface {
@@ -66,18 +68,20 @@ type PoolManager interface {
 type Service interface {
 	AccountSpace(ctx context.Context) (commonspace.Space, error)
 	AccountId() string
-	CreateSpace(ctx context.Context) (container commonspace.Space, err error)
+	CreateSpace(ctx context.Context) (container Space, err error)
 	GetSpace(ctx context.Context, id string) (Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
 	DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error)
 	DeleteAccount(ctx context.Context, revert bool) (payload StatusPayload, err error)
 	StreamPool() streampool.StreamPool
 	CloseSessionsInAllObjects()
+
+	SmartBlockTypeProvider
 	app.ComponentRunnable
 }
 
 type ObjectFactory interface {
-	InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
+	InitObject(id string, sbt coresb.SmartBlockType, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
 }
 
 type service struct {
@@ -92,7 +96,7 @@ type service struct {
 	peerService          peerservice.PeerService
 
 	objectFactory ObjectFactory
-	sbtProvider   typeprovider.SmartBlockTypeProvider
+	*provider
 	core          core.Service
 	commonAccount accountservice.Service
 
@@ -115,7 +119,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 
 	s.objectFactory = app.MustComponent[ObjectFactory](a)
-	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	err = s.provider.Init(a)
+	if err != nil {
+		return fmt.Errorf("init type provider: %w", err)
+	}
 	s.core = app.MustComponent[core.Service](a)
 	s.commonAccount = app.MustComponent[accountservice.Service](a)
 
@@ -172,6 +179,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 			return
 		}
 	}
+	s.core.SetAccountSpaceID(s.accountId)
 	return
 }
 
@@ -202,7 +210,7 @@ func parseReplicationKey(spaceID string) (uint64, error) {
 	return strconv.ParseUint(raw, 36, 64)
 }
 
-func (s *service) CreateSpace(ctx context.Context) (container commonspace.Space, err error) {
+func (s *service) CreateSpace(ctx context.Context) (container Space, err error) {
 	replicationKey, err := parseReplicationKey(s.accountId)
 	if err != nil {
 		return nil, fmt.Errorf("parse account's replication key: %w", err)
@@ -222,7 +230,7 @@ func (s *service) CreateSpace(ctx context.Context) (container commonspace.Space,
 	if err != nil {
 		return
 	}
-	return obj.(commonspace.Space), nil
+	return obj.(Space), nil
 }
 
 func (s *service) GetSpace(ctx context.Context, id string) (space Space, err error) {
@@ -283,7 +291,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return
 	}
-	ns, err := newClientSpace(cc, s.objectFactory, s.sbtProvider, s.core, s.commonAccount)
+	ns, err := newClientSpace(cc, s.objectFactory, s.provider, s.core, s.commonAccount)
 	if err != nil {
 		return
 	}

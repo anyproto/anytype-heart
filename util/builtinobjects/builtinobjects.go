@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -76,6 +77,7 @@ type builtinObjects struct {
 	importer       importer.Importer
 	store          objectstore.ObjectStore
 	tempDirService *core.TempDirService
+	spaceService   space.Service
 }
 
 func New(tempDirService *core.TempDirService) BuiltinObjects {
@@ -329,7 +331,11 @@ func (b *builtinObjects) getObjectIdBySetOfValue(setOfValue string) (string, err
 }
 
 func (b *builtinObjects) getWidgetBlockIdByNumber(spaceID string, index int) (string, error) {
-	w, err := b.service.GetObject(context.Background(), spaceID, b.coreService.PredefinedObjects(spaceID).Widgets)
+	spc, err := b.spaceService.GetSpace(context.Background(), spaceID)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+	w, err := spc.GetObject(context.Background(), b.coreService.PredefinedObjects(spaceID).Widgets)
 	if err != nil {
 		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
 	}

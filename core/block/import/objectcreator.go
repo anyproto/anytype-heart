@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -44,6 +45,7 @@ type ObjectCreator struct {
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
 	fileStore      filestore.FileStore
+	spaceService   space.Service
 	mu             sync.Mutex
 }
 
@@ -158,7 +160,11 @@ func (oc *ObjectCreator) createNewObject(ctx session.Context,
 	st *state.State,
 	newID string,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
-	sb, err := oc.service.CreateTreeObjectWithPayload(ctx.WithContext(context.Background()), payload, func(id string) *sb.InitContext {
+	spc, err := oc.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	sb, err := spc.CreateTreeObjectWithPayload(context.Background(), payload, func(id string) *sb.InitContext {
 		return &sb.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,

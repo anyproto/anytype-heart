@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -50,6 +51,7 @@ type Service interface {
 
 type Creator struct {
 	blockService      BlockService
+	spaceService      space.Service
 	blockPicker       block.Picker
 	objectStore       objectstore.ObjectStore
 	collectionService CollectionService
@@ -83,6 +85,7 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.collectionService = app.MustComponent[CollectionService](a)
 	c.anytype = a.MustComponent(core.CName).(core.Service)
+	c.spaceService = app.MustComponent[space.Service](a)
 	c.app = a
 	return nil
 }
@@ -93,10 +96,8 @@ func (c *Creator) Name() (name string) {
 	return CName
 }
 
-// TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(ctx session.Context, templateID, name string) (st *state.State, err error)
-	CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
@@ -173,7 +174,11 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 	}
 
 	cctx := context.WithValue(ctx.Context(), eventCreate, ev)
-	sb, err := c.blockService.CreateTreeObject(ctx.WithContext(cctx), sbType, func(id string) *smartblock.InitContext {
+	spc, err := c.spaceService.GetSpace(cctx, ctx.SpaceID())
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
+	sb, err := spc.CreateTreeObject(ctx.WithContext(cctx), sbType, func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()

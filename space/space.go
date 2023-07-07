@@ -7,11 +7,14 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
 type Space interface {
@@ -19,12 +22,16 @@ type Space interface {
 	GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	GetObjectWithTimeout(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	RemoveObjectFromCache(ctx context.Context, id string) error
+	CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
+	CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error)
+	DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
+	CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func newClientSpace(
 	cc commonspace.Space,
 	objectFactory ObjectFactory,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
+	sbtProvider SmartBlockTypeProvider,
 	core core.Service,
 	commonAccount accountservice.Service,
 ) (Space, error) {
@@ -49,7 +56,7 @@ type clientSpace struct {
 	commonspace.Space
 	cache         ocache.OCache
 	objectFactory ObjectFactory
-	sbtProvider   typeprovider.SmartBlockTypeProvider
+	sbtProvider   SmartBlockTypeProvider
 	core          core.Service
 	commonAccount accountservice.Service
 

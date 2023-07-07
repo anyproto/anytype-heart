@@ -75,14 +75,14 @@ func (s *clientSpace) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Conte
 	return s.TreeBuilder().CreateTree(ctx, treePayload)
 }
 
-func (s *clientSpace) CreateTreePayload(ctx session.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
-	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx.Context(), tp, createdTime)
+func (s *clientSpace) CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
+	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx, tp, createdTime)
 }
 
 // DeriveTreeCreatePayload creates payload for the tree of derived object.
 // Method should be called before DeriveObject to prepare payload
 func (s *clientSpace) DeriveTreeCreatePayload(
-	ctx session.Context, tp coresb.SmartBlockType,
+	tp coresb.SmartBlockType,
 ) (*treestorage.TreeStorageCreatePayload, error) {
 	changePayload, err := createChangePayload(tp)
 	if err != nil {

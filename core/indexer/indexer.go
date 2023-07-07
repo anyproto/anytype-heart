@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -126,7 +127,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
+	i.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
@@ -410,11 +411,27 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 		}
 	}
 
+	err = i.bootstrapSpaces(flags, indexesWereRemoved)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (i *indexer) ensurePredefinedObjects(ctx session.Context, createObjects bool) (threads.DerivedSmartblockIds, error) {
+	spc, err := i.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	if err != nil {
+		return threads.DerivedSmartblockIds{}, fmt.Errorf("get space: %w", err)
+	}
+	return spc.DerivePredefinedObjects(ctx, createObjects)
+}
+
+func (i *indexer) bootstrapSpaces(flags reindexFlags, indexesWereRemoved bool) error {
 	// We derive or init predefined blocks here in order to ensure consistency of object store.
 	// If we call this method before removing objects from store, we will end up with inconsistent state
 	// because indexing of predefined objects will not run again
 	accountCtx := session.NewContext(context.Background(), i.spaceService.AccountId())
-	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(accountCtx)
+	predefinedObjectIDs, err := i.ensurePredefinedObjects(accountCtx, i.newAccount)
 	if err != nil {
 		return fmt.Errorf("ensure predefined objects: %w", err)
 	}
@@ -433,7 +450,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 	for spaceID, _ := range spacesToInit {
 		spaceIDs = append(spaceIDs, spaceID)
 		childSpaceCtx := session.NewContext(context.Background(), spaceID)
-		_, err := i.anytype.EnsurePredefinedBlocks(childSpaceCtx)
+		_, err := i.ensurePredefinedObjects(childSpaceCtx, false)
 		if err != nil {
 			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
 		}
@@ -452,7 +469,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 }
 
 func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags reindexFlags) (err error) {
-	ctx := session.NewContext(block.CacheOptsWithRemoteLoadDisabled(context.Background()), spaceID)
+	ctx := session.NewContext(space.CacheOptsWithRemoteLoadDisabled(context.Background()), spaceID)
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.threadObjects {
