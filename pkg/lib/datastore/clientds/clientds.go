@@ -116,7 +116,7 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 	r.localstoreDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(localstoreDSDir), &r.cfg.Localstore)
 	if err != nil {
-		return fmt.Errorf("failed to init lccal datastore")
+		return fmt.Errorf("failed to init local datastore")
 	}
 
 	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(SpaceDSDir), &r.cfg.Spacestore)
