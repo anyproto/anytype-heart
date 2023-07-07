@@ -50,7 +50,7 @@ type gateway struct {
 	addr            string
 	mu              sync.Mutex
 	isServerStarted bool
-	limitCh         chan any
+	limitCh         chan struct{}
 }
 
 func getRandomPort() (int, error) {
@@ -102,7 +102,7 @@ func (g *gateway) Run(context.Context) error {
 	g.handler = http.NewServeMux()
 	g.handler.HandleFunc("/file/", g.fileHandler)
 	g.handler.HandleFunc("/image/", g.imageHandler)
-	g.limitCh = make(chan any, requestLimit)
+	g.limitCh = make(chan struct{}, requestLimit)
 
 	// check port first
 	listener, err := net.Listen("tcp", g.addr)
@@ -209,7 +209,7 @@ func (g *gateway) readLimitCh() {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
-	g.limitCh <- 0
+	g.limitCh <- struct{}{}
 	defer g.readLimitCh()
 	enableCors(w)
 	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
@@ -249,7 +249,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 
 // imageHandler gets image meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
-	g.limitCh <- 0
+	g.limitCh <- struct{}{}
 	defer g.readLimitCh()
 	enableCors(w)
 
