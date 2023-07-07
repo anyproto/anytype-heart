@@ -135,6 +135,53 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 	return response(pb.RpcObjectTypeRelationRemoveResponseError_NULL, nil)
 }
 
+func (mw *Middleware) ObjectTypeSetDefaultTemplate(cctx context.Context, req *pb.RpcObjectTypeSetDefaultTemplateRequest) *pb.RpcObjectTypeSetDefaultTemplateResponse {
+	ctx := mw.newContext(cctx)
+	bs := mw.app.MustComponent(block.CName).(*block.Service)
+	response := func(code pb.RpcObjectTypeSetDefaultTemplateResponseErrorCode, err error) *pb.RpcObjectTypeSetDefaultTemplateResponse {
+		m := &pb.RpcObjectTypeSetDefaultTemplateResponse{Error: &pb.RpcObjectTypeSetDefaultTemplateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	if !strings.HasPrefix(req.ObjectTypeId, addr.ObjectTypeKeyToIdPrefix) {
+		return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_BAD_INPUT, fmt.Errorf("object '%s' id not an object type", req.ObjectTypeId))
+	}
+
+	if req.TemplateId != "" {
+		template, err := bs.PickBlock(cctx, req.TemplateId)
+		if err != nil {
+			return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_INTERNAL_ERROR, fmt.Errorf("failed to get template object: %s", err.Error()))
+		}
+		if template.CombinedDetails().Fields[bundle.RelationKeyType.String()].GetStringValue() != bundle.TypeKeyTemplate.URL() {
+			return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_BAD_INPUT, fmt.Errorf("object '%s' does not have 'ot-template' type", req.TemplateId))
+		}
+		targetObjectType := template.CombinedDetails().Fields[bundle.RelationKeyTargetObjectType.String()].GetStringValue()
+		if targetObjectType != req.ObjectTypeId {
+			return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_BAD_INPUT,
+				fmt.Errorf("template '%s' has '%s' as target object type instead of '%s'", req.TemplateId, targetObjectType, req.ObjectTypeId))
+
+		}
+	}
+
+	if err := bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
+		ContextId: req.ObjectTypeId,
+		Details: []*pb.RpcObjectSetDetailsDetail{
+			{
+				Key:   bundle.RelationKeyDefaultTemplateId.String(),
+				Value: pbtypes.String(req.TemplateId),
+			},
+		},
+	}); err != nil {
+		return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_INTERNAL_ERROR,
+			fmt.Errorf("failed to set defaultTemplateId detail to '%s' object: %s", req.ObjectTypeId, err.Error()))
+	}
+
+	return response(pb.RpcObjectTypeSetDefaultTemplateResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
 	response := func(code pb.RpcObjectCreateObjectTypeResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateObjectTypeResponse {
 		m := &pb.RpcObjectCreateObjectTypeResponse{ObjectId: id, Details: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}

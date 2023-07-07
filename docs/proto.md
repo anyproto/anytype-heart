@@ -808,6 +808,10 @@
     - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
     - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
     - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
+    - [Rpc.ObjectType.SetDefaultTemplate](#anytype-Rpc-ObjectType-SetDefaultTemplate)
+    - [Rpc.ObjectType.SetDefaultTemplate.Request](#anytype-Rpc-ObjectType-SetDefaultTemplate-Request)
+    - [Rpc.ObjectType.SetDefaultTemplate.Response](#anytype-Rpc-ObjectType-SetDefaultTemplate-Response)
+    - [Rpc.ObjectType.SetDefaultTemplate.Response.Error](#anytype-Rpc-ObjectType-SetDefaultTemplate-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -1105,6 +1109,7 @@
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-List-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
+    - [Rpc.ObjectType.SetDefaultTemplate.Response.Error.Code](#anytype-Rpc-ObjectType-SetDefaultTemplate-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1531,6 +1536,7 @@
 | ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype-Rpc-ObjectType-Relation-List-Request) | [Rpc.ObjectType.Relation.List.Response](#anytype-Rpc-ObjectType-Relation-List-Response) |  |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
+| ObjectTypeSetDefaultTemplate | [Rpc.ObjectType.SetDefaultTemplate.Request](#anytype-Rpc-ObjectType-SetDefaultTemplate-Request) | [Rpc.ObjectType.SetDefaultTemplate.Response](#anytype-Rpc-ObjectType-SetDefaultTemplate-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
@@ -13390,6 +13396,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-ObjectType-SetDefaultTemplate"></a>
+
+### Rpc.ObjectType.SetDefaultTemplate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-SetDefaultTemplate-Request"></a>
+
+### Rpc.ObjectType.SetDefaultTemplate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypeId | [string](#string) |  |  |
+| templateId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-SetDefaultTemplate-Response"></a>
+
+### Rpc.ObjectType.SetDefaultTemplate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.SetDefaultTemplate.Response.Error](#anytype-Rpc-ObjectType-SetDefaultTemplate-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-SetDefaultTemplate-Response-Error"></a>
+
+### Rpc.ObjectType.SetDefaultTemplate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.SetDefaultTemplate.Response.Error.Code](#anytype-Rpc-ObjectType-SetDefaultTemplate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Process"></a>
 
 ### Rpc.Process
@@ -17448,6 +17511,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | UNKNOWN_OBJECT_TYPE_URL | 3 |  |
 | READONLY_OBJECT_TYPE | 4 | ... |
+
+
+
+<a name="anytype-Rpc-ObjectType-SetDefaultTemplate-Response-Error-Code"></a>
+
+### Rpc.ObjectType.SetDefaultTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| INTERNAL_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
