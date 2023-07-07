@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
@@ -85,10 +84,6 @@ func init() {
 	}
 }
 
-type SmartblockOpener interface {
-	Open(id string) (sb smartblock.SmartBlock, err error)
-}
-
 func New(
 	tempDirProvider *core.TempDirService,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
@@ -141,7 +136,6 @@ type Service struct {
 	restriction     restriction.Service
 	bookmark        bookmarksvc.Service
 	relationService relation.Service
-	cache           ocache.OCache
 	indexer         indexer
 
 	objectCreator        objectCreator
@@ -189,7 +183,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
-	s.cache = s.createCache()
 	s.app = a
 	return
 }
@@ -206,7 +199,11 @@ func (s *Service) OpenBlock(
 	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
-	ob, err := s.getSmartblock(ctx, id)
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	ob, err := space.GetObjectWithTimeout(ctx.Context(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -309,13 +306,7 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 }
 
 func (s *Service) CloseBlocks() {
-	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
-		ob := v.(smartblock.SmartBlock)
-		ob.Lock()
-		ob.ObjectCloseAllSessions()
-		ob.Unlock()
-		return true
-	})
+	s.spaceService.CloseSessionsInAllObjects()
 }
 
 func (s *Service) AddSubObjectToWorkspace(
@@ -778,17 +769,16 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	close(s.closing)
-	return s.cache.Close()
+	return nil
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
 func (s *Service) PickBlock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
-	return s.getSmartblock(ctx, id)
-}
-
-func (s *Service) getSmartblock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
-	return s.GetObjectWithTimeout(ctx, id)
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	return space.GetObjectWithTimeout(ctx.Context(), id)
 }
 
 func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name string) (st *state.State, err error) {

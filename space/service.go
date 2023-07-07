@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
@@ -31,11 +32,14 @@ import (
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/space/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peerstore"
 	"github.com/anyproto/anytype-heart/space/storage"
+	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
 const (
@@ -63,12 +67,17 @@ type Service interface {
 	AccountSpace(ctx context.Context) (commonspace.Space, error)
 	AccountId() string
 	CreateSpace(ctx context.Context) (container commonspace.Space, err error)
-	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
+	GetSpace(ctx context.Context, id string) (Space, error)
 	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
 	DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error)
 	DeleteAccount(ctx context.Context, revert bool) (payload StatusPayload, err error)
 	StreamPool() streampool.StreamPool
+	CloseSessionsInAllObjects()
 	app.ComponentRunnable
+}
+
+type ObjectFactory interface {
+	InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
 }
 
 type service struct {
@@ -81,10 +90,16 @@ type service struct {
 	streamPool           streampool.StreamPool
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
-	poolManager          PoolManager
-	streamHandler        *streamHandler
-	accountId            string
-	newAccount           bool
+
+	objectFactory ObjectFactory
+	sbtProvider   typeprovider.SmartBlockTypeProvider
+	core          core.Service
+	commonAccount accountservice.Service
+
+	poolManager   PoolManager
+	streamHandler *streamHandler
+	accountId     string
+	newAccount    bool
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -98,6 +113,12 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
+
+	s.objectFactory = app.MustComponent[ObjectFactory](a)
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.core = app.MustComponent[core.Service](a)
+	s.commonAccount = app.MustComponent[accountservice.Service](a)
+
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{s: s}
@@ -204,12 +225,12 @@ func (s *service) CreateSpace(ctx context.Context) (container commonspace.Space,
 	return obj.(commonspace.Space), nil
 }
 
-func (s *service) GetSpace(ctx context.Context, id string) (space commonspace.Space, err error) {
+func (s *service) GetSpace(ctx context.Context, id string) (space Space, err error) {
 	v, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return
 	}
-	return v.(commonspace.Space), nil
+	return v.(Space), nil
 }
 
 func (s *service) HandleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
@@ -262,7 +283,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return
 	}
-	ns, err := newClientSpace(cc)
+	ns, err := newClientSpace(cc, s.objectFactory, s.sbtProvider, s.core, s.commonAccount)
 	if err != nil {
 		return
 	}
@@ -363,4 +384,18 @@ func (s *service) GetLogFields() []zap.Field {
 	return []zap.Field{
 		zap.Bool("newAccount", s.newAccount),
 	}
+}
+
+func (s *service) CloseSessionsInAllObjects() {
+	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
+		space := v.(*clientSpace)
+		space.cache.ForEach(func(v ocache.Object) (isContinue bool) {
+			ob := v.(smartblock.SmartBlock)
+			ob.Lock()
+			ob.ObjectCloseAllSessions()
+			ob.Unlock()
+			return true
+		})
+		return true
+	})
 }
