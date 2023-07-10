@@ -19,8 +19,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	_ "embed"
@@ -42,11 +44,13 @@ type BuiltinTemplate interface {
 
 type builtinTemplate struct {
 	source        source.Service
+	sbtProvider   typeprovider.SmartBlockTypeProvider
 	generatedHash string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
+	b.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	b.makeGenHash(4)
 	return
 }
@@ -125,7 +129,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	}
 
 	b.source.RegisterStaticSource(id, b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil))
-	// TODO Register static smartblock type
+	b.sbtProvider.RegisterStaticType(id, smartblock.SmartBlockTypeBundledTemplate)
 	return
 }
 

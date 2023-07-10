@@ -56,6 +56,7 @@ func NewCreator(service *block.Service,
 	relationSyncer syncer.RelationSyncer,
 	fileStore filestore.FileStore,
 	picker getblock.Picker,
+	spaceService space.Service,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
@@ -65,6 +66,7 @@ func NewCreator(service *block.Service,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
 		picker:         picker,
+		spaceService:   spaceService,
 	}
 }
 

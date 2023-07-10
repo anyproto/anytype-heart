@@ -53,9 +53,11 @@ var ErrUsingOldStorage = errors.New("using old storage")
 var log = logger.NewNamed(CName)
 
 func New() Service {
-	return &service{
-		provider: &provider{},
+	s := &service{}
+	s.provider = &provider{
+		spaceService: s,
 	}
+	return s
 }
 
 type PoolManager interface {
@@ -234,6 +236,9 @@ func (s *service) CreateSpace(ctx context.Context) (container Space, err error) 
 }
 
 func (s *service) GetSpace(ctx context.Context, id string) (space Space, err error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty space id")
+	}
 	v, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return

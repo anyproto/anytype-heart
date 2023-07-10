@@ -26,6 +26,7 @@ type Space interface {
 	CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error)
 	DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
+	DoLockedIfNotExists(objectID string, proc func() error) error
 }
 
 func newClientSpace(
@@ -41,6 +42,7 @@ func newClientSpace(
 		sbtProvider:   sbtProvider,
 		core:          core,
 		commonAccount: commonAccount,
+		closing:       make(chan struct{}),
 	}
 	s.cache = ocache.New(
 		s.cacheLoad,

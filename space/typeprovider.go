@@ -119,7 +119,7 @@ func (p *provider) objectTypeFromSpace(spaceID string, id string) (tp smartblock
 	if err != nil {
 		return
 	}
-	return
+	return smartblock.SmartBlockType(payload.SmartBlockType), nil
 }
 
 func (p *provider) setType(id string, tp smartblock.SmartBlockType) (err error) {

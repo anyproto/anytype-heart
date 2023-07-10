@@ -89,6 +89,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
+	b.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 

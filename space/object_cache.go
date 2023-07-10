@@ -49,12 +49,13 @@ func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts)
 }
 
 func (s *clientSpace) cacheLoad(cctx context.Context, id string) (value ocache.Object, err error) {
-	opts, ok := cctx.Value(optsKey).(cacheOpts)
-	if !ok {
-		opts.spaceId = s.Id()
-	}
+	opts, _ := cctx.Value(optsKey).(cacheOpts)
+	opts.spaceId = s.Id()
 
-	sbt, _ := s.sbtProvider.Type(opts.spaceId, id)
+	sbt, err := s.sbtProvider.Type(opts.spaceId, id)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	opts.buildOption.BuildTree = func(ctx context.Context) (objecttree.ObjectTree, error) {
 		return s.TreeBuilder().BuildTree(ctx, id, opts.buildOption.BuildTreeOpts())
@@ -210,4 +211,8 @@ func (s *clientSpace) getDerivedObject(
 func (s *clientSpace) RemoveObjectFromCache(ctx context.Context, id string) error {
 	_, err := s.cache.Remove(ctx, id)
 	return err
+}
+
+func (s *clientSpace) DoLockedIfNotExists(objectID string, proc func() error) error {
+	return s.cache.DoLockedIfNotExists(objectID, proc)
 }

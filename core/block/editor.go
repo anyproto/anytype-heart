@@ -627,10 +627,13 @@ func (s *Service) ModifyLocalDetails(
 	// we set pending details if object is not in cache
 	// we do this under lock to prevent races if the object is created in parallel
 	// because in that case we can lose changes
-	// TODO Fix
-	// err = s.cache.DoLockedIfNotExists(objectId, func() error {
-	// 	return s.objectStore.UpdatePendingLocalDetails(objectId, modifier)
-	// })
+	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	err = space.DoLockedIfNotExists(objectId, func() error {
+		return s.objectStore.UpdatePendingLocalDetails(objectId, modifier)
+	})
 	if err != nil && err != ocache.ErrExists {
 		return err
 	}

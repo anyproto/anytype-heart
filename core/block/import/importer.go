@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -84,10 +85,11 @@ func (i *Import) Init(a *app.App) (err error) {
 	picker := app.MustComponent[getblock.Picker](a)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, picker))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
+	spaceService := app.MustComponent[space.Service](a)
+	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore, picker)
+	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore, picker, spaceService)
 	return nil
 }
 

@@ -46,11 +46,12 @@ type ObjectIDGetter struct {
 	spaceService  space.Service
 }
 
-func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDGetter {
+func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service *block.Service, spaceService space.Service) IDGetter {
 	return &ObjectIDGetter{
-		objectStore: objectStore,
-		service:     service,
-		core:        core,
+		objectStore:  objectStore,
+		service:      service,
+		core:         core,
+		spaceService: spaceService,
 	}
 }
 
