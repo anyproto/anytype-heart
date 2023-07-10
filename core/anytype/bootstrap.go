@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -62,6 +61,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/credentialprovider"
@@ -113,6 +113,7 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	event := metrics.AppStart{
 		TotalMs:   stat.SpentMsTotal,
 		PerCompMs: stat.SpentMsPerComp,
+		Extra:     map[string]interface{}{},
 	}
 
 	if v, ok := ctx.Value(metrics.CtxKeyRPC).(string); ok {
