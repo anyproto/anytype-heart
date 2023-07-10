@@ -77,9 +77,9 @@ func (s *fileWatcher) loadFilesToWatch() (filesToMigrate []string, err error) {
 			fileID := bytes.TrimPrefix(it.Key(), []byte(filesToWatchPrefix))
 			if spaceID, copyErr := it.ValueCopy(nil); copyErr != nil && len(spaceID) != 0 {
 				s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: string(spaceID)}] = struct{}{}
-				continue
+			} else {
+				filesToMigrate = append(filesToMigrate, string(fileID))
 			}
-			filesToMigrate = append(filesToMigrate, string(fileID))
 		}
 		return nil
 	})
