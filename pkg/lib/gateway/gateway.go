@@ -188,7 +188,7 @@ func (g *gateway) stopServer() error {
 		// don't wait for the server shutdown because we don't care for the requests to interrupt
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(0))
 		defer cancel()
-		if err := g.server.Shutdown(ctx); err != nil {
+		if err := g.server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
 			return err
 		}
 		if err := g.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
