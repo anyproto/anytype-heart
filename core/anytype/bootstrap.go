@@ -225,12 +225,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
+		Register(spaceService).
 		Register(fileStore).
 		Register(fileservice.New()).
 		Register(filestorage.New(eventService.Send)).
 		Register(fileSyncService).
 		Register(localdiscovery.New()).
-		Register(spaceService).
 		Register(peermanager.New()).
 		Register(sbtProvider).
 		Register(relationService).

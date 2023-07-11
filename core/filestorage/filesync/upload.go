@@ -203,14 +203,14 @@ func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId s
 	}
 
 	if len(blocksToUpload) > 0 {
-		log.Info("collecting blocks to upload",
+		log.Warn("collecting blocks to upload",
 			zap.String("fileID", fileId),
 			zap.Int("blocksToUpload", len(blocksToUpload)),
 			zap.Int("totalBlocks", len(fileBlocks)),
 		)
 	}
 
-	stat, err := f.SpaceStat(ctx, spaceId)
+	stat, err := f.getAndUpdateSpaceStat(ctx, spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("get space stat: %w", err)
 	}
