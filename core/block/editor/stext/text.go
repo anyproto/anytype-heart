@@ -135,9 +135,7 @@ func (t *textImpl) Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (new
 				} else {
 					exText = new.(text.Block).GetText() + "\n" + exText
 				}
-				if err = nextBlock.SetText(exText, &model.BlockContentTextMarks{}); err != nil {
-					return
-				}
+				nextBlock.SetText(exText, &model.BlockContentTextMarks{})
 				targetPos = model.Block_None
 				newId = nextBlock.Model().Id
 				break
@@ -317,9 +315,7 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 		return
 	}
 	beforeIds := tb.FillSmartIds(nil)
-	if err = tb.SetText(req.Text, req.Marks); err != nil {
-		return
-	}
+	tb.SetText(req.Text, req.Marks)
 	afterIds := tb.FillSmartIds(nil)
 
 	if _, ok := tb.(text.DetailsBlock); ok || wasEmpty {
