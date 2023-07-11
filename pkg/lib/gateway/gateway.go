@@ -185,7 +185,8 @@ func (g *gateway) stopServer() error {
 
 	if g.isServerStarted {
 		g.isServerStarted = false
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		// don't wait for the server shutdown because we don't care for the requests to interrupt
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(0))
 		defer cancel()
 		if err := g.server.Shutdown(ctx); err != nil {
 			return err
@@ -209,10 +210,16 @@ func (g *gateway) readLimitCh() {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
-	g.limitCh <- struct{}{}
-	defer g.readLimitCh()
+	select {
+	case g.limitCh <- struct{}{}:
+		defer g.readLimitCh()
+	case <-r.Context().Done():
+		// exit fast in case context is already done(e.g. server stopped or client canceled)
+		return
+	}
 	enableCors(w)
-	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+
+	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
@@ -249,11 +256,16 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 
 // imageHandler gets image meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
-	g.limitCh <- struct{}{}
-	defer g.readLimitCh()
+	select {
+	case g.limitCh <- struct{}{}:
+		defer g.readLimitCh()
+	case <-r.Context().Done():
+		// exit fast in case context is already done(e.g. server stopped or client canceled)
+		return
+	}
 	enableCors(w)
 
-	ctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 
 	file, reader, err := g.getImage(ctx, r)
