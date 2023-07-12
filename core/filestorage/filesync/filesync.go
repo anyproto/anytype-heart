@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 const CName = "filesync"
@@ -66,6 +67,7 @@ type fileSync struct {
 	fileStore    filestore.FileStore
 	sendEvent    func(event *pb.Event)
 	onUpload     func(spaceID, fileID string) error
+	spaceService space.Service
 
 	spaceStatsLock sync.Mutex
 	spaceStats     map[string]SpaceStat
@@ -83,6 +85,7 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
+	f.spaceService = app.MustComponent[space.Service](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return
@@ -105,6 +108,14 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
+
+	// TODO multi-spaces: init for each space: GO-1681
+	_, err = f.SpaceStat(ctx, f.spaceService.AccountId())
+	if err != nil {
+		log.Error("can't init space stats", zap.String("spaceID", f.spaceService.AccountId()), zap.Error(err))
+		err = nil
+	}
+
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.addLoop()
 	go f.removeLoop()
