@@ -109,7 +109,7 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	// TODO multi-spaces: init for each space
+	// TODO multi-spaces: init for each space: GO-1681
 	_, err = f.SpaceStat(ctx, f.spaceService.AccountId())
 	if err != nil {
 		log.Error("can't init space stats", zap.String("spaceID", f.spaceService.AccountId()), zap.Error(err))
