@@ -80,8 +80,8 @@ func main() {
 	}
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 
-	var stopChan = make(chan os.Signal, 2)
-	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	var signalChan = make(chan os.Signal, 2)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGUSR1)
 
 	var mw = core.New()
 	mw.EventSender = event.NewGrpcSender()
@@ -241,13 +241,20 @@ func main() {
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
-	select {
-	case <-stopChan:
-		server.Stop()
-		proxy.Close()
-		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
-		return
+	for {
+		select {
+		case sig := <-signalChan:
+			if sig == syscall.SIGUSR1 {
+				stack := debug.StackCompact(true)
+				continue
+			}
+			server.Stop()
+			proxy.Close()
+			mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
+			return
+		}
 	}
+
 }
 
 func appendInterceptor(
