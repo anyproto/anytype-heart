@@ -116,6 +116,7 @@ func (s *service) watch(id string, filesGetter func() []string) (new bool, err e
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
 	}
+	s.updateReceiver.ClearLastObjectStatus(id)
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
 		err := s.fileWatcher.Watch(s.spaceService.AccountId(), id)
@@ -128,7 +129,6 @@ func (s *service) watch(id string, filesGetter func() []string) (new bool, err e
 		if err = s.objectWatcher.Watch(id); err != nil {
 			return false, err
 		}
-		s.updateReceiver.ClearLastObjectStatus(id)
 		return true, nil
 	}
 }
@@ -138,6 +138,7 @@ func (s *service) unwatch(id string) {
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
 	}
+	s.updateReceiver.ClearLastObjectStatus(id)
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
 		// File watcher unwatches files automatically
@@ -146,7 +147,6 @@ func (s *service) unwatch(id string) {
 	default:
 		s.linkedFilesWatcher.UnwatchLinkedFiles(id)
 		s.objectWatcher.Unwatch(id)
-		s.updateReceiver.ClearLastObjectStatus(id)
 	}
 }
 
