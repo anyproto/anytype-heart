@@ -45,6 +45,7 @@ type service struct {
 	objectWatcher      *objectWatcher
 	subObjectsWatcher  *subObjectsWatcher
 	linkedFilesWatcher *linkedFilesWatcher
+	updateReceiver     *updateReceiver
 }
 
 func New(
@@ -74,6 +75,7 @@ func New(
 		objectWatcher:      objectWatcher,
 		subObjectsWatcher:  subObjectsWatcher,
 		linkedFilesWatcher: linkedFilesWatcher,
+		updateReceiver:     updateReceiver,
 	}
 }
 
@@ -126,6 +128,7 @@ func (s *service) watch(id string, filesGetter func() []string) (new bool, err e
 		if err = s.objectWatcher.Watch(id); err != nil {
 			return false, err
 		}
+		s.updateReceiver.ClearLastObjectStatus(id)
 		return true, nil
 	}
 }
@@ -143,6 +146,7 @@ func (s *service) unwatch(id string) {
 	default:
 		s.linkedFilesWatcher.UnwatchLinkedFiles(id)
 		s.objectWatcher.Unwatch(id)
+		s.updateReceiver.ClearLastObjectStatus(id)
 	}
 }
 
