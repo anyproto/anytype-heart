@@ -146,6 +146,8 @@ jobs:
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile ios lib
         run: |
+          go install github.com/golang/mock/mockgen@latest
+          make test-deps
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf json
