@@ -45,17 +45,21 @@ func (f *fileSync) SpaceStat(ctx context.Context, spaceID string) (SpaceStat, er
 		return stats, nil
 	}
 
-	stats, err := f.queue.getSpaceInfo(spaceID)
+	stats, err := f.queue.getSpaceStats(spaceID)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return f.getAndUpdateSpaceStat(ctx, spaceID)
 	}
 	if err != nil {
 		return SpaceStat{}, fmt.Errorf("get space info from badger: %w", err)
 	}
+	f.setSpaceStats(spaceID, stats)
+	return stats, nil
+}
+
+func (f *fileSync) setSpaceStats(spaceID string, stats SpaceStat) {
 	f.spaceStatsLock.Lock()
 	f.spaceStats[spaceID] = stats
 	f.spaceStatsLock.Unlock()
-	return stats, nil
 }
 
 func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (ss SpaceStat, err error) {

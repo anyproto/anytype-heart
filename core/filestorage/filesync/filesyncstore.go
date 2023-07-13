@@ -393,7 +393,7 @@ func (s *fileSyncStore) IsAlreadyUploaded(spaceId, fileId string) (done bool, er
 	return
 }
 
-func (s *fileSyncStore) getSpaceInfo(spaceID string) (stats SpaceStat, err error) {
+func (s *fileSyncStore) getSpaceStats(spaceID string) (stats SpaceStat, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		it, err := txn.Get(spaceInfoKey(spaceID))
 		if err != nil {
