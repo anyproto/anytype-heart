@@ -138,34 +138,39 @@ func taskFunction(t Task, done chan struct{}) func() {
 
 func (p *queue) Finalize() (err error) {
 	p.m.Lock()
-	defer p.m.Unlock()
 	if err = p.checkRunning(true); err != nil {
+		p.m.Unlock()
 		return err
 	}
 	if err = p.msgs.Close(); err != nil {
+		p.m.Unlock()
 		return ErrQueueDone
 	}
+	p.state = pb.ModelProcess_Done
+
+	p.m.Unlock()
 	p.wg.Wait()
 	close(p.done)
-	p.state = pb.ModelProcess_Done
 	return
 }
 
 func (p *queue) Cancel() (err error) {
 	p.m.Lock()
-	defer p.m.Unlock()
 	if err = p.checkRunning(true); err != nil {
+		p.m.Unlock()
 		return err
 	}
 	close(p.cancel)
 	// flush queue
 	p.msgs.Pause()
+	p.state = pb.ModelProcess_Canceled
 	if err = p.msgs.Close(); err != nil {
+		p.m.Unlock()
 		return ErrQueueDone
 	}
+	p.m.Unlock()
 	p.wg.Wait()
 	close(p.done)
-	p.state = pb.ModelProcess_Canceled
 	return
 }
 
@@ -196,24 +201,27 @@ func (p *queue) SetMessage(msg string) {
 
 func (p *queue) Stop(err error) {
 	p.m.Lock()
-	defer p.m.Unlock()
 	if e := p.checkRunning(true); e != nil {
+		p.m.Unlock()
 		return
 	}
 	close(p.cancel)
 	// flush queue
 	p.msgs.Pause()
 	if err = p.msgs.Close(); err != nil {
+		p.m.Unlock()
 		return
 	}
-	p.wg.Wait()
-	close(p.done)
 	if err == nil {
 		p.state = pb.ModelProcess_Done
 	} else {
 		p.state = pb.ModelProcess_Error
 		p.message = err.Error()
 	}
+
+	p.m.Unlock()
+	p.wg.Wait()
+	close(p.done)
 	return
 }
 
