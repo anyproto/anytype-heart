@@ -153,6 +153,16 @@ To generate Swift protobuf:
 brew install swift-protobuf
 ```
 
+## Test for race conditions
+Setup middleware with the race detector:
+```
+ANYRACE=-race make install-dev-js
+```
+Then start the desktop app and run the middleware with the race detector:
+```
+GORACE=log_path=/tmp/race/report SERVER_PORT=8080 npm run start:dev
+```
+
 ## Contribution
 Thank you for your desire to develop Anytype together. 
 

@@ -46,6 +46,8 @@ const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 var log = logging.Logger("anytype-grpc-server")
 
 func main() {
+	debug.TryCollectRaces()
+
 	var addr string
 	var webaddr string
 	app.StartWarningAfter = time.Second * 5

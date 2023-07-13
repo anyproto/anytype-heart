@@ -1,6 +1,8 @@
 export GOPRIVATE=github.com/anyproto
 export GOLANGCI_LINT_VERSION=v1.49.0
+
 ANYENV ?= staging
+ANYRACE ?=
 
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
@@ -232,7 +234,7 @@ endif
 ifeq ($(ANYENV), dev)
 	$(eval TAGS := $(TAGS) envdev)
 endif
-	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
+	go build $(ANYRACE) -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
 
 build-server-debug: protos-server
 	@echo 'Building middleware server with debug symbols...'
