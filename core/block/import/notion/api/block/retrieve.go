@@ -383,7 +383,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	query.Add(pageSize, strconv.FormatInt(pagination, 10))
 
 	req.URL.RawQuery = query.Encode()
-	res, err := s.client.DoWithRetry(0, req)
+	res, err := s.client.DoWithRetry(endpoint, 0, req)
 	if err != nil {
 		return Response{}, fmt.Errorf("GetBlocks: %s", err)
 	}

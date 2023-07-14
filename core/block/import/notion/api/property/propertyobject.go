@@ -171,7 +171,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
-		res, err := s.client.DoWithRetry(0, req)
+		res, err := s.client.DoWithRetry(endpoint, 0, req)
 
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)

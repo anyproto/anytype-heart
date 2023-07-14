@@ -75,12 +75,14 @@ func GetRetryAfterError(h http.Header) *ErrRateLimited {
 // in case retry-after header is available it uses it, otherwise gradually increase the delay
 // can be canceled with the request's timeout
 // 0 maxAttempts means no limit
-func (c *Client) DoWithRetry(maxAttempts int, req *http.Request) (*http.Response, error) {
+//
+func (c *Client) DoWithRetry(loggerInfo string, maxAttempts int, req *http.Request) (*http.Response, error) {
 	var (
 		delay   = time.Second * 5
 		attempt = 0
 		body    []byte
 	)
+	lg := logger.With("info", loggerInfo)
 	if req.Body != nil {
 		var err error
 		body, err = io.ReadAll(req.Body)
@@ -100,13 +102,13 @@ retry:
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok {
 				if netErr.Timeout() {
-					logger.Warnf("network timeout error: %s", netErr)
+					lg.Warnf("network timeout error: %s", netErr)
 				} else if netErr.Temporary() {
-					logger.Warnf("network temporary error: %s", netErr)
+					lg.Warnf("network temporary error: %s", netErr)
 				}
 				retryReason = netErr.Error()
 			} else {
-				return nil, fmt.Errorf("GetPropertyObject: %s", err)
+				return nil, fmt.Errorf("http error: %s", err)
 			}
 		} else if res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500 {
 			e := GetRetryAfterError(res.Header)
@@ -117,13 +119,13 @@ retry:
 		} else {
 			return res, nil
 		}
-
+		lg = lg.With("reason", retryReason)
 		attempt++
 		if maxAttempts > 0 && attempt >= maxAttempts {
-			logger.With("reason", retryReason).Warnf("max attempts exceeded")
+			lg.Warnf("max attempts exceeded")
 			return res, err
 		}
-		logger.With("reason", retryReason).With("delay", delay.Seconds()).With("attempt", attempt).Warnf("retry request")
+		lg.With("delay", delay.Seconds()).With("attempt", attempt).Warnf("retry request")
 
 		select {
 		case <-req.Context().Done():

@@ -66,7 +66,7 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
 		}
-		res, err := s.client.DoWithRetry(3, req)
+		res, err := s.client.DoWithRetry(endpoint, 3, req)
 
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
