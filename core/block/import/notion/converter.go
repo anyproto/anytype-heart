@@ -49,7 +49,16 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Add("apiKey", fmt.Errorf("failed to extract apikey"))
 		return nil, ce
 	}
-	db, pages, err := search.Retry(n.search.Search, retryAmount, retryDelay)(context.TODO(), apiKey, pageSize)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-progress.Canceled():
+			cancel()
+		case <-progress.Done():
+			cancel()
+		}
+	}()
+	db, pages, err := n.search.Search(ctx, apiKey, pageSize)
 	if err != nil {
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
 		return nil, ce
@@ -72,16 +81,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Merge(dbErr)
 		return nil, ce
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		select {
-		case <-progress.Canceled():
-			cancel()
-		case <-progress.Done():
-			cancel()
-		}
-	}()
+	
 	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, progress)
 	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
