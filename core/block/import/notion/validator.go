@@ -1,7 +1,6 @@
 package notion
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -41,7 +40,7 @@ func NewPingService(client *client.Client) *Service {
 
 // Ping is function to validate token, it calls users endpoint and checks given error,
 func (s *Service) Ping(ctx context.Context, apiKey string) error {
-	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, endpoint, bytes.NewReader(nil))
+	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, endpoint, nil)
 	if err != nil {
 		logger.With(zap.String("method", "PrepareRequest")).Error(err)
 		return errors.Wrap(ErrorInternal, fmt.Sprintf("ping: %s", err.Error()))

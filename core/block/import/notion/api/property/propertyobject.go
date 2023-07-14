@@ -1,7 +1,6 @@
 package property
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -160,7 +159,6 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		startCursor string
 		response    propertyPaginatedRespone
 		properties  = make([]interface{}, 0)
-		delay       = time.Second * 5
 	)
 
 	for hasMore {
@@ -169,12 +167,11 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 			request = fmt.Sprintf(endpointWithStartCursor, pageID, propertyID, startCursor)
 		}
 
-		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, bytes.NewReader(nil))
+		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, nil)
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
-	retry:
-		res, err := s.client.HTTPClient.Do(req)
+		res, err := s.client.DoWithRetry(0, req)
 
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
@@ -182,26 +179,11 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		defer res.Body.Close()
 
 		b, err := ioutil.ReadAll(res.Body)
-
 		if err != nil {
 			return nil, err
 		}
 
 		if res.StatusCode != http.StatusOK {
-			if res.StatusCode == http.StatusTooManyRequests {
-				e := client.GetRetryAfterError(res.Header)
-				if e.RetryAfterSeconds > 0 {
-					delay = time.Second * time.Duration(e.RetryAfterSeconds)
-				}
-				logger.Warnf("ratelimited: wait %.0f", delay.Seconds())
-				select {
-				case <-ctx.Done():
-					return nil, ctx.Err()
-				case <-time.After(delay):
-					delay = delay * 2
-					goto retry
-				}
-			}
 			notionErr := client.TransformHTTPCodeToError(b)
 			if notionErr == nil {
 				return nil, fmt.Errorf("GetPropertyObject: failed http request, %d code", res.StatusCode)
