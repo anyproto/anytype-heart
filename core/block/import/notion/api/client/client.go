@@ -1,9 +1,9 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
