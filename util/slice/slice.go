@@ -5,6 +5,9 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+
+	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 )
 
 func Union(a, b []string) []string {
@@ -211,4 +214,11 @@ func ReplaceFirstBy[T comparable](s []T, el T, pred func(el T) bool) []T {
 		}
 	}
 	return s
+}
+
+func FilterCID(cids []string) []string {
+	return lo.Filter(cids, func(item string, index int) bool {
+		_, err := cid.Parse(item)
+		return err == nil
+	})
 }

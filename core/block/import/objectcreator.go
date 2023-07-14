@@ -405,21 +405,25 @@ func (oc *ObjectCreator) syncFilesAndLinks(ctx *session.Context, newID string) e
 	tasks := make([]func() error, 0)
 	var fileHashes []string
 
+	// todo: rewrite it in order not to create state with URLs inside links
 	err := oc.service.Do(newID, func(b sb.SmartBlock) error {
 		st := b.NewState()
+		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
-			fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
 			s := oc.syncFactory.GetSyncer(bl)
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					return s.Sync(ctx, newID, bl)
+					err := s.Sync(ctx, newID, bl)
+					if err != nil {
+						return err
+					}
+					// fill hashes after sync only
+					if fh, ok := b.(simple.FileHashes); ok {
+						fileHashes = fh.FillFileHashes(fileHashes)
+					}
+					return nil
 				})
-			}
-			if bl != nil {
-				if file := bl.Model().GetFile(); file != nil {
-					fileHashes = append(fileHashes, file.Hash)
-				}
 			}
 			return true
 		})

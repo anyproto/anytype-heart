@@ -1167,7 +1167,10 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 			}
 		}
 	}
-	return
+
+	// we may have temporary links in files, we need to ignore them
+	// todo: remove after fixing of how import works
+	return slice.FilterCID(hashes)
 }
 
 func (sb *smartBlock) storeFileKeys(doc state.Doc) {

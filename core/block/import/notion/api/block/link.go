@@ -287,7 +287,7 @@ func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, no
 		logger.With("title", hashText(title)).With("options", len(idsWithGivenName)).Warnf("getTargetBlock: ambligious page title")
 	} else {
 		err = fmt.Errorf("%s '%s'", pageNotFoundMessage, title)
-		logger.With("title", hashText(title)).Errorf("getTargetBlock: target not foun")
+		logger.With("title", hashText(title)).Errorf("getTargetBlock: target not found")
 	}
 
 	return targetBlockID, err
