@@ -6,12 +6,21 @@ import (
 	"io"
 	"net/http"
 	"time"
+	"strconv"
 )
 
 const (
 	notionURL  = "https://api.notion.com/v1"
 	apiVersion = "2022-06-28"
 )
+
+type ErrRateLimited struct {
+	RetryAfterSeconds int64
+}
+
+func (e *ErrRateLimited) Error() string {
+	return "rate limited"
+}
 
 type Client struct {
 	HTTPClient *http.Client
@@ -46,4 +55,12 @@ func (c *Client) PrepareRequest(ctx context.Context,
 	}
 
 	return req, nil
+}
+func GetRetryAfterError(h http.Header) *ErrRateLimited {
+	var retryAfter int64
+	retryAfterStr := h.Get("retry-after")
+	if retryAfterStr != "" {
+		retryAfter, _ = strconv.ParseInt(retryAfterStr, 10, 64)
+	}
+	return &ErrRateLimited{RetryAfterSeconds: retryAfter}
 }

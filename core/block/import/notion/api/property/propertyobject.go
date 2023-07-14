@@ -160,6 +160,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		startCursor string
 		response    propertyPaginatedRespone
 		properties  = make([]interface{}, 0)
+		delay       = time.Second * 5
 	)
 
 	for hasMore {
@@ -169,10 +170,10 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		}
 
 		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, bytes.NewReader(nil))
-
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
+	retry:
 		res, err := s.client.HTTPClient.Do(req)
 
 		if err != nil {
@@ -187,6 +188,20 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		}
 
 		if res.StatusCode != http.StatusOK {
+			if res.StatusCode == http.StatusTooManyRequests {
+				e := client.GetRetryAfterError(res.Header)
+				if e.RetryAfterSeconds > 0 {
+					delay = time.Second * time.Duration(e.RetryAfterSeconds)
+				}
+				logger.Warnf("ratelimited: wait %.0f", delay.Seconds())
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(delay):
+					delay = delay * 2
+					goto retry
+				}
+			}
 			notionErr := client.TransformHTTPCodeToError(b)
 			if notionErr == nil {
 				return nil, fmt.Errorf("GetPropertyObject: failed http request, %d code", res.StatusCode)

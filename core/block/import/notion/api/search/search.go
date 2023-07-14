@@ -49,7 +49,7 @@ func Retry(effector Effector, retries int, delay time.Duration) Effector {
 				return database, pages, err
 			}
 
-			logger.Infof("Attempt %d failed; retrying in %v, error: %s", r+1, delay, err.Error())
+			logger.Warnf("Attempt %d failed; retrying in %v, error: %s", r+1, delay, err.Error())
 
 			select {
 			case <-time.After(delay):
