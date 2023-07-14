@@ -58,6 +58,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 			cancel()
 		}
 	}()
+	db, pages, err := n.search.Search(ctx, apiKey, pageSize)
 	if err != nil {
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
 
@@ -89,7 +90,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Merge(dbErr)
 		return nil, ce
 	}
-	
+
 	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, progress)
 	if pgErr != nil {
 		logger.With("err", pgErr.Error()).Warnf("import from notion pages failed")
