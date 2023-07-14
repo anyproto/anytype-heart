@@ -73,7 +73,16 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 
-	pgSnapshots, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionImportContext, progress)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-progress.Canceled():
+			cancel()
+		case <-progress.Done():
+			cancel()
+		}
+	}()
+	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, progress)
 	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
