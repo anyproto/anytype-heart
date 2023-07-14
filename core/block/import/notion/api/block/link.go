@@ -15,7 +15,11 @@ import (
 	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
-const notFoundPageMessage = "Can't access object in Notion, please provide access in API"
+const (
+	ambiguousPageMessage  = "ambiguous page"   // more than one page with the same title without direct parent
+	pageNotFoundMessage   = "page not found"   // can't find notion page by title
+	objectNotFoundMessage = "object not found" // can't find anytypeId for notion page
+)
 
 type EmbedBlock struct {
 	Block
@@ -275,14 +279,14 @@ func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, no
 		if targetBlockID, ok = notionIDsToAnytype[id]; ok {
 			return targetBlockID, nil
 		} else {
-			err = fmt.Errorf("object not found '%s'", title)
+			err = fmt.Errorf("%s '%s'", objectNotFoundMessage, title)
 			logger.With("notionID", hashText(id)).With("title", hashText(title)).Errorf("getTargetBlock: anytype id not found")
 		}
 	} else if len(idsWithGivenName) > 1 {
-		err = fmt.Errorf("ambligious page '%s'", title)
+		err = fmt.Errorf("%s '%s'", ambiguousPageMessage, title)
 		logger.With("title", hashText(title)).With("options", len(idsWithGivenName)).Warnf("getTargetBlock: ambligious page title")
 	} else {
-		err = fmt.Errorf("page not found '%s'", title)
+		err = fmt.Errorf("%s '%s'", pageNotFoundMessage, title)
 		logger.With("title", hashText(title)).Errorf("getTargetBlock: target not foun")
 	}
 
