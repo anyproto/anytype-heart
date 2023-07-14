@@ -232,7 +232,7 @@ func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, no
 		ok            bool
 	)
 
-	findByPageAndTitle := func(pageId, title string) string {
+	findByPageAndTitle := func(pageID, title string) string {
 		if childIDs, exist := parentPageIDToChildIDs[pageID]; exist {
 			for childIdx, childID := range childIDs {
 				if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
@@ -271,18 +271,19 @@ func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, no
 
 	var err error
 	if len(idsWithGivenName) == 1 {
-		if targetBlockID, ok = notionIDsToAnytype[idsWithGivenName[0]]; ok {
+		id := idsWithGivenName[0]
+		if targetBlockID, ok = notionIDsToAnytype[id]; ok {
 			return targetBlockID, nil
 		} else {
 			err = fmt.Errorf("object not found '%s'", title)
-			logger.Errorf("getTargetBlock: anytype id not found")
+			logger.With("notionID", hashText(id)).With("title", hashText(title)).Errorf("getTargetBlock: anytype id not found")
 		}
 	} else if len(idsWithGivenName) > 1 {
 		err = fmt.Errorf("ambligious page '%s'", title)
-		logger.Warnf("getTargetBlock: ambligious page title %d options: %s", len(idsWithGivenName), hashText(title))
+		logger.With("title", hashText(title)).With("options", len(idsWithGivenName)).Warnf("getTargetBlock: ambligious page title")
 	} else {
 		err = fmt.Errorf("page not found '%s'", title)
-		logger.Errorf("getTargetBlock: target not found %s", hashText(title))
+		logger.With("title", hashText(title)).Errorf("getTargetBlock: target not foun")
 	}
 
 	return targetBlockID, err
