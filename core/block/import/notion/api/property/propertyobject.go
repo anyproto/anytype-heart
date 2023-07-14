@@ -1,7 +1,6 @@
 package property
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -168,12 +167,11 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 			request = fmt.Sprintf(endpointWithStartCursor, pageID, propertyID, startCursor)
 		}
 
-		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, bytes.NewReader(nil))
-
+		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, nil)
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
 		}
-		res, err := s.client.HTTPClient.Do(req)
+		res, err := s.client.DoWithRetry(endpoint, 0, req)
 
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)
@@ -181,7 +179,6 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		defer res.Body.Close()
 
 		b, err := ioutil.ReadAll(res.Body)
-
 		if err != nil {
 			return nil, err
 		}

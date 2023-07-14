@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
@@ -40,26 +39,6 @@ func New(client *client.Client) *Service {
 
 type Effector func(ctx context.Context, apiKey string, pageSize int64) ([]database.Database, []page.Page, error)
 
-// Retry is an implementation for retry pattern
-func Retry(effector Effector, retries int, delay time.Duration) Effector {
-	return func(ctx context.Context, apiKey string, pageSize int64) ([]database.Database, []page.Page, error) {
-		for r := 0; ; r++ {
-			database, pages, err := effector(ctx, apiKey, pageSize)
-			if err == nil || r >= retries {
-				return database, pages, err
-			}
-
-			logger.Infof("Attempt %d failed; retrying in %v, error: %s", r+1, delay, err.Error())
-
-			select {
-			case <-time.After(delay):
-			case <-ctx.Done():
-				return nil, nil, ctx.Err()
-			}
-		}
-	}
-}
-
 // Search calls /search endoint from Notion, which return all databases and pages from user integration
 func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]database.Database, []page.Page, error) {
 	var (
@@ -87,7 +66,7 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
 		}
-		res, err := s.client.HTTPClient.Do(req)
+		res, err := s.client.DoWithRetry(endpoint, 3, req)
 
 		if err != nil {
 			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
