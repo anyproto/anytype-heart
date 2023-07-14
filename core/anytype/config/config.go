@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -279,6 +281,12 @@ func (c *Config) GetDebugServer() debugserver.Config {
 }
 
 func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
+	if networkConfigPath := loadenv.Get("ANYTYPE_NETWORK"); networkConfigPath != "" {
+		var err error
+		if nodesConfYmlBytes, err = os.ReadFile(networkConfigPath); err != nil {
+			panic(fmt.Errorf("load network configuration failed: %v", err))
+		}
+	}
 	if err := yaml.Unmarshal(nodesConfYmlBytes, &conf); err != nil {
 		panic(fmt.Errorf("unable to parse node config: %v", err))
 	}
