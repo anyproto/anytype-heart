@@ -368,11 +368,9 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 func (s *Service) getBlocksResponse(ctx context.Context,
 	pageID, apiKey, cursor string,
 	pagination int64) (Response, error) {
-	body := &bytes.Buffer{}
 
 	url := fmt.Sprintf(endpoint, pageID)
-
-	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, url, body)
+	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, url, bytes.NewReader(nil))
 
 	if err != nil {
 		return Response{}, fmt.Errorf("GetBlocks: %s", err)

@@ -157,7 +157,6 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 	propertyType ConfigType) ([]interface{}, error) {
 	var (
 		hasMore     = true
-		body        = &bytes.Buffer{}
 		startCursor string
 		response    propertyPaginatedRespone
 		properties  = make([]interface{}, 0)
@@ -168,7 +167,8 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		if startCursor != "" {
 			request = fmt.Sprintf(endpointWithStartCursor, pageID, propertyID, startCursor)
 		}
-		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, body)
+
+		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, bytes.NewReader(nil))
 
 		if err != nil {
 			return nil, fmt.Errorf("GetPropertyObject: %s", err)

@@ -75,6 +75,7 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 	}
 
 	for hasMore {
+		body.Reset()
 		err := json.NewEncoder(body).Encode(&Option{PageSize: pageSize, StartCursor: startCursor})
 
 		if err != nil {

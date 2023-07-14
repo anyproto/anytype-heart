@@ -1,6 +1,11 @@
 package block
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
+	"strings"
+
 	"github.com/globalsign/mgo/bson"
 	"golang.org/x/exp/slices"
 
@@ -84,16 +89,16 @@ func (b *ChildPageBlock) GetBlocks(req *NotionImportContext, pageID string) *Map
 }
 
 func (p ChildPage) GetLinkToObjectBlock(importContext *NotionImportContext, pageID string) *model.Block {
-	targetBlockID, ok := getTargetBlock(importContext.ParentPageToChildIDs, importContext.PageNameToID, importContext.NotionPageIdsToAnytype, pageID, p.Title)
+	targetBlockID, err := getTargetBlock(importContext.ParentPageToChildIDs, importContext.PageNameToID, importContext.NotionPageIdsToAnytype, pageID, p.Title)
 
 	id := bson.NewObjectId().Hex()
-	if !ok {
+	if err != nil {
 		return &model.Block{
 			Id:          id,
 			ChildrenIds: nil,
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{
-					Text: notFoundPageMessage,
+					Text: err.Error(),
 					Marks: &model.BlockContentTextMarks{
 						Marks: []*model.BlockContentTextMark{},
 					},
@@ -135,6 +140,7 @@ func (c *ChildDatabase) GetDataviewBlock(importContext *NotionImportContext, pag
 		importContext.NotionDatabaseIdsToAnytype,
 		pageID, c.Title)
 
+	// todo: should we handle targetBlockID not found here?
 	id := bson.NewObjectId().Hex()
 	block := template.MakeCollectionDataviewContent()
 	block.Dataview.TargetObjectId = targetBlockID
@@ -220,20 +226,69 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 // returned to us by the Notion API. As a result we get Anytype ID of child page and make it targetBlockID
 // But we can end up with 3 links to the same page, and to avoid that,
 // we remove the childID from the parentIDToChildrenID map. So it helps to not create links with the same targetBlockID.
-func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, notionIDsToAnytype map[string]string, pageID, title string) (string, bool) {
+func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, notionIDsToAnytype map[string]string, pageID, title string) (string, error) {
 	var (
 		targetBlockID string
 		ok            bool
 	)
-	if childIDs, exist := parentPageIDToChildIDs[pageID]; exist {
-		for childIdx, childID := range childIDs {
-			if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
-				targetBlockID, ok = notionIDsToAnytype[childID]
-				childIDs = slices.Delete(childIDs, childIdx, childIdx+1)
-				break
+
+	findByPageAndTitle := func(pageId, title string) string {
+		if childIDs, exist := parentPageIDToChildIDs[pageID]; exist {
+			for childIdx, childID := range childIDs {
+				if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
+					if targetBlockID, ok = notionIDsToAnytype[childID]; !ok {
+						return ""
+					}
+
+					childIDs = slices.Delete(childIDs, childIdx, childIdx+1)
+					break
+				}
 			}
+			parentPageIDToChildIDs[pageID] = childIDs
 		}
-		parentPageIDToChildIDs[pageID] = childIDs
+
+		return targetBlockID
 	}
-	return targetBlockID, ok
+	// first, try to find it in the list of child of the current page
+	targetBlockID = findByPageAndTitle(pageID, title)
+	if targetBlockID != "" {
+		return targetBlockID, nil
+	}
+
+	// then, try to find it in the list of pages without direct parent
+	targetBlockID = findByPageAndTitle("", title)
+	if targetBlockID != "" {
+		return targetBlockID, nil
+	}
+
+	// fallback to just match by title
+	var idsWithGivenName []string
+	for id, name := range pageIDToName {
+		if strings.EqualFold(name, title) {
+			idsWithGivenName = append(idsWithGivenName, id)
+		}
+	}
+
+	var err error
+	if len(idsWithGivenName) == 1 {
+		if targetBlockID, ok = notionIDsToAnytype[idsWithGivenName[0]]; ok {
+			return targetBlockID, nil
+		} else {
+			err = fmt.Errorf("object not found '%s'", title)
+			logger.Errorf("getTargetBlock: anytype id not found")
+		}
+	} else if len(idsWithGivenName) > 1 {
+		err = fmt.Errorf("ambligious page '%s'", title)
+		logger.Warnf("getTargetBlock: ambligious page title %d options: %s", len(idsWithGivenName), hashText(title))
+	} else {
+		err = fmt.Errorf("page not found '%s'", title)
+		logger.Errorf("getTargetBlock: target not found %s", hashText(title))
+	}
+
+	return targetBlockID, err
+}
+
+func hashText(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
 }

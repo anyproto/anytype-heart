@@ -30,8 +30,9 @@ func NewClient() *Client {
 // PrepareRequest create http.Request based on given method, url and body
 func (c *Client) PrepareRequest(ctx context.Context,
 	apiKey, method, url string,
-	body *bytes.Buffer) (*http.Request, error) {
+	body io.Reader) (*http.Request, error) {
 	resultURL := c.BasePath + url
+
 	req, err := http.NewRequestWithContext(ctx, method, resultURL, body)
 	if err != nil {
 		return nil, err
