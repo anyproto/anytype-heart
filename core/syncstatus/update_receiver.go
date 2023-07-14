@@ -92,6 +92,12 @@ func (r *updateReceiver) getObjectStatus(status syncstatus.SyncStatus) pb.EventS
 	return pb.EventStatusThread_Syncing
 }
 
+func (r *updateReceiver) ClearLastObjectStatus(objectID string) {
+	r.Lock()
+	defer r.Unlock()
+	delete(r.lastStatus, objectID)
+}
+
 func (r *updateReceiver) isNodeConnected() bool {
 	r.Lock()
 	defer r.Unlock()

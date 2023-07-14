@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"sync"
 	"testing"
 	"time"
 )
@@ -99,9 +100,12 @@ func TestTreeSyncer(t *testing.T) {
 	t.Run("sync context cancel", func(t *testing.T) {
 		var events []string
 		syncer := newTreeSyncer(spaceId, objectLoadTimeout, 1, managerMock)
+		mutex := sync.Mutex{}
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
 			<-ctx.Done()
+			mutex.Lock()
 			events = append(events, "after done")
+			mutex.Unlock()
 			return missingMock, nil
 		})
 		syncer.Init()
@@ -111,9 +115,13 @@ func TestTreeSyncer(t *testing.T) {
 		require.NotNil(t, syncer.requestPools[peerId])
 		require.NotNil(t, syncer.headPools[peerId])
 		time.Sleep(100 * time.Millisecond)
+		mutex.Lock()
 		events = append(events, "before close")
+		mutex.Unlock()
 		syncer.Close()
 		time.Sleep(100 * time.Millisecond)
+		mutex.Lock()
 		require.Equal(t, []string{"before close", "after done"}, events)
+		mutex.Unlock()
 	})
 }

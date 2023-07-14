@@ -23,11 +23,13 @@ import (
 	"github.com/anyproto/anytype-heart/util/netutil"
 )
 
-const CName = "gateway"
+const (
+	CName = "gateway"
 
-const defaultPort = 47800
-
-const getFileTimeout = 1 * time.Minute
+	defaultPort    = 47800
+	getFileTimeout = 1 * time.Minute
+	requestLimit   = 32
+)
 
 var log = logging.Logger("anytype-gateway")
 
@@ -51,6 +53,7 @@ type gateway struct {
 	addr            string
 	mu              sync.Mutex
 	isServerStarted bool
+	limitCh         chan struct{}
 }
 
 func getRandomPort() (int, error) {
@@ -103,6 +106,7 @@ func (g *gateway) Run(context.Context) error {
 	g.handler = http.NewServeMux()
 	g.handler.HandleFunc("/file/", g.fileHandler)
 	g.handler.HandleFunc("/image/", g.imageHandler)
+	g.limitCh = make(chan struct{}, requestLimit)
 
 	// check port first
 	listener, err := net.Listen("tcp", g.addr)
@@ -185,10 +189,11 @@ func (g *gateway) stopServer() error {
 
 	if g.isServerStarted {
 		g.isServerStarted = false
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		// don't wait for the server shutdown because we don't care for the requests to interrupt
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(0))
 		defer cancel()
-		if err := g.server.Shutdown(ctx); err != nil {
-			return err
+		if err := g.server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			log.Errorf("gateway stop error: %s", err.Error())
 		}
 		if err := g.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
@@ -203,10 +208,22 @@ func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 }
 
+func (g *gateway) readLimitCh() {
+	<-g.limitCh
+}
+
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
+	select {
+	case g.limitCh <- struct{}{}:
+		defer g.readLimitCh()
+	case <-r.Context().Done():
+		// exit fast in case context is already done(e.g. server stopped or client canceled)
+		return
+	}
 	enableCors(w)
-	cctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+
+	cctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 	ctx := session.NewContext(cctx, g.spaceService.AccountId())
 	file, reader, err := g.getFile(ctx, r)
@@ -242,11 +259,18 @@ func (g *gateway) getFile(ctx session.Context, r *http.Request) (files.File, io.
 	return file, reader, err
 }
 
-// fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
+// imageHandler gets image meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+	select {
+	case g.limitCh <- struct{}{}:
+		defer g.readLimitCh()
+	case <-r.Context().Done():
+		// exit fast in case context is already done(e.g. server stopped or client canceled)
+		return
+	}
 	enableCors(w)
 
-	cctx, cancel := context.WithTimeout(context.Background(), getFileTimeout)
+	cctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 
 	ctx := session.NewContext(cctx, g.spaceService.AccountId())

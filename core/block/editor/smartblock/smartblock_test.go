@@ -52,8 +52,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		var event *pb.Event
 		ctx := session.NewContext(context.Background(), "space1")
 		fx.RegisterSession(ctx)
-		// TODO Test Async context later
-		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
+		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything, mock.Anything).Run(func(spaceID string, token string, e *pb.Event) {
 			event = e
 		})
 		fx.source.EXPECT().Heads()

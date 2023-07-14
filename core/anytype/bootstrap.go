@@ -110,26 +110,44 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	}
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
+	stat := a.StartStat()
+	event := metrics.AppStart{
+		TotalMs:   stat.SpentMsTotal,
+		PerCompMs: stat.SpentMsPerComp,
+		Extra:     map[string]interface{}{},
+	}
+
 	if v, ok := ctx.Value(metrics.CtxKeyRPC).(string); ok {
+		event.Request = v
 		l = l.With(zap.String("rpc", v))
 	}
 
-	for comp, spent := range a.StartStat().SpentMsPerComp {
+	for comp, spent := range stat.SpentMsPerComp {
 		if spent == 0 {
 			continue
 		}
 		l = l.With(zap.Int64(comp, spent))
 	}
-	l.With(zap.Int64("totalRun", a.StartStat().SpentMsTotal))
+
+	l.With(zap.Int64("totalRun", stat.SpentMsTotal))
 	a.IterateComponents(func(comp app.Component) {
 		if c, ok := comp.(ComponentLogFieldsGetter); ok {
 			for _, field := range c.GetLogFields() {
 				field.Key = comp.Name() + "_" + field.Key
 				l = l.With(field)
+				if field.String != "" {
+					event.Extra[field.Key] = field.String
+				} else {
+					event.Extra[field.Key] = field.Integer
+				}
+
 			}
 		}
 	})
 
+	if metrics.Enabled {
+		metrics.SharedClient.RecordEvent(event)
+	}
 	if totalSpent > WarningAfter {
 		l.Warn("app started")
 	} else {
@@ -208,12 +226,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
+		Register(spaceService).
 		Register(fileStore).
 		Register(fileservice.New()).
 		Register(filestorage.New(eventService)).
 		Register(fileSyncService).
 		Register(localdiscovery.New()).
-		Register(spaceService).
 		Register(peermanager.New()).
 		Register(sbtProvider).
 		Register(relationService).

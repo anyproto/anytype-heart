@@ -131,7 +131,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildState(d.(*state.State), ot, s.coreService.PredefinedObjects(s.spaceID).Profile)
+		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, s.coreService.PredefinedObjects(s.spaceID).Profile)
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {

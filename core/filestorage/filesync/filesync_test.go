@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 )
 
 var ctx = context.Background()
@@ -44,7 +45,7 @@ func TestFileSync_AddFile(t *testing.T) {
 	n, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
 	require.NoError(t, err)
 	fileId := n.Cid().String()
-	spaceId := "spaceId"
+	spaceId := "space1"
 
 	fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
 
@@ -96,6 +97,8 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	fx.rpcStore = mock_rpcstore.NewMockRpcStore(fx.ctrl)
+	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), "space1").Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
+
 	mockRpcStoreService := mock_rpcstore.NewMockService(fx.ctrl)
 	mockRpcStoreService.EXPECT().Name().Return(rpcstore.CName).AnyTimes()
 	mockRpcStoreService.EXPECT().Init(gomock.Any()).AnyTimes()
@@ -108,12 +111,20 @@ func newFixture(t *testing.T) *fixture {
 	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
 	fx.fileStoreMock = fileStoreMock
 
+	spaceService := mock_space.NewMockService(fx.ctrl)
+	spaceService.EXPECT().Name().Return("space").AnyTimes()
+	spaceService.EXPECT().Init(gomock.Any()).AnyTimes()
+	spaceService.EXPECT().Run(gomock.Any()).AnyTimes()
+	spaceService.EXPECT().AccountId().Return("space1").AnyTimes()
+	spaceService.EXPECT().Close(gomock.Any()).AnyTimes()
+
 	fx.a.Register(fx.fileService).
 		Register(&inMemBlockStore{data: map[string]blocks.Block{}}).
 		Register(bp).
 		Register(mockRpcStoreService).
 		Register(fx.FileSync).
-		Register(fileStoreMock)
+		Register(fileStoreMock).
+		Register(spaceService)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }

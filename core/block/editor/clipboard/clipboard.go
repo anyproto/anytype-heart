@@ -156,11 +156,11 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewStateCtx(ctx)
-
 	textSlot = ""
 
-	if len(req.Blocks) == 0 || req.Blocks[0].Id == "" {
-		return textSlot, htmlSlot, anySlot, errors.New("nothing to cut")
+	stateBlocks, err := assertBlocks(s.Blocks(), req.Blocks)
+	if err != nil {
+		return textSlot, htmlSlot, anySlot, err
 	}
 
 	var firstTextBlock, lastTextBlock *model.Block
@@ -226,19 +226,49 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	htmlSlot = html.NewHTMLConverter(ctx.SpaceID(), cb.fileService, cb.blocksToState(req.Blocks)).Convert()
 	anySlot = req.Blocks
 
-	var someUnlinked bool
-	for _, b := range req.Blocks {
-		if b.GetLayout() != nil {
+	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
+	return textSlot, htmlSlot, anySlot, cb.Apply(s)
+}
+
+func unlinkAndClearBlocks(
+	s *state.State,
+	stateBlocks map[string]*model.Block,
+	requestBlocks []*model.Block,
+) {
+	for _, block := range requestBlocks {
+		if block.GetLayout() != nil {
 			continue
 		}
-		if s.Unlink(b.Id) {
-			someUnlinked = true
+		stateBlock := stateBlocks[block.Id]
+		if stateBlock.Restrictions == nil || !stateBlock.Restrictions.Remove {
+			s.Unlink(block.Id)
+		} else {
+			if textBlock, ok := s.Get(block.Id).(text.Block); ok {
+				textBlock.SetText("", nil)
+			}
 		}
 	}
-	if !someUnlinked {
-		return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block")
+}
+
+func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map[string]*model.Block, error) {
+	if len(requestBlocks) == 0 || requestBlocks[0].Id == "" {
+		return nil, errors.New("nothing to cut")
 	}
-	return textSlot, htmlSlot, anySlot, cb.Apply(s)
+
+	idToBlockMap := make(map[string]*model.Block)
+	for _, stateBlock := range stateBlocks {
+		idToBlockMap[stateBlock.Id] = stateBlock
+	}
+
+	for _, requestBlock := range requestBlocks {
+		if requestBlock.Id == "" {
+			return nil, errors.New("empty requestBlock id")
+		}
+		if stateBlock, ok := idToBlockMap[requestBlock.Id]; !ok {
+			return nil, fmt.Errorf("requestBlock with id %s not found", stateBlock.Id)
+		}
+	}
+	return idToBlockMap, nil
 }
 
 func (cb *clipboard) Export(ctx session.Context, req pb.RpcBlockExportRequest) (path string, err error) {
@@ -346,7 +376,7 @@ func (cb *clipboard) pasteAny(
 		if b.Id == "" {
 			b.Id = bson.NewObjectId().Hex()
 		}
-		if b.Id == template.TitleBlockId {
+		if b.Id == template.TitleBlockId || b.Id == template.DescriptionBlockId {
 			delete(b.Fields.Fields, text.DetailsKeyFieldName)
 		}
 		if d, ok := b.Content.(*model.BlockContentOfDataview); ok {

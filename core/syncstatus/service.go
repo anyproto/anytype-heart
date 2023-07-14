@@ -45,6 +45,7 @@ type service struct {
 	objectWatcher      *objectWatcher
 	subObjectsWatcher  *subObjectsWatcher
 	linkedFilesWatcher *linkedFilesWatcher
+	updateReceiver     *updateReceiver
 }
 
 func New(
@@ -74,6 +75,7 @@ func New(
 		objectWatcher:      objectWatcher,
 		subObjectsWatcher:  subObjectsWatcher,
 		linkedFilesWatcher: linkedFilesWatcher,
+		updateReceiver:     updateReceiver,
 	}
 }
 
@@ -114,6 +116,7 @@ func (s *service) watch(spaceID string, id string, filesGetter func() []string) 
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
 	}
+	s.updateReceiver.ClearLastObjectStatus(id)
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
 		err := s.fileWatcher.Watch(spaceID, id)
@@ -135,6 +138,7 @@ func (s *service) unwatch(spaceID string, id string) {
 	if err != nil {
 		log.Debug("failed to get type of", zap.String("objectID", id))
 	}
+	s.updateReceiver.ClearLastObjectStatus(id)
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
 		// File watcher unwatches files automatically

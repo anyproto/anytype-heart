@@ -376,3 +376,144 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
 	}
 }
+
+func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T) {
+	ctx := session.NewContext(context.Background(), "space1")
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/emptyfirstline.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+
+	var subObjects []*converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			subObjects = append(subObjects, snapshot)
+		}
+	}
+	assert.Len(t, subObjects, 0)
+}
+
+func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.T) {
+	ctx := session.NewContext(context.Background(), "space1")
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/emptyfirstline.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: false,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+
+	var subObjects []*converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			subObjects = append(subObjects, snapshot)
+		}
+	}
+	assert.Len(t, subObjects, 6)
+
+	name := pbtypes.GetString(subObjects[0].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 1")
+
+	name = pbtypes.GetString(subObjects[1].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 2")
+
+	name = pbtypes.GetString(subObjects[2].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 3")
+
+	name = pbtypes.GetString(subObjects[3].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 4")
+
+	name = pbtypes.GetString(subObjects[4].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 5")
+
+	name = pbtypes.GetString(subObjects[5].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Field 6")
+}
+
+func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
+	ctx := session.NewContext(context.Background(), "space1")
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	// UseFirstRowForRelations is off
+	sn, err := csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/1000_rows.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: false,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded))
+	assert.NotNil(t, sn)
+
+	var objects []*converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		// only objects created from rows
+		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
+			objects = append(objects, snapshot)
+		}
+	}
+
+	assert.Len(t, objects, limitForRows)
+	for _, object := range objects {
+		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
+	}
+
+	// UseFirstRowForRelations is on
+	sn, err = csv.GetSnapshots(ctx, &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/1000_rows.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded))
+	assert.NotNil(t, sn)
+
+	objects = []*converter.Snapshot{}
+	for _, snapshot := range sn.Snapshots {
+		// only objects created from rows
+		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
+			objects = append(objects, snapshot)
+		}
+	}
+
+	assert.Len(t, objects, limitForRows-1)
+	for _, object := range objects {
+		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
+	}
+}

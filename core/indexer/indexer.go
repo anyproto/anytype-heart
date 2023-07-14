@@ -753,7 +753,7 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 		metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 			ReindexType: reindexType,
 			Total:       totalIds,
-			Success:     succeedIds,
+			Succeed:     succeedIds,
 			SpentMs:     int(spent.Milliseconds()),
 		})
 	}

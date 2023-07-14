@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -128,4 +129,27 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 		return err
 	})
 	return response(path, err)
+}
+
+func (mw *Middleware) DebugSubscriptions(_ context.Context, _ *pb.RpcDebugSubscriptionsRequest) *pb.RpcDebugSubscriptionsResponse {
+	response := func(subscriptions []string, err error) (res *pb.RpcDebugSubscriptionsResponse) {
+		res = &pb.RpcDebugSubscriptionsResponse{
+			Error: &pb.RpcDebugSubscriptionsResponseError{
+				Code: pb.RpcDebugSubscriptionsResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcDebugSubscriptionsResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		}
+		res.Subscriptions = subscriptions
+		return res
+	}
+	var subscriptions []string
+	err := mw.doBlockService(func(s *block.Service) error {
+		subscriptions = getService[subscription.Service](mw).SubscriptionIDs()
+		return nil
+	})
+	return response(subscriptions, err)
 }

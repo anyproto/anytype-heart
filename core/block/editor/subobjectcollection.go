@@ -431,7 +431,7 @@ func (c *SubObjectCollection) subState(st *state.State, collection string, fullI
 	subst.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList([]string{}))
 	changeId := st.StoreChangeIdForPath(collection + addr.SubObjectCollectionIdSeparator + subId)
 	if changeId == "" {
-		log.Errorf("subState %s: no changeId for %s", fullId, collection+addr.SubObjectCollectionIdSeparator+subId)
+		log.Infof("subState %s: no changeId for %s", fullId, collection+addr.SubObjectCollectionIdSeparator+subId)
 	}
 	subst.SetLocalDetail(bundle.RelationKeyLastChangeId.String(), pbtypes.String(changeId))
 
