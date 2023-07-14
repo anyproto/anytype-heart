@@ -11,6 +11,8 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 const (
@@ -56,8 +58,14 @@ func (it *QueueItem) less(other *QueueItem) bool {
 
 const queueSchemaVersion = 1
 
+func (s *fileSyncStore) updateTxn(f func(txn *badger.Txn) error) error {
+	return badgerhelper.RetryOnConflict(func() error {
+		return s.db.Update(f)
+	})
+}
+
 func (s *fileSyncStore) migrateQueue() error {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		raw, err := txn.Get(queueSchemaVersionKey)
 		if err != nil && err != badger.ErrKeyNotFound {
 			return fmt.Errorf("get schema version: %w", err)
@@ -139,7 +147,7 @@ func versionFromItem(it *badger.Item) (int, error) {
 }
 
 func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser bool) (err error) {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		logger := log.With(zap.String("fileID", fileId), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
 		ok, err := isKeyExists(txn, discardedKey(spaceId, fileId))
 		if err != nil {
@@ -174,7 +182,7 @@ func createQueueItem(addedByUser bool) ([]byte, error) {
 }
 
 func (s *fileSyncStore) QueueDiscarded(spaceId, fileId string) (err error) {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = txn.Delete(uploadKey(spaceId, fileId)); err != nil {
 			return err
 		}
@@ -187,7 +195,7 @@ func (s *fileSyncStore) QueueDiscarded(spaceId, fileId string) (err error) {
 }
 
 func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
 			return err
 		}
@@ -200,7 +208,7 @@ func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
 }
 
 func (s *fileSyncStore) DoneUpload(spaceId, fileId string) (err error) {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
 			return err
 		}
@@ -219,7 +227,7 @@ func removeFromUploadingQueue(txn *badger.Txn, spaceID string, fileID string) er
 }
 
 func (s *fileSyncStore) DoneRemove(spaceId, fileId string) (err error) {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		if err = txn.Delete(removeKey(spaceId, fileId)); err != nil {
 			return err
 		}
@@ -407,7 +415,7 @@ func (s *fileSyncStore) getSpaceStats(spaceID string) (stats SpaceStat, err erro
 }
 
 func (s *fileSyncStore) setSpaceInfo(spaceID string, stats SpaceStat) error {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
 		data, err := json.Marshal(stats)
 		if err != nil {
 			return err
