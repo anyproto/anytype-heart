@@ -1,6 +1,7 @@
 package block
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,20 +69,20 @@ func Test_GetLinkToObjectBlockTwoPagesWithSameName(t *testing.T) {
 }
 
 func Test_GetLinkToObjectBlockFail(t *testing.T) {
-	c := &ChildPage{Title: "title"}
+	c := &ChildPage{Title: "onetitle"}
 	bl := c.GetLinkToObjectBlock(NewNotionImportContext(), "id")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
-	assert.Equal(t, content.Text.Text, notFoundPageMessage)
+	assert.True(t, strings.HasPrefix(content.Text.Text, pageNotFoundMessage))
 
 	importContext := NewNotionImportContext()
-	importContext.PageNameToID = map[string]string{"id": "title"}
+	importContext.PageNameToID = map[string]string{"id": "anothertitle"}
 	bl = c.GetLinkToObjectBlock(importContext, "pageID")
 	assert.NotNil(t, bl)
 	content, ok = bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
-	assert.Equal(t, content.Text.Text, notFoundPageMessage)
+	assert.True(t, strings.HasPrefix(content.Text.Text, pageNotFoundMessage))
 }
 
 func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
@@ -125,11 +126,30 @@ func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameName(t *testing.T) {
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId1")
 }
 
-func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameFail(t *testing.T) {
-	c := &ChildPage{Title: "title"}
+func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameNotFail(t *testing.T) {
+	// because the object has an unique title
+	c := &ChildPage{Title: "uniqueTitle"}
 	importContext := NewNotionImportContext()
-	importContext.PageNameToID = map[string]string{"id": "title"}
+	importContext.PageNameToID = map[string]string{"id": "uniqueTitle"}
 	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId"}
+	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id", "id1"}}
+	bl := c.GetLinkToObjectBlock(importContext, "parentID")
+	assert.NotNil(t, bl)
+	content, ok := bl.Content.(*model.BlockContentOfLink)
+	assert.True(t, ok)
+	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+
+	bl = c.GetLinkToObjectBlock(importContext, "parentID")
+	assert.NotNil(t, bl)
+	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+}
+
+func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameFail(t *testing.T) {
+	// because there is more than 1 object with the same title "title"
+	c := &ChildPage{Title: "notUniqueTitle"}
+	importContext := NewNotionImportContext()
+	importContext.PageNameToID = map[string]string{"id": "notUniqueTitle", "id2": "notUniqueTitle"}
+	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId", "id2": "anytypeId2"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id", "id1"}}
 	bl := c.GetLinkToObjectBlock(importContext, "parentID")
 	assert.NotNil(t, bl)
@@ -141,5 +161,5 @@ func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameFail(t *testing.T
 	assert.NotNil(t, bl)
 	textContent, ok := bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
-	assert.Equal(t, notFoundPageMessage, textContent.Text.Text)
+	assert.True(t, strings.HasPrefix(textContent.Text.Text, ambiguousPageMessage))
 }

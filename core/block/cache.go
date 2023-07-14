@@ -298,7 +298,9 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload trees
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
-	tr.Close()
+	if tr != nil {
+		tr.Close()
+	}
 	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
 }
 
@@ -317,7 +319,9 @@ func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
-	tr.Close()
+	if tr != nil {
+		tr.Close()
+	}
 	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
 }
 

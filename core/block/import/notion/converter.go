@@ -49,11 +49,26 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		ce.Add("apiKey", fmt.Errorf("failed to extract apikey"))
 		return nil, ce
 	}
-	db, pages, err := search.Retry(n.search.Search, retryAmount, retryDelay)(context.TODO(), apiKey, pageSize)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-progress.Canceled():
+			cancel()
+		case <-progress.Done():
+			cancel()
+		}
+	}()
+	db, pages, err := n.search.Search(ctx, apiKey, pageSize)
 	if err != nil {
 		ce.Add("/search", fmt.Errorf("failed to get pages and databases %s", err))
+
+		// always add this error because it's mean that we need to return error to user, even in case IGNORE_ERRORS is turned on
+		// see shouldReturnError
+		ce.Add("", converter.ErrFailedToReceiveListOfObjects)
+		logger.With("err", ce.Error()).With("pages", len(pages)).With("dbs", len(db)).Error("import from notion failed")
 		return nil, ce
 	}
+	logger.With("pages", len(pages)).With("dbs", len(db)).Warnf("import from notion started")
 	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases+len(pages)*numberOfStepsForPages) + stepForSearch)
 
 	if err = progress.TryStep(1); err != nil {
@@ -65,6 +80,9 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 
 	notionImportContext := block.NewNotionImportContext()
 	dbSnapshots, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
+	if dbErr != nil {
+		logger.With("err", dbErr.Error()).Warnf("import from notion db failed")
+	}
 	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}
@@ -73,7 +91,10 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 
-	pgSnapshots, pgErr := n.pgService.GetPages(context.TODO(), apiKey, req.Mode, pages, notionImportContext, progress)
+	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, progress)
+	if pgErr != nil {
+		logger.With("err", pgErr.Error()).Warnf("import from notion pages failed")
+	}
 	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
 		return nil, converter.NewFromError("", converter.ErrCancel)
 	}

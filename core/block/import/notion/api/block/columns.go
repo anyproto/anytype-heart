@@ -1,8 +1,9 @@
 package block
 
 import (
-	"github.com/samber/lo"
 	"strings"
+
+	"github.com/samber/lo"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -27,36 +28,36 @@ func (c *ColumnListBlock) SetChildren(children []interface{}) {
 	c.ColumnList = children
 }
 
-func (c *ColumnListBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
+func (c *ColumnListBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
 	columnsList := c.ColumnList.([]interface{})
 	var (
 		resultResponse = &MapResponse{}
 		rowBlock       simple.Block
 	)
 	if len(columnsList) != 0 {
-		rowBlock = c.handleFirstColumn(req, columnsList[0], resultResponse)
+		rowBlock = c.handleFirstColumn(req, columnsList[0], resultResponse, pageID)
 	}
 	for i := 1; i < len(columnsList); i++ {
-		c.handleColumn(req, columnsList[i], resultResponse, rowBlock)
+		c.handleColumn(req, columnsList[i], resultResponse, rowBlock, pageID)
 	}
 	c.addRowBlock(resultResponse, rowBlock)
 	return resultResponse
 }
 
-func (c *ColumnListBlock) handleColumn(req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, rowBlock simple.Block) {
-	column := c.addColumnBlocks("ct-", req, notionColumn, resultResponse)
+func (c *ColumnListBlock) handleColumn(req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, rowBlock simple.Block, pageID string) {
+	column := c.addColumnBlocks("ct-", req, notionColumn, resultResponse, pageID)
 	rowBlock.Model().ChildrenIds = append(rowBlock.Model().ChildrenIds, column.Model().Id)
 }
 
-func (c *ColumnListBlock) handleFirstColumn(req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse) simple.Block {
-	column := c.addColumnBlocks("cd-", req, notionColumn, resultResponse)
+func (c *ColumnListBlock) handleFirstColumn(req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, pageID string) simple.Block {
+	column := c.addColumnBlocks("cd-", req, notionColumn, resultResponse, pageID)
 	rowBlock := c.getRowBlock(strings.TrimPrefix(column.Model().Id, "cd-"), column.Model().Id)
 	return rowBlock
 }
 
-func (c *ColumnListBlock) addColumnBlocks(prefix string, req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse) simple.Block {
+func (c *ColumnListBlock) addColumnBlocks(prefix string, req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, pageID string) simple.Block {
 	req.Blocks = []interface{}{notionColumn}
-	resp := MapBlocks(req, "")
+	resp := MapBlocks(req, pageID)
 	childBlocks := c.getChildBlocksForColumn(resp)
 	id := bson.NewObjectId().Hex()
 	column := c.getColumnBlock(id, prefix, childBlocks, resultResponse)
@@ -126,9 +127,9 @@ type ColumnObject struct {
 	Children []interface{} `json:"children"`
 }
 
-func (c *ColumnBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
+func (c *ColumnBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
 	req.Blocks = c.Column.Children
-	resp := MapBlocks(req, "")
+	resp := MapBlocks(req, pageID)
 	return resp
 }
 
