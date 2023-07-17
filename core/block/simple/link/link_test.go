@@ -47,13 +47,27 @@ func TestLink_Diff(t *testing.T) {
 		b2 := testBlock()
 		b2.content.Style = model.BlockContentLink_Dataview
 		b2.content.TargetBlockId = "42"
+		b2.content.CardStyle = model.BlockContentLink_Card
+		b2.content.IconSize = model.BlockContentLink_SizeMedium
+		b2.content.Description = model.BlockContentLink_Content
 
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink
 		assert.NotNil(t, change.TargetBlockId)
+		assert.Equal(t, "42", change.TargetBlockId.Value)
 		assert.NotNil(t, change.Style)
+		assert.Equal(t, model.BlockContentLink_Dataview, change.Style.Value)
+		assert.NotNil(t, change.CardStyle)
+		assert.Equal(t, model.BlockContentLink_Card, change.CardStyle.Value)
+		assert.NotNil(t, change.IconSize)
+		assert.Equal(t, model.BlockContentLink_SizeMedium, change.IconSize.Value)
+		assert.NotNil(t, change.Description)
+		assert.Equal(t, model.BlockContentLink_Content, change.Description.Value)
+	})
+	t.Run("relations", func(t *testing.T) {
+
 	})
 }
 

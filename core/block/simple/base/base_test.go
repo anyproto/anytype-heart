@@ -66,4 +66,34 @@ func TestBase_Diff(t *testing.T) {
 		require.Len(t, diff, 1)
 		assert.Equal(t, b2.Fields, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetFields).BlockSetFields.Fields)
 	})
+	t.Run("background color", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := testBlock()
+		b1.BackgroundColor = "yellow"
+		b2.BackgroundColor = "red"
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		assert.Equal(t, b2.BackgroundColor, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetBackgroundColor).BlockSetBackgroundColor.BackgroundColor)
+	})
+	t.Run("vertical align", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := testBlock()
+		b1.VerticalAlign = model.Block_VerticalAlignTop
+		b2.VerticalAlign = model.Block_VerticalAlignMiddle
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		assert.Equal(t, b2.VerticalAlign, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetVerticalAlign).BlockSetVerticalAlign.VerticalAlign)
+	})
+	t.Run("align", func(t *testing.T) {
+		b1 := testBlock()
+		b2 := testBlock()
+		b1.Align = model.Block_AlignLeft
+		b2.Align = model.Block_AlignCenter
+		diff, err := b1.Diff(b2)
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		assert.Equal(t, b2.Align, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetAlign).BlockSetAlign.Align)
+	})
 }
