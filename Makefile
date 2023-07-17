@@ -1,6 +1,7 @@
 export GOPRIVATE=github.com/anyproto
 export GOLANGCI_LINT_VERSION=v1.49.0
 export custom_network_file=./core/anytype/config/nodes/custom.yml
+export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
 
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
@@ -62,10 +63,6 @@ test:
 test-integration:
 	@echo 'Running integration tests...'
 	@go test -run=TestBasic -tags=integration -v -count 1 ./tests
-
-test-migration:
-	@echo "Running migration tests..."
-	@go test -run=TestMigration -tags=integration -v -count 1 ./tests
 
 test-race:
 	@echo 'Running tests with race-detector...'
@@ -233,13 +230,8 @@ protos-java:
 	@echo 'Generating protobuf packages (Java)...'
 	@protoc -I ./ --java_out=./dist/android/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
-build-cli:
-	@echo 'Building middleware cli...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
-	@go build -v -o dist/cli -ldflags "$(FLAGS)" github.com/anyproto/anytype-heart/cmd/cli
-
 build-server: setup-network-config
-	@echo 'Building middleware server...'
+	@echo 'Building anytype-heart server...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@$(eval TAGS := nosigar nowatchdog)
 ifdef ANY_SYNC_NETWORK
