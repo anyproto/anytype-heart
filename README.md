@@ -6,16 +6,25 @@ Middleware library for Anytype.
 2. Follow instructions below for the target systems
 
 ### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
-1. `make install-dev-js` to build the local server and copy it and protobuf binding into `../anytype-ts`
+`make install-dev-js` — build the local server and copy it and protobuf binding into `../anytype-ts`
+
+Parameters:
+- `ANYTYPE_NETWORK=/path/to/network.yml` — build using self-hosted network configuration
 
 ### Build for iOS
-Instructions to set up environment for iOS [here](https://github.com/anyproto/anytype-swift/blob/main/docs/Setup_For_Middleware.md)
+Instructions to set up environment for iOS: [here](https://github.com/anyproto/anytype-swift/blob/main/docs/Setup_For_Middleware.md)
 1. `make build-ios` to build the framework into `dist/ios` folder
+
+   Parameters:
+    - `ANYTYPE_NETWORK=/path/to/network.yml` — build using self-hosted network configuration
 2. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
 
 ### Build for Android
-Instructions to setup environment for Android [here](https://github.com/anyproto/anytype-kotlin/blob/main/docs/Setup_For_Middleware.md)
+Instructions to setup environment for Android: [here](https://github.com/anyproto/anytype-kotlin/blob/main/docs/Setup_For_Middleware.md)
 1. `make build-android` to build the library into `dist/android` folder
+
+   Parameters:
+    - `ANYTYPE_NETWORK=/path/to/network.yml` — build using self-hosted network configuration
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
 
 ## Rebuild protobuf generated files
