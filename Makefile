@@ -12,7 +12,7 @@ ifndef $(GOROOT)
     export GOROOT
 endif
 
-export PATH:=$(pwd)/deps:$(GOPATH)/bin:$(PATH)
+export PATH:=$(shell pwd)/deps:$(GOPATH)/bin:$(PATH)
 
 all:
 	@set -e;
@@ -57,7 +57,7 @@ lint:
 
 test:
 	@echo 'Running tests...'
-	@ANYTYPE_LOG_NOGELF=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go test -race -cover github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go test -cover github.com/anyproto/anytype-heart/...
 
 test-integration:
 	@echo 'Running integration tests...'
@@ -73,7 +73,8 @@ test-race:
 
 test-deps:
 	@echo 'Generating test mocks...'
-	@go install github.com/golang/mock/mockgen
+	@go build -o deps github.com/golang/mock/mockgen
+	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
 	@mockery --all
 
@@ -150,9 +151,10 @@ setup-protoc-go:
 setup-protoc-jsweb:
 	@echo 'Installing grpc-web plugin...'
 	@rm -rf deps/grpc-web
-	@git clone http://github.com/grpc/grpc-web deps/grpc-web
+	@git clone --depth 1 --branch 1.4.2 http://github.com/grpc/grpc-web deps/grpc-web
 	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
-	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C deps/grpc-web install-plugin || $(MAKE) -C deps/grpc-web install-plugin
+	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C deps/grpc-web plugin || $(MAKE) -C deps/grpc-web plugin
+	mv deps/grpc-web/javascript/net/grpc/web/generator/protoc-gen-grpc-web deps/protoc-gen-grpc-web
 	@rm -rf deps/grpc-web
 
 setup-protoc: setup-protoc-go setup-protoc-jsweb
