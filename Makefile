@@ -29,12 +29,12 @@ ifdef ANYENV
 	@exit 1;
 endif
 	@if [ -z "$(ANY_SYNC_NETWORK)" ]; then \
-    		echo "Using the default production Any Network"; \
+    		echo "Using the default production Any Sync Network"; \
     	elif [ ! -e "$(ANY_SYNC_NETWORK)" ]; then \
     		echo "Network configuration file not found at $(ANY_SYNC_NETWORK)"; \
     		exit 1; \
     	else \
-    		echo "Using Any Network configuration at $(ANY_SYNC_NETWORK)"; \
+    		echo "Using Any Sync Network configuration at $(ANY_SYNC_NETWORK)"; \
     		cp $(ANY_SYNC_NETWORK) $(custom_network_file); \
     fi
 
