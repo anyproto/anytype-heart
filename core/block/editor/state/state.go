@@ -1182,7 +1182,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 
 	if objTypes {
 		for _, ot := range s.ObjectTypes() {
-			if ot == "" {
+			if ot == "" { // TODO is it possible?
 				log.Errorf("sb %s has empty ot", s.RootId())
 				continue
 			}

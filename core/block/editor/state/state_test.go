@@ -1,8 +1,11 @@
 package state
 
 import (
+	"errors"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -623,4 +626,530 @@ func TestState_HasInStore(t *testing.T) {
 	assert.False(t, st.HasInStore([]string{collectionName, "subobject1", "subobject3"}))
 	assert.True(t, st.HasInStore([]string{collectionName, "subobject2", "subobject3"}))
 	assert.True(t, st.HasInStore([]string{collectionName, "subobject1"}))
+}
+
+func TestState_Validate(t *testing.T) {
+	s := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"childBlock"},
+		}),
+		"childBlock": simple.New(&model.Block{Id: "childBlock", ChildrenIds: []string{"childBlock1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+			}}),
+		"childBlock1": simple.New(&model.Block{Id: "childBlock1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+			}}),
+	}).(*State)
+
+	//Valid state
+	assert.Nil(t, s.Validate())
+
+}
+func TestState_ValidateChildWithTwoParents(t *testing.T) {
+	childrenWithTwoParents := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"childBlock", "childBlock1"},
+		}),
+		"childBlock": simple.New(&model.Block{Id: "childBlock", ChildrenIds: []string{"childBlock1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+			}}),
+		"childBlock1": simple.New(&model.Block{Id: "childBlock1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+			}}),
+	}).(*State)
+
+	//Not valid state
+	assert.NotNil(t, childrenWithTwoParents.Validate())
+	assert.Contains(t, childrenWithTwoParents.Validate().Error(), "two children with same id")
+
+}
+
+func TestState_ValidateMissedChildBlockState(t *testing.T) {
+	missedChildBlockState := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"childBlock"},
+		}),
+		"childBlock": simple.New(&model.Block{Id: "childBlock", ChildrenIds: []string{"childBlock1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+			}}),
+	}).(*State)
+
+	//Not valid state
+	assert.NotNil(t, missedChildBlockState.Validate())
+	assert.Contains(t, missedChildBlockState.Validate().Error(), "missed block")
+}
+
+/*
+func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
+	if blocks {
+		err := s.Iterate(func(b simple.Block) (isContinue bool) {
+			if ls, ok := b.(linkSource); ok {
+				ids = ls.FillSmartIds(ids)
+			}
+			return true
+		})
+		if err != nil {
+			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
+		}
+	}
+
+	if objTypes {
+		for _, ot := range s.ObjectTypes() {
+			if ot == "" {
+				log.Errorf("sb %s has empty ot", s.RootId())
+				continue
+			}
+			ids = append(ids, ot)
+		}
+	}
+
+	var det *types.Struct
+	if details {
+		det = s.CombinedDetails()
+	}
+
+	for _, rel := range s.GetRelationLinks() {
+		// do not index local dates such as lastOpened/lastModified
+		if relations {
+			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+		}
+
+		if !details {
+			continue
+		}
+
+		// handle corner cases first for specific formats
+		if rel.Format == model.RelationFormat_date &&
+			!slices.Contains(bundle.LocalRelationsKeys, rel.Key) &&
+			!slices.Contains(bundle.DerivedRelationsKeys, rel.Key) {
+			relInt := pbtypes.GetInt64(det, rel.Key)
+			if relInt > 0 {
+				t := time.Unix(relInt, 0)
+				t = t.In(time.UTC)
+				ids = append(ids, addr.TimeToID(t))
+			}
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCreator.String() ||
+			rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
+			rel.Key == bundle.RelationKeyWorkspaceId.String() {
+			if creatorModifierWorkspace {
+				v := pbtypes.GetString(det, rel.Key)
+				ids = append(ids, v)
+			}
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyId.String() ||
+			rel.Key == bundle.RelationKeyLinks.String() ||
+			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
+			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+			continue
+		}
+
+		if rel.Key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(det, rel.Key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
+			}
+			ids = append(ids, v)
+		}
+
+		if rel.Format != model.RelationFormat_object &&
+			rel.Format != model.RelationFormat_file &&
+			rel.Format != model.RelationFormat_status &&
+			rel.Format != model.RelationFormat_tag {
+			continue
+		}
+
+		// add all object relation values as dependents
+		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
+			if targetID == "" {
+				continue
+			}
+
+			ids = append(ids, targetID)
+		}
+	}
+
+	ids = lo.Uniq(ids)
+	return
+}
+*/
+
+func TestState_DepSmartIdsLinks(t *testing.T) {
+	stateWithLinks := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3"},
+		}),
+		"childBlock": simple.New(&model.Block{Id: "childBlock",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   8,
+							},
+							Type:  model.BlockContentTextMark_Object,
+							Param: "objectID",
+						},
+						{
+							Range: &model.Range{
+								From: 9,
+								To:   19,
+							},
+							Type:  model.BlockContentTextMark_Mention,
+							Param: "objectID2",
+						},
+					},
+				}},
+			}}),
+		"childBlock2": simple.New(&model.Block{Id: "childBlock2",
+			Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{
+					TargetObjectId: "objectID3",
+				},
+			}}),
+		"childBlock3": simple.New(&model.Block{Id: "childBlock3",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: "objectID4",
+				},
+			}}),
+	}).(*State)
+
+	objectIDs := stateWithLinks.DepSmartIds(true, false, false, false, false)
+	assert.Len(t, objectIDs, 4)
+
+	objectIDs = stateWithLinks.DepSmartIds(false, false, false, false, false)
+	assert.Len(t, objectIDs, 0)
+}
+
+func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
+	stateWithLinks := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3"},
+		}),
+		"childBlock": simple.New(&model.Block{Id: "childBlock",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   8,
+							},
+							Type:  model.BlockContentTextMark_Object,
+							Param: "objectID",
+						},
+						{
+							Range: &model.Range{
+								From: 9,
+								To:   19,
+							},
+							Type:  model.BlockContentTextMark_Mention,
+							Param: "objectID2",
+						},
+					},
+				}},
+			}}),
+		"childBlock2": simple.New(&model.Block{Id: "childBlock2",
+			Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{
+					TargetObjectId: "objectID3",
+				},
+			}}),
+		"childBlock3": simple.New(&model.Block{Id: "childBlock3",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: "objectID4",
+				},
+			}}),
+	}).(*State)
+
+	relations := []*model.RelationLink{
+		{
+			Key:    "relation1",
+			Format: model.RelationFormat_file,
+		},
+		{
+			Key:    "relation2",
+			Format: model.RelationFormat_tag,
+		},
+		{
+			Key:    "relation3",
+			Format: model.RelationFormat_status,
+		},
+		{
+			Key:    "relation4",
+			Format: model.RelationFormat_object,
+		},
+	}
+	stateWithLinks.AddRelationLinks(relations...)
+	objectIDs := stateWithLinks.DepSmartIds(true, false, false, false, false)
+	assert.Len(t, objectIDs, 4)
+
+	objectIDs = stateWithLinks.DepSmartIds(true, false, true, false, false)
+	assert.Len(t, objectIDs, 10) // 4 links + 4 relations + 2 derived relations
+}
+
+func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
+	stateWithLinks := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3"},
+		}),
+		"childBlock": simple.New(&model.Block{Id: "childBlock",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{
+								From: 0,
+								To:   8,
+							},
+							Type:  model.BlockContentTextMark_Object,
+							Param: "objectID",
+						},
+						{
+							Range: &model.Range{
+								From: 9,
+								To:   19,
+							},
+							Type:  model.BlockContentTextMark_Mention,
+							Param: "objectID2",
+						},
+					},
+				}},
+			}}),
+		"childBlock2": simple.New(&model.Block{Id: "childBlock2",
+			Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{
+					TargetObjectId: "objectID3",
+				},
+			}}),
+		"childBlock3": simple.New(&model.Block{Id: "childBlock3",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: "objectID4",
+				},
+			}}),
+	}).(*State)
+
+	relations := []*model.RelationLink{
+		{
+			Key:    "relation1",
+			Format: model.RelationFormat_file,
+		},
+		{
+			Key:    "relation2",
+			Format: model.RelationFormat_tag,
+		},
+		{
+			Key:    "relation3",
+			Format: model.RelationFormat_status,
+		},
+		{
+			Key:    "relation4",
+			Format: model.RelationFormat_object,
+		},
+		{
+			Key:    "relation5",
+			Format: model.RelationFormat_date,
+		},
+	}
+	stateWithLinks.AddRelationLinks(relations...)
+	stateWithLinks.SetDetail("relation1", pbtypes.String("file"))
+	stateWithLinks.SetDetail("relation2", pbtypes.String("option1"))
+	stateWithLinks.SetDetail("relation3", pbtypes.String("option2"))
+	stateWithLinks.SetDetail("relation4", pbtypes.String("option3"))
+	stateWithLinks.SetDetail("relation5", pbtypes.Int64(time.Now().Unix()))
+	objectIDs := stateWithLinks.DepSmartIds(true, false, false, false, false)
+	assert.Len(t, objectIDs, 4) // links
+
+	objectIDs = stateWithLinks.DepSmartIds(true, false, true, false, false)
+	assert.Len(t, objectIDs, 11) // 4 links + 5 relations + 2 derived relations
+
+	objectIDs = stateWithLinks.DepSmartIds(true, true, true, false, false)
+	assert.Len(t, objectIDs, 16) // 4 links + 5 relations + 2 derived relations + 3 options + 1 fileID + 1 date
+}
+
+func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
+	stateWithLinks := NewDoc("root", nil).(*State)
+
+	relations := []*model.RelationLink{
+		{
+			Key:    "relation1",
+			Format: model.RelationFormat_date,
+		},
+		{
+			Key:    bundle.RelationKeyCreatedDate.String(),
+			Format: model.RelationFormat_date,
+		},
+		{
+			Key:    bundle.RelationKeyCreator.String(),
+			Format: model.RelationFormat_object,
+		},
+		{
+			Key:    bundle.RelationKeyWorkspaceId.String(),
+			Format: model.RelationFormat_object,
+		},
+		{
+			Key:    bundle.RelationKeyLastModifiedBy.String(),
+			Format: model.RelationFormat_object,
+		},
+	}
+	stateWithLinks.AddRelationLinks(relations...)
+	stateWithLinks.SetDetail("relation1", pbtypes.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	stateWithLinks.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("creator"))
+	stateWithLinks.SetDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String("workspaceID"))
+	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String("lastModifiedBy"))
+
+	objectIDs := stateWithLinks.DepSmartIds(false, true, false, false, true)
+	assert.Len(t, objectIDs, 4) // creator + workspaceID + lastModifiedBy + 1 date
+
+	objectIDs = stateWithLinks.DepSmartIds(false, true, true, false, true)
+	assert.Len(t, objectIDs, 11) // 5 relations + creator + workspaceID + lastModifiedBy + 1 date + 2 derived relations
+}
+
+func TestState_DepSmartIdsObjectTypes(t *testing.T) {
+	stateWithLinks := NewDoc("root", nil).(*State)
+
+	stateWithLinks.SetObjectType(bundle.TypeKeyPage.URL())
+
+	objectIDs := stateWithLinks.DepSmartIds(false, false, false, false, false)
+	assert.Len(t, objectIDs, 0)
+
+	objectIDs = stateWithLinks.DepSmartIds(false, false, false, true, false)
+	assert.Len(t, objectIDs, 1)
+	assert.Equal(t, objectIDs[0], bundle.TypeKeyPage.URL())
+}
+
+/*
+func (s *State) CheckRestrictions() (err error) {
+	if s.parent == nil {
+		return
+	}
+	for id, b := range s.blocks {
+		// get the restrictions from the parent state
+		bParent := s.parent.Get(id)
+		if bParent == nil {
+			// if we don't have this block in the parent state, it means we have no block-scope restrictions for it
+			continue
+		}
+		rest := bParent.Model().Restrictions
+		if rest == nil {
+			continue
+		}
+		if rest.Edit {
+			if ob := s.parent.Pick(id); ob != nil {
+				if msgs, _ := ob.Diff(b); len(msgs) > 0 {
+					return ErrRestricted
+				}
+			}
+		}
+	}
+	return
+}
+*/
+
+func TestState_CheckRestrictions(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	assert.Nil(t, st.CheckRestrictions()) // empty parent state
+
+	parentState := NewDoc("root", nil).(*State)
+	st.SetParent(parentState) // no same blocks
+
+	parentState = NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		})}).(*State)
+
+	st.SetParent(parentState)
+	assert.Nil(t, st.CheckRestrictions()) // no restrictions
+}
+
+func TestState_CheckRestrictionsBlockHasRestriction(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	parentState := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		})}).(*State)
+
+	st.SetParent(parentState)
+	assert.Nil(t, st.CheckRestrictions()) // no changes
+
+	parentState = NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "parentText",
+				},
+			},
+		})}).(*State)
+
+	st.SetParent(parentState)
+	assert.NotNil(t, st.CheckRestrictions())
+	assert.True(t, errors.Is(st.CheckRestrictions(), ErrRestricted))
 }
