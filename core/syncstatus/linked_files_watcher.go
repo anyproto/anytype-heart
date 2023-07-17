@@ -2,11 +2,13 @@ package syncstatus
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -88,7 +90,7 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, fil
 	var pinStatus pb.EventStatusThreadCafePinStatus
 	for _, fileID := range fileIDs {
 		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), w.spaceService.AccountId(), fileID)
-		if err == errFileNotFound {
+		if errors.Is(err, domain.ErrFileNotFound) {
 			continue
 		}
 		if err != nil {
