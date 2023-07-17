@@ -281,7 +281,8 @@ func (c *Config) GetDebugServer() debugserver.Config {
 }
 
 func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
-	if networkConfigPath := loadenv.Get("ANYTYPE_NETWORK"); networkConfigPath != "" {
+	if networkConfigPath := loadenv.Get("ANY_NETWORK_FILE"); networkConfigPath != "" {
+		log.Warnf("any network nodes configuration is overridden by the env var ANY_NETWORK_FILE")
 		var err error
 		if nodesConfYmlBytes, err = os.ReadFile(networkConfigPath); err != nil {
 			panic(fmt.Errorf("load network configuration failed: %v", err))
