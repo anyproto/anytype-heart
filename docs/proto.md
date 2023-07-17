@@ -20999,6 +20999,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
 | analyticsId | [string](#string) |  |  |
+| networkId | [string](#string) |  | network id to which anytype is connected |
 
 
 
