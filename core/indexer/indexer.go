@@ -51,7 +51,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 46
+	ForceIdxRebuildCounter int32 = 47
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -223,7 +223,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
 
 			// todo: the optimization temporarily disabled to see the metrics
-			//return nil
+			// return nil
 		}
 	}
 
@@ -255,9 +255,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
 					With("lastHashIsEmpty", lastIndexedHash == "").
 					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
-				//With("old", pbtypes.Sprint(oldDetails.Details)).
-				//With("new", pbtypes.Sprint(info.State.CombinedDetails())).
-				//With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
+				// With("old", pbtypes.Sprint(oldDetails.Details)).
+				// With("new", pbtypes.Sprint(info.State.CombinedDetails())).
+				// With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
 
 				if opts.SkipIfHeadsNotChanged {
 					l.Warnf("details have changed, but heads are equal")
