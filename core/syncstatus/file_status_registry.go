@@ -2,12 +2,14 @@ package syncstatus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -127,8 +129,6 @@ func validStatusTransition(from, to FileStatus) bool {
 	}
 }
 
-var errFileNotFound = fmt.Errorf("file is not found")
-
 func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileStatus, key fileWithSpace) (fileStatus, error) {
 	now := time.Now()
 	if status.status == FileStatusSynced {
@@ -163,7 +163,7 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 		return status, fmt.Errorf("check that file is in store: %w", err)
 	}
 	if !ok {
-		return status, errFileNotFound
+		return status, domain.ErrFileNotFound
 	}
 	fstat, err := r.fileSyncService.FileStat(ctx, key.spaceID, key.fileID)
 	if err != nil {
@@ -185,7 +185,7 @@ func (r *fileStatusRegistry) indexFileSyncStatus(fileID string, status FileStatu
 			},
 		}, true)
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, domain.ErrFileNotFound) {
 		log.With("fileID", fileID, "status", status).Errorf("failed to index file sync status: %v", err)
 	}
 }

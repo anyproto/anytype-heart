@@ -13,6 +13,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/conc"
 )
@@ -139,7 +140,7 @@ func (f *fileSync) FileStat(ctx context.Context, spaceId, fileId string) (fs Fil
 		return
 	}
 	if len(fi) == 0 {
-		return FileStat{}, fmt.Errorf("file not found")
+		return FileStat{}, domain.ErrFileNotFound
 	}
 	file := fi[0]
 

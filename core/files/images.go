@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema/anytype"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
-
-var ErrImageNotFound = fmt.Errorf("image not found")
 
 func (s *service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	ok, err := s.isDeleted(hash)
@@ -17,7 +16,7 @@ func (s *service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		return nil, fmt.Errorf("check if file is deleted: %w", err)
 	}
 	if ok {
-		return nil, ErrFileNotFound
+		return nil, domain.ErrFileNotFound
 	}
 
 	files, err := s.fileStore.ListByTarget(hash)
@@ -31,7 +30,7 @@ func (s *service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		files, err = s.fileIndexInfo(ctx, hash, true)
 		if err != nil {
 			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
-			return nil, ErrImageNotFound
+			return nil, domain.ErrFileNotFound
 		}
 	}
 

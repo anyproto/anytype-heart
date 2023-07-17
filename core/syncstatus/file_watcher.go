@@ -3,6 +3,7 @@ package syncstatus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -164,7 +166,7 @@ func (s *fileWatcher) list() []fileWithSpace {
 
 func (s *fileWatcher) updateFileStatus(ctx context.Context, key fileWithSpace) error {
 	status, err := s.registry.GetFileStatus(ctx, key.spaceID, key.fileID)
-	if err == errFileNotFound {
+	if errors.Is(err, domain.ErrFileNotFound) {
 		s.Unwatch(key.spaceID, key.fileID)
 		return err
 	}
