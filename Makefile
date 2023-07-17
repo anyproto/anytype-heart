@@ -1,6 +1,6 @@
 export GOPRIVATE=github.com/anyproto
 export GOLANGCI_LINT_VERSION=v1.49.0
-ANYENV ?= staging
+export custom_network_file=./core/anytype/config/nodes/custom.yml
 
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
@@ -12,7 +12,7 @@ ifndef $(GOROOT)
     export GOROOT
 endif
 
-export PATH:=$(pwd)/deps:deps:$(GOPATH)/bin:$(PATH)
+export PATH:=$(pwd)/deps:$(GOPATH)/bin:$(PATH)
 
 all:
 	@set -e;
@@ -23,8 +23,22 @@ setup: setup-go
 	@echo 'Setting up npm...'
 	@npm install
 
+setup-network-config:
+ifdef ANYENV
+	@echo "ANYENV is now deprecated. Use ANY_SYNC_NETWORK instead."
+	@exit 1;
+endif
+	@if [ -z "$(ANY_SYNC_NETWORK)" ]; then \
+    		echo "Using the default production Any Sync Network"; \
+    	elif [ ! -e "$(ANY_SYNC_NETWORK)" ]; then \
+    		echo "Network configuration file not found at $(ANY_SYNC_NETWORK)"; \
+    		exit 1; \
+    	else \
+    		echo "Using Any Sync Network configuration at $(ANY_SYNC_NETWORK)"; \
+    		cp $(ANY_SYNC_NETWORK) $(custom_network_file); \
+    fi
 
-setup-go:
+setup-go: setup-network-config
 	@echo 'Setting up go modules...'
 	@go mod download
 	@go install github.com/ahmetb/govvv@v0.2.0
@@ -98,7 +112,11 @@ build-ios: setup-go setup-gomobile
 	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
-	gomobile bind -tags "nogrpcserver gomobile nowatchdog nosigar" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
+	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
+ifdef ANY_SYNC_NETWORK
+	@$(eval TAGS := $(TAGS) envnetworkcustom)
+endif
+	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 	@mkdir -p dist/ios/json/
 	@cp pkg/lib/bundle/system*.json dist/ios/json/
@@ -111,12 +129,8 @@ build-android: setup-go setup-gomobile
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
-
-ifeq ($(ANYENV), production)
-	$(eval TAGS := $(TAGS) envproduction)
-endif
-ifeq ($(ANYENV), dev)
-	$(eval TAGS := $(TAGS) envdev)
+ifdef ANY_SYNC_NETWORK
+	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
 	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
@@ -222,22 +236,14 @@ build-cli:
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@go build -v -o dist/cli -ldflags "$(FLAGS)" github.com/anyproto/anytype-heart/cmd/cli
 
-build-server:
+build-server: setup-network-config
 	@echo 'Building middleware server...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@$(eval TAGS := nosigar nowatchdog)
-ifeq ($(ANYENV), production)
-	$(eval TAGS := $(TAGS) envproduction)
-endif
-ifeq ($(ANYENV), dev)
-	$(eval TAGS := $(TAGS) envdev)
+ifdef ANY_SYNC_NETWORK
+	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
 	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
-
-build-server-debug: protos-server
-	@echo 'Building middleware server with debug symbols...'
-	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
-	@go build -v -o dist/server -gcflags "all=-N -l" -ldflags "$(FLAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
 
 run-server: build-server
 	@echo 'Running server...'
