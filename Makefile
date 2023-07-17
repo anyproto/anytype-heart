@@ -25,17 +25,17 @@ setup: setup-go
 
 setup-network-config:
 ifdef ANYENV
-	@echo "ANYENV is now deprecated. Use ANY_NETWORK_FILE instead."
+	@echo "ANYENV is now deprecated. Use ANY_SYNC_NETWORK instead."
 	@exit 1;
 endif
-	@if [ -z "$(ANY_NETWORK_FILE)" ]; then \
+	@if [ -z "$(ANY_SYNC_NETWORK)" ]; then \
     		echo "Using the default production Any Network"; \
-    	elif [ ! -e "$(ANY_NETWORK_FILE)" ]; then \
-    		echo "Network configuration file not found at $(ANY_NETWORK_FILE)"; \
+    	elif [ ! -e "$(ANY_SYNC_NETWORK)" ]; then \
+    		echo "Network configuration file not found at $(ANY_SYNC_NETWORK)"; \
     		exit 1; \
     	else \
-    		echo "Using Any Network configuration at $(ANY_NETWORK_FILE)"; \
-    		cp $(ANY_NETWORK_FILE) $(custom_network_file); \
+    		echo "Using Any Network configuration at $(ANY_SYNC_NETWORK)"; \
+    		cp $(ANY_SYNC_NETWORK) $(custom_network_file); \
     fi
 
 setup-go: setup-network-config
@@ -113,7 +113,7 @@ build-ios: setup-go setup-gomobile
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
-ifdef ANY_NETWORK_FILE
+ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
 	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
@@ -129,7 +129,7 @@ build-android: setup-go setup-gomobile
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
-ifdef ANY_NETWORK_FILE
+ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
 	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
@@ -240,7 +240,7 @@ build-server: setup-network-config
 	@echo 'Building middleware server...'
 	@$(eval FLAGS := $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@$(eval TAGS := nosigar nowatchdog)
-ifdef ANY_NETWORK_FILE
+ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
 	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
