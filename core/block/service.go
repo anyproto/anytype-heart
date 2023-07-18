@@ -1033,9 +1033,6 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 			return err
 		}
 		ts.SetRootId(contextId)
-		if name == "" {
-			orig.SetDetail(bundle.RelationKeyName.String(), ts.Details().Fields[bundle.RelationKeyName.String()])
-		}
 		ts.SetParent(orig)
 
 		fromLayout, _ := orig.Layout()
@@ -1045,7 +1042,7 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 			}
 		}
 
-		ts.BlocksInit(orig)
+		ts.BlocksInit(ts)
 		objType := ts.ObjectType()
 		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectType(objType)

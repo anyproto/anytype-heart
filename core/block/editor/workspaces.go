@@ -320,6 +320,7 @@ func (w *Workspaces) createObjectType(st *state.State, details *types.Struct) (i
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyObjectType.URL())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Float64(float64(rawLayout))
 	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
 	sbType := pbtypes.GetIntList(details, bundle.RelationKeySmartblockTypes.String())
 	if len(sbType) == 0 {

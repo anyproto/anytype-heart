@@ -154,11 +154,11 @@ func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err err
 	return
 }
 
-func (td *textDetails) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
+func (td *textDetails) SetText(text string, marks *model.BlockContentTextMarks) {
 	if td.keys.Text != "" {
 		marks = nil
 	}
-	return td.Text.SetText(text, nil)
+	td.Text.SetText(text, nil)
 }
 
 func (td *textDetails) ModelToSave() *model.Block {

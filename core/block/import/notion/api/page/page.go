@@ -159,6 +159,9 @@ func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progre
 		if p.Parent.DatabaseID != "" {
 			importContext.ParentPageToChildIDs[p.Parent.DatabaseID] = append(importContext.ParentPageToChildIDs[p.Parent.DatabaseID], p.ID)
 		}
+		if p.Parent.PageID == "" && p.Parent.DatabaseID == "" {
+			importContext.ParentPageToChildIDs[""] = append(importContext.ParentPageToChildIDs[""], p.ID)
+		}
 		importContext.PageNameToID[p.ID] = ds.extractTitleFromPages(p)
 	}
 	return nil

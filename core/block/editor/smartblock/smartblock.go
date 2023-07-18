@@ -895,8 +895,8 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
 		if wsId != "" {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
-		} else {
-			log.With("objectID", sb.Id()).Errorf("injectLocalDetails empty workspace: %v", err)
+		} else if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDeleted.String()) && err != core.ErrObjectDoesNotBelongToWorkspace {
+			log.With("objectID", sb.Id()).Warnf("injectLocalDetails empty workspace: %v", err)
 		}
 	}
 
@@ -1167,7 +1167,10 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 			}
 		}
 	}
-	return
+
+	// we may have temporary links in files, we need to ignore them
+	// todo: remove after fixing of how import works
+	return slice.FilterCID(hashes)
 }
 
 func (sb *smartBlock) storeFileKeys(doc state.Doc) {

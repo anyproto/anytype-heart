@@ -19,3 +19,4 @@ grpc-web
 tests/.cache/
 .env
 build
+/core/anytype/config/nodes/custom.yml

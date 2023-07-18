@@ -135,7 +135,7 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
 	numberOfObjectsLimit := len(csvTable)
 	var err error
-	if numberOfObjectsLimit >= limitForRows {
+	if numberOfObjectsLimit > limitForRows {
 		err = converter.ErrLimitExceeded
 		numberOfObjectsLimit = limitForRows
 		if useFirstRowForRelations {

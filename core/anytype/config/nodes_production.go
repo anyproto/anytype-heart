@@ -1,4 +1,4 @@
-//go:build envproduction
+//go:build !envnetworkcustom
 
 package config
 

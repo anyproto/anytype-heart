@@ -11,6 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
+const DefaultLogLevels = "common.commonspace.headsync=INFO;*=WARN"
+
 var defaultCfg = logger.Config{
 	Production:   false,
 	DefaultLevel: "WARN",
@@ -80,6 +82,10 @@ func init() {
 	} else {
 		registerGelfSink(&cfg)
 	}
-	cfg.Levels = LevelsFromStr(os.Getenv("ANYTYPE_LOG_LEVEL"))
+	logLevels := os.Getenv("ANYTYPE_LOG_LEVEL")
+	if logLevels == "" {
+		logLevels = DefaultLogLevels
+	}
+	cfg.Levels = LevelsFromStr(logLevels)
 	cfg.ApplyGlobal()
 }

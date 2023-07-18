@@ -1,6 +1,10 @@
 package clipboard
 
 import (
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -528,8 +532,9 @@ func TestClipboard_TitleOps(t *testing.T) {
 		s := sb.NewState()
 		template.InitTemplate(s, template.WithTitle)
 		s.Get(template.TitleBlockId).(text.Block).SetText(title, nil)
-		for _, tt := range textBlocks {
+		for i, tt := range textBlocks {
 			tb := newTextBlock(tt)
+			tb.Model().Id = "id" + strconv.Itoa(i)
 			s.Add(tb)
 			s.InsertTo("", 0, tb.Model().Id)
 		}
@@ -570,6 +575,25 @@ func TestClipboard_TitleOps(t *testing.T) {
 			newTextBlock("single").Model(),
 		},
 	}
+
+	descriptionBlockReq := func() *pb.RpcBlockPasteRequest {
+		textBlock := newTextBlock("paste description")
+		textBlock.Model().Id = template.DescriptionBlockId
+		textBlock.Model().Fields = &types.Struct{
+			Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.String("default description"),
+			},
+		}
+		return &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    template.TitleBlockId,
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				newTextBlock("whatever").Model(),
+				textBlock.Model(),
+			},
+		}
+	}
+
 	multiBlockReq := &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    template.TitleBlockId,
 		SelectedTextRange: &model.Range{},
@@ -586,6 +610,26 @@ func TestClipboard_TitleOps(t *testing.T) {
 		_, _, _, _, err := cb.Paste(nil, singleBlockReq, "")
 		require.NoError(t, err)
 		assert.Equal(t, "single", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
+	})
+	t.Run("single description to empty description", func(t *testing.T) {
+		//given
+		state := withTitle(t, "")
+		addDescription(state, "current description")
+		cb := NewClipboard(state, nil, nil, nil, nil)
+
+		//when
+		_, _, _, _, err := cb.Paste(nil, descriptionBlockReq(), "")
+
+		//then
+		require.NoError(t, err)
+		assert.Equal(t, "current description", state.Doc.Pick(template.DescriptionBlockId).Model().GetText().Text)
+		find, _ := lo.Find(
+			state.Doc.Blocks(),
+			func(block *model.Block) bool {
+				return block.GetText() != nil && block.GetText().Text == "paste description"
+			},
+		)
+		assert.True(t, true, find)
 	})
 	t.Run("single to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
@@ -656,23 +700,29 @@ func TestClipboard_TitleOps(t *testing.T) {
 		assert.Equal(t, "third", st.Doc.Pick(rootChild[3]).Model().GetText().Text)
 	})
 
-	t.Run("cut from title", func(t *testing.T) {
-		st := withTitle(t, "title")
+	t.Run("cut title and another block", func(t *testing.T) {
+		//given
+		st := withTitle(t, "real title", "second")
 		cb := NewClipboard(st, nil, nil, nil, nil)
+
+		secondTextBlock := newTextBlock("second").Model()
+		secondTextBlock.Id = "id0"
+
 		req := pb.RpcBlockCutRequest{
 			Blocks: []*model.Block{
 				st.Doc.NewState().Get("title").Model(),
+				secondTextBlock,
 			},
-			SelectedTextRange: &model.Range{From: 1, To: 3},
+			SelectedTextRange: &model.Range{},
 		}
-		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, req)
+
+		//when
+		_, _, anySlot, err := cb.Cut(nil, req)
+
+		//then
 		require.NoError(t, err)
-		assert.Equal(t, "tle", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
-		assert.Equal(t, "it", textSlot)
-		assert.NotContains(t, htmlSlot, ">title<")
-		assert.Contains(t, htmlSlot, ">it<")
-		require.Len(t, anySlot, 1)
-		assert.Equal(t, "it", anySlot[0].GetText().Text)
+		assert.Equal(t, "", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
+		assert.Equal(t, "real title", anySlot[0].GetText().Text)
 	})
 
 	t.Run("cut text and object block", func(t *testing.T) {
@@ -737,6 +787,31 @@ func TestClipboard_TitleOps(t *testing.T) {
 		assert.Contains(t, htmlSlot, url)
 		assert.Contains(t, htmlSlot, secondText)
 	})
+	t.Run("cut from title", func(t *testing.T) {
+		st := withTitle(t, "title")
+		cb := NewClipboard(st, nil, nil, nil, nil)
+		req := pb.RpcBlockCutRequest{
+			Blocks: []*model.Block{
+				st.Doc.NewState().Get("title").Model(),
+			},
+			SelectedTextRange: &model.Range{From: 1, To: 3},
+		}
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, req)
+		require.NoError(t, err)
+		assert.Equal(t, "tle", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
+		assert.Equal(t, "it", textSlot)
+		assert.NotContains(t, htmlSlot, ">title<")
+		assert.Contains(t, htmlSlot, ">it<")
+		require.Len(t, anySlot, 1)
+		assert.Equal(t, "it", anySlot[0].GetText().Text)
+	})
+}
+
+func addDescription(st *smarttest.SmartTest, description string) {
+	newState := st.Doc.NewState()
+	template.InitTemplate(newState, template.WithForcedDescription)
+	newState.Get(template.DescriptionBlockId).(text.Block).SetText(description, nil)
+	state.ApplyState(newState, false)
 }
 
 func TestClipboard_PasteToCodeBock(t *testing.T) {

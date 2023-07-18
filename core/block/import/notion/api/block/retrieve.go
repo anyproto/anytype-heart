@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -368,11 +367,9 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 func (s *Service) getBlocksResponse(ctx context.Context,
 	pageID, apiKey, cursor string,
 	pagination int64) (Response, error) {
-	body := &bytes.Buffer{}
 
 	url := fmt.Sprintf(endpoint, pageID)
-
-	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, url, body)
+	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, url, nil)
 
 	if err != nil {
 		return Response{}, fmt.Errorf("GetBlocks: %s", err)
@@ -386,9 +383,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	query.Add(pageSize, strconv.FormatInt(pagination, 10))
 
 	req.URL.RawQuery = query.Encode()
-
-	res, err := s.client.HTTPClient.Do(req)
-
+	res, err := s.client.DoWithRetry(endpoint, 0, req)
 	if err != nil {
 		return Response{}, fmt.Errorf("GetBlocks: %s", err)
 	}
@@ -405,10 +400,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 		if notionErr == nil {
 			return Response{}, fmt.Errorf("GetBlocks: failed http request, %d code", res.StatusCode)
 		}
-		if code := client.GetErrorCode(b); code == http.StatusTooManyRequests {
-			logger.Errorf("GetPropertyObject: failed http request, too many request") // not fail if too many request to Notion
-			return Response{}, nil
-		}
+
 		return Response{}, notionErr
 	}
 

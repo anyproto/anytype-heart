@@ -23,6 +23,7 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
@@ -853,15 +854,13 @@ func (s *service) StoreFileKeys(fileKeys ...FileKeys) error {
 	return s.fileStore.AddFileKeys(fks...)
 }
 
-var ErrFileNotFound = fmt.Errorf("file not found")
-
 func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 	ok, err := s.isDeleted(hash)
 	if err != nil {
 		return nil, fmt.Errorf("check if file is deleted: %w", err)
 	}
 	if ok {
-		return nil, ErrFileNotFound
+		return nil, domain.ErrFileNotFound
 	}
 
 	fileList, err := s.fileStore.ListByTarget(hash)
@@ -874,7 +873,7 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 		fileList, err = s.fileIndexInfo(ctx, hash, false)
 		if err != nil {
 			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
-			return nil, ErrFileNotFound
+			return nil, domain.ErrFileNotFound
 		}
 		ok, err := s.fileStore.IsFileImported(hash)
 		if err != nil {
