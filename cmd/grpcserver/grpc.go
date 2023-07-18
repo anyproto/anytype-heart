@@ -9,8 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"net"
 	"net/http"
-	"path/filepath"
-
 	//nolint: gosec
 	_ "net/http/pprof"
 	"os"
@@ -45,8 +43,6 @@ const defaultUnaryWarningAfter = time.Second * 3
 
 // do not change this, js client relies on this msg to ensure that server is up
 const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
-
-const logRepoPath = "logs"
 
 var log = logging.Logger("anytype-grpc-server")
 
@@ -250,17 +246,7 @@ func main() {
 		select {
 		case sig := <-signalChan:
 			if sig == syscall.SIGUSR1 {
-				app := mw.GetApp()
-				if app == nil {
-					log.Errorf("failed to save stacktrace: need to start app first")
-					continue
-				}
-				wl := app.Component(wallet.CName)
-				if wl == nil {
-					log.Errorf("failed to save stacktrace: need to start wallet first")
-					continue
-				}
-				saveStackToRepo(wl.(wallet.Wallet).RepoPath())
+				handleSIGUSR1(mw)
 				continue
 			}
 			server.Stop()
@@ -318,15 +304,18 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 	return resp
 }
 
-func saveStackToRepo(repoPath string) {
-	logsPath := filepath.Join(repoPath, logRepoPath)
-	if err := os.Mkdir(logsPath, 0777); err != nil && !os.IsExist(err) {
-		log.Errorf("failed to create /logs directory: %v", err)
+func handleSIGUSR1(mw *core.Middleware) {
+	a := mw.GetApp()
+	if a == nil {
+		log.Errorf("failed to save stacktrace: need to start app first")
 		return
 	}
-	filePath := filepath.Join(logsPath, fmt.Sprintf("stack.%s.log", time.Now().Format("20060102.150405.99")))
-	stack := debug.Stack(true)
-	if err := os.WriteFile(filePath, stack, 0644); err != nil {
-		log.Errorf("failed to write stacktrace to file: %v", err)
+	wl := a.Component(wallet.CName)
+	if wl == nil {
+		log.Errorf("failed to save stacktrace: need to start wallet first")
+		return
+	}
+	if err := debug.SaveStackToRepo(wl.(wallet.Wallet).RepoPath(), true); err != nil {
+		log.Errorf(err.Error())
 	}
 }
