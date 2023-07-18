@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   unit-test:
-    runs-on: self-hosted
+    runs-on: global1
     env:
       GOPRIVATE: github.com/anyproto
     steps:
