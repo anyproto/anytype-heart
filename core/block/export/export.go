@@ -3,7 +3,6 @@ package export
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -37,6 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/text"
 )
@@ -99,12 +99,12 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	var wr writer
 	if req.Zip {
 		if wr, err = newZipWriter(req.Path, tempFileName); err != nil {
-			err = fmt.Errorf("failed to create zip file")
+			err = oserror.TransformError(err)
 			return
 		}
 	} else {
 		if wr, err = newDirWriter(req.Path, req.IncludeFiles); err != nil {
-			err = fmt.Errorf("failed to create direcotory file")
+			err = oserror.TransformError(err)
 			return
 		}
 	}

@@ -64,7 +64,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 
 		// always add this error because it's mean that we need to return error to user, even in case IGNORE_ERRORS is turned on
 		// see shouldReturnError
-		ce.Add("", converter.ErrFailedToReceiveListOfObjects)
+		ce.Add(converter.ErrFailedToReceiveListOfObjects)
 		logger.With("err", ce.Error()).With("pages", len(pages)).With("dbs", len(db)).Error("import from notion failed")
 		return nil, ce
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 const (
@@ -116,12 +117,12 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 	r.localstoreDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(localstoreDSDir), &r.cfg.Localstore)
 	if err != nil {
-		return fmt.Errorf("failed to init local datastore")
+		return oserror.TransformError(err)
 	}
 
 	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(SpaceDSDir), &r.cfg.Spacestore)
 	if err != nil {
-		return fmt.Errorf("failed to init space datastore")
+		return oserror.TransformError(err)
 	}
 
 	err = r.migrateIfNeeded()
