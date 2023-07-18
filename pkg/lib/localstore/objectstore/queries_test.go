@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -725,5 +726,77 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 		case <-time.After(10 * time.Millisecond):
 			require.Fail(t, "update has not been received")
 		}
+	})
+}
+
+func TestGetSpaceIDFromFilters(t *testing.T) {
+	t.Run("spaceID provided", func(t *testing.T) {
+		spaceID := "myspace"
+		f := filter.AndFilters{
+			filter.Eq{
+				Key:   bundle.RelationKeyCreator.String(),
+				Value: pbtypes.String("anytype"),
+			},
+			filter.Eq{
+				Key:   bundle.RelationKeySpaceId.String(),
+				Value: pbtypes.String(spaceID),
+			},
+			filter.Not{
+				Filter: filter.Eq{
+					Key:   bundle.RelationKeyName.String(),
+					Value: pbtypes.String("hidden obj"),
+				},
+			},
+		}
+		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
+	})
+
+	t.Run("no spaceID provided", func(t *testing.T) {
+		f := filter.AndFilters{
+			filter.Eq{
+				Key:   bundle.RelationKeyId.String(),
+				Value: pbtypes.String("some id"),
+			},
+			filter.Empty{
+				Key: bundle.RelationKeyType.String(),
+			},
+		}
+		assert.Equal(t, "", getSpaceIDFromFilter(f))
+	})
+
+	t.Run("filters is filter.Eq with spaceID", func(t *testing.T) {
+		spaceID := "open space"
+		f := filter.Eq{
+			Key:   bundle.RelationKeySpaceId.String(),
+			Value: pbtypes.String(spaceID),
+		}
+		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
+	})
+
+	t.Run("filters is filter.Eq without spaceID", func(t *testing.T) {
+		f := filter.Eq{
+			Key:   bundle.RelationKeySetOf.String(),
+			Value: pbtypes.String("ot-note"),
+		}
+		assert.Equal(t, "", getSpaceIDFromFilter(f))
+	})
+
+	t.Run("spaceID is nested in and filters", func(t *testing.T) {
+		spaceID := "secret_space"
+		f := filter.AndFilters{
+			filter.AndFilters{
+				filter.Empty{Key: "somekey"},
+				filter.Eq{Key: "key", Value: pbtypes.String("value")},
+				filter.AndFilters{
+					filter.Eq{Key: "amount", Value: pbtypes.Float64(15)},
+					filter.Eq{Key: "type", Value: pbtypes.String("ot-note")},
+					filter.Eq{
+						Key:   bundle.RelationKeySpaceId.String(),
+						Value: pbtypes.String(spaceID),
+					},
+				},
+			},
+		}
+		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
 	})
 }
