@@ -65,8 +65,9 @@ func newFileWatcher(
 
 const filesToWatchPrefix = "/files_to_watch/"
 
-func (s *fileWatcher) loadFilesToWatch() (filesToMigrate []string, err error) {
-	return filesToMigrate, s.badger.View(func(txn *badger.Txn) error {
+func (s *fileWatcher) loadFilesToWatch() (err error) {
+	return s.badger.View(func(txn *badger.Txn) error {
+		var filesToMigrate []string
 		iter := txn.NewIterator(badger.IteratorOptions{
 			Prefix: []byte(filesToWatchPrefix),
 		})
@@ -75,12 +76,21 @@ func (s *fileWatcher) loadFilesToWatch() (filesToMigrate []string, err error) {
 		for iter.Rewind(); iter.Valid(); iter.Next() {
 			it := iter.Item()
 			fileID := bytes.TrimPrefix(it.Key(), []byte(filesToWatchPrefix))
-			if spaceID, copyErr := it.ValueCopy(nil); copyErr != nil && len(spaceID) != 0 {
+			spaceID, err := it.ValueCopy(nil)
+			if err != nil {
+				return fmt.Errorf("failed to copy spaceID value from badger for '%s'", fileID)
+			}
+			if len(spaceID) != 0 {
 				s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: string(spaceID)}] = struct{}{}
 			} else {
 				filesToMigrate = append(filesToMigrate, string(fileID))
 			}
 		}
+
+		if mErr := s.migrateFiles(filesToMigrate); mErr != nil {
+			log.Errorf("failed to migrate files in space store: %v", err)
+		}
+
 		return nil
 	})
 }
@@ -97,13 +107,8 @@ func (s *fileWatcher) init() error {
 }
 
 func (s *fileWatcher) run() error {
-	filesToMigrate, err := s.loadFilesToWatch()
-	if err != nil {
+	if err := s.loadFilesToWatch(); err != nil {
 		return fmt.Errorf("load files to watch: %w", err)
-	}
-
-	if err = s.migrateFiles(filesToMigrate); err != nil {
-		log.Errorf("failed to migrate files in space store: %v", err)
 	}
 
 	ctx := context.Background()
