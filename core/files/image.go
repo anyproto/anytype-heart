@@ -11,6 +11,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -262,7 +263,7 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 		}, nil
 	}
 
-	return nil, ErrFileNotFound
+	return nil, domain.ErrFileNotFound
 }
 
 func (i *image) extractLastModifiedDate(ctx context.Context, imageExif *mill.ImageExifSchema) int64 {

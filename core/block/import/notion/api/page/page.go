@@ -151,13 +151,15 @@ func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progre
 		if err := progress.TryStep(1); err != nil {
 			return converter.NewCancelError(err)
 		}
-
 		importContext.NotionPageIdsToAnytype[p.ID] = uuid.New().String()
 		if p.Parent.PageID != "" {
 			importContext.ParentPageToChildIDs[p.Parent.PageID] = append(importContext.ParentPageToChildIDs[p.Parent.PageID], p.ID)
 		}
 		if p.Parent.DatabaseID != "" {
 			importContext.ParentPageToChildIDs[p.Parent.DatabaseID] = append(importContext.ParentPageToChildIDs[p.Parent.DatabaseID], p.ID)
+		}
+		if p.Parent.PageID == "" && p.Parent.DatabaseID == "" {
+			importContext.ParentPageToChildIDs[""] = append(importContext.ParentPageToChildIDs[""], p.ID)
 		}
 		importContext.PageNameToID[p.ID] = ds.extractTitleFromPages(p)
 	}

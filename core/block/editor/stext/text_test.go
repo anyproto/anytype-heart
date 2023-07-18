@@ -1,8 +1,7 @@
-//go:build !race
-
 package stext
 
 import (
+	"github.com/anyproto/anytype-heart/core/session"
 	"testing"
 	"time"
 
@@ -269,17 +268,21 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "12",
 		}))
+		tb.(*textImpl).Lock()
 		assert.Equal(t, " ", sb.NewState().Pick("1").Model().GetText().Text)
+		tb.(*textImpl).Unlock()
 		time.Sleep(time.Second)
+		tb.(*textImpl).Lock()
 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
+		tb.(*textImpl).Unlock()
 		assert.Len(t, sb.Results.Applies, 1)
 	})
 	t.Run("set text and new op", func(t *testing.T) {
@@ -289,19 +292,23 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "12",
 		}))
+		tb.(*textImpl).Lock()
 		assert.Equal(t, " ", sb.NewState().Pick("1").Model().GetText().Text)
 		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
+		tb.(*textImpl).Unlock()
 		time.Sleep(time.Second)
+		tb.(*textImpl).Lock()
 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
+		tb.(*textImpl).Unlock()
 		assert.Len(t, sb.Results.Applies, 1)
 	})
 	t.Run("set text two blocks", func(t *testing.T) {
@@ -311,16 +318,20 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", ""))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
+		tb.(*textImpl).Lock()
 		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		tb.(*textImpl).Unlock()
+		require.NoError(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "2",
 		}))
+		tb.(*textImpl).Lock()
 		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+		tb.(*textImpl).Unlock()
 		assert.Equal(t, "1", sb.NewState().Pick("1").Model().GetText().Text)
 		assert.Equal(t, "2", sb.NewState().Pick("2").Model().GetText().Text)
 		time.Sleep(time.Second)
@@ -333,7 +344,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", ""))
 		tb := NewText(sb, nil)
 
-		require.NoError(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		require.NoError(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 			Marks: &model.BlockContentTextMarks{
@@ -355,11 +366,17 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(simple.New(&model.Block{Id: "2"}))
 		tb := NewText(sb, nil)
-		assert.Error(t, tb.SetText(nil, pb.RpcBlockTextSetTextRequest{
+		assert.Error(t, setText(tb, nil, pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "",
 		}))
 	})
+}
+
+func setText(tb Text, ctx *session.Context, req pb.RpcBlockTextSetTextRequest) error {
+	tb.(*textImpl).Lock()
+	defer tb.(*textImpl).Unlock()
+	return tb.SetText(ctx, req)
 }
 
 func TestTextImpl_TurnInto(t *testing.T) {

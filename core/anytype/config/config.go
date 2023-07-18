@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v3"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -279,6 +281,13 @@ func (c *Config) GetDebugServer() debugserver.Config {
 }
 
 func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
+	if networkConfigPath := loadenv.Get("ANY_SYNC_NETWORK"); networkConfigPath != "" {
+		log.Warnf("any sync network nodes configuration is overridden by the env var ANY_SYNC_NETWORK")
+		var err error
+		if nodesConfYmlBytes, err = os.ReadFile(networkConfigPath); err != nil {
+			panic(fmt.Errorf("load network configuration failed: %v", err))
+		}
+	}
 	if err := yaml.Unmarshal(nodesConfYmlBytes, &conf); err != nil {
 		panic(fmt.Errorf("unable to parse node config: %v", err))
 	}

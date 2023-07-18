@@ -10,6 +10,7 @@ import (
 )
 
 var ErrCancel = fmt.Errorf("import is canceled")
+var ErrFailedToReceiveListOfObjects = fmt.Errorf("failed to receive the list of objects")
 var ErrNoObjectsToImport = fmt.Errorf("source path doesn't contain objects to import")
 var ErrLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
 
@@ -72,6 +73,8 @@ func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType)
 			return errors.Wrapf(ErrCancel, "import type: %s", importType.String())
 		case errors.Is(e, ErrLimitExceeded):
 			return errors.Wrapf(ErrLimitExceeded, "import type: %s", importType.String())
+		case errors.Is(e, ErrFailedToReceiveListOfObjects):
+			return ErrFailedToReceiveListOfObjects
 		case errors.Is(e, ErrNoObjectsToImport):
 			countNoObjectsToImport++
 		}

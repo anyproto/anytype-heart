@@ -18186,6 +18186,7 @@ sent when the view have been changed or added
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 | pageLimit | [int32](#int32) |  |  |
+| defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
 
 
 

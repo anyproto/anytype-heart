@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -51,7 +52,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 45
+	ForceIdxRebuildCounter int32 = 47
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -223,7 +224,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
 
 			// todo: the optimization temporarily disabled to see the metrics
-			//return nil
+			// return nil
 		}
 	}
 
@@ -255,9 +256,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
 					With("lastHashIsEmpty", lastIndexedHash == "").
 					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
-				//With("old", pbtypes.Sprint(oldDetails.Details)).
-				//With("new", pbtypes.Sprint(info.State.CombinedDetails())).
-				//With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
+				// With("old", pbtypes.Sprint(oldDetails.Details)).
+				// With("new", pbtypes.Sprint(info.State.CombinedDetails())).
+				// With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
 
 				if opts.SkipIfHeadsNotChanged {
 					l.Warnf("details have changed, but heads are equal")
@@ -318,8 +319,8 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 			}
 			// file's hash is id
 			idxErr := i.reindexDoc(ctx, id)
-			if idxErr != nil {
-				log.With("id", id).Errorf("failed to reindex file: %s", idxErr.Error())
+			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
+				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
 			}
 			idxErr = i.store.AddToIndexQueue(id)
 			if idxErr != nil {
@@ -733,7 +734,7 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 		metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 			ReindexType: reindexType,
 			Total:       totalIds,
-			Success:     succeedIds,
+			Succeed:     succeedIds,
 			SpentMs:     int(spent.Milliseconds()),
 		})
 	}

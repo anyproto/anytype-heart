@@ -2,15 +2,18 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/conc"
 )
@@ -35,22 +38,51 @@ func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
 }
 
-func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error) {
-	info, err := f.rpcStore.SpaceInfo(ctx, spaceId)
+func (f *fileSync) SpaceStat(ctx context.Context, spaceID string) (SpaceStat, error) {
+	f.spaceStatsLock.Lock()
+	stats, ok := f.spaceStats[spaceID]
+	f.spaceStatsLock.Unlock()
+	if ok {
+		return stats, nil
+	}
+
+	stats, err := f.queue.getSpaceStats(spaceID)
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return f.getAndUpdateSpaceStat(ctx, spaceID)
+	}
+	if err != nil {
+		return SpaceStat{}, fmt.Errorf("get space info from badger: %w", err)
+	}
+	f.setSpaceStats(spaceID, stats)
+	return stats, nil
+}
+
+func (f *fileSync) setSpaceStats(spaceID string, stats SpaceStat) {
+	f.spaceStatsLock.Lock()
+	f.spaceStats[spaceID] = stats
+	f.spaceStatsLock.Unlock()
+}
+
+func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (ss SpaceStat, err error) {
+	info, err := f.rpcStore.SpaceInfo(ctx, spaceID)
 	if err != nil {
 		return
 	}
 	newStats := SpaceStat{
-		SpaceId:    spaceId,
+		SpaceId:    spaceID,
 		FileCount:  int(info.FilesCount),
 		CidsCount:  int(info.CidsCount),
 		BytesUsage: int(info.UsageBytes),
 		BytesLimit: int(info.LimitBytes),
 	}
 	f.spaceStatsLock.Lock()
-	prevStats, ok := f.spaceStats[spaceId]
+	prevStats, ok := f.spaceStats[spaceID]
 	if prevStats != newStats {
-		f.spaceStats[spaceId] = newStats
+		err = f.queue.setSpaceInfo(spaceID, newStats)
+		if err != nil {
+			return SpaceStat{}, fmt.Errorf("save space info to badger: %w", err)
+		}
+		f.spaceStats[spaceID] = newStats
 		// Do not send event if it is first time we get stats
 		if ok {
 			f.sendSpaceUsageEvent(uint64(newStats.BytesUsage))
@@ -61,9 +93,9 @@ func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat,
 	return newStats, nil
 }
 
-func (f *fileSync) updateSpaceUsageInformation(spaceId string) {
-	if _, err := f.SpaceStat(context.Background(), spaceId); err != nil {
-		log.Warn("can't get space usage information", zap.String("spaceId", spaceId), zap.Error(err))
+func (f *fileSync) updateSpaceUsageInformation(spaceID string) {
+	if _, err := f.getAndUpdateSpaceStat(context.Background(), spaceID); err != nil {
+		log.Warn("can't get space usage information", zap.String("spaceID", spaceID), zap.Error(err))
 	}
 }
 
@@ -108,7 +140,7 @@ func (f *fileSync) FileStat(ctx context.Context, spaceId, fileId string) (fs Fil
 		return
 	}
 	if len(fi) == 0 {
-		return FileStat{}, fmt.Errorf("file not found")
+		return FileStat{}, domain.ErrFileNotFound
 	}
 	file := fi[0]
 
