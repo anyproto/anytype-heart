@@ -2,6 +2,7 @@ package state
 
 import (
 	"errors"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"math/rand"
 	"testing"
@@ -1051,4 +1052,280 @@ func TestState_CheckRestrictionsBlockHasRestriction(t *testing.T) {
 	st.SetParent(parentState)
 	assert.NotNil(t, st.CheckRestrictions())
 	assert.True(t, errors.Is(st.CheckRestrictions(), ErrRestricted))
+}
+
+func TestState_ApplyChangeIgnoreErrBlockCreate(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockCreate{
+		BlockCreate: &pb.ChangeBlockCreate{
+			TargetId: "newTextBlock",
+			Position: model.Block_Bottom,
+			Blocks: []*model.Block{
+				{
+					Id:           "newTextBlock",
+					Restrictions: &model.BlockRestrictions{Edit: true},
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text: "new text",
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("newTextBlock")
+	assert.NotNil(t, b)
+	assert.NotNil(t, b.Model().GetText())
+	assert.Equal(t, "new text", b.Model().GetText().GetText())
+	assert.Len(t, st.Blocks(), 3)
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockCreate{
+		BlockCreate: &pb.ChangeBlockCreate{
+			TargetId: "root",
+			Position: model.Block_Inner,
+			Blocks: []*model.Block{
+				{
+					Id:           "root",
+					Restrictions: &model.BlockRestrictions{Edit: true},
+					Content: &model.BlockContentOfSmartblock{
+						Smartblock: &model.BlockContentSmartblock{},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Len(t, st.Blocks(), 3) // root block not added
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockCreate{
+		BlockCreate: &pb.ChangeBlockCreate{
+			TargetId: "dataview",
+			Position: model.Block_Bottom,
+			Blocks: []*model.Block{
+				{
+					Id:           "dataview",
+					Restrictions: &model.BlockRestrictions{Edit: true},
+					Content: &model.BlockContentOfDataview{
+						Dataview: &model.BlockContentDataview{},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b = st.Get("dataview")
+	assert.NotNil(t, b)
+	assert.NotNil(t, b.Model().GetDataview())
+	assert.Len(t, st.Blocks(), 4)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockRemove(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockRemove{
+		BlockRemove: &pb.ChangeBlockRemove{Ids: []string{"textBlock"}},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("textBlock")
+	assert.Nil(t, b)
+	assert.Len(t, st.Blocks(), 1)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateBase(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetAlign{
+						BlockSetAlign: &pb.EventBlockSetAlign{
+							Id:    "textBlock",
+							Align: model.Block_AlignRight,
+						},
+					}},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("textBlock")
+	assert.NotNil(t, b)
+	assert.Equal(t, model.Block_AlignRight, b.Model().Align)
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetVerticalAlign{
+						BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
+							Id:            "textBlock",
+							VerticalAlign: model.Block_VerticalAlignBottom,
+						},
+					}},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b = st.Get("textBlock")
+	assert.NotNil(t, b)
+	assert.Equal(t, model.Block_VerticalAlignBottom, b.Model().VerticalAlign)
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetBackgroundColor{
+						BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
+							Id:              "textBlock",
+							BackgroundColor: "pink",
+						},
+					}},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b = st.Get("textBlock")
+	assert.NotNil(t, b)
+	assert.Equal(t, "pink", b.Model().BackgroundColor)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateBookmark(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"bookmark"},
+		}),
+		"bookmark": simple.New(&model.Block{Id: "bookmark", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{
+					Url: "http://example.com",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetBookmark{
+						BlockSetBookmark: &pb.EventBlockSetBookmark{
+							Id:  "bookmark",
+							Url: &pb.EventBlockSetBookmarkUrl{Value: "http://example1.com"},
+						},
+					}},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("bookmark")
+	assert.NotNil(t, b)
+	assert.Equal(t, "http://example1.com", b.Model().GetBookmark().Url)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateTable(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"table"},
+		}),
+		"table": simple.New(&model.Block{
+			Id:           "table",
+			Restrictions: &model.BlockRestrictions{Edit: true},
+			ChildrenIds:  []string{"row", "column"},
+			Content: &model.BlockContentOfTable{
+				Table: &model.BlockContentTable{},
+			},
+		}),
+		"row": simple.New(&model.Block{Id: "row", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfTableRow{
+				TableRow: &model.BlockContentTableRow{
+					IsHeader: false,
+				},
+			},
+		}),
+		"column": simple.New(&model.Block{Id: "column", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfTableColumn{
+				TableColumn: &model.BlockContentTableColumn{},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetTableRow{
+						BlockSetTableRow: &pb.EventBlockSetTableRow{
+							Id:       "row",
+							IsHeader: &pb.EventBlockSetTableRowIsHeader{Value: true},
+						},
+					}},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("row")
+	assert.NotNil(t, b)
+	assert.Equal(t, true, b.Model().GetTableRow().IsHeader)
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetTableRow{
+						BlockSetTableRow: &pb.EventBlockSetTableRow{
+							Id:       "row",
+							IsHeader: &pb.EventBlockSetTableRowIsHeader{Value: false},
+						},
+					}},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b = st.Get("row")
+	assert.NotNil(t, b)
+	assert.Equal(t, false, b.Model().GetTableRow().IsHeader)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockMove(t *testing.T) {
+
 }
