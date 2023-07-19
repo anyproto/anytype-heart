@@ -4,7 +4,6 @@
 package event
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -47,19 +46,19 @@ func (es *GrpcSender) Name() (name string) {
 	return CName
 }
 
-func (es *GrpcSender) IsActive(spaceID string, token string) bool {
+func (es *GrpcSender) IsActive(token string) bool {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
-	s, ok := es.Servers[token]
-	return ok && s.SpaceID == spaceID
+	_, ok := es.Servers[token]
+	return ok
 }
 
-func (es *GrpcSender) SendToSession(spaceID string, token string, event *pb.Event) {
+func (es *GrpcSender) SendToSession(token string, event *pb.Event) {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
-	if s, ok := es.Servers[token]; ok && s.SpaceID == spaceID {
+	if s, ok := es.Servers[token]; ok {
 		es.sendEvent(s, event)
 	}
 }
@@ -71,7 +70,7 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				es.shutdownCh <- server.Token
 			}
-			log.With("session", server.Token, "spaceID", server.SpaceID).Errorf("failed to send event: %s", err)
+			log.With("session", server.Token).Errorf("failed to send event: %s", err)
 		}
 	}()
 }
@@ -85,37 +84,25 @@ func (es *GrpcSender) Broadcast(event *pb.Event) {
 	}
 }
 
-func (es *GrpcSender) BroadcastForSpace(spaceID string, event *pb.Event) {
-	es.ServerMutex.RLock()
-	defer es.ServerMutex.RUnlock()
-
-	for _, s := range es.Servers {
-		if s.SpaceID == spaceID {
-			es.sendEvent(s, event)
-		}
-	}
-}
-
 // BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
-func (es *GrpcSender) BroadcastToOtherSessions(spaceID string, token string, event *pb.Event) {
+func (es *GrpcSender) BroadcastToOtherSessions(token string, event *pb.Event) {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
 	for _, s := range es.Servers {
-		if s.Token != token && s.SpaceID == spaceID {
+		if s.Token != token {
 			es.sendEvent(s, event)
 		}
 	}
 }
 
 type SessionServer struct {
-	Token   string
-	SpaceID string
-	Done    chan struct{}
-	Server  service.ClientCommands_ListenSessionEventsServer
+	Token  string
+	Done   chan struct{}
+	Server service.ClientCommands_ListenSessionEventsServer
 }
 
-func (es *GrpcSender) SetSessionServer(spaceID string, token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
+func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
 	log.Warnf("listening %s\n", token)
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
@@ -123,28 +110,14 @@ func (es *GrpcSender) SetSessionServer(spaceID string, token string, server serv
 		es.Servers = map[string]SessionServer{}
 	}
 	srv := SessionServer{
-		Token:   token,
-		Done:    make(chan struct{}),
-		Server:  server,
-		SpaceID: spaceID,
+		Token:  token,
+		Done:   make(chan struct{}),
+		Server: server,
 	}
 
 	// Old connection with this token will be cancelled automatically
 	es.Servers[token] = srv
 	return srv
-}
-
-func (es *GrpcSender) SetSpaceID(token string, spaceID string) error {
-	es.ServerMutex.Lock()
-	defer es.ServerMutex.Unlock()
-
-	s, ok := es.Servers[token]
-	if !ok {
-		return fmt.Errorf("unknown session %s", token)
-	}
-	s.SpaceID = spaceID
-	es.Servers[token] = s
-	return nil
 }
 
 func (es *GrpcSender) CloseSession(token string) {

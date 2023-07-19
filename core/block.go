@@ -683,14 +683,6 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 
 func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
 	var spaceID string
-	tok, ok := getSessionToken(cctx)
-	if ok {
-		var err error
-		spaceID, err = mw.sessions.GetSpaceID(tok)
-		if err != nil {
-			log.Errorf("failed to get space id from token: %v", err)
-		}
-	}
 	if spaceID == "" {
 		log.Errorf("newContext: set spaceID to accountID")
 		spaceID = getService[space.Service](mw).AccountId()
@@ -701,14 +693,6 @@ func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOp
 
 func (mw *Middleware) newContextNoLock(cctx context.Context, opts ...session.ContextOption) session.Context {
 	var spaceID string
-	tok, ok := getSessionToken(cctx)
-	if ok {
-		var err error
-		spaceID, err = mw.sessions.GetSpaceID(tok)
-		if err != nil {
-			log.Errorf("failed to get space id from token: %v", err)
-		}
-	}
 	if spaceID == "" {
 		log.Errorf("newContextNoLock: set spaceID to accountID")
 		spaceID = app.MustComponent[space.Service](mw.app).AccountId()

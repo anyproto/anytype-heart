@@ -115,7 +115,7 @@ func (p *Profile) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDeta
 		return
 	}
 
-	p.eventSender.BroadcastForSpace(p.SpaceID(), &pb.Event{
+	p.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfAccountDetails{

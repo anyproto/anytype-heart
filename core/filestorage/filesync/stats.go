@@ -99,7 +99,7 @@ func (f *fileSync) updateSpaceUsageInformation(spaceID string) {
 }
 
 func (f *fileSync) sendSpaceUsageEvent(spaceID string, bytesUsage uint64) {
-	f.eventSender.BroadcastForSpace(spaceID, &pb.Event{
+	f.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileSpaceUsage{

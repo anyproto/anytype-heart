@@ -361,7 +361,7 @@ func (sb *smartBlock) IsDeleted() bool {
 
 func (sb *smartBlock) sendEvent(e *pb.Event) {
 	for _, s := range sb.sessions {
-		sb.eventSender.SendToSession(s.SpaceID(), s.ID(), e)
+		sb.eventSender.SendToSession(s.ID(), e)
 	}
 }
 
@@ -614,7 +614,7 @@ func (sb *smartBlock) RegisterSession(ctx session.Context) {
 func (sb *smartBlock) IsLocked() bool {
 	var activeCount int
 	for _, s := range sb.sessions {
-		if sb.eventSender.IsActive(s.SpaceID(), s.ID()) {
+		if sb.eventSender.IsActive(s.ID()) {
 			activeCount++
 		}
 	}

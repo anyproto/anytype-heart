@@ -701,8 +701,8 @@ func (s *Service) OnDelete(ctx session.Context, id string, workspaceRemove func(
 	return nil
 }
 
-func (s *Service) sendOnRemoveEvent(spaceID string, ids ...string) {
-	s.eventSender.BroadcastForSpace(spaceID, &pb.Event{
+func (s *Service) sendOnRemoveEvent(ids ...string) {
+	s.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfObjectRemove{

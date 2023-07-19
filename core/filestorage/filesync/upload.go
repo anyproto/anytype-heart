@@ -232,7 +232,7 @@ func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
 }
 
 func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {
-	f.eventSender.BroadcastForSpace(spaceID, &pb.Event{
+	f.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileLimitReached{
