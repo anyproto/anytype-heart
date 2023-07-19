@@ -108,14 +108,14 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 	return filters, nil
 }
 
-func getSpaceIDFromFilter(f filter.Filter) (spaceID string) {
-	switch f.(type) {
+func getSpaceIDFromFilter(fltr filter.Filter) (spaceID string) {
+	switch f := fltr.(type) {
 	case filter.Eq:
-		if f.(filter.Eq).Key == bundle.RelationKeySpaceId.String() {
-			return f.(filter.Eq).Value.GetStringValue()
+		if f.Key == bundle.RelationKeySpaceId.String() {
+			return f.Value.GetStringValue()
 		}
 	case filter.AndFilters:
-		for _, af := range f.(filter.AndFilters) {
+		for _, af := range f {
 			if spaceID = getSpaceIDFromFilter(af); spaceID != "" {
 				return spaceID
 			}
