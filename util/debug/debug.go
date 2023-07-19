@@ -42,6 +42,7 @@ func SaveStackToRepo(repoPath string, allGoroutines bool) error {
 	}
 	filePath := filepath.Join(dirPath, fmt.Sprintf("stack.%s.log", time.Now().Format("20060102.150405.99")))
 	stack := Stack(allGoroutines)
+	//nolint: gosec
 	if err := os.WriteFile(filePath, stack, 0644); err != nil {
 		return fmt.Errorf("failed to write stacktrace to file: %v", err)
 	}

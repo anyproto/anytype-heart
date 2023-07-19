@@ -243,19 +243,16 @@ func main() {
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
 	for {
-		select {
-		case sig := <-signalChan:
-			if sig == syscall.SIGUSR1 {
-				handleSIGUSR1(mw)
-				continue
-			}
-			server.Stop()
-			proxy.Close()
-			mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
-			return
+		sig := <-signalChan
+		if sig == syscall.SIGUSR1 {
+			handleSIGUSR1(mw)
+			continue
 		}
+		server.Stop()
+		proxy.Close()
+		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
+		return
 	}
-
 }
 
 func appendInterceptor(
