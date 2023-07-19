@@ -5,7 +5,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -56,9 +55,6 @@ func (s *State) normalize(withLayouts bool) (err error) {
 		if layout := b.Model().GetLayout(); layout != nil {
 			s.normalizeLayoutRow(b)
 		}
-	}
-	if pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()) == nil {
-		s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(model.ObjectType_basic)))
 	}
 	if withLayouts {
 		return s.normalizeTree()
