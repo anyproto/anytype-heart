@@ -28,9 +28,9 @@ type sessionContext struct {
 }
 
 func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Context {
-	if spaceID == "" {
-		panic("spaceID is empty")
-	}
+	// if spaceID == "" {
+	// 	panic("spaceID is empty")
+	// }
 	ctx := &sessionContext{
 		spaceID: spaceID,
 		ctx:     cctx,
