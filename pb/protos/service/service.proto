@@ -16,7 +16,6 @@ service ClientCommands {
     rpc WalletRecover (anytype.Rpc.Wallet.Recover.Request) returns (anytype.Rpc.Wallet.Recover.Response);
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
-    rpc WalletSetSessionSpaceID (anytype.Rpc.Wallet.SetSessionSpaceID.Request) returns (anytype.Rpc.Wallet.SetSessionSpaceID.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
     // Workspace
     // ***

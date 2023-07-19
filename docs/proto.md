@@ -875,10 +875,6 @@
     - [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request)
     - [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response)
     - [Rpc.Wallet.Recover.Response.Error](#anytype-Rpc-Wallet-Recover-Response-Error)
-    - [Rpc.Wallet.SetSessionSpaceID](#anytype-Rpc-Wallet-SetSessionSpaceID)
-    - [Rpc.Wallet.SetSessionSpaceID.Request](#anytype-Rpc-Wallet-SetSessionSpaceID-Request)
-    - [Rpc.Wallet.SetSessionSpaceID.Response](#anytype-Rpc-Wallet-SetSessionSpaceID-Response)
-    - [Rpc.Wallet.SetSessionSpaceID.Response.Error](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error)
     - [Rpc.Workspace](#anytype-Rpc-Workspace)
     - [Rpc.Workspace.Create](#anytype-Rpc-Workspace-Create)
     - [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request)
@@ -1128,7 +1124,6 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype-Rpc-Wallet-Create-Response-Error-Code)
     - [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype-Rpc-Wallet-CreateSession-Response-Error-Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype-Rpc-Wallet-Recover-Response-Error-Code)
-    - [Rpc.Wallet.SetSessionSpaceID.Response.Error.Code](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error-Code)
     - [Rpc.Workspace.Create.Response.Error.Code](#anytype-Rpc-Workspace-Create-Response-Error-Code)
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype-Rpc-Workspace-GetAll-Response-Error-Code)
@@ -1469,7 +1464,6 @@
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request) | [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
-| WalletSetSessionSpaceID | [Rpc.Wallet.SetSessionSpaceID.Request](#anytype-Rpc-Wallet-SetSessionSpaceID-Request) | [Rpc.Wallet.SetSessionSpaceID.Response](#anytype-Rpc-Wallet-SetSessionSpaceID-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
 | WorkspaceInfo | [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request) | [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response) |  |
@@ -10174,6 +10168,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | templateId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10233,6 +10228,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10292,6 +10288,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10350,6 +10347,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10409,6 +10407,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10470,6 +10469,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | if omitted the name of page will be the same with object type |
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -14241,7 +14241,6 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  |  |
-| spaceId | [string](#string) |  |  |
 
 
 
@@ -14330,62 +14329,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Wallet.Recover.Response.Error.Code](#anytype-Rpc-Wallet-Recover-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Wallet-SetSessionSpaceID"></a>
-
-### Rpc.Wallet.SetSessionSpaceID
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Request"></a>
-
-### Rpc.Wallet.SetSessionSpaceID.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Response"></a>
-
-### Rpc.Wallet.SetSessionSpaceID.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Wallet.SetSessionSpaceID.Response.Error](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error"></a>
-
-### Rpc.Wallet.SetSessionSpaceID.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Wallet.SetSessionSpaceID.Response.Error.Code](#anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14980,7 +14923,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | token | [string](#string) |  |  |
-| spaceId | [string](#string) |  |  |
 
 
 
@@ -17771,19 +17713,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 | Root path or mnemonic is wrong |
 | FAILED_TO_CREATE_LOCAL_REPO | 101 |  |
-
-
-
-<a name="anytype-Rpc-Wallet-SetSessionSpaceID-Response-Error-Code"></a>
-
-### Rpc.Wallet.SetSessionSpaceID.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
 
 
 

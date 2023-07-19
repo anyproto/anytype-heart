@@ -192,33 +192,11 @@ message Rpc {
             message Request {
                 option (no_auth) = true;
                 string mnemonic = 1;
-                string spaceId = 2;
             }
 
             message Response {
                 Error error = 1;
                 string token = 2;
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-
-                    }
-                }
-            }
-        }
-
-        message SetSessionSpaceID {
-            message Request {
-                string spaceId = 1;
-            }
-
-            message Response {
-                Error error = 1;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -890,6 +868,7 @@ message Rpc {
                 google.protobuf.Struct details = 1; // object details
                 repeated anytype.model.InternalFlag internalFlags = 2;
                 string templateId = 3;
+                string spaceId = 4;
             }
 
             message Response {
@@ -915,6 +894,7 @@ message Rpc {
         message CreateBookmark {
             message Request {
                 google.protobuf.Struct details = 1;
+                string spaceId = 2;
             }
 
             message Response {
@@ -939,6 +919,7 @@ message Rpc {
         message CreateRelation {
             message Request {
                 google.protobuf.Struct details = 1;
+                string spaceId = 2;
             }
 
             message Response {
@@ -963,6 +944,7 @@ message Rpc {
         message CreateRelationOption {
             message Request {
                 google.protobuf.Struct details = 1;
+                string spaceId = 2;
             }
 
             message Response {
@@ -989,6 +971,7 @@ message Rpc {
                 google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
                 string templateId = 3; // optional template id for creating from template
                 repeated anytype.model.InternalFlag internalFlags = 4;
+                string spaceId = 5;
             }
 
             message Response {
@@ -1015,6 +998,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1;
                 repeated anytype.model.InternalFlag internalFlags = 2;
+                string spaceId = 3;
             }
 
             message Response {
@@ -5560,5 +5544,4 @@ message Empty {
 
 message StreamRequest {
     string token = 1;
-    string spaceId = 2;
 }
