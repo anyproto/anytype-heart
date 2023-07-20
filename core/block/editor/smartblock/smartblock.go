@@ -107,17 +107,12 @@ func New(
 	return s
 }
 
-type SmartObjectOpenListner interface {
-	// should not do any Do operations inside
-	SmartObjectOpened(session.Context)
-}
-
 type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
 	SpaceID() string
 	Type() model.SmartBlockType
-	Show(session.Context) (obj *model.ObjectView, err error)
+	Show() (obj *model.ObjectView, err error)
 	RegisterSession(session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
@@ -376,11 +371,7 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
 }
 
-func (sb *smartBlock) Show(ctx session.Context) (*model.ObjectView, error) {
-	if ctx == nil {
-		return nil, nil
-	}
-
+func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	details, objectTypes, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
@@ -1060,7 +1051,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
 		// can't make diff - reopen doc
-		sb.Show(session.NewContext(context.TODO(), sb.SpaceID()))
+		sb.Show()
 	} else {
 		if len(msgs) > 0 {
 			sb.sendEvent(&pb.Event{

@@ -51,12 +51,14 @@ func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, s
 	}
 }
 
-func (ou *ObjectIDGetter) Get(ctx session.Context,
+func (ou *ObjectIDGetter) Get(
+	ctx session.Context,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
 	createdTime time.Time,
 	getExisting bool,
-	oldToNewIDs map[string]string) (string, treestorage.TreeStorageCreatePayload, error) {
+	oldToNewIDs map[string]string,
+) (string, treestorage.TreeStorageCreatePayload, error) {
 	if sbType == sb.SmartBlockTypeWorkspace {
 		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(ctx.SpaceID(), sn.Id)
 		if wErr == nil {
@@ -84,7 +86,7 @@ func (ou *ObjectIDGetter) Get(ctx session.Context,
 		}
 	}
 
-	payload, err := ou.service.CreateTreePayload(ctx.WithContext(context.Background()), sbType, createdTime)
+	payload, err := ou.service.CreateTreePayload(context.Background(), spaceID, sbType, createdTime)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}

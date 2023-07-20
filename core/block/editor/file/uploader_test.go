@@ -170,7 +170,7 @@ func newFixture(t *testing.T) *uplFixture {
 	fx.fileService = testMock.NewMockFileService(fx.ctrl)
 	fx.blockService = NewMockBlockService(fx.ctrl)
 
-	fx.Uploader = file.NewUploader(fx.blockService, fx.fileService, core.NewTempDirService(nil), picker)
+	fx.Uploader = file.NewUploader("space1", fx.blockService, fx.fileService, core.NewTempDirService(nil), picker)
 	fx.file = testMock.NewMockFile(fx.ctrl)
 	fx.file.EXPECT().Hash().Return("123").AnyTimes()
 	return fx

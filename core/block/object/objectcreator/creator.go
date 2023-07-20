@@ -95,8 +95,8 @@ func (c *Creator) Name() (name string) {
 
 // TODO Temporarily
 type BlockService interface {
-	StateFromTemplate(ctx session.Context, templateID, name string) (st *state.State, err error)
-	CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	StateFromTemplate(ctx context.Context, templateID, name string) (st *state.State, err error)
+	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
@@ -113,7 +113,7 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx session.Context, sbType cores
 
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
-func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -155,14 +155,14 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 
 	// if we don't have anything in details then check the object store
 	if workspaceID == "" {
-		workspaceID = c.anytype.PredefinedObjects(ctx.SpaceID()).Account
+		workspaceID = c.anytype.PredefinedObjects(spaceID).Account
 	}
 
 	if workspaceID != "" {
 		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceID))
 	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID(ctx.SpaceID())))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID(spaceID)))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
@@ -172,8 +172,8 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 		return c.CreateSubObjectInWorkspace(ctx, createState.CombinedDetails(), workspaceID)
 	}
 
-	cctx := context.WithValue(ctx.Context(), eventCreate, ev)
-	sb, err := c.blockService.CreateTreeObject(ctx.WithContext(cctx), sbType, func(id string) *smartblock.InitContext {
+	ctx := context.WithValue(ctx, eventCreate, ev)
+	sb, err := c.blockService.CreateTreeObject(ctx, sbType, func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()

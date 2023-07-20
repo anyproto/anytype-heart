@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -203,10 +204,18 @@ func (s *Service) Anytype() core.Service {
 }
 
 func (s *Service) OpenBlock(
-	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
+	ctx context.Context,
+	sctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
-	ob, err := s.getSmartblock(ctx, id)
+	spaceID, err := s.objectStore.ResolveSpaceID(id)
+	if err != nil {
+		return nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	ob, err := s.getSmartblock(ctx, domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: id,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -217,10 +226,8 @@ func (s *Service) OpenBlock(
 
 	ob.Lock()
 	defer ob.Unlock()
-	ob.RegisterSession(ctx)
-	if v, hasOpenListner := ob.(smartblock.SmartObjectOpenListner); hasOpenListner {
-		v.SmartObjectOpened(ctx)
-	}
+	ob.RegisterSession(sctx)
+
 	afterDataviewTime := time.Now()
 	st := ob.NewState()
 
@@ -229,11 +236,11 @@ func (s *Service) OpenBlock(
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
 	afterApplyTime := time.Now()
-	if obj, err = ob.Show(ctx); err != nil {
+	if obj, err = ob.Show(); err != nil {
 		return
 	}
 	afterShowTime := time.Now()
-	_, err = s.syncStatus.Watch(ctx.SpaceID(), id, func() []string {
+	_, err = s.syncStatus.Watch(spaceID, id, func() []string {
 		ob.Lock()
 		defer ob.Unlock()
 		bs := ob.NewState()
@@ -242,7 +249,7 @@ func (s *Service) OpenBlock(
 	})
 	if err == nil {
 		ob.AddHook(func(_ smartblock.ApplyInfo) error {
-			s.syncStatus.Unwatch(ctx.SpaceID(), id)
+			s.syncStatus.Unwatch(spaceID, id)
 			return nil
 		}, smartblock.HookOnClose)
 	}
@@ -250,7 +257,7 @@ func (s *Service) OpenBlock(
 		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
 	}
 
-	sbType, err := s.sbtProvider.Type(ctx.SpaceID(), id)
+	sbType, err := s.sbtProvider.Type(spaceID, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get smartblock type: %w", err)
 	}
@@ -268,15 +275,13 @@ func (s *Service) OpenBlock(
 }
 
 func (s *Service) ShowBlock(
-	ctx session.Context, id string, includeRelationsAsDependentObjects bool,
+	id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
-	cctx := context.WithValue(ctx.Context(), metrics.CtxKeyEntrypoint, "object_show")
-	ctx = ctx.WithContext(cctx)
-	err2 := Do(s, ctx, id, func(b smartblock.SmartBlock) error {
+	err2 := Do(s, id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
 		}
-		obj, err = b.Show(ctx)
+		obj, err = b.Show()
 		return err
 	})
 	if err2 != nil {
@@ -287,7 +292,7 @@ func (s *Service) ShowBlock(
 
 func (s *Service) CloseBlock(ctx session.Context, id string) error {
 	var isDraft bool
-	err := Do(s, ctx, id, func(b smartblock.SmartBlock) error {
+	err := Do(s, id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
@@ -302,7 +307,7 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 		if err = s.DeleteObject(ctx, id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
-			s.sendOnRemoveEvent(ctx.SpaceID(), id)
+			s.sendOnRemoveEvent(id)
 		}
 	}
 	return nil
@@ -343,7 +348,7 @@ func (s *Service) AddSubObjectsToWorkspace(
 	var details = make([]*types.Struct, 0, len(sourceObjectIds))
 
 	for _, sourceObjectId := range sourceObjectIds {
-		err = Do(s, ctx, sourceObjectId, func(b smartblock.SmartBlock) error {
+		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
 			d := pbtypes.CopyStruct(b.Details())
 			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceID {
 				return errors.New("object already in collection")
@@ -365,7 +370,7 @@ func (s *Service) AddSubObjectsToWorkspace(
 		}
 	}
 
-	err = Do(s, ctx, workspaceID, func(b smartblock.SmartBlock) error {
+	err = Do(s, workspaceID, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")
@@ -384,7 +389,7 @@ func (s *Service) RemoveSubObjectsInWorkspace(ctx session.Context, objectIds []s
 			return err
 		}
 	}
-	err = Do(s, ctx, workspaceID, func(b smartblock.SmartBlock) error {
+	err = Do(s, workspaceID, func(b smartblock.SmartBlock) error {
 		ws, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect workspace id")
@@ -463,7 +468,7 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 
 // SetPagesIsArchived is deprecated
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
-	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
+	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -506,7 +511,7 @@ func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSe
 
 // SetPagesIsFavorite is deprecated
 func (s *Service) SetPagesIsFavorite(ctx session.Context, req pb.RpcObjectListSetIsFavoriteRequest) error {
-	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, func(b smartblock.SmartBlock) error {
+	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, func(b smartblock.SmartBlock) error {
 		fav, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected home block type: %T", b)
@@ -542,8 +547,8 @@ func (s *Service) SetPagesIsFavorite(ctx session.Context, req pb.RpcObjectListSe
 	})
 }
 
-func (s *Service) objectLinksCollectionModify(ctx session.Context, collectionId string, objectId string, value bool) error {
-	return Do(s, ctx, collectionId, func(b smartblock.SmartBlock) error {
+func (s *Service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
+	return Do(s, collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
@@ -556,19 +561,19 @@ func (s *Service) objectLinksCollectionModify(ctx session.Context, collectionId 
 	})
 }
 
-func (s *Service) SetPageIsFavorite(ctx session.Context, req pb.RpcObjectSetIsFavoriteRequest) (err error) {
-	return s.objectLinksCollectionModify(ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, req.ContextId, req.IsFavorite)
+func (s *Service) SetPageIsFavorite(spaceID string, req pb.RpcObjectSetIsFavoriteRequest) (err error) {
+	return s.objectLinksCollectionModify(s.anytype.PredefinedObjects(spaceID).Home, req.ContextId, req.IsFavorite)
 }
 
-func (s *Service) SetPageIsArchived(ctx session.Context, req pb.RpcObjectSetIsArchivedRequest) (err error) {
-	if err := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), req.ContextId); err != nil {
+func (s *Service) SetPageIsArchived(spaceID string, req pb.RpcObjectSetIsArchivedRequest) (err error) {
+	if err := s.checkArchivedRestriction(req.IsArchived, spaceID, req.ContextId); err != nil {
 		return err
 	}
-	return s.objectLinksCollectionModify(ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, req.ContextId, req.IsArchived)
+	return s.objectLinksCollectionModify(s.anytype.PredefinedObjects(spaceID).Archive, req.ContextId, req.IsArchived)
 }
 
 func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
-	return Do(s, ctx, req.ContextId, func(b smartblock.SmartBlock) error {
+	return Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
 		return b.Apply(st, smartblock.NoRestrictions)
@@ -576,7 +581,7 @@ func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceReques
 }
 
 func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = Do(s, ctx, workspaceId, func(ws *editor.Workspaces) error {
+	err = Do(s, workspaceId, func(ws *editor.Workspaces) error {
 		if ws.Type() != model.SmartBlockType_Workspace {
 			return ErrUnexpectedBlockType
 		}
@@ -604,7 +609,7 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 }
 
 func (s *Service) DeleteArchivedObjects(ctx session.Context, req pb.RpcObjectListDeleteRequest) (err error) {
-	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
+	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -654,7 +659,7 @@ func (s *Service) ObjectsDuplicate(ctx session.Context, ids []string) (newIds []
 }
 
 func (s *Service) DeleteArchivedObject(ctx session.Context, id string) (err error) {
-	return Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
+	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -673,17 +678,17 @@ func (s *Service) DeleteArchivedObject(ctx session.Context, id string) (err erro
 	})
 }
 
-func (s *Service) OnDelete(ctx session.Context, id string, workspaceRemove func() error) error {
+func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error {
 	var (
 		isFavorite bool
 	)
 
-	err := Do(s, ctx, id, func(b smartblock.SmartBlock) error {
+	err := Do(s, id.ObjectID, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 		if isFavorite {
-			_ = s.SetPageIsFavorite(ctx, pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
+			_ = s.SetPageIsFavorite(id.SpaceID, pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
 		}
 		b.SetIsDeleted()
 		if workspaceRemove != nil {
@@ -694,7 +699,7 @@ func (s *Service) OnDelete(ctx session.Context, id string, workspaceRemove func(
 	if err != nil {
 		log.Error("failed to perform delete operation on object", zap.Error(err))
 	}
-	if err := s.objectStore.DeleteObject(id); err != nil {
+	if err := s.objectStore.DeleteObject(id.ObjectID); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)
 	}
 
@@ -717,7 +722,7 @@ func (s *Service) sendOnRemoveEvent(ids ...string) {
 
 func (s *Service) RemoveListOption(ctx session.Context, optIds []string, checkInObjects bool) error {
 	var workspace *editor.Workspaces
-	if err := Do(s, ctx, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
+	if err := Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
 		var ok bool
 		if workspace, ok = b.(*editor.Workspaces); !ok {
 			return fmt.Errorf("incorrect object with workspace id")
@@ -782,17 +787,29 @@ func (s *Service) Close(ctx context.Context) (err error) {
 	return s.cache.Close()
 }
 
-// PickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *Service) PickBlock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
-	return s.getSmartblock(ctx, id)
+func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
+	return s.objectStore.ResolveSpaceID(objectID)
 }
 
-func (s *Service) getSmartblock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
+// PickBlock returns opened smartBlock or opens smartBlock in silent mode
+func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := s.objectStore.ResolveSpaceID(objectID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	return s.getSmartblock(ctx, domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: objectID,
+	})
+}
+
+// TODO Remove this wrapper
+func (s *Service) getSmartblock(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	return s.GetObjectWithTimeout(ctx, id)
 }
 
 func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name string) (st *state.State, err error) {
-	if err = Do(s, ctx, templateID, func(b smartblock.SmartBlock) error {
+	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
 		} else {
@@ -818,11 +835,29 @@ func (s *Service) DoFileNonLock(ctx session.Context, id string, apply func(b fil
 }
 
 type Picker interface {
-	PickBlock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error)
+	PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
 }
 
-func Do[t any](p Picker, ctx session.Context, id string, apply func(sb t) error) error {
-	sb, err := p.PickBlock(ctx, id)
+func Do[t any](p Picker, objectID string, apply func(sb t) error) error {
+	ctx := context.Background()
+	sb, err := p.PickBlock(ctx, objectID)
+	if err != nil {
+		return err
+	}
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
+}
+
+func DoContext[t any](p Picker, ctx context.Context, objectID string, apply func(sb t) error) error {
+	sb, err := p.PickBlock(ctx, objectID)
 	if err != nil {
 		return err
 	}
@@ -840,9 +875,9 @@ func Do[t any](p Picker, ctx session.Context, id string, apply func(sb t) error)
 
 // DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
 // It correctly handles the case when two ids are the same.
-func DoState2[t1, t2 any](s *Service, ctx session.Context, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
+func DoState2[t1, t2 any](s Picker, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
 	if firstID == secondID {
-		return DoStateAsync(s, ctx, firstID, func(st *state.State, b t1) error {
+		return DoStateAsync(s, firstID, func(st *state.State, b t1) error {
 			// Check that b satisfies t2
 			b2, ok := any(b).(t2)
 			if !ok {
@@ -853,20 +888,21 @@ func DoState2[t1, t2 any](s *Service, ctx session.Context, firstID, secondID str
 		})
 	}
 	if firstID < secondID {
-		return DoStateAsync(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
-			return DoStateAsync(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoStateAsync(s, firstID, func(firstState *state.State, firstBlock t1) error {
+			return DoStateAsync(s, secondID, func(secondState *state.State, secondBlock t2) error {
 				return f(firstState, secondState, firstBlock, secondBlock)
 			})
 		})
 	}
-	return DoStateAsync(s, ctx, secondID, func(secondState *state.State, secondBlock t2) error {
-		return DoStateAsync(s, ctx, firstID, func(firstState *state.State, firstBlock t1) error {
+	return DoStateAsync(s, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoStateAsync(s, firstID, func(firstState *state.State, firstBlock t1) error {
 			return f(firstState, secondState, firstBlock, secondBlock)
 		})
 	})
 }
 
-func DoStateAsync[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoStateAsync[t any](p Picker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	ctx := context.Background()
 	sb, err := p.PickBlock(ctx, id)
 	if err != nil {
 		return err
@@ -890,8 +926,9 @@ func DoStateAsync[t any](p Picker, ctx session.Context, id string, apply func(s 
 	return sb.Apply(st, flags...)
 }
 
+// TODO rename to something more meaningful
 func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	sb, err := p.PickBlock(ctx, id)
+	sb, err := p.PickBlock(context.Background(), id)
 	if err != nil {
 		return err
 	}
@@ -915,7 +952,7 @@ func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *s
 }
 
 func (s *Service) ObjectApplyTemplate(ctx session.Context, contextId, templateId string) error {
-	return Do(s, ctx, contextId, func(b smartblock.SmartBlock) error {
+	return Do(s, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
 		name := pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String())
 		ts, err := s.StateFromTemplate(ctx, templateId, name)
@@ -947,7 +984,7 @@ func (s *Service) ObjectApplyTemplate(ctx session.Context, contextId, templateId
 }
 
 func (s *Service) ResetToState(ctx session.Context, pageID string, st *state.State) (err error) {
-	return Do(s, ctx, pageID, func(sb smartblock.SmartBlock) error {
+	return Do(s, pageID, func(sb smartblock.SmartBlock) error {
 		return history.ResetToVersion(ctx, sb, st)
 	})
 }
@@ -999,7 +1036,7 @@ func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (
 }
 
 func (s *Service) replaceLink(ctx session.Context, id, oldId, newId string) error {
-	return Do(s, ctx, id, func(b basic.CommonOperations) error {
+	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
 	})
 }

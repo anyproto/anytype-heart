@@ -33,7 +33,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 
 		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
 
-		details, err := bs.prepareTargetObjectDetails(ctx.SpaceID(), req, rootBlock, objectCreator)
+		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), req, rootBlock, objectCreator)
 		if err != nil {
 			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}

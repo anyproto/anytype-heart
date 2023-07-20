@@ -95,7 +95,7 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 				defer updMu.Unlock()
 				return b.updateBlock(ctx, bm, apply)
 			}
-			return getblock.Do(b.picker, ctx, b.Id(), func(b Bookmark) error {
+			return getblock.Do(b.picker, b.Id(), func(b Bookmark) error {
 				return b.UpdateBookmark(ctx, blockID, groupId, apply)
 			})
 		},

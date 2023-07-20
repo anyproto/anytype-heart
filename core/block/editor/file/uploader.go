@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -41,12 +40,14 @@ func init() {
 }
 
 func NewUploader(
+	spaceID string,
 	s BlockService,
 	fileService files.Service,
 	provider core.TempDirProvider,
 	picker getblock.Picker,
 ) Uploader {
 	return &uploader{
+		spaceID:         spaceID,
 		service:         s,
 		picker:          picker,
 		fileService:     fileService,
@@ -68,8 +69,8 @@ type Uploader interface {
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
-	Upload(ctx session.Context) (result UploadResult)
-	UploadAsync(ctx session.Context) (ch chan UploadResult)
+	Upload(ctx context.Context) (result UploadResult)
+	UploadAsync(ctx context.Context) (ch chan UploadResult)
 }
 type UploadResult struct {
 	Name string
@@ -102,6 +103,7 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
+	spaceID          string
 	service          BlockService
 	picker           getblock.Picker
 	block            file.Block
@@ -306,7 +308,7 @@ func (u *uploader) AsyncUpdates(smartBlockId string) Uploader {
 	return u
 }
 
-func (u *uploader) UploadAsync(ctx session.Context) (result chan UploadResult) {
+func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
 	result = make(chan UploadResult, 1)
 	if u.block != nil {
 		u.block.SetState(model.BlockContentFile_Uploading)
@@ -319,14 +321,14 @@ func (u *uploader) UploadAsync(ctx session.Context) (result chan UploadResult) {
 	return
 }
 
-func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
+func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	var err error
 	defer func() {
 		if err != nil {
 			result.Err = err
 			if u.block != nil {
 				u.block.SetState(model.BlockContentFile_Error).SetName(err.Error())
-				u.updateBlock(ctx)
+				u.updateBlock()
 			}
 		}
 	}()
@@ -334,7 +336,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 		err = fmt.Errorf("uploader: empty source for upload")
 		return
 	}
-	buf, err := u.getReader(ctx.Context())
+	buf, err := u.getReader(ctx)
 	if err != nil {
 		return
 	}
@@ -373,7 +375,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 	}
 
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.fileService.ImageAdd(ctx, opts...)
+		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			log.Infof("can't add file '%s' as image: add as file", u.name)
 			e = nil
@@ -390,7 +392,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx, opts...)
+		fl, e := u.fileService.FileAdd(ctx, u.spaceID, opts...)
 		if e != nil {
 			err = e
 			return
@@ -403,7 +405,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 	}
 
 	// Touch the file to activate indexing
-	derr := getblock.Do(u.picker, ctx, result.Hash, func(_ smartblock.SmartBlock) error {
+	derr := getblock.Do(u.picker, result.Hash, func(_ smartblock.SmartBlock) error {
 		return nil
 	})
 	if derr != nil {
@@ -419,7 +421,7 @@ func (u *uploader) Upload(ctx session.Context) (result UploadResult) {
 			SetSize(result.Size).
 			SetStyle(u.fileStyle).
 			SetMIME(result.MIME)
-		u.updateBlock(ctx)
+		u.updateBlock()
 	}
 	return
 }
@@ -450,9 +452,9 @@ func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
 	return model.BlockContentFile_File
 }
 
-func (u *uploader) updateBlock(ctx session.Context) {
+func (u *uploader) updateBlock() {
 	if u.smartBlockID != "" && u.block != nil {
-		err := getblock.Do(u.picker, ctx, u.smartBlockID, func(f File) error {
+		err := getblock.Do(u.picker, u.smartBlockID, func(f File) error {
 			return f.UpdateFile(u.block.Model().Id, u.groupID, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil

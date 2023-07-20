@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app/ocache"
@@ -471,8 +472,8 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx session.Context, req pb.RpcFileUploadRequest) (hash string, err error) {
-	upl := file.NewUploader(s, s.fileService, s.tempDirProvider, s)
+func (s *Service) UploadFile(ctx context.Context, spaceID string, req pb.RpcFileUploadRequest) (hash string, err error) {
+	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
