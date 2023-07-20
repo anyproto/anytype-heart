@@ -223,10 +223,6 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
 			return
 		}
-	case ch.GetObjectTypeRemove() != nil:
-		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
-			return
-		}
 	case ch.GetStoreKeySet() != nil:
 		if err = s.changeStoreKeySet(ch.GetStoreKeySet()); err != nil {
 			return

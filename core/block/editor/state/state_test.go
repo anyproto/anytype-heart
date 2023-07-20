@@ -1091,7 +1091,7 @@ func TestState_ApplyChangeIgnoreErrBlockCreate(t *testing.T) {
 	assert.NotNil(t, b)
 	assert.NotNil(t, b.Model().GetText())
 	assert.Equal(t, "new text", b.Model().GetText().GetText())
-	assert.Len(t, st.Blocks(), 3)
+	assert.Len(t, st.blocks, 3)
 
 	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockCreate{
 		BlockCreate: &pb.ChangeBlockCreate{
@@ -1109,7 +1109,7 @@ func TestState_ApplyChangeIgnoreErrBlockCreate(t *testing.T) {
 		},
 	}}
 	st.ApplyChangeIgnoreErr(change)
-	assert.Len(t, st.Blocks(), 3) // root block not added
+	assert.Len(t, st.blocks, 3) // root block not added
 
 	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockCreate{
 		BlockCreate: &pb.ChangeBlockCreate{
@@ -1130,7 +1130,7 @@ func TestState_ApplyChangeIgnoreErrBlockCreate(t *testing.T) {
 	b = st.Get("dataview")
 	assert.NotNil(t, b)
 	assert.NotNil(t, b.Model().GetDataview())
-	assert.Len(t, st.Blocks(), 4)
+	assert.Len(t, st.blocks, 4)
 }
 
 func TestState_ApplyChangeIgnoreErrBlockRemove(t *testing.T) {
@@ -1327,5 +1327,806 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateTable(t *testing.T) {
 }
 
 func TestState_ApplyChangeIgnoreErrBlockMove(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"bookmark"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+		"textBlock1": simple.New(&model.Block{Id: "textBlock1", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text1",
+				},
+			},
+		}),
+	}).(*State)
 
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockMove{
+		BlockMove: &pb.ChangeBlockMove{
+			TargetId: "textBlock",
+			Position: model.Block_Inner,
+			Ids:      []string{"textBlock1"},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("textBlock")
+	assert.NotNil(t, b)
+	assert.Equal(t, []string{"textBlock1"}, b.Model().GetChildrenIds())
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateDiv(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"div"},
+		}),
+		"div": simple.New(&model.Block{Id: "div", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfDiv{
+				Div: &model.BlockContentDiv{
+					Style: model.BlockContentDiv_Dots,
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetDiv{
+						BlockSetDiv: &pb.EventBlockSetDiv{
+							Id:    "div",
+							Style: &pb.EventBlockSetDivStyle{Value: model.BlockContentDiv_Line},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("div")
+	assert.NotNil(t, b)
+	assert.Equal(t, model.BlockContentDiv_Line, b.Model().GetDiv().Style)
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetDiv{
+						BlockSetDiv: &pb.EventBlockSetDiv{
+							Id:    "div",
+							Style: &pb.EventBlockSetDivStyle{Value: model.BlockContentDiv_Dots},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b = st.Get("div")
+	assert.NotNil(t, b)
+	assert.Equal(t, model.BlockContentDiv_Dots, b.Model().GetDiv().Style)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateText(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetText{
+						BlockSetText: &pb.EventBlockSetText{
+							Id:    "textBlock",
+							Text:  &pb.EventBlockSetTextText{Value: "updated text"},
+							Style: &pb.EventBlockSetTextStyle{Value: model.BlockContentText_Checkbox},
+							Color: &pb.EventBlockSetTextColor{Value: "pink"},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("textBlock")
+	assert.NotNil(t, b)
+	assert.Equal(t, "updated text", b.Model().GetText().Text)
+	assert.Equal(t, model.BlockContentText_Checkbox, b.Model().GetText().Style)
+	assert.Equal(t, "pink", b.Model().GetText().Color)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateField(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"textBlock"},
+		}),
+		"textBlock": simple.New(&model.Block{Id: "textBlock",
+			Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetFields{
+						BlockSetFields: &pb.EventBlockSetFields{
+							Id: "textBlock",
+							Fields: &types.Struct{
+								Fields: map[string]*types.Value{
+									"lang": pbtypes.String("java"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("textBlock")
+	assert.NotNil(t, b)
+	assert.Equal(t, "java", b.Model().GetFields().GetFields()["lang"].GetStringValue())
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateLink(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"file"},
+		}),
+		"link": simple.New(&model.Block{Id: "link",
+			Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: "id",
+					Style:         model.BlockContentLink_Page,
+					IconSize:      model.BlockContentLink_SizeMedium,
+					CardStyle:     model.BlockContentLink_Card,
+					Description:   model.BlockContentLink_Added,
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetLink{
+						BlockSetLink: &pb.EventBlockSetLink{
+							Id:            "link",
+							TargetBlockId: &pb.EventBlockSetLinkTargetBlockId{Value: "newID"},
+							Style:         &pb.EventBlockSetLinkStyle{Value: model.BlockContentLink_Dataview},
+							CardStyle:     &pb.EventBlockSetLinkCardStyle{Value: model.BlockContentLink_Inline},
+							Description:   &pb.EventBlockSetLinkDescription{Value: model.BlockContentLink_Content},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("link")
+	assert.NotNil(t, b)
+	assert.Equal(t, "newID", b.Model().GetLink().GetTargetBlockId())
+	assert.Equal(t, model.BlockContentLink_Dataview, b.Model().GetLink().GetStyle())
+	assert.Equal(t, model.BlockContentLink_Inline, b.Model().GetLink().GetCardStyle())
+	assert.Equal(t, model.BlockContentLink_Content, b.Model().GetLink().GetDescription())
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateDataview(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"file"},
+		}),
+		"dataview": simple.New(&model.Block{Id: "dataview",
+			Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfDataview{
+				Dataview: &model.BlockContentDataview{
+					Source: []string{"rel-id"},
+					Views: []*model.BlockContentDataviewView{
+						{
+							Id:   "id",
+							Type: model.BlockContentDataviewView_Kanban,
+							Name: "Name",
+						},
+						{
+							Id:   "id1",
+							Type: model.BlockContentDataviewView_List,
+							Name: "Name1",
+						},
+						{
+							Id:   "id2",
+							Type: model.BlockContentDataviewView_Table,
+							Name: "Name2",
+						},
+					},
+					GroupOrders: []*model.BlockContentDataviewGroupOrder{
+						{
+							ViewId: "id",
+							ViewGroups: []*model.BlockContentDataviewViewGroup{
+								{
+									GroupId: "group1",
+									Index:   1,
+									Hidden:  true,
+								},
+								{
+									GroupId: "group2",
+									Index:   2,
+									Hidden:  false,
+								},
+							},
+						},
+					},
+					ObjectOrders: []*model.BlockContentDataviewObjectOrder{
+						{
+							ViewId:    "id",
+							GroupId:   "group1",
+							ObjectIds: []string{"object1", "object2"},
+						},
+						{
+							ViewId:    "id1",
+							GroupId:   "group2",
+							ObjectIds: []string{"object3", "object4"},
+						},
+					},
+					RelationLinks: []*model.RelationLink{
+						{
+							Key:    "relation1",
+							Format: model.RelationFormat_shorttext,
+						},
+						{
+							Key:    "relation2",
+							Format: model.RelationFormat_shorttext,
+						},
+						{
+							Key:    "relation3",
+							Format: model.RelationFormat_shorttext,
+						},
+					},
+				},
+			},
+		}),
+	}).(*State)
+
+	changes := []*pb.ChangeContent{{
+		Value: &pb.ChangeContentValueOfBlockUpdate{
+			BlockUpdate: &pb.ChangeBlockUpdate{
+				Events: []*pb.EventMessage{
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewSourceSet{
+							BlockDataviewSourceSet: &pb.EventBlockDataviewSourceSet{
+								Id:     "dataview",
+								Source: []string{"rel-changedId"},
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewViewSet{
+							BlockDataviewViewSet: &pb.EventBlockDataviewViewSet{
+								Id:     "dataview",
+								ViewId: "id",
+								View:   &model.BlockContentDataviewView{Type: model.BlockContentDataviewView_Gallery},
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewViewOrder{
+							BlockDataviewViewOrder: &pb.EventBlockDataviewViewOrder{
+								Id:      "dataview",
+								ViewIds: []string{"id2", "id", "id1"},
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewViewDelete{
+							BlockDataviewViewDelete: &pb.EventBlockDataviewViewDelete{
+								Id:     "dataview",
+								ViewId: "id1",
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+							BlockDataViewObjectOrderUpdate: &pb.EventBlockDataviewObjectOrderUpdate{
+								Id:      "dataview",
+								ViewId:  "id",
+								GroupId: "group1",
+								SliceChanges: []*pb.EventBlockDataviewSliceChange{
+									{
+										Op:      pb.EventBlockDataview_SliceOperationMove,
+										Ids:     []string{"object1"},
+										AfterId: "object2",
+									},
+								},
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
+							BlockDataviewRelationSet: &pb.EventBlockDataviewRelationSet{
+								Id: "dataview",
+								RelationLinks: []*model.RelationLink{
+									{
+										Key:    "relation4",
+										Format: model.RelationFormat_longtext,
+									},
+								},
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
+							BlockDataviewRelationDelete: &pb.EventBlockDataviewRelationDelete{
+								Id:           "dataview",
+								RelationKeys: []string{"relation1", "relation2"},
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewTargetObjectIdSet{
+							BlockDataviewTargetObjectIdSet: &pb.EventBlockDataviewTargetObjectIdSet{
+								Id:             "dataview",
+								TargetObjectId: "newTargetID",
+							},
+						},
+					},
+					{
+						Value: &pb.EventMessageValueOfBlockDataviewIsCollectionSet{
+							BlockDataviewIsCollectionSet: &pb.EventBlockDataviewIsCollectionSet{
+								Id:    "dataview",
+								Value: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(changes...)
+	b := st.Get("dataview")
+	assert.NotNil(t, b)
+	assert.Equal(t, []string{"rel-changedId"}, b.Model().GetDataview().Source)
+	assert.Equal(t, []string{"object2", "object1"}, b.Model().GetDataview().ObjectOrders[0].ObjectIds)
+	assert.Equal(t, "newTargetID", b.Model().GetDataview().TargetObjectId)
+	assert.Equal(t, true, b.Model().GetDataview().IsCollection)
+	assert.Len(t, b.Model().GetDataview().RelationLinks, 2)
+	assert.Equal(t, "relation3", b.Model().GetDataview().RelationLinks[0].Key)
+	assert.Equal(t, "relation4", b.Model().GetDataview().RelationLinks[1].Key)
+	assert.Len(t, b.Model().GetDataview().Views, 2)
+	assert.Equal(t, "id2", b.Model().GetDataview().Views[0].Id)
+	assert.Equal(t, "id", b.Model().GetDataview().Views[1].Id)
+	assert.Equal(t, model.BlockContentDataviewView_Gallery, b.Model().GetDataview().Views[1].Type)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"latex"},
+		}),
+		"latex": simple.New(&model.Block{Id: "latex", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfLatex{
+				Latex: &model.BlockContentLatex{
+					Text: "text",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetLatex{
+						BlockSetLatex: &pb.EventBlockSetLatex{
+
+							Id:   "latex",
+							Text: &pb.EventBlockSetLatexText{Value: "new text"},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("latex")
+	assert.NotNil(t, b)
+	assert.Equal(t, "new text", b.Model().GetLatex().Text)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateSetRelations(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"latex"},
+		}),
+		"relation": simple.New(&model.Block{Id: "relation", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfRelation{
+				Relation: &model.BlockContentRelation{
+					Key: "relationKey",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetRelation{
+						BlockSetRelation: &pb.EventBlockSetRelation{
+							Id:  "relation",
+							Key: &pb.EventBlockSetRelationKey{Value: "newRelationKey"},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("relation")
+	assert.NotNil(t, b)
+	assert.Equal(t, "newRelationKey", b.Model().GetRelation().Key)
+}
+
+func TestState_ApplyChangeIgnoreErrBlockUpdateSetWidget(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"latex"},
+		}),
+		"widget": simple.New(&model.Block{Id: "widget", Restrictions: &model.BlockRestrictions{Edit: true},
+			Content: &model.BlockContentOfWidget{
+				Widget: &model.BlockContentWidget{
+					Layout: model.BlockContentWidget_List,
+					Limit:  10,
+					ViewId: "id",
+				},
+			},
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfBlockUpdate{
+		BlockUpdate: &pb.ChangeBlockUpdate{
+			Events: []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfBlockSetWidget{
+						BlockSetWidget: &pb.EventBlockSetWidget{
+							Id:     "widget",
+							Layout: &pb.EventBlockSetWidgetLayout{Value: model.BlockContentWidget_Tree},
+							Limit:  &pb.EventBlockSetWidgetLimit{Value: 20},
+							ViewId: &pb.EventBlockSetWidgetViewId{Value: "newID"},
+						},
+					},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	b := st.Get("widget")
+	assert.NotNil(t, b)
+	assert.Equal(t, model.BlockContentWidget_Tree, b.Model().GetWidget().Layout)
+	assert.Equal(t, int32(20), b.Model().GetWidget().Limit)
+	assert.Equal(t, "newID", b.Model().GetWidget().ViewId)
+}
+
+func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	st.SetDetail("relationKey", pbtypes.String("value"))
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfDetailsSet{
+		DetailsSet: &pb.ChangeDetailsSet{
+			Key:   "relationKey",
+			Value: pbtypes.String("changed value"),
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Equal(t, "changed value", st.Details().GetFields()["relationKey"].GetStringValue())
+
+	st.details = nil
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfDetailsSet{
+		DetailsSet: &pb.ChangeDetailsSet{
+			Key:   "relationKey",
+			Value: pbtypes.String("value"),
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Equal(t, "value", st.Details().GetFields()["relationKey"].GetStringValue())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfDetailsSet{
+		DetailsSet: &pb.ChangeDetailsSet{
+			Key:   "relationKey",
+			Value: nil,
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Nil(t, st.Details().GetFields()["relationKey"])
+}
+
+func TestState_ApplyChangeIgnoreErrDetailsUnset(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfDetailsUnset{
+		DetailsUnset: &pb.ChangeDetailsUnset{
+			Key: "relationKey",
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Nil(t, st.Details().GetFields()["relationKey"])
+
+	st.SetDetail("relationKey", pbtypes.String("value"))
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfDetailsUnset{
+		DetailsUnset: &pb.ChangeDetailsUnset{
+			Key: "relationKey",
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Nil(t, st.Details().GetFields()["relationKey"])
+}
+
+func TestState_ApplyChangeIgnoreErrRelationAdd(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationAdd{
+		RelationAdd: &pb.ChangeRelationAdd{
+			RelationLinks: []*model.RelationLink{
+				{
+					Key:    "relation1",
+					Format: model.RelationFormat_longtext,
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Contains(t, st.GetRelationLinks(), &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
+
+	st.ApplyChangeIgnoreErr(change)
+	assert.Contains(t, st.GetRelationLinks(), &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
+}
+
+func TestState_ApplyChangeIgnoreErrRelationRemove(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	st.AddRelationLinks([]*model.RelationLink{
+		{
+			Key:    "relation1",
+			Format: model.RelationFormat_longtext,
+		},
+		{
+			Key:    "relation2",
+			Format: model.RelationFormat_shorttext,
+		},
+	}...)
+	originLength := len(st.GetRelationLinks())
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationRemove{
+		RelationRemove: &pb.ChangeRelationRemove{
+			RelationKey: []string{"relation1", "relation2"},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Len(t, st.GetRelationLinks(), originLength-2)
+}
+
+func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfObjectTypeAdd{
+		ObjectTypeAdd: &pb.ChangeObjectTypeAdd{
+			Url: "ot-page",
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Equal(t, "ot-page", st.ObjectType())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfObjectTypeAdd{
+		ObjectTypeAdd: &pb.ChangeObjectTypeAdd{
+			Url: "ot-note",
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Equal(t, []string{"ot-page", "ot-note"}, st.ObjectTypes())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfObjectTypeAdd{
+		ObjectTypeAdd: &pb.ChangeObjectTypeAdd{
+			Url: "ot-note",
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Equal(t, []string{"ot-page", "ot-note"}, st.ObjectTypes())
+}
+
+func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+	st.objectTypes = append(st.objectTypes, "ot-page")
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfObjectTypeRemove{
+		ObjectTypeRemove: &pb.ChangeObjectTypeRemove{
+			Url: "ot-page",
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Empty(t, st.ObjectTypes())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfObjectTypeRemove{
+		ObjectTypeRemove: &pb.ChangeObjectTypeRemove{
+			Url: "ot-page",
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Empty(t, st.ObjectTypes())
+}
+
+func TestState_ApplyChangeIgnoreErrStoreKeySet(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreKeySet{
+		StoreKeySet: &pb.ChangeStoreKeySet{
+			Path:  []string{"objects"},
+			Value: pbtypes.String("value"),
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Equal(t, "value", st.Store().GetFields()["objects"].GetStringValue())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreKeySet{
+		StoreKeySet: &pb.ChangeStoreKeySet{
+			Path:  []string{"objects"},
+			Value: pbtypes.String("newvalue"),
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Equal(t, "newvalue", st.Store().GetFields()["objects"].GetStringValue())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreKeySet{
+		StoreKeySet: &pb.ChangeStoreKeySet{
+			Path:  []string{"objects"},
+			Value: nil,
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Nil(t, st.Store().GetFields()["objects"])
+}
+
+func TestState_ApplyChangeIgnoreErrStoreKeyUnset(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	st.SetInStore([]string{"objects"}, pbtypes.Struct(&types.Struct{
+		Fields: map[string]*types.Value{
+			"id":   pbtypes.String("id"),
+			"name": pbtypes.String("name"),
+		},
+	}))
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreKeyUnset{
+		StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+			Path: []string{"objects"},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Nil(t, st.Store().GetFields()["objects"])
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreKeyUnset{
+		StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+			Path: []string{"objects"},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.Nil(t, st.Store().GetFields()["objects"])
+}
+
+func TestState_ApplyChangeIgnoreErrSliceUpdate(t *testing.T) {
+	st := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id: "root",
+		}),
+	}).(*State)
+
+	change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreSliceUpdate{
+		StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+			Key: "objects",
+			Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{
+				Add: &pb.ChangeStoreSliceUpdateAdd{
+					Ids: []string{"id", "id1"},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.NotNil(t, st.Store().GetFields()["objects"])
+	assert.Len(t, st.Store().GetFields()["objects"].GetListValue().Values, 2)
+	assert.Equal(t, "id", st.Store().GetFields()["objects"].GetListValue().Values[0].GetStringValue())
+	assert.Equal(t, "id1", st.Store().GetFields()["objects"].GetListValue().Values[1].GetStringValue())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreSliceUpdate{
+		StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+			Key: "objects",
+			Operation: &pb.ChangeStoreSliceUpdateOperationOfMove{
+				Move: &pb.ChangeStoreSliceUpdateMove{
+					AfterId: "id1",
+					Ids:     []string{"id"},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.NotNil(t, st.Store().GetFields()["objects"])
+	assert.Len(t, st.Store().GetFields()["objects"].GetListValue().Values, 2)
+	assert.Equal(t, "id1", st.Store().GetFields()["objects"].GetListValue().Values[0].GetStringValue())
+	assert.Equal(t, "id", st.Store().GetFields()["objects"].GetListValue().Values[1].GetStringValue())
+
+	change = &pb.ChangeContent{Value: &pb.ChangeContentValueOfStoreSliceUpdate{
+		StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+			Key: "objects",
+			Operation: &pb.ChangeStoreSliceUpdateOperationOfRemove{
+				Remove: &pb.ChangeStoreSliceUpdateRemove{
+					Ids: []string{"id"},
+				},
+			},
+		},
+	}}
+	st.ApplyChangeIgnoreErr(change)
+	assert.NotNil(t, st.Store().GetFields()["objects"])
+	assert.Len(t, st.Store().GetFields()["objects"].GetListValue().Values, 1)
+	assert.Equal(t, "id1", st.Store().GetFields()["objects"].GetListValue().Values[0].GetStringValue())
 }
