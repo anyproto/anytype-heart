@@ -11231,6 +11231,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | path | [string](#string) |  | the path where export files will place |
 | objectIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
 | format | [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format) |  | export format |

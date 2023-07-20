@@ -1792,6 +1792,7 @@ message Rpc {
 
         message ListExport {
             message Request {
+                string spaceId = 10;
                 // the path where export files will place
                 string path = 1;
                 // ids of documents for export, when empty - will export all available docs

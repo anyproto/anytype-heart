@@ -1,6 +1,7 @@
 package syncer
 
 import (
+	"context"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -70,9 +71,14 @@ func (fs *FileRelationSyncer) uploadFile(ctx session.Context, file string) strin
 		hash string
 		err  error
 	)
+	spaceID, err := fs.service.ResolveSpaceID(file)
+	if err != nil {
+		logger.With("objectID", file).Errorf("resolve spaceID %s", err)
+		return ""
+	}
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
 		req := pb.RpcFileUploadRequest{Url: file}
-		hash, err = fs.service.UploadFile(ctx, req)
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		}
@@ -82,7 +88,7 @@ func (fs *FileRelationSyncer) uploadFile(ctx session.Context, file string) strin
 			return file
 		}
 		req := pb.RpcFileUploadRequest{LocalPath: file}
-		hash, err = fs.service.UploadFile(ctx, req)
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		}

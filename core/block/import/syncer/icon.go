@@ -1,6 +1,7 @@
 package syncer
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -29,12 +30,16 @@ func (is *IconSyncer) Sync(ctx session.Context, id string, b simple.Block) error
 	if strings.HasPrefix(fileName, "http://") || strings.HasPrefix(fileName, "https://") {
 		req = pb.RpcFileUploadRequest{Url: fileName}
 	}
-	hash, err := is.service.UploadFile(ctx, req)
+	spaceID, err := is.service.ResolveSpaceID(id)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
+	hash, err := is.service.UploadFile(context.Background(), spaceID, req)
 	if err != nil {
 		return fmt.Errorf("failed uploading icon image file: %s", err)
 	}
 
-	err = getblock.Do(is.picker, ctx, id, func(sb smartblock.SmartBlock) error {
+	err = getblock.Do(is.picker, id, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
 		upErr := updater.Update(ctx, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = hash
