@@ -89,14 +89,14 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 
 	err = b.bookmarkSvc.Fetch(ctx, id, bookmark.FetchParams{
 		Url: url,
-		Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
+		Updater: func(blockID string, apply func(b bookmark.Block) error) (err error) {
 			if isSync {
 				updMu.Lock()
 				defer updMu.Unlock()
 				return b.updateBlock(ctx, bm, apply)
 			}
 			return getblock.Do(b.picker, ctx, b.Id(), func(b Bookmark) error {
-				return b.UpdateBookmark(ctx, id, groupId, apply)
+				return b.UpdateBookmark(ctx, blockID, groupId, apply)
 			})
 		},
 		Sync: isSync,

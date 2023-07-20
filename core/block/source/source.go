@@ -16,8 +16,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -46,7 +46,7 @@ type Source interface {
 	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
-	ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
+	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
 	Close() (err error)
 }
@@ -173,7 +173,7 @@ func (s *source) Type() model.SmartBlockType {
 	return model.SmartBlockType(s.smartblockType)
 }
 
-func (s *source) ReadDoc(_ session.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+func (s *source) ReadDoc(_ context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	return s.readDoc(receiver, allowEmpty)
 }
 
@@ -364,10 +364,12 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 }
 
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
-	ctx := session.NewContext(context.Background(), s.spaceID)
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(ctx, h)
+		fk, err := s.fileService.FileGetKeys(domain.FullID{
+			SpaceID:  s.spaceID,
+			ObjectID: h,
+		})
 		if err != nil {
 			log.Warnf("can't get file key for hash: %v: %v", h, err)
 			continue

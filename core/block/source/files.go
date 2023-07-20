@@ -8,8 +8,8 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -20,9 +20,12 @@ import (
 
 var getFileTimeout = 60 * time.Second
 
-func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.Service, id string) (s Source) {
+func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.Service, spaceID string, id string) (s Source) {
 	return &file{
-		id:          id,
+		id: domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: id,
+		},
 		a:           a,
 		fileStore:   fileStore,
 		fileService: fileService,
@@ -30,7 +33,7 @@ func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.Se
 }
 
 type file struct {
-	id          string
+	id          domain.FullID
 	a           core.Service
 	fileStore   filestore.FileStore
 	fileService files.Service
@@ -41,20 +44,20 @@ func (f *file) ReadOnly() bool {
 }
 
 func (f *file) Id() string {
-	return f.id
+	return f.id.ObjectID
 }
 
 func (f *file) Type() model.SmartBlockType {
 	return model.SmartBlockType_File
 }
 
-func (f *file) getDetailsForFileOrImage(ctx session.Context, id string) (p *types.Struct, isImage bool, err error) {
-	file, err := f.fileService.FileByHash(ctx, id)
+func (f *file) getDetailsForFileOrImage(ctx context.Context) (p *types.Struct, isImage bool, err error) {
+	file, err := f.fileService.FileByHash(ctx, f.id)
 	if err != nil {
 		return nil, false, err
 	}
 	if strings.HasPrefix(file.Info().Media, "image") {
-		image, err := f.fileService.ImageByHash(ctx, id)
+		image, err := f.fileService.ImageByHash(ctx, f.id)
 		if err != nil {
 			return nil, false, err
 		}
@@ -72,19 +75,18 @@ func (f *file) getDetailsForFileOrImage(ctx session.Context, id string) (p *type
 	return d, false, nil
 }
 
-func (f *file) ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	s := state.NewDoc(f.id, nil).(*state.State)
+func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+	s := state.NewDoc(f.id.ObjectID, nil).(*state.State)
 
-	cctx, cancel := context.WithTimeout(ctx.Context(), getFileTimeout)
-	ctx = ctx.WithContext(cctx)
+	ctx, cancel := context.WithTimeout(ctx, getFileTimeout)
 	defer cancel()
 
-	d, _, err := f.getDetailsForFileOrImage(ctx, f.id)
+	d, _, err := f.getDetailsForFileOrImage(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if d.GetFields() != nil {
-		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedObjects(ctx.SpaceID()).Account)
+		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedObjects(f.id.SpaceID).Account)
 	}
 
 	s.SetDetails(d)
@@ -106,7 +108,7 @@ func (f *file) Close() (err error) {
 }
 
 func (f *file) Heads() []string {
-	return []string{f.id}
+	return []string{f.id.ObjectID}
 }
 
 func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {

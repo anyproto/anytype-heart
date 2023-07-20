@@ -1,11 +1,12 @@
 package source
 
 import (
+	"context"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -48,7 +49,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 	return extraRels, (&relationutils.ObjectType{ot}).ToStruct(), nil
 }
 
-func (v *bundledObjectType) ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	rels, d, err := getDetailsForBundledObjectType(v.id)

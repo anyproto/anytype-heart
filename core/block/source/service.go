@@ -89,7 +89,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	st, err := s.sbtProvider.Type(spaceID, id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFile(s.coreService, s.fileStore, s.fileService, id), nil
+		return NewFile(s.coreService, s.fileStore, s.fileService, spaceID, id), nil
 	case smartblock.SmartBlockTypeDate:
 		return NewDate(spaceID, id, s.coreService), nil
 	case smartblock.SmartBlockTypeBundledObjectType:

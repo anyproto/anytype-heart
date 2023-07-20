@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -39,11 +38,7 @@ func (s *static) ReadOnly() bool {
 	return s.pushChange == nil
 }
 
-func (s *static) ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	return s.doc, nil
-}
-
-func (s *static) ReadMeta(ctx context.Context, receiver ChangeReceiver) (doc state.Doc, err error) {
+func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	return s.doc, nil
 }
 

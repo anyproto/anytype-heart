@@ -15,9 +15,10 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/netutil"
@@ -47,6 +48,7 @@ type Gateway interface {
 type gateway struct {
 	fileService     files.Service
 	spaceService    space.Service
+	objectStore     objectstore.ObjectStore
 	server          *http.Server
 	listener        net.Listener
 	handler         *http.ServeMux
@@ -88,6 +90,7 @@ func GatewayAddr() string {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.spaceService = app.MustComponent[space.Service](a)
+	g.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -223,9 +226,8 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	enableCors(w)
 
-	cctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
-	ctx := session.NewContext(cctx, g.spaceService.AccountId())
 	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
 		log.With("path", r.URL.Path).Errorf("error getting file: %s", err)
@@ -245,12 +247,20 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 
-func (g *gateway) getFile(ctx session.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
+func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	fileHashAndPath := strings.TrimPrefix(r.URL.Path, "/file/")
 	parts := strings.Split(fileHashAndPath, "/")
 	fileHash := parts[0]
 
-	file, err := g.fileService.FileByHash(ctx, fileHash)
+	spaceID, err := g.objectStore.ResolveSpaceID(fileHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: fileHash,
+	}
+	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get file by hash: %s", err)
 	}
@@ -270,10 +280,9 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	enableCors(w)
 
-	cctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 
-	ctx := session.NewContext(cctx, g.spaceService.AccountId())
 	file, reader, err := g.getImage(ctx, r)
 	if err != nil {
 		log.With("path", r.URL.Path).Errorf("error getting image: %s", err)
@@ -294,12 +303,20 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 
-func (g *gateway) getImage(ctx session.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
+func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageHash := urlParts[2]
 	query := r.URL.Query()
 
-	image, err := g.fileService.ImageByHash(ctx, imageHash)
+	spaceID, err := g.objectStore.ResolveSpaceID(imageHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: imageHash,
+	}
+	image, err := g.fileService.ImageByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get image by hash: %w", err)
 	}

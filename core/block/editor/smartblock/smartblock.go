@@ -174,7 +174,7 @@ type InitContext struct {
 	ObjectStore    objectstore.ObjectStore
 	SpaceID        string
 	BuildOpts      source.BuildOptions
-	Ctx            session.Context
+	Ctx            context.Context
 }
 
 type linkSource interface {
