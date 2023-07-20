@@ -344,9 +344,9 @@ func (s *Service) DeriveTreeCreatePayload(
 // DeriveObject derives the object with id specified in the payload and triggers cache.Get
 // DeriveTreeCreatePayload should be called first to prepare the payload and derive the tree
 func (s *Service) DeriveObject(
-	ctx session.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
+	ctx context.Context, spaceID string, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
 ) (err error) {
-	space, err := s.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	space, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}

@@ -71,7 +71,7 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 	}
 
 	fileService := app.MustComponent[files.Service](mw.app)
-	totalBytesOffloaded, totalFilesOffloaded, err := fileService.FileListOffload(ctx, req.OnlyIds, req.IncludeNotPinned)
+	totalBytesOffloaded, totalFilesOffloaded, err := fileService.FileListOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}

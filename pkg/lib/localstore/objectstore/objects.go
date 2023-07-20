@@ -143,6 +143,8 @@ type ObjectStore interface {
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 	GetObjectType(url string) (*model.ObjectType, error)
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
+
+	ResolveSpaceID(objectID string) (spaceID string, err error)
 }
 
 type IndexerStore interface {

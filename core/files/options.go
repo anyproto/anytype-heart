@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,7 +11,7 @@ import (
 	"github.com/h2non/filetype"
 	ipfspath "github.com/ipfs/go-path"
 
-	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
@@ -42,7 +43,7 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 	}
 }
 
-func (s *service) normalizeOptions(ctx session.Context, opts *AddOptions) error {
+func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *AddOptions) error {
 	if opts.Use != "" {
 		ref, err := ipfspath.ParsePath(opts.Use)
 		if err != nil {
@@ -52,7 +53,7 @@ func (s *service) normalizeOptions(ctx session.Context, opts *AddOptions) error 
 		hash := parts[len(parts)-1]
 		var file *storage.FileInfo
 
-		opts.Reader, file, err = s.fileContent(ctx, hash)
+		opts.Reader, file, err = s.fileContent(ctx, domain.FullID{SpaceID: spaceID, ObjectID: hash})
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
 				// just cat the data from dagService
