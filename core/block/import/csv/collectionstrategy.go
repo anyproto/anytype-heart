@@ -3,6 +3,7 @@ package csv
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -112,26 +113,39 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 
 func findUniqueRelationAndAddNumber(relations []string) []string {
 	countMap := make(map[string]int)
+	existedRelationMap := make(map[string]bool)
 	relationsName := make([]string, 0)
+	for _, r := range relations {
+		existedRelationMap[r] = true
+	}
 	for _, str := range relations {
-		if number, ok := countMap[str]; ok {
-			uniqueName := fmt.Sprintf("%s %d", str, number)
+		if number, ok := countMap[str]; ok || str == "" {
+			if !ok && str == "" {
+				number = 1
+			}
+			uniqueName := getUniqueName(str, number, existedRelationMap)
+			existedRelationMap[uniqueName] = true
 			relationsName = append(relationsName, uniqueName)
 			countMap[str]++
-			countMap[uniqueName]++
 			continue
 		}
-		relationsName = append(relationsName, str)
 		countMap[str]++
+		relationsName = append(relationsName, str)
 	}
-	countResultRelations := 0
-	for _, relationCount := range countMap {
-		countResultRelations += relationCount
+	return relationsName
+}
+
+func getUniqueName(str string, number int, existedRelationMap map[string]bool) string {
+	uniqueName := strings.TrimSpace(fmt.Sprintf("%s %d", str, number))
+	for {
+		if _, ok := existedRelationMap[uniqueName]; ok {
+			number++
+			uniqueName = strings.TrimSpace(fmt.Sprintf("%s %d", str, number))
+			continue
+		}
+		break
 	}
-	if countResultRelations == len(relations) {
-		return relations
-	}
-	return findUniqueRelationAndAddNumber(relationsName)
+	return uniqueName
 }
 
 func getDefaultRelationName(i int) string {
