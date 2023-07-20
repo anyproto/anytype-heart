@@ -66,6 +66,12 @@ func (mw *Middleware) getAnalyticsId(bs *block.Service, accountId string) (strin
 	return analyticsId, err
 }
 
+func (mw *Middleware) getNetworkId() string {
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
+	cfg := conf.GetNodeConf()
+	return cfg.NetworkId
+}
+
 func (mw *Middleware) getInfo(bs *block.Service) *model.AccountInfo {
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
@@ -101,6 +107,7 @@ func (mw *Middleware) getInfo(bs *block.Service) *model.AccountInfo {
 		LocalStoragePath:       cfg.CustomFileStorePath,
 		TimeZone:               cfg.TimeZone,
 		AnalyticsId:            analyticsId,
+		NetworkId:              mw.getNetworkId(),
 	}
 }
 
