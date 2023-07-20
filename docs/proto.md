@@ -8697,6 +8697,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) |  | the path where export files will place |
 | docIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10800,6 +10801,7 @@ DEPRECATED |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams) |  |  |
 | bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  | for internal use |
 | markdownParams | [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams) |  |  |

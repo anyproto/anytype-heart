@@ -782,7 +782,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	}
 
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-	err := importer.Import(ctx, req)
+	err := importer.Import(cctx, req)
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, nil)

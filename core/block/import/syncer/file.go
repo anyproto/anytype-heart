@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -24,7 +23,7 @@ func NewFileSyncer(
 	}
 }
 
-func (fs *FileSyncer) Sync(_ session.Context, id string, b simple.Block) error {
+func (fs *FileSyncer) Sync(id string, b simple.Block) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		return nil
 	}

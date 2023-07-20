@@ -22,21 +22,21 @@ import (
 // Importer incapsulate logic with import
 type Importer interface {
 	app.Component
-	Import(ctx session.Context, req *pb.RpcObjectImportRequest) error
+	Import(ctx context.Context, req *pb.RpcObjectImportRequest) error
 	ListImports(ctx session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
-	ImportWeb(ctx session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
-	//nolint: lll
+	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
+	// nolint: lll
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) (pb.RpcObjectImportNotionValidateTokenResponseErrorCode, error)
 }
 
 // Creator incapsulate logic with creation of given smartblocks
 type Creator interface {
 	//nolint:lll
-	Create(ctx session.Context, sn *converter.Snapshot, oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, filesIDs []string) (*types.Struct, string, error)
+	Create(ctx context.Context, spaceID string, sn *converter.Snapshot, oldIDtoNew map[string]string, createPayloads map[string]treestorage.TreeStorageCreatePayload, filesIDs []string) (*types.Struct, string, error)
 }
 
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool, oldIDToNew map[string]string) (string, treestorage.TreeStorageCreatePayload, error)
+	Get(ctx context.Context, spaceID string, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool, oldIDToNew map[string]string) (string, treestorage.TreeStorageCreatePayload, error)
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -52,7 +51,8 @@ func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, s
 }
 
 func (ou *ObjectIDGetter) Get(
-	ctx session.Context,
+	ctx context.Context,
+	spaceID string,
 	sn *converter.Snapshot,
 	sbType sb.SmartBlockType,
 	createdTime time.Time,
@@ -60,13 +60,13 @@ func (ou *ObjectIDGetter) Get(
 	oldToNewIDs map[string]string,
 ) (string, treestorage.TreeStorageCreatePayload, error) {
 	if sbType == sb.SmartBlockTypeWorkspace {
-		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(ctx.SpaceID(), sn.Id)
+		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(spaceID, sn.Id)
 		if wErr == nil {
 			return workspaceID, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
 	if sbType == sb.SmartBlockTypeWidget {
-		widgetID := ou.core.PredefinedObjects(ctx.SpaceID()).Widgets
+		widgetID := ou.core.PredefinedObjects(spaceID).Widgets
 		return widgetID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
@@ -75,7 +75,7 @@ func (ou *ObjectIDGetter) Get(
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 	if sbType == sb.SmartBlockTypeSubObject {
-		id, err = ou.getSubObjectID(ctx, sn, oldToNewIDs)
+		id, err = ou.getSubObjectID(ctx, spaceID, sn, oldToNewIDs)
 		return id, treestorage.TreeStorageCreatePayload{}, err
 	}
 
@@ -111,17 +111,17 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 	return "", err
 }
 
-func (ou *ObjectIDGetter) getSubObjectID(ctx session.Context, sn *converter.Snapshot, oldToNewIDs map[string]string) (string, error) {
+func (ou *ObjectIDGetter) getSubObjectID(ctx context.Context, spaceID string, sn *converter.Snapshot, oldToNewIDs map[string]string) (string, error) {
 	ids, err := ou.getAlreadyExistingSubObject(sn, oldToNewIDs)
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
 
-	id := ou.createSubObject(ctx, sn)
+	id := ou.createSubObject(ctx, spaceID, sn)
 	return id, nil
 }
 
-func (ou *ObjectIDGetter) createSubObject(ctx session.Context, sn *converter.Snapshot) string {
+func (ou *ObjectIDGetter) createSubObject(ctx context.Context, spaceID string, sn *converter.Snapshot) string {
 	ot := sn.Snapshot.Data.ObjectTypes
 	var (
 		objects *types.Struct
@@ -137,7 +137,7 @@ func (ou *ObjectIDGetter) createSubObject(ctx session.Context, sn *converter.Sna
 	}
 
 	req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Data.Details}
-	id, objects, err := ou.service.CreateObject(ctx, req, "")
+	id, objects, err := ou.service.CreateObject(ctx, spaceID, req, "")
 	if err != nil {
 		id = sn.Id
 	}

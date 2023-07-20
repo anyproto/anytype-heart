@@ -29,33 +29,19 @@ type Service struct {
 	lock        *sync.RWMutex
 	collections map[string]map[string]chan []string
 
-	picker        block.Picker
-	objectStore   objectstore.ObjectStore
-	objectCreator ObjectCreator
-	objectDeleter ObjectDeleter
-}
-
-type ObjectCreator interface {
-	CreateObject(ctx session.Context, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
-}
-
-type ObjectDeleter interface {
-	DeleteObject(ctx session.Context, id string) (err error)
+	picker      block.Picker
+	objectStore objectstore.ObjectStore
 }
 
 func New(
 	picker block.Picker,
 	store objectstore.ObjectStore,
-	objectCreator ObjectCreator,
-	objectDeleter ObjectDeleter,
 ) *Service {
 	return &Service{
-		picker:        picker,
-		objectStore:   store,
-		objectCreator: objectCreator,
-		objectDeleter: objectDeleter,
-		lock:          &sync.RWMutex{},
-		collections:   map[string]map[string]chan []string{},
+		picker:      picker,
+		objectStore: store,
+		lock:        &sync.RWMutex{},
+		collections: map[string]map[string]chan []string{},
 	}
 }
 

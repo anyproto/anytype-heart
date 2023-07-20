@@ -92,7 +92,7 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx session.Context, req *pb.RpcObjectImportRequest) error {
+func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) error {
 	progress := i.setupProgressBar(req)
 	defer progress.Finish()
 	if i.s != nil && !req.GetNoProgress() {
@@ -187,7 +187,7 @@ func (i *Import) ValidateNotionToken(
 	return tv.Validate(ctx, req.GetToken())
 }
 
-func (i *Import) ImportWeb(ctx session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
+func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	allErrors := make(map[string]error, 0)
@@ -212,7 +212,7 @@ func (i *Import) ImportWeb(ctx session.Context, req *pb.RpcObjectImportRequest) 
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) createObjects(ctx session.Context,
+func (i *Import) createObjects(ctx context.Context,
 	res *converter.Response,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
@@ -230,7 +230,7 @@ func (i *Import) createObjects(ctx session.Context,
 	do := NewDataObject(oldIDToNew, createPayloads, filesIDs, ctx)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
-	go i.addWork(res, pool)
+	go i.addWork(req.SpaceId, res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
 	return details
@@ -246,7 +246,7 @@ func (i *Import) getFilesIDs(res *converter.Response) []string {
 	return fileIDs
 }
 
-func (i *Import) getIDForAllObjects(ctx session.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (
+func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (
 	map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	getFileName := func(object *converter.Snapshot) string {
 		if object.FileName != "" {
@@ -266,7 +266,7 @@ func (i *Import) getIDForAllObjects(ctx session.Context, res *converter.Response
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
-		err := i.getObjectID(ctx, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects)
+		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects)
 		if err != nil {
 			allErrors[getFileName(snapshot)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
@@ -276,7 +276,7 @@ func (i *Import) getIDForAllObjects(ctx session.Context, res *converter.Response
 		}
 	}
 	for _, option := range relationOptions {
-		err := i.getObjectID(ctx, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
+		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
 		if err != nil {
 			allErrors[getFileName(option)] = err
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
@@ -288,11 +288,14 @@ func (i *Import) getIDForAllObjects(ctx session.Context, res *converter.Response
 	return oldIDToNew, createPayloads, nil
 }
 
-func (i *Import) getObjectID(ctx session.Context,
+func (i *Import) getObjectID(
+	ctx context.Context,
+	spaceID string,
 	snapshot *converter.Snapshot,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,
-	updateExisting bool) error {
+	updateExisting bool,
+) error {
 	var (
 		err         error
 		id          string
@@ -305,7 +308,7 @@ func (i *Import) getObjectID(ctx session.Context,
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, createdTime, updateExisting, oldIDToNew); err == nil {
+	if id, payload, err = i.objectIDGetter.Get(ctx, spaceID, snapshot, snapshot.SbType, createdTime, updateExisting, oldIDToNew); err == nil {
 		oldIDToNew[snapshot.Id] = id
 		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 			oldIDToNew[snapshot.Id] = snapshot.Id
@@ -318,9 +321,9 @@ func (i *Import) getObjectID(ctx session.Context,
 	return err
 }
 
-func (i *Import) addWork(res *converter.Response, pool *workerpool.WorkerPool) {
+func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
-		t := NewTask(snapshot, i.oc)
+		t := NewTask(spaceID, snapshot, i.oc)
 		stop := pool.AddWork(t)
 		if stop {
 			break

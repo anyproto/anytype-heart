@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -24,7 +23,7 @@ func NewIconSyncer(service *block.Service, picker getblock.Picker) *IconSyncer {
 	return &IconSyncer{service: service, picker: picker}
 }
 
-func (is *IconSyncer) Sync(ctx session.Context, id string, b simple.Block) error {
+func (is *IconSyncer) Sync(id string, b simple.Block) error {
 	fileName := b.Model().GetText().GetIconImage()
 	req := pb.RpcFileUploadRequest{LocalPath: fileName}
 	if strings.HasPrefix(fileName, "http://") || strings.HasPrefix(fileName, "https://") {
@@ -41,7 +40,7 @@ func (is *IconSyncer) Sync(ctx session.Context, id string, b simple.Block) error
 
 	err = getblock.Do(is.picker, id, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
-		upErr := updater.Update(ctx, func(simpleBlock simple.Block) error {
+		upErr := updater.Update(nil, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = hash
 			return nil
 		}, b.Model().Id)

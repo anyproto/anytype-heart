@@ -178,7 +178,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	objectCreator := objectcreator.NewCreator(sbtProvider)
 	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
 	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
-	collectionService := collection.New(blockService, objectStore, objectCreator, blockService)
+	collectionService := collection.New(blockService, objectStore)
 	relationService := relation.New()
 	coreService := core.New()
 	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)

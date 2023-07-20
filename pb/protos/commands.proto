@@ -1843,6 +1843,7 @@ message Rpc {
         message Import {
             message Request {
                 option (no_auth) = true;
+                string spaceId = 14;
                 oneof params {
                     NotionParams notionParams = 1;
                     BookmarksParams bookmarksParams = 2; //for internal use
@@ -5353,6 +5354,7 @@ message Rpc {
                 string path = 1;
                 // ids of documents for export, when empty - will export all available docs
                 repeated string docIds = 2;
+                string spaceId = 3;
             }
 
             message Response {
