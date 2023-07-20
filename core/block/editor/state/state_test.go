@@ -940,34 +940,6 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 	assert.Equal(t, objectIDs[0], bundle.TypeKeyPage.URL())
 }
 
-/*
-func (s *State) CheckRestrictions() (err error) {
-	if s.parent == nil {
-		return
-	}
-	for id, b := range s.blocks {
-		// get the restrictions from the parent state
-		bParent := s.parent.Get(id)
-		if bParent == nil {
-			// if we don't have this block in the parent state, it means we have no block-scope restrictions for it
-			continue
-		}
-		rest := bParent.Model().Restrictions
-		if rest == nil {
-			continue
-		}
-		if rest.Edit {
-			if ob := s.parent.Pick(id); ob != nil {
-				if msgs, _ := ob.Diff(b); len(msgs) > 0 {
-					return ErrRestricted
-				}
-			}
-		}
-	}
-	return
-}
-*/
-
 func TestState_CheckRestrictions(t *testing.T) {
 	st := NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
