@@ -112,8 +112,8 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 }
 
 func findUniqueRelationAndAddNumber(relations []string) []string {
-	countMap := make(map[string]int)
-	existedRelationMap := make(map[string]bool)
+	countMap := make(map[string]int, 0)
+	existedRelationMap := make(map[string]bool, 0)
 	relationsName := make([]string, 0)
 	for _, r := range relations {
 		existedRelationMap[r] = true
