@@ -115,10 +115,15 @@ func getSpaceIDFromFilter(fltr filter.Filter) (spaceID string) {
 			return f.Value.GetStringValue()
 		}
 	case filter.AndFilters:
-		for _, af := range f {
-			if spaceID = getSpaceIDFromFilter(af); spaceID != "" {
-				return spaceID
-			}
+		spaceID = iterateOverAndFilters(f)
+	}
+	return spaceID
+}
+
+func iterateOverAndFilters(fs []filter.Filter) (spaceID string) {
+	for _, f := range fs {
+		if spaceID = getSpaceIDFromFilter(f); spaceID != "" {
+			return spaceID
 		}
 	}
 	return ""

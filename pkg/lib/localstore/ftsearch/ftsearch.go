@@ -176,13 +176,10 @@ func (f *ftSearch) getTerms(qry string) []string {
 }
 
 func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []string, err error) {
-	var rootQuery query.Query
-	disjunctionQuery := bleve.NewDisjunctionQuery(queries...)
+	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
-		rootQuery = bleve.NewConjunctionQuery(disjunctionQuery, spaceQuery)
-	} else {
-		rootQuery = disjunctionQuery
+		rootQuery = bleve.NewConjunctionQuery(rootQuery, spaceQuery)
 	}
 
 	searchRequest := bleve.NewSearchRequest(rootQuery)
