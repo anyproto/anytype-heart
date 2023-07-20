@@ -4320,6 +4320,7 @@ message Rpc {
                 google.protobuf.Struct details = 3; // new object details
                 string templateId = 5; // optional template id for creating from template
                 repeated anytype.model.InternalFlag internalFlags = 7;
+                string spaceId = 8;
 
                 // link block params
                 string targetId = 2; // id of the closest simple block
@@ -4838,6 +4839,7 @@ message Rpc {
                 string contextId = 1;
                 string blockId = 2;
                 string url = 3;
+                string spaceId = 4;
             }
             message Response {
                 Error error = 1;

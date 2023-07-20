@@ -9,15 +9,15 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 // TODO Move residual file methods here
 
 // TODO Extract to a new service FileDownloader
-func (s *Service) DownloadFile(ctx session.Context, req *pb.RpcFileDownloadRequest) (string, error) {
+func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadRequest) (string, error) {
 	if req.Path == "" {
 		req.Path = s.tempDirProvider.TempDir() + string(os.PathSeparator) + "anytype-download"
 	}
@@ -36,13 +36,12 @@ func (s *Service) DownloadFile(ctx session.Context, req *pb.RpcFileDownloadReque
 
 	progress.SetProgressMessage("saving file")
 	var countReader *datacounter.ReaderCounter
-	cctx, cancel := context.WithCancel(context.Background())
-	ctx = ctx.WithContext(cctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
 		for {
 			select {
-			case <-cctx.Done():
+			case <-ctx.Done():
 				return
 			case <-progress.Canceled():
 				cancel()
@@ -80,15 +79,23 @@ func (s *Service) DownloadFile(ctx session.Context, req *pb.RpcFileDownloadReque
 	return path, nil
 }
 
-func (s *Service) getFileOrLargestImage(ctx session.Context, hash string) (files.File, error) {
-	image, err := s.fileService.ImageByHash(ctx, hash)
+func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files.File, error) {
+	spaceID, err := s.objectStore.ResolveSpaceID(hash)
 	if err != nil {
-		return s.fileService.FileByHash(ctx, hash)
+		return nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: hash,
+	}
+	image, err := s.fileService.ImageByHash(ctx, id)
+	if err != nil {
+		return s.fileService.FileByHash(ctx, id)
 	}
 
 	f, err := image.GetOriginalFile(ctx)
 	if err != nil {
-		return s.fileService.FileByHash(ctx, hash)
+		return s.fileService.FileByHash(ctx, id)
 	}
 
 	return f, nil

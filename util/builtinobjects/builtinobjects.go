@@ -66,7 +66,7 @@ var (
 type BuiltinObjects interface {
 	app.Component
 
-	CreateObjectsForUseCase(session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 	InjectMigrationDashboard() error
 }
 
@@ -95,7 +95,7 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) CreateObjectsForUseCase(
-	ctx session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase,
+	spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
 	start := time.Now()
 

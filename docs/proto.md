@@ -4453,6 +4453,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -6549,6 +6550,7 @@ set the current active view (persisted only within a session)
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | new object details |
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| spaceId | [string](#string) |  |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |

@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -19,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -230,7 +230,7 @@ func (c *SubObjectCollection) Locked() bool {
 	return false
 }
 
-func (c *SubObjectCollection) updateSubObject(ctx session.Context) func(info smartblock.ApplyInfo) (err error) {
+func (c *SubObjectCollection) updateSubObject(ctx context.Context) func(info smartblock.ApplyInfo) (err error) {
 	return func(info smartblock.ApplyInfo) (err error) {
 		if len(info.Changes) == 0 {
 			return nil
@@ -339,7 +339,7 @@ func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p
 	}
 }
 
-func (c *SubObjectCollection) initSubObject(ctx session.Context, st *state.State, collection string, subId string, justCreated bool) (err error) {
+func (c *SubObjectCollection) initSubObject(ctx context.Context, st *state.State, collection string, subId string, justCreated bool) (err error) {
 	if len(strings.Split(subId, addr.SubObjectCollectionIdSeparator)) > 1 {
 		// handle invalid cases for our own accounts
 		return fmt.Errorf("invalid id: %s", subId)

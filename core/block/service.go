@@ -42,7 +42,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -105,10 +104,10 @@ func New(
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 
-	CreateObject(ctx session.Context, req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
 }
 
 type DetailsGetter interface {
@@ -122,11 +121,11 @@ type TemplateIDGetter interface {
 }
 
 type indexer interface {
-	ReindexSpace(ctx session.Context) error
+	ReindexSpace(spaceID string) error
 }
 
 type builtinObjects interface {
-	CreateObjectsForUseCase(session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type Service struct {
@@ -304,7 +303,7 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 	}
 
 	if isDraft {
-		if err = s.DeleteObject(ctx, id); err != nil {
+		if err = s.DeleteObject(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
 			s.sendOnRemoveEvent(id)
@@ -324,10 +323,11 @@ func (s *Service) CloseBlocks() {
 }
 
 func (s *Service) AddSubObjectToWorkspace(
-	ctx session.Context,
+	ctx context.Context,
+	spaceID string,
 	sourceObjectId string,
 ) (id string, object *types.Struct, err error) {
-	ids, details, err := s.AddSubObjectsToWorkspace(ctx, []string{sourceObjectId})
+	ids, details, err := s.AddSubObjectsToWorkspace(ctx, spaceID, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -339,10 +339,11 @@ func (s *Service) AddSubObjectToWorkspace(
 }
 
 func (s *Service) AddSubObjectsToWorkspace(
-	ctx session.Context,
+	ctx context.Context,
+	spaceID string,
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
-	workspaceID := s.anytype.PredefinedObjects(ctx.SpaceID()).Account
+	workspaceID := s.anytype.PredefinedObjects(spaceID).Account
 
 	// todo: we should add route to object via workspace
 	var details = make([]*types.Struct, 0, len(sourceObjectIds))
@@ -382,10 +383,10 @@ func (s *Service) AddSubObjectsToWorkspace(
 	return
 }
 
-func (s *Service) RemoveSubObjectsInWorkspace(ctx session.Context, objectIds []string, orphansGC bool) (err error) {
-	workspaceID := s.anytype.PredefinedObjects(ctx.SpaceID()).Account
+func (s *Service) RemoveSubObjectsInWorkspace(spaceID string, objectIds []string, orphansGC bool) (err error) {
+	workspaceID := s.anytype.PredefinedObjects(spaceID).Account
 	for _, objectID := range objectIds {
-		if err = s.restriction.CheckRestrictions(ctx.SpaceID(), objectID, model.Restrictions_Delete); err != nil {
+		if err = s.restriction.CheckRestrictions(spaceID, objectID, model.Restrictions_Delete); err != nil {
 			return err
 		}
 	}
@@ -468,83 +469,87 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 
 // SetPagesIsArchived is deprecated
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
-	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("unexpected archive block type: %T", b)
-		}
-
-		var merr multierror.Error
-		var anySucceed bool
-		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
-		if err != nil {
-			return err
-		}
-		for _, id := range ids {
-			var err error
-			if restrErr := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), id); restrErr != nil {
-				err = restrErr
-			} else {
-				if req.IsArchived {
-					err = archive.AddObject(id)
-				} else {
-					err = archive.RemoveObject(id)
-				}
-			}
-			if err != nil {
-				log.Warnf("failed to archive %s: %s", id, err.Error())
-				merr.Errors = append(merr.Errors, err)
-				continue
-			}
-			anySucceed = true
-		}
-
-		if err := merr.ErrorOrNil(); err != nil {
-			log.Warnf("failed to archive: %s", err)
-		}
-		if anySucceed {
-			return nil
-		}
-		return merr.ErrorOrNil()
-	})
+	// TODO Resolve space ID for each id
+	return fmt.Errorf("have to be fixed")
+	// return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
+	// 	archive, ok := b.(collection.Collection)
+	// 	if !ok {
+	// 		return fmt.Errorf("unexpected archive block type: %T", b)
+	// 	}
+	//
+	// 	var merr multierror.Error
+	// 	var anySucceed bool
+	// 	ids, err := s.objectStore.HasIDs(req.ObjectIds...)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	for _, id := range ids {
+	// 		var err error
+	// 		if restrErr := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), id); restrErr != nil {
+	// 			err = restrErr
+	// 		} else {
+	// 			if req.IsArchived {
+	// 				err = archive.AddObject(id)
+	// 			} else {
+	// 				err = archive.RemoveObject(id)
+	// 			}
+	// 		}
+	// 		if err != nil {
+	// 			log.Warnf("failed to archive %s: %s", id, err.Error())
+	// 			merr.Errors = append(merr.Errors, err)
+	// 			continue
+	// 		}
+	// 		anySucceed = true
+	// 	}
+	//
+	// 	if err := merr.ErrorOrNil(); err != nil {
+	// 		log.Warnf("failed to archive: %s", err)
+	// 	}
+	// 	if anySucceed {
+	// 		return nil
+	// 	}
+	// 	return merr.ErrorOrNil()
+	// })
 }
 
 // SetPagesIsFavorite is deprecated
 func (s *Service) SetPagesIsFavorite(ctx session.Context, req pb.RpcObjectListSetIsFavoriteRequest) error {
-	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, func(b smartblock.SmartBlock) error {
-		fav, ok := b.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("unexpected home block type: %T", b)
-		}
-
-		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
-		if err != nil {
-			return err
-		}
-		var merr multierror.Error
-		var anySucceed bool
-		for _, id := range ids {
-			var err error
-			if req.IsFavorite {
-				err = fav.AddObject(id)
-			} else {
-				err = fav.RemoveObject(id)
-			}
-			if err != nil {
-				log.Errorf("failed to favorite object %s: %s", id, err.Error())
-				merr.Errors = append(merr.Errors, err)
-				continue
-			}
-			anySucceed = true
-		}
-		if err := merr.ErrorOrNil(); err != nil {
-			log.Warnf("failed to set objects as favorite: %s", err)
-		}
-		if anySucceed {
-			return nil
-		}
-		return merr.ErrorOrNil()
-	})
+	// TODO Resolve spaceID for each ids
+	return fmt.Errorf("have to be fixed")
+	// return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, func(b smartblock.SmartBlock) error {
+	// 	fav, ok := b.(collection.Collection)
+	// 	if !ok {
+	// 		return fmt.Errorf("unexpected home block type: %T", b)
+	// 	}
+	//
+	// 	ids, err := s.objectStore.HasIDs(req.ObjectIds...)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	var merr multierror.Error
+	// 	var anySucceed bool
+	// 	for _, id := range ids {
+	// 		var err error
+	// 		if req.IsFavorite {
+	// 			err = fav.AddObject(id)
+	// 		} else {
+	// 			err = fav.RemoveObject(id)
+	// 		}
+	// 		if err != nil {
+	// 			log.Errorf("failed to favorite object %s: %s", id, err.Error())
+	// 			merr.Errors = append(merr.Errors, err)
+	// 			continue
+	// 		}
+	// 		anySucceed = true
+	// 	}
+	// 	if err := merr.ErrorOrNil(); err != nil {
+	// 		log.Warnf("failed to set objects as favorite: %s", err)
+	// 	}
+	// 	if anySucceed {
+	// 		return nil
+	// 	}
+	// 	return merr.ErrorOrNil()
+	// })
 }
 
 func (s *Service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
@@ -609,35 +614,37 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 }
 
 func (s *Service) DeleteArchivedObjects(ctx session.Context, req pb.RpcObjectListDeleteRequest) (err error) {
-	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("unexpected archive block type: %T", b)
-		}
-
-		var merr multierror.Error
-		var anySucceed bool
-		for _, blockId := range req.ObjectIds {
-			if exists, _ := archive.HasObject(blockId); exists {
-				if err = s.DeleteObject(ctx, blockId); err != nil {
-					merr.Errors = append(merr.Errors, err)
-					continue
-				}
-				archive.RemoveObject(blockId)
-				anySucceed = true
-			}
-		}
-		if err := merr.ErrorOrNil(); err != nil {
-			log.Warnf("failed to delete archived objects: %s", err)
-		}
-		if anySucceed {
-			return nil
-		}
-		return merr.ErrorOrNil()
-	})
+	// TODO Resolve spaces for each ID
+	return fmt.Errorf("have to be fixed")
+	// return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
+	// 	archive, ok := b.(collection.Collection)
+	// 	if !ok {
+	// 		return fmt.Errorf("unexpected archive block type: %T", b)
+	// 	}
+	//
+	// 	var merr multierror.Error
+	// 	var anySucceed bool
+	// 	for _, blockId := range req.ObjectIds {
+	// 		if exists, _ := archive.HasObject(blockId); exists {
+	// 			if err = s.DeleteObject(ctx, blockId); err != nil {
+	// 				merr.Errors = append(merr.Errors, err)
+	// 				continue
+	// 			}
+	// 			archive.RemoveObject(blockId)
+	// 			anySucceed = true
+	// 		}
+	// 	}
+	// 	if err := merr.ErrorOrNil(); err != nil {
+	// 		log.Warnf("failed to delete archived objects: %s", err)
+	// 	}
+	// 	if anySucceed {
+	// 		return nil
+	// 	}
+	// 	return merr.ErrorOrNil()
+	// })
 }
 
-func (s *Service) ObjectsDuplicate(ctx session.Context, ids []string) (newIds []string, err error) {
+func (s *Service) ObjectsDuplicate(ctx context.Context, ids []string) (newIds []string, err error) {
 	var newId string
 	var merr multierror.Error
 	var anySucceed bool
@@ -658,15 +665,19 @@ func (s *Service) ObjectsDuplicate(ctx session.Context, ids []string) (newIds []
 	return nil, merr.ErrorOrNil()
 }
 
-func (s *Service) DeleteArchivedObject(ctx session.Context, id string) (err error) {
-	return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
+func (s *Service) DeleteArchivedObject(id string) (err error) {
+	spaceID, err := s.objectStore.ResolveSpaceID(id)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
+	return Do(s, s.anytype.PredefinedObjects(spaceID).Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
 		if exists, _ := archive.HasObject(id); exists {
-			if err = s.DeleteObject(ctx, id); err == nil {
+			if err = s.DeleteObject(id); err == nil {
 				err = archive.RemoveObject(id)
 				if err != nil {
 					return err
@@ -688,7 +699,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 		st := b.NewState()
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 		if isFavorite {
-			_ = s.SetPageIsFavorite(id.SpaceID, pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
+			_ = s.SetPageIsFavorite(id.SpaceID, pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
 		}
 		b.SetIsDeleted()
 		if workspaceRemove != nil {
@@ -721,50 +732,52 @@ func (s *Service) sendOnRemoveEvent(ids ...string) {
 }
 
 func (s *Service) RemoveListOption(ctx session.Context, optIds []string, checkInObjects bool) error {
-	var workspace *editor.Workspaces
-	if err := Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
-		var ok bool
-		if workspace, ok = b.(*editor.Workspaces); !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	for _, id := range optIds {
-		if checkInObjects {
-			opt, err := workspace.Open(id)
-			if err != nil {
-				return fmt.Errorf("workspace open: %w", err)
-			}
-			relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
-
-			q := database.Query{
-				Filters: []*model.BlockContentDataviewFilter{
-					{
-						Condition:   model.BlockContentDataviewFilter_Equal,
-						RelationKey: relKey,
-						Value:       pbtypes.String(opt.Id()),
-					},
-				},
-			}
-			records, _, err := s.objectStore.Query(nil, q)
-			if err != nil {
-				return nil
-			}
-
-			if len(records) > 0 {
-				return ErrOptionUsedByOtherObjects
-			}
-		}
-
-		if err := s.DeleteObject(ctx, id); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	// TODO Resolve spaces for each ID
+	return fmt.Errorf("have to be fixed")
+	// var workspace *editor.Workspaces
+	// if err := Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
+	// 	var ok bool
+	// 	if workspace, ok = b.(*editor.Workspaces); !ok {
+	// 		return fmt.Errorf("incorrect object with workspace id")
+	// 	}
+	// 	return nil
+	// }); err != nil {
+	// 	return err
+	// }
+	//
+	// for _, id := range optIds {
+	// 	if checkInObjects {
+	// 		opt, err := workspace.Open(id)
+	// 		if err != nil {
+	// 			return fmt.Errorf("workspace open: %w", err)
+	// 		}
+	// 		relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
+	//
+	// 		q := database.Query{
+	// 			Filters: []*model.BlockContentDataviewFilter{
+	// 				{
+	// 					Condition:   model.BlockContentDataviewFilter_Equal,
+	// 					RelationKey: relKey,
+	// 					Value:       pbtypes.String(opt.Id()),
+	// 				},
+	// 			},
+	// 		}
+	// 		records, _, err := s.objectStore.Query(nil, q)
+	// 		if err != nil {
+	// 			return nil
+	// 		}
+	//
+	// 		if len(records) > 0 {
+	// 			return ErrOptionUsedByOtherObjects
+	// 		}
+	// 	}
+	//
+	// 	if err := s.DeleteObject(ctx, id); err != nil {
+	// 		return err
+	// 	}
+	// }
+	//
+	// return nil
 }
 
 // TODO: remove proxy
@@ -822,8 +835,8 @@ func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name
 	return
 }
 
-func (s *Service) DoFileNonLock(ctx session.Context, id string, apply func(b file.File) error) error {
-	sb, err := s.PickBlock(ctx, id)
+func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
+	sb, err := s.PickBlock(context.Background(), id)
 	if err != nil {
 		return err
 	}
@@ -983,18 +996,22 @@ func (s *Service) ObjectApplyTemplate(ctx session.Context, contextId, templateId
 	})
 }
 
-func (s *Service) ResetToState(ctx session.Context, pageID string, st *state.State) (err error) {
+func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 	return Do(s, pageID, func(sb smartblock.SmartBlock) error {
-		return history.ResetToVersion(ctx, sb, st)
+		return history.ResetToVersion(sb, st)
 	})
 }
 
-func (s *Service) ObjectBookmarkFetch(ctx session.Context, req pb.RpcObjectBookmarkFetchRequest) (err error) {
+func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
+	spaceID, err := s.objectStore.ResolveSpaceID(req.ContextId)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
 	url, err := uri.NormalizeURI(req.Url)
 	if err != nil {
 		return fmt.Errorf("process uri: %w", err)
 	}
-	res := s.bookmark.FetchBookmarkContent(ctx, url)
+	res := s.bookmark.FetchBookmarkContent(spaceID, url)
 	go func() {
 		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
 			log.Errorf("update bookmark object %s: %s", req.ContextId, err)
@@ -1003,8 +1020,12 @@ func (s *Service) ObjectBookmarkFetch(ctx session.Context, req pb.RpcObjectBookm
 	return nil
 }
 
-func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (objectId string, err error) {
-	objectId, _, err = s.objectCreator.CreateObject(ctx, &pb.RpcObjectCreateBookmarkRequest{
+func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
+	spaceID, err := s.objectStore.ResolveSpaceID(id)
+	if err != nil {
+		return "", fmt.Errorf("resolve spaceID: %w", err)
+	}
+	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, &pb.RpcObjectCreateBookmarkRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeySource.String(): pbtypes.String(url),
@@ -1016,16 +1037,16 @@ func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (
 	}
 
 	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	res, err := oStore.GetWithLinksInfoByID(ctx.SpaceID(), id)
+	res, err := oStore.GetWithLinksInfoByID(spaceID, id)
 	if err != nil {
 		return
 	}
 	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(ctx, il.Id, id, objectId); err != nil {
+		if err = s.replaceLink(il.Id, id, objectId); err != nil {
 			return
 		}
 	}
-	err = s.DeleteObject(ctx, id)
+	err = s.DeleteObject(id)
 	if err != nil {
 		// intentionally do not return error here
 		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())
@@ -1035,7 +1056,7 @@ func (s *Service) ObjectToBookmark(ctx session.Context, id string, url string) (
 	return
 }
 
-func (s *Service) replaceLink(ctx session.Context, id, oldId, newId string) error {
+func (s *Service) replaceLink(id, oldId, newId string) error {
 	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.ReplaceLink(oldId, newId)
 	})

@@ -52,7 +52,7 @@ func NewFile(
 }
 
 type BlockService interface {
-	CreateLinkToTheNewObject(ctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
+	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, err error)
 	ProcessAdd(p process.Process) (err error)
 }
 
@@ -223,7 +223,8 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(nil, &pb.RpcBlockLinkCreateWithObjectRequest{
+			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
+				SpaceId:   sf.SpaceID(),
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,
