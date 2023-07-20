@@ -531,16 +531,33 @@ func TestState_GetChangedStoreKeys(t *testing.T) {
 }
 
 func TestState_GetSetting(t *testing.T) {
-	st := NewDoc("test", nil).(*State)
-	assert.Nil(t, st.GetSetting("setting"))
+	t.Run("state doesn't have settings store", func(t *testing.T) {
+		// given
+		st := NewDoc("test", nil).(*State)
+		// when do nothing
+		// then
+		assert.Nil(t, st.GetSetting("setting"))
+	})
 
-	st.SetInStore([]string{SettingsStoreKey}, nil)
-	assert.Nil(t, st.GetSetting("setting"))
+	t.Run("settings are empty", func(t *testing.T) {
+		// given
+		st := NewDoc("test", nil).(*State)
+		// when
+		st.SetInStore([]string{SettingsStoreKey}, nil)
+		// then
+		assert.Nil(t, st.GetSetting("setting"))
+	})
 
-	settings := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{"setting": pbtypes.String("setting")}})
-	st.SetInStore([]string{SettingsStoreKey}, settings)
-	assert.NotNil(t, st.GetSetting("setting"))
-	assert.Equal(t, settings.GetStructValue().GetFields()["setting"], st.GetSetting("setting"))
+	t.Run("settings are not empty", func(t *testing.T) {
+		// given
+		st := NewDoc("test", nil).(*State)
+		// when
+		settings := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{"setting": pbtypes.String("setting")}})
+		st.SetInStore([]string{SettingsStoreKey}, settings)
+		// then
+		assert.NotNil(t, st.GetSetting("setting"))
+		assert.Equal(t, settings.GetStructValue().GetFields()["setting"], st.GetSetting("setting"))
+	})
 }
 
 func TestState_GetStoreSlice(t *testing.T) {
