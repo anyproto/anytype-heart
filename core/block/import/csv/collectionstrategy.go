@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/globalsign/mgo/bson"
@@ -82,6 +83,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		err = converter.ErrLimitExceeded
 		numberOfRelationsLimit = limitForColumns
 	}
+	allRelations = findUniqueRelationAndAddNumber(allRelations)
 	for i := 1; i < numberOfRelationsLimit; i++ {
 		if allRelations[i] == "" && useFirstRowForRelations {
 			continue
@@ -106,6 +108,30 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		})
 	}
 	return relations, relationsSnapshots, err
+}
+
+func findUniqueRelationAndAddNumber(relations []string) []string {
+	countMap := make(map[string]int)
+	relationsName := make([]string, 0)
+	for _, str := range relations {
+		if number, ok := countMap[str]; ok {
+			uniqueName := fmt.Sprintf("%s %d", str, number)
+			relationsName = append(relationsName, uniqueName)
+			countMap[str]++
+			countMap[uniqueName]++
+			continue
+		}
+		relationsName = append(relationsName, str)
+		countMap[str]++
+	}
+	countResultRelations := 0
+	for _, relationCount := range countMap {
+		countResultRelations += relationCount
+	}
+	if countResultRelations == len(relations) {
+		return relations
+	}
+	return findUniqueRelationAndAddNumber(relationsName)
 }
 
 func getDefaultRelationName(i int) string {

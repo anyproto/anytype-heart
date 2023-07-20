@@ -512,3 +512,46 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
 	}
 }
+
+func Test_findUniqueRelationAndAddNumber(t *testing.T) {
+	t.Run("All relations are unique", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3"}, result)
+	})
+	t.Run("1 relation name is not unique", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1"}, result)
+	})
+
+	t.Run("1 relation is not unique after first iteration", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation", "relation 1"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 1 1"}, result)
+	})
+
+	t.Run("1 relation name is not unique after first iteration: other order", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 1 1"}, result)
+	})
+
+	t.Run("1 relation name is not unique after second iteration", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 1 1", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 1 1", "relation 1 1 1"}, result)
+	})
+
+	t.Run("2 relation names are not unique after first iteration", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation", "relation", "relation 2"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 1 1", "relation 2", "relation 2 1"}, result)
+	})
+
+	t.Run("2 relation names are not unique", func(t *testing.T) {
+		relations := []string{"relation1", "relation2", "relation3", "relation", "relation", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation1", "relation2", "relation3", "relation", "relation 1", "relation 2"}, result)
+	})
+}
