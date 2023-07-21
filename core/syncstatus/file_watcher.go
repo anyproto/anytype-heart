@@ -67,7 +67,7 @@ const filesToWatchPrefix = "/files_to_watch/"
 
 func (s *fileWatcher) loadFilesToWatch() (err error) {
 	return s.badger.View(func(txn *badger.Txn) error {
-		var filesToMigrate []string
+		defaultSpaceID := s.spaceService.AccountId()
 		iter := txn.NewIterator(badger.IteratorOptions{
 			Prefix: []byte(filesToWatchPrefix),
 		})
@@ -83,12 +83,11 @@ func (s *fileWatcher) loadFilesToWatch() (err error) {
 			if len(spaceID) != 0 {
 				s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: string(spaceID)}] = struct{}{}
 			} else {
-				filesToMigrate = append(filesToMigrate, string(fileID))
+				e := s.Watch(defaultSpaceID, string(fileID))
+				if e != nil {
+					log.Errorf("failed to migrate files in space store: %v", e)
+				}
 			}
-		}
-
-		if mErr := s.migrateFiles(filesToMigrate); mErr != nil {
-			log.Errorf("failed to migrate files in space store: %v", err)
 		}
 
 		return nil
@@ -154,17 +153,6 @@ func (s *fileWatcher) run() error {
 		}
 	}()
 
-	return nil
-}
-
-func (s *fileWatcher) migrateFiles(files []string) error {
-	spaceID := s.spaceService.AccountId()
-	for _, fileID := range files {
-		err := s.Watch(spaceID, fileID)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
