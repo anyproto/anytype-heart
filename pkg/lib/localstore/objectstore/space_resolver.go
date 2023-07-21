@@ -29,7 +29,7 @@ func longSpaceToShortKey(longSpaceID string) []byte {
 func (s *dsObjectStore) ResolveSpaceID(objectID string) (string, error) {
 	var spaceID string
 	err := s.db.View(func(txn *badger.Txn) error {
-		shortSpaceID, err := getValueTxn(txn, spaceMappingKey(objectID), bytesToString)
+		shortSpaceID, err := s.getObjectShortSpaceID(txn, objectID)
 		if err != nil {
 			return fmt.Errorf("get short space ID: %w", err)
 		}
@@ -42,17 +42,13 @@ func (s *dsObjectStore) ResolveSpaceID(objectID string) (string, error) {
 	return spaceID, err
 }
 
-func (s *dsObjectStore) getLongSpaceID(txn *badger.Txn, shortSpaceID string) (string, error) {
-	return getValueTxn(txn, shortSpaceToLongKey(shortSpaceID), bytesToString)
-}
-
 func (s *dsObjectStore) StoreSpaceID(objectID, spaceID string) error {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		_, err := txn.Get(spaceMappingKey(objectID))
 		if isNotFound(err) {
 			shortSpaceID, err := s.getSpaceShortID(txn, spaceID)
 			if isNotFound(err) {
-				shortSpaceID, err = s.createAndStoreLongToShortMapping(txn, spaceID)
+				shortSpaceID, err = s.createAndStoreSpaceMapping(txn, spaceID)
 				if err != nil {
 					return fmt.Errorf("store short space ID: %w", err)
 				}
@@ -67,11 +63,19 @@ func (s *dsObjectStore) StoreSpaceID(objectID, spaceID string) error {
 	})
 }
 
-func (s *dsObjectStore) getSpaceShortID(txn *badger.Txn, spaceID string) (string, error) {
-	return getValueTxn(txn, longSpaceToShortKey(spaceID), bytesToString)
+func (s *dsObjectStore) getObjectShortSpaceID(txn *badger.Txn, objectID string) (string, error) {
+	return s.getStringForSpaceResolver(txn, spaceMappingKey(objectID))
 }
 
-func (s *dsObjectStore) createAndStoreLongToShortMapping(txn *badger.Txn, spaceID string) (string, error) {
+func (s *dsObjectStore) getLongSpaceID(txn *badger.Txn, shortSpaceID string) (string, error) {
+	return s.getStringForSpaceResolver(txn, shortSpaceToLongKey(shortSpaceID))
+}
+
+func (s *dsObjectStore) getSpaceShortID(txn *badger.Txn, spaceID string) (string, error) {
+	return s.getStringForSpaceResolver(txn, longSpaceToShortKey(spaceID))
+}
+
+func (s *dsObjectStore) createAndStoreSpaceMapping(txn *badger.Txn, spaceID string) (string, error) {
 	opts := badger.DefaultIteratorOptions
 	opts.Prefix = shortSpaceToLongPrefix
 	iter := txn.NewIterator(opts)
@@ -91,13 +95,42 @@ func (s *dsObjectStore) createAndStoreLongToShortMapping(txn *badger.Txn, spaceI
 	}
 
 	shortSpaceID := strconv.Itoa(last + 1)
-	err := setValueTxn(txn, shortSpaceToLongKey(shortSpaceID), spaceID)
+	err := s.storeSpaceMapping(txn, shortSpaceID, spaceID)
 	if err != nil {
-		return "", fmt.Errorf("store short->long space ID: %w", err)
-	}
-	err = setValueTxn(txn, longSpaceToShortKey(spaceID), shortSpaceID)
-	if err != nil {
-		return "", fmt.Errorf("store long->short space ID: %w", err)
+		return "", fmt.Errorf("store spaceID mapping: %w", err)
 	}
 	return shortSpaceID, nil
+}
+
+func (s *dsObjectStore) storeSpaceMapping(txn *badger.Txn, shortSpaceID, spaceID string) error {
+	err := s.storeStringForSpaceResolver(txn, shortSpaceToLongKey(shortSpaceID), spaceID)
+	if err != nil {
+		return fmt.Errorf("store short->long space ID: %w", err)
+	}
+	err = s.storeStringForSpaceResolver(txn, longSpaceToShortKey(spaceID), shortSpaceID)
+	if err != nil {
+		return fmt.Errorf("store long->short space ID: %w", err)
+	}
+	return nil
+}
+
+func (s *dsObjectStore) getStringForSpaceResolver(txn *badger.Txn, key []byte) (string, error) {
+	if val, ok := s.spaceResolverCache.Get(key); ok {
+		return val.(string), nil
+	}
+	val, err := getValueTxn(txn, key, bytesToString)
+	if err != nil {
+		return "", err
+	}
+	s.spaceResolverCache.Set(key, val, int64(len(val)))
+	return val, nil
+}
+
+func (s *dsObjectStore) storeStringForSpaceResolver(txn *badger.Txn, key []byte, value string) error {
+	err := setValueTxn(txn, key, value)
+	if err != nil {
+		return fmt.Errorf("store string for space resolver: %w", err)
+	}
+	s.spaceResolverCache.Set(key, value, int64(len(value)))
+	return nil
 }
