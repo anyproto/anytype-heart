@@ -2,15 +2,16 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistoryShowVersionRequest) *pb.RpcHistoryShowVersionResponse {
-	ctx := mw.newContext(cctx)
 	response := func(obj *model.ObjectView, ver *pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryShowVersionResponse) {
 		res = &pb.RpcHistoryShowVersionResponse{
 			Error: &pb.RpcHistoryShowVersionResponseError{
@@ -35,7 +36,14 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
-		obj, ver, err = hs.Show(ctx, req.ObjectId, req.VersionId)
+		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
+		if err != nil {
+			return fmt.Errorf("resolve spaceID: %w", err)
+		}
+		obj, ver, err = hs.Show(domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: req.ObjectId,
+		}, req.VersionId)
 		return
 	}); err != nil {
 		return response(nil, nil, err)
@@ -45,7 +53,6 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 }
 
 func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistoryGetVersionsRequest) *pb.RpcHistoryGetVersionsResponse {
-	ctx := mw.newContext(cctx)
 	response := func(vers []*pb.RpcHistoryVersion, err error) (res *pb.RpcHistoryGetVersionsResponse) {
 		res = &pb.RpcHistoryGetVersionsResponse{
 			Error: &pb.RpcHistoryGetVersionsResponseError{
@@ -67,7 +74,14 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
-		vers, err = hs.Versions(ctx, req.ObjectId, req.LastVersionId, int(req.Limit))
+		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
+		if err != nil {
+			return fmt.Errorf("resolve spaceID: %w", err)
+		}
+		vers, err = hs.Versions(domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: req.ObjectId,
+		}, req.LastVersionId, int(req.Limit))
 		return
 	}); err != nil {
 		return response(nil, err)
@@ -76,7 +90,6 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 }
 
 func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistorySetVersionRequest) *pb.RpcHistorySetVersionResponse {
-	ctx := mw.newContext(cctx)
 	response := func(err error) (res *pb.RpcHistorySetVersionResponse) {
 		res = &pb.RpcHistorySetVersionResponse{
 			Error: &pb.RpcHistorySetVersionResponseError{
@@ -92,6 +105,13 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 	}
 	return response(mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.app.MustComponent(history.CName).(history.History)
-		return hs.SetVersion(ctx, req.ObjectId, req.VersionId)
+		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
+		if err != nil {
+			return fmt.Errorf("resolve spaceID: %w", err)
+		}
+		return hs.SetVersion(domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: req.ObjectId,
+		}, req.VersionId)
 	}))
 }

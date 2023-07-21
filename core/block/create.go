@@ -102,7 +102,11 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	return
 }
 
-func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, spaceID string, otID string) (templateID string, err error) {
+func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, otID string) (templateID string, err error) {
+	spaceID, err := s.ResolveSpaceID(otID)
+	if err != nil {
+		return "", fmt.Errorf("resolve spaceID: %w", err)
+	}
 	if err = Do(s, otID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
 		return "", fmt.Errorf("can't open objectType: %v", err)
 	}

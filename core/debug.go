@@ -10,7 +10,6 @@ import (
 )
 
 func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
-	ctx := mw.newContext(cctx)
 	response := func(err error, filename string) *pb.RpcDebugTreeResponse {
 		rpcErr := &pb.RpcDebugTreeResponseError{
 			Code: pb.RpcDebugTreeResponseError_NULL,
@@ -31,7 +30,7 @@ func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeReques
 	}
 
 	dbg := app.MustComponent(debug.CName).(debug.Debug)
-	filename, err := dbg.DumpTree(ctx, req.TreeId, req.Path, !req.Unanonymized, req.GenerateSvg)
+	filename, err := dbg.DumpTree(cctx, req.TreeId, req.Path, !req.Unanonymized, req.GenerateSvg)
 	return response(err, filename)
 }
 
@@ -103,7 +102,6 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 }
 
 func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
-	ctx := mw.newContext(cctx)
 	response := func(path string, err error) (res *pb.RpcDebugExportLocalstoreResponse) {
 		res = &pb.RpcDebugExportLocalstoreResponse{
 			Error: &pb.RpcDebugExportLocalstoreResponseError{
@@ -125,7 +123,7 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 	)
 	err = mw.doBlockService(func(s *block.Service) error {
 		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
-		path, err = dbg.DumpLocalstore(ctx, req.DocIds, req.Path)
+		path, err = dbg.DumpLocalstore(req.SpaceId, req.DocIds, req.Path)
 		return err
 	})
 	return response(path, err)

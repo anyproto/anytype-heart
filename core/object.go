@@ -50,7 +50,6 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 }
 
 func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
-	ctx := mw.newContext(cctx)
 	response := func(templateId string, err error) *pb.RpcObjectDuplicateResponse {
 		m := &pb.RpcObjectDuplicateResponse{
 			Error: &pb.RpcObjectDuplicateResponseError{Code: pb.RpcObjectDuplicateResponseError_NULL},
@@ -64,7 +63,7 @@ func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDup
 	}
 	var objectIds []string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		objectIds, err = bs.ObjectsDuplicate(ctx, []string{req.ContextId})
+		objectIds, err = bs.ObjectsDuplicate(cctx, []string{req.ContextId})
 		return
 	})
 	if len(objectIds) == 0 {
@@ -74,7 +73,6 @@ func (mw *Middleware) ObjectDuplicate(cctx context.Context, req *pb.RpcObjectDup
 }
 
 func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
-	ctx := mw.newContext(cctx)
 	response := func(objectIds []string, err error) *pb.RpcObjectListDuplicateResponse {
 		m := &pb.RpcObjectListDuplicateResponse{
 			Error: &pb.RpcObjectListDuplicateResponseError{Code: pb.RpcObjectListDuplicateResponseError_NULL},
@@ -88,7 +86,7 @@ func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjec
 	}
 	var objectIds []string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		objectIds, err = bs.ObjectsDuplicate(ctx, req.ObjectIds)
+		objectIds, err = bs.ObjectsDuplicate(cctx, req.ObjectIds)
 		return
 	})
 	return response(objectIds, err)
@@ -383,7 +381,6 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 }
 
 func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
-	ctx := mw.newContext(cctx)
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 
@@ -396,7 +393,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		)
 	}
 
-	nodes, edges, err := getService[objectgraph.Service](mw).ObjectGraph(ctx.SpaceID(), req)
+	nodes, edges, err := getService[objectgraph.Service](mw).ObjectGraph(req)
 	if err != nil {
 		return unknownError(err)
 	}
@@ -527,7 +524,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsArchived(ctx, *req)
+		return bs.SetPageIsArchived(*req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
@@ -598,7 +595,7 @@ func (mw *Middleware) ObjectSetIsFavorite(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetPageIsFavorite(ctx, *req)
+		return bs.SetPageIsFavorite(*req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
@@ -673,7 +670,6 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 }
 
 func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
 		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
 		if err != nil {
@@ -688,7 +684,7 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(ctx, req, bundle.TypeKeyBookmark)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyBookmark)
 		return err
 	})
 	if err != nil {
@@ -698,7 +694,6 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectBookmarkFetchResponseErrorCode, err error) *pb.RpcObjectBookmarkFetchResponse {
 		m := &pb.RpcObjectBookmarkFetchResponse{Error: &pb.RpcObjectBookmarkFetchResponseError{Code: code}}
 		if err != nil {
@@ -708,7 +703,7 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.ObjectBookmarkFetch(ctx, *req)
+		return bs.ObjectBookmarkFetch(*req)
 	})
 
 	if err != nil {
@@ -718,7 +713,6 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
 		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
 		if err != nil {
@@ -730,7 +724,7 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, err = bs.ObjectToBookmark(ctx, req.ContextId, req.Url)
+		id, err = bs.ObjectToBookmark(cctx, req.ContextId, req.Url)
 		return err
 	})
 
@@ -764,8 +758,6 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	ctx := mw.newContext(cctx)
-
 	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
 		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}}
 		if err != nil {
@@ -860,8 +852,6 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 }
 
 func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
-	ctx := mw.newContext(cctx)
-
 	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
 			Error: &pb.RpcObjectImportUseCaseResponseError{
@@ -878,5 +868,5 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 	defer mw.m.RUnlock()
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	return response(objCreator.CreateObjectsForUseCase(ctx, req.UseCase))
+	return response(objCreator.CreateObjectsForUseCase(cctx, req.SpaceId, req.UseCase))
 }

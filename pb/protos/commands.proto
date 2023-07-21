@@ -619,7 +619,9 @@ message Rpc {
         }
 
         message Info {
-            message Request {}
+            message Request {
+                string spaceId = 1;
+            }
 
             message Response {
                 Error error = 1;
@@ -641,6 +643,7 @@ message Rpc {
         message Object {
             message Add {
                 message Request {
+                    string spaceId = 2;
                     string objectId = 1;
                 }
 
@@ -664,6 +667,7 @@ message Rpc {
             }
             message ListAdd {
                 message Request {
+                    string spaceId = 2;
                     repeated string objectIds = 1;
                 }
 
@@ -1198,6 +1202,7 @@ message Rpc {
 
         message Graph {
             message Request {
+                string spaceId = 5;
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
                 int32 limit = 2;
                 // additional filter by objectTypes
@@ -2000,6 +2005,7 @@ message Rpc {
 
         message ImportUseCase {
             message Request {
+                string spaceId = 2;
                 UseCase useCase = 1;
 
                 enum UseCase {
@@ -2482,6 +2488,7 @@ message Rpc {
         }
         message Upload {
             message Request {
+                string spaceId = 6;
                 string url = 1;
                 string localPath = 2;
                 anytype.model.Block.Content.File.Type type = 3;
@@ -2554,7 +2561,9 @@ message Rpc {
         }
 
         message SpaceUsage {
-            message Request {}
+            message Request {
+                string spaceId = 1;
+            }
 
             message Response {
                 Error error = 1;
@@ -2803,6 +2812,7 @@ message Rpc {
         message Download {
             message Request {
                 string pictureId = 1;
+                string spaceId = 2;
             }
 
             message Response {

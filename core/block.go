@@ -50,7 +50,7 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 	}
 	var id, targetId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, targetId, err = bs.CreateLinkToTheNewObject(ctx, req)
+		id, targetId, err = bs.CreateLinkToTheNewObject(cctx, ctx, req)
 		return
 	})
 	if err != nil {
@@ -73,7 +73,7 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, err = bs.OpenBlock(ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
+		obj, err = bs.OpenBlock(cctx, ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
 	if err != nil {
@@ -89,7 +89,6 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 }
 
 func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
-	ctx := mw.newContext(cctx, session.WithTraceId(req.TraceId))
 	var obj *model.ObjectView
 	response := func(code pb.RpcObjectShowResponseErrorCode, err error) *pb.RpcObjectShowResponse {
 		m := &pb.RpcObjectShowResponse{Error: &pb.RpcObjectShowResponseError{Code: code}}
@@ -102,7 +101,7 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, err = bs.ShowBlock(ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
+		obj, err = bs.ShowBlock(req.ObjectId, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
 	if err != nil {
@@ -248,7 +247,7 @@ func (mw *Middleware) BlockExport(cctx context.Context, req *pb.RpcBlockExportRe
 	}
 	var path string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		path, err = bs.Export(ctx, *req)
+		path, err = bs.Export(*req)
 		return
 	})
 	if err != nil {
@@ -547,7 +546,7 @@ func (mw *Middleware) BlockListMoveToExistingObject(cctx context.Context, req *p
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.MoveBlocks(ctx, *req)
+		return bs.MoveBlocks(*req)
 	})
 	if err != nil {
 		return response(pb.RpcBlockListMoveToExistingObjectResponseError_UNKNOWN_ERROR, err)
@@ -569,7 +568,7 @@ func (mw *Middleware) BlockListMoveToNewObject(cctx context.Context, req *pb.Rpc
 
 	var linkId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		linkId, err = bs.MoveBlocksToNewPage(ctx, *req)
+		linkId, err = bs.MoveBlocksToNewPage(cctx, ctx, *req)
 		return
 	})
 

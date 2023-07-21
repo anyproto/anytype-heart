@@ -9295,6 +9295,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
 
 
 
@@ -9369,6 +9374,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
@@ -10610,6 +10616,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
@@ -11063,6 +11070,7 @@ DEPRECATED |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  |  |
 
 
@@ -13865,6 +13873,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | pictureId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -14588,6 +14597,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
 
 
 
@@ -14652,6 +14666,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | objectId | [string](#string) |  |  |
 
 
@@ -14710,6 +14725,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | objectIds | [string](#string) | repeated |  |
 
 

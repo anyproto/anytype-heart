@@ -384,6 +384,7 @@ func (s *Service) AddSubObjectsToWorkspace(
 }
 
 func (s *Service) RemoveSubObjectsInWorkspace(spaceID string, objectIds []string, orphansGC bool) (err error) {
+	// TODO Resolve spaceID for each object, batch them
 	workspaceID := s.anytype.PredefinedObjects(spaceID).Account
 	for _, objectID := range objectIds {
 		if err = s.restriction.CheckRestrictions(spaceID, objectID, model.Restrictions_Delete); err != nil {
@@ -566,11 +567,19 @@ func (s *Service) objectLinksCollectionModify(collectionId string, objectId stri
 	})
 }
 
-func (s *Service) SetPageIsFavorite(spaceID string, req pb.RpcObjectSetIsFavoriteRequest) (err error) {
+func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error) {
+	spaceID, err := s.ResolveSpaceID(req.ContextId)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
 	return s.objectLinksCollectionModify(s.anytype.PredefinedObjects(spaceID).Home, req.ContextId, req.IsFavorite)
 }
 
-func (s *Service) SetPageIsArchived(spaceID string, req pb.RpcObjectSetIsArchivedRequest) (err error) {
+func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
+	spaceID, err := s.ResolveSpaceID(req.ContextId)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
 	if err := s.checkArchivedRestriction(req.IsArchived, spaceID, req.ContextId); err != nil {
 		return err
 	}
@@ -699,7 +708,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 		st := b.NewState()
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 		if isFavorite {
-			_ = s.SetPageIsFavorite(id.SpaceID, pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
+			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
 		}
 		b.SetIsDeleted()
 		if workspaceRemove != nil {

@@ -12,7 +12,6 @@ import (
 )
 
 func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
-	ctx := mw.newContext(cctx)
 	response := func(path string, code pb.RpcFileDownloadResponseErrorCode, err error) *pb.RpcFileDownloadResponse {
 		m := &pb.RpcFileDownloadResponse{Error: &pb.RpcFileDownloadResponseError{Code: code}, LocalPath: path}
 		if err != nil {
@@ -22,7 +21,7 @@ func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownload
 	}
 	var path string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		path, err = bs.DownloadFile(ctx, req)
+		path, err = bs.DownloadFile(cctx, req)
 		return
 	})
 	if err != nil {
@@ -45,7 +44,7 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DropFiles(ctx, *req)
+		return bs.DropFiles(*req)
 	})
 	if err != nil {
 		return response(pb.RpcFileDropResponseError_UNKNOWN_ERROR, err)
@@ -54,7 +53,6 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
-	ctx := mw.newContext(cctx)
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	response := func(filesOffloaded uint64, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
@@ -80,7 +78,6 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
-	ctx := mw.newContext(cctx)
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	response := func(bytesOffloaded uint64, code pb.RpcFileOffloadResponseErrorCode, err error) *pb.RpcFileOffloadResponse {
@@ -98,7 +95,7 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 
 	fileService := app.MustComponent[files.Service](mw.app)
 
-	bytesRemoved, err := fileService.FileOffload(ctx, req.Id, req.IncludeNotPinned)
+	bytesRemoved, err := fileService.FileOffload(cctx, req.Id, req.IncludeNotPinned)
 	if err != nil {
 		log.Errorf("failed to offload file %s: %s", req.Id, err.Error())
 	}
@@ -107,7 +104,6 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 }
 
 func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
-	ctx := mw.newContext(cctx)
 	response := func(hash string, code pb.RpcFileUploadResponseErrorCode, err error) *pb.RpcFileUploadResponse {
 		m := &pb.RpcFileUploadResponse{Error: &pb.RpcFileUploadResponseError{Code: code}, Hash: hash}
 		if err != nil {
@@ -117,7 +113,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var hash string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(ctx, *req)
+		hash, err = bs.UploadFile(cctx, req.SpaceId, *req)
 		return
 	})
 	if err != nil {
@@ -127,7 +123,6 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 }
 
 func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcFileSpaceUsageResponseErrorCode, err error, usage *pb.RpcFileSpaceUsageResponseUsage) *pb.RpcFileSpaceUsageResponse {
 		m := &pb.RpcFileSpaceUsageResponse{
 			Error: &pb.RpcFileSpaceUsageResponseError{Code: code},
@@ -140,7 +135,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	usage, err := getService[files.Service](mw).GetSpaceUsage(ctx)
+	usage, err := getService[files.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
 	if err != nil {
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}

@@ -136,9 +136,9 @@ func (oc *ObjectCreator) Create(
 	} else {
 		respDetails = oc.updateExistingObject(st, oldIDtoNew, newID)
 	}
-	oc.setFavorite(spaceID, snapshot, newID)
+	oc.setFavorite(snapshot, newID)
 
-	oc.setArchived(spaceID, snapshot, newID)
+	oc.setArchived(snapshot, newID)
 
 	syncErr := oc.syncFilesAndLinks(newID)
 	if syncErr != nil {
@@ -380,20 +380,20 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 	return respDetails
 }
 
-func (oc *ObjectCreator) setFavorite(spaceID string, snapshot *model.SmartBlockSnapshotBase, newID string) {
+func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, newID string) {
 	isFavorite := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsFavorite.String())
 	if isFavorite {
-		err := oc.service.SetPageIsFavorite(spaceID, pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
+		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
 		}
 	}
 }
 
-func (oc *ObjectCreator) setArchived(spaceID string, snapshot *model.SmartBlockSnapshotBase, newID string) {
+func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, newID string) {
 	isArchive := pbtypes.GetBool(snapshot.Details, bundle.RelationKeyIsArchived.String())
 	if isArchive {
-		err := oc.service.SetPageIsArchived(spaceID, pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
+		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {
 			log.With(zap.String("object id", newID)).
 				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
