@@ -60,6 +60,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("get badger storage: %w", err)
 	}
+	// TODO I forgot why we need this
 	err = p.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.Prefix = badgerPrefix
@@ -69,11 +70,9 @@ func (p *provider) Init(a *app.App) (err error) {
 		for iter.Rewind(); iter.Valid(); iter.Next() {
 			it := iter.Item()
 			err := it.Value(func(v []byte) error {
-				// TODO Use helpers
 				id := string(bytes.TrimPrefix(it.Key(), badgerPrefix))
 				rawType := binary.LittleEndian.Uint64(v)
 				p.cache[id] = smartblock.SmartBlockType(rawType)
-				fmt.Println("init cache:", id, smartblock.SmartBlockType(rawType))
 				return nil
 			})
 			if err != nil {

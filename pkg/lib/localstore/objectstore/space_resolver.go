@@ -39,6 +39,9 @@ func (s *dsObjectStore) ResolveSpaceID(objectID string) (string, error) {
 		}
 		return nil
 	})
+	if isNotFound(err) {
+		return "", nil
+	}
 	return spaceID, err
 }
 

@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 	"google.golang.org/grpc/metadata"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 )
 
 func (mw *Middleware) BlockCreate(cctx context.Context, req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
@@ -680,26 +678,6 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 	return response(pb.RpcBlockTextListSetMarkResponseError_NULL, nil)
 }
 
-func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
-	var spaceID string
-	if spaceID == "" {
-		log.Errorf("newContext: set spaceID to accountID")
-		spaceID = getService[space.Service](mw).AccountId()
-	}
-
-	return mw.newContextWithSpace(cctx, spaceID, opts...)
-}
-
-func (mw *Middleware) newContextNoLock(cctx context.Context, opts ...session.ContextOption) session.Context {
-	var spaceID string
-	if spaceID == "" {
-		log.Errorf("newContextNoLock: set spaceID to accountID")
-		spaceID = app.MustComponent[space.Service](mw.app).AccountId()
-	}
-
-	return mw.newContextWithSpace(cctx, spaceID, opts...)
-}
-
 func getSessionToken(cctx context.Context) (string, bool) {
 	md, ok := metadata.FromIncomingContext(cctx)
 	if !ok {
@@ -717,7 +695,7 @@ func getSessionToken(cctx context.Context) (string, bool) {
 	return tok, true
 }
 
-func (mw *Middleware) newContextWithSpace(cctx context.Context, spaceID string, opts ...session.ContextOption) session.Context {
+func (mw *Middleware) newContext(cctx context.Context, opts ...session.ContextOption) session.Context {
 	tok, ok := getSessionToken(cctx)
 	if ok {
 		return session.NewContext(append(opts, session.WithSession(tok))...)

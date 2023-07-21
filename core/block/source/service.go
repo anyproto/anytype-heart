@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
@@ -48,6 +49,7 @@ type service struct {
 	fileStore    filestore.FileStore
 	spaceService space.Service
 	fileService  files.Service
+	objectStore  objectstore.ObjectStore
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -61,6 +63,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.fileService = app.MustComponent[files.Service](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 
@@ -80,6 +83,10 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 }
 
 func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
+	err = s.objectStore.StoreSpaceID(id, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("store spaceID: %w", err)
+	}
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
