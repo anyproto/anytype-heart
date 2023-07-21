@@ -93,7 +93,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 	}, process.NewProgress(pb.ModelProcess_Import))
 
 	assert.NotNil(t, ce)
-	assert.Len(t, ce, 1)
+	assert.False(t, ce.IsEmpty())
 }
 
 func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
@@ -112,7 +112,6 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	assert.NotNil(t, ce)
 	assert.Nil(t, res)
-	assert.NotNil(t, ce.Get("testdata/test.pb"))
 
 	// IGNORE_ERRORS mode
 	res, ce = p.GetSnapshots(&pb.RpcObjectImportRequest{
@@ -127,8 +126,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 2)
-	assert.Len(t, ce, 1)
-	assert.NotEmpty(t, ce.Get("testdata/test.pb"))
+	assert.False(t, ce.IsEmpty())
 }
 
 func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 // TODO Move residual file methods here
@@ -23,7 +24,7 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 
 	err := os.MkdirAll(req.Path, 0755)
 	if err != nil {
-		return "", fmt.Errorf("mkdir -p %s: %w", req.Path, err)
+		return "", fmt.Errorf("mkdir -p: %w", oserror.TransformError(err))
 	}
 	progress := process.NewProgress(pb.ModelProcess_SaveFile)
 	defer progress.Finish()
