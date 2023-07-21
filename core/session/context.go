@@ -1,8 +1,6 @@
 package session
 
 import (
-	"context"
-
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -22,7 +20,7 @@ type sessionContext struct {
 	sessionToken string
 }
 
-func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Context {
+func NewContext(opts ...ContextOption) Context {
 	ctx := &sessionContext{}
 	for _, apply := range opts {
 		apply(ctx)

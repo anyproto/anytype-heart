@@ -18,17 +18,17 @@ type testPicker struct {
 	sb smartblock.SmartBlock
 }
 
-func (t *testPicker) PickBlock(ctx session.Context, id string) (sb smartblock.SmartBlock, err error) {
+func (t *testPicker) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	return t.sb, nil
 }
 
 func TestBroadcast(t *testing.T) {
 	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
-	ctx := session.NewContext(context.Background(), "space1")
+	ctx := session.NewContext()
 
 	picker := &testPicker{sb: sb}
-	s := New(picker, nil, nil, nil)
+	s := New(picker, nil)
 
 	_, subCh1, err := s.SubscribeForCollection(ctx, collectionID, "sub1")
 	require.NoError(t, err)

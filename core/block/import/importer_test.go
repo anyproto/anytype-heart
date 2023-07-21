@@ -16,7 +16,6 @@ import (
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -45,13 +44,13 @@ func Test_ImportSuccess(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	err := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -75,7 +74,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	err := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -111,12 +110,12 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -152,12 +151,12 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -195,12 +194,12 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -220,10 +219,10 @@ func Test_ImportExternalPlugin(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
 	snapshots := make([]*pb.RpcObjectImportRequestSnapshot, 0)
 	snapshots = append(snapshots, &pb.RpcObjectImportRequestSnapshot{
@@ -246,7 +245,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 			Collections:    nil,
 		},
 	})
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                nil,
 		Snapshots:             snapshots,
 		UpdateExistingObjects: false,
@@ -267,7 +266,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                nil,
 		Snapshots:             nil,
 		UpdateExistingObjects: false,
@@ -289,7 +288,7 @@ func Test_ListImports(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	res, err := i.ListImports(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportListRequest{})
+	res, err := i.ListImports(&pb.RpcObjectImportListRequest{})
 
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
@@ -309,7 +308,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
-	_, _, err := i.ImportWeb(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
@@ -338,7 +337,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
@@ -357,10 +356,10 @@ func Test_ImportWebSuccess(t *testing.T) {
 	i.converters[web.Name] = web.NewConverter()
 
 	creator := NewMockCreator(ctrl)
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
 	parser := parsers.NewMockParser(ctrl)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
@@ -379,7 +378,7 @@ func Test_ImportWebSuccess(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
@@ -398,10 +397,10 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("error")).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", errors.New("error")).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
 	parser := parsers.NewMockParser(ctrl)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
@@ -420,7 +419,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	}
 	parsers.RegisterFunc(new)
 
-	_, _, err := i.ImportWeb(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
 	})
@@ -436,7 +435,7 @@ func Test_ImportCancelError(t *testing.T) {
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -454,7 +453,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -487,7 +486,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -523,12 +522,12 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i.converters["Notion"] = converter
 	creator := NewMockCreator(ctrl)
 	//nolint:lll
-	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
-	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
+	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,
@@ -561,7 +560,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	res := i.Import(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
 		Type:                  0,

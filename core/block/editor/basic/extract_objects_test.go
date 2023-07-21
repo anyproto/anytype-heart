@@ -31,7 +31,7 @@ func (t testExtractObjects) Add(object *smarttest.SmartTest) {
 	t.objects[object.Id()] = object
 }
 
-func (t testExtractObjects) CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	id = bson.NewObjectId().Hex()
 	object := smarttest.New(id)
 	t.objects[id] = object
@@ -190,7 +190,7 @@ func TestExtractObjects(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
-			ctx := session.NewContext(context.Background(), "space1")
+			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 

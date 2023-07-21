@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -168,8 +167,7 @@ func (i *Import) Name() string {
 }
 
 // ListImports return all registered import types
-func (i *Import) ListImports(_ session.Context,
-	_ *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
+func (i *Import) ListImports(_ *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error) {
 	res := make([]*pb.RpcObjectImportListImportResponse, len(i.converters))
 	var idx int
 	for _, c := range i.converters {

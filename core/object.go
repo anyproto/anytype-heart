@@ -793,8 +793,6 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 }
 
 func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectImportListRequest) *pb.RpcObjectImportListResponse {
-	ctx := mw.newContext(cctx)
-
 	response := func(res []*pb.RpcObjectImportListImportResponse, code pb.RpcObjectImportListResponseErrorCode, err error) *pb.RpcObjectImportListResponse {
 		m := &pb.RpcObjectImportListResponse{Response: res, Error: &pb.RpcObjectImportListResponseError{Code: code}}
 		if err != nil {
@@ -807,7 +805,7 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 	defer mw.m.RUnlock()
 
 	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-	res, err := importer.ListImports(ctx, req)
+	res, err := importer.ListImports(req)
 
 	if err != nil {
 		return response(res, pb.RpcObjectImportListResponseError_INTERNAL_ERROR, err)

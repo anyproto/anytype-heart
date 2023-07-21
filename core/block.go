@@ -720,9 +720,9 @@ func getSessionToken(cctx context.Context) (string, bool) {
 func (mw *Middleware) newContextWithSpace(cctx context.Context, spaceID string, opts ...session.ContextOption) session.Context {
 	tok, ok := getSessionToken(cctx)
 	if ok {
-		return session.NewContext(cctx, spaceID, append(opts, session.WithSession(tok))...)
+		return session.NewContext(append(opts, session.WithSession(tok))...)
 	}
-	return session.NewContext(cctx, spaceID, opts...)
+	return session.NewContext(opts...)
 }
 
 func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
