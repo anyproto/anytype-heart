@@ -8,6 +8,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -77,7 +78,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		Key:    bundle.RelationKeyName.String(),
 	})
 	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
-	allRelations := csvTable[0]
+	allRelations := lo.Map(csvTable[0], func(item string, index int) string { return strings.TrimSpace(item) })
 	var err error
 	numberOfRelationsLimit := len(allRelations)
 	if numberOfRelationsLimit > limitForColumns {
