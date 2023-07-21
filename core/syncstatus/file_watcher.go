@@ -83,9 +83,9 @@ func (s *fileWatcher) loadFilesToWatch() error {
 			if len(spaceID) != 0 {
 				s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: string(spaceID)}] = struct{}{}
 			} else {
-				e := s.Watch(defaultSpaceID, string(fileID))
-				if e != nil {
-					log.Errorf("failed to migrate files in space store: %v", e)
+				err = s.Watch(defaultSpaceID, string(fileID))
+				if err != nil {
+					log.Errorf("failed to migrate files in space store: %v", err)
 				}
 			}
 		}
