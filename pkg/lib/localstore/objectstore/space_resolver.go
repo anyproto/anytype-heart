@@ -46,23 +46,25 @@ func (s *dsObjectStore) getLongSpaceID(txn *badger.Txn, shortSpaceID string) (st
 	return getValueTxn(txn, shortSpaceToLongKey(shortSpaceID), bytesToString)
 }
 
-func (s *dsObjectStore) storeSpaceID(txn *badger.Txn, objectID, spaceID string) error {
-	_, err := txn.Get(spaceMappingKey(objectID))
-	if isNotFound(err) {
-		shortSpaceID, err := s.getSpaceShortID(txn, spaceID)
+func (s *dsObjectStore) StoreSpaceID(objectID, spaceID string) error {
+	return s.updateTxn(func(txn *badger.Txn) error {
+		_, err := txn.Get(spaceMappingKey(objectID))
 		if isNotFound(err) {
-			shortSpaceID, err = s.createAndStoreLongToShortMapping(txn, spaceID)
-			if err != nil {
-				return fmt.Errorf("store short space ID: %w", err)
+			shortSpaceID, err := s.getSpaceShortID(txn, spaceID)
+			if isNotFound(err) {
+				shortSpaceID, err = s.createAndStoreLongToShortMapping(txn, spaceID)
+				if err != nil {
+					return fmt.Errorf("store short space ID: %w", err)
+				}
+			} else if err != nil {
+				return fmt.Errorf("get short space ID: %w", err)
 			}
+			return setValueTxn(txn, spaceMappingKey(objectID), shortSpaceID)
 		} else if err != nil {
-			return fmt.Errorf("get short space ID: %w", err)
+			return fmt.Errorf("get space mapping: %w", err)
 		}
-		return setValueTxn(txn, spaceMappingKey(objectID), shortSpaceID)
-	} else if err != nil {
-		return fmt.Errorf("get space mapping: %w", err)
-	}
-	return nil
+		return nil
+	})
 }
 
 func (s *dsObjectStore) getSpaceShortID(txn *badger.Txn, spaceID string) (string, error) {

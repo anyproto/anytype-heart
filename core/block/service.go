@@ -125,7 +125,7 @@ type indexer interface {
 }
 
 type builtinObjects interface {
-	CreateObjectsForUseCase(spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(ctx context.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type Service struct {
@@ -830,7 +830,7 @@ func (s *Service) getSmartblock(ctx context.Context, id domain.FullID) (sb smart
 	return s.GetObjectWithTimeout(ctx, id)
 }
 
-func (s *Service) StateFromTemplate(ctx session.Context, templateID string, name string) (st *state.State, err error) {
+func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
@@ -973,11 +973,11 @@ func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *s
 	return sb.Apply(st, flags...)
 }
 
-func (s *Service) ObjectApplyTemplate(ctx session.Context, contextId, templateId string) error {
+func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 	return Do(s, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
 		name := pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String())
-		ts, err := s.StateFromTemplate(ctx, templateId, name)
+		ts, err := s.StateFromTemplate(templateId, name)
 		if err != nil {
 			return err
 		}

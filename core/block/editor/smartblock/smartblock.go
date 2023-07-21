@@ -183,7 +183,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(ctx session.Context, info DocInfo, options ...IndexOption) error
+	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -286,6 +286,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	sb.source = ctx.Source
+	err = sb.objectStore.StoreSpaceID(sb.Id(), sb.SpaceID())
+	if err != nil {
+		return fmt.Errorf("store spaceID: %w", err)
+	}
 	if provider, ok := sb.source.(source.ObjectTreeProvider); ok {
 		sb.ObjectTree = provider.Tree()
 	}
@@ -1291,9 +1295,8 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 
 func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	docInfo := sb.getDocInfo(s)
-
-	ctx := session.NewContext(context.Background(), sb.SpaceID())
-	if err := sb.indexer.Index(ctx, docInfo, opts...); err != nil {
+	fmt.Println("RUN INDEXER", sb.Id())
+	if err := sb.indexer.Index(context.Background(), docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
 }

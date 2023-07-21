@@ -56,7 +56,6 @@ func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateClo
 }
 
 func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
-	ctx := mw.newContext(cctx)
 	response := func(err error) *pb.RpcObjectApplyTemplateResponse {
 		m := &pb.RpcObjectApplyTemplateResponse{
 			Error: &pb.RpcObjectApplyTemplateResponseError{Code: pb.RpcObjectApplyTemplateResponseError_NULL},
@@ -68,7 +67,7 @@ func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ObjectApplyTemplate(ctx, req.ContextId, req.TemplateId)
+		return bs.ObjectApplyTemplate(req.ContextId, req.TemplateId)
 	})
 	return response(err)
 }

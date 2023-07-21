@@ -95,14 +95,14 @@ func (c *Creator) Name() (name string) {
 
 // TODO Temporarily
 type BlockService interface {
-	StateFromTemplate(ctx context.Context, templateID, name string) (st *state.State, err error)
-	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	StateFromTemplate(templateID string, name string) (st *state.State, err error)
+	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
-		if createState, err = c.blockService.StateFromTemplate(ctx, templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 			return
 		}
 	} else {
@@ -173,7 +173,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	}
 
 	ctx = context.WithValue(ctx, eventCreate, ev)
-	sb, err := c.blockService.CreateTreeObject(ctx, sbType, func(id string) *smartblock.InitContext {
+	sb, err := c.blockService.CreateTreeObject(ctx, spaceID, sbType, func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()

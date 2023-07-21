@@ -33,6 +33,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		Details: details,
 	}
 
+	fmt.Println("UPDATE", id)
 	key := pagesDetailsBase.ChildString(id).Bytes()
 	txErr := s.updateTxn(func(txn *badger.Txn) error {
 		oldDetails, err := s.extractDetailsByKey(txn, key)
@@ -41,10 +42,6 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 		}
 		if oldDetails != nil && oldDetails.Details.Equal(newDetails.Details) {
 			return ErrDetailsNotChanged
-		}
-		err = s.storeSpaceID(txn, id, spaceID)
-		if err != nil {
-			return fmt.Errorf("store spaceID: %w", err)
 		}
 		// Ensure ID is set
 		details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)

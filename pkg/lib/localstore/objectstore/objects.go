@@ -145,6 +145,7 @@ type ObjectStore interface {
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
 
 	ResolveSpaceID(objectID string) (spaceID string, err error)
+	StoreSpaceID(objectID, spaceID string) error
 }
 
 type IndexerStore interface {
