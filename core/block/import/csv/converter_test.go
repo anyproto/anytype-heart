@@ -562,3 +562,45 @@ func Test_findUniqueRelationAndAddNumber(t *testing.T) {
 		assert.Equal(t, []string{"relation1", "1", "2", "relation", "3", "relation 1"}, result)
 	})
 }
+
+func Test_findUniqueRelationWithSpaces(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/relationswithspaces.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+
+	var subObjects []*converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			subObjects = append(subObjects, snapshot)
+		}
+	}
+	assert.Len(t, subObjects, 5)
+
+	name := pbtypes.GetString(subObjects[0].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text")
+
+	name = pbtypes.GetString(subObjects[1].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 1")
+
+	name = pbtypes.GetString(subObjects[2].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 3")
+
+	name = pbtypes.GetString(subObjects[3].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 2")
+
+	name = pbtypes.GetString(subObjects[4].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 4")
+}
