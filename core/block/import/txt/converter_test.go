@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"errors"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
@@ -23,7 +24,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 	}, p)
 
 	assert.NotNil(t, err)
-	assert.Equal(t, err["testdata/test"], converter.ErrNoObjectsToImport)
+	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Txt), converter.ErrNoObjectsToImport))
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 2)
 	assert.Contains(t, sn.Snapshots[0].FileName, "test.txt")
