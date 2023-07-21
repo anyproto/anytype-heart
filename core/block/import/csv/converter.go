@@ -169,6 +169,7 @@ func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error
 	csvReader := csv.NewReader(rc)
 	csvReader.LazyQuotes = true
 	csvReader.ReuseRecord = true
+	csvReader.FieldsPerRecord = -1
 	if delimiter != "" {
 		characters := []rune(delimiter)
 		csvReader.Comma = characters[0]
