@@ -98,7 +98,7 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 	if s.fts == nil {
 		return filters, fmt.Errorf("fullText search not configured")
 	}
-	ids, err := s.fts.Search(text)
+	ids, err := s.fts.Search(getSpaceIDFromFilter(filters.FilterObj), text)
 	if err != nil {
 		return filters, err
 	}
@@ -106,6 +106,27 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 	filters.FilterObj = filter.AndFilters{filters.FilterObj, idsQuery}
 	filters.Order = filter.SetOrder(append([]filter.Order{idsQuery}, filters.Order))
 	return filters, nil
+}
+
+func getSpaceIDFromFilter(fltr filter.Filter) (spaceID string) {
+	switch f := fltr.(type) {
+	case filter.Eq:
+		if f.Key == bundle.RelationKeySpaceId.String() {
+			return f.Value.GetStringValue()
+		}
+	case filter.AndFilters:
+		spaceID = iterateOverAndFilters(f)
+	}
+	return spaceID
+}
+
+func iterateOverAndFilters(fs []filter.Filter) (spaceID string) {
+	for _, f := range fs {
+		if spaceID = getSpaceIDFromFilter(f); spaceID != "" {
+			return spaceID
+		}
+	}
+	return ""
 }
 
 // TODO: objstore: no one uses total

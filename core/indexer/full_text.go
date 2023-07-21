@@ -95,10 +95,17 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 	if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
 		title = info.State.Snippet()
 	}
+
+	spaceID := pbtypes.GetString(info.State.Details(), bundle.RelationKeySpaceId.String())
+	if spaceID == "" {
+		spaceID = i.spaceService.AccountId()
+	}
+
 	ftDoc = ftsearch.SearchDoc{
-		Id:    id,
-		Title: title,
-		Text:  info.State.SearchText(),
+		Id:      id,
+		SpaceID: spaceID,
+		Title:   title,
+		Text:    info.State.SearchText(),
 	}
 	return
 }
