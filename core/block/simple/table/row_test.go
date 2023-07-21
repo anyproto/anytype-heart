@@ -15,12 +15,16 @@ func TestDiff(t *testing.T) {
 			Content:      &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
 		}).(*rowBlock)
 	}
-	t.Run("layout", func(t *testing.T) {
+	t.Run("change header", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.IsHeader = true
 
+		// when
+		b2.content.IsHeader = true
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetTableRow).BlockSetTableRow.IsHeader

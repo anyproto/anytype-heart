@@ -15,12 +15,16 @@ func TestDiff(t *testing.T) {
 			Content:      &model.BlockContentOfWidget{Widget: &model.BlockContentWidget{}},
 		}).(*block)
 	}
-	t.Run("layout", func(t *testing.T) {
+	t.Run("change widget layout", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.Layout = model.BlockContentWidget_Tree
 
+		// when
+		b2.content.Layout = model.BlockContentWidget_Tree
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Layout
@@ -30,12 +34,16 @@ func TestDiff(t *testing.T) {
 		assert.Nil(t, changeLimit)
 		assert.Nil(t, changeViewID)
 	})
-	t.Run("view id", func(t *testing.T) {
+	t.Run("view id changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.ViewId = "viewID"
 
+		// when
+		b2.content.ViewId = "viewID"
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.ViewId
@@ -45,12 +53,16 @@ func TestDiff(t *testing.T) {
 		assert.Nil(t, changeLimit)
 		assert.Nil(t, changeLayout)
 	})
-	t.Run("limit", func(t *testing.T) {
+	t.Run("limit changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.Limit = 10
 
+		// when
+		b2.content.Limit = 10
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Limit

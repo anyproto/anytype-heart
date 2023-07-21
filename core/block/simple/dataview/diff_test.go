@@ -16,70 +16,92 @@ func TestDiff(t *testing.T) {
 			Content:      &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{}},
 		}).(*Dataview)
 	}
-	t.Run("is collection", func(t *testing.T) {
+	t.Run("is collection changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b2.content.IsCollection = true
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewIsCollectionSet).BlockDataviewIsCollectionSet
 		assert.Equal(t, true, change.Value)
 	})
-	t.Run("target object id", func(t *testing.T) {
+	t.Run("target object id changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.TargetObjectId = "1"
 		b2.content.TargetObjectId = "2"
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewTargetObjectIdSet).BlockDataviewTargetObjectIdSet
 		assert.Equal(t, "2", change.TargetObjectId)
 	})
-	t.Run("source", func(t *testing.T) {
+	t.Run("source changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b2.content.Source = []string{"1"}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewSourceSet).BlockDataviewSourceSet
 		assert.Len(t, change.Source, 1)
 		assert.Equal(t, "1", change.Source[0])
-
-		b2.content.Source = nil
-		b1.content.Source = []string{"1"}
-
-		diff, err = b1.Diff(b2)
-		require.NoError(t, err)
-		require.Len(t, diff, 1)
-		change = diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewSourceSet).BlockDataviewSourceSet
-		assert.Len(t, change.Source, 0)
 	})
-	t.Run("order of views", func(t *testing.T) {
+	t.Run("unset source", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
+		b2.content.Source = nil
+		b1.content.Source = []string{"1"}
+		diff, err := b1.Diff(b2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewSourceSet).BlockDataviewSourceSet
+		assert.Len(t, change.Source, 0)
+	})
+	t.Run("order of views changed", func(t *testing.T) {
+		// given
+		b1 := testBlock()
+		b2 := testBlock()
+
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{{Id: "1"}, {Id: "2"}}
 		b2.content.Views = []*model.BlockContentDataviewView{{Id: "2"}, {Id: "1"}}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewOrder).BlockDataviewViewOrder
 		assert.Len(t, change.ViewIds, 2)
 		assert.Equal(t, change.ViewIds, []string{"2", "1"})
 	})
-	t.Run("group order", func(t *testing.T) {
+	t.Run("group order changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.GroupOrders = []*model.BlockContentDataviewGroupOrder{
 			{
 				ViewId: "1",
@@ -142,6 +164,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 2)
 
@@ -154,10 +178,12 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "2", change2.GroupOrder.ViewId)
 		assert.Equal(t, view2Groups, change2.GroupOrder.ViewGroups)
 	})
-	t.Run("order of objects remove", func(t *testing.T) {
+	t.Run("order of objects: remove object", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.ObjectOrders = []*model.BlockContentDataviewObjectOrder{
 			{
 				ViewId:    "1",
@@ -173,6 +199,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -183,10 +211,12 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, pb.EventBlockDataview_SliceOperationRemove, change.SliceChanges[0].Op)
 		assert.Equal(t, []string{"object2"}, change.SliceChanges[0].Ids)
 	})
-	t.Run("order of objects add", func(t *testing.T) {
+	t.Run("order of objects: add object", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.ObjectOrders = []*model.BlockContentDataviewObjectOrder{
 			{
 				ViewId:    "1",
@@ -207,6 +237,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 2)
 
@@ -223,10 +255,12 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, pb.EventBlockDataview_SliceOperationAdd, change1.SliceChanges[0].Op)
 		assert.Equal(t, []string{"object1"}, change1.SliceChanges[0].Ids)
 	})
-	t.Run("order of objects move", func(t *testing.T) {
+	t.Run("order of objects: move objects", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.ObjectOrders = []*model.BlockContentDataviewObjectOrder{
 			{
 				ViewId:    "1",
@@ -242,6 +276,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -254,9 +290,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "object1", change.SliceChanges[0].AfterId)
 	})
 	t.Run("relation links add change", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.RelationLinks = []*model.RelationLink{
 			{
 				Key:    "relation1",
@@ -273,8 +311,9 @@ func TestDiff(t *testing.T) {
 				Format: model.RelationFormat_longtext,
 			},
 		}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -283,9 +322,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "relation2", change.RelationLinks[0].Key)
 	})
 	t.Run("relation links remove change", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.RelationLinks = []*model.RelationLink{
 			{
 				Key:    "relation1",
@@ -302,8 +343,9 @@ func TestDiff(t *testing.T) {
 				Format: model.RelationFormat_longtext,
 			},
 		}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -312,9 +354,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "relation2", change.RelationKeys[0])
 	})
 	t.Run("view field changes", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id:                    "1",
@@ -343,8 +387,9 @@ func TestDiff(t *testing.T) {
 				PageLimit:             11,
 			},
 		}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -358,10 +403,12 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, true, change.Fields.GroupBackgroundColors)
 		assert.Equal(t, int32(11), change.Fields.PageLimit)
 	})
-	t.Run("view add change", func(t *testing.T) {
+	t.Run("view add", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -377,6 +424,8 @@ func TestDiff(t *testing.T) {
 		}
 
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 2) // TODO here we have 2 events because diffOrderOfViews also make change for view order, need to rewrite it to avoid not needed changes
 
@@ -384,9 +433,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "2", change.ViewId)
 	})
 	t.Run("view remove change", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -402,6 +453,8 @@ func TestDiff(t *testing.T) {
 		}
 
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 2)
 
@@ -409,9 +462,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "1", change.ViewId)
 	})
 	t.Run("view sort update change", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -439,8 +494,9 @@ func TestDiff(t *testing.T) {
 				Sorts: []*model.BlockContentDataviewSort{newSort},
 			},
 		}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -452,9 +508,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, newSort, updateSort)
 	})
 	t.Run("view sort add change", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -491,8 +549,9 @@ func TestDiff(t *testing.T) {
 				},
 			},
 		}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -506,9 +565,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, addedSort, addedSortChange.Items[0])
 	})
 	t.Run("view sort remove change", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -528,8 +589,9 @@ func TestDiff(t *testing.T) {
 				Id: "1",
 			},
 		}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -541,9 +603,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "1", removedSorts[0])
 	})
 	t.Run("view filter update", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -574,6 +638,8 @@ func TestDiff(t *testing.T) {
 		}
 
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -586,9 +652,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, newFilter, updatedFilter.Item)
 	})
 	t.Run("view filter remove", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -612,6 +680,8 @@ func TestDiff(t *testing.T) {
 		}
 
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -624,9 +694,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "1", removedFilter.Ids[0])
 	})
 	t.Run("view filter add", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -664,6 +736,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -677,9 +751,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, newSort, addFilter.Items[0])
 	})
 	t.Run("view filter move", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -721,6 +797,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -733,9 +811,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "2", moveFilter.Ids[0])
 	})
 	t.Run("view relation update", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -761,6 +841,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -772,9 +854,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, false, updateRelations.Item.IsVisible)
 	})
 	t.Run("view relation add", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -807,6 +891,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -819,9 +905,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, addRelation, addRelationsChange.Items[0])
 	})
 	t.Run("view relation remove", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -841,6 +929,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -853,9 +943,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "name", removeRelationsChange.Ids[0])
 	})
 	t.Run("view relation move", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id: "1",
@@ -891,6 +983,8 @@ func TestDiff(t *testing.T) {
 			},
 		}
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
@@ -903,9 +997,11 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, "description", moveRelationsChange.Ids[0])
 	})
 	t.Run("multiple changes", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
 
+		// when
 		b1.content.Views = []*model.BlockContentDataviewView{
 			{
 				Id:                    "1",
@@ -1021,8 +1117,9 @@ func TestDiff(t *testing.T) {
 				ObjectIds: []string{"object1", "object2", "object3"},
 			},
 		}
-
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 4)
 	})

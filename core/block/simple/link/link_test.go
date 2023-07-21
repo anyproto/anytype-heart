@@ -42,9 +42,12 @@ func TestLink_Diff(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, d, 1)
 	})
-	t.Run("content diff", func(t *testing.T) {
+	t.Run("content changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
+
+		// when
 		b2.content.Style = model.BlockContentLink_Dataview
 		b2.content.TargetBlockId = "42"
 		b2.content.CardStyle = model.BlockContentLink_Card
@@ -52,6 +55,8 @@ func TestLink_Diff(t *testing.T) {
 		b2.content.Description = model.BlockContentLink_Content
 
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink
@@ -70,12 +75,16 @@ func TestLink_Diff(t *testing.T) {
 		assert.NotNil(t, change.Description)
 		assert.Equal(t, model.BlockContentLink_Content, change.Description.Value)
 	})
-	t.Run("relations", func(t *testing.T) {
+	t.Run("relations changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
-		b2.content.Relations = append(b2.content.Relations, "cover")
 
+		// when
+		b2.content.Relations = append(b2.content.Relations, "cover")
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink.Relations
