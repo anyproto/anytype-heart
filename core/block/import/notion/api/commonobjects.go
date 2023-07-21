@@ -303,6 +303,7 @@ type Parent struct {
 	Type       string `json:"type,omitempty"`
 	PageID     string `json:"page_id"`
 	DatabaseID string `json:"database_id"`
+	Workspace  bool   `json:"workspace"`
 }
 
 func RichTextToDescription(rt []*RichText) string {

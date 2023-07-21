@@ -85,22 +85,32 @@ func Test_GetLinkToObjectBlockFail(t *testing.T) {
 	assert.True(t, strings.HasPrefix(content.Text.Text, pageNotFoundMessage))
 }
 
-func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
+func Test_GetLinkToObjectBlockLinkToDatabase(t *testing.T) {
 	c := &ChildDatabase{Title: "title"}
 	importContext := NewNotionImportContext()
 	importContext.DatabaseNameToID = map[string]string{"id": "title"}
 	importContext.NotionDatabaseIdsToAnytype = map[string]string{"id": "anytypeId"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id"}}
-	bl := c.GetDataviewBlock(importContext, "parentID")
+	bl := c.GetBlock(importContext, "parentID")
+	assert.NotNil(t, bl)
+	content, ok := bl.Content.(*model.BlockContentOfLink)
+	assert.True(t, ok)
+	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+}
+
+func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
+	c := &ChildDatabase{Title: "title"}
+	importContext := NewNotionImportContext()
+	bl := c.GetBlock(importContext, "parentID")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfDataview)
 	assert.True(t, ok)
-	assert.Equal(t, content.Dataview.TargetObjectId, "anytypeId")
+	assert.Equal(t, content.Dataview.TargetObjectId, "")
 }
 
 func Test_GetLinkToObjectBlockInlineCollectionEmpty(t *testing.T) {
 	c := &ChildDatabase{Title: "title"}
-	bl := c.GetDataviewBlock(NewNotionImportContext(), "")
+	bl := c.GetBlock(NewNotionImportContext(), "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfDataview)
 	assert.True(t, ok)

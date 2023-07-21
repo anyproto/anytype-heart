@@ -67,12 +67,13 @@ func (ds *Service) GetPages(ctx context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
 	notionImportContext *block.NotionImportContext,
+	relations *property.PropertiesStore,
 	progress process.Progress) (*converter.Response, converter.ConvertError) {
+	progress.SetProgressMessage("Start creating pages from notion")
 	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
 	if convertError != nil {
 		return nil, convertError
 	}
-	progress.SetProgressMessage("Start creating blocks")
 	numWorkers := workerPoolSize
 	if len(pages) < workerPoolSize {
 		numWorkers = 1
@@ -81,7 +82,7 @@ func (ds *Service) GetPages(ctx context.Context,
 
 	go ds.addWorkToPool(pages, pool)
 
-	do := NewDataObject(ctx, apiKey, mode, notionImportContext)
+	do := NewDataObject(ctx, apiKey, mode, notionImportContext, relations)
 	go pool.Start(do)
 
 	allSnapshots, converterError := ds.readResultFromPool(pool, mode, progress)

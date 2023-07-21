@@ -127,7 +127,7 @@ type ChildDatabaseBlock struct {
 }
 
 func (b *ChildDatabaseBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
-	bl := b.ChildDatabase.GetDataviewBlock(req, pageID)
+	bl := b.ChildDatabase.GetBlock(req, pageID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{bl.Id},
@@ -138,21 +138,30 @@ type ChildDatabase struct {
 	Title string `json:"title"`
 }
 
-func (c *ChildDatabase) GetDataviewBlock(importContext *NotionImportContext, pageID string) *model.Block {
+func (c *ChildDatabase) GetBlock(importContext *NotionImportContext, pageID string) *model.Block {
 	targetBlockID, _ := getTargetBlock(importContext.ParentPageToChildIDs,
 		importContext.DatabaseNameToID,
 		importContext.NotionDatabaseIdsToAnytype,
 		pageID, c.Title)
 
-	// todo: should we handle targetBlockID not found here?
 	id := bson.NewObjectId().Hex()
-	block := template.MakeCollectionDataviewContent()
-	block.Dataview.TargetObjectId = targetBlockID
-
+	if targetBlockID == "" {
+		block := template.MakeCollectionDataviewContent()
+		block.Dataview.TargetObjectId = targetBlockID
+		return &model.Block{
+			Id:          id,
+			ChildrenIds: nil,
+			Content:     block,
+		}
+	}
 	return &model.Block{
 		Id:          id,
 		ChildrenIds: nil,
-		Content:     block,
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetBlockID,
+			},
+		},
 	}
 }
 
