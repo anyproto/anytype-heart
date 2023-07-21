@@ -77,7 +77,7 @@ func (mw *Middleware) getInfo(bs *block.Service) *model.AccountInfo {
 	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
 	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
 	deviceKey := wallet.GetDevicePrivkey()
-	deviceId := deviceKey.GetPublic().Account()
+	deviceId := deviceKey.GetPublic().PeerId()
 
 	analyticsId, err := mw.getAnalyticsId(bs, at.PredefinedBlocks().Account)
 	if err != nil {
