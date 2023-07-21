@@ -65,7 +65,7 @@ func newFileWatcher(
 
 const filesToWatchPrefix = "/files_to_watch/"
 
-func (s *fileWatcher) loadFilesToWatch() (err error) {
+func (s *fileWatcher) loadFilesToWatch() error {
 	return s.badger.View(func(txn *badger.Txn) error {
 		defaultSpaceID := s.spaceService.AccountId()
 		iter := txn.NewIterator(badger.IteratorOptions{
