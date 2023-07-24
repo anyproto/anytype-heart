@@ -1,6 +1,7 @@
 package table
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,12 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetTableRow).BlockSetTableRow.IsHeader
-		assert.Equal(t, true, change.Value)
+
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetTableRow{
+			BlockSetTableRow: &pb.EventBlockSetTableRow{
+				Id:       b1.Id,
+				IsHeader: &pb.EventBlockSetTableRowIsHeader{Value: true},
+			},
+		}), diff)
 	})
 }

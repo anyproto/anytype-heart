@@ -1,6 +1,7 @@
 package dataview
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -28,8 +29,12 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewIsCollectionSet).BlockDataviewIsCollectionSet
-		assert.Equal(t, true, change.Value)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockDataviewIsCollectionSet{
+			BlockDataviewIsCollectionSet: &pb.EventBlockDataviewIsCollectionSet{
+				Id:    b1.Id,
+				Value: true,
+			},
+		}), diff)
 	})
 	t.Run("target object id changed", func(t *testing.T) {
 		// given
@@ -44,8 +49,12 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewTargetObjectIdSet).BlockDataviewTargetObjectIdSet
-		assert.Equal(t, "2", change.TargetObjectId)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockDataviewTargetObjectIdSet{
+			BlockDataviewTargetObjectIdSet: &pb.EventBlockDataviewTargetObjectIdSet{
+				Id:             b1.Id,
+				TargetObjectId: "2",
+			},
+		}), diff)
 	})
 	t.Run("source changed", func(t *testing.T) {
 		// given
@@ -61,7 +70,12 @@ func TestDiff(t *testing.T) {
 		require.Len(t, diff, 1)
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewSourceSet).BlockDataviewSourceSet
 		assert.Len(t, change.Source, 1)
-		assert.Equal(t, "1", change.Source[0])
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockDataviewSourceSet{
+			BlockDataviewSourceSet: &pb.EventBlockDataviewSourceSet{
+				Id:     b1.Id,
+				Source: []string{"1"},
+			},
+		}), diff)
 	})
 	t.Run("unset source", func(t *testing.T) {
 		// given
@@ -76,8 +90,12 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewSourceSet).BlockDataviewSourceSet
-		assert.Len(t, change.Source, 0)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockDataviewSourceSet{
+			BlockDataviewSourceSet: &pb.EventBlockDataviewSourceSet{
+				Id:     b1.Id,
+				Source: nil,
+			},
+		}), diff)
 	})
 	t.Run("order of views changed", func(t *testing.T) {
 		// given
@@ -92,9 +110,12 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewOrder).BlockDataviewViewOrder
-		assert.Len(t, change.ViewIds, 2)
-		assert.Equal(t, change.ViewIds, []string{"2", "1"})
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockDataviewViewOrder{
+			BlockDataviewViewOrder: &pb.EventBlockDataviewViewOrder{
+				Id:      b1.Id,
+				ViewIds: []string{"2", "1"},
+			},
+		}), diff)
 	})
 	t.Run("group order changed", func(t *testing.T) {
 		// given
@@ -169,14 +190,26 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 2)
 
-		change1 := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataViewGroupOrderUpdate).BlockDataViewGroupOrderUpdate
-		change2 := diff[1].Msg.Value.(*pb.EventMessageValueOfBlockDataViewGroupOrderUpdate).BlockDataViewGroupOrderUpdate
-
-		assert.Equal(t, "1", change1.GroupOrder.ViewId)
-		assert.Equal(t, view1Groups, change1.GroupOrder.ViewGroups)
-
-		assert.Equal(t, "2", change2.GroupOrder.ViewId)
-		assert.Equal(t, view2Groups, change2.GroupOrder.ViewGroups)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataViewGroupOrderUpdate{
+				BlockDataViewGroupOrderUpdate: &pb.EventBlockDataviewGroupOrderUpdate{
+					Id: b1.Id,
+					GroupOrder: &model.BlockContentDataviewGroupOrder{
+						ViewId:     "1",
+						ViewGroups: view1Groups,
+					},
+				},
+			},
+			&pb.EventMessageValueOfBlockDataViewGroupOrderUpdate{
+				BlockDataViewGroupOrderUpdate: &pb.EventBlockDataviewGroupOrderUpdate{
+					Id: b1.Id,
+					GroupOrder: &model.BlockContentDataviewGroupOrder{
+						ViewId:     "2",
+						ViewGroups: view2Groups,
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("order of objects: remove object", func(t *testing.T) {
 		// given
@@ -204,12 +237,22 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataViewObjectOrderUpdate).BlockDataViewObjectOrderUpdate
-		assert.Equal(t, "1", change.ViewId)
-		assert.Len(t, change.SliceChanges, 1)
-
-		assert.Equal(t, pb.EventBlockDataview_SliceOperationRemove, change.SliceChanges[0].Op)
-		assert.Equal(t, []string{"object2"}, change.SliceChanges[0].Ids)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+				BlockDataViewObjectOrderUpdate: &pb.EventBlockDataviewObjectOrderUpdate{
+					Id:      b1.Id,
+					ViewId:  "1",
+					GroupId: "1",
+					SliceChanges: []*pb.EventBlockDataviewSliceChange{
+						{
+							Op:      pb.EventBlockDataview_SliceOperationRemove,
+							Ids:     []string{"object2"},
+							AfterId: "",
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("order of objects: add object", func(t *testing.T) {
 		// given
@@ -242,18 +285,36 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 2)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataViewObjectOrderUpdate).BlockDataViewObjectOrderUpdate
-		change1 := diff[1].Msg.Value.(*pb.EventMessageValueOfBlockDataViewObjectOrderUpdate).BlockDataViewObjectOrderUpdate
-
-		assert.Equal(t, "1", change.ViewId)
-		assert.Len(t, change.SliceChanges, 1)
-		assert.Equal(t, pb.EventBlockDataview_SliceOperationAdd, change.SliceChanges[0].Op)
-		assert.Equal(t, []string{"object3"}, change.SliceChanges[0].Ids)
-
-		assert.Equal(t, "2", change1.ViewId)
-		assert.Len(t, change1.SliceChanges, 1)
-		assert.Equal(t, pb.EventBlockDataview_SliceOperationAdd, change1.SliceChanges[0].Op)
-		assert.Equal(t, []string{"object1"}, change1.SliceChanges[0].Ids)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+				BlockDataViewObjectOrderUpdate: &pb.EventBlockDataviewObjectOrderUpdate{
+					Id:      b1.Id,
+					ViewId:  "1",
+					GroupId: "1",
+					SliceChanges: []*pb.EventBlockDataviewSliceChange{
+						{
+							Op:      pb.EventBlockDataview_SliceOperationAdd,
+							Ids:     []string{"object3"},
+							AfterId: "object2",
+						},
+					},
+				},
+			},
+			&pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+				BlockDataViewObjectOrderUpdate: &pb.EventBlockDataviewObjectOrderUpdate{
+					Id:      b1.Id,
+					ViewId:  "2",
+					GroupId: "1",
+					SliceChanges: []*pb.EventBlockDataviewSliceChange{
+						{
+							Op:      pb.EventBlockDataview_SliceOperationAdd,
+							Ids:     []string{"object1"},
+							AfterId: "",
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("order of objects: move objects", func(t *testing.T) {
 		// given
@@ -281,13 +342,22 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataViewObjectOrderUpdate).BlockDataViewObjectOrderUpdate
-
-		assert.Equal(t, "1", change.ViewId)
-		assert.Len(t, change.SliceChanges, 1)
-		assert.Equal(t, pb.EventBlockDataview_SliceOperationMove, change.SliceChanges[0].Op)
-		assert.Equal(t, []string{"object3"}, change.SliceChanges[0].Ids)
-		assert.Equal(t, "object1", change.SliceChanges[0].AfterId)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataViewObjectOrderUpdate{
+				BlockDataViewObjectOrderUpdate: &pb.EventBlockDataviewObjectOrderUpdate{
+					Id:      b1.Id,
+					ViewId:  "1",
+					GroupId: "1",
+					SliceChanges: []*pb.EventBlockDataviewSliceChange{
+						{
+							Op:      pb.EventBlockDataview_SliceOperationMove,
+							Ids:     []string{"object3"},
+							AfterId: "object1",
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("relation links add change", func(t *testing.T) {
 		// given
@@ -316,10 +386,19 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewRelationSet).BlockDataviewRelationSet
-		assert.Len(t, change.RelationLinks, 1)
-		assert.Equal(t, "relation2", change.RelationLinks[0].Key)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewRelationSet{
+				BlockDataviewRelationSet: &pb.EventBlockDataviewRelationSet{
+					Id: b1.Id,
+					RelationLinks: []*model.RelationLink{
+						{
+							Key:    "relation2",
+							Format: model.RelationFormat_longtext,
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("relation links remove change", func(t *testing.T) {
 		// given
@@ -348,10 +427,14 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewRelationDelete).BlockDataviewRelationDelete
-		assert.Len(t, change.RelationKeys, 1)
-		assert.Equal(t, "relation2", change.RelationKeys[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewRelationDelete{
+				BlockDataviewRelationDelete: &pb.EventBlockDataviewRelationDelete{
+					Id:           b1.Id,
+					RelationKeys: []string{"relation2"},
+				},
+			},
+		), diff)
 	})
 	t.Run("view field changes", func(t *testing.T) {
 		// given
@@ -393,15 +476,24 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Equal(t, "New Name", change.Fields.Name)
-		assert.Equal(t, model.BlockContentDataviewView_List, change.Fields.Type)
-		assert.Equal(t, true, change.Fields.HideIcon)
-		assert.Equal(t, model.BlockContentDataviewView_Large, change.Fields.CardSize)
-		assert.Equal(t, true, change.Fields.CoverFit)
-		assert.Equal(t, "tag", change.Fields.GroupRelationKey)
-		assert.Equal(t, true, change.Fields.GroupBackgroundColors)
-		assert.Equal(t, int32(11), change.Fields.PageLimit)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					ViewId: "1",
+					Fields: &pb.EventBlockDataviewViewUpdateFields{
+						Type:                  model.BlockContentDataviewView_List,
+						Name:                  "New Name",
+						CoverRelationKey:      "cover",
+						HideIcon:              true,
+						CardSize:              model.BlockContentDataviewView_Large,
+						CoverFit:              true,
+						GroupRelationKey:      "tag",
+						GroupBackgroundColors: true,
+						PageLimit:             11,
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view add", func(t *testing.T) {
 		// given
@@ -429,8 +521,23 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 2) // TODO here we have 2 events because diffOrderOfViews also make change for view order, need to rewrite it to avoid not needed changes
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewSet).BlockDataviewViewSet
-		assert.Equal(t, "2", change.ViewId)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewSet{
+				BlockDataviewViewSet: &pb.EventBlockDataviewViewSet{
+					Id:     b1.Id,
+					ViewId: "2",
+					View: &model.BlockContentDataviewView{
+						Id: "2",
+					},
+				},
+			},
+			&pb.EventMessageValueOfBlockDataviewViewOrder{
+				BlockDataviewViewOrder: &pb.EventBlockDataviewViewOrder{
+					Id:      b1.Id,
+					ViewIds: []string{"1", "2"},
+				},
+			},
+		), diff)
 	})
 	t.Run("view remove change", func(t *testing.T) {
 		// given
@@ -460,6 +567,21 @@ func TestDiff(t *testing.T) {
 
 		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewDelete).BlockDataviewViewDelete
 		assert.Equal(t, "1", change.ViewId)
+
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewDelete{
+				BlockDataviewViewDelete: &pb.EventBlockDataviewViewDelete{
+					Id:     b1.Id,
+					ViewId: "1",
+				},
+			},
+			&pb.EventMessageValueOfBlockDataviewViewOrder{
+				BlockDataviewViewOrder: &pb.EventBlockDataviewViewOrder{
+					Id:      b1.Id,
+					ViewIds: []string{"2"},
+				},
+			},
+		), diff)
 	})
 	t.Run("view sort update change", func(t *testing.T) {
 		// given
@@ -500,12 +622,24 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Sort, 1)
-		assert.NotNil(t, change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfUpdate))
-		assert.NotNil(t, change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfUpdate).Update)
-		updateSort := change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfUpdate).Update.Item
-		assert.Equal(t, newSort, updateSort)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Sort: []*pb.EventBlockDataviewViewUpdateSort{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateSortOperationOfUpdate{
+								Update: &pb.EventBlockDataviewViewUpdateSortUpdate{
+									Id:   "1",
+									Item: newSort,
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view sort add change", func(t *testing.T) {
 		// given
@@ -555,14 +689,24 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Sort, 1)
-		assert.NotNil(t, change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfAdd))
-		assert.NotNil(t, change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfAdd).Add)
-		addedSortChange := change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfAdd).Add
-		assert.Equal(t, "1", addedSortChange.AfterId)
-		assert.Len(t, addedSortChange.Items, 1)
-		assert.Equal(t, addedSort, addedSortChange.Items[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Sort: []*pb.EventBlockDataviewViewUpdateSort{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateSortOperationOfAdd{
+								Add: &pb.EventBlockDataviewViewUpdateSortAdd{
+									AfterId: "1",
+									Items:   []*model.BlockContentDataviewSort{addedSort},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view sort remove change", func(t *testing.T) {
 		// given
@@ -594,13 +738,23 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Sort, 1)
-		assert.NotNil(t, change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfRemove))
-		assert.NotNil(t, change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfRemove).Remove)
-		removedSorts := change.Sort[0].Operation.(*pb.EventBlockDataviewViewUpdateSortOperationOfRemove).Remove.Ids
-		assert.Equal(t, "1", removedSorts[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Sort: []*pb.EventBlockDataviewViewUpdateSort{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateSortOperationOfRemove{
+								Remove: &pb.EventBlockDataviewViewUpdateSortRemove{
+									Ids: []string{"1"},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view filter update", func(t *testing.T) {
 		// given
@@ -643,13 +797,24 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Filter, 1)
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfUpdate))
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfUpdate).Update)
-		updatedFilter := change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfUpdate).Update
-		assert.Equal(t, "1", updatedFilter.Id)
-		assert.Equal(t, newFilter, updatedFilter.Item)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Filter: []*pb.EventBlockDataviewViewUpdateFilter{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfUpdate{
+								Update: &pb.EventBlockDataviewViewUpdateFilterUpdate{
+									Id:   "1",
+									Item: newFilter,
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view filter remove", func(t *testing.T) {
 		// given
@@ -685,13 +850,23 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Filter, 1)
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfRemove))
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfRemove).Remove)
-		removedFilter := change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfRemove).Remove
-		assert.Len(t, removedFilter.Ids, 1)
-		assert.Equal(t, "1", removedFilter.Ids[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Filter: []*pb.EventBlockDataviewViewUpdateFilter{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfRemove{
+								Remove: &pb.EventBlockDataviewViewUpdateFilterRemove{
+									Ids: []string{"1"},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view filter add", func(t *testing.T) {
 		// given
@@ -741,14 +916,26 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Filter, 1)
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfAdd))
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfAdd).Add)
-		addFilter := change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfAdd).Add
-		assert.Equal(t, "1", addFilter.AfterId)
-		assert.Len(t, addFilter.Items, 1)
-		assert.Equal(t, newSort, addFilter.Items[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Filter: []*pb.EventBlockDataviewViewUpdateFilter{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfAdd{
+								Add: &pb.EventBlockDataviewViewUpdateFilterAdd{
+									AfterId: "1",
+									Items: []*model.BlockContentDataviewFilter{
+										newSort,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view filter move", func(t *testing.T) {
 		// given
@@ -802,13 +989,23 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Filter, 1)
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfMove))
-		assert.NotNil(t, change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfMove).Move)
-		moveFilter := change.Filter[0].Operation.(*pb.EventBlockDataviewViewUpdateFilterOperationOfMove).Move
-		assert.Len(t, moveFilter.Ids, 1)
-		assert.Equal(t, "2", moveFilter.Ids[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Filter: []*pb.EventBlockDataviewViewUpdateFilter{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateFilterOperationOfMove{
+								Move: &pb.EventBlockDataviewViewUpdateFilterMove{
+									Ids: []string{"2"},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view relation update", func(t *testing.T) {
 		// given
@@ -846,12 +1043,28 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Relation, 1)
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfUpdate))
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfUpdate).Update)
-		updateRelations := change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfUpdate).Update
-		assert.Equal(t, false, updateRelations.Item.IsVisible)
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Relation: []*pb.EventBlockDataviewViewUpdateRelation{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfUpdate{
+								Update: &pb.EventBlockDataviewViewUpdateRelationUpdate{
+									Id: "name",
+									Item: &model.BlockContentDataviewRelation{
+										Key:       "name",
+										IsVisible: false,
+										Width:     1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view relation add", func(t *testing.T) {
 		// given
@@ -896,13 +1109,24 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Relation, 1)
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfAdd))
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfAdd).Add)
-		addRelationsChange := change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfAdd).Add
-		assert.Len(t, addRelationsChange.Items, 1)
-		assert.Equal(t, addRelation, addRelationsChange.Items[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Relation: []*pb.EventBlockDataviewViewUpdateRelation{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfAdd{
+								Add: &pb.EventBlockDataviewViewUpdateRelationAdd{
+									AfterId: "name",
+									Items:   []*model.BlockContentDataviewRelation{addRelation},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view relation remove", func(t *testing.T) {
 		// given
@@ -934,13 +1158,23 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Relation, 1)
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfRemove))
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfRemove).Remove)
-		removeRelationsChange := change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfRemove).Remove
-		assert.Len(t, removeRelationsChange.Ids, 1)
-		assert.Equal(t, "name", removeRelationsChange.Ids[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Relation: []*pb.EventBlockDataviewViewUpdateRelation{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfRemove{
+								Remove: &pb.EventBlockDataviewViewUpdateRelationRemove{
+									Ids: []string{"name"},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("view relation move", func(t *testing.T) {
 		// given
@@ -988,13 +1222,23 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
 
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockDataviewViewUpdate).BlockDataviewViewUpdate
-		assert.Len(t, change.Relation, 1)
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfMove))
-		assert.NotNil(t, change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfMove).Move)
-		moveRelationsChange := change.Relation[0].Operation.(*pb.EventBlockDataviewViewUpdateRelationOperationOfMove).Move
-		assert.Len(t, moveRelationsChange.Ids, 1)
-		assert.Equal(t, "description", moveRelationsChange.Ids[0])
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					Id:     b1.Id,
+					ViewId: "1",
+					Relation: []*pb.EventBlockDataviewViewUpdateRelation{
+						{
+							Operation: &pb.EventBlockDataviewViewUpdateRelationOperationOfMove{
+								Move: &pb.EventBlockDataviewViewUpdateRelationMove{
+									Ids: []string{"description"},
+								},
+							},
+						},
+					},
+				},
+			},
+		), diff)
 	})
 	t.Run("multiple changes", func(t *testing.T) {
 		// given

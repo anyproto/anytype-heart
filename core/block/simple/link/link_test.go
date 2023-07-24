@@ -1,6 +1,7 @@
 package link
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -59,21 +60,16 @@ func TestLink_Diff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink
-		assert.NotNil(t, change.TargetBlockId)
-		assert.Equal(t, "42", change.TargetBlockId.Value)
-
-		assert.NotNil(t, change.Style)
-		assert.Equal(t, model.BlockContentLink_Dataview, change.Style.Value)
-
-		assert.NotNil(t, change.CardStyle)
-		assert.Equal(t, model.BlockContentLink_Card, change.CardStyle.Value)
-
-		assert.NotNil(t, change.IconSize)
-		assert.Equal(t, model.BlockContentLink_SizeMedium, change.IconSize.Value)
-
-		assert.NotNil(t, change.Description)
-		assert.Equal(t, model.BlockContentLink_Content, change.Description.Value)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLink{
+			BlockSetLink: &pb.EventBlockSetLink{
+				Id:            b1.Id,
+				TargetBlockId: &pb.EventBlockSetLinkTargetBlockId{Value: "42"},
+				Style:         &pb.EventBlockSetLinkStyle{Value: model.BlockContentLink_Dataview},
+				IconSize:      &pb.EventBlockSetLinkIconSize{Value: model.BlockContentLink_SizeMedium},
+				CardStyle:     &pb.EventBlockSetLinkCardStyle{Value: model.BlockContentLink_Card},
+				Description:   &pb.EventBlockSetLinkDescription{Value: model.BlockContentLink_Content},
+			},
+		}), diff)
 	})
 	t.Run("relations changed", func(t *testing.T) {
 		// given
@@ -87,9 +83,13 @@ func TestLink_Diff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink.Relations
-		assert.Len(t, change.Value, 1)
-		assert.Equal(t, "cover", change.Value[0])
+
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLink{
+			BlockSetLink: &pb.EventBlockSetLink{
+				Id:        b1.Id,
+				Relations: &pb.EventBlockSetLinkRelations{Value: []string{"cover"}},
+			},
+		}), diff)
 	})
 }
 

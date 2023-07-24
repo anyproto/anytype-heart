@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
@@ -27,12 +28,15 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Layout
-		changeLimit := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Limit
-		changeViewID := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.ViewId
-		assert.Equal(t, model.BlockContentWidget_Tree, change.Value)
-		assert.Nil(t, changeLimit)
-		assert.Nil(t, changeViewID)
+
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetWidget{
+			BlockSetWidget: &pb.EventBlockSetWidget{
+				Id:     b1.Id,
+				Layout: &pb.EventBlockSetWidgetLayout{Value: model.BlockContentWidget_Tree},
+				Limit:  nil,
+				ViewId: nil,
+			},
+		}), diff)
 	})
 	t.Run("view id changed", func(t *testing.T) {
 		// given
@@ -46,12 +50,15 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.ViewId
-		changeLimit := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Limit
-		changeLayout := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Layout
-		assert.Equal(t, "viewID", change.Value)
-		assert.Nil(t, changeLimit)
-		assert.Nil(t, changeLayout)
+
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetWidget{
+			BlockSetWidget: &pb.EventBlockSetWidget{
+				Id:     b1.Id,
+				Layout: nil,
+				Limit:  nil,
+				ViewId: &pb.EventBlockSetWidgetViewId{Value: "viewID"},
+			},
+		}), diff)
 	})
 	t.Run("limit changed", func(t *testing.T) {
 		// given
@@ -71,5 +78,14 @@ func TestDiff(t *testing.T) {
 		assert.Equal(t, int32(10), change.Value)
 		assert.Nil(t, changeLayout)
 		assert.Nil(t, changeViewID)
+
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetWidget{
+			BlockSetWidget: &pb.EventBlockSetWidget{
+				Id:     b1.Id,
+				Layout: nil,
+				Limit:  &pb.EventBlockSetWidgetLimit{Value: 10},
+				ViewId: nil,
+			},
+		}), diff)
 	})
 }
