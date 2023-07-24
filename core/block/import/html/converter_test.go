@@ -2,6 +2,7 @@ package html
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,6 @@ func TestHTML_GetSnapshots(t *testing.T) {
 	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
 	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
 
-	assert.NotNil(t, err)
-	assert.Equal(t, err["testdata/test"], cv.ErrNoObjectsToImport)
+	assert.NotEmpty(t, err)
+	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), cv.ErrNoObjectsToImport))
 }

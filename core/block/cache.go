@@ -313,7 +313,9 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID strin
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
-	tr.Close()
+	if tr != nil {
+		tr.Close()
+	}
 	id := domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: payload.RootRawChange.Id,
@@ -336,7 +338,9 @@ func (s *Service) CreateTreeObject(ctx context.Context, spaceID string, tp cores
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
-	tr.Close()
+	if tr != nil {
+		tr.Close()
+	}
 	id := domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: payload.RootRawChange.Id,

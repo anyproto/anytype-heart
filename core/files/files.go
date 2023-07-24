@@ -862,15 +862,13 @@ func (s *service) StoreFileKeys(fileKeys ...FileKeys) error {
 	return s.fileStore.AddFileKeys(fks...)
 }
 
-var ErrFileNotFound = fmt.Errorf("file not found")
-
 func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error) {
 	ok, err := s.isDeleted(id.ObjectID)
 	if err != nil {
 		return nil, fmt.Errorf("check if file is deleted: %w", err)
 	}
 	if ok {
-		return nil, ErrFileNotFound
+		return nil, domain.ErrFileNotFound
 	}
 
 	fileList, err := s.fileStore.ListByTarget(id.ObjectID)
@@ -883,7 +881,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 		fileList, err = s.fileIndexInfo(ctx, id, false)
 		if err != nil {
 			log.With("cid", id.ObjectID).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
-			return nil, ErrFileNotFound
+			return nil, domain.ErrFileNotFound
 		}
 		ok, err := s.fileStore.IsFileImported(id.ObjectID)
 		if err != nil {

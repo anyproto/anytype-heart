@@ -24,7 +24,7 @@ func TestDsObjectStore_ResolveSpaceID(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "space2", got)
 
-	_, err = s.ResolveSpaceID("object3")
-	require.Error(t, err)
-	assert.True(t, isNotFound(err))
+	got, err = s.ResolveSpaceID("object3")
+	require.NoError(t, err)
+	assert.Equal(t, "", got)
 }

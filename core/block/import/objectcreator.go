@@ -405,6 +405,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 	tasks := make([]func() error, 0)
 	var fileHashes []string
 
+	// todo: rewrite it in order not to create state with URLs inside links
 	err := getblock.Do(oc.picker, newID, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
@@ -413,13 +414,16 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					return s.Sync(newID, bl)
+					err := s.Sync(newID, bl)
+					if err != nil {
+						return err
+					}
+					// fill hashes after sync only
+					if fh, ok := b.(simple.FileHashes); ok {
+						fileHashes = fh.FillFileHashes(fileHashes)
+					}
+					return nil
 				})
-			}
-			if bl != nil {
-				if file := bl.Model().GetFile(); file != nil {
-					fileHashes = append(fileHashes, file.Hash)
-				}
 			}
 			return true
 		})

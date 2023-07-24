@@ -113,7 +113,7 @@ func (f *fileSync) tryToUpload() (string, error) {
 		}
 		return fileId, err
 	}
-	log.Info("done upload", zap.String("fileID", fileId))
+	log.Warn("done upload", zap.String("fileID", fileId))
 	if f.onUpload != nil {
 		err := f.onUpload(spaceId, fileId)
 		if err != nil {

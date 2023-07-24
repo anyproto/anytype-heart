@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -302,8 +303,8 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 			}
 			// file's hash is id
 			idxErr := i.reindexDoc(ctx, id)
-			if idxErr != nil {
-				log.With("id", id).Errorf("failed to reindex file: %s", idxErr.Error())
+			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
+				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
 			}
 			idxErr = i.store.AddToIndexQueue(id)
 			if idxErr != nil {

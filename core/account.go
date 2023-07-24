@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -79,7 +80,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		storePath := filepath.Join(req.StorePath, address)
 		err := os.MkdirAll(storePath, 0700)
 		if err != nil {
-			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, oserror.TransformError(err))
 		}
 		if err := config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
@@ -305,7 +306,7 @@ func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRe
 	if req.RemoveData {
 		err := mw.AccountRemoveLocalData()
 		if err != nil {
-			return response(pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+			return response(pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
 		}
 	} else {
 		err := mw.stop()
@@ -365,13 +366,13 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 
 	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
 		if err := removeDirs(destination, dirs); err != nil {
-			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
 		}
 	}
 
 	err := os.MkdirAll(destination, 0700)
 	if err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, oserror.TransformError(err))
 	}
 
 	err = mw.stop()
@@ -393,12 +394,12 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	}
 
 	if err := removeDirs(srcPath, dirs); err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
 	}
 
 	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
 		if err := os.RemoveAll(srcPath); err != nil {
-			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
 		}
 	}
 
@@ -515,7 +516,7 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	}
 	profile, err := getUserProfile(req)
 	if err != nil {
-		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err)
+		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, oserror.TransformError(err))
 	}
 	address, code, err := mw.createAccountFromExport(profile, req)
 	if err != nil {
@@ -570,7 +571,7 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 	mw.rootPath = req.RootPath
 	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, oserror.TransformError(err)
 	}
 	mw.accountSearchCancel()
 	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) {

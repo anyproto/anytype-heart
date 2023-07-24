@@ -161,7 +161,7 @@ func (ot *ObjectType) InitState(st *state.State) {
 		return true
 	})
 
-	var relIds []string
+	var recommendedRelationIDs []string
 	rels, err := ot.relationService.FetchKeys(recommendedRelationsKeys...)
 	if err != nil {
 		log.Errorf("failed to fetch relation keys: %s", err.Error())
@@ -172,6 +172,7 @@ func (ot *ObjectType) InitState(st *state.State) {
 			log.Debugf("ot relation missing relation: %s", relKey)
 			continue
 		}
+		recommendedRelationIDs = append(recommendedRelationIDs, r.Id)
 
 		// add recommended relation to the dataview
 		dataview.Dataview.RelationLinks = append(dataview.Dataview.RelationLinks, r.RelationLink())
@@ -192,7 +193,6 @@ func (ot *ObjectType) InitState(st *state.State) {
 	} else {
 		objectType = bundle.TypeKeyObjectType.URL()
 	}
-
 	template.InitTemplate(st,
 		template.WithForcedObjectTypes([]string{objectType}),
 		template.WithDetail(bundle.RelationKeyRecommendedLayout, pbtypes.Int64(recommendedLayout)),
@@ -204,7 +204,7 @@ func (ot *ObjectType) InitState(st *state.State) {
 		template.WithFeaturedRelations,
 		template.WithDataviewID("templates", templatesDataview, true),
 		template.WithDataview(dataview, true),
-		template.WithForcedDetail(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds)),
+		template.WithForcedDetail(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(recommendedRelationIDs)),
 		template.WithCondition(!isBundled, template.WithAddedFeaturedRelation(bundle.RelationKeySourceObject)),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),

@@ -67,7 +67,7 @@ func (ds *Service) GetPages(ctx context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
 	notionImportContext *block.NotionImportContext,
-	progress process.Progress) (*converter.Response, converter.ConvertError) {
+	progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
 	if convertError != nil {
 		return nil, convertError
@@ -92,14 +92,14 @@ func (ds *Service) GetPages(ctx context.Context,
 	return &converter.Response{Snapshots: allSnapshots}, converterError
 }
 
-func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, converter.ConvertError) {
+func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, *converter.ConvertError) {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	ce := converter.NewError()
 
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			pool.Stop()
-			return nil, converter.NewCancelError("cancel error", err)
+			return nil, converter.NewCancelError(err)
 		}
 		res := r.(*Result)
 		if res.ce != nil {
@@ -146,18 +146,20 @@ func (ds *Service) extractTitleFromPages(page Page) string {
 	return ""
 }
 
-func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *block.NotionImportContext) converter.ConvertError {
+func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *block.NotionImportContext) *converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
-			return converter.NewCancelError(p.ID, err)
+			return converter.NewCancelError(err)
 		}
-
 		importContext.NotionPageIdsToAnytype[p.ID] = uuid.New().String()
 		if p.Parent.PageID != "" {
 			importContext.ParentPageToChildIDs[p.Parent.PageID] = append(importContext.ParentPageToChildIDs[p.Parent.PageID], p.ID)
 		}
 		if p.Parent.DatabaseID != "" {
 			importContext.ParentPageToChildIDs[p.Parent.DatabaseID] = append(importContext.ParentPageToChildIDs[p.Parent.DatabaseID], p.ID)
+		}
+		if p.Parent.PageID == "" && p.Parent.DatabaseID == "" {
+			importContext.ParentPageToChildIDs[""] = append(importContext.ParentPageToChildIDs[""], p.ID)
 		}
 		importContext.PageNameToID[p.ID] = ds.extractTitleFromPages(p)
 	}

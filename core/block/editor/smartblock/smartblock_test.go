@@ -159,7 +159,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	doc := state.NewDoc(id, bm)
 	fx.source.EXPECT().ReadDoc(gomock.Any(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
-	fx.store.EXPECT().StoreSpaceID(id, "space1")
 
 	err := fx.Init(&InitContext{
 		Ctx:     context.Background(),

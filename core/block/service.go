@@ -100,6 +100,7 @@ func New(
 		layoutConverter: layoutConverter,
 		closing:         make(chan struct{}),
 		syncer:          map[string]*treeSyncer{},
+		openedObjects:   make(map[string]bool),
 	}
 }
 
@@ -163,6 +164,7 @@ type Service struct {
 	closing     chan struct{}
 
 	predefinedObjectWasMissing bool
+	openedObjects              map[string]bool
 }
 
 func (s *Service) Name() string {
@@ -270,6 +272,7 @@ func (s *Service) OpenBlock(
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
 		SmartblockType: int(sbType),
 	})
+	s.openedObjects[id] = true
 	return obj, nil
 }
 
@@ -309,7 +312,12 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 			s.sendOnRemoveEvent(id)
 		}
 	}
+	delete(s.openedObjects, id)
 	return nil
+}
+
+func (s *Service) GetOpenedObjects() []string {
+	return lo.Keys(s.openedObjects)
 }
 
 func (s *Service) CloseBlocks() {

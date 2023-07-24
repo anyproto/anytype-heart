@@ -92,6 +92,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		LocalStoragePath: cfg.CustomFileStorePath,
 		TimeZone:         cfg.TimeZone,
 		AnalyticsId:      analyticsId,
+		NetworkId:        s.getNetworkID(),
 	}, nil
 }
 
@@ -114,4 +115,8 @@ func (s *service) getAnalyticsID() (string, error) {
 	}
 
 	return analyticsID, err
+}
+
+func (s *service) getNetworkID() string {
+	return s.config.GetNodeConf().NetworkId
 }

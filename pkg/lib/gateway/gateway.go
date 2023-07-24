@@ -231,7 +231,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
 		log.With("path", r.URL.Path).Errorf("error getting file: %s", err)
-		if strings.Contains(err.Error(), "file not found") {
+		if errors.Is(err, domain.ErrFileNotFound) {
 			http.NotFound(w, r)
 			return
 		}
@@ -286,7 +286,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	file, reader, err := g.getImage(ctx, r)
 	if err != nil {
 		log.With("path", r.URL.Path).Errorf("error getting image: %s", err)
-		if strings.Contains(err.Error(), "file not found") {
+		if errors.Is(err, domain.ErrFileNotFound) {
 			http.NotFound(w, r)
 			return
 		}

@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -72,24 +71,25 @@ func (ds *Service) GetDatabase(ctx context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *block.NotionImportContext) (*converter.Response, converter.ConvertError) {
+	req *block.NotionImportContext) (*converter.Response, *converter.ConvertError) {
 	var (
 		allSnapshots         = make([]*converter.Snapshot, 0)
 		notionIdsToAnytype   = make(map[string]string, 0)
 		databaseNameToID     = make(map[string]string, 0)
 		parentPageToChildIDs = make(map[string][]string, 0)
-		convertError         = converter.ConvertError{}
+		convertError         = converter.NewError()
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, converter.NewCancelError(d.ID, err)
+			return nil, converter.NewCancelError(err)
 		}
 		snapshot, err := ds.makeDatabaseSnapshot(d, req, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, converter.NewFromError(d.ID, err)
+			return nil, converter.NewFromError(err)
 		}
 		if err != nil {
+			convertError.Add(err)
 			continue
 		}
 		allSnapshots = append(allSnapshots, snapshot...)
@@ -113,10 +113,15 @@ func (ds *Service) makeDatabaseSnapshot(d Database, request *block.NotionImportC
 	}
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := make([]*converter.Snapshot, 0)
-	if snapshot := ds.handleNameProperty(d, request, st); snapshot != nil {
-		snapshots = append(snapshots, snapshot)
+	for _, databaseProperty := range d.Properties {
+		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
+			ds.handleNameProperty(databaseProperty, st)
+		}
 	}
 	for key, databaseProperty := range d.Properties {
+		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
+			continue
+		}
 		if snapshot := ds.createRelationFromDatabaseProperty(request, databaseProperty, key, st); snapshot != nil {
 			snapshots = append(snapshots, snapshot)
 		}
@@ -134,26 +139,18 @@ func (ds *Service) makeDatabaseSnapshot(d Database, request *block.NotionImportC
 	return snapshots, nil
 }
 
-func (ds *Service) handleNameProperty(d Database, request *block.NotionImportContext, st *state.State) *converter.Snapshot {
-	var (
-		snapshot     *converter.Snapshot
-		key          = "Name"
-		nameProperty property.DatabasePropertyHandler
-		ok           bool
-	)
-	if nameProperty, ok = d.Properties[key]; !ok {
-		if nameProperty, ok = d.Properties[strings.ToUpper(key)]; ok {
-			key = strings.ToUpper(key)
-		} else if nameProperty, ok = d.Properties[strings.ToLower(key)]; ok {
-			key = strings.ToLower(key)
-		}
+func (ds *Service) handleNameProperty(databaseProperty property.DatabasePropertyHandler, st *state.State) *converter.Snapshot {
+	databaseProperty.SetDetail(bundle.RelationKeyName.String(), st.Details().GetFields())
+	relationLinks := &model.RelationLink{
+		Key:    bundle.RelationKeyName.String(),
+		Format: model.RelationFormat_shorttext,
 	}
-	if nameProperty == nil {
-		return nil
+	st.AddRelationLinks(relationLinks)
+	err := converter.AddRelationsToDataView(st, relationLinks)
+	if err != nil {
+		logger.Errorf("failed to add relation to notion database, %s", err.Error())
 	}
-	snapshot = ds.createRelationFromDatabaseProperty(request, nameProperty, key, st)
-	delete(d.Properties, key)
-	return snapshot
+	return nil
 }
 
 func (ds *Service) createRelationFromDatabaseProperty(req *block.NotionImportContext,
@@ -203,6 +200,7 @@ func (ds *Service) getRelationDetails(propertyFormat property.DatabasePropertyHa
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	return details
 }

@@ -27,12 +27,12 @@ func (_m *MockConverter) EXPECT() *MockConverter_Expecter {
 }
 
 // GetSnapshots provides a mock function with given fields: ctx, req, progress
-func (_m *MockConverter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (_m *MockConverter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	ret := _m.Called(ctx, req, progress)
 
 	var r0 *converter.Response
-	var r1 converter.ConvertError
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*converter.Response, converter.ConvertError)); ok {
+	var r1 *converter.ConvertError
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*converter.Response, *converter.ConvertError)); ok {
 		return rf(ctx, req, progress)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) *converter.Response); ok {
@@ -43,11 +43,11 @@ func (_m *MockConverter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImpo
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) converter.ConvertError); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *pb.RpcObjectImportRequest, process.Progress) *converter.ConvertError); ok {
 		r1 = rf(ctx, req, progress)
 	} else {
 		if ret.Get(1) != nil {
-			r1 = ret.Get(1).(converter.ConvertError)
+			r1 = ret.Get(1).(*converter.ConvertError)
 		}
 	}
 
@@ -74,12 +74,12 @@ func (_c *MockConverter_GetSnapshots_Call) Run(run func(ctx context.Context, req
 	return _c
 }
 
-func (_c *MockConverter_GetSnapshots_Call) Return(_a0 *converter.Response, _a1 converter.ConvertError) *MockConverter_GetSnapshots_Call {
+func (_c *MockConverter_GetSnapshots_Call) Return(_a0 *converter.Response, _a1 *converter.ConvertError) *MockConverter_GetSnapshots_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockConverter_GetSnapshots_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*converter.Response, converter.ConvertError)) *MockConverter_GetSnapshots_Call {
+func (_c *MockConverter_GetSnapshots_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectImportRequest, process.Progress) (*converter.Response, *converter.ConvertError)) *MockConverter_GetSnapshots_Call {
 	_c.Call.Return(run)
 	return _c
 }

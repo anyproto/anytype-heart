@@ -66,7 +66,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewError()
-	e.Add("error", fmt.Errorf("converter error"))
+	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
@@ -132,7 +132,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewError()
-	e.Add("error", fmt.Errorf("converter error"))
+	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
@@ -173,7 +173,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	converter := mock_converter.NewMockConverter(t)
 	e := cv.NewError()
-	e.Add("error", fmt.Errorf("converter error"))
+	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -431,7 +431,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 func Test_ImportCancelError(t *testing.T) {
 	i := Import{}
 	converter := mock_converter.NewMockConverter(t)
-	e := cv.NewCancelError("path", fmt.Errorf("converter error"))
+	e := cv.NewCancelError(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
@@ -449,7 +449,7 @@ func Test_ImportCancelError(t *testing.T) {
 func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
 	converter := mock_converter.NewMockConverter(t)
-	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	e := cv.NewFromError(cv.ErrNoObjectsToImport)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
@@ -467,7 +467,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
 	converter := mock_converter.NewMockConverter(t)
-	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	e := cv.NewFromError(cv.ErrNoObjectsToImport)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -500,7 +500,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
 	ctrl := gomock.NewController(t)
-	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	e := cv.NewFromError(cv.ErrNoObjectsToImport)
 	converter := mock_converter.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -541,7 +541,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
 	converter := mock_converter.NewMockConverter(t)
-	e := cv.NewFromError("test", cv.ErrLimitExceeded)
+	e := cv.NewFromError(cv.ErrLimitExceeded)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -569,5 +569,4 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
-	assert.Contains(t, res.Error(), "import path: test")
 }

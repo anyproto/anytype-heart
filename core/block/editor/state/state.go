@@ -1109,6 +1109,11 @@ func (s *State) FileRelationKeys() []string {
 }
 
 func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
+	hashes = s.getAllFileHashesOrTempLink(detailsKeys)
+	return slice.FilterCID(hashes)
+}
+
+func (s *State) getAllFileHashesOrTempLink(detailsKeys []string) (hashes []string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)

@@ -160,7 +160,7 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 12) // 8 objects + root collection + semicolon collection + 2 relations
+	assert.Len(t, sn.Snapshots, 16) // 8 objects + root collection + semicolon collection + 5 relations
 	assert.Contains(t, sn.Snapshots[0].FileName, "semicolon.csv")
 	assert.Len(t, pbtypes.GetStringList(sn.Snapshots[0].Snapshot.Data.Collections, template.CollectionStoreKey), 8)
 	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
@@ -401,7 +401,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T
 			subObjects = append(subObjects, snapshot)
 		}
 	}
-	assert.Len(t, subObjects, 0)
+	assert.Len(t, subObjects, 6)
 }
 
 func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.T) {
@@ -515,4 +515,96 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	for _, object := range objects {
 		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
 	}
+}
+
+func Test_findUniqueRelationAndAddNumber(t *testing.T) {
+	t.Run("All relations are unique", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3"}, result)
+	})
+
+	t.Run("1 relation name is not unique", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1"}, result)
+	})
+
+	t.Run("1 relation is not unique after first iteration", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation", "relation 1"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 2", "relation 1"}, result)
+	})
+
+	t.Run("1 relation name is not unique after first iteration: other order", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 2"}, result)
+	})
+
+	t.Run("1 relation name is not unique after second iteration", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 2", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 2", "relation 3"}, result)
+	})
+
+	t.Run("2 relation names are not unique after first iteration", func(t *testing.T) {
+		relations := []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation", "relation", "relation 2"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation", "relation1", "relation2", "relation3", "relation 1", "relation 3", "relation 4", "relation 2"}, result)
+	})
+
+	t.Run("2 relation names are not unique", func(t *testing.T) {
+		relations := []string{"relation1", "relation2", "relation3", "relation", "relation", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation1", "relation2", "relation3", "relation", "relation 1", "relation 2"}, result)
+	})
+
+	t.Run("empty columns", func(t *testing.T) {
+		relations := []string{"relation1", "", "", "relation", "", "relation"}
+		result := findUniqueRelationAndAddNumber(relations)
+		assert.Equal(t, []string{"relation1", "1", "2", "relation", "3", "relation 1"}, result)
+	})
+}
+
+func Test_findUniqueRelationWithSpaces(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/relationswithspaces.csv"},
+				Delimiter:               ";",
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+
+	var subObjects []*converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		if snapshot.SbType == sb.SmartBlockTypeSubObject {
+			subObjects = append(subObjects, snapshot)
+		}
+	}
+	assert.Len(t, subObjects, 5)
+
+	name := pbtypes.GetString(subObjects[0].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text")
+
+	name = pbtypes.GetString(subObjects[1].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 1")
+
+	name = pbtypes.GetString(subObjects[2].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 3")
+
+	name = pbtypes.GetString(subObjects[3].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 2")
+
+	name = pbtypes.GetString(subObjects[4].Snapshot.Data.Details, bundle.RelationKeyName.String())
+	assert.True(t, name == "Text 4")
 }

@@ -488,9 +488,6 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 		if id == sb.Id() {
 			// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 			diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
-			if len(diff.GetFields()) > 0 {
-				log.With("objectID", sb.Id()).Debugf("onMetaChange current object: %s", pbtypes.Sprint(diff))
-			}
 		}
 
 		msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
@@ -908,8 +905,8 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.SpaceID(), sb.Id())
 		if wsId != "" {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
-		} else {
-			log.With("objectID", sb.Id()).Errorf("injectLocalDetails empty workspace: %v", err)
+		} else if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDeleted.String()) && err != core.ErrObjectDoesNotBelongToWorkspace {
+			log.With("objectID", sb.Id()).Warnf("injectLocalDetails empty workspace: %v", err)
 		}
 	}
 
@@ -1185,7 +1182,10 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 			}
 		}
 	}
-	return
+
+	// we may have temporary links in files, we need to ignore them
+	// todo: remove after fixing of how import works
+	return slice.FilterCID(hashes)
 }
 
 func (sb *smartBlock) storeFileKeys(doc state.Doc) {

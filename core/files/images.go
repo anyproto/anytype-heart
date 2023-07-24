@@ -10,15 +10,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
-var ErrImageNotFound = fmt.Errorf("image not found")
-
 func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, error) {
 	ok, err := s.isDeleted(id.ObjectID)
 	if err != nil {
 		return nil, fmt.Errorf("check if file is deleted: %w", err)
 	}
 	if ok {
-		return nil, ErrFileNotFound
+		return nil, domain.ErrFileNotFound
 	}
 
 	files, err := s.fileStore.ListByTarget(id.ObjectID)
@@ -32,7 +30,7 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, err
 		files, err = s.fileIndexInfo(ctx, id, true)
 		if err != nil {
 			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
-			return nil, ErrImageNotFound
+			return nil, domain.ErrFileNotFound
 		}
 	}
 
@@ -49,7 +47,7 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, err
 
 	return &image{
 		spaceID:         id.SpaceID,
-		hash:            files[0].Targets[0],
+		hash:            id.ObjectID,
 		variantsByWidth: variantsByWidth,
 		service:         s,
 	}, nil

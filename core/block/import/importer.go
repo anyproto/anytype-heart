@@ -100,7 +100,7 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) err
 	allErrors := converter.NewError()
 	if c, ok := i.converters[req.Type.String()]; ok {
 		res, err := c.GetSnapshots(ctx, req, progress)
-		if len(err) != 0 {
+		if !err.IsEmpty() {
 			resultErr := err.GetResultError(req.Type)
 			if shouldReturnError(resultErr, res, req) {
 				return resultErr
@@ -144,6 +144,7 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) err
 
 func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
+		errors.Is(e, converter.ErrFailedToReceiveListOfObjects) ||
 		(errors.Is(e, converter.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
 		errors.Is(e, converter.ErrCancel)
 }
@@ -188,7 +189,7 @@ func (i *Import) ValidateNotionToken(
 func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
-	allErrors := make(map[string]error, 0)
+	allErrors := converter.NewError()
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
@@ -203,19 +204,13 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 
 	progress.SetProgressMessage("Create objects")
 	details := i.createObjects(ctx, res, progress, req, allErrors)
-	if len(allErrors) != 0 {
+	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
-
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) createObjects(ctx context.Context,
-	res *converter.Response,
-	progress process.Progress,
-	req *pb.RpcObjectImportRequest,
-	allErrors map[string]error) map[string]*types.Struct {
-
+func (i *Import) createObjects(ctx context.Context, res *converter.Response, progress process.Progress, req *pb.RpcObjectImportRequest, allErrors *converter.ConvertError) map[string]*types.Struct {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
 	if err != nil {
 		return nil
@@ -244,17 +239,7 @@ func (i *Import) getFilesIDs(res *converter.Response) []string {
 	return fileIDs
 }
 
-func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response, allErrors map[string]error, req *pb.RpcObjectImportRequest) (
-	map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
-	getFileName := func(object *converter.Snapshot) string {
-		if object.FileName != "" {
-			return object.FileName
-		}
-		if object.Id != "" {
-			return object.Id
-		}
-		return ""
-	}
+func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response, allErrors *converter.ConvertError, req *pb.RpcObjectImportRequest) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*converter.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
@@ -266,21 +251,21 @@ func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response
 		}
 		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects)
 		if err != nil {
-			allErrors[getFileName(snapshot)] = err
+			allErrors.Add(err)
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
 				return nil, nil, err
 			}
-			log.With(zap.String("object name", getFileName(snapshot))).Error(err)
+			log.With(zap.String("object name", snapshot.Id)).Error(err)
 		}
 	}
 	for _, option := range relationOptions {
 		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
 		if err != nil {
-			allErrors[getFileName(option)] = err
+			allErrors.Add(err)
 			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
 				return nil, nil, err
 			}
-			log.With(zap.String("object name", getFileName(option))).Error(err)
+			log.With(zap.String("object name", option.Id)).Error(err)
 		}
 	}
 	return oldIDToNew, createPayloads, nil
@@ -330,21 +315,17 @@ func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpo
 	pool.CloseTask()
 }
 
-func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
-	mode pb.RpcObjectImportRequestMode,
-	allErrors map[string]error,
-	progress process.Progress) map[string]*types.Struct {
+func (i *Import) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, allErrors *converter.ConvertError, progress process.Progress) map[string]*types.Struct {
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			wrappedError := errors.Wrap(converter.ErrCancel, err.Error())
-			allErrors["cancel error"] = wrappedError
+			allErrors.Add(errors.Wrap(converter.ErrCancel, err.Error()))
 			pool.Stop()
 			return nil
 		}
 		res := r.(*Result)
 		if res.err != nil {
-			allErrors[res.newID] = res.err
+			allErrors.Add(res.err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				pool.Stop()
 				return nil

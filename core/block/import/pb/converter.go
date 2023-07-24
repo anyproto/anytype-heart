@@ -54,10 +54,10 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 	}
 }
 
-func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	params, e := p.GetParams(req.Params)
 	if e != nil || params == nil {
-		return nil, converter.NewFromError("", fmt.Errorf("wrong parameters"))
+		return nil, converter.NewFromError(fmt.Errorf("wrong parameters"))
 	}
 	allSnapshots, targetObjects, allErrors := p.getSnapshots(req.SpaceId, req, progress, params.GetPath(), req.IsMigration)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -73,7 +73,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 		rootCollection := converter.NewRootCollection(p.service)
 		rootCol, colErr := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 		if colErr != nil {
-			allErrors.Add(rootCollectionName, colErr)
+			allErrors.Add(colErr)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, allErrors
 			}
@@ -95,13 +95,13 @@ func (p *Pb) getSnapshots(
 	progress process.Progress,
 	allPaths []string,
 	isMigration bool,
-) ([]*converter.Snapshot, []string, converter.ConvertError) {
+) ([]*converter.Snapshot, []string, *converter.ConvertError) {
 	targetObjects := make([]string, 0)
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allErrors := converter.NewError()
 	for _, path := range allPaths {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, converter.NewCancelError(path, err)
+			return nil, nil, converter.NewCancelError(err)
 		}
 		snapshots, objects := p.handlePath(spaceID, req, path, allErrors, isMigration)
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -117,12 +117,12 @@ func (p *Pb) handlePath(
 	spaceID string,
 	req *pb.RpcObjectImportRequest,
 	path string,
-	allErrors converter.ConvertError,
+	allErrors *converter.ConvertError,
 	isMigration bool,
 ) ([]*converter.Snapshot, []string) {
 	files, err := p.readFile(path)
 	if err != nil {
-		allErrors.Add(path, err)
+		allErrors.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil
 		}
@@ -136,7 +136,7 @@ func (p *Pb) handlePath(
 	)
 	profile, err := p.getProfileFromFiles(files)
 	if err != nil {
-		allErrors.Add(constant.ProfileFile, err)
+		allErrors.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil
 		}
@@ -144,7 +144,7 @@ func (p *Pb) handlePath(
 	if profile != nil {
 		pr, e := p.core.LocalProfile(spaceID)
 		if e != nil {
-			allErrors.Add(constant.ProfileFile, e)
+			allErrors.Add(e)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil
 			}
@@ -204,7 +204,7 @@ func (p *Pb) getSnapshotsFromFiles(
 	spaceID string,
 	req *pb.RpcObjectImportRequest,
 	pbFiles map[string]io.ReadCloser,
-	allErrors converter.ConvertError,
+	allErrors *converter.ConvertError,
 	path, profileID string,
 	needToCreateWidgets, isMigration bool,
 ) ([]*converter.Snapshot, []string) {
@@ -213,7 +213,7 @@ func (p *Pb) getSnapshotsFromFiles(
 	for name, file := range pbFiles {
 		snapshot, err := p.getSnapshotForPbFile(spaceID, name, profileID, path, file, needToCreateWidgets, isMigration)
 		if err != nil {
-			allErrors.Add(name, err)
+			allErrors.Add(err)
 			if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil
 			}
@@ -337,7 +337,7 @@ func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
 	return readers, nil
 }
 
-func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors converter.ConvertError, mode pb.RpcObjectImportRequestMode) {
+func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *converter.ConvertError, mode pb.RpcObjectImportRequestMode) {
 	newIDToOld := make(map[string]string, len(snapshots))
 	fileIDs := make([]string, 0)
 	for _, snapshot := range snapshots {
@@ -351,7 +351,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors con
 		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
 		err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileIDs)
 		if err != nil {
-			allErrors.Add(snapshot.FileName, err)
+			allErrors.Add(err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return
 			}
