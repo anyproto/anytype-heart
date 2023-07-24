@@ -30,6 +30,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
@@ -80,8 +81,8 @@ func main() {
 	}
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 
-	var stopChan = make(chan os.Signal, 2)
-	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	var signalChan = make(chan os.Signal, 2)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGUSR1)
 
 	var mw = core.New()
 	mw.EventSender = event.NewGrpcSender()
@@ -241,8 +242,12 @@ func main() {
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
 
-	select {
-	case <-stopChan:
+	for {
+		sig := <-signalChan
+		if sig == syscall.SIGUSR1 {
+			handleSIGUSR1(mw)
+			continue
+		}
 		server.Stop()
 		proxy.Close()
 		mw.AppShutdown(context.Background(), &pb.RpcAppShutdownRequest{})
@@ -294,4 +299,20 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 		},
 	}
 	return resp
+}
+
+func handleSIGUSR1(mw *core.Middleware) {
+	a := mw.GetApp()
+	if a == nil {
+		log.Errorf("failed to save stacktrace: need to start app first")
+		return
+	}
+	wl := a.Component(wallet.CName)
+	if wl == nil {
+		log.Errorf("failed to save stacktrace: need to start wallet first")
+		return
+	}
+	if err := debug.SaveStackToRepo(wl.(wallet.Wallet).RepoPath(), true); err != nil {
+		log.Errorf(err.Error())
+	}
 }

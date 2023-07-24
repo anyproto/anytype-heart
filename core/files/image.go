@@ -272,15 +272,15 @@ func (i *image) extractLastModifiedDate(ctx context.Context, imageExif *mill.Ima
 	if err == nil {
 		lastModifiedDate = largest.Meta().LastModifiedDate
 	}
-	if lastModifiedDate == 0 {
+	if lastModifiedDate <= 0 {
 		lastModifiedDate = imageExif.Created.Unix()
 	}
 
-	if lastModifiedDate == 0 && err == nil {
+	if lastModifiedDate <= 0 && err == nil {
 		lastModifiedDate = largest.Meta().Added.Unix()
 	}
 
-	if lastModifiedDate == 0 {
+	if lastModifiedDate <= 0 {
 		lastModifiedDate = time.Now().Unix()
 	}
 

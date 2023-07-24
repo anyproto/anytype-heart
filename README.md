@@ -2,21 +2,21 @@
 Middleware library for Anytype.
 
 ## Build from Source
-1. Install Golang 1.19+ [from here](http://golang.org/dl/) or using preferred package manager
+1. Install Golang 1.19.x [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
 ### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
 `make install-dev-js` — build the local server and copy it and protobuf binding into `../anytype-ts`
 
 Parameters:
-- `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted network configuration
+- `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)
 
 ### Build for iOS
 Instructions to set up environment for iOS: [here](https://github.com/anyproto/anytype-swift/blob/main/docs/Setup_For_Middleware.md)
 1. `make build-ios` to build the framework into `dist/ios` folder
 
    Parameters:
-    - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted network configuration
+    - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)
 2. `make protos-swift` to generate swift protobuf bindings into `dist/ios/pb`
 
 ### Build for Android
@@ -24,7 +24,7 @@ Instructions to setup environment for Android: [here](https://github.com/anyprot
 1. `make build-android` to build the library into `dist/android` folder
 
    Parameters:
-    - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted network configuration
+    - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
 
 ## Rebuild protobuf generated files
@@ -43,9 +43,7 @@ make protos
 ```
 
 ## Run tests
-Generate mocks:
-
-Install Mockery https://vektra.github.io/mockery/installation/
+Install dependencies for running tests and generate mocks:
 ```
 make test-deps
 ```
@@ -60,35 +58,16 @@ brew install llvm
 echo 'export PATH="/<homebrew location>/llvm/bin:$PATH"' >> ~/.zshrc 
 ```
 
-NodeJS addon test:
-```
-cd jsaddon
-npm run test
-```
-
-### Integration and migration tests
-
-You need a [Github Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#personal-access-tokens-classic) in order to access out private repos while building the docker image.
-
-Migration tests are checking process of migration from the old infrastructure.
-
+### Integration tests
 First you need to start a docker container via docker-compose:
 ```
-export GITHUB_LOGIN=<your github login>
-export GITHUB_TOKEN=<your github token>
 export ANYTYPE_TEST_GRPC_PORT=31088
-export ANYTYPE_OLD_TEST_GRPC_PORT=31188
 docker-compose up -d
 ```
 
 Then you can run the basic integration tests:
 ```
 make test-integration
-```
-
-And migration tests:
-```
-make test-migration
 ```
 
 
@@ -161,6 +140,13 @@ To generate Swift protobuf:
 ```
 brew install swift-protobuf
 ```
+
+## Install local deps (Debian-Ubuntu)
+We need to have protoc binary (3.x version) and libprotoc headers in orderto build the grpc-web plugin
+```
+apt install protobuf-compiler libprotoc-dev
+```
+
 
 ## Contribution
 Thank you for your desire to develop Anytype together. 

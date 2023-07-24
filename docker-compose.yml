@@ -1,19 +1,7 @@
 version: "3.9"
 
 services:
-  old_application:
-    image: middleware-old
-#    image: ghcr.io/anyproto/anytype-heart:v0.25.1
-    ports:
-      - "${ANYTYPE_OLD_TEST_GRPC_PORT:?}:31007"
-      - "31018:31008"
-    volumes:
-      - type: bind
-        source: ./tests/.cache/anytype_old
-        target: /var/anytype_old
   test:
-    environment:
-      - ANYTYPE_OFFLINE=true
     build:
       context: .
       args:

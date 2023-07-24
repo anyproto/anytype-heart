@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -258,7 +259,7 @@ func (u *uploader) SetFile(path string) Uploader {
 	u.getReader = func(ctx context.Context) (*fileReader, error) {
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, err
+			return nil, oserror.TransformError(err)
 		}
 
 		buf := bufio.NewReaderSize(f, bufSize)
