@@ -72,13 +72,6 @@ func TestDiff(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Limit
-		changeLayout := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.Layout
-		changeViewID := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetWidget).BlockSetWidget.ViewId
-		assert.Equal(t, int32(10), change.Value)
-		assert.Nil(t, changeLayout)
-		assert.Nil(t, changeViewID)
-
 		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetWidget{
 			BlockSetWidget: &pb.EventBlockSetWidget{
 				Id:     b1.Id,

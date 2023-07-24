@@ -1,6 +1,7 @@
 package latex
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -48,8 +49,11 @@ func TestLatex_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLatex).BlockSetLatex
-		assert.NotNil(t, change.Text)
-		assert.Equal(t, "42", change.Text.Value)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLatex{
+			BlockSetLatex: &pb.EventBlockSetLatex{
+				Id:   b1.Id,
+				Text: &pb.EventBlockSetLatexText{Value: "42"},
+			},
+		}), diff)
 	})
 }

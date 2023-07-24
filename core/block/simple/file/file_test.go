@@ -1,6 +1,7 @@
 package file
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 	"time"
 
@@ -58,13 +59,17 @@ func TestFile_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetFile).BlockSetFile
-		assert.NotNil(t, change.Hash)
-		assert.NotNil(t, change.Size_)
-		assert.NotNil(t, change.State)
-		assert.NotNil(t, change.Name)
-		assert.NotNil(t, change.Type)
-		assert.NotNil(t, change.Mime)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetFile{
+			BlockSetFile: &pb.EventBlockSetFile{
+				Id:    b1.Id,
+				Type:  &pb.EventBlockSetFileType{Value: model.BlockContentFile_Video},
+				State: &pb.EventBlockSetFileState{Value: model.BlockContentFile_Done},
+				Mime:  &pb.EventBlockSetFileMime{Value: "video/mpeg"},
+				Hash:  &pb.EventBlockSetFileHash{Value: "hash"},
+				Name:  &pb.EventBlockSetFileName{Value: "image.mpg"},
+				Size_: &pb.EventBlockSetFileSize{Value: 3},
+			},
+		}), diff)
 	})
 }
 
