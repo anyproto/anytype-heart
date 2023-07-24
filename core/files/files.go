@@ -23,9 +23,9 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
@@ -53,14 +53,14 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
-	FileAdd(ctx session.Context, options ...AddOption) (File, error)
-	FileByHash(ctx session.Context, hash string) (File, error)
-	FileGetKeys(ctx session.Context, hash string) (*FileKeys, error)
-	FileListOffload(ctx session.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
-	FileOffload(ctx session.Context, ileID string, includeNotPinned bool) (totalSize uint64, err error)
-	GetSpaceUsage(ctx session.Context) (*pb.RpcFileSpaceUsageResponseUsage, error)
-	ImageAdd(ctx session.Context, options ...AddOption) (Image, error)
-	ImageByHash(ctx session.Context, hash string) (Image, error)
+	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, error)
+	FileByHash(ctx context.Context, id domain.FullID) (File, error)
+	FileGetKeys(id domain.FullID) (*FileKeys, error)
+	FileListOffload(ctx context.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
+	FileOffload(ctx context.Context, fileID string, includeNotPinned bool) (totalSize uint64, err error)
+	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
+	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, error)
+	ImageByHash(ctx context.Context, id domain.FullID) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
 
 	app.Component
@@ -117,19 +117,19 @@ var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
-func (s *service) fileAdd(ctx session.Context, opts AddOptions) (string, *storage.FileInfo, error) {
-	fileInfo, err := s.fileAddWithConfig(ctx, &m.Blob{}, opts)
+func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) (string, *storage.FileInfo, error) {
+	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, opts)
 	if err != nil {
 		return "", nil, err
 	}
 
-	node, keys, err := s.fileAddNodeFromFiles(ctx, []*storage.FileInfo{fileInfo})
+	node, keys, err := s.fileAddNodeFromFiles(ctx, spaceID, []*storage.FileInfo{fileInfo})
 	if err != nil {
 		return "", nil, err
 	}
 
 	nodeHash := node.Cid().String()
-	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
+	if err = s.fileIndexData(ctx, node, domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}); err != nil {
 		return "", nil, err
 	}
 
@@ -144,16 +144,16 @@ func (s *service) fileAdd(ctx session.Context, opts AddOptions) (string, *storag
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
-func (s *service) fileRestoreKeys(ctx session.Context, hash string) (map[string]string, error) {
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
-	links, err := helpers.LinksAtCid(ctx.Context(), dagService, hash)
+func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullID) (map[string]string, error) {
+	dagService := s.dagServiceForSpace(id.SpaceID)
+	links, err := helpers.LinksAtCid(ctx, dagService, id.ObjectID)
 	if err != nil {
 		return nil, err
 	}
 
 	var fileKeys = make(map[string]string)
 	for _, index := range links {
-		node, err := helpers.NodeAtLink(ctx.Context(), dagService, index)
+		node, err := helpers.NodeAtLink(ctx, dagService, index)
 		if err != nil {
 			return nil, err
 		}
@@ -164,11 +164,11 @@ func (s *service) fileRestoreKeys(ctx session.Context, hash string) (map[string]
 			if err == nil {
 				fileKeys["/"+index.Name+"/"] = info.Key
 			} else {
-				log.Warnf("fileRestoreKeys not found in db %s(%s)", node.Cid().String(), hash+"/"+index.Name)
+				log.Warnf("fileRestoreKeys not found in db %s(%s)", node.Cid().String(), id.ObjectID+"/"+index.Name)
 			}
 		} else {
 			for _, link := range node.Links() {
-				innerLinks, err := helpers.LinksAtCid(ctx.Context(), dagService, link.Cid.String())
+				innerLinks, err := helpers.LinksAtCid(ctx, dagService, link.Cid.String())
 				if err != nil {
 					return nil, err
 				}
@@ -191,7 +191,7 @@ func (s *service) fileRestoreKeys(ctx session.Context, hash string) (map[string]
 	}
 
 	err = s.fileStore.AddFileKeys(filestore.FileKeys{
-		Hash: hash,
+		Hash: id.ObjectID,
 		Keys: fileKeys,
 	})
 	if err != nil {
@@ -201,8 +201,8 @@ func (s *service) fileRestoreKeys(ctx session.Context, hash string) (map[string]
 	return fileKeys, nil
 }
 
-func (s *service) fileAddNodeFromDirs(ctx session.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
+func (s *service) fileAddNodeFromDirs(ctx context.Context, spaceID string, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
+	dagService := s.dagServiceForSpace(spaceID)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(dagService)
 	outer.SetCidBuilder(cidBuilder)
@@ -214,7 +214,7 @@ func (s *service) fileAddNodeFromDirs(ctx session.Context, dirs *storage.Directo
 
 		var err error
 		for link, file := range dir.Files {
-			err = s.fileNode(ctx, file, inner, link)
+			err = s.fileNode(ctx, spaceID, file, inner, link)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -225,13 +225,13 @@ func (s *service) fileAddNodeFromDirs(ctx session.Context, dirs *storage.Directo
 		if err != nil {
 			return nil, nil, err
 		}
-		err = dagService.Add(ctx.Context(), node)
+		err = dagService.Add(ctx, node)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		id := node.Cid().String()
-		err = helpers.AddLinkToDirectory(ctx.Context(), dagService, outer, olink, id)
+		err = helpers.AddLinkToDirectory(ctx, dagService, outer, olink, id)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -242,15 +242,15 @@ func (s *service) fileAddNodeFromDirs(ctx session.Context, dirs *storage.Directo
 		return nil, nil, err
 	}
 	// todo: pin?
-	err = dagService.Add(ctx.Context(), node)
+	err = dagService.Add(ctx, node)
 	if err != nil {
 		return nil, nil, err
 	}
 	return node, keys, nil
 }
 
-func (s *service) fileAddNodeFromFiles(ctx session.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
+func (s *service) fileAddNodeFromFiles(ctx context.Context, spaceID string, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
+	dagService := s.dagServiceForSpace(spaceID)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(dagService)
 	outer.SetCidBuilder(cidBuilder)
@@ -258,7 +258,7 @@ func (s *service) fileAddNodeFromFiles(ctx session.Context, files []*storage.Fil
 	var err error
 	for i, file := range files {
 		link := strconv.Itoa(i)
-		err = s.fileNode(ctx, file, outer, link)
+		err = s.fileNode(ctx, spaceID, file, outer, link)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -270,14 +270,14 @@ func (s *service) fileAddNodeFromFiles(ctx session.Context, files []*storage.Fil
 		return nil, nil, err
 	}
 
-	err = dagService.Add(ctx.Context(), node)
+	err = dagService.Add(ctx, node)
 	if err != nil {
 		return nil, nil, err
 	}
 	return node, keys, nil
 }
 
-func (s *service) fileGetInfoForPath(ctx session.Context, pth string) (*storage.FileInfo, error) {
+func (s *service) fileGetInfoForPath(ctx context.Context, spaceID string, pth string) (*storage.FileInfo, error) {
 	if !strings.HasPrefix(pth, "/ipfs/") {
 		return nil, fmt.Errorf("path should starts with '/dagService/...'")
 	}
@@ -287,56 +287,60 @@ func (s *service) fileGetInfoForPath(ctx session.Context, pth string) (*storage.
 		return nil, fmt.Errorf("path is too short: it should match '/ipfs/:hash/...'")
 	}
 
-	keys, err := s.FileGetKeys(ctx, pthParts[2])
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: pthParts[2],
+	}
+	keys, err := s.FileGetKeys(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrive file keys: %w", err)
 	}
 
 	if key, exists := keys.Keys["/"+strings.Join(pthParts[3:], "/")+"/"]; exists {
-		return s.fileInfoFromPath(ctx, "", pth, key)
+		// TODO Why target is empty?
+		return s.fileInfoFromPath(ctx, id.SpaceID, "", pth, key)
 	}
 
 	return nil, fmt.Errorf("key not found")
 }
 
-func (s *service) FileGetKeys(ctx session.Context, hash string) (*FileKeys, error) {
-	m, err := s.fileStore.GetFileKeys(hash)
+func (s *service) FileGetKeys(id domain.FullID) (*FileKeys, error) {
+	m, err := s.fileStore.GetFileKeys(id.ObjectID)
 	if err != nil {
 		if err != localstore.ErrNotFound {
 			return nil, err
 		}
 	} else {
 		return &FileKeys{
-			Hash: hash,
+			Hash: id.ObjectID,
 			Keys: m,
 		}, nil
 	}
 
 	// in case we don't have keys cached fot this file
 	// we should have all the CIDs locally, so 5s is more than enough
-	cctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ctx = ctx.WithContext(cctx)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	fileKeysRestored, err := s.fileRestoreKeys(ctx, hash)
+	fileKeysRestored, err := s.fileRestoreKeys(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to restore file keys: %w", err)
 	}
 
 	return &FileKeys{
-		Hash: hash,
+		Hash: id.ObjectID,
 		Keys: fileKeysRestored,
 	}, nil
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx session.Context, inode ipld.Node, hash string) error {
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
+func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, id domain.FullID) error {
+	dagService := s.dagServiceForSpace(id.SpaceID)
 	for _, link := range inode.Links() {
-		nd, err := helpers.NodeAtLink(ctx.Context(), dagService, link)
+		nd, err := helpers.NodeAtLink(ctx, dagService, link)
 		if err != nil {
 			return err
 		}
-		err = s.fileIndexNode(ctx, nd, hash)
+		err = s.fileIndexNode(ctx, nd, id)
 		if err != nil {
 			return err
 		}
@@ -346,19 +350,19 @@ func (s *service) fileIndexData(ctx session.Context, inode ipld.Node, hash strin
 }
 
 // fileIndexNode walks a file node, indexing file links
-func (s *service) fileIndexNode(ctx session.Context, inode ipld.Node, fileID string) error {
+func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.FullID) error {
 	if looksLikeFileNode(inode) {
-		return s.fileIndexLink(ctx, inode, fileID)
+		return s.fileIndexLink(ctx, inode, id)
 	}
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
+	dagService := s.dagServiceForSpace(id.SpaceID)
 	links := inode.Links()
 	for _, link := range links {
-		n, err := helpers.NodeAtLink(ctx.Context(), dagService, link)
+		n, err := helpers.NodeAtLink(ctx, dagService, link)
 		if err != nil {
 			return err
 		}
 
-		err = s.fileIndexLink(ctx, n, fileID)
+		err = s.fileIndexLink(ctx, n, id)
 		if err != nil {
 			return err
 		}
@@ -368,23 +372,23 @@ func (s *service) fileIndexNode(ctx session.Context, inode ipld.Node, fileID str
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(ctx session.Context, inode ipld.Node, fileID string) error {
+func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, id domain.FullID) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
 	}
 	linkID := dlink.Cid.String()
-	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
+	if err := s.fileStore.AddTarget(linkID, id.ObjectID); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
 	}
-	if err := s.addToSyncQueue(ctx, fileID, true); err != nil {
-		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
+	if err := s.addToSyncQueue(ctx, id, true); err != nil {
+		return fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
 	return nil
 }
 
-func (s *service) fileInfoFromPath(ctx session.Context, target string, path string, key string) (*storage.FileInfo, error) {
-	id, r, err := s.dataAtPath(ctx, path+"/"+MetaLinkName)
+func (s *service) fileInfoFromPath(ctx context.Context, spaceID string, target string, path string, key string) (*storage.FileInfo, error) {
+	id, r, err := s.dataAtPath(ctx, spaceID, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
 	}
@@ -451,24 +455,24 @@ func (s *service) fileInfoFromPath(ctx session.Context, target string, path stri
 	return &file, nil
 }
 
-func (s *service) fileContent(ctx session.Context, hash string) (io.ReadSeeker, *storage.FileInfo, error) {
+func (s *service) fileContent(ctx context.Context, id domain.FullID) (io.ReadSeeker, *storage.FileInfo, error) {
 	var err error
 	var file *storage.FileInfo
 	var reader io.ReadSeeker
-	file, err = s.fileStore.GetByHash(hash)
+	file, err = s.fileStore.GetByHash(id.ObjectID)
 	if err != nil {
 		return nil, nil, err
 	}
-	reader, err = s.getContentReader(ctx, file)
+	reader, err = s.getContentReader(ctx, id.SpaceID, file)
 	return reader, file, err
 }
 
-func (s *service) getContentReader(ctx session.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
+func (s *service) getContentReader(ctx context.Context, spaceID string, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
 		return nil, err
 	}
-	fd, err := s.getFile(ctx, fileCid)
+	fd, err := s.getFile(ctx, spaceID, fileCid)
 	if err != nil {
 		return nil, err
 	}
@@ -489,7 +493,7 @@ func (s *service) getContentReader(ctx session.Context, file *storage.FileInfo) 
 	return dec.DecryptReader(fd)
 }
 
-func (s *service) fileAddWithConfig(ctx session.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -580,7 +584,7 @@ func (s *service) fileAddWithConfig(ctx session.Context, mill m.Mill, conf AddOp
 		contentReader = res.File
 	}
 
-	contentNode, err := s.addFile(ctx, contentReader)
+	contentNode, err := s.addFile(ctx, spaceID, contentReader)
 	if err != nil {
 		return nil, err
 	}
@@ -601,7 +605,7 @@ func (s *service) fileAddWithConfig(ctx session.Context, mill m.Mill, conf AddOp
 		metaReader = bytes.NewReader(plaintext)
 	}
 
-	metaNode, err := s.addFile(ctx, metaReader)
+	metaNode, err := s.addFile(ctx, spaceID, metaReader)
 	if err != nil {
 		return nil, err
 	}
@@ -616,13 +620,13 @@ func (s *service) fileAddWithConfig(ctx session.Context, mill m.Mill, conf AddOp
 	return fileInfo, nil
 }
 
-func (s *service) fileNode(ctx session.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
+func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.FileInfo, dir uio.Directory, link string) error {
 	file, err := s.fileStore.GetByHash(file.Hash)
 	if err != nil {
 		return err
 	}
 
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
+	dagService := s.dagServiceForSpace(spaceID)
 	pair := uio.NewDirectory(dagService)
 	pair.SetCidBuilder(cidBuilder)
 
@@ -630,8 +634,8 @@ func (s *service) fileNode(ctx session.Context, file *storage.FileInfo, dir uio.
 		return fmt.Errorf("metaHash is empty")
 	}
 
-	err = helpers.AddLinkToDirectory(ctx.Context(), dagService, pair, MetaLinkName, file.MetaHash)
-	err = helpers.AddLinkToDirectory(ctx.Context(), dagService, pair, ContentLinkName, file.Hash)
+	err = helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
+	err = helpers.AddLinkToDirectory(ctx, dagService, pair, ContentLinkName, file.Hash)
 	if err != nil {
 		return err
 	}
@@ -640,15 +644,15 @@ func (s *service) fileNode(ctx session.Context, file *storage.FileInfo, dir uio.
 	if err != nil {
 		return err
 	}
-	err = dagService.Add(ctx.Context(), node)
+	err = dagService.Add(ctx, node)
 	if err != nil {
 		return err
 	}
 
-	return helpers.AddLinkToDirectory(ctx.Context(), dagService, dir, link, node.Cid().String())
+	return helpers.AddLinkToDirectory(ctx, dagService, dir, link, node.Cid().String())
 }
 
-func (s *service) fileBuildDirectory(ctx session.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -665,12 +669,12 @@ func (s *service) fileBuildDirectory(ctx session.Context, reader io.ReadSeeker, 
 			Name:      filename,
 			Plaintext: sch.Plaintext || plaintext,
 		}
-		err := s.normalizeOptions(ctx, &opts)
+		err := s.normalizeOptions(ctx, spaceID, &opts)
 		if err != nil {
 			return nil, err
 		}
 
-		added, err := s.fileAddWithConfig(ctx, mil, opts)
+		added, err := s.fileAddWithConfig(ctx, spaceID, mil, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -698,7 +702,7 @@ func (s *service) fileBuildDirectory(ctx session.Context, reader io.ReadSeeker, 
 					Name:      filename,
 					Plaintext: step.Link.Plaintext || plaintext,
 				}
-				err = s.normalizeOptions(ctx, opts)
+				err = s.normalizeOptions(ctx, spaceID, opts)
 				if err != nil {
 					return nil, err
 				}
@@ -716,13 +720,13 @@ func (s *service) fileBuildDirectory(ctx session.Context, reader io.ReadSeeker, 
 					Plaintext: step.Link.Plaintext || plaintext,
 				}
 
-				err = s.normalizeOptions(ctx, opts)
+				err = s.normalizeOptions(ctx, spaceID, opts)
 				if err != nil {
 					return nil, err
 				}
 			}
 
-			added, err := s.fileAddWithConfig(ctx, stepMill, *opts)
+			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
 			if err != nil {
 				return nil, err
 			}
@@ -736,22 +740,22 @@ func (s *service) fileBuildDirectory(ctx session.Context, reader io.ReadSeeker, 
 	return dir, nil
 }
 
-func (s *service) fileIndexInfo(ctx session.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
-	dagService := s.dagServiceForSpace(ctx.SpaceID())
-	links, err := helpers.LinksAtCid(ctx.Context(), dagService, hash)
+func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfExists bool) ([]*storage.FileInfo, error) {
+	dagService := s.dagServiceForSpace(id.SpaceID)
+	links, err := helpers.LinksAtCid(ctx, dagService, id.ObjectID)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := s.fileStore.GetFileKeys(hash)
+	keys, err := s.fileStore.GetFileKeys(id.ObjectID)
 	if err != nil {
 		// no keys means file is not encrypted or keys are missing
-		log.Debugf("failed to get file keys from filestore %s: %s", hash, err.Error())
+		log.Debugf("failed to get file keys from filestore %s: %s", id.ObjectID, err.Error())
 	}
 
 	var files []*storage.FileInfo
 	for _, index := range links {
-		node, err := helpers.NodeAtLink(ctx.Context(), dagService, index)
+		node, err := helpers.NodeAtLink(ctx, dagService, index)
 		if err != nil {
 			return nil, err
 		}
@@ -762,7 +766,7 @@ func (s *service) fileIndexInfo(ctx session.Context, hash string, updateIfExists
 				key = keys["/"+index.Name+"/"]
 			}
 
-			fileIndex, err := s.fileInfoFromPath(ctx, hash, hash+"/"+index.Name, key)
+			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceID, id.ObjectID, id.ObjectID+"/"+index.Name, key)
 			if err != nil {
 				return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
 			}
@@ -774,7 +778,7 @@ func (s *service) fileIndexInfo(ctx session.Context, hash string, updateIfExists
 					key = keys["/"+index.Name+"/"+link.Name+"/"]
 				}
 
-				fileIndex, err := s.fileInfoFromPath(ctx, hash, hash+"/"+index.Name+"/"+link.Name, key)
+				fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceID, id.ObjectID, id.ObjectID+"/"+index.Name+"/"+link.Name, key)
 				if err != nil {
 					return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
 				}
@@ -791,11 +795,11 @@ func (s *service) fileIndexInfo(ctx session.Context, hash string, updateIfExists
 	return files, nil
 }
 
-func (s *service) addToSyncQueue(ctx session.Context, fileID string, uploadedByUser bool) error {
-	if err := s.fileSync.AddFile(ctx.SpaceID(), fileID, uploadedByUser); err != nil {
+func (s *service) addToSyncQueue(ctx context.Context, id domain.FullID, uploadedByUser bool) error {
+	if err := s.fileSync.AddFile(id.SpaceID, id.ObjectID, uploadedByUser); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
-	if _, err := s.syncStatusWatcher.Watch(ctx.SpaceID(), fileID, nil); err != nil {
+	if _, err := s.syncStatusWatcher.Watch(id.SpaceID, id.ObjectID, nil); err != nil {
 		return fmt.Errorf("watch sync status: %w", err)
 	}
 	return nil
@@ -860,8 +864,8 @@ func (s *service) StoreFileKeys(fileKeys ...FileKeys) error {
 
 var ErrFileNotFound = fmt.Errorf("file not found")
 
-func (s *service) FileByHash(ctx session.Context, hash string) (File, error) {
-	ok, err := s.isDeleted(hash)
+func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error) {
+	ok, err := s.isDeleted(id.ObjectID)
 	if err != nil {
 		return nil, fmt.Errorf("check if file is deleted: %w", err)
 	}
@@ -869,45 +873,46 @@ func (s *service) FileByHash(ctx session.Context, hash string) (File, error) {
 		return nil, ErrFileNotFound
 	}
 
-	fileList, err := s.fileStore.ListByTarget(hash)
+	fileList, err := s.fileStore.ListByTarget(id.ObjectID)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(fileList) == 0 || fileList[0].MetaHash == "" {
 		// info from ipfs
-		fileList, err = s.fileIndexInfo(ctx, hash, false)
+		fileList, err = s.fileIndexInfo(ctx, id, false)
 		if err != nil {
-			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
+			log.With("cid", id.ObjectID).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
 		}
-		ok, err := s.fileStore.IsFileImported(hash)
+		ok, err := s.fileStore.IsFileImported(id.ObjectID)
 		if err != nil {
 			return nil, fmt.Errorf("check if file is imported: %w", err)
 		}
 		if ok {
-			log.With("fileID", hash).Warn("file is imported, push it to uploading queue")
+			log.With("fileID", id.ObjectID).Warn("file is imported, push it to uploading queue")
 			// If file is imported we have to sync it, so we don't set sync status to synced
-			err = s.fileStore.SetIsFileImported(hash, false)
+			err = s.fileStore.SetIsFileImported(id.ObjectID, false)
 			if err != nil {
 				return nil, fmt.Errorf("set is file imported: %w", err)
 			}
 		} else {
 			// If file is not imported then it's definitely synced
-			err = s.fileStore.SetSyncStatus(hash, int(syncstatus.StatusSynced))
+			err = s.fileStore.SetSyncStatus(id.ObjectID, int(syncstatus.StatusSynced))
 			if err != nil {
 				return nil, fmt.Errorf("set sync status: %w", err)
 			}
 		}
 	}
-	if err := s.addToSyncQueue(ctx, hash, false); err != nil {
-		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
+	if err := s.addToSyncQueue(ctx, id, false); err != nil {
+		return nil, fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
 	fileIndex := fileList[0]
 	return &file{
-		hash: hash,
-		info: fileIndex,
-		node: s,
+		spaceID: id.SpaceID,
+		hash:    id.ObjectID,
+		info:    fileIndex,
+		node:    s,
 	}, nil
 }
 
@@ -919,26 +924,27 @@ func (s *service) isDeleted(fileID string) (bool, error) {
 	return pbtypes.GetBool(d.GetDetails(), bundle.RelationKeyIsDeleted.String()), nil
 }
 
-func (s *service) FileAdd(ctx session.Context, options ...AddOption) (File, error) {
+func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
 	}
 
-	err := s.normalizeOptions(ctx, &opts)
+	err := s.normalizeOptions(ctx, spaceID, &opts)
 	if err != nil {
 		return nil, err
 	}
 
-	hash, info, err := s.fileAdd(ctx, opts)
+	hash, info, err := s.fileAdd(ctx, spaceID, opts)
 	if err != nil {
 		return nil, err
 	}
 
 	f := &file{
-		hash: hash,
-		info: info,
-		node: s,
+		spaceID: spaceID,
+		hash:    hash,
+		info:    info,
+		node:    s,
 	}
 	return f, nil
 }

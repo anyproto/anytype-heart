@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -21,6 +20,7 @@ import (
 func NewDate(spaceID string, id string, coreService core.Service) (s Source) {
 	return &date{
 		id:          id,
+		spaceID:     spaceID,
 		coreService: coreService,
 	}
 }
@@ -79,7 +79,7 @@ func (v *date) parseId() error {
 	return nil
 }
 
-func (v *date) ReadDoc(ctx session.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	if err = v.parseId(); err != nil {
 		return
 	}

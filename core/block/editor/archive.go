@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"context"
-
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
@@ -22,7 +20,7 @@ import (
 
 type DetailsModifier interface {
 	ModifyDetails(ctx session.Context, objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
-	ModifyLocalDetails(ctx session.Context, objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
+	ModifyLocalDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type Archive struct {
@@ -50,10 +48,9 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	p.DisableLayouts()
-	sessionCtx := ctx.Ctx.WithContext(context.Background())
-	p.AddHook(p.updateObjects(sessionCtx), smartblock.HookAfterApply)
+	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 
-	return p.updateObjects(sessionCtx)(smartblock.ApplyInfo{})
+	return p.updateObjects(smartblock.ApplyInfo{})
 }
 
 func (p *Archive) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -79,61 +76,59 @@ func (p *Archive) Relations(_ *state.State) relationutils.Relations {
 	return nil
 }
 
-func (p *Archive) updateObjects(ctx session.Context) func(info smartblock.ApplyInfo) (err error) {
-	return func(info smartblock.ApplyInfo) (err error) {
-		archivedIds, err := p.GetIds()
-		if err != nil {
-			return
-		}
-
-		records, _, err := p.objectStore.Query(nil, database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(true),
-				},
-			},
-		})
-		if err != nil {
-			return
-		}
-		var storeArchivedIds = make([]string, 0, len(records))
-		for _, rec := range records {
-			storeArchivedIds = append(storeArchivedIds, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
-		}
-
-		removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
-		for _, removedId := range removedIds {
-			go func(id string) {
-				if err := p.DetailsModifier.ModifyLocalDetails(ctx, id, func(current *types.Struct) (*types.Struct, error) {
-					if current == nil || current.Fields == nil {
-						current = &types.Struct{
-							Fields: map[string]*types.Value{},
-						}
-					}
-					current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(false)
-					return current, nil
-				}); err != nil {
-					log.Errorf("archive: can't set detail to object: %v", err)
-				}
-			}(removedId)
-		}
-		for _, addedId := range addedIds {
-			go func(id string) {
-				if err := p.DetailsModifier.ModifyLocalDetails(ctx, id, func(current *types.Struct) (*types.Struct, error) {
-					if current == nil || current.Fields == nil {
-						current = &types.Struct{
-							Fields: map[string]*types.Value{},
-						}
-					}
-					current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(true)
-					return current, nil
-				}); err != nil {
-					log.Errorf("archive: can't set detail to object: %v", err)
-				}
-			}(addedId)
-		}
+func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
+	archivedIds, err := p.GetIds()
+	if err != nil {
 		return
 	}
+
+	records, _, err := p.objectStore.Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+	var storeArchivedIds = make([]string, 0, len(records))
+	for _, rec := range records {
+		storeArchivedIds = append(storeArchivedIds, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+	}
+
+	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
+	for _, removedId := range removedIds {
+		go func(id string) {
+			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+				if current == nil || current.Fields == nil {
+					current = &types.Struct{
+						Fields: map[string]*types.Value{},
+					}
+				}
+				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(false)
+				return current, nil
+			}); err != nil {
+				log.Errorf("archive: can't set detail to object: %v", err)
+			}
+		}(removedId)
+	}
+	for _, addedId := range addedIds {
+		go func(id string) {
+			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+				if current == nil || current.Fields == nil {
+					current = &types.Struct{
+						Fields: map[string]*types.Value{},
+					}
+				}
+				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(true)
+				return current, nil
+			}); err != nil {
+				log.Errorf("archive: can't set detail to object: %v", err)
+			}
+		}(addedId)
+	}
+	return
 }

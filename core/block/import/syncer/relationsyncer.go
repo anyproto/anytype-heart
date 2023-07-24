@@ -1,13 +1,13 @@
 package syncer
 
 import (
+	"context"
 	"strings"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -17,7 +17,7 @@ import (
 var logger = logging.Logger("import-file-relation-syncer")
 
 type RelationSyncer interface {
-	Sync(ctx session.Context, state *state.State, relationName string) []string
+	Sync(state *state.State, relationName string) []string
 }
 
 type FileRelationSyncer struct {
@@ -29,7 +29,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	return &FileRelationSyncer{service: service, fileStore: fileStore}
 }
 
-func (fs *FileRelationSyncer) Sync(ctx session.Context, state *state.State, relationName string) []string {
+func (fs *FileRelationSyncer) Sync(state *state.State, relationName string) []string {
 	allFiles := fs.getFilesFromRelations(state, relationName)
 	allFilesHashes := make([]string, 0)
 	filesToDelete := make([]string, 0, len(allFiles))
@@ -38,7 +38,7 @@ func (fs *FileRelationSyncer) Sync(ctx session.Context, state *state.State, rela
 			continue
 		}
 		var hash string
-		if hash = fs.uploadFile(ctx, f); hash != "" {
+		if hash = fs.uploadFile(f); hash != "" {
 			allFilesHashes = append(allFilesHashes, hash)
 			filesToDelete = append(filesToDelete, hash)
 		}
@@ -65,14 +65,19 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 	return allFiles
 }
 
-func (fs *FileRelationSyncer) uploadFile(ctx session.Context, file string) string {
+func (fs *FileRelationSyncer) uploadFile(file string) string {
 	var (
 		hash string
 		err  error
 	)
+	spaceID, err := fs.service.ResolveSpaceID(file)
+	if err != nil {
+		logger.With("objectID", file).Errorf("resolve spaceID %s", err)
+		return ""
+	}
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
 		req := pb.RpcFileUploadRequest{Url: file}
-		hash, err = fs.service.UploadFile(ctx, req)
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		}
@@ -82,7 +87,7 @@ func (fs *FileRelationSyncer) uploadFile(ctx session.Context, file string) strin
 			return file
 		}
 		req := pb.RpcFileUploadRequest{LocalPath: file}
-		hash, err = fs.service.UploadFile(ctx, req)
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		}

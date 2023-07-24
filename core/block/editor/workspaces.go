@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -166,7 +166,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 }
 
 type templateCloner interface {
-	TemplateClone(ctx session.Context, id string) (templateID string, err error)
+	TemplateClone(id string) (templateID string, err error)
 }
 
 type WorkspaceParameters struct {
@@ -178,7 +178,7 @@ func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
 	return wp.IsHighlighted == other.IsHighlighted
 }
 
-func (w *Workspaces) createRelation(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createRelation(ctx context.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create relation: no data")
 	}
@@ -233,7 +233,7 @@ func (w *Workspaces) createRelation(ctx session.Context, st *state.State, detail
 	return
 }
 
-func (w *Workspaces) createRelationOption(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createRelationOption(ctx context.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create option: no data")
 	}
@@ -273,7 +273,7 @@ func (w *Workspaces) createRelationOption(ctx session.Context, st *state.State, 
 	return
 }
 
-func (w *Workspaces) createObjectType(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createObjectType(ctx context.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
@@ -394,7 +394,7 @@ func (w *Workspaces) createObjectType(ctx session.Context, st *state.State, deta
 				continue
 			}
 
-			_, err := w.templateCloner.TemplateClone(ctx, id)
+			_, err := w.templateCloner.TemplateClone(id)
 			if err != nil {
 				log.Errorf("failed to clone template %s: %s", id, err.Error())
 			}
@@ -403,7 +403,7 @@ func (w *Workspaces) createObjectType(ctx session.Context, st *state.State, deta
 	return
 }
 
-func (w *Workspaces) createObject(ctx session.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) createObject(ctx context.Context, st *state.State, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
@@ -428,7 +428,7 @@ func (w *Workspaces) createObject(ctx session.Context, st *state.State, details 
 	}
 }
 
-func (w *Workspaces) CreateSubObject(ctx session.Context, details *types.Struct) (id string, object *types.Struct, err error) {
+func (w *Workspaces) CreateSubObject(ctx context.Context, details *types.Struct) (id string, object *types.Struct, err error) {
 	st := w.NewState()
 	id, object, err = w.createObject(ctx, st, details)
 	if err != nil {
@@ -440,7 +440,7 @@ func (w *Workspaces) CreateSubObject(ctx session.Context, details *types.Struct)
 	return
 }
 
-func (w *Workspaces) CreateSubObjects(ctx session.Context, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+func (w *Workspaces) CreateSubObjects(ctx context.Context, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
 	st := w.NewState()
 	var (
 		id     string

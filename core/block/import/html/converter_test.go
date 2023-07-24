@@ -8,7 +8,6 @@ import (
 
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -17,7 +16,7 @@ import (
 func TestHTML_GetSnapshots(t *testing.T) {
 	h := &HTML{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := h.GetSnapshots(session.NewContext(context.Background(), "space1"), &pb.RpcObjectImportRequest{
+	sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
 			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
 		},

@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -52,7 +51,7 @@ const (
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 50
+	ForceIdxRebuildCounter int32 = 51
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
@@ -81,8 +80,8 @@ func New(
 
 type Indexer interface {
 	ForceFTIndex()
-	Index(ctx session.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
-	ReindexSpace(ctx session.Context) error
+	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
+	ReindexSpace(spaceID string) error
 	app.ComponentRunnable
 }
 
@@ -91,7 +90,7 @@ type Hasher interface {
 }
 
 type subObjectCreator interface {
-	CreateSubObjectsInWorkspace(ctx session.Context, details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+	CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 }
 
 type syncStarter interface {
@@ -167,7 +166,7 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx session.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
 	opts := &smartblock2.IndexOptions{}
@@ -285,7 +284,7 @@ func (i *indexer) Index(ctx session.Context, info smartblock2.DocInfo, options .
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx session.Context, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	if len(fileHashes) == 0 {
 		return
 	}
@@ -361,8 +360,8 @@ func (i *indexer) reindexIfNeeded() error {
 	return i.reindex(flags)
 }
 
-func (i *indexer) ReindexSpace(ctx session.Context) error {
-	return i.ensurePreinstalledObjects(ctx)
+func (i *indexer) ReindexSpace(spaceID string) error {
+	return i.ensurePreinstalledObjects(spaceID)
 }
 
 func (i *indexer) reindex(flags reindexFlags) (err error) {
@@ -413,8 +412,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 	// We derive or init predefined blocks here in order to ensure consistency of object store.
 	// If we call this method before removing objects from store, we will end up with inconsistent state
 	// because indexing of predefined objects will not run again
-	accountCtx := session.NewContext(context.Background(), i.spaceService.AccountId())
-	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(accountCtx)
+	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(context.Background(), i.spaceService.AccountId())
 	if err != nil {
 		return fmt.Errorf("ensure predefined objects: %w", err)
 	}
@@ -422,7 +420,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 
 	// spaceID => workspaceID
 	spacesToInit := map[string]string{}
-	err = block.Do(i.picker, accountCtx, predefinedObjectIDs.Account, func(sb smartblock2.SmartBlock) error {
+	err = block.Do(i.picker, predefinedObjectIDs.Account, func(sb smartblock2.SmartBlock) error {
 		st := sb.NewState()
 		spaces := st.Store().GetFields()["spaces"]
 		for k, v := range spaces.GetStructValue().GetFields() {
@@ -432,8 +430,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 	})
 	for spaceID, _ := range spacesToInit {
 		spaceIDs = append(spaceIDs, spaceID)
-		childSpaceCtx := session.NewContext(context.Background(), spaceID)
-		_, err := i.anytype.EnsurePredefinedBlocks(childSpaceCtx)
+		_, err := i.anytype.EnsurePredefinedBlocks(context.Background(), spaceID)
 		if err != nil {
 			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
 		}
@@ -452,12 +449,12 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 }
 
 func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags reindexFlags) (err error) {
-	ctx := session.NewContext(block.CacheOptsWithRemoteLoadDisabled(context.Background()), spaceID)
+	ctx := block.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.threadObjects {
 		ids, err := i.getIdsForTypes(
-			ctx.SpaceID(),
+			spaceID,
 			smartblock.SmartBlockTypePage,
 			smartblock.SmartBlockTypeProfilePage,
 			smartblock.SmartBlockTypeTemplate,
@@ -477,7 +474,7 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 	} else {
 		go func() {
 			start := time.Now()
-			total, success, err := i.reindexOutdatedThreads(ctx)
+			total, success, err := i.reindexOutdatedThreads(ctx, spaceID)
 			if err != nil {
 				log.Infof("failed to reindex outdated objects: %s", err.Error())
 			} else {
@@ -490,19 +487,19 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 	}
 
 	if flags.fileObjects {
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
+		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
 		}
 	}
 	if flags.bundledRelations {
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledRelations, indexesWereRemoved, smartblock.SmartBlockTypeBundledRelation)
+		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledRelations, indexesWereRemoved, smartblock.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return err
 		}
 	}
 	if flags.bundledTypes {
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledTypes, indexesWereRemoved, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTypes, indexesWereRemoved, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
 		}
@@ -525,19 +522,19 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 			i.store.DeleteObject(id)
 		}
 
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledTemplates, indexesWereRemoved, smartblock.SmartBlockTypeBundledTemplate)
+		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTemplates, indexesWereRemoved, smartblock.SmartBlockTypeBundledTemplate)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = i.ensurePreinstalledObjects(ctx)
+	err = i.ensurePreinstalledObjects(spaceID)
 	if err != nil {
 		return fmt.Errorf("ensure preinstalled objects: %w", err)
 	}
 
 	if flags.fulltext {
-		ids, err := i.getIdsForTypes(ctx.SpaceID(), smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		ids, err := i.getIdsForTypes(spaceID, smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
 		}
@@ -561,22 +558,22 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 	return i.saveLatestChecksums()
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx session.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
-	ids, err := i.getIdsForTypes(ctx.SpaceID(), sbTypes...)
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, spaceID string, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
+	ids, err := i.getIdsForTypes(spaceID, sbTypes...)
 	if err != nil {
 		return err
 	}
 	return i.reindexIDs(ctx, reindexType, indexesWereRemoved, ids)
 }
 
-func (i *indexer) reindexIDs(ctx session.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
+func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
 	start := time.Now()
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
 	return nil
 }
 
-func (i *indexer) ensurePreinstalledObjects(ctx session.Context) error {
+func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
 	var objects []*types.Struct
 
 	start := time.Now()
@@ -596,7 +593,7 @@ func (i *indexer) ensurePreinstalledObjects(ctx session.Context) error {
 		}
 		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
 	}
-	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(ctx, objects)
+	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(context.Background(), spaceID, objects)
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 
 	if errors.Is(err, editor.ErrSubObjectAlreadyExists) {
@@ -622,9 +619,9 @@ func (i *indexer) saveLatestChecksums() error {
 	return i.store.SaveChecksums(&checksums)
 }
 
-func (i *indexer) reindexOutdatedThreads(ctx session.Context) (toReindex, success int, err error) {
+func (i *indexer) reindexOutdatedThreads(ctx context.Context, spaceID string) (toReindex, success int, err error) {
 	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
-	spc, err := i.spaceService.GetSpace(ctx.Context(), ctx.SpaceID())
+	spc, err := i.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
 		return
 	}
@@ -665,8 +662,8 @@ func (i *indexer) reindexOutdatedThreads(ctx session.Context) (toReindex, succes
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx session.Context, id string) error {
-	err := block.Do(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
+func (i *indexer) reindexDoc(ctx context.Context, id string) error {
+	err := block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		d := sb.GetDocInfo()
 		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
 			// index all the subobjects
@@ -686,7 +683,7 @@ func (i *indexer) reindexDoc(ctx session.Context, id string) error {
 	return err
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx session.Context, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, id)
 		if err != nil {
@@ -698,8 +695,8 @@ func (i *indexer) reindexIdsIgnoreErr(ctx session.Context, ids ...string) (succe
 	return
 }
 
-func (i *indexer) getObjectInfo(ctx session.Context, id string) (info smartblock2.DocInfo, err error) {
-	err = block.Do(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
+func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock2.DocInfo, err error) {
+	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		info = sb.GetDocInfo()
 		return nil
 	})

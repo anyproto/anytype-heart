@@ -117,9 +117,9 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
 	profileDetails = append(profileDetails, commonDetails...)
 
-	ctx := mw.newContextNoLock(cctx)
+	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(ctx, pb.RpcFileUploadRequest{
+		hash, err := bs.UploadFile(context.Background(), spaceID, pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
 			Type:      model.BlockContentFile_Image,
 		})
@@ -135,20 +135,20 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	}
 
 	newAcc.Name = req.Name
-	newAcc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx.SpaceID())
+	newAcc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(cctx, spaceID)
 	if err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
-	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
+	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.AccountObjects().Profile,
 		Details:   profileDetails,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
-	if err = bs.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
+	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.AccountObjects().Account,
 		Details:   commonDetails,
 	}); err != nil {
@@ -214,9 +214,9 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		bs := mw.app.MustComponent(treemanager.CName).(*block.Service)
 		bs.CloseBlocks()
 		acc := &model.Account{Id: req.Id}
-		ctx := mw.newContextNoLock(cctx)
+		spaceID := app.MustComponent[space.Service](mw.app).AccountId()
 		var err error
-		acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx.SpaceID())
+		acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(cctx, spaceID)
 		if err != nil {
 			return response(acc, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}
@@ -279,8 +279,8 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 
 	acc := &model.Account{Id: req.Id}
-	ctx := mw.newContextNoLock(cctx)
-	acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx.SpaceID())
+	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
+	acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(cctx, spaceID)
 	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
@@ -599,7 +599,8 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
 	}
 
-	if err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(); err != nil {
+	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
+	if err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT, err
 	}
 

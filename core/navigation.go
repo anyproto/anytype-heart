@@ -25,7 +25,6 @@ func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNav
 }
 
 func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcNavigationGetObjectInfoWithLinksResponseErrorCode, object *model.ObjectInfoWithLinks, err error) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
 		m := &pb.RpcNavigationGetObjectInfoWithLinksResponse{Error: &pb.RpcNavigationGetObjectInfoWithLinksResponseError{Code: code}, Object: object}
 		if err != nil {
@@ -54,7 +53,11 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 	}
 
 	store := app.MustComponent[objectstore.ObjectStore](mw.app)
-	page, err := store.GetWithLinksInfoByID(ctx.SpaceID(), req.ObjectId)
+	spaceID, err := store.ResolveSpaceID(req.ObjectId)
+	if err != nil {
+		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("resolve spaceID: %w", err))
+	}
+	page, err := store.GetWithLinksInfoByID(spaceID, req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}
@@ -86,7 +89,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(ctx, req, "")
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, "")
 		return err
 	})
 	if err != nil {

@@ -1,6 +1,7 @@
 package bookmark
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -47,8 +48,8 @@ type Bookmark interface {
 }
 
 type BookmarkService interface {
-	CreateBookmarkObject(ctx session.Context, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
-	Fetch(ctx session.Context, id string, params bookmark.FetchParams) (err error)
+	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	Fetch(spaceID string, blockID string, params bookmark.FetchParams) (err error)
 }
 
 type sbookmark struct {
@@ -87,16 +88,16 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 	}
 	bm.SetState(model.BlockContentBookmark_Fetching)
 
-	err = b.bookmarkSvc.Fetch(ctx, id, bookmark.FetchParams{
+	err = b.bookmarkSvc.Fetch(b.SpaceID(), id, bookmark.FetchParams{
 		Url: url,
-		Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
+		Updater: func(blockID string, apply func(b bookmark.Block) error) (err error) {
 			if isSync {
 				updMu.Lock()
 				defer updMu.Unlock()
 				return b.updateBlock(ctx, bm, apply)
 			}
-			return getblock.Do(b.picker, ctx, b.Id(), func(b Bookmark) error {
-				return b.UpdateBookmark(ctx, id, groupId, apply)
+			return getblock.Do(b.picker, b.Id(), func(b Bookmark) error {
+				return b.UpdateBookmark(ctx, blockID, groupId, apply)
 			})
 		},
 		Sync: isSync,
@@ -150,7 +151,7 @@ func (b *sbookmark) updateBlock(ctx session.Context, block bookmark.Block, apply
 	}
 
 	content := block.GetContent()
-	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(ctx, block.ToDetails(), func() *model.BlockContentBookmark {
+	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), block.ToDetails(), func() *model.BlockContentBookmark {
 		return content
 	})
 	if err != nil {
@@ -202,7 +203,7 @@ func (b *sbookmark) MigrateBlock(ctx session.Context, bm bookmark.Block) error {
 		return nil
 	}
 
-	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(ctx, bm.ToDetails(), func() *model.BlockContentBookmark {
+	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), bm.ToDetails(), func() *model.BlockContentBookmark {
 		return content
 	})
 	if err != nil {

@@ -138,7 +138,6 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 }
 
 func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateObjectTypeResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateObjectTypeResponse {
 		m := &pb.RpcObjectCreateObjectTypeResponse{ObjectId: id, Details: details, Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: code}}
 		if err != nil {
@@ -153,7 +152,7 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(ctx, req, bundle.TypeKeyObjectType)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyObjectType)
 		return err
 	})
 	if err != nil {
@@ -189,7 +188,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 			req.Details.Fields = map[string]*types.Value{}
 		}
 		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-		id, newDetails, err = bs.CreateObject(ctx, req, bundle.TypeKeySet)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeySet)
 		return err
 	})
 	if err != nil {
@@ -203,7 +202,6 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 }
 
 func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
-	ctx := mw.newContext(cctx)
 	response := func(id string, object *types.Struct, err error) *pb.RpcObjectCreateRelationResponse {
 		if err != nil {
 			return &pb.RpcObjectCreateRelationResponse{
@@ -229,7 +227,7 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(ctx, req, bundle.TypeKeyRelation)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyRelation)
 		return err
 	})
 	if err != nil {
@@ -239,7 +237,6 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 }
 
 func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
-	ctx := mw.newContext(cctx)
 	response := func(id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateRelationOptionResponse {
 		if err != nil {
 			return &pb.RpcObjectCreateRelationOptionResponse{
@@ -264,7 +261,7 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(ctx, req, bundle.TypeKeyRelationOption)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyRelationOption)
 		return err
 	})
 	return response(id, newDetails, err)

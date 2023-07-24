@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
@@ -18,7 +19,7 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 }
 
@@ -33,13 +34,14 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 
 		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
 
-		details, err := bs.prepareTargetObjectDetails(ctx.SpaceID(), req, rootBlock, objectCreator)
+		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), req, rootBlock, objectCreator)
 		if err != nil {
 			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}
 
 		objectID, _, err := objectCreator.CreateSmartBlockFromState(
-			ctx,
+			context.Background(),
+			bs.SpaceID(),
 			coresb.SmartBlockTypePage,
 			details,
 			objState,

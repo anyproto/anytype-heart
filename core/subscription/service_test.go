@@ -24,7 +24,7 @@ import (
 )
 
 func TestService_Search(t *testing.T) {
-	ctx := session.NewContext(context.Background(), "space1")
+	ctx := session.NewContext()
 	var newSub = func(fx *fixture, subId string) {
 		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{

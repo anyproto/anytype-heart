@@ -19,7 +19,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
@@ -35,8 +35,8 @@ func New() Debug {
 
 type Debug interface {
 	app.Component
-	DumpTree(ctx session.Context, blockId, path string, anonymize bool, withSvg bool) (filename string, err error)
-	DumpLocalstore(ctx session.Context, objectIds []string, path string) (filename string, err error)
+	DumpTree(ctx context.Context, objectID string, path string, anonymize bool, withSvg bool) (filename string, err error)
+	DumpLocalstore(spaceID string, objectIds []string, path string) (filename string, err error)
 	SpaceSummary() (summary SpaceSummary, err error)
 	TreeHeads(id string) (info TreeInfo, err error)
 }
@@ -172,20 +172,27 @@ func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
 	return
 }
 
-func (d *debug) DumpTree(ctx session.Context, blockId, path string, anonymize bool, withSvg bool) (filename string, err error) {
+func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anonymize bool, withSvg bool) (filename string, err error) {
 	// 0 - get space and tree
 	spc, err := d.clientService.AccountSpace(context.Background())
 	if err != nil {
 		return
 	}
-	tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), blockId, objecttreebuilder.HistoryTreeOpts{BuildFullTree: true})
+	tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), objectID, objecttreebuilder.HistoryTreeOpts{BuildFullTree: true})
 	if err != nil {
 		return
 	}
 
 	// 1 - create ZIP file
 	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
-	exporter := &treeExporter{s: d.store, anonymized: anonymize, id: blockId}
+	spaceID, err := d.store.ResolveSpaceID(objectID)
+	if err != nil {
+		return "", fmt.Errorf("resolve spaceID: %w", err)
+	}
+	exporter := &treeExporter{s: d.store, anonymized: anonymize, id: domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: objectID,
+	}}
 	zipFilename, err := exporter.Export(ctx, path, tree)
 	if err != nil {
 		logger.Error("build tree error:", err)
@@ -218,7 +225,7 @@ func (d *debug) DumpTree(ctx session.Context, blockId, path string, anonymize bo
 	return zipFilename, nil
 }
 
-func (d *debug) DumpLocalstore(ctx session.Context, objIds []string, path string) (filename string, err error) {
+func (d *debug) DumpLocalstore(spaceID string, objIds []string, path string) (filename string, err error) {
 	if len(objIds) == 0 {
 		objIds, err = d.store.ListIds()
 		if err != nil {
@@ -240,7 +247,7 @@ func (d *debug) DumpLocalstore(ctx session.Context, objIds []string, path string
 	m := jsonpb.Marshaler{Indent: " "}
 
 	for _, objId := range objIds {
-		doc, err := d.store.GetWithLinksInfoByID(ctx.SpaceID(), objId)
+		doc, err := d.store.GetWithLinksInfoByID(spaceID, objId)
 		if err != nil {
 			var err2 error
 			wr, err2 = zw.Create(fmt.Sprintf("%s.txt", objId))

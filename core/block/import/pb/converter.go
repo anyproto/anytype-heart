@@ -1,6 +1,7 @@
 package pb
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -21,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -54,12 +54,12 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 	}
 }
 
-func (p *Pb) GetSnapshots(ctx session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	params, e := p.GetParams(req.Params)
 	if e != nil || params == nil {
 		return nil, converter.NewFromError("", fmt.Errorf("wrong parameters"))
 	}
-	allSnapshots, targetObjects, allErrors := p.getSnapshots(ctx.SpaceID(), req, progress, params.GetPath(), req.IsMigration)
+	allSnapshots, targetObjects, allErrors := p.getSnapshots(req.SpaceId, req, progress, params.GetPath(), req.IsMigration)
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}

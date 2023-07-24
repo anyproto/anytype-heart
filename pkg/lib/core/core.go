@@ -14,7 +14,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -37,8 +36,8 @@ type Service interface {
 	Stop() error
 	IsStarted() bool
 
-	DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
-	EnsurePredefinedBlocks(ctx session.Context) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
+	DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
+	EnsurePredefinedBlocks(ctx context.Context, spaceID string) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 
@@ -55,8 +54,8 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveTreeCreatePayload(ctx session.Context, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
-	DeriveObject(ctx session.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
+	DeriveTreeCreatePayload(ctx context.Context, spaceID string, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
+	DeriveObject(ctx context.Context, spaceID string, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
 }
 
 type Anytype struct {
@@ -160,21 +159,21 @@ func (a *Anytype) start() {
 	a.isStarted = true
 }
 
-func (a *Anytype) DerivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
+func (a *Anytype) DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
 	a.lock.RLock()
-	ids, ok := a.predefinedObjectsPerSpace[ctx.SpaceID()]
+	ids, ok := a.predefinedObjectsPerSpace[spaceID]
 	a.lock.RUnlock()
 	if ok && ids.IsFilled() {
 		return ids, nil
 	}
-	ids, err = a.derivePredefinedObjects(ctx, createTrees)
+	ids, err = a.derivePredefinedObjects(ctx, spaceID, createTrees)
 	if err != nil {
 		return threads.DerivedSmartblockIds{}, err
 	}
 	return ids, nil
 }
 
-func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
+func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
 	sbTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypeWorkspace,
 		coresb.SmartBlockTypeProfilePage,
@@ -185,13 +184,13 @@ func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool)
 	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
 	for i, sbt := range sbTypes {
 		a.lock.RLock()
-		exists := a.predefinedObjectsPerSpace[ctx.SpaceID()].HasID(sbt)
+		exists := a.predefinedObjectsPerSpace[spaceID].HasID(sbt)
 		a.lock.RUnlock()
 
 		if exists {
 			continue
 		}
-		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, sbt)
+		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, spaceID, sbt)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived tree object with error")
 			return predefinedObjectIDs, fmt.Errorf("derive tree create payload: %w", err)
@@ -199,12 +198,12 @@ func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool)
 		predefinedObjectIDs.InsertId(sbt, payloads[i].RootRawChange.Id)
 
 		a.lock.Lock()
-		a.predefinedObjectsPerSpace[ctx.SpaceID()] = predefinedObjectIDs
+		a.predefinedObjectsPerSpace[spaceID] = predefinedObjectIDs
 		a.lock.Unlock()
 	}
 
 	for _, payload := range payloads {
-		err = a.deriver.DeriveObject(ctx, payload, createTrees)
+		err = a.deriver.DeriveObject(ctx, spaceID, payload, createTrees)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return predefinedObjectIDs, fmt.Errorf("derive object: %w", err)
@@ -213,8 +212,8 @@ func (a *Anytype) derivePredefinedObjects(ctx session.Context, createTrees bool)
 	return
 }
 
-func (a *Anytype) EnsurePredefinedBlocks(ctx session.Context) (threads.DerivedSmartblockIds, error) {
-	return a.DerivePredefinedObjects(ctx, a.config.NewAccount)
+func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, spaceID string) (threads.DerivedSmartblockIds, error) {
+	return a.DerivePredefinedObjects(ctx, spaceID, a.config.NewAccount)
 }
 
 func (a *Anytype) Close(ctx context.Context) (err error) {

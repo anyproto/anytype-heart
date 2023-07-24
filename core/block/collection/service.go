@@ -29,33 +29,19 @@ type Service struct {
 	lock        *sync.RWMutex
 	collections map[string]map[string]chan []string
 
-	picker        block.Picker
-	objectStore   objectstore.ObjectStore
-	objectCreator ObjectCreator
-	objectDeleter ObjectDeleter
-}
-
-type ObjectCreator interface {
-	CreateObject(ctx session.Context, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
-}
-
-type ObjectDeleter interface {
-	DeleteObject(ctx session.Context, id string) (err error)
+	picker      block.Picker
+	objectStore objectstore.ObjectStore
 }
 
 func New(
 	picker block.Picker,
 	store objectstore.ObjectStore,
-	objectCreator ObjectCreator,
-	objectDeleter ObjectDeleter,
 ) *Service {
 	return &Service{
-		picker:        picker,
-		objectStore:   store,
-		objectCreator: objectCreator,
-		objectDeleter: objectDeleter,
-		lock:          &sync.RWMutex{},
-		collections:   map[string]map[string]chan []string{},
+		picker:      picker,
+		objectStore: store,
+		lock:        &sync.RWMutex{},
+		collections: map[string]map[string]chan []string{},
 	}
 }
 
@@ -160,7 +146,7 @@ func (s *Service) SubscribeForCollection(ctx session.Context, collectionID strin
 		col = map[string]chan []string{}
 		s.collections[collectionID] = col
 	}
-	err := block.DoStateAsync(s.picker, ctx, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoStateAsync(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
@@ -213,8 +199,8 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 	return coresb.SmartBlockTypePage, newState.CombinedDetails(), newState, nil
 }
 
-func (s *Service) ObjectToCollection(ctx session.Context, id string) error {
-	if err := block.Do(s.picker, ctx, id, func(b smartblock.SmartBlock) error {
+func (s *Service) ObjectToCollection(id string) error {
+	if err := block.Do(s.picker, id, func(b smartblock.SmartBlock) error {
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)

@@ -1,17 +1,12 @@
 package session
 
 import (
-	"context"
-
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 type Context interface {
 	ID() string
-	Context() context.Context
-	WithContext(context.Context) Context
 	ObjectID() string
-	SpaceID() string
 	TraceID() string
 	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
 	GetMessages() []*pb.EventMessage
@@ -19,22 +14,14 @@ type Context interface {
 }
 
 type sessionContext struct {
-	ctx          context.Context
 	smartBlockId string
-	spaceID      string
 	traceId      string
 	messages     []*pb.EventMessage
 	sessionToken string
 }
 
-func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Context {
-	// if spaceID == "" {
-	// 	panic("spaceID is empty")
-	// }
-	ctx := &sessionContext{
-		spaceID: spaceID,
-		ctx:     cctx,
-	}
+func NewContext(opts ...ContextOption) Context {
+	ctx := &sessionContext{}
 	for _, apply := range opts {
 		apply(ctx)
 	}
@@ -43,8 +30,6 @@ func NewContext(cctx context.Context, spaceID string, opts ...ContextOption) Con
 
 func (ctx *sessionContext) shallowCopy() *sessionContext {
 	return &sessionContext{
-		ctx:          ctx.ctx,
-		spaceID:      ctx.spaceID,
 		smartBlockId: ctx.smartBlockId,
 		traceId:      ctx.traceId,
 		messages:     ctx.messages,
@@ -52,17 +37,9 @@ func (ctx *sessionContext) shallowCopy() *sessionContext {
 	}
 }
 
-func (ctx *sessionContext) WithContext(cctx context.Context) Context {
-	child := ctx.shallowCopy()
-	child.ctx = cctx
-	return child
-}
-
 // NewChildContext creates a new child context. The child context has empty messages
 func NewChildContext(parent Context) Context {
 	child := &sessionContext{
-		ctx:          parent.Context(),
-		spaceID:      parent.SpaceID(),
 		smartBlockId: parent.ObjectID(),
 		traceId:      parent.TraceID(),
 		sessionToken: parent.ID(),
@@ -98,14 +75,6 @@ func (ctx *sessionContext) ObjectID() string {
 
 func (ctx *sessionContext) TraceID() string {
 	return ctx.traceId
-}
-
-func (ctx *sessionContext) SpaceID() string {
-	return ctx.spaceID
-}
-
-func (ctx *sessionContext) Context() context.Context {
-	return ctx.ctx
 }
 
 func (ctx *sessionContext) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {

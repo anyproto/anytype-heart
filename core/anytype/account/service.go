@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
@@ -26,7 +25,7 @@ var log = logging.Logger(CName)
 
 type Service interface {
 	app.Component
-	GetInfo(spaceID string) (*model.AccountInfo, error)
+	GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error)
 }
 
 type service struct {
@@ -56,7 +55,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) GetInfo(spaceID string) (*model.AccountInfo, error) {
+func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error) {
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().Account()
 
@@ -76,8 +75,7 @@ func (s *service) GetInfo(spaceID string) (*model.AccountInfo, error) {
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
-	ctx := session.NewContext(context.Background(), spaceID)
-	ids, err := s.coreService.DerivePredefinedObjects(ctx, false)
+	ids, err := s.coreService.DerivePredefinedObjects(ctx, spaceID, false)
 	if err != nil {
 		return nil, fmt.Errorf("derive predefined objects: %w", err)
 	}
@@ -101,9 +99,8 @@ func (s *service) getAnalyticsID() (string, error) {
 	if s.config.AnalyticsId != "" {
 		return s.config.AnalyticsId, nil
 	}
-	accountCtx := session.NewContext(context.Background(), s.spaceService.AccountId())
 	accountObjectID := s.coreService.AccountObjects().Account
-	sb, err := s.blockService.PickBlock(accountCtx, accountObjectID)
+	sb, err := s.blockService.PickBlock(context.Background(), accountObjectID)
 	if err != nil {
 		return "", err
 	}

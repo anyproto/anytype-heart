@@ -4453,6 +4453,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -6549,6 +6550,7 @@ set the current active view (persisted only within a session)
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | new object details |
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| spaceId | [string](#string) |  |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
@@ -8695,6 +8697,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) |  | the path where export files will place |
 | docIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -9292,6 +9295,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
 
 
 
@@ -9366,6 +9374,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
@@ -10607,6 +10616,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
@@ -10798,6 +10808,7 @@ DEPRECATED |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams) |  |  |
 | bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  | for internal use |
 | markdownParams | [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams) |  |  |
@@ -11059,6 +11070,7 @@ DEPRECATED |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  |  |
 
 
@@ -11229,6 +11241,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | path | [string](#string) |  | the path where export files will place |
 | objectIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
 | format | [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format) |  | export format |
@@ -13860,6 +13873,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | pictureId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -14583,6 +14597,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
 
 
 
@@ -14647,6 +14666,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | objectId | [string](#string) |  |  |
 
 
@@ -14705,6 +14725,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | objectIds | [string](#string) | repeated |  |
 
 

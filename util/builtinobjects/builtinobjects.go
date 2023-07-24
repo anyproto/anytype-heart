@@ -14,7 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
-	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -66,8 +66,8 @@ var (
 type BuiltinObjects interface {
 	app.Component
 
-	CreateObjectsForUseCase(session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-	InjectMigrationDashboard() error
+	CreateObjectsForUseCase(ctx context.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	InjectMigrationDashboard(spaceID string) error
 }
 
 type builtinObjects struct {
@@ -95,7 +95,9 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) CreateObjectsForUseCase(
-	ctx session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase,
+	ctx context.Context,
+	spaceID string,
+	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
 	start := time.Now()
 
@@ -105,7 +107,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 			fmt.Errorf("failed to import builtinObjects: invalid Use Case value: %v", useCase)
 	}
 
-	if err = b.inject(ctx, archive, false); err != nil {
+	if err = b.inject(ctx, spaceID, archive, false); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
 			fmt.Errorf("failed to import builtinObjects for Use Case %s: %s",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err.Error())
@@ -119,17 +121,17 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) InjectMigrationDashboard() error {
-	return b.inject(nil, migrationDashboardZip, true)
+func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
+	return b.inject(nil, spaceID, migrationDashboardZip, true)
 }
 
-func (b *builtinObjects) inject(ctx session.Context, archive []byte, isMigration bool) (err error) {
+func (b *builtinObjects) inject(ctx context.Context, spaceID string, archive []byte, isMigration bool) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}
 
-	if err = b.importArchive(ctx, path); err != nil {
+	if err = b.importArchive(ctx, spaceID, path); err != nil {
 		return err
 	}
 
@@ -149,13 +151,14 @@ func (b *builtinObjects) inject(ctx session.Context, archive []byte, isMigration
 		return nil
 	}
 
-	b.handleSpaceDashboard(ctx, newId)
-	b.createNotesAndTaskTrackerWidgets(ctx)
+	b.handleSpaceDashboard(ctx, spaceID, newId)
+	b.createNotesAndTaskTrackerWidgets(ctx, spaceID)
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx session.Context, path string) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string) (err error) {
 	if err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
@@ -228,9 +231,9 @@ func (b *builtinObjects) getNewSpaceDashboardId(oldId string) (id string, err er
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(ctx session.Context, id string) {
-	if err := b.service.SetDetails(ctx, pb.RpcObjectSetDetailsRequest{
-		ContextId: b.coreService.PredefinedObjects(ctx.SpaceID()).Account,
+func (b *builtinObjects) handleSpaceDashboard(ctx context.Context, spaceID string, id string) {
+	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: b.coreService.PredefinedObjects(spaceID).Account,
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -240,18 +243,18 @@ func (b *builtinObjects) handleSpaceDashboard(ctx session.Context, id string) {
 	}); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err.Error())
 	}
-	b.createSpaceDashboardWidget(ctx, id)
+	b.createSpaceDashboardWidget(ctx, spaceID, id)
 }
 
-func (b *builtinObjects) createSpaceDashboardWidget(ctx session.Context, id string) {
-	targetID, err := b.getWidgetBlockIdByNumber(ctx.SpaceID(), 0)
+func (b *builtinObjects) createSpaceDashboardWidget(ctx context.Context, spaceID string, id string) {
+	targetID, err := b.getWidgetBlockIdByNumber(spaceID, 0)
 	if err != nil {
 		log.Errorf(err.Error())
 		return
 	}
 
-	if _, err := b.service.CreateWidgetBlock(ctx, &pb.RpcBlockCreateWidgetRequest{
-		ContextId:    b.coreService.PredefinedObjects(ctx.SpaceID()).Widgets,
+	if _, err := b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+		ContextId:    b.coreService.PredefinedObjects(spaceID).Widgets,
 		TargetId:     targetID,
 		Position:     model.Block_Top,
 		WidgetLayout: model.BlockContentWidget_Link,
@@ -273,8 +276,8 @@ func (b *builtinObjects) createSpaceDashboardWidget(ctx session.Context, id stri
 	}
 }
 
-func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx session.Context) {
-	targetID, err := b.getWidgetBlockIdByNumber(ctx.SpaceID(), 1)
+func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, spaceID string) {
+	targetID, err := b.getWidgetBlockIdByNumber(spaceID, 1)
 	if err != nil {
 		log.Errorf("Failed to get id of second widget block: %s", err.Error())
 		return
@@ -285,8 +288,8 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx session.Context) {
 			log.Errorf("Failed to get id of set by '%s' to create widget object: %s", setOf, err.Error())
 			continue
 		}
-		if _, err = b.service.CreateWidgetBlock(ctx, &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    b.coreService.PredefinedObjects(ctx.SpaceID()).Widgets,
+		if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    b.coreService.PredefinedObjects(spaceID).Widgets,
 			TargetId:     targetID,
 			Position:     model.Block_Bottom,
 			WidgetLayout: model.BlockContentWidget_CompactList,
@@ -329,7 +332,10 @@ func (b *builtinObjects) getObjectIdBySetOfValue(setOfValue string) (string, err
 }
 
 func (b *builtinObjects) getWidgetBlockIdByNumber(spaceID string, index int) (string, error) {
-	w, err := b.service.GetObject(context.Background(), spaceID, b.coreService.PredefinedObjects(spaceID).Widgets)
+	w, err := b.service.GetObject(context.Background(), domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: b.coreService.PredefinedObjects(spaceID).Widgets,
+	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
 	}

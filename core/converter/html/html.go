@@ -12,8 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	utf16 "github.com/anyproto/anytype-heart/util/text"
@@ -527,8 +527,8 @@ func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell m
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {
-	ctx := session.NewContext(context.Background(), h.spaceID)
-	im, err := h.fileService.ImageByHash(ctx, hash)
+	ctx := context.Background()
+	im, err := h.fileService.ImageByHash(ctx, domain.FullID{SpaceID: h.spaceID, ObjectID: hash})
 	if err != nil {
 		return
 	}

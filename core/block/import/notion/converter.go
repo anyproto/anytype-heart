@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -43,7 +42,7 @@ func New(c *collection.Service) converter.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(ctx session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	ce := converter.NewError()
 	apiKey := n.getParams(req)
 	if apiKey == "" {

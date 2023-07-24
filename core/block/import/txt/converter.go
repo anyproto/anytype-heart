@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -44,7 +44,7 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(ctx session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil

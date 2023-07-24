@@ -3,6 +3,7 @@ package export
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -25,8 +26,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/md"
 	"github.com/anyproto/anytype-heart/core/converter/pbc"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -49,7 +50,7 @@ const tempFileName = "temp_anytype_backup"
 var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
-	Export(ctx session.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
+	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
 	app.Component
 }
 
@@ -81,7 +82,7 @@ func (e *export) Name() (name string) {
 	return CName
 }
 
-func (e *export) Export(ctx session.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
+func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
 	queue := e.bs.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
@@ -94,7 +95,7 @@ func (e *export) Export(ctx session.Context, req pb.RpcObjectListExportRequest) 
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(ctx.SpaceID(), req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
+	docs, err := e.docsForExport(req.SpaceId, req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
 	if err != nil {
 		return
 	}
@@ -132,7 +133,7 @@ func (e *export) Export(ctx session.Context, req pb.RpcObjectListExportRequest) 
 	} else {
 		if req.Format == pb.RpcObjectListExport_Protobuf {
 			if len(req.ObjectIds) == 0 {
-				if err = e.createProfileFile(ctx, wr); err != nil {
+				if err = e.createProfileFile(req.SpaceId, wr); err != nil {
 					log.Errorf("failed to create profile file: %s", err.Error())
 				}
 			}
@@ -275,11 +276,11 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	return objectDetails, nil
 }
 
-func (e *export) writeMultiDoc(ctx session.Context, mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
+func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
-			werr := getblock.Do(e.picker, ctx, did, func(b sb.SmartBlock) error {
+			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
 				return mw.Add(b.NewState().Copy())
 			})
 			if err != nil {
@@ -322,8 +323,8 @@ func (e *export) writeMultiDoc(ctx session.Context, mw converter.MultiConverter,
 	return
 }
 
-func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
-	return getblock.Do(e.picker, ctx, docID, func(b sb.SmartBlock) error {
+func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
+	return getblock.Do(e.picker, docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
@@ -347,7 +348,7 @@ func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportForm
 			}
 			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docID == e.a.PredefinedObjects(ctx.SpaceID()).Home {
+		if docID == e.a.PredefinedObjects(b.SpaceID()).Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -380,22 +381,36 @@ func (e *export) writeDoc(ctx session.Context, format pb.RpcObjectListExportForm
 	})
 }
 
-func (e *export) saveFile(ctx session.Context, wr writer, hash string) (err error) {
-	file, err := e.fileService.FileByHash(ctx, hash)
+func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err error) {
+	spaceID, err := e.objectStore.ResolveSpaceID(hash)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
+	file, err := e.fileService.FileByHash(ctx, domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: hash,
+	})
 	if err != nil {
 		return
 	}
 	origName := file.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := file.Reader(ctx.WithContext(context.Background()))
+	rd, err := file.Reader(context.Background())
 	if err != nil {
 		return
 	}
 	return wr.WriteFile(filename, rd)
 }
 
-func (e *export) saveImage(ctx session.Context, wr writer, hash string) (err error) {
-	file, err := e.fileService.ImageByHash(ctx, hash)
+func (e *export) saveImage(ctx context.Context, wr writer, hash string) (err error) {
+	spaceID, err := e.objectStore.ResolveSpaceID(hash)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
+	file, err := e.fileService.ImageByHash(ctx, domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: hash,
+	})
 	if err != nil {
 		return
 	}
@@ -405,27 +420,27 @@ func (e *export) saveImage(ctx session.Context, wr writer, hash string) (err err
 	}
 	origName := orig.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := orig.Reader(ctx.WithContext(context.Background()))
+	rd, err := orig.Reader(context.Background())
 	if err != nil {
 		return
 	}
 	return wr.WriteFile(filename, rd)
 }
 
-func (e *export) createProfileFile(ctx session.Context, wr writer) error {
+func (e *export) createProfileFile(spaceID string, wr writer) error {
 	var spaceDashBoardID string
-	pr, err := e.a.LocalProfile(ctx.SpaceID())
+	pr, err := e.a.LocalProfile(spaceID)
 	if err != nil {
 		return err
 	}
-	err = getblock.Do(e.picker, ctx, e.a.PredefinedObjects(ctx.SpaceID()).Account, func(b sb.SmartBlock) error {
+	err = getblock.Do(e.picker, e.a.PredefinedObjects(spaceID).Account, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	profileID := e.a.ProfileID(ctx.SpaceID())
+	profileID := e.a.ProfileID(spaceID)
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,

@@ -56,43 +56,9 @@ func (_c *MockSender_Broadcast_Call) RunAndReturn(run func(*pb.Event)) *MockSend
 	return _c
 }
 
-// BroadcastForSpace provides a mock function with given fields: spaceID, _a1
-func (_m *MockSender) BroadcastForSpace(spaceID string, _a1 *pb.Event) {
-	_m.Called(spaceID, _a1)
-}
-
-// MockSender_BroadcastForSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BroadcastForSpace'
-type MockSender_BroadcastForSpace_Call struct {
-	*mock.Call
-}
-
-// BroadcastForSpace is a helper method to define mock.On call
-//   - spaceID string
-//   - _a1 *pb.Event
-func (_e *MockSender_Expecter) BroadcastForSpace(spaceID interface{}, _a1 interface{}) *MockSender_BroadcastForSpace_Call {
-	return &MockSender_BroadcastForSpace_Call{Call: _e.mock.On("BroadcastForSpace", spaceID, _a1)}
-}
-
-func (_c *MockSender_BroadcastForSpace_Call) Run(run func(spaceID string, _a1 *pb.Event)) *MockSender_BroadcastForSpace_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(*pb.Event))
-	})
-	return _c
-}
-
-func (_c *MockSender_BroadcastForSpace_Call) Return() *MockSender_BroadcastForSpace_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockSender_BroadcastForSpace_Call) RunAndReturn(run func(string, *pb.Event)) *MockSender_BroadcastForSpace_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// BroadcastToOtherSessions provides a mock function with given fields: spaceID, token, e
-func (_m *MockSender) BroadcastToOtherSessions(spaceID string, token string, e *pb.Event) {
-	_m.Called(spaceID, token, e)
+// BroadcastToOtherSessions provides a mock function with given fields: token, e
+func (_m *MockSender) BroadcastToOtherSessions(token string, e *pb.Event) {
+	_m.Called(token, e)
 }
 
 // MockSender_BroadcastToOtherSessions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BroadcastToOtherSessions'
@@ -101,16 +67,15 @@ type MockSender_BroadcastToOtherSessions_Call struct {
 }
 
 // BroadcastToOtherSessions is a helper method to define mock.On call
-//   - spaceID string
 //   - token string
 //   - e *pb.Event
-func (_e *MockSender_Expecter) BroadcastToOtherSessions(spaceID interface{}, token interface{}, e interface{}) *MockSender_BroadcastToOtherSessions_Call {
-	return &MockSender_BroadcastToOtherSessions_Call{Call: _e.mock.On("BroadcastToOtherSessions", spaceID, token, e)}
+func (_e *MockSender_Expecter) BroadcastToOtherSessions(token interface{}, e interface{}) *MockSender_BroadcastToOtherSessions_Call {
+	return &MockSender_BroadcastToOtherSessions_Call{Call: _e.mock.On("BroadcastToOtherSessions", token, e)}
 }
 
-func (_c *MockSender_BroadcastToOtherSessions_Call) Run(run func(spaceID string, token string, e *pb.Event)) *MockSender_BroadcastToOtherSessions_Call {
+func (_c *MockSender_BroadcastToOtherSessions_Call) Run(run func(token string, e *pb.Event)) *MockSender_BroadcastToOtherSessions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(*pb.Event))
+		run(args[0].(string), args[1].(*pb.Event))
 	})
 	return _c
 }
@@ -120,7 +85,7 @@ func (_c *MockSender_BroadcastToOtherSessions_Call) Return() *MockSender_Broadca
 	return _c
 }
 
-func (_c *MockSender_BroadcastToOtherSessions_Call) RunAndReturn(run func(string, string, *pb.Event)) *MockSender_BroadcastToOtherSessions_Call {
+func (_c *MockSender_BroadcastToOtherSessions_Call) RunAndReturn(run func(string, *pb.Event)) *MockSender_BroadcastToOtherSessions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -167,13 +132,13 @@ func (_c *MockSender_Init_Call) RunAndReturn(run func(*app.App) error) *MockSend
 	return _c
 }
 
-// IsActive provides a mock function with given fields: spaceID, token
-func (_m *MockSender) IsActive(spaceID string, token string) bool {
-	ret := _m.Called(spaceID, token)
+// IsActive provides a mock function with given fields: token
+func (_m *MockSender) IsActive(token string) bool {
+	ret := _m.Called(token)
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(string, string) bool); ok {
-		r0 = rf(spaceID, token)
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(token)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -187,15 +152,14 @@ type MockSender_IsActive_Call struct {
 }
 
 // IsActive is a helper method to define mock.On call
-//   - spaceID string
 //   - token string
-func (_e *MockSender_Expecter) IsActive(spaceID interface{}, token interface{}) *MockSender_IsActive_Call {
-	return &MockSender_IsActive_Call{Call: _e.mock.On("IsActive", spaceID, token)}
+func (_e *MockSender_Expecter) IsActive(token interface{}) *MockSender_IsActive_Call {
+	return &MockSender_IsActive_Call{Call: _e.mock.On("IsActive", token)}
 }
 
-func (_c *MockSender_IsActive_Call) Run(run func(spaceID string, token string)) *MockSender_IsActive_Call {
+func (_c *MockSender_IsActive_Call) Run(run func(token string)) *MockSender_IsActive_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -205,7 +169,7 @@ func (_c *MockSender_IsActive_Call) Return(_a0 bool) *MockSender_IsActive_Call {
 	return _c
 }
 
-func (_c *MockSender_IsActive_Call) RunAndReturn(run func(string, string) bool) *MockSender_IsActive_Call {
+func (_c *MockSender_IsActive_Call) RunAndReturn(run func(string) bool) *MockSender_IsActive_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -251,9 +215,9 @@ func (_c *MockSender_Name_Call) RunAndReturn(run func() string) *MockSender_Name
 	return _c
 }
 
-// SendToSession provides a mock function with given fields: spaceID, token, _a2
-func (_m *MockSender) SendToSession(spaceID string, token string, _a2 *pb.Event) {
-	_m.Called(spaceID, token, _a2)
+// SendToSession provides a mock function with given fields: token, _a1
+func (_m *MockSender) SendToSession(token string, _a1 *pb.Event) {
+	_m.Called(token, _a1)
 }
 
 // MockSender_SendToSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendToSession'
@@ -262,16 +226,15 @@ type MockSender_SendToSession_Call struct {
 }
 
 // SendToSession is a helper method to define mock.On call
-//   - spaceID string
 //   - token string
-//   - _a2 *pb.Event
-func (_e *MockSender_Expecter) SendToSession(spaceID interface{}, token interface{}, _a2 interface{}) *MockSender_SendToSession_Call {
-	return &MockSender_SendToSession_Call{Call: _e.mock.On("SendToSession", spaceID, token, _a2)}
+//   - _a1 *pb.Event
+func (_e *MockSender_Expecter) SendToSession(token interface{}, _a1 interface{}) *MockSender_SendToSession_Call {
+	return &MockSender_SendToSession_Call{Call: _e.mock.On("SendToSession", token, _a1)}
 }
 
-func (_c *MockSender_SendToSession_Call) Run(run func(spaceID string, token string, _a2 *pb.Event)) *MockSender_SendToSession_Call {
+func (_c *MockSender_SendToSession_Call) Run(run func(token string, _a1 *pb.Event)) *MockSender_SendToSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(*pb.Event))
+		run(args[0].(string), args[1].(*pb.Event))
 	})
 	return _c
 }
@@ -281,50 +244,7 @@ func (_c *MockSender_SendToSession_Call) Return() *MockSender_SendToSession_Call
 	return _c
 }
 
-func (_c *MockSender_SendToSession_Call) RunAndReturn(run func(string, string, *pb.Event)) *MockSender_SendToSession_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetSpaceID provides a mock function with given fields: token, spaceID
-func (_m *MockSender) SetSpaceID(token string, spaceID string) error {
-	ret := _m.Called(token, spaceID)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(token, spaceID)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockSender_SetSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSpaceID'
-type MockSender_SetSpaceID_Call struct {
-	*mock.Call
-}
-
-// SetSpaceID is a helper method to define mock.On call
-//   - token string
-//   - spaceID string
-func (_e *MockSender_Expecter) SetSpaceID(token interface{}, spaceID interface{}) *MockSender_SetSpaceID_Call {
-	return &MockSender_SetSpaceID_Call{Call: _e.mock.On("SetSpaceID", token, spaceID)}
-}
-
-func (_c *MockSender_SetSpaceID_Call) Run(run func(token string, spaceID string)) *MockSender_SetSpaceID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockSender_SetSpaceID_Call) Return(_a0 error) *MockSender_SetSpaceID_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSender_SetSpaceID_Call) RunAndReturn(run func(string, string) error) *MockSender_SetSpaceID_Call {
+func (_c *MockSender_SendToSession_Call) RunAndReturn(run func(string, *pb.Event)) *MockSender_SendToSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

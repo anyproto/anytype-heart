@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -22,12 +21,13 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	if details.Fields == nil {
 		return fmt.Errorf("details fields are nil")
 	}
-	if pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) == "" {
-		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("spaceID erased")
-	}
-	if pbtypes.GetString(details, bundle.RelationKeyWorkspaceId.String()) == "" {
-		log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
-	}
+	// spaceID := pbtypes.GetString(details, bundle.RelationKeySpaceId.String())
+	// // if spaceID == "" {
+	// // 	log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("spaceID erased")
+	// // }
+	// // if pbtypes.GetString(details, bundle.RelationKeyWorkspaceId.String()) == "" {
+	// // 	log.With("objectID", id).With("stack", debug.StackCompact(false)).Warnf("workspaceId erased")
+	// // }
 	newDetails := &model.ObjectDetails{
 		Details: details,
 	}

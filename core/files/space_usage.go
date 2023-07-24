@@ -1,17 +1,18 @@
 package files
 
 import (
-	"github.com/anyproto/anytype-heart/core/session"
+	"context"
+
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (s *service) GetSpaceUsage(ctx session.Context) (*pb.RpcFileSpaceUsageResponseUsage, error) {
-	stat, err := s.fileSync.SpaceStat(ctx.Context(), ctx.SpaceID())
+func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error) {
+	stat, err := s.fileSync.SpaceStat(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	usage, err := s.fileStorage.LocalDiskUsage(ctx.Context())
+	usage, err := s.fileStorage.LocalDiskUsage(ctx)
 	if err != nil {
 		return nil, err
 	}

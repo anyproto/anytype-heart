@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -40,9 +40,9 @@ func New() History {
 }
 
 type History interface {
-	Show(ctx session.Context, pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
-	Versions(ctx session.Context, pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
-	SetVersion(ctx session.Context, pageId, versionId string) (err error)
+	Show(id domain.FullID, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error)
+	Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
+	SetVersion(id domain.FullID, versionId string) (err error)
 	app.Component
 }
 
@@ -67,8 +67,8 @@ func (h *history) Name() (name string) {
 	return CName
 }
 
-func (h *history) Show(ctx session.Context, pageId, versionId string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error) {
-	s, sbType, ver, err := h.buildState(ctx.SpaceID(), pageId, versionId)
+func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error) {
+	s, sbType, ver, err := h.buildState(id, versionID)
 	if err != nil {
 		return
 	}
@@ -94,7 +94,7 @@ func (h *history) Show(ctx session.Context, pageId, versionId string) (bs *model
 
 	rels, _ := h.relationService.FetchLinks(s.PickRelationLinks())
 	return &model.ObjectView{
-		RootId:        pageId,
+		RootId:        id.ObjectID,
 		Type:          model.SmartBlockType(sbType),
 		Blocks:        s.Blocks(),
 		Details:       details,
@@ -102,11 +102,11 @@ func (h *history) Show(ctx session.Context, pageId, versionId string) (bs *model
 	}, ver, nil
 }
 
-func (h *history) Versions(ctx session.Context, pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
+func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	profileId, profileName, err := h.getProfileInfo(ctx.SpaceID())
+	profileId, profileName, err := h.getProfileInfo(id.SpaceID)
 	if err != nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (h *history) Versions(ctx session.Context, pageId, lastVersionId string, li
 	}
 
 	for len(resp) < limit {
-		tree, _, e := h.treeWithId(ctx.SpaceID(), pageId, lastVersionId, includeLastId)
+		tree, _, e := h.treeWithId(id, lastVersionId, includeLastId)
 		if e != nil {
 			return nil, e
 		}
@@ -180,22 +180,22 @@ func (h *history) Versions(ctx session.Context, pageId, lastVersionId string, li
 	return
 }
 
-func (h *history) SetVersion(ctx session.Context, pageId, versionId string) (err error) {
-	s, _, _, err := h.buildState(ctx.SpaceID(), pageId, versionId)
+func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
+	s, _, _, err := h.buildState(id, versionId)
 	if err != nil {
 		return
 	}
-	return block.Do(h.picker, ctx, pageId, func(sb smartblock2.SmartBlock) error {
-		return history2.ResetToVersion(ctx, sb, s)
+	return block.Do(h.picker, id.ObjectID, func(sb smartblock2.SmartBlock) error {
+		return history2.ResetToVersion(sb, s)
 	})
 }
 
-func (h *history) treeWithId(spaceID string, id, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
-	spc, err := h.spaceService.GetSpace(context.Background(), spaceID)
+func (h *history) treeWithId(id domain.FullID, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
+	spc, err := h.spaceService.GetSpace(context.Background(), id.SpaceID)
 	if err != nil {
 		return
 	}
-	ht, err = spc.TreeBuilder().BuildHistoryTree(context.Background(), id, objecttreebuilder.HistoryTreeOpts{
+	ht, err = spc.TreeBuilder().BuildHistoryTree(context.Background(), id.ObjectID, objecttreebuilder.HistoryTreeOpts{
 		BeforeId: beforeId,
 		Include:  includeBeforeId,
 	})
@@ -213,20 +213,20 @@ func (h *history) treeWithId(spaceID string, id, beforeId string, includeBeforeI
 	return
 }
 
-func (h *history) buildState(spaceID string, pageId, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {
-	tree, sbType, err := h.treeWithId(spaceID, pageId, versionId, true)
+func (h *history) buildState(id domain.FullID, versionId string) (st *state.State, sbType smartblock.SmartBlockType, ver *pb.RpcHistoryVersion, err error) {
+	tree, sbType, err := h.treeWithId(id, versionId, true)
 	if err != nil {
 		return
 	}
 
-	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedObjects(spaceID).Profile)
+	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedObjects(id.SpaceID).Profile)
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
 
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
-		profileId, profileName, e := h.getProfileInfo(spaceID)
+		profileId, profileName, e := h.getProfileInfo(id.SpaceID)
 		if e != nil {
 			err = e
 			return

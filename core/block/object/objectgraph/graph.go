@@ -31,7 +31,7 @@ var relationsSkipList = []bundle.RelationKey{
 }
 
 type Service interface {
-	ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
+	ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error)
 }
 
 type Builder struct {
@@ -68,7 +68,7 @@ func (gr *Builder) Name() (name string) {
 	return CName
 }
 
-func (gr *Builder) ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
+func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, []*pb.RpcObjectGraphEdge, error) {
 	records, err := gr.queryRecords(req)
 	if err != nil {
 		return nil, nil, err
@@ -79,12 +79,12 @@ func (gr *Builder) ObjectGraph(spaceID string, req *pb.RpcObjectGraphRequest) ([
 
 	existedNodes := fillExistedNodes(records)
 
-	relations, err := gr.provideRelations(spaceID)
+	relations, err := gr.provideRelations(req.SpaceId)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	nodes, edges = gr.extractGraph(spaceID, records, nodes, req, relations, edges, existedNodes)
+	nodes, edges = gr.extractGraph(req.SpaceId, records, nodes, req, relations, edges, existedNodes)
 	return nodes, edges, nil
 }
 

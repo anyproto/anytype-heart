@@ -11,8 +11,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	session "github.com/anyproto/anytype-heart/core/session"
-
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
@@ -112,23 +110,23 @@ func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) 
 	return _c
 }
 
-// DerivePredefinedObjects provides a mock function with given fields: ctx, createTrees
-func (_m *MockService) DerivePredefinedObjects(ctx session.Context, createTrees bool) (threads.DerivedSmartblockIds, error) {
-	ret := _m.Called(ctx, createTrees)
+// DerivePredefinedObjects provides a mock function with given fields: ctx, spaceID, createTrees
+func (_m *MockService) DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (threads.DerivedSmartblockIds, error) {
+	ret := _m.Called(ctx, spaceID, createTrees)
 
 	var r0 threads.DerivedSmartblockIds
 	var r1 error
-	if rf, ok := ret.Get(0).(func(session.Context, bool) (threads.DerivedSmartblockIds, error)); ok {
-		return rf(ctx, createTrees)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) (threads.DerivedSmartblockIds, error)); ok {
+		return rf(ctx, spaceID, createTrees)
 	}
-	if rf, ok := ret.Get(0).(func(session.Context, bool) threads.DerivedSmartblockIds); ok {
-		r0 = rf(ctx, createTrees)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) threads.DerivedSmartblockIds); ok {
+		r0 = rf(ctx, spaceID, createTrees)
 	} else {
 		r0 = ret.Get(0).(threads.DerivedSmartblockIds)
 	}
 
-	if rf, ok := ret.Get(1).(func(session.Context, bool) error); ok {
-		r1 = rf(ctx, createTrees)
+	if rf, ok := ret.Get(1).(func(context.Context, string, bool) error); ok {
+		r1 = rf(ctx, spaceID, createTrees)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -142,15 +140,16 @@ type MockService_DerivePredefinedObjects_Call struct {
 }
 
 // DerivePredefinedObjects is a helper method to define mock.On call
-//   - ctx session.Context
+//   - ctx context.Context
+//   - spaceID string
 //   - createTrees bool
-func (_e *MockService_Expecter) DerivePredefinedObjects(ctx interface{}, createTrees interface{}) *MockService_DerivePredefinedObjects_Call {
-	return &MockService_DerivePredefinedObjects_Call{Call: _e.mock.On("DerivePredefinedObjects", ctx, createTrees)}
+func (_e *MockService_Expecter) DerivePredefinedObjects(ctx interface{}, spaceID interface{}, createTrees interface{}) *MockService_DerivePredefinedObjects_Call {
+	return &MockService_DerivePredefinedObjects_Call{Call: _e.mock.On("DerivePredefinedObjects", ctx, spaceID, createTrees)}
 }
 
-func (_c *MockService_DerivePredefinedObjects_Call) Run(run func(ctx session.Context, createTrees bool)) *MockService_DerivePredefinedObjects_Call {
+func (_c *MockService_DerivePredefinedObjects_Call) Run(run func(ctx context.Context, spaceID string, createTrees bool)) *MockService_DerivePredefinedObjects_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(bool))
+		run(args[0].(context.Context), args[1].(string), args[2].(bool))
 	})
 	return _c
 }
@@ -160,28 +159,28 @@ func (_c *MockService_DerivePredefinedObjects_Call) Return(predefinedObjectIDs t
 	return _c
 }
 
-func (_c *MockService_DerivePredefinedObjects_Call) RunAndReturn(run func(session.Context, bool) (threads.DerivedSmartblockIds, error)) *MockService_DerivePredefinedObjects_Call {
+func (_c *MockService_DerivePredefinedObjects_Call) RunAndReturn(run func(context.Context, string, bool) (threads.DerivedSmartblockIds, error)) *MockService_DerivePredefinedObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// EnsurePredefinedBlocks provides a mock function with given fields: ctx
-func (_m *MockService) EnsurePredefinedBlocks(ctx session.Context) (threads.DerivedSmartblockIds, error) {
-	ret := _m.Called(ctx)
+// EnsurePredefinedBlocks provides a mock function with given fields: ctx, spaceID
+func (_m *MockService) EnsurePredefinedBlocks(ctx context.Context, spaceID string) (threads.DerivedSmartblockIds, error) {
+	ret := _m.Called(ctx, spaceID)
 
 	var r0 threads.DerivedSmartblockIds
 	var r1 error
-	if rf, ok := ret.Get(0).(func(session.Context) (threads.DerivedSmartblockIds, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (threads.DerivedSmartblockIds, error)); ok {
+		return rf(ctx, spaceID)
 	}
-	if rf, ok := ret.Get(0).(func(session.Context) threads.DerivedSmartblockIds); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) threads.DerivedSmartblockIds); ok {
+		r0 = rf(ctx, spaceID)
 	} else {
 		r0 = ret.Get(0).(threads.DerivedSmartblockIds)
 	}
 
-	if rf, ok := ret.Get(1).(func(session.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -195,14 +194,15 @@ type MockService_EnsurePredefinedBlocks_Call struct {
 }
 
 // EnsurePredefinedBlocks is a helper method to define mock.On call
-//   - ctx session.Context
-func (_e *MockService_Expecter) EnsurePredefinedBlocks(ctx interface{}) *MockService_EnsurePredefinedBlocks_Call {
-	return &MockService_EnsurePredefinedBlocks_Call{Call: _e.mock.On("EnsurePredefinedBlocks", ctx)}
+//   - ctx context.Context
+//   - spaceID string
+func (_e *MockService_Expecter) EnsurePredefinedBlocks(ctx interface{}, spaceID interface{}) *MockService_EnsurePredefinedBlocks_Call {
+	return &MockService_EnsurePredefinedBlocks_Call{Call: _e.mock.On("EnsurePredefinedBlocks", ctx, spaceID)}
 }
 
-func (_c *MockService_EnsurePredefinedBlocks_Call) Run(run func(ctx session.Context)) *MockService_EnsurePredefinedBlocks_Call {
+func (_c *MockService_EnsurePredefinedBlocks_Call) Run(run func(ctx context.Context, spaceID string)) *MockService_EnsurePredefinedBlocks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -212,7 +212,7 @@ func (_c *MockService_EnsurePredefinedBlocks_Call) Return(predefinedObjectIDs th
 	return _c
 }
 
-func (_c *MockService_EnsurePredefinedBlocks_Call) RunAndReturn(run func(session.Context) (threads.DerivedSmartblockIds, error)) *MockService_EnsurePredefinedBlocks_Call {
+func (_c *MockService_EnsurePredefinedBlocks_Call) RunAndReturn(run func(context.Context, string) (threads.DerivedSmartblockIds, error)) *MockService_EnsurePredefinedBlocks_Call {
 	_c.Call.Return(run)
 	return _c
 }

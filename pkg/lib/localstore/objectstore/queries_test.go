@@ -50,12 +50,15 @@ func newStoreFixture(t *testing.T) *storeFixture {
 	db, err := badger.Open(badger.DefaultOptions(filepath.Join(t.TempDir(), "badger")))
 	require.NoError(t, err)
 
+	ds := &dsObjectStore{
+		sbtProvider: typeProvider,
+		fts:         fullText,
+		db:          db,
+	}
+	err = ds.initCache()
+	require.NoError(t, err)
 	return &storeFixture{
-		dsObjectStore: &dsObjectStore{
-			sbtProvider: typeProvider,
-			fts:         fullText,
-			db:          db,
-		},
+		dsObjectStore: ds,
 	}
 }
 

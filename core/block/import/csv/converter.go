@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -10,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -55,7 +55,7 @@ func (c *CSV) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportReque
 	return nil
 }
 
-func (c *CSV) GetSnapshots(ctx session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
 	params := c.GetParams(req)
 	if params == nil {
 		return nil, nil

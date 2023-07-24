@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -40,11 +39,12 @@ type eventKey int
 const eventCreate eventKey = 0
 
 type Service interface {
-	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSet(req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error)
-	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
-	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+	CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error)
+	// TODO Review those two methods, they are very similar but have slightly different mechanics
+	CreateSubObjectInWorkspace(ctx context.Context, details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
+	CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 	app.Component
 }
 
@@ -67,7 +67,7 @@ type CollectionService interface {
 	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 }
 
-func NewCreator(sbtProvider typeprovider.SmartBlockTypeProvider) *Creator {
+func NewCreator(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
 	return &Creator{
 		sbtProvider: sbtProvider,
 	}
@@ -95,25 +95,25 @@ func (c *Creator) Name() (name string) {
 
 // TODO Temporarily
 type BlockService interface {
-	StateFromTemplate(ctx session.Context, templateID, name string) (st *state.State, err error)
-	CreateTreeObject(ctx session.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	StateFromTemplate(templateID string, name string) (st *state.State, err error)
+	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
-func (c *Creator) CreateSmartBlockFromTemplate(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
-		if createState, err = c.blockService.StateFromTemplate(ctx, templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 			return
 		}
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return c.CreateSmartBlockFromState(ctx, sbType, details, createState)
+	return c.CreateSmartBlockFromState(ctx, spaceID, sbType, details, createState)
 }
 
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
-func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -155,14 +155,14 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 
 	// if we don't have anything in details then check the object store
 	if workspaceID == "" {
-		workspaceID = c.anytype.PredefinedObjects(ctx.SpaceID()).Account
+		workspaceID = c.anytype.PredefinedObjects(spaceID).Account
 	}
 
 	if workspaceID != "" {
 		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceID))
 	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID(ctx.SpaceID())))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID(spaceID)))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
@@ -172,8 +172,8 @@ func (c *Creator) CreateSmartBlockFromState(ctx session.Context, sbType coresb.S
 		return c.CreateSubObjectInWorkspace(ctx, createState.CombinedDetails(), workspaceID)
 	}
 
-	cctx := context.WithValue(ctx.Context(), eventCreate, ev)
-	sb, err := c.blockService.CreateTreeObject(ctx.WithContext(cctx), sbType, func(id string) *smartblock.InitContext {
+	ctx = context.WithValue(ctx, eventCreate, ev)
+	sb, err := c.blockService.CreateTreeObject(ctx, spaceID, sbType, func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()
@@ -210,7 +210,7 @@ func (c *Creator) InjectWorkspaceID(details *types.Struct, spaceID string, objec
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
 }
 
-func (c *Creator) CreateSet(ctx session.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	// TODO remove it, when schema will be refactored
@@ -220,7 +220,7 @@ func (c *Creator) CreateSet(ctx session.Context, req *pb.RpcObjectCreateSetReque
 	if len(source) == 0 {
 		source = []string{converter.DefaultSetSource.URL()}
 	}
-	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(ctx.SpaceID(), c.sbtProvider, c.objectStore, source); err != nil {
+	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, source); err != nil {
 		return
 	}
 
@@ -252,13 +252,13 @@ func (c *Creator) CreateSet(ctx session.Context, req *pb.RpcObjectCreateSetReque
 	template.InitTemplate(newState, tmpls...)
 
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, newState)
+	return c.CreateSmartBlockFromState(ctx, req.SpaceId, coresb.SmartBlockTypePage, req.Details, newState)
 }
 
 // TODO: it must be in another component
-func (c *Creator) CreateSubObjectInWorkspace(ctx session.Context, details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSubObjectInWorkspace(ctx context.Context, details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error) {
 	// todo: rewrite to the current workspace id
-	err = block.Do(c.blockPicker, ctx, workspaceID, func(ws *editor.Workspaces) error {
+	err = block.Do(c.blockPicker, workspaceID, func(ws *editor.Workspaces) error {
 		id, newDetails, err = ws.CreateSubObject(ctx, details)
 		return err
 	})
@@ -266,9 +266,8 @@ func (c *Creator) CreateSubObjectInWorkspace(ctx session.Context, details *types
 }
 
 // TODO: it must be in another component
-func (c *Creator) CreateSubObjectsInWorkspace(ctx session.Context, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-
-	err = block.Do(c.blockPicker, ctx, c.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
+func (c *Creator) CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
+	err = block.Do(c.blockPicker, c.anytype.PredefinedObjects(spaceID).Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
@@ -280,7 +279,7 @@ func (c *Creator) CreateSubObjectsInWorkspace(ctx session.Context, details []*ty
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (c *Creator) ObjectCreateBookmark(ctx session.Context, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
+func (c *Creator) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
 	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
 	var res bookmark.ContentFuture
 	if source != "" {
@@ -288,16 +287,16 @@ func (c *Creator) ObjectCreateBookmark(ctx session.Context, req *pb.RpcObjectCre
 		if err != nil {
 			return "", nil, fmt.Errorf("process uri: %w", err)
 		}
-		res = c.bookmark.FetchBookmarkContent(ctx, u)
+		res = c.bookmark.FetchBookmarkContent(req.SpaceId, u)
 	} else {
 		res = func() *model.BlockContentBookmark {
 			return nil
 		}
 	}
-	return c.bookmark.CreateBookmarkObject(ctx, req.Details, res)
+	return c.bookmark.CreateBookmarkObject(ctx, req.SpaceId, req.Details, res)
 }
 
-func (c *Creator) CreateObject(ctx session.Context, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
+func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
 	details = req.GetDetails()
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
@@ -328,6 +327,7 @@ func (c *Creator) CreateObject(ctx session.Context, req block.DetailsGetter, for
 	case bundle.TypeKeyBookmark.URL():
 		return c.ObjectCreateBookmark(ctx, &pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
+			SpaceId: spaceID,
 		})
 	case bundle.TypeKeySet.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
@@ -335,6 +335,7 @@ func (c *Creator) CreateObject(ctx session.Context, req block.DetailsGetter, for
 			Details:       details,
 			InternalFlags: internalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
+			SpaceId:       spaceID,
 		})
 	case bundle.TypeKeyCollection.URL():
 		var st *state.State
@@ -343,22 +344,22 @@ func (c *Creator) CreateObject(ctx session.Context, req block.DetailsGetter, for
 		if err != nil {
 			return "", nil, err
 		}
-		return c.CreateSmartBlockFromState(ctx, sbType, details, st)
+		return c.CreateSmartBlockFromState(ctx, spaceID, sbType, details, st)
 	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(ctx.SpaceID()).Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
 
 	case bundle.TypeKeyRelation.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(ctx.SpaceID()).Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
 
 	case bundle.TypeKeyRelationOption.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(ctx.SpaceID()).Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
 
 	case bundle.TypeKeyTemplate.URL():
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
-	return c.CreateSmartBlockFromTemplate(ctx, sbType, details, templateID)
+	return c.CreateSmartBlockFromTemplate(ctx, spaceID, sbType, details, templateID)
 }

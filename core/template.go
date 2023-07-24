@@ -16,7 +16,6 @@ import (
 )
 
 func (mw *Middleware) TemplateCreateFromObject(cctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
-	ctx := mw.newContext(cctx)
 	response := func(templateId string, err error) *pb.RpcTemplateCreateFromObjectResponse {
 		m := &pb.RpcTemplateCreateFromObjectResponse{
 			Error: &pb.RpcTemplateCreateFromObjectResponseError{Code: pb.RpcTemplateCreateFromObjectResponseError_NULL},
@@ -30,14 +29,13 @@ func (mw *Middleware) TemplateCreateFromObject(cctx context.Context, req *pb.Rpc
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateCreateFromObject(ctx, req.ContextId)
+		templateId, err = bs.TemplateCreateFromObject(cctx, req.ContextId)
 		return
 	})
 	return response(templateId, err)
 }
 
 func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
-	ctx := mw.newContext(cctx)
 	response := func(templateId string, err error) *pb.RpcTemplateCloneResponse {
 		m := &pb.RpcTemplateCloneResponse{
 			Error: &pb.RpcTemplateCloneResponseError{Code: pb.RpcTemplateCloneResponseError_NULL},
@@ -51,14 +49,13 @@ func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateClo
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateClone(ctx, req.ContextId)
+		templateId, err = bs.TemplateClone(req.ContextId)
 		return
 	})
 	return response(templateId, err)
 }
 
 func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
-	ctx := mw.newContext(cctx)
 	response := func(err error) *pb.RpcObjectApplyTemplateResponse {
 		m := &pb.RpcObjectApplyTemplateResponse{
 			Error: &pb.RpcObjectApplyTemplateResponseError{Code: pb.RpcObjectApplyTemplateResponseError_NULL},
@@ -70,13 +67,12 @@ func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ObjectApplyTemplate(ctx, req.ContextId, req.TemplateId)
+		return bs.ObjectApplyTemplate(req.ContextId, req.TemplateId)
 	})
 	return response(err)
 }
 
 func (mw *Middleware) TemplateCreateFromObjectType(cctx context.Context, req *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse {
-	ctx := mw.newContext(cctx)
 	response := func(templateId string, err error) *pb.RpcTemplateCreateFromObjectTypeResponse {
 		m := &pb.RpcTemplateCreateFromObjectTypeResponse{
 			Error: &pb.RpcTemplateCreateFromObjectTypeResponseError{Code: pb.RpcTemplateCreateFromObjectTypeResponseError_NULL},
@@ -90,14 +86,13 @@ func (mw *Middleware) TemplateCreateFromObjectType(cctx context.Context, req *pb
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateCreateFromObjectByObjectType(ctx, req.ObjectType)
+		templateId, err = bs.TemplateCreateFromObjectByObjectType(cctx, req.ObjectType)
 		return
 	})
 	return response(templateId, err)
 }
 
 func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
-	ctx := mw.newContext(cctx)
 	response := func(path string, err error) (res *pb.RpcTemplateExportAllResponse) {
 		res = &pb.RpcTemplateExportAllResponse{
 			Error: &pb.RpcTemplateExportAllResponseError{
@@ -134,7 +129,7 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 		if len(docIds) == 0 {
 			return fmt.Errorf("no templates")
 		}
-		path, _, err = es.Export(ctx, pb.RpcObjectListExportRequest{
+		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
 			Path:      req.Path,
 			ObjectIds: docIds,
 			Format:    pb.RpcObjectListExport_Protobuf,
@@ -145,8 +140,8 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 	return response(path, err)
 }
 
+// WorkspaceExport is unused now, it must be fixed if someone wants to use it
 func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
-	ctx := mw.newContext(cctx)
 	response := func(path string, err error) (res *pb.RpcWorkspaceExportResponse) {
 		res = &pb.RpcWorkspaceExportResponse{
 			Error: &pb.RpcWorkspaceExportResponseError{
@@ -188,7 +183,7 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 		if len(docIds) == 0 {
 			return fmt.Errorf("no objects in workspace")
 		}
-		path, _, err = es.Export(ctx, pb.RpcObjectListExportRequest{
+		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
 			Path:          req.Path,
 			ObjectIds:     docIds,
 			Format:        pb.RpcObjectListExport_Protobuf,

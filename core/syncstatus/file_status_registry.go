@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
@@ -94,8 +93,7 @@ func (r *fileStatusRegistry) setFileStatus(key fileWithSpace, status fileStatus)
 			return FileStatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
 		}
 		r.files[key] = status
-		ctx := session.NewContext(context.Background(), key.spaceID)
-		go r.indexFileSyncStatus(ctx, key.fileID, status.status)
+		go r.indexFileSyncStatus(key.fileID, status.status)
 		return status.status, nil
 	}
 	return prevStatus.status, nil
@@ -180,8 +178,8 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 	return status, nil
 }
 
-func (r *fileStatusRegistry) indexFileSyncStatus(ctx session.Context, fileID string, status FileStatus) {
-	err := getblock.Do(r.picker, ctx, fileID, func(b basic.DetailsSettable) (err error) {
+func (r *fileStatusRegistry) indexFileSyncStatus(fileID string, status FileStatus) {
+	err := getblock.Do(r.picker, fileID, func(b basic.DetailsSettable) (err error) {
 		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeyFileSyncStatus.String(),

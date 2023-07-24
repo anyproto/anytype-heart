@@ -11,7 +11,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -24,60 +23,64 @@ const (
 )
 
 type Image interface {
-	Exif(ctx session.Context) (*mill.ImageExifSchema, error)
+	Exif(ctx context.Context) (*mill.ImageExifSchema, error)
 	Hash() string
-	Details(ctx session.Context) (*types.Struct, error)
-	GetFileForWidth(ctx session.Context, wantWidth int) (File, error)
-	GetFileForLargestWidth(ctx session.Context) (File, error)
-	GetOriginalFile(ctx session.Context) (File, error)
+	Details(ctx context.Context) (*types.Struct, error)
+	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
+	GetFileForLargestWidth(ctx context.Context) (File, error)
+	GetOriginalFile(ctx context.Context) (File, error)
 }
 
 var _ Image = (*image)(nil)
 
 type image struct {
 	hash            string // directory hash
+	spaceID         string
 	variantsByWidth map[int]*storage.FileInfo
 	service         *service
 }
 
-func (i *image) GetFileForWidth(ctx session.Context, wantWidth int) (File, error) {
+func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(wantWidth)
 	}
 
 	if wantWidth > 1920 {
-		fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/original")
+		fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/original")
 		if err == nil {
 			return &file{
-				hash: fileIndex.Hash,
-				info: fileIndex,
-				node: i.service,
+				spaceID: i.spaceID,
+				hash:    fileIndex.Hash,
+				info:    fileIndex,
+				node:    i.service,
 			}, nil
 		}
 	}
 
 	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &file{
-		hash: fileIndex.Hash,
-		info: fileIndex,
-		node: i.service,
+		spaceID: i.spaceID,
+		hash:    fileIndex.Hash,
+		info:    fileIndex,
+		node:    i.service,
 	}, nil
 }
 
 // GetOriginalFile doesn't contains Meta
-func (i *image) GetOriginalFile(ctx session.Context) (File, error) {
+func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
 	sizeName := "original"
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err == nil {
 		return &file{
-			hash: fileIndex.Hash,
-			info: fileIndex,
-			node: i.service,
+			spaceID: i.spaceID,
+			hash:    fileIndex.Hash,
+			info:    fileIndex,
+			node:    i.service,
 		}, nil
 	}
 
@@ -85,22 +88,23 @@ func (i *image) GetOriginalFile(ctx session.Context) (File, error) {
 	return i.GetFileForLargestWidth(ctx)
 }
 
-func (i *image) GetFileForLargestWidth(ctx session.Context) (File, error) {
+func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(math.MaxInt32)
 	}
 
 	// fallback to large size, because older image nodes don't have an original
 	sizeName := "large"
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/"+sizeName)
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/"+sizeName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &file{
-		hash: fileIndex.Hash,
-		info: fileIndex,
-		node: i.service,
+		spaceID: i.spaceID,
+		hash:    fileIndex.Hash,
+		info:    fileIndex,
+		node:    i.service,
 	}, nil
 }
 
@@ -108,16 +112,17 @@ func (i *image) Hash() string {
 	return i.hash
 }
 
-func (i *image) Exif(ctx session.Context) (*mill.ImageExifSchema, error) {
-	fileIndex, err := i.service.fileGetInfoForPath(ctx, "/ipfs/"+i.hash+"/0/exif")
+func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
+	fileIndex, err := i.service.fileGetInfoForPath(ctx, i.spaceID, "/ipfs/"+i.hash+"/0/exif")
 	if err != nil {
 		return nil, err
 	}
 
 	f := &file{
-		hash: fileIndex.Hash,
-		info: fileIndex,
-		node: i.service,
+		spaceID: i.spaceID,
+		hash:    fileIndex.Hash,
+		info:    fileIndex,
+		node:    i.service,
 	}
 	r, err := f.Reader(ctx)
 	if err != nil {
@@ -135,7 +140,7 @@ func (i *image) Exif(ctx session.Context) (*mill.ImageExifSchema, error) {
 	return &exif, nil
 }
 
-func (i *image) Details(ctx session.Context) (*types.Struct, error) {
+func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	imageExif, err := i.Exif(ctx)
 	if err != nil {
 		log.Errorf("failed to get exif for image: %s", err.Error())
@@ -154,8 +159,7 @@ func (i *image) Details(ctx session.Context) (*types.Struct, error) {
 		Fields: commonDetails,
 	}
 
-	cctx, cancel := context.WithTimeout(ctx.Context(), 1*time.Minute)
-	ctx = ctx.WithContext(cctx)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
 	largest, err := i.GetFileForLargestWidth(ctx)
@@ -254,22 +258,24 @@ func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {
 
 	if minWidthMatchedImage != nil {
 		return &file{
-			hash: minWidthMatchedImage.Hash,
-			info: minWidthMatchedImage,
-			node: i.service,
+			spaceID: i.spaceID,
+			hash:    minWidthMatchedImage.Hash,
+			info:    minWidthMatchedImage,
+			node:    i.service,
 		}, nil
 	} else if maxWidthImage != nil {
 		return &file{
-			hash: maxWidthImage.Hash,
-			info: maxWidthImage,
-			node: i.service,
+			spaceID: i.spaceID,
+			hash:    maxWidthImage.Hash,
+			info:    maxWidthImage,
+			node:    i.service,
 		}, nil
 	}
 
 	return nil, ErrFileNotFound
 }
 
-func (i *image) extractLastModifiedDate(ctx session.Context, imageExif *mill.ImageExifSchema) int64 {
+func (i *image) extractLastModifiedDate(ctx context.Context, imageExif *mill.ImageExifSchema) int64 {
 	var lastModifiedDate int64
 	largest, err := i.GetFileForLargestWidth(ctx)
 	if err == nil {

@@ -32,6 +32,8 @@ func New(id string) *SmartTest {
 	}
 }
 
+var _ smartblock.SmartBlock = &SmartTest{}
+
 type SmartTest struct {
 	Results          Results
 	anytype          *testMock.MockService
@@ -204,7 +206,7 @@ func (st *SmartTest) Type() model.SmartBlockType {
 	return model.SmartBlockType_Page
 }
 
-func (st *SmartTest) Show(session.Context) (obj *model.ObjectView, err error) {
+func (st *SmartTest) Show() (obj *model.ObjectView, err error) {
 	return
 }
 

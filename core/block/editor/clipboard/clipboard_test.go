@@ -1,7 +1,6 @@
 package clipboard
 
 import (
-	"context"
 	"strconv"
 	"testing"
 
@@ -704,7 +703,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 
 	t.Run("cut title and another block", func(t *testing.T) {
 		// given
-		ctx := session.NewContext(context.Background(), "space1")
+		ctx := session.NewContext()
 		st := withTitle(t, "real title", "second")
 		cb := NewClipboard(st, nil, nil, nil, nil)
 
@@ -747,7 +746,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			SelectedTextRange: &model.Range{From: 0, To: 11},
 			Blocks:            []*model.Block{textBlock, bookmark},
 		}
-		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(context.Background(), "space1"), blockCutReq)
+		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(), blockCutReq)
 		require.NoError(t, err)
 		assert.Equal(t, result, textSlot)
 		assert.Len(t, anySlot, 2)
@@ -779,7 +778,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			SelectedTextRange: &model.Range{From: 0, To: 11},
 			Blocks:            []*model.Block{textBlock, bookmark, lastTextBlock},
 		}
-		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(context.Background(), "space1"), blockCutReq)
+		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(), blockCutReq)
 		require.NoError(t, err)
 		assert.Equal(t, result, textSlot)
 		assert.Len(t, anySlot, 3)
@@ -799,7 +798,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			},
 			SelectedTextRange: &model.Range{From: 1, To: 3},
 		}
-		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(context.Background(), "space1"), req)
+		textSlot, htmlSlot, anySlot, err := cb.Cut(session.NewContext(), req)
 		require.NoError(t, err)
 		assert.Equal(t, "tle", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
 		assert.Equal(t, "it", textSlot)

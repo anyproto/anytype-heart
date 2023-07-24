@@ -50,9 +50,9 @@ func TestSmartBlock_Apply(t *testing.T) {
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
 		fx.source.EXPECT().ReadOnly()
 		var event *pb.Event
-		ctx := session.NewContext(context.Background(), "space1")
+		ctx := session.NewContext()
 		fx.RegisterSession(ctx)
-		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything, mock.Anything).Run(func(spaceID string, token string, e *pb.Event) {
+		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
 			event = e
 		})
 		fx.source.EXPECT().Heads()
@@ -159,10 +159,10 @@ func (fx *fixture) init(blocks []*model.Block) {
 	doc := state.NewDoc(id, bm)
 	fx.source.EXPECT().ReadDoc(gomock.Any(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
+	fx.store.EXPECT().StoreSpaceID(id, "space1")
 
-	ctx := session.NewContext(context.Background(), "space1")
 	err := fx.Init(&InitContext{
-		Ctx:     ctx,
+		Ctx:     context.Background(),
 		SpaceID: "space1",
 		Source:  fx.source,
 	})

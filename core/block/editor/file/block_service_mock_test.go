@@ -5,6 +5,7 @@
 package file_test
 
 import (
+	context "context"
 	reflect "reflect"
 
 	process "github.com/anyproto/anytype-heart/core/block/process"
@@ -37,9 +38,9 @@ func (m *MockBlockService) EXPECT() *MockBlockServiceMockRecorder {
 }
 
 // CreateLinkToTheNewObject mocks base method.
-func (m *MockBlockService) CreateLinkToTheNewObject(arg0 session.Context, arg1 *pb.RpcBlockLinkCreateWithObjectRequest) (string, string, error) {
+func (m *MockBlockService) CreateLinkToTheNewObject(arg0 context.Context, arg1 session.Context, arg2 *pb.RpcBlockLinkCreateWithObjectRequest) (string, string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateLinkToTheNewObject", arg0, arg1)
+	ret := m.ctrl.Call(m, "CreateLinkToTheNewObject", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(string)
 	ret2, _ := ret[2].(error)
@@ -47,9 +48,9 @@ func (m *MockBlockService) CreateLinkToTheNewObject(arg0 session.Context, arg1 *
 }
 
 // CreateLinkToTheNewObject indicates an expected call of CreateLinkToTheNewObject.
-func (mr *MockBlockServiceMockRecorder) CreateLinkToTheNewObject(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockBlockServiceMockRecorder) CreateLinkToTheNewObject(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLinkToTheNewObject", reflect.TypeOf((*MockBlockService)(nil).CreateLinkToTheNewObject), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLinkToTheNewObject", reflect.TypeOf((*MockBlockService)(nil).CreateLinkToTheNewObject), arg0, arg1, arg2)
 }
 
 // ProcessAdd mocks base method.

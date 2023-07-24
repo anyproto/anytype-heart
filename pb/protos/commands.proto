@@ -619,7 +619,9 @@ message Rpc {
         }
 
         message Info {
-            message Request {}
+            message Request {
+                string spaceId = 1;
+            }
 
             message Response {
                 Error error = 1;
@@ -641,6 +643,7 @@ message Rpc {
         message Object {
             message Add {
                 message Request {
+                    string spaceId = 2;
                     string objectId = 1;
                 }
 
@@ -664,6 +667,7 @@ message Rpc {
             }
             message ListAdd {
                 message Request {
+                    string spaceId = 2;
                     repeated string objectIds = 1;
                 }
 
@@ -1198,6 +1202,7 @@ message Rpc {
 
         message Graph {
             message Request {
+                string spaceId = 5;
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
                 int32 limit = 2;
                 // additional filter by objectTypes
@@ -1792,6 +1797,7 @@ message Rpc {
 
         message ListExport {
             message Request {
+                string spaceId = 10;
                 // the path where export files will place
                 string path = 1;
                 // ids of documents for export, when empty - will export all available docs
@@ -1842,6 +1848,7 @@ message Rpc {
         message Import {
             message Request {
                 option (no_auth) = true;
+                string spaceId = 14;
                 oneof params {
                     NotionParams notionParams = 1;
                     BookmarksParams bookmarksParams = 2; //for internal use
@@ -1998,6 +2005,7 @@ message Rpc {
 
         message ImportUseCase {
             message Request {
+                string spaceId = 2;
                 UseCase useCase = 1;
 
                 enum UseCase {
@@ -2480,6 +2488,7 @@ message Rpc {
         }
         message Upload {
             message Request {
+                string spaceId = 6;
                 string url = 1;
                 string localPath = 2;
                 anytype.model.Block.Content.File.Type type = 3;
@@ -2552,7 +2561,9 @@ message Rpc {
         }
 
         message SpaceUsage {
-            message Request {}
+            message Request {
+                string spaceId = 1;
+            }
 
             message Response {
                 Error error = 1;
@@ -2801,6 +2812,7 @@ message Rpc {
         message Download {
             message Request {
                 string pictureId = 1;
+                string spaceId = 2;
             }
 
             message Response {
@@ -4320,6 +4332,7 @@ message Rpc {
                 google.protobuf.Struct details = 3; // new object details
                 string templateId = 5; // optional template id for creating from template
                 repeated anytype.model.InternalFlag internalFlags = 7;
+                string spaceId = 8;
 
                 // link block params
                 string targetId = 2; // id of the closest simple block
@@ -4838,6 +4851,7 @@ message Rpc {
                 string contextId = 1;
                 string blockId = 2;
                 string url = 3;
+                string spaceId = 4;
             }
             message Response {
                 Error error = 1;
@@ -5350,6 +5364,7 @@ message Rpc {
                 string path = 1;
                 // ids of documents for export, when empty - will export all available docs
                 repeated string docIds = 2;
+                string spaceId = 3;
             }
 
             message Response {
