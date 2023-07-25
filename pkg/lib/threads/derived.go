@@ -36,7 +36,7 @@ const (
 
 type DerivedSmartblockIds struct {
 	AccountOld string
-	Account    string
+	Account    string // Workspace object
 	Profile    string
 	Home       string
 	Archive    string

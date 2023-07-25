@@ -21163,7 +21163,8 @@ Avatar of a user&#39;s account. It could be an image or color
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | deviceId | [string](#string) |  |  |
-| accountSpaceId | [string](#string) |  | marketplace template id |
+| accountSpaceId | [string](#string) |  |  |
+| workspaceObjectId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
