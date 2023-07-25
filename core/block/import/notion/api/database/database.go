@@ -71,7 +71,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *block.NotionImportContext) (*converter.Response, *property.PropertiesStore, converter.ConvertError) {
+	req *block.NotionImportContext) (*converter.Response, *property.PropertiesStore, *converter.ConvertError) {
 	var (
 		allSnapshots         = make([]*converter.Snapshot, 0)
 		notionIdsToAnytype   = make(map[string]string, 0)
