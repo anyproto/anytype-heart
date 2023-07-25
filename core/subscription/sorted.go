@@ -55,6 +55,12 @@ type sortedSub struct {
 
 	cache *cache
 	ds    *dependencyService
+
+	// for nested subscriptions
+	// parent is used to run onChange callback when any child subscriptions receive changes
+	parent subscription
+	// nested is used to close child subscriptions when parent is closed
+	nested []subscription
 }
 
 func (s *sortedSub) init(entries []*entry) (err error) {

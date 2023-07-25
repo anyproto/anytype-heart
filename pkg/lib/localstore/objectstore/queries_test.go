@@ -636,6 +636,36 @@ func TestQueryRaw(t *testing.T) {
 		require.NoError(t, err)
 		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
 	})
+
+	t.Run("with nested filter", func(t *testing.T) {
+		s := newStoreFixture(t)
+		obj1 := testObject{
+			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyType: pbtypes.String("type1"),
+		}
+		type1 := testObject{
+			bundle.RelationKeyId:          pbtypes.String("type1"),
+			bundle.RelationKeyType:        pbtypes.String("objectType"),
+			bundle.RelationKey("typeKey"): pbtypes.String("note"),
+		}
+
+		s.addObjects(t, []testObject{obj1, type1})
+
+		flt, err := database.NewFilters(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: "type.typeKey",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String("note"),
+				},
+			},
+		}, nil, nil)
+		require.NoError(t, err)
+
+		recs, err := s.QueryRaw(flt, 0, 0)
+		require.NoError(t, err)
+		assertRecordsEqual(t, []testObject{obj1}, recs)
+	})
 }
 
 type dummySourceService struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,126 +34,144 @@ func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store Optio
 	return and, nil
 }
 
-func MakeFilter(proto *model.BlockContentDataviewFilter, store OptionsGetter) (Filter, error) {
+func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store OptionsGetter) (Filter, error) {
+	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
+	if len(parts) == 2 {
+		rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
+		rawNestedFilter.RelationKey = parts[1]
+		nestedFilter, err := MakeFilter(rawNestedFilter, store)
+		if err != nil {
+			return nil, fmt.Errorf("make nested filter %s: %w", parts, err)
+		}
+		return &NestedIn{
+			Key:    parts[0],
+			Filter: nestedFilter,
+		}, nil
+	}
+
 	// replaces "value == false" to "value != true" for expected work with checkboxes
-	if proto.Condition == model.BlockContentDataviewFilter_Equal && proto.Value != nil && proto.Value.Equal(pbtypes.Bool(false)) {
-		proto = &model.BlockContentDataviewFilter{
-			RelationKey:      proto.RelationKey,
-			RelationProperty: proto.RelationProperty,
+	if rawFilter.Condition == model.BlockContentDataviewFilter_Equal && rawFilter.Value != nil && rawFilter.Value.Equal(pbtypes.Bool(false)) {
+		rawFilter = &model.BlockContentDataviewFilter{
+			RelationKey:      rawFilter.RelationKey,
+			RelationProperty: rawFilter.RelationProperty,
 			Condition:        model.BlockContentDataviewFilter_NotEqual,
 			Value:            pbtypes.Bool(true),
 		}
 	}
 	// replaces "value != false" to "value == true" for expected work with checkboxes
-	if proto.Condition == model.BlockContentDataviewFilter_NotEqual && proto.Value != nil && proto.Value.Equal(pbtypes.Bool(false)) {
-		proto = &model.BlockContentDataviewFilter{
-			RelationKey:      proto.RelationKey,
-			RelationProperty: proto.RelationProperty,
+	if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual && rawFilter.Value != nil && rawFilter.Value.Equal(pbtypes.Bool(false)) {
+		rawFilter = &model.BlockContentDataviewFilter{
+			RelationKey:      rawFilter.RelationKey,
+			RelationProperty: rawFilter.RelationProperty,
 			Condition:        model.BlockContentDataviewFilter_Equal,
 			Value:            pbtypes.Bool(true),
 		}
 	}
-	switch proto.Condition {
+	switch rawFilter.Condition {
 	case model.BlockContentDataviewFilter_Equal,
 		model.BlockContentDataviewFilter_Greater,
 		model.BlockContentDataviewFilter_Less,
 		model.BlockContentDataviewFilter_GreaterOrEqual,
 		model.BlockContentDataviewFilter_LessOrEqual:
 		return Eq{
-			Key:   proto.RelationKey,
-			Cond:  proto.Condition,
-			Value: proto.Value,
+			Key:   rawFilter.RelationKey,
+			Cond:  rawFilter.Condition,
+			Value: rawFilter.Value,
 		}, nil
 	case model.BlockContentDataviewFilter_NotEqual:
 		return Not{Eq{
-			Key:   proto.RelationKey,
+			Key:   rawFilter.RelationKey,
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: proto.Value,
+			Value: rawFilter.Value,
 		}}, nil
 	case model.BlockContentDataviewFilter_Like:
 		return Like{
-			Key:   proto.RelationKey,
-			Value: proto.Value,
+			Key:   rawFilter.RelationKey,
+			Value: rawFilter.Value,
 		}, nil
 	case model.BlockContentDataviewFilter_NotLike:
 		return Not{Like{
-			Key:   proto.RelationKey,
-			Value: proto.Value,
+			Key:   rawFilter.RelationKey,
+			Value: rawFilter.Value,
 		}}, nil
 	case model.BlockContentDataviewFilter_In:
-		list, err := pbtypes.ValueListWrapper(proto.Value)
+		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return In{
-			Key:   proto.RelationKey,
+			Key:   rawFilter.RelationKey,
 			Value: list,
 		}, nil
 	case model.BlockContentDataviewFilter_NotIn:
-		list, err := pbtypes.ValueListWrapper(proto.Value)
+		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return Not{In{
-			Key:   proto.RelationKey,
+			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_Empty:
 		return Empty{
-			Key: proto.RelationKey,
+			Key: rawFilter.RelationKey,
 		}, nil
 	case model.BlockContentDataviewFilter_NotEmpty:
 		return Not{Empty{
-			Key: proto.RelationKey,
+			Key: rawFilter.RelationKey,
 		}}, nil
 	case model.BlockContentDataviewFilter_AllIn:
-		list, err := pbtypes.ValueListWrapper(proto.Value)
+		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return AllIn{
-			Key:   proto.RelationKey,
+			Key:   rawFilter.RelationKey,
 			Value: list,
 		}, nil
 	case model.BlockContentDataviewFilter_NotAllIn:
-		list, err := pbtypes.ValueListWrapper(proto.Value)
+		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return Not{AllIn{
-			Key:   proto.RelationKey,
+			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_ExactIn:
-		list, err := pbtypes.ValueListWrapper(proto.Value)
+		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return ExactIn{
-			Key:     proto.RelationKey,
+			Key:     rawFilter.RelationKey,
 			Value:   list,
-			Options: optionsToMap(proto.RelationKey, store),
+			Options: optionsToMap(rawFilter.RelationKey, store),
 		}, nil
 	case model.BlockContentDataviewFilter_NotExactIn:
-		list, err := pbtypes.ValueListWrapper(proto.Value)
+		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
 		return Not{ExactIn{
-			Key:   proto.RelationKey,
+			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_Exists:
 		return Exists{
-			Key: proto.RelationKey,
+			Key: rawFilter.RelationKey,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unexpected filter cond: %v", proto.Condition)
+		return nil, fmt.Errorf("unexpected filter cond: %v", rawFilter.Condition)
 	}
 }
 
 type Getter interface {
 	Get(key string) *types.Value
+}
+
+type WithNestedFilter interface {
+	EnrichNestedFilter(func(nestedFilter Filter) (ids []string, err error)) error
 }
 
 type Filter interface {
@@ -161,6 +180,8 @@ type Filter interface {
 }
 
 type AndFilters []Filter
+
+var _ WithNestedFilter = AndFilters{}
 
 func (a AndFilters) FilterObject(g Getter) bool {
 	for _, f := range a {
@@ -179,7 +200,20 @@ func (a AndFilters) String() string {
 	return fmt.Sprintf("(%s)", strings.Join(andS, " AND "))
 }
 
+func (a AndFilters) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string, err error)) error {
+	for _, f := range a {
+		if withNested, ok := f.(WithNestedFilter); ok {
+			if err := withNested.EnrichNestedFilter(fn); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 type OrFilters []Filter
+
+var _ WithNestedFilter = OrFilters{}
 
 func (a OrFilters) FilterObject(g Getter) bool {
 	if len(a) == 0 {
@@ -199,6 +233,17 @@ func (a OrFilters) String() string {
 		orS = append(orS, f.String())
 	}
 	return fmt.Sprintf("(%s)", strings.Join(orS, " OR "))
+}
+
+func (a OrFilters) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string, err error)) error {
+	for _, f := range a {
+		if withNested, ok := f.(WithNestedFilter); ok {
+			if err := withNested.EnrichNestedFilter(fn); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 type Not struct {
@@ -458,4 +503,42 @@ func optionsToMap(key string, store OptionsGetter) map[string]string {
 	}
 
 	return result
+}
+
+type NestedIn struct {
+	Key    string
+	Filter Filter
+
+	isEnriched bool
+	ids        []string
+}
+
+var _ WithNestedFilter = &NestedIn{}
+
+func (i *NestedIn) FilterObject(g Getter) bool {
+	if !i.isEnriched {
+		panic("nested filter is not enriched")
+	}
+	val := g.Get(i.Key)
+	for _, id := range i.ids {
+		eq := Eq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
+		if eq.filterObject(val) {
+			return true
+		}
+	}
+	return false
+}
+
+func (i *NestedIn) String() string {
+	return fmt.Sprintf("%v IN(%v)", i.Key, i.ids)
+}
+
+func (i *NestedIn) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string, err error)) error {
+	ids, err := fn(i.Filter)
+	if err != nil {
+		return err
+	}
+	i.ids = ids
+	i.isEnriched = true
+	return nil
 }

@@ -381,3 +381,31 @@ func TestMakeAndFilter(t *testing.T) {
 		assert.True(t, f.FilterObject(g))
 	})
 }
+
+func TestNestedFilters(t *testing.T) {
+	t.Run("simple", func(t *testing.T) {
+		f, err := MakeFilter(&model.BlockContentDataviewFilter{
+			RelationKey: "type.typeKey",
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String("note"),
+		}, nil)
+		require.NoError(t, err)
+
+		// Not enriched filter will panic
+		assert.Panics(t, func() {
+			f.FilterObject(testGetter{"type": pbtypes.String("id1")})
+		})
+
+		nested, ok := f.(WithNestedFilter)
+		require.True(t, ok)
+		err = nested.EnrichNestedFilter(func(nestedFilter Filter) (ids []string, err error) {
+			assert.True(t, nestedFilter.FilterObject(testGetter{"typeKey": pbtypes.String("note")}))
+			return []string{"id1", "id2"}, nil
+		})
+		require.NoError(t, err)
+
+		assert.True(t, f.FilterObject(testGetter{"type": pbtypes.String("id1")}))
+		assert.True(t, f.FilterObject(testGetter{"type": pbtypes.StringList([]string{"id2", "id1"})}))
+	})
+
+}
