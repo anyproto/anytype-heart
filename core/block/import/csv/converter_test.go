@@ -347,7 +347,7 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
-				Path:                    []string{"testdata/bigfile.csv"},
+				Path:                    []string{"testdata/bigfile.csv", "testdata/transpose.csv"},
 				Delimiter:               ";",
 				UseFirstRowForRelations: true,
 			},
@@ -358,17 +358,7 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded))
-	assert.NotNil(t, sn)
-
-	var objects []*converter.Snapshot
-	for _, snapshot := range sn.Snapshots {
-		// only objects created from rows
-		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
-			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
-			objects = append(objects, snapshot)
-		}
-	}
-	assert.Len(t, objects, 0)
+	assert.Nil(t, sn)
 }
 
 func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T) {
