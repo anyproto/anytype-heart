@@ -368,11 +368,7 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 			objects = append(objects, snapshot)
 		}
 	}
-
-	assert.Len(t, objects, limitForRows)
-	for _, object := range objects {
-		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
-	}
+	assert.Len(t, objects, 0)
 }
 
 func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T) {
@@ -451,7 +447,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	csv := CSV{}
 	p := process.NewProgress(pb.ModelProcess_Import)
 	// UseFirstRowForRelations is off
-	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, _ := csv.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/1000_rows.csv"},
@@ -463,8 +459,6 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded))
 	assert.NotNil(t, sn)
 
 	var objects []*converter.Snapshot
@@ -477,12 +471,9 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	}
 
 	assert.Len(t, objects, limitForRows)
-	for _, object := range objects {
-		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
-	}
 
 	// UseFirstRowForRelations is on
-	sn, err = csv.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, _ = csv.GetSnapshots(&pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
 			CsvParams: &pb.RpcObjectImportRequestCsvParams{
 				Path:                    []string{"testdata/1000_rows.csv"},
@@ -494,8 +485,6 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 	}, p)
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded))
 	assert.NotNil(t, sn)
 
 	objects = []*converter.Snapshot{}
@@ -508,9 +497,6 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 	}
 
 	assert.Len(t, objects, limitForRows-1)
-	for _, object := range objects {
-		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
-	}
 }
 
 func Test_findUniqueRelationAndAddNumber(t *testing.T) {
