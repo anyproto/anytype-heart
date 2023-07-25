@@ -77,7 +77,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 		notionIdsToAnytype   = make(map[string]string, 0)
 		databaseNameToID     = make(map[string]string, 0)
 		parentPageToChildIDs = make(map[string][]string, 0)
-		convertError         = converter.ConvertError{}
+		convertError         = converter.NewError()
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	relations := &property.PropertiesStore{
@@ -86,13 +86,14 @@ func (ds *Service) GetDatabase(_ context.Context,
 	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, converter.NewCancelError(d.ID, err)
+			return nil, nil, converter.NewCancelError(err)
 		}
 		snapshot, err := ds.makeDatabaseSnapshot(d, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs, relations)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, converter.NewFromError(d.ID, err)
+			return nil, nil, converter.NewFromError(err)
 		}
 		if err != nil {
+			convertError.Add(err)
 			continue
 		}
 		allSnapshots = append(allSnapshots, snapshot...)
@@ -125,6 +126,9 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 		}
 	}
 	for key, databaseProperty := range d.Properties {
+		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
+			continue
+		}
 		if snapshot := ds.makeRelationSnapshotFromDatabaseProperty(relations, databaseProperty, key, st); snapshot != nil {
 			snapshots = append(snapshots, snapshot)
 		}

@@ -35,7 +35,7 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	databases, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import), block.NewNotionImportContext())
 
 	assert.NotNil(t, databases)
-	assert.Len(t, databases.Snapshots, 17) //1 database + 16 properties (name doesn't count)
+	assert.Len(t, databases.Snapshots, 16) //1 database + 15 properties (name doesn't count)
 	assert.Nil(t, ce)
 }
 

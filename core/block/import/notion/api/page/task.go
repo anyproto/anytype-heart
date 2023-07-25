@@ -35,7 +35,7 @@ func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRe
 
 type Result struct {
 	snapshot []*converter.Snapshot
-	ce       converter.ConvertError
+	ce       *converter.ConvertError
 }
 
 type Task struct {
@@ -78,8 +78,8 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	return &Result{snapshot: resultSnapshots, ce: ce}
 }
 
-func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase, converter.ConvertError) {
-	allErrors := converter.ConvertError{}
+func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase, *converter.ConvertError) {
+	allErrors := converter.NewError()
 	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {

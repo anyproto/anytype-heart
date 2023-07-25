@@ -43,7 +43,7 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
@@ -60,7 +60,7 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	rootCollection := converter.NewRootCollection(t.service)
 	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
-		cErr.Add(rootCollectionName, err)
+		cErr.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, cErr
 		}
@@ -80,16 +80,16 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 func (t *TXT) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	paths []string,
-	cErr converter.ConvertError) ([]*converter.Snapshot, []string, converter.ConvertError) {
+	cErr *converter.ConvertError) ([]*converter.Snapshot, []string, *converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range paths {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, converter.NewCancelError(p, err)
+			return nil, nil, converter.NewCancelError(err)
 		}
 		sn, to, err := t.handleImportPath(p, req.GetMode())
 		if err != nil {
-			cErr.Add(p, err)
+			cErr.Add(err)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil, nil
 			}

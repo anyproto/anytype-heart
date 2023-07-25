@@ -68,7 +68,7 @@ func (ds *Service) GetPages(ctx context.Context,
 	pages []Page,
 	notionImportContext *block.NotionImportContext,
 	relations *property.PropertiesStore,
-	progress process.Progress) (*converter.Response, converter.ConvertError) {
+	progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	progress.SetProgressMessage("Start creating pages from notion")
 	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
 	if convertError != nil {
@@ -93,14 +93,14 @@ func (ds *Service) GetPages(ctx context.Context,
 	return &converter.Response{Snapshots: allSnapshots}, converterError
 }
 
-func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, converter.ConvertError) {
+func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, *converter.ConvertError) {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	ce := converter.NewError()
 
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
 			pool.Stop()
-			return nil, converter.NewCancelError("cancel error", err)
+			return nil, converter.NewCancelError(err)
 		}
 		res := r.(*Result)
 		if res.ce != nil {
@@ -147,10 +147,10 @@ func (ds *Service) extractTitleFromPages(page Page) string {
 	return ""
 }
 
-func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *block.NotionImportContext) converter.ConvertError {
+func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *block.NotionImportContext) *converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
-			return converter.NewCancelError(p.ID, err)
+			return converter.NewCancelError(err)
 		}
 		importContext.NotionPageIdsToAnytype[p.ID] = uuid.New().String()
 		if p.Parent.PageID != "" {

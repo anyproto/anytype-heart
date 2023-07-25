@@ -64,7 +64,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
 	e := cv.NewError()
-	e.Add("error", fmt.Errorf("converter error"))
+	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
@@ -130,7 +130,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
 	e := cv.NewError()
-	e.Add("error", fmt.Errorf("converter error"))
+	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 			Blocks: []*model.Block{&model.Block{
@@ -171,7 +171,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
 	e := cv.NewError()
-	e.Add("error", fmt.Errorf("converter error"))
+	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -430,7 +430,7 @@ func Test_ImportCancelError(t *testing.T) {
 	i := Import{}
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
-	e := cv.NewCancelError("path", fmt.Errorf("converter error"))
+	e := cv.NewCancelError(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
@@ -449,7 +449,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
-	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	e := cv.NewFromError(cv.ErrNoObjectsToImport)
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
@@ -468,7 +468,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
-	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	e := cv.NewFromError(cv.ErrNoObjectsToImport)
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -501,7 +501,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
 	ctrl := gomock.NewController(t)
-	e := cv.NewFromError("test", cv.ErrNoObjectsToImport)
+	e := cv.NewFromError(cv.ErrNoObjectsToImport)
 	converter := cv.NewMockConverter(ctrl)
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -543,7 +543,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
 	ctrl := gomock.NewController(t)
 	converter := cv.NewMockConverter(ctrl)
-	e := cv.NewFromError("test", cv.ErrLimitExceeded)
+	e := cv.NewFromError(cv.ErrLimitExceeded)
 	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -571,5 +571,4 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
-	assert.Contains(t, res.Error(), "import path: test")
 }
