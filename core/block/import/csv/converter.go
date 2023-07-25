@@ -54,7 +54,7 @@ func (c *CSV) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportReque
 	return nil
 }
 
-func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, converter.ConvertError) {
+func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	params := c.GetParams(req)
 	if params == nil {
 		return nil, nil
@@ -71,7 +71,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	rootCollection := converter.NewRootCollection(c.collectionService)
 	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, result.objectIDs)
 	if err != nil {
-		cErr.Add(rootCollectionName, err)
+		cErr.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, cErr
 		}
@@ -90,7 +90,7 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
-	cErr converter.ConvertError) (*Result, converter.ConvertError) {
+	cErr *converter.ConvertError) (*Result, *converter.ConvertError) {
 	csvMode := params.GetMode()
 	str := c.chooseStrategy(csvMode)
 	result := &Result{}
@@ -104,33 +104,32 @@ func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	return result, nil
 }
 
-func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, p string, cErr converter.ConvertError, str Strategy, progress process.Progress) *Result {
+func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, p string, cErr *converter.ConvertError, str Strategy, progress process.Progress) *Result {
 	params := req.GetCsvParams()
 	s := source.GetSource(p)
 	if s == nil {
-		cErr.Add(p, fmt.Errorf("failed to identify source: %s", p))
+		cErr.Add(fmt.Errorf("failed to identify source: %s", p))
 		return nil
 	}
 	readers, err := s.GetFileReaders(p, []string{".csv"})
 	if err != nil {
-		cErr.Add(p, fmt.Errorf("failed to get readers: %s", err.Error()))
+		cErr.Add(fmt.Errorf("failed to get readers: %s", err.Error()))
 		if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil
 		}
 	}
 	if len(readers) == 0 {
-		cErr.Add(p, converter.ErrNoObjectsToImport)
+		cErr.Add(converter.ErrNoObjectsToImport)
 		return nil
 	}
-	return c.getSnapshots(req.Mode, readers, params, str, p, cErr, progress)
+	return c.getSnapshots(req.Mode, readers, params, str, cErr, progress)
 }
 
 func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 	readers map[string]io.ReadCloser,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
-	p string,
-	cErr converter.ConvertError,
+	cErr *converter.ConvertError,
 	progress process.Progress) *Result {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
@@ -138,12 +137,12 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 	progress.SetTotal(int64(len(readers) * numberOfProgressSteps))
 	for filePath, rc := range readers {
 		if err := progress.TryStep(1); err != nil {
-			cErr = converter.NewCancelError("", err)
+			cErr = converter.NewCancelError(err)
 			return nil
 		}
 		csvTable, err := c.getCSVTable(rc, params.GetDelimiter())
 		if err != nil {
-			cErr.Add(filePath, err)
+			cErr.Add(err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}
@@ -154,7 +153,7 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 		}
 		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params.UseFirstRowForRelations, progress)
 		if err != nil {
-			cErr.Add(p, err)
+			cErr.Add(err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}
@@ -170,6 +169,7 @@ func (c *CSV) getCSVTable(rc io.ReadCloser, delimiter string) ([][]string, error
 	csvReader := csv.NewReader(rc)
 	csvReader.LazyQuotes = true
 	csvReader.ReuseRecord = true
+	csvReader.FieldsPerRecord = -1
 	if delimiter != "" {
 		characters := []rune(delimiter)
 		csvReader.Comma = characters[0]

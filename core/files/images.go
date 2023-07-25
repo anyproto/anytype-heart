@@ -46,7 +46,7 @@ func (s *service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}
 
 	return &image{
-		hash:            files[0].Targets[0],
+		hash:            hash,
 		variantsByWidth: variantsByWidth,
 		service:         s,
 	}, nil

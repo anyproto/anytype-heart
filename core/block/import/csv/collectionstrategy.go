@@ -1,11 +1,14 @@
 package csv
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -75,13 +78,14 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		Key:    bundle.RelationKeyName.String(),
 	})
 	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
-	allRelations := csvTable[0]
+	allRelations := lo.Map(csvTable[0], func(item string, index int) string { return strings.TrimSpace(item) })
 	var err error
 	numberOfRelationsLimit := len(allRelations)
 	if numberOfRelationsLimit > limitForColumns {
 		err = converter.ErrLimitExceeded
 		numberOfRelationsLimit = limitForColumns
 	}
+	allRelations = findUniqueRelationAndAddNumber(allRelations)
 	for i := 1; i < numberOfRelationsLimit; i++ {
 		if allRelations[i] == "" && useFirstRowForRelations {
 			continue
@@ -106,6 +110,43 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		})
 	}
 	return relations, relationsSnapshots, err
+}
+
+func findUniqueRelationAndAddNumber(relations []string) []string {
+	countMap := make(map[string]int, 0)
+	existedRelationMap := make(map[string]bool, 0)
+	relationsName := make([]string, 0)
+	for _, r := range relations {
+		existedRelationMap[r] = true
+	}
+	for _, str := range relations {
+		if number, ok := countMap[str]; ok || str == "" {
+			if !ok && str == "" {
+				number = 1
+			}
+			uniqueName := getUniqueName(str, number, existedRelationMap)
+			existedRelationMap[uniqueName] = true
+			relationsName = append(relationsName, uniqueName)
+			countMap[str]++
+			continue
+		}
+		countMap[str]++
+		relationsName = append(relationsName, str)
+	}
+	return relationsName
+}
+
+func getUniqueName(str string, number int, existedRelationMap map[string]bool) string {
+	uniqueName := strings.TrimSpace(fmt.Sprintf("%s %d", str, number))
+	for {
+		if _, ok := existedRelationMap[uniqueName]; ok {
+			number++
+			uniqueName = strings.TrimSpace(fmt.Sprintf("%s %d", str, number))
+			continue
+		}
+		break
+	}
+	return uniqueName
 }
 
 func getDefaultRelationName(i int) string {

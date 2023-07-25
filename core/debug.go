@@ -150,3 +150,26 @@ func (mw *Middleware) DebugSubscriptions(_ context.Context, _ *pb.RpcDebugSubscr
 	})
 	return response(subscriptions, err)
 }
+
+func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpenedObjectsRequest) *pb.RpcDebugOpenedObjectsResponse {
+	response := func(objectIDs []string, err error) (res *pb.RpcDebugOpenedObjectsResponse) {
+		res = &pb.RpcDebugOpenedObjectsResponse{
+			Error: &pb.RpcDebugOpenedObjectsResponseError{
+				Code: pb.RpcDebugOpenedObjectsResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcDebugOpenedObjectsResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		}
+		res.ObjectIDs = objectIDs
+		return res
+	}
+	var objectIDs []string
+	err := mw.doBlockService(func(s *block.Service) error {
+		objectIDs = s.GetOpenedObjects()
+		return nil
+	})
+	return response(objectIDs, err)
+}
