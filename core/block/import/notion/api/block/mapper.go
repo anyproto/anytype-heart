@@ -14,6 +14,7 @@ type NotionImportContext struct {
 	PageNameToID               map[string]string
 	DatabaseNameToID           map[string]string
 	ParentPageToChildIDs       map[string][]string
+	ParentBlockToPage          map[string]string
 }
 
 func NewNotionImportContext() *NotionImportContext {
@@ -23,6 +24,7 @@ func NewNotionImportContext() *NotionImportContext {
 		PageNameToID:               make(map[string]string, 0),
 		DatabaseNameToID:           make(map[string]string, 0),
 		ParentPageToChildIDs:       make(map[string][]string, 0),
+		ParentBlockToPage:          make(map[string]string, 0),
 	}
 }
 

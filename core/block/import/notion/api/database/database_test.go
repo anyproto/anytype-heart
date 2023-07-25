@@ -293,4 +293,78 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 		assert.Contains(t, collection.Snapshot.Data.Collections.GetFields()["objects"].GetListValue().GetValues(), pbtypes.String("anytypeID2"))
 		assert.Contains(t, collection.Snapshot.Data.Collections.GetFields()["objects"].GetListValue().GetValues(), pbtypes.String("anytypeID3"))
 	})
+
+	t.Run("1 page was in Notion workspace, 1 page is a child in block, 1 page is in root collection", func(t *testing.T) {
+		// given
+		service := New(nil)
+		notionImportContext := &block.NotionImportContext{
+			NotionPageIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
+			ParentPageToChildIDs:   map[string][]string{"blockID": {"id2"}},
+			ParentBlockToPage:      map[string]string{"blockID": "id3"},
+		}
+		notionPages := []page.Page{
+			{
+				ID: "id3",
+				Parent: api.Parent{
+					Type:      "workspace",
+					Workspace: true,
+				},
+			},
+			{
+				ID: "id2",
+				Parent: api.Parent{
+					Type:    "page",
+					BlockID: "blockID",
+				},
+			},
+		}
+
+		// when
+		collection, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, collection)
+		assert.NotNil(t, collection.Snapshot.Data.Collections)
+		assert.NotNil(t, collection.Snapshot.Data.Collections.GetFields()["objects"])
+		assert.Len(t, collection.Snapshot.Data.Collections.GetFields()["objects"].GetListValue().GetValues(), 1)
+		assert.Contains(t, collection.Snapshot.Data.Collections.GetFields()["objects"].GetListValue().GetValues(), pbtypes.String("anytypeID3"))
+	})
+
+	t.Run("1 page was in Notion workspace, 1 page is a child in block, but parent page is absent - 2 pages are in root collection", func(t *testing.T) {
+		// given
+		service := New(nil)
+		notionImportContext := &block.NotionImportContext{
+			NotionPageIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
+			ParentPageToChildIDs:   map[string][]string{"blockID": {"id2"}},
+		}
+		notionPages := []page.Page{
+			{
+				ID: "id3",
+				Parent: api.Parent{
+					Type:      "workspace",
+					Workspace: true,
+				},
+			},
+			{
+				ID: "id2",
+				Parent: api.Parent{
+					Type:    "page",
+					BlockID: "blockID",
+				},
+			},
+		}
+
+		// when
+		collection, err := service.AddObjectsToNotionCollection(notionImportContext, nil, notionPages)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, collection)
+		assert.NotNil(t, collection.Snapshot.Data.Collections)
+		assert.NotNil(t, collection.Snapshot.Data.Collections.GetFields()["objects"])
+		assert.Len(t, collection.Snapshot.Data.Collections.GetFields()["objects"].GetListValue().GetValues(), 2)
+		assert.Contains(t, collection.Snapshot.Data.Collections.GetFields()["objects"].GetListValue().GetValues(), pbtypes.String("anytypeID3"))
+		assert.Contains(t, collection.Snapshot.Data.Collections.GetFields()["objects"].GetListValue().GetValues(), pbtypes.String("anytypeID2"))
+	})
 }

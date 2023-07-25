@@ -48,7 +48,7 @@ func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
 	importContext.PageNameToID = map[string]string{"id": "title"}
 	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id"}}
-	bl := c.GetLinkToObjectBlock(importContext, "parentID")
+	bl := c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
@@ -61,7 +61,7 @@ func Test_GetLinkToObjectBlockTwoPagesWithSameName(t *testing.T) {
 	importContext.PageNameToID = map[string]string{"id": "title", "id1": "title"}
 	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId", "id1": "anytypeId1"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id"}}
-	bl := c.GetLinkToObjectBlock(importContext, "parentID")
+	bl := c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
@@ -70,7 +70,7 @@ func Test_GetLinkToObjectBlockTwoPagesWithSameName(t *testing.T) {
 
 func Test_GetLinkToObjectBlockFail(t *testing.T) {
 	c := &ChildPage{Title: "onetitle"}
-	bl := c.GetLinkToObjectBlock(NewNotionImportContext(), "id")
+	bl := c.GetLinkToObjectBlock(NewNotionImportContext(), "id", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
@@ -78,7 +78,7 @@ func Test_GetLinkToObjectBlockFail(t *testing.T) {
 
 	importContext := NewNotionImportContext()
 	importContext.PageNameToID = map[string]string{"id": "anothertitle"}
-	bl = c.GetLinkToObjectBlock(importContext, "pageID")
+	bl = c.GetLinkToObjectBlock(importContext, "pageID", "")
 	assert.NotNil(t, bl)
 	content, ok = bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
@@ -91,7 +91,7 @@ func Test_GetLinkToObjectBlockLinkToDatabase(t *testing.T) {
 	importContext.DatabaseNameToID = map[string]string{"id": "title"}
 	importContext.NotionDatabaseIdsToAnytype = map[string]string{"id": "anytypeId"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id"}}
-	bl := c.GetBlock(importContext, "parentID")
+	bl := c.GetBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
@@ -101,7 +101,7 @@ func Test_GetLinkToObjectBlockLinkToDatabase(t *testing.T) {
 func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
 	c := &ChildDatabase{Title: "title"}
 	importContext := NewNotionImportContext()
-	bl := c.GetBlock(importContext, "parentID")
+	bl := c.GetBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfDataview)
 	assert.True(t, ok)
@@ -110,7 +110,7 @@ func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
 
 func Test_GetLinkToObjectBlockInlineCollectionEmpty(t *testing.T) {
 	c := &ChildDatabase{Title: "title"}
-	bl := c.GetBlock(NewNotionImportContext(), "")
+	bl := c.GetBlock(NewNotionImportContext(), "", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfDataview)
 	assert.True(t, ok)
@@ -123,13 +123,13 @@ func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameName(t *testing.T) {
 	importContext.PageNameToID = map[string]string{"id": "title", "id1": "title"}
 	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId", "id1": "anytypeId1"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id", "id1"}}
-	bl := c.GetLinkToObjectBlock(importContext, "parentID")
+	bl := c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
 
-	bl = c.GetLinkToObjectBlock(importContext, "parentID")
+	bl = c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok = bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
@@ -143,13 +143,13 @@ func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameNotFail(t *testin
 	importContext.PageNameToID = map[string]string{"id": "uniqueTitle"}
 	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id", "id1"}}
-	bl := c.GetLinkToObjectBlock(importContext, "parentID")
+	bl := c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
 
-	bl = c.GetLinkToObjectBlock(importContext, "parentID")
+	bl = c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
 }
@@ -161,15 +161,47 @@ func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameFail(t *testing.T
 	importContext.PageNameToID = map[string]string{"id": "notUniqueTitle", "id2": "notUniqueTitle"}
 	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId", "id2": "anytypeId2"}
 	importContext.ParentPageToChildIDs = map[string][]string{"parentID": {"id", "id1"}}
-	bl := c.GetLinkToObjectBlock(importContext, "parentID")
+	bl := c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
 
-	bl = c.GetLinkToObjectBlock(importContext, "parentID")
+	bl = c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	textContent, ok := bl.Content.(*model.BlockContentOfText)
 	assert.True(t, ok)
 	assert.True(t, strings.HasPrefix(textContent.Text.Text, ambiguousPageMessage))
+}
+
+func Test_GetLinkToObjectBlockPageHasBlockParent(t *testing.T) {
+	c := &ChildPage{Title: "title"}
+	importContext := NewNotionImportContext()
+	importContext.PageNameToID = map[string]string{"id": "title"}
+	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId"}
+	importContext.ParentPageToChildIDs = map[string][]string{"blockID": {"id"}}
+	bl := c.GetLinkToObjectBlock(importContext, "parentID", "blockID")
+	assert.NotNil(t, bl)
+	content, ok := bl.Content.(*model.BlockContentOfLink)
+	assert.True(t, ok)
+	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+}
+
+func Test_GetLinkToObjectBlockTwoPageHaveBlockParent(t *testing.T) {
+	c := &ChildPage{Title: "title"}
+	importContext := NewNotionImportContext()
+	importContext.PageNameToID = map[string]string{"id": "title", "id1": "title"}
+	importContext.NotionPageIdsToAnytype = map[string]string{"id": "anytypeId", "id1": "anytypeId1"}
+	importContext.ParentPageToChildIDs = map[string][]string{"blockID": {"id", "id1"}}
+	bl := c.GetLinkToObjectBlock(importContext, "parentID", "blockID")
+	assert.NotNil(t, bl)
+	content, ok := bl.Content.(*model.BlockContentOfLink)
+	assert.True(t, ok)
+	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+
+	bl = c.GetLinkToObjectBlock(importContext, "parentID", "blockID")
+	assert.NotNil(t, bl)
+	content, ok = bl.Content.(*model.BlockContentOfLink)
+	assert.True(t, ok)
+	assert.Equal(t, content.Link.TargetBlockId, "anytypeId1")
 }

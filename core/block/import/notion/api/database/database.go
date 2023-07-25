@@ -138,6 +138,9 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	if d.Parent.PageID != "" {
 		parentPageToChildIDs[d.Parent.PageID] = append(parentPageToChildIDs[d.Parent.PageID], d.ID)
 	}
+	if d.Parent.BlockID != "" {
+		parentPageToChildIDs[d.Parent.BlockID] = append(parentPageToChildIDs[d.Parent.BlockID], d.ID)
+	}
 	snapshots = append(snapshots, databaseSnapshot)
 	return snapshots, nil
 }
@@ -337,6 +340,15 @@ func (ds *Service) getAnytypeIDForRootCollection(notionContext *block.NotionImpo
 	// if object is a child in Page, but page wasn't added in integration, then we add object in root collection
 	if parent.PageID != "" {
 		if _, ok := notionContext.NotionPageIdsToAnytype[parent.PageID]; !ok {
+			if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
+				return anytypeID
+			}
+		}
+	}
+
+	// If page with parent block is absent, we add child page to root collection
+	if parent.BlockID != "" {
+		if _, ok := notionContext.ParentBlockToPage[parent.BlockID]; !ok {
 			if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
 				return anytypeID
 			}
