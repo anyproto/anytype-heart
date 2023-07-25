@@ -62,13 +62,14 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
-	p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
+	objectsInLink := p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
 	p.updateDetails(allSnapshots)
 	if (!allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
 		allErrors.IsNoObjectToImportError(len(params.GetPath())) {
 		return nil, allErrors
 	}
 	if !params.GetNoCollection() {
+		targetObjects = filterObjects(targetObjects, objectsInLink)
 		rootCollection := converter.NewRootCollection(p.service)
 		rootCol, colErr := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 		if colErr != nil {
@@ -86,6 +87,16 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		return &converter.Response{Snapshots: allSnapshots}, nil
 	}
 	return &converter.Response{Snapshots: allSnapshots}, allErrors
+}
+
+func filterObjects(objects []string, objectsInLink map[string]bool) []string {
+	rootObjects := make([]string, 0)
+	for _, object := range objects {
+		if _, ok := objectsInLink[object]; !ok {
+			rootObjects = append(rootObjects, object)
+		}
+	}
+	return rootObjects
 }
 
 func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest,
@@ -327,9 +338,12 @@ func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
 	return readers, nil
 }
 
-func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *converter.ConvertError, mode pb.RpcObjectImportRequestMode) {
-	newIDToOld := make(map[string]string, len(snapshots))
-	fileIDs := make([]string, 0)
+func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *converter.ConvertError, mode pb.RpcObjectImportRequestMode) map[string]bool {
+	var (
+		newIDToOld    = make(map[string]string, len(snapshots))
+		fileIDs       = make([]string, 0)
+		objectsInLink = make(map[string]bool, 0)
+	)
 	for _, snapshot := range snapshots {
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		newIDToOld[id] = snapshot.Id
@@ -339,19 +353,21 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 	}
 	for _, snapshot := range snapshots {
 		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
-		err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileIDs)
+		result, err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileIDs)
+		objectsInLink = mergeMaps(objectsInLink, result)
 		if err != nil {
 			allErrors.Add(err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return
+				return nil
 			}
 			continue
 		}
 		converter.UpdateObjectIDsInRelations(st.(*state.State), newIDToOld, fileIDs)
 		converter.UpdateObjectType(newIDToOld, st.(*state.State))
-		p.updateObjectsIDsInCollection(st.(*state.State), newIDToOld)
+		p.updateObjectsIDsInCollection(st.(*state.State), newIDToOld, objectsInLink)
 		p.updateSnapshot(snapshot, st.(*state.State))
 	}
+	return objectsInLink
 }
 
 func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
@@ -417,11 +433,12 @@ func (p *Pb) needToImportWidgets(address string, accountID string) bool {
 	return address == accountID
 }
 
-func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string) {
+func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string, objectsInLink map[string]bool) {
 	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
 	for i, id := range objectsInCollections {
 		if newID, ok := newToOldIDs[id]; ok {
 			objectsInCollections[i] = newID
+			objectsInLink[newID] = true
 		}
 	}
 	if len(objectsInCollections) != 0 {
@@ -454,4 +471,18 @@ func (p *Pb) cleanupEmptyBlock(snapshot *pb.SnapshotWithType) {
 	if emptyBlock != nil {
 		emptyBlock.Content = &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}
 	}
+}
+
+func mergeMaps(map1, map2 map[string]bool) map[string]bool {
+	mergedMap := make(map[string]bool)
+
+	for key, value := range map1 {
+		mergedMap[key] = value
+	}
+
+	for key, value := range map2 {
+		mergedMap[key] = value
+	}
+
+	return mergedMap
 }

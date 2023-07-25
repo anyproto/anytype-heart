@@ -112,7 +112,7 @@ func (oc *ObjectCreator) Create(ctx *session.Context,
 		return nil, newID, nil
 	}
 
-	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
+	if _, err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
 	}
 
