@@ -19,7 +19,9 @@ var (
 )
 
 func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (AndFilters, error) {
-
+	if store == nil {
+		return AndFilters{}, fmt.Errorf("objectStore dependency is nil")
+	}
 	protoFilters = TransformQuickOption(protoFilters, nil)
 
 	var and AndFilters
@@ -36,6 +38,9 @@ func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store Objec
 }
 
 func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
+	if store == nil {
+		return AndFilters{}, fmt.Errorf("objectStore dependency is nil")
+	}
 	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
 	if len(parts) == 2 {
 		rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)

@@ -605,7 +605,7 @@ func TestQueryRaw(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
-		flt, err := database.NewFilters(database.Query{}, nil, nil)
+		flt, err := database.NewFilters(database.Query{}, nil, s)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
@@ -628,7 +628,7 @@ func TestQueryRaw(t *testing.T) {
 					Value:       pbtypes.String("foo"),
 				},
 			},
-		}, nil, nil)
+		}, nil, s)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
