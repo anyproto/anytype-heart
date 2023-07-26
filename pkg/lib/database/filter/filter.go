@@ -172,6 +172,7 @@ type Getter interface {
 
 type WithNestedFilter interface {
 	EnrichNestedFilter(func(nestedFilter Filter) (ids []string, err error)) error
+	IterateNestedFilters(func(nestedFilter Filter) error) error
 }
 
 type Filter interface {
@@ -211,6 +212,18 @@ func (a AndFilters) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []strin
 	return nil
 }
 
+func (a AndFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
+	for _, f := range a {
+		if withNested, ok := f.(WithNestedFilter); ok {
+			err := withNested.IterateNestedFilters(fn)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 type OrFilters []Filter
 
 var _ WithNestedFilter = OrFilters{}
@@ -239,6 +252,18 @@ func (a OrFilters) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string
 	for _, f := range a {
 		if withNested, ok := f.(WithNestedFilter); ok {
 			if err := withNested.EnrichNestedFilter(fn); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (a OrFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
+	for _, f := range a {
+		if withNested, ok := f.(WithNestedFilter); ok {
+			err := withNested.IterateNestedFilters(fn)
+			if err != nil {
 				return err
 			}
 		}
@@ -541,4 +566,8 @@ func (i *NestedIn) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string
 	i.ids = ids
 	i.isEnriched = true
 	return nil
+}
+
+func (i *NestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
+	return fn(i)
 }

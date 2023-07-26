@@ -6,7 +6,9 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -18,14 +20,15 @@ var (
 
 func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, order filter.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
-		id:     id,
-		keys:   keys,
-		filter: filter,
-		order:  order,
-		cache:  s.cache,
-		ds:     s.ds,
-		limit:  limit,
-		offset: offset,
+		id:          id,
+		keys:        keys,
+		filter:      filter,
+		order:       order,
+		cache:       s.cache,
+		ds:          s.ds,
+		limit:       limit,
+		offset:      offset,
+		objectStore: s.objectStore,
 	}
 	return sub
 }
@@ -57,10 +60,11 @@ type sortedSub struct {
 	ds    *dependencyService
 
 	// for nested subscriptions
+	objectStore objectstore.ObjectStore
 	// parent is used to run onChange callback when any child subscriptions receive changes
-	parent subscription
+	parent *sortedSub
 	// nested is used to close child subscriptions when parent is closed
-	nested []subscription
+	nested []*sortedSub
 }
 
 func (s *sortedSub) init(entries []*entry) (err error) {
@@ -187,6 +191,14 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 
+	if s.parent != nil {
+		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
+		if err != nil {
+			panic(err)
+		}
+		ctx.entries = parentEntries
+		s.parent.onChange(ctx)
+	}
 }
 
 func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
@@ -362,5 +374,8 @@ func (s *sortedSub) close() {
 	}
 	if s.depSub != nil {
 		s.depSub.close()
+	}
+	for _, child := range s.nested {
+		child.close()
 	}
 }

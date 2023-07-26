@@ -162,19 +162,31 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 		sub.forceSubIds = filterDepIds
 	}
 
-	records, err := s.objectStore.QueryRaw(f, 0, 0)
-	if err != nil {
-		return nil, fmt.Errorf("objectStore query error: %v", err)
-	}
-	entries := make([]*entry, 0, len(records))
-	for _, r := range records {
-		entries = append(entries, &entry{
-			id:   pbtypes.GetString(r.Details, "id"),
-			data: r.Details,
+	if withNested, ok := f.FilterObj.(filter.WithNestedFilter); ok {
+		var nestedCount int
+		err := withNested.IterateNestedFilters(func(nestedFilter filter.Filter) error {
+			nestedCount++
+			f, ok := nestedFilter.(*filter.NestedIn)
+			if ok {
+				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []string{"id"}, f.Filter, nil, 0, 0)
+				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.Filter}, childSub)
+				if err != nil {
+					return fmt.Errorf("init nested sub %s entries: %w", childSub.id, err)
+				}
+				sub.nested = append(sub.nested, childSub)
+				childSub.parent = sub
+				s.subscriptions[childSub.id] = childSub
+			}
+			return nil
 		})
+		if err != nil {
+			return nil, fmt.Errorf("iterate nested filters: %w", err)
+		}
 	}
-	if err = sub.init(entries); err != nil {
-		return nil, fmt.Errorf("subscription init error: %v", err)
+
+	err := initSubEntries(s.objectStore, f, sub)
+	if err != nil {
+		return nil, fmt.Errorf("init sub entries: %w", err)
 	}
 	s.subscriptions[sub.id] = sub
 	prev, next := sub.counters()
@@ -196,6 +208,32 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 			PrevCount: int64(next),
 		},
 	}, nil
+}
+
+func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, sub *sortedSub) error {
+	entries, err := queryEntries(objectStore, f)
+	if err != nil {
+		return err
+	}
+	if err = sub.init(entries); err != nil {
+		return fmt.Errorf("subscription init error: %v", err)
+	}
+	return nil
+}
+
+func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*entry, error) {
+	records, err := objectStore.QueryRaw(f, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("objectStore query error: %v", err)
+	}
+	entries := make([]*entry, 0, len(records))
+	for _, r := range records {
+		entries = append(entries, &entry{
+			id:   pbtypes.GetString(r.Details, "id"),
+			data: r.Details,
+		})
+	}
+	return entries, nil
 }
 
 func (s *service) subscribeForCollection(ctx session.Context, req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
