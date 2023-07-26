@@ -118,14 +118,14 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		mc := dot.NewMultiConverter(format, e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter(e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
@@ -274,7 +274,7 @@ func (e *export) getExistedObjects(includeArchived bool, isProtobuf bool) (map[s
 	return objectDetails, nil
 }
 
-func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
+func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue, includeFiles bool) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
@@ -282,17 +282,14 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 				if err = mw.Add(b.NewState().Copy()); err != nil {
 					return err
 				}
+				if !includeFiles {
+					return nil
+				}
 				for _, fh := range b.GetAndUnsetFileKeys() {
-					if err = queue.Add(func() {
-						if werr := e.saveFile(wr, fh.Hash); werr != nil {
+					if werr := e.saveFile(wr, fh.Hash); werr != nil {
+						if werr = e.saveImage(wr, fh.Hash); werr != nil {
 							log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
-							if werr = e.saveImage(wr, fh.Hash); werr != nil {
-								log.With("hash", fh.Hash).Warnf("can't save image: %v", werr)
-							}
 						}
-
-					}); err != nil {
-						log.With("objectID", did).Warnf("couldn't save object files: %v", err)
 					}
 				}
 				return nil
@@ -349,21 +346,24 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 		if !exportFiles {
 			return nil
 		}
-		for _, fh := range b.GetAndUnsetFileKeys() {
-			if err = queue.Add(func() {
-				if werr := e.saveFile(wr, fh.Hash); werr != nil {
-					log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
-					if werr = e.saveImage(wr, fh.Hash); werr != nil {
-						log.With("hash", fh.Hash).Warnf("can't save image: %v", werr)
-					}
-				}
-
-			}); err != nil {
-				log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
-			}
-		}
+		e.saveFiles(b, queue, wr, docID)
 		return nil
 	})
+}
+
+func (e *export) saveFiles(b sb.SmartBlock, queue process.Queue, wr writer, docID string) {
+	for _, fh := range b.GetAndUnsetFileKeys() {
+		if err := queue.Add(func() {
+			if werr := e.saveFile(wr, fh.Hash); werr != nil {
+				if werr = e.saveImage(wr, fh.Hash); werr != nil {
+					log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
+				}
+			}
+
+		}); err != nil {
+			log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
+		}
+	}
 }
 
 func (e *export) saveFile(wr writer, hash string) (err error) {
