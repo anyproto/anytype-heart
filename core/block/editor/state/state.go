@@ -966,29 +966,6 @@ func (s *State) InjectDerivedDetails() {
 	}
 }
 
-func ListSmartblockTypes(objectId string) ([]int, error) {
-	if strings.HasPrefix(objectId, addr.BundledObjectTypeURLPrefix) {
-		var err error
-		objectType, err := bundle.GetTypeByUrl(objectId)
-		if err != nil {
-			if err == bundle.ErrNotFound {
-				return nil, fmt.Errorf("unknown object type")
-			}
-			return nil, err
-		}
-		res := make([]int, 0, len(objectType.Types))
-		for _, t := range objectType.Types {
-			res = append(res, int(t))
-		}
-		return res, nil
-	} else if strings.HasPrefix(objectId, addr.ObjectTypeKeyToIdPrefix) && !strings.HasPrefix(objectId, "b") {
-		return nil, fmt.Errorf("incorrect object type URL format")
-	}
-
-	// Default smartblock type for all custom object types
-	return []int{int(model.SmartBlockType_Page)}, nil
-}
-
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
 	for key, v := range localDetails.GetFields() {
 		if v == nil {

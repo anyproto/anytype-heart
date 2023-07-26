@@ -354,7 +354,10 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 	for _, snapshot := range snapshots {
 		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
 		result, err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileIDs)
-		objectsInLink = mergeMaps(objectsInLink, result)
+		archived := pbtypes.GetBool(snapshot.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String())
+		if !archived {
+			objectsInLink = mergeMaps(objectsInLink, result)
+		}
 		if err != nil {
 			allErrors.Add(err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -364,7 +367,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 		}
 		converter.UpdateObjectIDsInRelations(st.(*state.State), newIDToOld, fileIDs)
 		converter.UpdateObjectType(newIDToOld, st.(*state.State))
-		p.updateObjectsIDsInCollection(st.(*state.State), newIDToOld, objectsInLink)
+		p.updateObjectsIDsInCollection(st.(*state.State), newIDToOld, objectsInLink, archived)
 		p.updateSnapshot(snapshot, st.(*state.State))
 	}
 	return objectsInLink
@@ -433,12 +436,14 @@ func (p *Pb) needToImportWidgets(address string, accountID string) bool {
 	return address == accountID
 }
 
-func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string, objectsInLink map[string]bool) {
+func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string, objectsInLink map[string]bool, archived bool) {
 	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
 	for i, id := range objectsInCollections {
 		if newID, ok := newToOldIDs[id]; ok {
 			objectsInCollections[i] = newID
-			objectsInLink[newID] = true
+			if !archived {
+				objectsInLink[newID] = true
+			}
 		}
 	}
 	if len(objectsInCollections) != 0 {
