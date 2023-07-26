@@ -258,7 +258,6 @@ func makeSuggestedDateRecord(t time.Time, workspaceId string) database.Record {
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
-	ctx := mw.newContext(cctx)
 	errResponse := func(err error) *pb.RpcObjectSearchSubscribeResponse {
 		r := &pb.RpcObjectSearchSubscribeResponse{
 			Error: &pb.RpcObjectSearchSubscribeResponseError{
@@ -280,7 +279,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.app.MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.Search(ctx, *req)
+	resp, err := subService.Search(*req)
 	if err != nil {
 		return errResponse(err)
 	}

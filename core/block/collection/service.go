@@ -135,7 +135,7 @@ func (s *Subscription) Close() {
 	close(s.closeCh)
 }
 
-func (s *Service) SubscribeForCollection(ctx session.Context, collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
+func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	var initialObjectIDs []string
 
 	s.lock.Lock()
