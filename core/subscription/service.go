@@ -174,6 +174,7 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 				}
 				sub.nested = append(sub.nested, childSub)
 				childSub.parent = sub
+				childSub.parentFilter = f
 				s.subscriptions[childSub.id] = childSub
 			}
 			return nil

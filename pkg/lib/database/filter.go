@@ -61,7 +61,7 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		return &NestedIn{
 			Key:    parts[0],
 			Filter: nestedFilter,
-			ids:    ids,
+			IDs:    ids,
 		}, nil
 	}
 
@@ -527,14 +527,14 @@ type NestedIn struct {
 	Key    string
 	Filter Filter
 
-	ids []string
+	IDs []string
 }
 
 var _ WithNestedFilter = &NestedIn{}
 
 func (i *NestedIn) FilterObject(g Getter) bool {
 	val := g.Get(i.Key)
-	for _, id := range i.ids {
+	for _, id := range i.IDs {
 		eq := Eq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return true
@@ -544,7 +544,7 @@ func (i *NestedIn) FilterObject(g Getter) bool {
 }
 
 func (i *NestedIn) String() string {
-	return fmt.Sprintf("%v IN(%v)", i.Key, i.ids)
+	return fmt.Sprintf("%v IN(%v)", i.Key, i.IDs)
 }
 
 func (i *NestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {

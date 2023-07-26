@@ -61,7 +61,8 @@ type sortedSub struct {
 	// for nested subscriptions
 	objectStore objectstore.ObjectStore
 	// parent is used to run onChange callback when any child subscriptions receive changes
-	parent *sortedSub
+	parent       *sortedSub
+	parentFilter *database.NestedIn
 	// nested is used to close child subscriptions when parent is closed
 	nested []*sortedSub
 }
@@ -195,7 +196,14 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		if err != nil {
 			panic(err)
 		}
-		ctx.entries = parentEntries
+
+		var idsForParentFilter []string
+		s.iterateActive(func(e *entry) {
+			idsForParentFilter = append(idsForParentFilter, e.id)
+		})
+		s.parentFilter.IDs = idsForParentFilter
+
+		ctx.entries = append(ctx.entries, parentEntries...)
 		s.parent.onChange(ctx)
 	}
 }
