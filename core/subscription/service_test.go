@@ -300,6 +300,72 @@ func TestService_Search(t *testing.T) {
 }
 
 func TestNestedSubscription(t *testing.T) {
+	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
+		fx := testCreateSubscriptionWithNestedFilter(t)
+
+		err := fx.store.UpdateObjectDetails("assignee1", &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":   pbtypes.String("assignee1"),
+				"name": pbtypes.String("John Doe"),
+			},
+		})
+		require.NoError(t, err)
+
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: "test-nested-1",
+					Id:    "assignee1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: "test",
+					Id:    "task1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test-nested-1",
+					Total: 0,
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test",
+					Total: 0,
+				},
+			})
+	})
+
+	t.Run("update parent object relation so no nested objects satisfy filter anymore", func(t *testing.T) {
+		fx := testCreateSubscriptionWithNestedFilter(t)
+
+		err := fx.store.UpdateObjectDetails("task1", &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":       pbtypes.String("task1"),
+				"assignee": pbtypes.String("assignee2"),
+			},
+		})
+		require.NoError(t, err)
+
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: "test",
+					Id:    "task1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test",
+					Total: 0,
+				},
+			})
+	})
+}
+
+func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	fx := newFixtureWithRealObjectStore(t)
 	resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 		SubId: "test",
@@ -385,42 +451,5 @@ func TestNestedSubscription(t *testing.T) {
 				},
 			})
 	})
-
-	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
-		err := fx.store.UpdateObjectDetails("assignee1", &types.Struct{
-			Fields: map[string]*types.Value{
-				"id":   pbtypes.String("assignee1"),
-				"name": pbtypes.String("John Doe"),
-			},
-		})
-		require.NoError(t, err)
-
-		fx.waitEvents(t,
-			&pb.EventMessageValueOfSubscriptionRemove{
-				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
-					SubId: "test-nested-1",
-					Id:    "assignee1",
-				},
-			},
-			&pb.EventMessageValueOfSubscriptionRemove{
-				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
-					SubId: "test",
-					Id:    "task1",
-				},
-			},
-			&pb.EventMessageValueOfSubscriptionCounters{
-				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
-					SubId: "test-nested-1",
-					Total: 0,
-				},
-			},
-			&pb.EventMessageValueOfSubscriptionCounters{
-				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
-					SubId: "test",
-					Total: 0,
-				},
-			})
-	})
-
-	// TODO Test assignee changed
+	return fx
 }
