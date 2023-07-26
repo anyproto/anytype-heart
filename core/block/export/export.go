@@ -279,7 +279,23 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
 			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
-				return mw.Add(b.NewState().Copy())
+				if err = mw.Add(b.NewState().Copy()); err != nil {
+					return err
+				}
+				for _, fh := range b.GetAndUnsetFileKeys() {
+					if err = queue.Add(func() {
+						if werr := e.saveFile(wr, fh.Hash); werr != nil {
+							log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
+							if werr = e.saveImage(wr, fh.Hash); werr != nil {
+								log.With("hash", fh.Hash).Warnf("can't save image: %v", werr)
+							}
+						}
+
+					}); err != nil {
+						log.With("objectID", did).Warnf("couldn't save object files: %v", err)
+					}
+				}
+				return nil
 			})
 			if err != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
@@ -295,28 +311,6 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
 		return 0, err
 	}
-
-	for _, fh := range mw.FileHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveFile(wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
-			}
-		}); err != nil {
-			return
-		}
-	}
-	for _, fh := range mw.ImageHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveImage(wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-			}
-		}); err != nil {
-			return
-		}
-	}
-
 	err = nil
 	return
 }
@@ -355,24 +349,17 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 		if !exportFiles {
 			return nil
 		}
-		for _, fh := range conv.FileHashes() {
-			fileHash := fh
+		for _, fh := range b.GetAndUnsetFileKeys() {
 			if err = queue.Add(func() {
-				if werr := e.saveFile(wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save file: %v", werr)
+				if werr := e.saveFile(wr, fh.Hash); werr != nil {
+					log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
+					if werr = e.saveImage(wr, fh.Hash); werr != nil {
+						log.With("hash", fh.Hash).Warnf("can't save image: %v", werr)
+					}
 				}
+
 			}); err != nil {
-				return err
-			}
-		}
-		for _, fh := range conv.ImageHashes() {
-			fileHash := fh
-			if err = queue.Add(func() {
-				if werr := e.saveImage(wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-				}
-			}); err != nil {
-				return err
+				log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
 			}
 		}
 		return nil
