@@ -28,6 +28,61 @@ func TestMD_Convert(t *testing.T) {
 	}
 
 	t.Run("markup render", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Header 1",
+						Style: model.BlockContentText_Header1,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Header 2",
+						Style: model.BlockContentText_Header2,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfDiv{
+					Div: &model.BlockContentDiv{
+						Style: model.BlockContentDiv_Dots,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Header 3",
+						Style: model.BlockContentText_Header3,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text: "Usual text",
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Header 4",
+						Style: model.BlockContentText_Header4,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(nil, s, nil)
+		res := c.Convert(0)
+		exp := "# Header 1   \n## Header 2   \n --- \n### Header 3   \nUsual text   \n#### Header 4   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test header rendering", func(t *testing.T) {
 		s := newState(&model.Block{
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{

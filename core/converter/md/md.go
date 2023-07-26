@@ -150,19 +150,19 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 
 	switch text.Style {
 	case model.BlockContentText_Header1, model.BlockContentText_Title:
-		buf.WriteString(` # `)
+		buf.WriteString(`# `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header2:
-		buf.WriteString(` ## `)
+		buf.WriteString(`## `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header3:
-		buf.WriteString(` ### `)
+		buf.WriteString(`### `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header4:
-		buf.WriteString(` #### `)
+		buf.WriteString(`#### `)
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
