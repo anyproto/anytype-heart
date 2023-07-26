@@ -26,23 +26,6 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
-	if enricher, ok := filters.FilterObj.(database.WithNestedFilter); ok {
-		err := enricher.EnrichNestedFilter(func(nestedFilter database.Filter) (ids []string, err error) {
-			records, err := s.QueryRaw(&database.Filters{FilterObj: nestedFilter}, 0, 0)
-			if err != nil {
-				return nil, fmt.Errorf("enrich nested filter %s: %w", nestedFilter, err)
-			}
-
-			ids = make([]string, 0, len(records))
-			for _, rec := range records {
-				ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
-			}
-			return ids, nil
-		})
-		if err != nil {
-			return nil, fmt.Errorf("enrich nested filters: %w", err)
-		}
-	}
 	skl := skiplist.New(order{filters.Order})
 
 	err := s.db.View(func(txn *badger.Txn) error {

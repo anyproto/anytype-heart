@@ -5,8 +5,10 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -384,24 +386,32 @@ func TestMakeAndFilter(t *testing.T) {
 
 func TestNestedFilters(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
+		store := NewMockObjectStore(t)
+		// Query will occur while nested filter resolving
+		store.EXPECT().QueryRaw(mock.Anything, 0, 0).Return([]Record{
+			{
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String("id1"),
+						"typeKey":                     pbtypes.String("note"),
+					},
+				},
+			},
+			{
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String(): pbtypes.String("id2"),
+						"typeKey":                     pbtypes.String("note"),
+					},
+				},
+			},
+		}, nil)
+
 		f, err := MakeFilter(&model.BlockContentDataviewFilter{
 			RelationKey: "type.typeKey",
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String("note"),
-		}, nil)
-		require.NoError(t, err)
-
-		// Not enriched filter will panic
-		assert.Panics(t, func() {
-			f.FilterObject(testGetter{"type": pbtypes.String("id1")})
-		})
-
-		nested, ok := f.(WithNestedFilter)
-		require.True(t, ok)
-		err = nested.EnrichNestedFilter(func(nestedFilter Filter) (ids []string, err error) {
-			assert.True(t, nestedFilter.FilterObject(testGetter{"typeKey": pbtypes.String("note")}))
-			return []string{"id1", "id2"}, nil
-		})
+		}, store)
 		require.NoError(t, err)
 
 		assert.True(t, f.FilterObject(testGetter{"type": pbtypes.String("id1")}))

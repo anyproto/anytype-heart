@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -43,9 +44,19 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		if err != nil {
 			return nil, fmt.Errorf("make nested filter %s: %w", parts, err)
 		}
+		records, err := store.QueryRaw(&Filters{FilterObj: nestedFilter}, 0, 0)
+		if err != nil {
+			return nil, fmt.Errorf("enrich nested filter %s: %w", nestedFilter, err)
+		}
+
+		ids := make([]string, 0, len(records))
+		for _, rec := range records {
+			ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
+		}
 		return &NestedIn{
 			Key:    parts[0],
 			Filter: nestedFilter,
+			ids:    ids,
 		}, nil
 	}
 
@@ -171,7 +182,6 @@ type Getter interface {
 }
 
 type WithNestedFilter interface {
-	EnrichNestedFilter(func(nestedFilter Filter) (ids []string, err error)) error
 	IterateNestedFilters(func(nestedFilter Filter) error) error
 }
 
@@ -199,17 +209,6 @@ func (a AndFilters) String() string {
 		andS = append(andS, f.String())
 	}
 	return fmt.Sprintf("(%s)", strings.Join(andS, " AND "))
-}
-
-func (a AndFilters) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string, err error)) error {
-	for _, f := range a {
-		if withNested, ok := f.(WithNestedFilter); ok {
-			if err := withNested.EnrichNestedFilter(fn); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (a AndFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
@@ -246,17 +245,6 @@ func (a OrFilters) String() string {
 		orS = append(orS, f.String())
 	}
 	return fmt.Sprintf("(%s)", strings.Join(orS, " OR "))
-}
-
-func (a OrFilters) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string, err error)) error {
-	for _, f := range a {
-		if withNested, ok := f.(WithNestedFilter); ok {
-			if err := withNested.EnrichNestedFilter(fn); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (a OrFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
@@ -534,16 +522,12 @@ type NestedIn struct {
 	Key    string
 	Filter Filter
 
-	isEnriched bool
-	ids        []string
+	ids []string
 }
 
 var _ WithNestedFilter = &NestedIn{}
 
 func (i *NestedIn) FilterObject(g Getter) bool {
-	if !i.isEnriched {
-		panic("nested filter is not enriched")
-	}
 	val := g.Get(i.Key)
 	for _, id := range i.ids {
 		eq := Eq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
@@ -556,16 +540,6 @@ func (i *NestedIn) FilterObject(g Getter) bool {
 
 func (i *NestedIn) String() string {
 	return fmt.Sprintf("%v IN(%v)", i.Key, i.ids)
-}
-
-func (i *NestedIn) EnrichNestedFilter(fn func(nestedFilter Filter) (ids []string, err error)) error {
-	ids, err := fn(i.Filter)
-	if err != nil {
-		return err
-	}
-	i.ids = ids
-	i.isEnriched = true
-	return nil
 }
 
 func (i *NestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {

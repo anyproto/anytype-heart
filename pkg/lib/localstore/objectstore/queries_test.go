@@ -658,7 +658,7 @@ func TestQueryRaw(t *testing.T) {
 					Value:       pbtypes.String("note"),
 				},
 			},
-		}, nil, nil)
+		}, nil, s)
 		require.NoError(t, err)
 
 		recs, err := s.QueryRaw(flt, 0, 0)
