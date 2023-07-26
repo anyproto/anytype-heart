@@ -306,7 +306,7 @@ func assertNonEscapedQuery(t *testing.T, tmpDir string) {
 		Text:  "two",
 	}))
 
-	validateSearch(t, ft, "", ".*?([])", 0)
+	validateSearch(t, ft, "", "*", 0)
 
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",

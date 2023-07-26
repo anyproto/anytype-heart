@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
@@ -154,7 +155,7 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		// TODO it's unused
-		// ids, _, err = bs.AddSubObjectsToWorkspace(ctx, req.SpaceId, req.ObjectIds)
+		// ids, _, err = bs.AddBundledObjectToSpace(ctx, req.SpaceId, req.ObjectIds)
 		return
 	})
 
@@ -206,14 +207,5 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 		ids []string
 	)
 
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.RemoveSubObjectsInWorkspace("TODO", req.ObjectIds, true)
-		return
-	})
-
-	if err != nil {
-		return response(ids, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(ids, pb.RpcWorkspaceObjectListRemoveResponseError_NULL, nil)
+	return response(ids, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, fmt.Errorf("not implemented"))
 }

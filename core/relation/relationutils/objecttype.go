@@ -1,8 +1,7 @@
 package relationutils
 
 import (
-	"strings"
-
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -15,32 +14,32 @@ type ObjectType struct {
 	*model.ObjectType
 }
 
-func (ot *ObjectType) ToStruct() *types.Struct {
+func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 	var (
-		relationKeys   []string
-		relationPrefix string
+		relationKeys []string
 	)
 
-	if strings.HasPrefix(ot.Url, addr.BundledObjectTypeURLPrefix) {
-		relationPrefix = addr.BundledRelationURLPrefix
-	} else {
-		relationPrefix = addr.RelationKeyToIdPrefix
-	}
-
-	for i := range ot.RelationLinks {
-		relationKeys = append(relationKeys, relationPrefix+ot.RelationLinks[i].Key)
+	for _, rl := range ot.RelationLinks {
+		relationKeys = append(relationKeys, addr.BundledRelationURLPrefix+rl.Key)
 	}
 
 	var sbTypes = make([]int, 0, len(ot.Types))
 	for _, t := range ot.Types {
 		sbTypes = append(sbTypes, int(t))
 	}
+
+	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, ot.Key)
+	if err != nil {
+		return nil
+	}
+
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
 		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
 		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
 		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
 		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
+		bundle.RelationKeyUniqueKey.String():            pbtypes.String(uk.String()),
 		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),
 		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),
 		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),

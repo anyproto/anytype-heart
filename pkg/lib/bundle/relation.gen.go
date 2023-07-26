@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "0c6164e70b7f7bf0543c5097bd3579c39c703a1cfbb60a789eb6cab8600b66c6"
+const RelationChecksum = "07ebf60c881fcf4e014e1e95775f1f6a08ad726efdf88c4a766d79257bd3a939"
 
 type RelationKey string
 
@@ -166,6 +166,7 @@ const (
 	RelationKeyLastChangeId              RelationKey = "lastChangeId"
 	RelationKeyStarred                   RelationKey = "starred"
 	RelationKeyDefaultTemplateId         RelationKey = "defaultTemplateId"
+	RelationKeyUniqueKey                 RelationKey = "uniqueKey"
 )
 
 var (
@@ -1999,6 +2000,20 @@ var (
 			MaxCount:         1,
 			Name:             "Object type",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUniqueKey: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Unique key used to ensure object uniqueness within the space",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_bruniqueKey",
+			Key:              "uniqueKey",
+			MaxCount:         1,
+			Name:             "Unique object key",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

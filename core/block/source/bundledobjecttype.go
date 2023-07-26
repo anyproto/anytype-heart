@@ -32,7 +32,7 @@ func (v *bundledObjectType) Id() string {
 }
 
 func (v *bundledObjectType) Type() model.SmartBlockType {
-	return model.SmartBlockType_BundledObjectType
+	return model.SmartBlockType_STType
 }
 
 func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *types.Struct, err error) {
@@ -42,11 +42,15 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 	}
 	extraRels = []*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelationLink(bundle.RelationKeyRecommendedLayout)}
 
-	for i := range ot.RelationLinks {
-		extraRels = append(extraRels, ot.RelationLinks[i])
+	for _, rl := range ot.RelationLinks {
+		relationLink := &model.RelationLink{
+			Key:    rl.Key,
+			Format: rl.Format,
+		}
+		extraRels = append(extraRels, relationLink)
 	}
 
-	return extraRels, (&relationutils.ObjectType{ot}).ToStruct(), nil
+	return extraRels, (&relationutils.ObjectType{ot}).BundledTypeDetails(), nil
 }
 
 func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {

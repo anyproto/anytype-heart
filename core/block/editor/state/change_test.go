@@ -93,7 +93,7 @@ func TestState_ChangesCreate_Collection_Unset(t *testing.T) {
 }
 
 func TestState_ChangesCreate_StoreSlice(t *testing.T) {
-	const key = "key"
+	const key = "uniqueKey"
 	for _, tc := range []struct {
 		before  []string
 		after   []string
@@ -662,7 +662,7 @@ func Test_ApplyChange(t *testing.T) {
 		assert.Len(t, s.ObjectTypes(), 0)
 	})
 
-	t.Run("collection set/unset key", func(t *testing.T) {
+	t.Run("collection set/unset uniqueKey", func(t *testing.T) {
 		root := NewDoc("root", nil)
 
 		s := root.NewState()

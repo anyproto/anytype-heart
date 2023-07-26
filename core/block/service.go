@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -335,7 +336,7 @@ func (s *Service) AddSubObjectToWorkspace(
 	spaceID string,
 	sourceObjectId string,
 ) (id string, object *types.Struct, err error) {
-	ids, details, err := s.AddSubObjectsToWorkspace(ctx, spaceID, []string{sourceObjectId})
+	ids, details, err := s.AddBundledObjectToSpace(ctx, spaceID, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -346,7 +347,50 @@ func (s *Service) AddSubObjectToWorkspace(
 	return ids[0], details[0], nil
 }
 
-func (s *Service) AddSubObjectsToWorkspace(
+func (s *Service) convertBundledObjectToInstalled(ctx context.Context, spaceId, newId string, details *types.Struct) (*types.Struct, error) {
+	d := pbtypes.CopyStruct(details)
+	sourceId := pbtypes.GetString(d, bundle.RelationKeyId.String())
+	if pbtypes.GetString(d, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
+		return nil, errors.New("object is not bundled")
+	}
+
+	d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
+	d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(newId)
+	d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+
+	predefinedObjects := s.anytype.PredefinedObjects(spaceId)
+	switch pbtypes.GetString(d, bundle.RelationKeyType.String()) {
+	case bundle.TypeKeyObjectType.BundledURL():
+		d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyObjectType])
+	case bundle.TypeKeyRelation.BundledURL():
+		d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyRelation])
+	default:
+		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(d, bundle.RelationKeyType.String()))
+	}
+	relations := pbtypes.GetStringList(d, bundle.RelationKeyRecommendedRelations.String())
+
+	if len(relations) > 0 {
+		for i, r := range relations {
+			// replace relation url with id
+			uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			id, err := s.anytype.DeriveObjectId(ctx, spaceId, uk)
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			relations[i] = id
+		}
+		d.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relations)
+
+	}
+	return d, nil
+}
+
+func (s *Service) AddBundledObjectToSpace(
 	ctx context.Context,
 	spaceID string,
 	sourceObjectIds []string,
@@ -358,19 +402,10 @@ func (s *Service) AddSubObjectsToWorkspace(
 
 	for _, sourceObjectId := range sourceObjectIds {
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
-			d := pbtypes.CopyStruct(b.Details())
-			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceID {
-				return errors.New("object already in collection")
-			}
-			d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
-			u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
+			d, err := s.convertBundledObjectToInstalled(ctx, spaceID, b.Id(), b.Details())
 			if err != nil {
-				u = b.ObjectType()
+				return err
 			}
-			d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(u)
-			d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
-			d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
-
 			details = append(details, d)
 			return nil
 		})
@@ -379,34 +414,14 @@ func (s *Service) AddSubObjectsToWorkspace(
 		}
 	}
 
-	err = Do(s, workspaceID, func(b smartblock.SmartBlock) error {
-		ws, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect workspace id")
+	for _, d := range details {
+		id, object, err := s.CreateObject(ctx, workspaceID, &model.ObjectDetails{Details: d}, "")
+		if err != nil {
+			return nil, nil, err
 		}
-		ids, objects, err = ws.CreateSubObjects(ctx, details)
-		return err
-	})
-
-	return
-}
-
-func (s *Service) RemoveSubObjectsInWorkspace(spaceID string, objectIds []string, orphansGC bool) (err error) {
-	// TODO Resolve spaceID for each object, batch them
-	workspaceID := s.anytype.PredefinedObjects(spaceID).Account
-	for _, objectID := range objectIds {
-		if err = s.restriction.CheckRestrictions(spaceID, objectID, model.Restrictions_Delete); err != nil {
-			return err
-		}
+		ids = append(ids, id)
+		objects = append(objects, object)
 	}
-	err = Do(s, workspaceID, func(b smartblock.SmartBlock) error {
-		ws, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect workspace id")
-		}
-		err = ws.RemoveSubObjects(objectIds, orphansGC)
-		return err
-	})
 
 	return
 }

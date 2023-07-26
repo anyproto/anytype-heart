@@ -62,8 +62,6 @@ type SubObjectCollection struct {
 
 	sourceService source.Service
 	objectStore   objectstore.ObjectStore
-
-	subObjectFactory subObjectFactory
 }
 
 func NewSubObjectCollection(
@@ -75,7 +73,6 @@ func NewSubObjectCollection(
 	sourceService source.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	subObjectFactory subObjectFactory,
 	eventSender event.Sender,
 ) *SubObjectCollection {
 	return &SubObjectCollection{
@@ -99,7 +96,6 @@ func NewSubObjectCollection(
 		sourceService:         sourceService,
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
-		subObjectFactory:      subObjectFactory,
 	}
 }
 
@@ -117,28 +113,16 @@ func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (
 		if data == nil {
 			continue
 		}
-		// we create the sb impl here in order to call InitState on it
-		subObj, err := c.subObjectFactory.produce(coll)
-		if err != nil {
-			log.Errorf("failed to produce sub object: %v", err)
-			continue
-		}
+
 		for subId := range data.GetFields() {
 			fullId := c.getId(coll, subId)
 
-			sub, err := c.subState(st, coll, fullId, workspaceID)
+			_, err := c.subState(st, coll, fullId, workspaceID)
 			if err != nil {
 				log.Errorf("failed to get sub object %s: %v", subId, err)
 				continue
 			}
-			subObj.InitState(sub)
-			if !f(smartblock.DocInfo{
-				Id:      fullId,
-				SpaceID: c.SpaceID(),
-				State:   sub,
-			}) {
-				break
-			}
+			// todo: migrate
 		}
 	}
 	return
@@ -384,30 +368,6 @@ func (c *SubObjectCollection) initSubObject(ctx context.Context, st *state.State
 		subState.SetDetails(det)
 		// inject the internal flag to the state
 	}
-
-	subObj, err := c.subObjectFactory.produce(collection)
-	if err != nil {
-		return fmt.Errorf("new sub-object: %w", err)
-	}
-
-	subObj.InitState(subState)
-	if _, exists := c.collections[collection]; !exists {
-		c.collections[collection] = map[string]SubObjectImpl{}
-	}
-	c.collections[collection][subId] = subObj
-
-	if err = subObj.Init(&smartblock.InitContext{
-		Ctx:     ctx,
-		SpaceID: c.SpaceID(),
-		Source:  c.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, c.onSubObjectChange(collection, subId)),
-	}); err != nil {
-		return
-	}
-
-	// we need to call Apply to make sure it propogates to the indexer
-	// BTW, if subObj.InitState made any changes, they will be ignored, cause we do the NewState() call here
-	// todo: decide if this is correct
-	subObj.Apply(subState.NewState())
 	return
 }
 

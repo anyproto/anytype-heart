@@ -21862,6 +21862,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | smartBlockType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -21887,6 +21888,7 @@ Used to decode block meta only, without the content itself
 | types | [SmartBlockType](#anytype-model-SmartBlockType) | repeated |  |
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 | installedByDefault | [bool](#bool) |  |  |
+| key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 
 
 
@@ -22145,6 +22147,7 @@ stored |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
+| key | [string](#string) |  | this field is not passing to the crdt changes and can be only set in the snapshot |
 
 
 
@@ -22696,10 +22699,12 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | BundledTemplate | 289 |  |
 | BundledRelation | 512 | DEPRECATED |
 | SubObject | 513 |  |
-| BundledObjectType | 514 |  |
+| BundledObjectType | 514 | DEPRECATED |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | Workspace | 518 |  |
+| STRelation | 521 |  |
+| STType | 528 |  |
 | MissingObject | 519 |  |
 
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -22,7 +23,8 @@ func NewBundledRelation(id string) (s Source) {
 }
 
 type bundledRelation struct {
-	id string
+	id      string
+	typeURL string
 }
 
 func (v *bundledRelation) ReadOnly() bool {
@@ -34,7 +36,7 @@ func (v *bundledRelation) Id() string {
 }
 
 func (v *bundledRelation) Type() model.SmartBlockType {
-	return model.SmartBlockType_BundledRelation
+	return model.SmartBlockType_STRelation
 }
 
 func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
@@ -53,6 +55,11 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, id)
+	if err != nil {
+		return nil, err
+	}
+	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.String())
 
 	return details, nil
 }

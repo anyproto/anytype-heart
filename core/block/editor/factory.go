@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -28,23 +27,23 @@ import (
 var log = logging.Logger("anytype-mw-editor")
 
 type ObjectFactory struct {
-	anytype          core.Service
-	bookmarkService  bookmark.BookmarkService
-	detailsModifier  DetailsModifier
-	fileBlockService file.BlockService
-	layoutConverter  converter.LayoutConverter
-	objectStore      objectstore.ObjectStore
-	relationService  relation.Service
-	sbtProvider      typeprovider.SmartBlockTypeProvider
-	sourceService    source.Service
-	tempDirProvider  core.TempDirProvider
-	templateCloner   templateCloner
-	fileService      files.Service
-	config           *config.Config
-	picker           getblock.Picker
-	eventSender      event.Sender
-
-	subObjectFactory subObjectFactory
+	anytype            core.Service
+	bookmarkService    bookmark.BookmarkService
+	detailsModifier    DetailsModifier
+	fileBlockService   file.BlockService
+	layoutConverter    converter.LayoutConverter
+	objectStore        objectstore.ObjectStore
+	relationService    relation.Service
+	sbtProvider        typeprovider.SmartBlockTypeProvider
+	sourceService      source.Service
+	tempDirProvider    core.TempDirProvider
+	templateCloner     templateCloner
+	fileService        files.Service
+	config             *config.Config
+	picker             getblock.Picker
+	eventSender        event.Sender
+	restrictionService restriction.Service
+	indexer            smartblock.Indexer
 }
 
 func NewObjectFactory(
@@ -66,26 +65,14 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.relationService = app.MustComponent[relation.Service](a)
+	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
 	f.picker = app.MustComponent[getblock.Picker](a)
+	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
-	f.subObjectFactory = subObjectFactory{
-		coreService:        f.anytype,
-		fileBlockService:   f.fileBlockService,
-		fileService:        f.fileService,
-		indexer:            app.MustComponent[smartblock.Indexer](a),
-		layoutConverter:    f.layoutConverter,
-		objectStore:        f.objectStore,
-		relationService:    f.relationService,
-		restrictionService: app.MustComponent[restriction.Service](a),
-		sbtProvider:        f.sbtProvider,
-		sourceService:      f.sourceService,
-		tempDirProvider:    f.tempDirProvider,
-		eventSender:        f.eventSender,
-	}
 
 	return nil
 }
@@ -139,10 +126,22 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 
 }
 
+func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
+	return smartblock.New(
+		f.anytype,
+		f.fileService,
+		f.restrictionService,
+		f.objectStore,
+		f.relationService,
+		f.indexer,
+		f.eventSender,
+	)
+}
+
 func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb := f.subObjectFactory.produceSmartblock()
+	sb := f.produceSmartblock()
 	switch sbType {
-	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType:
+	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType, model.SmartBlockType_STType, model.SmartBlockType_STRelation:
 		return NewPage(
 			sb,
 			f.objectStore,
@@ -227,7 +226,6 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.detailsModifier,
 			f.sbtProvider,
 			f.layoutConverter,
-			f.subObjectFactory,
 			f.templateCloner,
 			f.config,
 			f.eventSender,

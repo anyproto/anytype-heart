@@ -3,6 +3,7 @@ package threads
 import (
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
@@ -35,12 +36,14 @@ const (
 )
 
 type DerivedSmartblockIds struct {
-	AccountOld string
-	Account    string // Workspace object
-	Profile    string
-	Home       string
-	Archive    string
-	Widgets    string
+	AccountOld      string
+	Account         string
+	Profile         string
+	Home            string
+	Archive         string
+	Widgets         string
+	SystemTypes     map[bundle.TypeKey]string
+	SystemRelations map[bundle.RelationKey]string
 }
 
 func (d DerivedSmartblockIds) IsFilled() bool {

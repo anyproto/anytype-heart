@@ -265,15 +265,6 @@ func appendInterceptor(
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (resp interface{}, err error) {
-		defer func() {
-			if r := recover(); r != nil {
-				if rerr, ok := r.(error); ok && rerr == core.ErrNotLoggedIn {
-					resp = onNotLoggedInError(resp, rerr)
-				} else {
-					resp = onDefaultError(mw, r, resp)
-				}
-			}
-		}()
 
 		resp, err = handler(ctx, req)
 		return resp, err
@@ -281,7 +272,7 @@ func appendInterceptor(
 }
 
 func onDefaultError(mw *core.Middleware, r any, resp interface{}) interface{} {
-	mw.OnPanic(r)
+	//	mw.OnPanic(r)
 	resp = &pb.RpcGenericErrorResponse{
 		Error: &pb.RpcGenericErrorResponseError{
 			Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,

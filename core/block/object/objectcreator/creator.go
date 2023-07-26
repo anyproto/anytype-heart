@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -97,6 +99,7 @@ func (c *Creator) Name() (name string) {
 type BlockService interface {
 	StateFromTemplate(templateID string, name string) (st *state.State, err error)
 	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	CreateTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key uniquekey.UniqueKey, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
@@ -168,12 +171,8 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
 
-	if sbType == coresb.SmartBlockTypeSubObject {
-		return c.CreateSubObjectInWorkspace(ctx, createState.CombinedDetails(), workspaceID)
-	}
-
 	ctx = context.WithValue(ctx, eventCreate, ev)
-	sb, err := c.blockService.CreateTreeObject(ctx, spaceID, sbType, func(id string) *smartblock.InitContext {
+	initFunc := func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 		createState.SetObjectTypes(objectTypes)
 		createState.InjectDerivedDetails()
@@ -184,10 +183,26 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			State:          createState,
 			RelationKeys:   relationKeys,
 		}
-	})
-	if err != nil {
-		return
 	}
+
+	var sb smartblock.SmartBlock
+
+	if uKey := createState.UniqueKey(); uKey != "" {
+		uk, err := uniquekey.NewUniqueKey(sbType.ToProto(), uKey)
+		if err != nil {
+			return "", nil, err
+		}
+		sb, err = c.blockService.CreateTreeObjectWithUniqueKey(ctx, spaceID, uk, initFunc)
+		if err != nil {
+			return "", nil, err
+		}
+	} else {
+		sb, err = c.blockService.CreateTreeObject(ctx, spaceID, sbType, initFunc)
+		if err != nil {
+			return
+		}
+	}
+
 	id = sb.Id()
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
@@ -313,23 +328,41 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		templateID = v.GetTemplateId()
 	}
 
-	var objectType string
+	var (
+		objectTypeKey bundle.TypeKey
+		objectTypeId  string
+	)
 	if forcedType != "" {
-		objectType = forcedType.URL()
-	} else if objectType = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectType == "" {
+		objectTypeKey = forcedType
+	} else if objectTypeId = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectTypeId == "" {
 		return "", nil, fmt.Errorf("missing type in details or in forcedType")
+	} else {
+		for typeKey, typeId := range c.anytype.PredefinedObjects(spaceID).SystemTypes {
+			if typeId == objectTypeId {
+				objectTypeKey = typeKey
+				break
+			}
+		}
 	}
 
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectTypeId)
 	var sbType = coresb.SmartBlockTypePage
 
-	switch objectType {
-	case bundle.TypeKeyBookmark.URL():
+	getUniqueKeyOrGenerate := func(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {
+		uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+		if uniqueKey == "" {
+			return uniquekey.NewUniqueKey(sbType.ToProto(), bson.NewObjectId().Hex())
+		}
+		return uniquekey.UniqueKeyFromString(uniqueKey)
+	}
+
+	switch objectTypeKey {
+	case bundle.TypeKeyBookmark:
 		return c.ObjectCreateBookmark(ctx, &pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
 			SpaceId: spaceID,
 		})
-	case bundle.TypeKeySet.URL():
+	case bundle.TypeKeySet:
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
 		return c.CreateSet(ctx, &pb.RpcObjectCreateSetRequest{
 			Details:       details,
@@ -337,7 +370,7 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 			SpaceId:       spaceID,
 		})
-	case bundle.TypeKeyCollection.URL():
+	case bundle.TypeKeyCollection:
 		var st *state.State
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 		sbType, details, st, err = c.collectionService.CreateCollection(details, internalFlags)
@@ -345,19 +378,26 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 			return "", nil, err
 		}
 		return c.CreateSmartBlockFromState(ctx, spaceID, sbType, details, st)
-	case bundle.TypeKeyObjectType.URL():
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
+	case bundle.TypeKeyObjectType, bundle.TypeKeyRelation:
+		if templateID != "" {
+			return "", nil, fmt.Errorf("template is not supported for %s", objectTypeKey)
+		}
+		if objectTypeKey == bundle.TypeKeyObjectType {
+			sbType = coresb.SmartBlockTypeObjectType
+		} else {
+			sbType = coresb.SmartBlockTypeRelation
+		}
+		uk, err := getUniqueKeyOrGenerate(sbType, details)
+		if err != nil {
+			return "", nil, err
+		}
 
-	case bundle.TypeKeyRelation.URL():
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
+		if details.GetFields() == nil {
+			details.Fields = map[string]*types.Value{}
+		}
+		details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.String())
 
-	case bundle.TypeKeyRelationOption.URL():
-		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
-
-	case bundle.TypeKeyTemplate.URL():
+	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 

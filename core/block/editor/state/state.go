@@ -91,6 +91,7 @@ type State struct {
 	parent        *State
 	blocks        map[string]simple.Block
 	rootId        string
+	uniqueKey     string // Used together with smartblockType for the ID derivation which will be unique and reproducable within the same space
 	newIds        []string
 	changeId      string
 	changes       []*pb.ChangeContent
@@ -148,11 +149,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKey: s.uniqueKey}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKey: s.uniqueKey}
 }
 
 func (s *State) Context() session.Context {
@@ -166,6 +167,10 @@ func (s *State) SetGroupId(groupId string) *State {
 
 func (s *State) GroupId() string {
 	return s.groupId
+}
+
+func (s *State) UniqueKey() string {
+	return s.uniqueKey
 }
 
 func (s *State) SpaceID() string {
@@ -1393,6 +1398,7 @@ func (s *State) Copy() *State {
 		store:                   pbtypes.CopyStruct(s.Store()),
 		storeLastChangeIdByPath: s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
 		storeKeyRemoved:         storeKeyRemovedCopy,
+		uniqueKey:               s.uniqueKey,
 	}
 	return copy
 }
@@ -1621,7 +1627,7 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
 		s.setStoreChangeId(pathJoined, s.changeId)
-		// in case we have previously removed this key
+		// in case we have previously removed this uniqueKey
 		delete(s.storeKeyRemoved, pathJoined)
 		return
 	}

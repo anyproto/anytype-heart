@@ -90,8 +90,8 @@ type Hasher interface {
 	Hash() string
 }
 
-type subObjectCreator interface {
-	CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+type objectCreator interface {
+	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
 }
 
 type syncStarter interface {
@@ -99,15 +99,15 @@ type syncStarter interface {
 }
 
 type indexer struct {
-	store            objectstore.ObjectStore
-	fileStore        filestore.FileStore
-	anytype          core.Service
-	source           source.Service
-	picker           block.Picker
-	ftsearch         ftsearch.FTSearch
-	subObjectCreator subObjectCreator
-	syncStarter      syncStarter
-	fileService      files.Service
+	store         objectstore.ObjectStore
+	fileStore     filestore.FileStore
+	anytype       core.Service
+	source        source.Service
+	picker        block.Picker
+	ftsearch      ftsearch.FTSearch
+	objectCreator objectCreator
+	syncStarter   syncStarter
+	fileService   files.Service
 
 	quit       chan struct{}
 	mu         sync.Mutex
@@ -131,7 +131,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
+	i.objectCreator = app.MustComponent[objectCreator](a)
 	i.syncStarter = app.MustComponent[syncStarter](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
@@ -574,33 +574,38 @@ func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexTyp
 	return nil
 }
 
+// todo: remove this and create objects within derivePredefinedObjects
 func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
-	var objects []*types.Struct
-
 	start := time.Now()
+	var ids []string
 	for _, ot := range bundle.SystemTypes {
 		t, err := bundle.GetTypeByUrl(ot.BundledURL())
 		if err != nil {
 			continue
 		}
-		objects = append(objects, (&relationutils.ObjectType{ObjectType: t}).ToStruct())
+		d := &model.ObjectDetails{Details: (&relationutils.ObjectType{ObjectType: t}).BundledTypeDetails()}
+		id, _, err := i.objectCreator.CreateObject(context.Background(), spaceID, d, bundle.TypeKeyObjectType)
+		if err != nil {
+			// todo: check if already exists
+			return err
+		}
+		ids = append(ids, id)
 	}
 
 	for _, rk := range bundle.SystemRelations {
 		rel := bundle.MustGetRelation(rk)
-		for _, opt := range rel.SelectDict {
-			opt.RelationKey = rel.Key
-			objects = append(objects, (&relationutils.Option{RelationOption: opt}).ToStruct())
+		d := &model.ObjectDetails{Details: (&relationutils.Relation{Relation: rel}).ToStruct()}
+		id, _, err := i.objectCreator.CreateObject(context.Background(), spaceID, d, bundle.TypeKeyObjectType)
+		if err != nil {
+			// todo: check if already exists
+			return err
 		}
-		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
+		ids = append(ids, id)
 	}
-	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(context.Background(), spaceID, objects)
+
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 
-	if errors.Is(err, editor.ErrSubObjectAlreadyExists) {
-		return nil
-	}
-	return err
+	return nil
 }
 
 func (i *indexer) saveLatestChecksums() error {

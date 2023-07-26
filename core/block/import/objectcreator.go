@@ -104,10 +104,6 @@ func (oc *ObjectCreator) Create(
 	}()
 
 	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
-	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		oc.handleSubObject(spaceID, st, newID)
-		return nil, newID, nil
-	}
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
@@ -264,20 +260,6 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 			log.With("file", hash).Errorf("failed to delete file: %s", err)
 		}
 	}
-}
-
-func (oc *ObjectCreator) handleSubObject(spaceID string, st *state.State, newID string) {
-	oc.mu.Lock()
-	defer oc.mu.Unlock()
-	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace(spaceID, []string{newID}, true)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
-		}
-		return
-	}
-
-	// RQ: the rest handling were removed
 }
 
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
