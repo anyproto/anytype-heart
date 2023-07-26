@@ -21,11 +21,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -216,7 +216,7 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 	// TODO remove it, when schema will be refactored
 	source := req.Source
 	var dvContent model.BlockContentOfDataview
-	var dvSchema schema.Schema
+	var dvSchema database.Schema
 	if len(source) == 0 {
 		source = []string{converter.DefaultSetSource.URL()}
 	}

@@ -1,14 +1,14 @@
 package subscription
 
 import (
+	"testing"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -63,15 +63,15 @@ func TestGroupTag(t *testing.T) {
 
 	f, err := database.NewFilters(q, nil, nil)
 	require.NoError(t, err)
-	filterTag := filter.Not{Filter: filter.Empty{Key: kanbanKey}}
-	f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}
-	f.FilterObj = filter.OrFilters{f.FilterObj, filter.AndFilters{
-		filter.Eq{
+	filterTag := database.Not{Filter: database.Empty{Key: kanbanKey}}
+	f.FilterObj = database.AndFilters{f.FilterObj, filterTag}
+	f.FilterObj = database.OrFilters{f.FilterObj, database.AndFilters{
+		database.Eq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(kanbanKey),
 		},
-		filter.Eq{
+		database.Eq{
 			Key:   bundle.RelationKeyType.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),

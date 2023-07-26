@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -371,7 +370,7 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (database.Schema, error) {
 	var hasRelations, hasType bool
 
 	for _, source := range sources {
@@ -410,7 +409,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		if err != nil {
 			return nil, err
 		}
-		sch := schema.NewByType(objectType, optionalRelations)
+		sch := database.NewByType(objectType, optionalRelations)
 		return sch, nil
 	}
 
@@ -440,14 +439,14 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 
 			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
 		}
-		sch := schema.NewByRelations(ids, relations, optionalRelations)
+		sch := database.NewByRelations(ids, relations, optionalRelations)
 		return sch, nil
 	}
 
 	return nil, fmt.Errorf("relation or type not found")
 }
 
-func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
+func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (database.Schema, error) {
 	return SchemaBySources(d.SpaceID(), d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
@@ -580,7 +579,7 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
+func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
 	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store, nil); err != nil {
 		return
 	}

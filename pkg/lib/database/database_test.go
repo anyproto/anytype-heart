@@ -1,10 +1,11 @@
 package database
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestDatabase(t *testing.T) {
@@ -27,57 +28,57 @@ func TestDatabase(t *testing.T) {
 }
 
 func testIncludeTimeWhenSingleDateSort(t *testing.T) {
-	//given
+	// given
 	sorts := givenSingleDateSort()
 
-	//when
+	// when
 	order := extractOrder(sorts, nil)
 
-	//then
+	// then
 	assertIncludeTime(t, order)
 }
 
 func testDoNotIncludeTimeWhenNotSingleSort(t *testing.T) {
-	//given
+	// given
 	sorts := givenNotSingleDateSort()
 
-	//when
+	// when
 	order := extractOrder(sorts, nil)
 
-	//then
+	// then
 	assertNotIncludeTime(t, order)
 }
 
 func testIncludeTimeWhenSortContainsIncludeTime(t *testing.T) {
-	//given
+	// given
 	sorts := givenSingleIncludeTime()
 
-	//when
+	// when
 	order := extractOrder(sorts, nil)
 
-	//then
+	// then
 	assertIncludeTime(t, order)
 }
 
 func testDoNotIncludeTimeWhenSingleNotDateSort(t *testing.T) {
-	//given
+	// given
 	sorts := givenSingleNotDateSort()
 
-	//when
+	// when
 	order := extractOrder(sorts, nil)
 
-	//then
+	// then
 	assertNotIncludeTime(t, order)
 }
 
-func assertIncludeTime(t *testing.T, order filter.SetOrder) {
-	assert.IsType(t, order[0], &filter.KeyOrder{})
-	assert.Equal(t, order[0].(*filter.KeyOrder).IncludeTime, true)
+func assertIncludeTime(t *testing.T, order SetOrder) {
+	assert.IsType(t, order[0], &KeyOrder{})
+	assert.Equal(t, order[0].(*KeyOrder).IncludeTime, true)
 }
 
-func assertNotIncludeTime(t *testing.T, order filter.SetOrder) {
-	assert.IsType(t, order[0], &filter.KeyOrder{})
-	assert.Equal(t, order[0].(*filter.KeyOrder).IncludeTime, false)
+func assertNotIncludeTime(t *testing.T, order SetOrder) {
+	assert.IsType(t, order[0], &KeyOrder{})
+	assert.Equal(t, order[0].(*KeyOrder).IncludeTime, false)
 }
 
 func givenSingleDateSort() []*model.BlockContentDataviewSort {

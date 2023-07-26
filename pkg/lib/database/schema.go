@@ -1,17 +1,17 @@
-package schema
+package database
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"strings"
 )
 
 // Schema used to subset compatible objects by some common relations
 type Schema interface {
-	Filters() filter.Filter
+	Filters() Filter
 	ObjectType() *model.ObjectType
 	String() string      // describes the schema
 	Description() string // describes the schema
@@ -63,9 +63,9 @@ func (sch *schemaByType) ObjectType() *model.ObjectType {
 	return sch.ObjType
 }
 
-func (sch *schemaByType) Filters() filter.Filter {
-	relTypeFilter := filter.OrFilters{
-		filter.Eq{
+func (sch *schemaByType) Filters() Filter {
+	relTypeFilter := OrFilters{
+		Eq{
 			Key:   bundle.RelationKeyType.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(sch.ObjType.Url),
@@ -110,18 +110,18 @@ func (sch *schemaByRelations) ListRelations() []*model.RelationLink {
 	return rels
 }
 
-func (sch *schemaByRelations) Filters() filter.Filter {
-	var relTypeFilter filter.OrFilters
+func (sch *schemaByRelations) Filters() Filter {
+	var relTypeFilter OrFilters
 
 	if len(sch.ObjectTypeIds) > 0 {
-		relTypeFilter = append(relTypeFilter, filter.In{
+		relTypeFilter = append(relTypeFilter, In{
 			Key:   bundle.RelationKeyType.String(),
 			Value: pbtypes.StringList(sch.ObjectTypeIds).GetListValue(),
 		})
 	}
 
 	for _, rel := range sch.CommonRelations {
-		relTypeFilter = append(relTypeFilter, filter.Exists{
+		relTypeFilter = append(relTypeFilter, Exists{
 			Key: rel.Key,
 		})
 	}

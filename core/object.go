@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
@@ -176,7 +175,7 @@ func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearch
 		}
 	}
 	rec = makeSuggestedDateRecord(dt, workspaceId)
-	f, _ := filter.MakeAndFilter(req.Filters, store) //nolint:errcheck
+	f, _ := database.MakeAndFilter(req.Filters, store) //nolint:errcheck
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
 	}

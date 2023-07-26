@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -31,7 +30,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	require.NoError(t, err)
 
 	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
-	recs, _, err := s.Query(schema.NewByType(ot, nil), database.Query{})
+	recs, _, err := s.Query(database.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -41,7 +40,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	recs, _, err = s.Query(schema.NewByType(ot, nil), database.Query{})
+	recs, _, err = s.Query(database.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))

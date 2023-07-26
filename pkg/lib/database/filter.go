@@ -1,4 +1,4 @@
-package filter
+package database
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ var (
 	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
-func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store OptionsGetter) (AndFilters, error) {
+func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (AndFilters, error) {
 
 	protoFilters = TransformQuickOption(protoFilters, nil)
 
@@ -34,7 +34,7 @@ func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store Optio
 	return and, nil
 }
 
-func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store OptionsGetter) (Filter, error) {
+func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
 	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
 	if len(parts) == 2 {
 		rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
@@ -516,7 +516,7 @@ func (exIn ExactIn) String() string {
 	return fmt.Sprintf("%s EXACTINN(%v)", exIn.Key, exIn.Value)
 }
 
-func optionsToMap(key string, store OptionsGetter) map[string]string {
+func optionsToMap(key string, store ObjectStore) map[string]string {
 	result := make(map[string]string)
 	options, err := store.GetAggregatedOptions(key)
 	if err != nil {

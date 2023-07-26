@@ -20,13 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -124,7 +122,7 @@ type ObjectStore interface {
 
 	SubscribeForAll(callback func(rec database.Record))
 
-	Query(schema schema.Schema, q database.Query) (records []database.Record, total int, err error)
+	Query(schema database.Schema, q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
@@ -534,7 +532,7 @@ func detailsKeyToID(key []byte) string {
 }
 
 type order struct {
-	filter.Order
+	database.Order
 }
 
 func (o order) Compare(lhs, rhs interface{}) (comp int) {

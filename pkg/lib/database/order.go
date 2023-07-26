@@ -1,4 +1,4 @@
-package filter
+package database
 
 import (
 	"strings"
@@ -6,21 +6,20 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	time_util "github.com/anyproto/anytype-heart/util/time"
 )
-
-var log = logging.Logger("anytype-order")
 
 type Order interface {
 	Compare(a, b Getter) int
 	String() string
 }
 
-type OptionsGetter interface {
+// ObjectStore interface is used to enrich filters
+type ObjectStore interface {
 	GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error)
+	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
 }
 
 type SetOrder []Order
@@ -48,7 +47,7 @@ type KeyOrder struct {
 	EmptyLast      bool // consider empty strings as the last, not first
 	RelationFormat model.RelationFormat
 	IncludeTime    bool
-	Store          OptionsGetter
+	Store          ObjectStore
 	Options        map[string]string
 }
 

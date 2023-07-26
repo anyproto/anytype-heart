@@ -9,13 +9,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) Query(sch schema.Schema, q database.Query) ([]database.Record, int, error) {
+func (s *dsObjectStore) Query(sch database.Schema, q database.Query) ([]database.Record, int, error) {
 	filters, err := s.buildQuery(sch, q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
@@ -28,8 +26,8 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
-	if enricher, ok := filters.FilterObj.(filter.WithNestedFilter); ok {
-		err := enricher.EnrichNestedFilter(func(nestedFilter filter.Filter) (ids []string, err error) {
+	if enricher, ok := filters.FilterObj.(database.WithNestedFilter); ok {
+		err := enricher.EnrichNestedFilter(func(nestedFilter database.Filter) (ids []string, err error) {
 			records, err := s.QueryRaw(&database.Filters{FilterObj: nestedFilter}, 0, 0)
 			if err != nil {
 				return nil, fmt.Errorf("enrich nested filter %s: %w", nestedFilter, err)
@@ -86,7 +84,7 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	return records, nil
 }
 
-func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (*database.Filters, error) {
+func (s *dsObjectStore) buildQuery(sch database.Schema, q database.Query) (*database.Filters, error) {
 	filters, err := database.NewFilters(q, sch, s)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
@@ -95,7 +93,7 @@ func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (*databa
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
 	})
-	filters.FilterObj = filter.AndFilters{filters.FilterObj, discardSystemObjects}
+	filters.FilterObj = database.AndFilters{filters.FilterObj, discardSystemObjects}
 
 	if q.FullText != "" {
 		filters, err = s.makeFTSQuery(q.FullText, filters)
@@ -115,24 +113,24 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		return filters, err
 	}
 	idsQuery := newIdsFilter(ids)
-	filters.FilterObj = filter.AndFilters{filters.FilterObj, idsQuery}
-	filters.Order = filter.SetOrder(append([]filter.Order{idsQuery}, filters.Order))
+	filters.FilterObj = database.AndFilters{filters.FilterObj, idsQuery}
+	filters.Order = database.SetOrder(append([]database.Order{idsQuery}, filters.Order))
 	return filters, nil
 }
 
-func getSpaceIDFromFilter(fltr filter.Filter) (spaceID string) {
+func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
 	switch f := fltr.(type) {
-	case filter.Eq:
+	case database.Eq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			return f.Value.GetStringValue()
 		}
-	case filter.AndFilters:
+	case database.AndFilters:
 		spaceID = iterateOverAndFilters(f)
 	}
 	return spaceID
 }
 
-func iterateOverAndFilters(fs []filter.Filter) (spaceID string) {
+func iterateOverAndFilters(fs []database.Filter) (spaceID string) {
 	for _, f := range fs {
 		if spaceID = getSpaceIDFromFilter(f); spaceID != "" {
 			return spaceID
@@ -148,7 +146,7 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smart
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
 	if len(smartBlockTypes) > 0 {
-		filters.FilterObj = filter.AndFilters{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes), filters.FilterObj}
+		filters.FilterObj = database.AndFilters{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes), filters.FilterObj}
 	}
 	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
 	if err != nil {

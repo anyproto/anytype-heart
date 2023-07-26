@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -21,20 +20,20 @@ type GroupTag struct {
 }
 
 func (t *GroupTag) InitGroups(f *database.Filters) error {
-	filterTag := filter.Not{Filter: filter.Empty{Key: t.Key}}
+	filterTag := database.Not{Filter: database.Empty{Key: t.Key}}
 	if f == nil {
 		f = &database.Filters{FilterObj: filterTag}
 	} else {
-		f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}
+		f.FilterObj = database.AndFilters{f.FilterObj, filterTag}
 	}
 
-	f.FilterObj = filter.OrFilters{f.FilterObj, filter.AndFilters{
-		filter.Eq{
+	f.FilterObj = database.OrFilters{f.FilterObj, database.AndFilters{
+		database.Eq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(t.Key),
 		},
-		filter.Eq{
+		database.Eq{
 			Key:   bundle.RelationKeyType.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),

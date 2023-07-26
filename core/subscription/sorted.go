@@ -7,7 +7,6 @@ import (
 	"github.com/huandu/skiplist"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -18,7 +17,7 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, order filter.Order, limit, offset int) *sortedSub {
+func (s *service) newSortedSub(id string, keys []string, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
 		keys:        keys,
@@ -36,8 +35,8 @@ func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, o
 type sortedSub struct {
 	id     string
 	keys   []string
-	filter filter.Filter
-	order  filter.Order
+	filter database.Filter
+	order  database.Order
 
 	afterId, beforeId string
 	limit, offset     int

@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -130,7 +129,7 @@ func (s *service) Search(ctx session.Context, req pb.RpcObjectSearchSubscribeReq
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
-		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
+		f.FilterObj = database.AndFilters{f.FilterObj, sourceFilter}
 	}
 
 	s.m.Lock()
@@ -162,11 +161,11 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 		sub.forceSubIds = filterDepIds
 	}
 
-	if withNested, ok := f.FilterObj.(filter.WithNestedFilter); ok {
+	if withNested, ok := f.FilterObj.(database.WithNestedFilter); ok {
 		var nestedCount int
-		err := withNested.IterateNestedFilters(func(nestedFilter filter.Filter) error {
+		err := withNested.IterateNestedFilters(func(nestedFilter database.Filter) error {
 			nestedCount++
-			f, ok := nestedFilter.(*filter.NestedIn)
+			f, ok := nestedFilter.(*database.NestedIn)
 			if ok {
 				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []string{"id"}, f.Filter, nil, 0, 0)
 				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.Filter}, childSub)
@@ -332,7 +331,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
-		flt.FilterObj = filter.AndFilters{flt.FilterObj, sourceFilter}
+		flt.FilterObj = database.AndFilters{flt.FilterObj, sourceFilter}
 	}
 
 	var colObserver *collectionObserver
@@ -347,7 +346,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		if flt.FilterObj == nil {
 			flt.FilterObj = colObserver
 		} else {
-			flt.FilterObj = filter.AndFilters{colObserver, flt.FilterObj}
+			flt.FilterObj = database.AndFilters{colObserver, flt.FilterObj}
 		}
 	}
 
@@ -501,7 +500,7 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	return dur
 }
 
-func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
+func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	var objTypeIds, relTypeKeys []string
 
 	for _, source := range sources {
@@ -525,17 +524,17 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 		}
 	}
 
-	var relTypeFilter filter.OrFilters
+	var relTypeFilter database.OrFilters
 
 	if len(objTypeIds) > 0 {
-		relTypeFilter = append(relTypeFilter, filter.In{
+		relTypeFilter = append(relTypeFilter, database.In{
 			Key:   bundle.RelationKeyType.String(),
 			Value: pbtypes.StringList(objTypeIds).GetListValue(),
 		})
 	}
 
 	for _, key := range relTypeKeys {
-		relTypeFilter = append(relTypeFilter, filter.Exists{
+		relTypeFilter = append(relTypeFilter, database.Exists{
 			Key: key,
 		})
 	}

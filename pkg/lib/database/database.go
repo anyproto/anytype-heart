@@ -10,10 +10,8 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -37,7 +35,7 @@ type Query struct {
 	Offset   int                                 // skip given number of results
 }
 
-func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
+func (q Query) DSQuery(sch Schema) (qq query.Query, err error) {
 	qq.Limit = q.Limit
 	qq.Offset = q.Offset
 	f, err := NewFilters(q, sch, nil)
@@ -86,7 +84,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
-func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (filters *Filters, err error) {
+func NewFilters(qry Query, schema Schema, store ObjectStore) (filters *Filters, err error) {
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
@@ -106,10 +104,10 @@ func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (fi
 
 func compose(
 	filters []*model.BlockContentDataviewFilter,
-	store filter.OptionsGetter,
-	filterObj filter.AndFilters,
-) (filter.AndFilters, error) {
-	qryFilter, err := filter.MakeAndFilter(filters, store)
+	store ObjectStore,
+	filterObj AndFilters,
+) (AndFilters, error) {
+	qryFilter, err := MakeAndFilter(filters, store)
 	if err != nil {
 		return nil, err
 	}
@@ -122,11 +120,11 @@ func compose(
 
 func applySchema(
 	relations []*model.BlockContentDataviewRelation,
-	schema schema.Schema,
+	schema Schema,
 	dateKeys []string,
 	filters []*model.BlockContentDataviewFilter,
-) (filter.AndFilters, []string, []*model.BlockContentDataviewFilter) {
-	mainFilter := filter.AndFilters{}
+) (AndFilters, []string, []*model.BlockContentDataviewFilter) {
+	mainFilter := AndFilters{}
 	if schema != nil {
 		dateKeys = extractDateRelationKeys(relations, schema, dateKeys)
 		filters = applyFilterDateOnlyWhenExactDate(filters, dateKeys)
@@ -135,7 +133,7 @@ func applySchema(
 	return mainFilter, dateKeys, filters
 }
 
-func appendSchemaFilters(schema schema.Schema, mainFilter filter.AndFilters) filter.AndFilters {
+func appendSchemaFilters(schema Schema, mainFilter AndFilters) AndFilters {
 	if schemaFilter := schema.Filters(); schemaFilter != nil {
 		mainFilter = append(mainFilter, schemaFilter)
 	}
@@ -156,7 +154,7 @@ func applyFilterDateOnlyWhenExactDate(
 
 func extractDateRelationKeys(
 	relations []*model.BlockContentDataviewRelation,
-	schema schema.Schema,
+	schema Schema,
 	dateKeys []string,
 ) []string {
 	for _, relationLink := range schema.ListRelations() {
@@ -169,12 +167,12 @@ func extractDateRelationKeys(
 	return dateKeys
 }
 
-func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsGetter) filter.SetOrder {
+func extractOrder(sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
 	if len(sorts) > 0 {
-		order := filter.SetOrder{}
+		order := SetOrder{}
 		for _, sort := range sorts {
 
-			keyOrder := &filter.KeyOrder{
+			keyOrder := &KeyOrder{
 				Key:            sort.RelationKey,
 				Type:           sort.Type,
 				EmptyLast:      sort.RelationKey == bundle.RelationKeyName.String(),
@@ -190,9 +188,9 @@ func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsG
 	return nil
 }
 
-func appendCustomOrder(sort *model.BlockContentDataviewSort, order filter.SetOrder, keyOrder *filter.KeyOrder) filter.SetOrder {
+func appendCustomOrder(sort *model.BlockContentDataviewSort, order SetOrder, keyOrder *KeyOrder) SetOrder {
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
-		order = append(order, filter.NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
+		order = append(order, NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
 	} else {
 		order = append(order, keyOrder)
 	}
@@ -233,8 +231,8 @@ func (f sortGetter) Get(key string) *types.Value {
 }
 
 type Filters struct {
-	FilterObj filter.Filter
-	Order     filter.Order
+	FilterObj Filter
+	Order     Order
 	dateKeys  []string
 }
 
@@ -262,11 +260,11 @@ func (f *Filters) Compare(a, b query.Entry) int {
 	return f.Order.Compare(ag, bg)
 }
 
-func (f *Filters) unmarshalFilter(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalFilter(e query.Entry) Getter {
 	return filterGetter{dateKeys: f.dateKeys, curEl: f.unmarshal(e)}
 }
 
-func (f *Filters) unmarshalSort(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalSort(e query.Entry) Getter {
 	return sortGetter{curEl: f.unmarshal(e)}
 }
 
