@@ -223,7 +223,7 @@ func (p *Pb) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 		if snapshot != nil {
 			allSnapshots = append(allSnapshots, snapshot)
 			// not add sub objects to root collection
-			if snapshot.SbType == smartblock.SmartBlockTypeSubObject {
+			if snapshot.SbType == smartblock.SmartBlockTypeSubObject || snapshot.SbType == smartblock.SmartBlockTypeTemplate {
 				continue
 			}
 			targetObjects = append(targetObjects, snapshot.Id)
