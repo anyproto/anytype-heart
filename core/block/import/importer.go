@@ -94,7 +94,10 @@ func (i *Import) Init(a *app.App) (err error) {
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
 	progress := i.setupProgressBar(req)
-	defer progress.Finish()
+	var returnedErr error
+	defer func() {
+		i.finishImportProcess(returnedErr, progress)
+	}()
 	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
 	}
@@ -104,21 +107,25 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		if !err.IsEmpty() {
 			resultErr := err.GetResultError(req.Type)
 			if shouldReturnError(resultErr, res, req) {
+				returnedErr = resultErr
 				return resultErr
 			}
 			allErrors.Merge(err)
 		}
 
 		if res == nil {
-			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+			returnedErr = fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+			return returnedErr
 		}
 
 		if len(res.Snapshots) == 0 {
-			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+			returnedErr = fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+			return returnedErr
 		}
 
 		i.createObjects(ctx, res, progress, req, allErrors)
-		return allErrors.GetResultError(req.Type)
+		returnedErr = allErrors.GetResultError(req.Type)
+		return returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		if req.Snapshots != nil {
@@ -134,13 +141,24 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 			}
 			i.createObjects(ctx, res, progress, req, allErrors)
 			if !allErrors.IsEmpty() {
-				return allErrors.GetResultError(req.Type)
+				returnedErr = allErrors.GetResultError(req.Type)
+				return returnedErr
 			}
 			return nil
 		}
-		return converter.ErrNoObjectsToImport
+		returnedErr = converter.ErrNoObjectsToImport
+		return returnedErr
 	}
-	return fmt.Errorf("unknown import type %s", req.Type)
+	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
+	return returnedErr
+}
+
+func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
+	if errors.Is(returnedErr, converter.ErrLimitExceeded) {
+		progress.Finish(returnedErr)
+		return
+	}
+	progress.Finish(nil)
 }
 
 func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
@@ -190,7 +208,7 @@ func (i *Import) ValidateNotionToken(
 
 func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
-	defer progress.Finish()
+	defer progress.Finish(nil)
 	allErrors := converter.NewError()
 
 	progress.SetProgressMessage("Parse url")
