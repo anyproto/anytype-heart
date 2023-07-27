@@ -136,7 +136,9 @@ func (s *Service) StartSync() {
 
 func (s *Service) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
-		opts.spaceId = id.SpaceID
+		if opts.spaceId == "" {
+			opts.spaceId = id.SpaceID
+		}
 		return opts
 	})
 	ctx, cancel := context.WithCancel(ctx)
@@ -480,6 +482,13 @@ func (s *Service) initSubObject(ctx context.Context, id domain.FullID) (account 
 func CacheOptsWithRemoteLoadDisabled(ctx context.Context) context.Context {
 	return updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
 		opts.buildOption.DisableRemoteLoad = true
+		return opts
+	})
+}
+
+func CacheOptsSetSpaceID(ctx context.Context, spaceID string) context.Context {
+	return updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
+		opts.spaceId = spaceID
 		return opts
 	})
 }

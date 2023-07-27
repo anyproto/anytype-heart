@@ -44,7 +44,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 	return
 }
 
-func (s *Service) TemplateClone(id string) (templateID string, err error) {
+func (s *Service) TemplateClone(spaceID string, id string) (templateID string, err error) {
 	var st *state.State
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_BundledTemplate {
@@ -62,10 +62,6 @@ func (s *Service) TemplateClone(id string) (templateID string, err error) {
 		return nil
 	}); err != nil {
 		return
-	}
-	spaceID, err := s.ResolveSpaceID(id)
-	if err != nil {
-		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
 	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), spaceID, coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {

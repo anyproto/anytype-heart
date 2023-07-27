@@ -263,7 +263,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			}
 		}
 
-		i.indexLinkedFiles(ctx, info.FileHashes)
+		i.indexLinkedFiles(block.CacheOptsSetSpaceID(ctx, info.SpaceID), info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
