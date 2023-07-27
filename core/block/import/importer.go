@@ -101,56 +101,63 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
 	}
-	allErrors := converter.NewError()
 	if c, ok := i.converters[req.Type.String()]; ok {
-		res, err := c.GetSnapshots(req, progress)
-		if !err.IsEmpty() {
-			resultErr := err.GetResultError(req.Type)
-			if shouldReturnError(resultErr, res, req) {
-				returnedErr = resultErr
-				return resultErr
-			}
-			allErrors.Merge(err)
-		}
-
-		if res == nil {
-			returnedErr = fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
-			return returnedErr
-		}
-
-		if len(res.Snapshots) == 0 {
-			returnedErr = fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
-			return returnedErr
-		}
-
-		i.createObjects(ctx, res, progress, req, allErrors)
-		returnedErr = allErrors.GetResultError(req.Type)
+		returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
 		return returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
-		if req.Snapshots != nil {
-			sn := make([]*converter.Snapshot, len(req.Snapshots))
-			for i, s := range req.Snapshots {
-				sn[i] = &converter.Snapshot{
-					Id:       s.GetId(),
-					Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
-				}
-			}
-			res := &converter.Response{
-				Snapshots: sn,
-			}
-			i.createObjects(ctx, res, progress, req, allErrors)
-			if !allErrors.IsEmpty() {
-				returnedErr = allErrors.GetResultError(req.Type)
-				return returnedErr
-			}
-			return nil
-		}
-		returnedErr = converter.ErrNoObjectsToImport
+		returnedErr = i.importFromExternalSource(ctx, req, progress)
 		return returnedErr
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
 	return returnedErr
+}
+
+func (i *Import) importFromBuiltinConverter(ctx *session.Context,
+	req *pb.RpcObjectImportRequest,
+	c converter.Converter,
+	progress process.Progress) error {
+	allErrors := converter.NewError()
+	res, err := c.GetSnapshots(req, progress)
+	if !err.IsEmpty() {
+		resultErr := err.GetResultError(req.Type)
+		if shouldReturnError(resultErr, res, req) {
+			return resultErr
+		}
+		allErrors.Merge(err)
+	}
+	if res == nil {
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+	}
+
+	if len(res.Snapshots) == 0 {
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+	}
+
+	i.createObjects(ctx, res, progress, req, allErrors)
+	return allErrors.GetResultError(req.Type)
+}
+
+func (i *Import) importFromExternalSource(ctx *session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
+	allErrors := converter.NewError()
+	if req.Snapshots != nil {
+		sn := make([]*converter.Snapshot, len(req.Snapshots))
+		for i, s := range req.Snapshots {
+			sn[i] = &converter.Snapshot{
+				Id:       s.GetId(),
+				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+			}
+		}
+		res := &converter.Response{
+			Snapshots: sn,
+		}
+		i.createObjects(ctx, res, progress, req, allErrors)
+		if !allErrors.IsEmpty() {
+			return allErrors.GetResultError(req.Type)
+		}
+		return nil
+	}
+	return converter.ErrNoObjectsToImport
 }
 
 func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
