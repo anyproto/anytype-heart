@@ -190,7 +190,7 @@ func (s *service) FetchBookmarkContent(url string) ContentFuture {
 		}
 		updaters, err := s.ContentUpdaters(url)
 		if err != nil {
-			log.Error("fetch bookmark content %s: %s", url, err)
+			log.Errorf("fetch bookmark content %s: %s", url, err)
 		}
 		for upd := range updaters {
 			upd(content)

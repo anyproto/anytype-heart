@@ -1742,12 +1742,11 @@ message Rpc {
 
         message ListSetObjectType {
             message Request {
-                repeated string contextIds = 1;
-                string objectTypeUrl = 2;
+                repeated string objectIds = 1;
+                string objectTypeId = 2;
             }
             message Response {
                 Error error = 1;
-                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;

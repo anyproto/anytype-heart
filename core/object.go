@@ -517,15 +517,13 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 		m := &pb.RpcObjectListSetObjectTypeResponse{Error: &pb.RpcObjectListSetObjectTypeResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
 
 	if err := mw.doBlockService(func(bs *block.Service) (err error) {
-		for _, cID := range req.ContextIds {
-			if err = bs.SetObjectTypes(ctx, cID, []string{req.ObjectTypeUrl}); err != nil {
+		for _, objID := range req.ObjectIds {
+			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
 				return err
 			}
 		}
