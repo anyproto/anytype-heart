@@ -63,7 +63,9 @@ func GetTypeByUrl(u string) (*model.ObjectType, error) {
 	}
 	tk := TypeKey(strings.TrimPrefix(u, TypePrefix))
 	if v, exists := types[tk]; exists {
-		return pbtypes.CopyObjectType(v), nil
+		t := pbtypes.CopyObjectType(v)
+		t.Key = tk.String()
+		return t, nil
 	}
 
 	return nil, ErrNotFound
@@ -73,7 +75,9 @@ func GetTypeByUrl(u string) (*model.ObjectType, error) {
 // PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
 func MustGetType(tk TypeKey) *model.ObjectType {
 	if v, exists := types[tk]; exists {
-		return pbtypes.CopyObjectType(v)
+		t := pbtypes.CopyObjectType(v)
+		t.Key = tk.String()
+		return t
 	}
 
 	// we can safely panic in case TypeKey is a generated constant

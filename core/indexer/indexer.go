@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -92,6 +91,11 @@ type Hasher interface {
 
 type objectCreator interface {
 	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+	AddBundledObjectToSpace(
+		ctx context.Context,
+		spaceID string,
+		sourceObjectIds []string,
+	) (ids []string, objects []*types.Struct, err error)
 }
 
 type syncStarter interface {
@@ -579,29 +583,14 @@ func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
 	start := time.Now()
 	var ids []string
 	for _, ot := range bundle.SystemTypes {
-		t, err := bundle.GetTypeByUrl(ot.BundledURL())
-		if err != nil {
-			continue
-		}
-		d := &model.ObjectDetails{Details: (&relationutils.ObjectType{ObjectType: t}).BundledTypeDetails()}
-		id, _, err := i.objectCreator.CreateObject(context.Background(), spaceID, d, bundle.TypeKeyObjectType)
-		if err != nil {
-			// todo: check if already exists
-			return err
-		}
-		ids = append(ids, id)
+
+		ids = append(ids, ot.BundledURL())
 	}
 
 	for _, rk := range bundle.SystemRelations {
-		rel := bundle.MustGetRelation(rk)
-		d := &model.ObjectDetails{Details: (&relationutils.Relation{Relation: rel}).ToStruct()}
-		id, _, err := i.objectCreator.CreateObject(context.Background(), spaceID, d, bundle.TypeKeyObjectType)
-		if err != nil {
-			// todo: check if already exists
-			return err
-		}
-		ids = append(ids, id)
+		ids = append(ids, rk.BundledURL())
 	}
+	i.objectCreator.AddBundledObjectToSpace(context.Background(), spaceID, ids)
 
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 

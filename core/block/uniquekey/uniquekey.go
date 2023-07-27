@@ -36,8 +36,12 @@ func UniqueKeyFromString(uKey string) (UniqueKey, error) {
 		return nil, errors.New("invalid key format")
 	}
 
-	for sbt, key := range smartBlockTypeToKey {
-		if key == parts[0] {
+	var key string
+	if len(parts) == 2 {
+		key = parts[1]
+	}
+	for sbt, sbtString := range smartBlockTypeToKey {
+		if sbtString == parts[0] {
 			return &uniqueKey{
 				sbt: sbt,
 				key: key,

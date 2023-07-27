@@ -353,6 +353,8 @@ func (s *Service) convertBundledObjectToInstalled(ctx context.Context, spaceId, 
 	if pbtypes.GetString(d, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
 		return nil, errors.New("object is not bundled")
 	}
+	d.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceId)
+	d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(spaceId)
 
 	d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(newId)
@@ -395,14 +397,12 @@ func (s *Service) AddBundledObjectToSpace(
 	spaceID string,
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
-	workspaceID := s.anytype.PredefinedObjects(spaceID).Account
-
 	// todo: we should add route to object via workspace
 	var details = make([]*types.Struct, 0, len(sourceObjectIds))
 
 	for _, sourceObjectId := range sourceObjectIds {
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
-			d, err := s.convertBundledObjectToInstalled(ctx, spaceID, b.Id(), b.Details())
+			d, err := s.convertBundledObjectToInstalled(ctx, spaceID, b.Id(), b.CombinedDetails())
 			if err != nil {
 				return err
 			}
@@ -415,7 +415,7 @@ func (s *Service) AddBundledObjectToSpace(
 	}
 
 	for _, d := range details {
-		id, object, err := s.CreateObject(ctx, workspaceID, &model.ObjectDetails{Details: d}, "")
+		id, object, err := s.CreateObject(ctx, spaceID, &model.ObjectDetails{Details: d}, "")
 		if err != nil {
 			return nil, nil, err
 		}

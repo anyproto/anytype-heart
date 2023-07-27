@@ -55,7 +55,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, id)
+	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, rel.Key)
 	if err != nil {
 		return nil, err
 	}
