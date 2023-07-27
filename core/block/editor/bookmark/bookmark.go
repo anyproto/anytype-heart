@@ -48,6 +48,7 @@ type Bookmark interface {
 type BookmarkService interface {
 	CreateBookmarkObject(details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	Fetch(id string, params bookmark.FetchParams) (err error)
+	FetchBookmarkContent(url string) bookmarksvc.ContentFuture
 }
 
 type sbookmark struct {
@@ -201,15 +202,21 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 		return nil
 	}
 
-	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(bm.ToDetails(), func() *model.BlockContentBookmark {
+	bookmarkContent := func() *model.BlockContentBookmark {
 		return content
-	})
+	}
+
+	if content.Description == "" && content.FaviconHash == "" && content.Title == "" {
+		bookmarkContent = b.bookmarkSvc.FetchBookmarkContent(content.Url)
+	}
+
+	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(bm.ToDetails(), bookmarkContent)
 	if err != nil {
 		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
 	}
 
 	bm.UpdateContent(func(content *model.BlockContentBookmark) {
-		content.TargetObjectId = pageId
+		content.TargetObjectId = pageID
 		content.State = model.BlockContentBookmark_Done
 	})
 	return nil
