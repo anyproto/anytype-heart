@@ -827,9 +827,6 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
-	if spaceID == "" {
-		fmt.Println("NO SPACE ID", objectID)
-	}
 	return s.getSmartblock(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,
