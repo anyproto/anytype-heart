@@ -1,5 +1,5 @@
 # Anytype Heart
-Middleware library for Anytype.
+Middleware library for Anytype, distributed as part of the Anytype clients.
 
 ## Build from Source
 1. Install Golang 1.19.x [from here](http://golang.org/dl/) or using preferred package manager
