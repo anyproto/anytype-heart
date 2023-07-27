@@ -18,10 +18,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
+
+var logger = logging.Logger("md-export")
 
 type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
@@ -150,19 +153,31 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 
 	switch text.Style {
 	case model.BlockContentText_Header1, model.BlockContentText_Title:
-		buf.WriteString(`# `)
+		_, err := buf.WriteString(`# `)
+		if err != nil {
+			logger.Warnf("failed to export header1 in markdown: %v", err)
+		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header2:
-		buf.WriteString(`## `)
+		_, err := buf.WriteString(`## `)
+		if err != nil {
+			logger.Warnf("failed to export header2 in markdown: %v", err)
+		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header3:
-		buf.WriteString(`### `)
+		_, err := buf.WriteString(`### `)
+		if err != nil {
+			logger.Warnf("failed to export header3 in markdown: %v", err)
+		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header4:
-		buf.WriteString(`#### `)
+		_, err := buf.WriteString(`#### `)
+		if err != nil {
+			logger.Warnf("failed to export header4 in markdown: %v", err)
+		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
