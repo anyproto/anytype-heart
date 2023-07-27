@@ -13692,6 +13692,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of template block for cloning |
+| spaceId | [string](#string) |  |  |
 
 
 

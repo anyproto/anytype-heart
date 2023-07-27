@@ -352,7 +352,7 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, id domain.
 // fileIndexNode walks a file node, indexing file links
 func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.FullID) error {
 	if looksLikeFileNode(inode) {
-		return s.fileIndexLink(ctx, inode, id)
+		return s.fileIndexLink(inode, id)
 	}
 	dagService := s.dagServiceForSpace(id.SpaceID)
 	links := inode.Links()
@@ -362,7 +362,7 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.
 			return err
 		}
 
-		err = s.fileIndexLink(ctx, n, id)
+		err = s.fileIndexLink(n, id)
 		if err != nil {
 			return err
 		}
@@ -372,7 +372,7 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, id domain.FullID) error {
+func (s *service) fileIndexLink(inode ipld.Node, id domain.FullID) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
@@ -381,7 +381,7 @@ func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, id domain.
 	if err := s.fileStore.AddTarget(linkID, id.ObjectID); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
 	}
-	if err := s.addToSyncQueue(ctx, id, true); err != nil {
+	if err := s.addToSyncQueue(id, true); err != nil {
 		return fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
 	return nil
@@ -795,7 +795,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 	return files, nil
 }
 
-func (s *service) addToSyncQueue(ctx context.Context, id domain.FullID, uploadedByUser bool) error {
+func (s *service) addToSyncQueue(id domain.FullID, uploadedByUser bool) error {
 	if err := s.fileSync.AddFile(id.SpaceID, id.ObjectID, uploadedByUser); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
@@ -902,7 +902,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 			}
 		}
 	}
-	if err := s.addToSyncQueue(ctx, id, false); err != nil {
+	if err := s.addToSyncQueue(id, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
 	fileIndex := fileList[0]

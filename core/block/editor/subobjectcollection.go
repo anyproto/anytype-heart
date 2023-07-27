@@ -396,6 +396,10 @@ func (c *SubObjectCollection) initSubObject(ctx context.Context, st *state.State
 	}
 	c.collections[collection][subId] = subObj
 
+	err = c.objectStore.StoreSpaceID(fullId, c.SpaceID())
+	if err != nil {
+		return fmt.Errorf("store space ID: %w", err)
+	}
 	if err = subObj.Init(&smartblock.InitContext{
 		Ctx:     ctx,
 		SpaceID: c.SpaceID(),

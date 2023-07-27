@@ -2707,6 +2707,7 @@ message Rpc {
             message Request {
                 // id of template block for cloning
                 string contextId = 1;
+                string spaceId = 2;
             }
 
             message Response {

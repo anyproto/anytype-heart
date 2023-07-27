@@ -166,7 +166,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 }
 
 type templateCloner interface {
-	TemplateClone(id string) (templateID string, err error)
+	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
 type WorkspaceParameters struct {
@@ -394,7 +394,7 @@ func (w *Workspaces) createObjectType(ctx context.Context, st *state.State, deta
 				continue
 			}
 
-			_, err := w.templateCloner.TemplateClone(id)
+			_, err := w.templateCloner.TemplateClone(w.SpaceID(), id)
 			if err != nil {
 				log.Errorf("failed to clone template %s: %s", id, err.Error())
 			}
