@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -87,11 +86,6 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 
 	sbt, _ := s.sbtProvider.Type(opts.spaceId, id)
 	switch sbt {
-	case coresb.SmartBlockTypeSubObject:
-		return s.initSubObject(ctx, domain.FullID{
-			SpaceID:  opts.spaceId,
-			ObjectID: id,
-		})
 	default:
 		return buildObject(id)
 	}
@@ -245,11 +239,7 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	sbt, _ := s.sbtProvider.Type(spaceID, objectID)
 	switch sbt {
 	case coresb.SmartBlockTypeSubObject:
-		err = s.OnDelete(id, func() error {
-			return Do(s, s.anytype.PredefinedObjects(spaceID).Account, func(w *editor.Workspaces) error {
-				return w.DeleteSubObject(objectID)
-			})
-		})
+		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFile:
 		err = s.OnDelete(id, func() error {
 			if err := s.fileStore.DeleteFile(objectID); err != nil {
@@ -470,13 +460,6 @@ func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, init
 		},
 	})
 	return s.GetObject(ctx, id)
-}
-
-func (s *Service) initSubObject(ctx context.Context, id domain.FullID) (account ocache.Object, err error) {
-	if account, err = s.cache.Get(ctx, s.anytype.PredefinedObjects(id.SpaceID).Account); err != nil {
-		return
-	}
-	return account.(SmartblockOpener).Open(id.ObjectID)
 }
 
 func CacheOptsWithRemoteLoadDisabled(ctx context.Context) context.Context {

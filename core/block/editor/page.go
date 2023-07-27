@@ -155,6 +155,18 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithBookmarkBlocks,
 				)
+			case model.ObjectType_relation:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+				)
+			case model.ObjectType_objectType:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+				)
 			default:
 				templates = append(templates,
 					template.WithTitle,

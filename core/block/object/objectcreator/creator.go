@@ -7,6 +7,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
@@ -44,9 +47,6 @@ type Service interface {
 	CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error)
-	// TODO Review those two methods, they are very similar but have slightly different mechanics
-	CreateSubObjectInWorkspace(ctx context.Context, details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)
-	CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error)
 	app.Component
 }
 
@@ -100,6 +100,7 @@ type BlockService interface {
 	StateFromTemplate(templateID string, name string) (st *state.State, err error)
 	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 	CreateTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key uniquekey.UniqueKey, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
@@ -270,29 +271,6 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 	return c.CreateSmartBlockFromState(ctx, req.SpaceId, coresb.SmartBlockTypePage, req.Details, newState)
 }
 
-// TODO: it must be in another component
-func (c *Creator) CreateSubObjectInWorkspace(ctx context.Context, details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error) {
-	// todo: rewrite to the current workspace id
-	err = block.Do(c.blockPicker, workspaceID, func(ws *editor.Workspaces) error {
-		id, newDetails, err = ws.CreateSubObject(ctx, details)
-		return err
-	})
-	return
-}
-
-// TODO: it must be in another component
-func (c *Creator) CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	err = block.Do(c.blockPicker, c.anytype.PredefinedObjects(spaceID).Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		ids, objects, err = workspace.CreateSubObjects(ctx, details)
-		return err
-	})
-	return
-}
-
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
 func (c *Creator) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
 	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
@@ -309,6 +287,213 @@ func (c *Creator) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCre
 		}
 	}
 	return c.bookmark.CreateBookmarkObject(ctx, req.SpaceId, req.Details, res)
+}
+
+func (w *Creator) createRelation(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create relation: no data")
+	}
+
+	if v, ok := details.GetFields()[bundle.RelationKeyRelationFormat.String()]; !ok {
+		return "", nil, fmt.Errorf("missing relation format")
+	} else if i, ok := v.Kind.(*types.Value_NumberValue); !ok {
+		return "", nil, fmt.Errorf("invalid relation format: not a number")
+	} else if model.RelationFormat(int(i.NumberValue)).String() == "" {
+		return "", nil, fmt.Errorf("invalid relation format: unknown enum")
+	}
+
+	if pbtypes.GetString(details, bundle.RelationKeyName.String()) == "" {
+		return "", nil, fmt.Errorf("missing relation name")
+	}
+
+	object = pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	} else {
+		// no need to check for the generated bson's
+		if bundle.HasRelation(key) {
+			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
+		}
+	}
+	uk, err := uniquekey.NewUniqueKey(coresb.SmartBlockTypeRelation.ToProto(), key)
+	if err != nil {
+		return "", nil, err
+	}
+	object.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.String())
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
+	if pbtypes.GetInt64(details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_status) {
+		object.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(1)
+	}
+	//objectTypes := pbtypes.GetStringList(object, bundle.RelationKeyRelationFormatObjectTypes.String())
+	// todo: check the objectTypes
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
+
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, details, nil)
+}
+
+func (w *Creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create option: no data")
+	}
+
+	if pbtypes.GetString(details, "relationOptionText") != "" {
+		return "", nil, fmt.Errorf("use name instead of relationOptionText")
+	} else if pbtypes.GetString(details, "name") == "" {
+		return "", nil, fmt.Errorf("name is empty")
+	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
+		return "", nil, fmt.Errorf("invalid relation key: unknown enum")
+	}
+
+	object = pbtypes.CopyStruct(details)
+	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	if key == "" {
+		key = bson.NewObjectId().Hex()
+	}
+
+	// options has a short id for now to avoid migration of values inside relations
+	id = key
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
+
+	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
+
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, details, nil)
+}
+
+type internalKeyGetter interface {
+	InternalKey() string
+}
+
+func (w *Creator) createObjectType(ctx context.Context, spaceID string, details *types.Struct) (id string, newDetails *types.Struct, err error) {
+	if details == nil || details.Fields == nil {
+		return "", nil, fmt.Errorf("create object type: no data")
+	}
+
+	sbType := coresb.SmartBlockTypeObjectType
+	uk, err := getUniqueKeyOrGenerate(sbType, details)
+	if err != nil {
+		return "", nil, err
+	}
+	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.String())
+	key := uk.(internalKeyGetter).InternalKey()
+	var recommendedRelationKeys []string
+	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		relKey, err2 := pbtypes.RelationIdToKey(relId)
+		if err2 != nil {
+			log.Errorf("create object type: invalid recommended relation id: %s", relId)
+			continue
+		}
+		// todo: support custom relations here
+		rel, _ := bundle.GetRelation(bundle.RelationKey(relKey))
+		if rel != nil {
+			_, _, err2 := w.createRelation(ctx, spaceID, (&relationutils.Relation{rel}).ToStruct())
+			// todo: check if the relation already exists
+			if err2 != nil && err2 != fmt.Errorf("TODO: relation already exists") {
+				err = fmt.Errorf("failed to create relation for objectType: %s", err2.Error())
+				return
+			}
+		}
+		recommendedRelationKeys = append(recommendedRelationKeys, relKey)
+	}
+	object := pbtypes.CopyStruct(details)
+	rawLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
+	layout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawLayout)))
+	if err != nil {
+		return "", nil, fmt.Errorf("invalid layout %d: %w", rawLayout, err)
+	}
+
+	for _, rel := range layout.RequiredRelations {
+		if slice.FindPos(recommendedRelationKeys, rel.Key) != -1 {
+			continue
+		}
+		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
+	}
+	var recommendedRelationIds = make([]string, len(recommendedRelationKeys))
+	for _, relKey := range recommendedRelationKeys {
+		uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, relKey)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to create unique key: %w", err)
+		}
+		id, err := w.anytype.DeriveObjectId(ctx, spaceID, uk)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
+		}
+		recommendedRelationIds = append(recommendedRelationIds, id)
+	}
+	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
+	object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Float64(float64(rawLayout))
+	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+
+	if details.GetFields() == nil {
+		details.Fields = map[string]*types.Value{}
+	}
+	bundledTemplates, _, err := w.objectStore.Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix + key),
+			},
+		},
+	})
+
+	alreadyInstalledTemplates, _, err := w.objectStore.Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(w.anytype.PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyTemplate]),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       object.Fields[bundle.RelationKeyType.String()],
+			},
+		},
+	})
+	if err != nil {
+		return
+	}
+
+	var existingTemplatesMap = map[string]struct{}{}
+	for _, rec := range alreadyInstalledTemplates {
+		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+		if sourceObject != "" {
+			existingTemplatesMap[sourceObject] = struct{}{}
+		}
+	}
+
+	go func() {
+		// todo: remove this dirty hack to avoid lock
+		for _, record := range bundledTemplates {
+			id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+			if _, exists := existingTemplatesMap[id]; exists {
+				continue
+			}
+
+			_, err := w.blockService.TemplateClone(spaceID, id)
+			if err != nil {
+				log.Errorf("failed to clone template %s: %s", id, err.Error())
+			}
+		}
+	}()
+	return
+}
+
+func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {
+	uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+	if uniqueKey == "" {
+		return uniquekey.NewUniqueKey(sbType.ToProto(), bson.NewObjectId().Hex())
+	}
+	return uniquekey.UniqueKeyFromString(uniqueKey)
 }
 
 func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
@@ -348,14 +533,6 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectTypeId)
 	var sbType = coresb.SmartBlockTypePage
 
-	getUniqueKeyOrGenerate := func(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {
-		uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
-		if uniqueKey == "" {
-			return uniquekey.NewUniqueKey(sbType.ToProto(), bson.NewObjectId().Hex())
-		}
-		return uniquekey.UniqueKeyFromString(uniqueKey)
-	}
-
 	switch objectTypeKey {
 	case bundle.TypeKeyBookmark:
 		return c.ObjectCreateBookmark(ctx, &pb.RpcObjectCreateBookmarkRequest{
@@ -378,25 +555,12 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 			return "", nil, err
 		}
 		return c.CreateSmartBlockFromState(ctx, spaceID, sbType, details, st)
-	case bundle.TypeKeyObjectType, bundle.TypeKeyRelation:
-		if templateID != "" {
-			return "", nil, fmt.Errorf("template is not supported for %s", objectTypeKey)
-		}
-		if objectTypeKey == bundle.TypeKeyObjectType {
-			sbType = coresb.SmartBlockTypeObjectType
-		} else {
-			sbType = coresb.SmartBlockTypeRelation
-		}
-		uk, err := getUniqueKeyOrGenerate(sbType, details)
-		if err != nil {
-			return "", nil, err
-		}
-
-		if details.GetFields() == nil {
-			details.Fields = map[string]*types.Value{}
-		}
-		details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.String())
-
+	case bundle.TypeKeyObjectType:
+		return c.createObjectType(ctx, spaceID, details)
+	case bundle.TypeKeyRelation:
+		return c.createRelation(ctx, spaceID, details)
+	case bundle.TypeKeyRelationOption:
+		return c.createRelationOption(ctx, spaceID, details)
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
 	}
