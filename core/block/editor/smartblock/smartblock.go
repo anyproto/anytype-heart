@@ -366,6 +366,8 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 		return nil, nil
 	}
 
+	sb.updateRestrictions()
+
 	details, objectTypes, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
