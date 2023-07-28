@@ -485,7 +485,8 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 			}
 		}
 	}()
-	return
+
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, object, nil)
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {
@@ -519,6 +520,14 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 	)
 	if forcedType != "" {
 		objectTypeKey = forcedType
+		uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, forcedType.String())
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to create unique key: %w", err)
+		}
+		objectTypeId, err = c.anytype.DeriveObjectId(ctx, spaceID, uk)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
+		}
 	} else if objectTypeId = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectTypeId == "" {
 		return "", nil, fmt.Errorf("missing type in details or in forcedType")
 	} else {

@@ -53,7 +53,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 			if !sOpts.doNotMigrateTypes {
 				dvBlock.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dvBlock.Source)
 			}
-			dvBlock.Source = relationutils.MigrateRelationIds(dvBlock.Source) // can also contain relation ids
 		}
 		blocks[b.Id] = simple.New(b)
 	}
@@ -431,7 +430,6 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 			var typesToMigrate []string
 			dv.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dv.Source)
 			s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
-			dv.Source = relationutils.MigrateRelationIds(dv.Source) // can also contain relation ids
 		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)

@@ -1,12 +1,9 @@
 package relationutils
 
 import (
-	"strings"
-
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -110,33 +107,4 @@ func MigrateRelationModels(rels []*model.Relation) (relLinks []*model.RelationLi
 		})
 	}
 	return
-}
-
-func MigrateRelationIds(ids []string) []string {
-	// shortcut if there is nothing to migrate
-	hasIdsToMigrate := false
-	for _, id := range ids {
-		if strings.HasPrefix(id, addr.BundledRelationURLPrefix) || strings.HasPrefix(id, addr.OldIndexedRelationURLPrefix) {
-			hasIdsToMigrate = true
-			break
-		}
-	}
-	if !hasIdsToMigrate {
-		return ids
-	}
-
-	normalized := make([]string, len(ids))
-	var (
-		key string
-		err error
-	)
-	for i, id := range ids {
-		key, err = pbtypes.RelationIdToKey(id)
-		if err != nil {
-			normalized[i] = id
-		} else {
-			normalized[i] = addr.RelationKeyToIdPrefix + key
-		}
-	}
-	return normalized
 }
