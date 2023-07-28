@@ -6,14 +6,38 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+type fixtureStore struct {
+	Types map[string]*model.ObjectType
+}
+
+func (s *fixtureStore) GetObjectType(url string) (*model.ObjectType, error) {
+	ot, found := s.Types[url]
+	if !found {
+		return nil, objectstore.ErrObjectNotFound
+	}
+	return ot, nil
+}
+
+func (s *fixtureStore) GetDetails(id string) (*model.ObjectDetails, error) {
+	return nil, nil
+}
+
 func TestService_ObjectRestrictionsById(t *testing.T) {
-	rest := New(nil, nil)
+	fs := &fixtureStore{Types: map[string]*model.ObjectType{
+		bundle.TypeKeyCollection.URL(): {},
+		bundle.TypeKeyPage.URL():       {},
+		bundle.TypeKeyObjectType.URL(): {},
+		bundle.TypeKeyRelation.URL():   {},
+	}}
+	rest := New(nil, fs)
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		id: "",
-		tp: model.SmartBlockType_AnytypeProfile,
+		id:         "",
+		tp:         model.SmartBlockType_AnytypeProfile,
+		objectType: "",
 	}).Object.Check(
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
@@ -25,49 +49,55 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		id:     "",
-		tp:     model.SmartBlockType_Page,
-		layout: model.ObjectType_collection,
+		id:         "",
+		tp:         model.SmartBlockType_Page,
+		layout:     model.ObjectType_collection,
+		objectType: bundle.TypeKeyCollection.URL(),
 	}).Object.Check(model.Restrictions_Blocks),
 		ErrRestricted,
 	)
 
 	assert.NoError(t, rest.GetRestrictions(&restrictionHolder{
-		id: "",
-		tp: model.SmartBlockType_Page,
+		id:         "",
+		tp:         model.SmartBlockType_Page,
+		objectType: bundle.TypeKeyPage.URL(),
 	}).Object.Check(model.Restrictions_Blocks))
 
 	assert.NoError(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.TypeKeyDailyPlan.URL(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_objectType,
+		id:         bundle.TypeKeyDailyPlan.URL(),
+		tp:         model.SmartBlockType_SubObject,
+		layout:     model.ObjectType_objectType,
+		objectType: bundle.TypeKeyObjectType.URL(),
 	}).Object.Check(
 		model.Restrictions_Details,
 		model.Restrictions_Delete,
 	))
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.TypeKeyPage.URL(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_objectType,
+		id:         bundle.TypeKeyPage.URL(),
+		tp:         model.SmartBlockType_SubObject,
+		layout:     model.ObjectType_objectType,
+		objectType: bundle.TypeKeyObjectType.URL(),
 	}).Object.Check(
 		model.Restrictions_Details,
 		model.Restrictions_Delete,
 	), ErrRestricted)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.TypeKeyBookmark.BundledURL(),
-		tp:     model.SmartBlockType_BundledObjectType,
-		layout: model.ObjectType_objectType,
+		id:         bundle.TypeKeyBookmark.BundledURL(),
+		tp:         model.SmartBlockType_BundledObjectType,
+		layout:     model.ObjectType_objectType,
+		objectType: bundle.TypeKeyObjectType.URL(),
 	}).Object.Check(
 		model.Restrictions_Duplicate,
 		model.Restrictions_Relations,
 	), ErrRestricted)
 
 	assert.NoError(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeyImdbRating.String(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_relation,
+		id:         bundle.RelationKeyImdbRating.String(),
+		tp:         model.SmartBlockType_SubObject,
+		layout:     model.ObjectType_relation,
+		objectType: bundle.TypeKeyRelation.URL(),
 	}).Object.Check(
 		model.Restrictions_Delete,
 		model.Restrictions_Relations,
@@ -75,9 +105,10 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	))
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeyName.URL(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_relation,
+		id:         bundle.RelationKeyName.URL(),
+		tp:         model.SmartBlockType_SubObject,
+		layout:     model.ObjectType_relation,
+		objectType: bundle.TypeKeyRelation.URL(),
 	}).Object.Check(
 		model.Restrictions_Delete,
 		model.Restrictions_Relations,
@@ -85,10 +116,63 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	), ErrRestricted)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeyId.BundledURL(),
-		tp:     model.SmartBlockType_BundledRelation,
-		layout: model.ObjectType_relation,
+		id:         bundle.RelationKeyId.BundledURL(),
+		tp:         model.SmartBlockType_BundledRelation,
+		layout:     model.ObjectType_relation,
+		objectType: bundle.TypeKeyRelation.URL(),
 	}).Object.Check(
 		model.Restrictions_Duplicate,
 	), ErrRestricted)
+}
+
+func TestTemplateRestriction(t *testing.T) {
+	fs := &fixtureStore{Types: map[string]*model.ObjectType{
+		bundle.TypeKeyContact.URL(): {},
+	}}
+	rs := New(nil, fs)
+
+	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
+		id:         "cannot make template from Template smartblock type",
+		tp:         model.SmartBlockType_Template,
+		layout:     model.ObjectType_basic,
+		objectType: bundle.TypeKeyTemplate.URL(),
+	}).Object.Check(
+		model.Restrictions_Template,
+	), ErrRestricted)
+
+	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
+		id:         "cannot make template from set or collection layout",
+		tp:         model.SmartBlockType_Page,
+		layout:     model.ObjectType_collection,
+		objectType: bundle.TypeKeyCollection.URL(),
+	}).Object.Check(
+		model.Restrictions_Template,
+	), ErrRestricted)
+
+	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
+		id:         "cannot make template from space layout",
+		tp:         model.SmartBlockType_Page,
+		layout:     model.ObjectType_space,
+		objectType: bundle.TypeKeySpace.URL(),
+	}).Object.Check(
+		model.Restrictions_Template,
+	), ErrRestricted)
+
+	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
+		id:         "cannot make template from object with objectType not added to space",
+		tp:         model.SmartBlockType_Page,
+		layout:     model.ObjectType_basic,
+		objectType: bundle.TypeKeyPage.URL(),
+	}).Object.Check(
+		model.Restrictions_Template,
+	), ErrRestricted)
+
+	assert.NoError(t, rs.GetRestrictions(&restrictionHolder{
+		id:         "make template from object with objectType added to space",
+		tp:         model.SmartBlockType_Page,
+		layout:     model.ObjectType_basic,
+		objectType: bundle.TypeKeyPage.URL(),
+	}).Object.Check(
+		model.Restrictions_Template,
+	))
 }

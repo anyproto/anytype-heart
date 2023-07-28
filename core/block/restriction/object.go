@@ -215,7 +215,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	}
 
 	if r.Check(model.Restrictions_Template) != ErrRestricted {
-		if _, err := s.store.GetObjectTypes([]string{rh.ObjectType()}); err != nil {
+		if _, err := s.store.GetObjectType(rh.ObjectType()); err != nil {
 			r = append(r, model.Restrictions_Template)
 		}
 	}
