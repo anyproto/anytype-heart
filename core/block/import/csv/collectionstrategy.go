@@ -190,8 +190,7 @@ func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.
 				},
 			}),
 		}).NewState()
-		details, relationLinks := getDetailsForObject(csvTable[i], relations)
-		details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, i))
+		details, relationLinks := getDetailsForObject(csvTable[i], relations, path, i)
 		st.SetDetails(details)
 		st.AddRelationLinks(relationLinks...)
 		template.InitTemplate(st, template.WithTitle)
@@ -209,7 +208,7 @@ func buildSourcePath(path string, i int) string {
 		strconv.FormatInt(int64(i), 10)
 }
 
-func getDetailsForObject(relationsValues []string, relations []*model.Relation) (*types.Struct, []*model.RelationLink) {
+func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int) (*types.Struct, []*model.RelationLink) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	relationLinks := make([]*model.RelationLink, 0)
 	for j, value := range relationsValues {
@@ -223,6 +222,7 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation) 
 			Format: relation.Format,
 		})
 	}
+	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, objectOrderIndex))
 	return details, relationLinks
 }
 
