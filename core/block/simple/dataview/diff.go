@@ -227,8 +227,7 @@ func (d *Dataview) diffObjectOrders(other *Dataview, msgs []simple.EventMessage)
 
 func (d *Dataview) diffGroupOrders(other *Dataview, msgs []simple.EventMessage) []simple.EventMessage {
 	for _, order2 := range other.content.GroupOrders {
-		var found bool
-		var changed bool
+		var found, changed bool
 		for _, order1 := range d.content.GroupOrders {
 			if order1.ViewId == order2.ViewId {
 				found = true

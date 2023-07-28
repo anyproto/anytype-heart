@@ -43,7 +43,7 @@ func (n *noOp) Canceled() chan struct{} {
 	return nil
 }
 
-func (n *noOp) Finish() {
+func (n *noOp) Finish(error) {
 }
 
 func (n *noOp) TryStep(delta int64) error {
