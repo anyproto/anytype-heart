@@ -22592,6 +22592,9 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | relationOptionsList | 12 |  |
 | relationOption | 13 |  |
 | collection | 14 |  |
+| audio | 15 |  |
+| video | 16 |  |
+| date | 17 |  |
 | database | 20 | to be released later |
 
 

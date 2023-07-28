@@ -57,7 +57,7 @@ func (v *date) getDetails() (p *types.Struct) {
 		bundle.RelationKeySetOf.String():       pbtypes.String(bundle.RelationKeyLinks.URL()),
 		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
 		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_set)),
+		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_date)),
 		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
 		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.coreService.PredefinedObjects(v.spaceID).Account),
 	}}

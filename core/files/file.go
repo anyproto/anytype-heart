@@ -74,6 +74,7 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 	if t.Year() != 0 {
 		d.Fields[bundle.RelationKeyReleasedYear.String()] = pbtypes.Int64(int64(t.Year()))
 	}
+	d.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_audio))
 
 	return d, nil
 }
@@ -94,6 +95,8 @@ func (f *file) Details(ctx context.Context) (*types.Struct, error) {
 
 	if strings.HasPrefix(meta.Media, "video") {
 		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyVideo.URL())
+		t.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_video))
+
 	}
 
 	if strings.HasPrefix(meta.Media, "audio") {
