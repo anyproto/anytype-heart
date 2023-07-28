@@ -62,7 +62,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 	snapshots = append(snapshots, relationsSnapshots...)
 	progress.AddDone(1)
 	if errRelationLimit != nil || errRowLimit != nil {
-		return snapshot.Id, snapshots, converter.ErrLimitExceeded
+		return "", nil, converter.ErrLimitExceeded
 	}
 	return snapshot.Id, snapshots, nil
 }

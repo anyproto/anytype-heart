@@ -492,6 +492,51 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 	return response(pb.RpcObjectRelationListAvailableResponseError_NULL, rels, nil)
 }
 
+func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectSetObjectTypeResponse {
+		m := &pb.RpcObjectSetObjectTypeResponse{Error: &pb.RpcObjectSetObjectTypeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = mw.getResponseEvent(ctx)
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUrl})
+	}); err != nil {
+		return response(pb.RpcObjectSetObjectTypeResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectSetObjectTypeResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcObjectListSetObjectTypeRequest) *pb.RpcObjectListSetObjectTypeResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectListSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectListSetObjectTypeResponse {
+		m := &pb.RpcObjectListSetObjectTypeResponse{Error: &pb.RpcObjectListSetObjectTypeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		for _, objID := range req.ObjectIds {
+			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return response(pb.RpcObjectListSetObjectTypeResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectListSetObjectTypeResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
