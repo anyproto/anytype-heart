@@ -113,13 +113,14 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
 	objectStore.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
+	objectStore.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
 
 	objectStore.EXPECT().Name().Return(objectstore.CName).AnyTimes()
 
 	indexer := NewMockIndexer(ctrl)
 	indexer.EXPECT().Name().Return("indexer").AnyTimes()
 
-	restrictionService := restriction.New(nil, nil)
+	restrictionService := restriction.New(nil, objectStore)
 	relationService := mockRelation.NewMockService(ctrl)
 
 	fileService := testMock.NewMockFileService(ctrl)

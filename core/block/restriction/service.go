@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
@@ -30,17 +31,12 @@ type Service interface {
 	app.Component
 }
 
-type detailsStore interface {
-	GetDetails(id string) (*model.ObjectDetails, error)
-	GetObjectType(url string) (*model.ObjectType, error)
-}
-
 type service struct {
 	sbtProvider typeprovider.SmartBlockTypeProvider
-	store       detailsStore
+	store       objectstore.ObjectStore
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider, objectStore detailsStore) Service {
+func New(sbtProvider typeprovider.SmartBlockTypeProvider, objectStore objectstore.ObjectStore) Service {
 	return &service{
 		sbtProvider: sbtProvider,
 		store:       objectStore,

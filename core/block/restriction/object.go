@@ -1,6 +1,7 @@
 package restriction
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -214,7 +215,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 		}
 	}
 
-	if r.Check(model.Restrictions_Template) != ErrRestricted {
+	if !errors.Is(r.Check(model.Restrictions_Template), ErrRestricted) {
 		if _, err := s.store.GetObjectType(rh.ObjectType()); err != nil {
 			r = append(r, model.Restrictions_Template)
 		}

@@ -3,37 +3,21 @@ package restriction
 import (
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
-type fixtureStore struct {
-	Types map[string]*model.ObjectType
-}
-
-func (s *fixtureStore) GetObjectType(url string) (*model.ObjectType, error) {
-	ot, found := s.Types[url]
-	if !found {
-		return nil, objectstore.ErrObjectNotFound
-	}
-	return ot, nil
-}
-
-func (s *fixtureStore) GetDetails(id string) (*model.ObjectDetails, error) {
-	return nil, nil
-}
-
 func TestService_ObjectRestrictionsById(t *testing.T) {
-	fs := &fixtureStore{Types: map[string]*model.ObjectType{
-		bundle.TypeKeyCollection.URL(): {},
-		bundle.TypeKeyPage.URL():       {},
-		bundle.TypeKeyObjectType.URL(): {},
-		bundle.TypeKeyRelation.URL():   {},
-	}}
-	rest := New(nil, fs)
+	ctrl := gomock.NewController(t)
+	store := testMock.NewMockObjectStore(ctrl)
+	store.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
+	rest := New(nil, store)
+
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id:         "",
 		tp:         model.SmartBlockType_AnytypeProfile,
@@ -126,10 +110,11 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 }
 
 func TestTemplateRestriction(t *testing.T) {
-	fs := &fixtureStore{Types: map[string]*model.ObjectType{
-		bundle.TypeKeyContact.URL(): {},
-	}}
-	rs := New(nil, fs)
+	ctrl := gomock.NewController(t)
+	store := testMock.NewMockObjectStore(ctrl)
+	store.EXPECT().GetObjectType(bundle.TypeKeyPage.URL()).Return(nil, objectstore.ErrObjectNotFound)
+	store.EXPECT().GetObjectType(bundle.TypeKeyContact.URL()).Return(&model.ObjectType{}, nil)
+	rs := New(nil, store)
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		id:         "cannot make template from Template smartblock type",
@@ -171,7 +156,7 @@ func TestTemplateRestriction(t *testing.T) {
 		id:         "make template from object with objectType added to space",
 		tp:         model.SmartBlockType_Page,
 		layout:     model.ObjectType_basic,
-		objectType: bundle.TypeKeyPage.URL(),
+		objectType: bundle.TypeKeyContact.URL(),
 	}).Object.Check(
 		model.Restrictions_Template,
 	))
