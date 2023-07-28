@@ -16,6 +16,7 @@ import (
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
@@ -260,7 +261,10 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 }
 
 func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *converter.Snapshot) {
-	for _, value := range objects.Snapshot.Data.Details.Fields {
+	for key, value := range objects.Snapshot.Data.Details.Fields {
+		if key == bundle.RelationKeySourceFilePath.String() {
+			continue
+		}
 		assert.Contains(t, want, value.GetStringValue())
 	}
 }
@@ -610,7 +614,9 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	}
 
 	for _, object := range objects {
-		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
+		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
+		numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
 
 	// UseFirstRowForRelations is on
@@ -639,6 +645,8 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	}
 
 	for _, object := range objects {
-		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
+		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
+		numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
 }

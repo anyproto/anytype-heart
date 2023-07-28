@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -27,7 +28,10 @@ import (
 
 var logger = logging.Logger("import-csv")
 
-const defaultRelationName = "Field"
+const (
+	defaultRelationName = "Field"
+	rowSourceName       = "row"
+)
 
 type CollectionStrategy struct {
 	collectionService *collection.Service
@@ -47,7 +51,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 		return "", nil, err
 	}
 	relations, relationsSnapshots, errRelationLimit := getDetailsFromCSVTable(csvTable, useFirstRowForRelations)
-	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
+	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(path, csvTable, relations, useFirstRowForRelations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -163,7 +167,7 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	return details
 }
 
-func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) ([]*converter.Snapshot, error) {
+func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) ([]*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
 	numberOfObjectsLimit := len(csvTable)
 	var err error
@@ -187,6 +191,7 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 			}),
 		}).NewState()
 		details, relationLinks := getDetailsForObject(csvTable[i], relations)
+		details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, i))
 		st.SetDetails(details)
 		st.AddRelationLinks(relationLinks...)
 		template.InitTemplate(st, template.WithTitle)
@@ -194,6 +199,14 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 		snapshots = append(snapshots, sn)
 	}
 	return snapshots, err
+}
+
+func buildSourcePath(path string, i int) string {
+	return path +
+		string(filepath.Separator) +
+		rowSourceName +
+		string(filepath.Separator) +
+		strconv.FormatInt(int64(i), 10)
 }
 
 func getDetailsForObject(relationsValues []string, relations []*model.Relation) (*types.Struct, []*model.RelationLink) {
