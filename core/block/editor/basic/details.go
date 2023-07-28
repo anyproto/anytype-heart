@@ -1,7 +1,9 @@
 package basic
 
 import (
+	"errors"
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 
 	"github.com/gogo/protobuf/types"
 
@@ -147,6 +149,9 @@ func (bs *basic) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) 
 }
 
 func (bs *basic) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
+		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
+	}
 	s := bs.NewStateCtx(ctx)
 
 	var toLayout model.ObjectTypeLayout
