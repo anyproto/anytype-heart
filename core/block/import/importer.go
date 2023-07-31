@@ -161,11 +161,7 @@ func (i *Import) importFromExternalSource(ctx *session.Context, req *pb.RpcObjec
 }
 
 func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
-	if errors.Is(returnedErr, converter.ErrLimitExceeded) {
-		progress.Finish(returnedErr)
-		return
-	}
-	progress.Finish(nil)
+	progress.Finish(returnedErr)
 }
 
 func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
