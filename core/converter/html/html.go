@@ -155,7 +155,9 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 
 	text := b.GetText()
 
-	writeMark := func(m *model.BlockContentTextMark, start bool) {
+	lastOpenedTags := make([]model.BlockContentTextMarkType, 0)
+
+	writeTag := func(m *model.BlockContentTextMark, start bool) {
 		switch m.Type {
 		case model.BlockContentTextMark_Strikethrough:
 			if start {
@@ -208,6 +210,28 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		}
 	}
 
+	closeTagsUntil := func(bottom model.BlockContentTextMarkType, index int) {
+		closed := 0
+		for _, tag := range lastOpenedTags {
+			if tag == bottom {
+				lastOpenedTags = lastOpenedTags[closed:]
+				return
+			}
+			for _, mark := range text.Marks.Marks {
+				if mark.Type == tag && int(mark.Range.From) < index && int(mark.Range.To) >= index {
+					writeTag(mark, false)
+					if int(mark.Range.To) == index {
+						mark.Range.To = mark.Range.To - 1
+					} else {
+						mark.Range.From = int32(index)
+					}
+					break
+				}
+			}
+			closed = closed + 1
+		}
+	}
+
 	renderText := func() {
 		var breakpoints = make(map[int]struct{})
 		if text.Marks != nil {
@@ -222,15 +246,26 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		// the end position of markdown text equals full length of text
 		for i := 0; i <= textLen; i++ {
 			if _, ok := breakpoints[i]; ok {
+				// iterate marks forwards to put closing tags
 				for _, m := range text.Marks.Marks {
 					if int(m.Range.To) == i {
-						writeMark(m, false)
-					}
-					// i == textLen
-					if int(m.Range.From) == i {
-						writeMark(m, true)
+						//TODO: check lastOpenedTags on zero length ?
+						if lastOpenedTags[0] != m.Type {
+							closeTagsUntil(m.Type, i)
+						}
+						writeTag(m, false)
+						lastOpenedTags = lastOpenedTags[1:]
 					}
 				}
+				// iterate marks backwards to put opening tags
+				for j := len(text.Marks.Marks) - 1; j >= 0; j-- {
+					m := text.Marks.Marks[j]
+					if int(m.Range.From) == i {
+						writeTag(m, true)
+						lastOpenedTags = append([]model.BlockContentTextMarkType{m.Type}, lastOpenedTags...)
+					}
+				}
+
 			}
 			if i < len(runes) {
 				h.buf.WriteString(html.EscapeString(string(runes[i])))
