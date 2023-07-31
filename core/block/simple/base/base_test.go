@@ -1,6 +1,7 @@
 package base
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -44,7 +45,12 @@ func TestBase_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, b2.ChildrenIds, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetChildrenIds).BlockSetChildrenIds.ChildrenIds)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetChildrenIds{
+			BlockSetChildrenIds: &pb.EventBlockSetChildrenIds{
+				Id:          b1.Id,
+				ChildrenIds: b2.ChildrenIds,
+			},
+		}), diff)
 	})
 	t.Run("restrictions", func(t *testing.T) {
 		b1 := testBlock()
@@ -53,7 +59,14 @@ func TestBase_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, b2.Restrictions, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetRestrictions).BlockSetRestrictions.Restrictions)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetRestrictions{
+			BlockSetRestrictions: &pb.EventBlockSetRestrictions{
+				Id: b1.Id,
+				Restrictions: &model.BlockRestrictions{
+					Read: b2.Restrictions.Read,
+				},
+			},
+		}), diff)
 	})
 	t.Run("fields", func(t *testing.T) {
 		b1 := testBlock()
@@ -64,6 +77,77 @@ func TestBase_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		assert.Equal(t, b2.Fields, diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetFields).BlockSetFields.Fields)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetFields{
+			BlockSetFields: &pb.EventBlockSetFields{
+				Id: b1.Id,
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						"diff": {Kind: &types.Value_StringValue{StringValue: "value"}},
+						"key":  {Kind: &types.Value_StringValue{StringValue: "value"}},
+					},
+				},
+			},
+		}), diff)
+	})
+	t.Run("changed background color", func(t *testing.T) {
+		// given
+		b1 := testBlock()
+		b2 := testBlock()
+
+		// when
+		b1.BackgroundColor = "yellow"
+		b2.BackgroundColor = "red"
+		diff, err := b1.Diff(b2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetBackgroundColor{
+			BlockSetBackgroundColor: &pb.EventBlockSetBackgroundColor{
+				Id:              b1.Id,
+				BackgroundColor: "red",
+			},
+		}), diff)
+	})
+	t.Run("changed vertical align", func(t *testing.T) {
+		// given
+		b1 := testBlock()
+		b2 := testBlock()
+
+		// when
+		b1.VerticalAlign = model.Block_VerticalAlignTop
+		b2.VerticalAlign = model.Block_VerticalAlignMiddle
+		diff, err := b1.Diff(b2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetVerticalAlign{
+			BlockSetVerticalAlign: &pb.EventBlockSetVerticalAlign{
+				Id:            b1.Id,
+				VerticalAlign: model.Block_VerticalAlignMiddle,
+			},
+		}), diff)
+
+	})
+	t.Run("changed align", func(t *testing.T) {
+		// given
+		b1 := testBlock()
+		b2 := testBlock()
+
+		// when
+		b1.Align = model.Block_AlignLeft
+		b2.Align = model.Block_AlignCenter
+		diff, err := b1.Diff(b2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetAlign{
+			BlockSetAlign: &pb.EventBlockSetAlign{
+				Id:    b1.Id,
+				Align: model.Block_AlignCenter,
+			},
+		}), diff)
 	})
 }

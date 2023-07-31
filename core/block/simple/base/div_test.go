@@ -1,6 +1,7 @@
 package base
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -47,7 +48,11 @@ func TestDiv_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetDiv).BlockSetDiv
-		assert.NotNil(t, change.Style)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetDiv{
+			BlockSetDiv: &pb.EventBlockSetDiv{
+				Id:    b1.Id,
+				Style: &pb.EventBlockSetDivStyle{Value: model.BlockContentDiv_Dots},
+			},
+		}), diff)
 	})
 }
