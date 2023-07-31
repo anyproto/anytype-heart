@@ -16,6 +16,7 @@ import (
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
@@ -260,7 +261,10 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 }
 
 func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *converter.Snapshot) {
-	for _, value := range objects.Snapshot.Data.Details.Fields {
+	for key, value := range objects.Snapshot.Data.Details.Fields {
+		if key == bundle.RelationKeySourceFilePath.String() {
+			continue
+		}
 		assert.Contains(t, want, value.GetStringValue())
 	}
 }
@@ -610,7 +614,9 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	}
 
 	for _, object := range objects {
-		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
+		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
+		numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
 
 	// UseFirstRowForRelations is on
@@ -639,6 +645,88 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 	}
 
 	for _, object := range objects {
-		assert.Len(t, object.Snapshot.Data.Details.Fields, limitForColumns)
+		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
+		numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
+}
+
+func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
+	t.Run("test different columns number in file - table mode", func(t *testing.T) {
+		// given
+		csv := CSV{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+
+		// when
+		sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+				CsvParams: &pb.RpcObjectImportRequestCsvParams{
+					Path:                    []string{"testdata/differentcolumnnumber.csv"},
+					Delimiter:               ",",
+					UseFirstRowForRelations: true,
+					Mode:                    pb.RpcObjectImportRequestCsvParams_TABLE,
+				},
+			},
+			Type: pb.RpcObjectImportRequest_Csv,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, sn)
+
+		var objects []*converter.Snapshot
+		for _, snapshot := range sn.Snapshots {
+			// only objects created from rows
+			if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+				!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
+				objects = append(objects, snapshot)
+			}
+		}
+		assert.Len(t, objects, 1)
+		assert.Equal(t, pbtypes.GetString(objects[0].Snapshot.Data.Details, bundle.RelationKeyName.String()), "differentcolumnnumber")
+		numberOfCSVColumns := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableColumn() != nil })
+		assert.Equal(t, numberOfCSVColumns, 3)
+		numberOfCSVRows := lo.CountBy(objects[0].Snapshot.Data.Blocks, func(item *model.Block) bool { return item.GetTableRow() != nil })
+		assert.Equal(t, 3, numberOfCSVRows)
+	})
+	t.Run("test different columns number in file - collection mode", func(t *testing.T) {
+		// given
+		csv := CSV{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+
+		// when
+		sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+				CsvParams: &pb.RpcObjectImportRequestCsvParams{
+					Path:                    []string{"testdata/differentcolumnnumber.csv"},
+					Delimiter:               ",",
+					UseFirstRowForRelations: true,
+					Mode:                    pb.RpcObjectImportRequestCsvParams_COLLECTION,
+				},
+			},
+			Type: pb.RpcObjectImportRequest_Csv,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, sn)
+
+		var objects []*converter.Snapshot
+		for _, snapshot := range sn.Snapshots {
+			// only objects created from rows
+			if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+				!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
+				objects = append(objects, snapshot)
+			}
+		}
+
+		assert.Len(t, objects, 2)
+		for _, object := range objects {
+			keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
+			numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+			assert.Equal(t, numberOfCSVRelations, 3)
+		}
+	})
 }
