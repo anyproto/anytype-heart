@@ -10,10 +10,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers/resolver"
 	"github.com/ipfs/go-cid"
 
+	"github.com/ipfs/boxo/coreiface/path"
+	uio "github.com/ipfs/boxo/ipld/unixfs/io"
+	ipfspath "github.com/ipfs/boxo/path"
 	ipld "github.com/ipfs/go-ipld-format"
-	ipfspath "github.com/ipfs/go-path"
-	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/ipfs/interface-go-ipfs-core/path"
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"

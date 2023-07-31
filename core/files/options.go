@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/h2non/filetype"
-	ipfspath "github.com/ipfs/go-path"
+	ipfspath "github.com/ipfs/boxo/path"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
