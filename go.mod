@@ -34,7 +34,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gosimple/slug v1.13.1
-	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/h2non/filetype v1.1.3
@@ -78,7 +78,6 @@ require (
 	github.com/samber/lo v1.38.1
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shirou/gopsutil/v3 v3.23.6
-	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
@@ -225,6 +224,7 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
+	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.15.0 // indirect
