@@ -285,7 +285,12 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 				if !includeFiles {
 					return nil
 				}
-				e.saveFiles(b, queue, wr, did)
+				fileHashes := b.GetAndUnsetFileKeys()
+				for _, fh := range fileHashes {
+					if saveFileErr := e.saveFile(wr, fh.Hash); saveFileErr != nil {
+						log.With("hash", fh.Hash).Warnf("can't save file: %v", saveFileErr)
+					}
+				}
 				return nil
 			})
 			if err != nil {
