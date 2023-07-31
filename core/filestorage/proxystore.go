@@ -6,9 +6,9 @@ import (
 	"io"
 
 	"github.com/dgraph-io/badger/v3"
+	dshelp "github.com/ipfs/boxo/datastore/dshelp"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
