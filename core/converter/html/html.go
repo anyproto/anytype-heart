@@ -221,14 +221,14 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 				if mark.Type == tag && int(mark.Range.From) < index && int(mark.Range.To) >= index {
 					writeTag(mark, false)
 					if int(mark.Range.To) == index {
-						mark.Range.To = mark.Range.To - 1
+						mark.Range.To--
 					} else {
 						mark.Range.From = int32(index)
 					}
 					break
 				}
 			}
-			closed = closed + 1
+			closed++
 		}
 	}
 
