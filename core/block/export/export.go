@@ -285,13 +285,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 				if !includeFiles {
 					return nil
 				}
-				for _, fh := range b.GetAndUnsetFileKeys() {
-					if werr := e.saveFile(wr, fh.Hash); werr != nil {
-						if werr = e.saveImage(wr, fh.Hash); werr != nil {
-							log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
-						}
-					}
-				}
+				e.saveFiles(b, queue, wr, did)
 				return nil
 			})
 			if err != nil {
@@ -352,14 +346,13 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 }
 
 func (e *export) saveFiles(b sb.SmartBlock, queue process.Queue, wr writer, docID string) {
-	for _, fh := range b.GetAndUnsetFileKeys() {
+	fileHashes := b.GetAndUnsetFileKeys()
+	for _, fh := range fileHashes {
+		fh := fh
 		if err := queue.Add(func() {
 			if werr := e.saveFile(wr, fh.Hash); werr != nil {
-				if werr = e.saveImage(wr, fh.Hash); werr != nil {
-					log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
-				}
+				log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
 			}
-
 		}); err != nil {
 			log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
 		}
@@ -371,27 +364,19 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
+	if strings.HasPrefix(file.Info().Media, "image") {
+		image, err := e.fileService.ImageByHash(context.TODO(), hash)
+		if err != nil {
+			return err
+		}
+		file, err = image.GetOriginalFile(context.TODO())
+		if err != nil {
+			return err
+		}
+	}
 	origName := file.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.TODO())
-	if err != nil {
-		return
-	}
-	return wr.WriteFile(filename, rd)
-}
-
-func (e *export) saveImage(wr writer, hash string) (err error) {
-	file, err := e.fileService.ImageByHash(context.TODO(), hash)
-	if err != nil {
-		return
-	}
-	orig, err := file.GetOriginalFile(context.TODO())
-	if err != nil {
-		return
-	}
-	origName := orig.Meta().Name
-	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := orig.Reader(context.TODO())
 	if err != nil {
 		return
 	}
