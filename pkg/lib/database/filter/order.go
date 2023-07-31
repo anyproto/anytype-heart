@@ -1,16 +1,17 @@
 package filter
 
 import (
+	"strings"
+
+	"github.com/gogo/protobuf/types"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
-	"strings"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	time_util "github.com/anyproto/anytype-heart/util/time"
-	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("anytype-order")
