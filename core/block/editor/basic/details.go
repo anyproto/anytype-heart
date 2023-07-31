@@ -1,12 +1,14 @@
 package basic
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -184,6 +186,10 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
 
+	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
+		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
+	}
+
 	otypes, err := bs.objectStore.GetObjectTypes(objectTypes)
 	if err != nil {
 		return
@@ -208,6 +214,10 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 }
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
+		return fmt.Errorf("layout change is restricted for object '%s': %v", bs.Id(), err)
+	}
+
 	fromLayout, _ := s.Layout()
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
