@@ -119,6 +119,9 @@ func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, colum
 
 func (c *TableStrategy) createCells(columns []string, st *state.State, rowID string, columnIDs []string) error {
 	for i := 0; i < len(columns); i++ {
+		if i >= len(columnIDs) {
+			continue
+		}
 		textBlock := &model.Block{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfText{
