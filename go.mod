@@ -41,7 +41,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
 	github.com/huandu/skiplist v1.2.0
-	github.com/improbable-eng/grpc-web v0.14.1
+	github.com/improbable-eng/grpc-web v0.15.0
 	github.com/ipfs/go-block-format v0.1.2
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-datastore v0.6.0
@@ -129,6 +129,7 @@ require (
 	github.com/blevesearch/zapx/v13 v13.3.9 // indirect
 	github.com/blevesearch/zapx/v14 v14.3.9 // indirect
 	github.com/blevesearch/zapx/v15 v15.3.12 // indirect
+	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chigopher/pathlib v0.15.0 // indirect
