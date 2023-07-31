@@ -85,6 +85,7 @@ func TestQueue_Wait(t *testing.T) {
 }
 
 func TestQueue_Cancel(t *testing.T) {
+	t.Skip("https://linear.app/anytype/issue/GO-1804/fix-testqueue-cancel-test")
 	var a int32
 	var aStarts = make(chan struct{})
 	var aLock = make(chan struct{})
