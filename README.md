@@ -5,6 +5,27 @@ Middleware library for Anytype, distributed as part of the Anytype clients.
 1. Install Golang 1.19.x [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
+
+
+### Install local deps 
+
+#### Mac
+As of 16.01.23 last protobuf version (21.12) broke the JS plugin support, so you can use the v3 branch:
+```
+brew install protobuf@3
+```
+
+To generate Swift protobuf:
+```
+brew install swift-protobuf
+```
+
+#### Debian/Ubuntu
+We need to have protoc binary (3.x version) and libprotoc headers in orderto build the grpc-web plugin
+```
+apt install protobuf-compiler libprotoc-dev
+```
+
 ### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
 `make install-dev-js` — build the local server and copy it and protobuf binding into `../anytype-ts`
 
@@ -111,15 +132,46 @@ In order to log mw gRPC requests/responses use `ANYTYPE_GRPC_LOG` env var:
 3. You can use flag `-r` to build the tree from its root, that way you will see all the changes in the tree, and not only those from the common snapshot
 3. For more info please check the command usage in `debugtree.go`
 
-**GUI**
+### gRPC clients
+
+#### GUI
 
 https://github.com/uw-labs/bloomrpc
 
-`HowTo: Set the import path to the middleware root, then select commands.proto file`
+HowTo: Set the import path to the middleware root, then select commands.proto file
 
-**CLI**
+#### CLI
 
-https://github.com/njpatel/grpcc
+https://github.com/fullstorydev/grpcurl
+
+You should specify import-path to the root of anytype-heart repository and gRPC port of running application
+
+Command examples:
+
+- List available methods
+```
+grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto localhost:31007 describe
+```
+
+- Describe method signature
+```
+grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto localhost:31007 describe anytype.ClientCommands.ObjectCreate
+```
+
+- Describe structure of specified protobuf message
+```
+grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto localhost:31007 describe .anytype.Rpc.Object.Create.Request
+```
+
+- Call method with specified plain-text payload
+```
+grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{"details": {"name": "hello there", "type": "ot-page"}}' localhost:31007 anytype.ClientCommands.ObjectCreate
+```
+
+- Call method using unix pipe
+```
+echo '{"details": {"name": "hello there", "type": "ot-page"}}' | grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d @ localhost:31007 anytype.ClientCommands.ObjectCreate
+```
 
 ## Running with prometheus and grafana
 - `cd metrics/docker` – cd into folder with docker-compose file
@@ -128,25 +180,6 @@ https://github.com/njpatel/grpcc
 - open http://127.0.0.1:3000 to view collected metrics in Grafana. You can find several dashboards there:
     - **MW** internal middleware metrics such as changes, added and created threads histograms
     - **MW commands server** metrics for clients commands. Works only in grpc-server mode
-    
-    
-## Install local deps (Mac)
-As of 16.01.23 last protobuf version (21.12) broke the JS plugin support, so you can use the v3 branch:
-```
-brew install protobuf@3
-```
-
-To generate Swift protobuf:
-```
-brew install swift-protobuf
-```
-
-## Install local deps (Debian-Ubuntu)
-We need to have protoc binary (3.x version) and libprotoc headers in orderto build the grpc-web plugin
-```
-apt install protobuf-compiler libprotoc-dev
-```
-
 
 ## Contribution
 Thank you for your desire to develop Anytype together. 
