@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
@@ -20,8 +18,6 @@ import (
 const (
 	name                      = "Notion"
 	pageSize                  = 100
-	retryDelay                = time.Second
-	retryAmount               = 5
 	numberOfStepsForPages     = 4 // 3 cycles to get snapshots and 1 cycle to create objects
 	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
 	stepForSearch             = 1
@@ -79,7 +75,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	}
 
 	notionImportContext := block.NewNotionImportContext()
-	dbSnapshots, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
+	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if dbErr != nil {
 		logger.With("err", dbErr.Error()).Warnf("import from notion db failed")
 	}
@@ -91,7 +87,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 
-	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, progress)
+	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, relations, progress)
 	if pgErr != nil {
 		logger.With("err", pgErr.Error()).Warnf("import from notion pages failed")
 	}
@@ -115,14 +111,16 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 
 	n.dbService.AddPagesToCollections(dbs, pages, db, notionImportContext.NotionPageIdsToAnytype, notionImportContext.NotionDatabaseIdsToAnytype)
 
-	dbs, err = n.dbService.AddObjectsToNotionCollection(dbs, pgs)
+	rootCollectionSnapshot, err := n.dbService.AddObjectsToNotionCollection(notionImportContext, db, pages)
 	if err != nil {
 		ce.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, ce
 		}
 	}
-
+	if rootCollectionSnapshot != nil {
+		dbs = append(dbs, rootCollectionSnapshot)
+	}
 	allSnapshots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
