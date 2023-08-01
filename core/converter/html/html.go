@@ -113,9 +113,9 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 	case model.BlockContentText_Header2:
 		processUnaryBlock(`<h2 style="`+styleHeader2+`">`, `</h2>`)
 	case model.BlockContentText_Header3:
-		processUnaryBlock(`<h3 style="`+styleHeader2+`">`, `</h3>`)
+		processUnaryBlock(`<h3 style="`+styleHeader3+`">`, `</h3>`)
 	case model.BlockContentText_Header4:
-		processUnaryBlock(`<h4 style="`+styleHeader2+`">`, `</h4>`)
+		processUnaryBlock(`<h4 style="`+styleHeader4+`">`, `</h4>`)
 	case model.BlockContentText_Quote:
 		processUnaryBlock(`<quote style="`+styleQuote+`">`, `</quote>`)
 	case model.BlockContentText_Code:
