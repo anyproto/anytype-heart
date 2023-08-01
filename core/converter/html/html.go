@@ -98,34 +98,7 @@ func (h *HTML) renderChildren(parent *model.Block) {
 
 func (h *HTML) renderText(rs *renderState, b *model.Block) {
 	text := b.GetText()
-
-	processUnaryBlock := func(openTag, closeTag string) {
-		rs.Close()
-		h.buf.WriteString(openTag)
-		h.writeTextToBuf(text)
-		h.renderChildren(b)
-		h.buf.WriteString(closeTag)
-	}
-
 	switch text.Style {
-	case model.BlockContentText_Header1:
-		processUnaryBlock(`<h1 style="`+styleHeader1+`">`, `</h1>`)
-	case model.BlockContentText_Header2:
-		processUnaryBlock(`<h2 style="`+styleHeader2+`">`, `</h2>`)
-	case model.BlockContentText_Header3:
-		processUnaryBlock(`<h3 style="`+styleHeader3+`">`, `</h3>`)
-	case model.BlockContentText_Header4:
-		processUnaryBlock(`<h4 style="`+styleHeader4+`">`, `</h4>`)
-	case model.BlockContentText_Quote:
-		processUnaryBlock(`<quote style="`+styleQuote+`">`, `</quote>`)
-	case model.BlockContentText_Code:
-		processUnaryBlock(`<code style="`+styleCode+`"><pre>`, `</pre></code>`)
-	case model.BlockContentText_Title:
-		processUnaryBlock(`<h1 style="`+styleTitle+`">`, `</h1>`)
-	case model.BlockContentText_Checkbox:
-		processUnaryBlock(`<div style="`+styleCheckbox+`" class="check"><input type="checkbox"/>`, `</div>`)
-	case model.BlockContentText_Toggle:
-		processUnaryBlock(`<div style="`+styleToggle+`" class="toggle">`, `</div>`)
 	case model.BlockContentText_Marked:
 		if rs.isFirst {
 			rs.OpenUL()
@@ -161,7 +134,15 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	default:
-		processUnaryBlock(`<div style="`+styleParagraph+`" class="paragraph" style="`+styleParagraph+`">`, `</div>`)
+		tags, ok := styleTags[text.Style]
+		if !ok {
+			tags = styleTags[defaultStyle]
+		}
+		rs.Close()
+		h.buf.WriteString(tags.OpenTag)
+		h.writeTextToBuf(text)
+		h.renderChildren(b)
+		h.buf.WriteString(tags.CloseTag)
 	}
 }
 

@@ -1,5 +1,7 @@
 package html
 
+import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
 const (
 	wrapCopyStart = `<html>
 		<head>
@@ -54,7 +56,26 @@ const (
 	styleToggle    = "font-size:15px;"
 	styleKbd       = "display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px;"
 	styleCallout   = "background: #f3f2ec; border-radius: 6px; padding: 16px; margin: 6px 0px;"
+
+	defaultStyle = -1
 )
+
+type styleTag struct {
+	OpenTag, CloseTag string
+}
+
+var styleTags = map[model.BlockContentTextStyle]styleTag{
+	model.BlockContentText_Header1:  {OpenTag: `<h1 style="` + styleHeader1 + `">`, CloseTag: `</h1>`},
+	model.BlockContentText_Header2:  {OpenTag: `<h2 style="` + styleHeader2 + `">`, CloseTag: `</h2>`},
+	model.BlockContentText_Header3:  {OpenTag: `<h3 style="` + styleHeader3 + `">`, CloseTag: `</h3>`},
+	model.BlockContentText_Header4:  {OpenTag: `<h4 style="` + styleHeader4 + `">`, CloseTag: `</h4>`},
+	model.BlockContentText_Quote:    {OpenTag: `<quote style="` + styleQuote + `">`, CloseTag: `</quote>`},
+	model.BlockContentText_Code:     {OpenTag: `<code style="` + styleCode + `"><pre>`, CloseTag: `</pre></code>`},
+	model.BlockContentText_Title:    {OpenTag: `<h1 style="` + styleTitle + `">`, CloseTag: `</h1>`},
+	model.BlockContentText_Checkbox: {OpenTag: `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`, CloseTag: `</div>`},
+	model.BlockContentText_Toggle:   {OpenTag: `<div style="` + styleToggle + `" class="toggle">`, CloseTag: `</div>`},
+	defaultStyle:                    {OpenTag: `<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">`, CloseTag: `</div>`},
+}
 
 func textColor(color string) string {
 	switch color {
