@@ -523,11 +523,19 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 	}
 
 	if err := mw.doBlockService(func(bs *block.Service) (err error) {
-		var mErr multierror.Error
+		var (
+			mErr       multierror.Error
+			anySucceed bool
+		)
 		for _, objID := range req.ObjectIds {
 			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
 				mErr.Errors = append(mErr.Errors, err)
+			} else {
+				anySucceed = true
 			}
+		}
+		if anySucceed {
+			return nil
 		}
 		return mErr.ErrorOrNil()
 	}); err != nil {
