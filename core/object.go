@@ -529,6 +529,7 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 		)
 		for _, objID := range req.ObjectIds {
 			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
+				log.Errorf("failed to set object type to object '%s': %v", objID, err)
 				mErr.Errors = append(mErr.Errors, err)
 			} else {
 				anySucceed = true
