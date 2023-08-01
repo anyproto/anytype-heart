@@ -18,49 +18,6 @@ import (
 	utf16 "github.com/anyproto/anytype-heart/util/text"
 )
 
-const (
-	wrapCopyStart = `<html>
-		<head>
-			<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-			<meta http-equiv="Content-Style-Type" content="text/css">
-			<title></title>
-			<meta name="Generator" content="Cocoa HTML Writer">
-			<meta name="CocoaVersion" content="1894.1">
-			<style type="text/css">
-				.row > * { display: flex; }
-				.header1 { padding: 23px 0px 1px 0px; font-size: 28px; line-height: 32px; letter-spacing: -0.36px; font-weight: 600; }
-				.header2 { padding: 15px 0px 1px 0px; font-size: 22px; line-height: 28px; letter-spacing: -0.16px; font-weight: 600; }
-				.header3 { padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600; }
-				.quote { padding: 7px 0px 7px 0px; font-size: 18px; line-height: 26px; font-style: italic; }
-				.paragraph { font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word; }
-				.callout-image { width: 20px; height: 20px; font-size: 16px; line-height: 20px; margin-right: 6px; display: inline-block; }
-				.callout-image img { width: 100%; object-fit: cover; }
-				a { cursor: pointer; }
-				kbd { display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px; }
-				ul { margin: 0px; }
-			</style>
-		</head>
-		<body>`
-	wrapCopyEnd = `</body>
-	</html>`
-	wrapExportStart = `
-	<!DOCTYPE html>
-		<html>
-			<head>
-				<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-				<title></title>
-				<style type="text/css"></style>
-				<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/github.min.css">
-				<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-				<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
-			</head>
-			<body>
-				<div class="anytype-container">`
-	wrapExportEnd = `</div>
-			</body>
-		</html>`
-)
-
 func NewHTMLConverter(fileService files.Service, s *state.State) *HTML {
 	return &HTML{fileService: fileService, s: s}
 }
@@ -140,194 +97,41 @@ func (h *HTML) renderChildren(parent *model.Block) {
 }
 
 func (h *HTML) renderText(rs *renderState, b *model.Block) {
-	styleParagraph := "font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;"
-	styleHeader1 := "padding: 23px 0px 1px 0px; font-size: 28px; line-height: 32px; letter-spacing: -0.36px; font-weight: 600;"
-	styleHeader2 := "padding: 15px 0px 1px 0px; font-size: 22px; line-height: 28px; letter-spacing: -0.16px; font-weight: 600;"
-	styleHeader3 := "padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600;"
-	styleHeader4 := ""
-	styleQuote := "padding: 7px 0px 7px 0px; font-size: 18px; line-height: 26px; font-style: italic;"
-	styleCode := "font-size:15px; font-family: monospace;"
-	styleTitle := ""
-	styleCheckbox := "font-size:15px;"
-	styleToggle := "font-size:15px;"
-	styleKbd := "display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px;"
-	styleCallout := "background: #f3f2ec; border-radius: 6px; padding: 16px; margin: 6px 0px;"
-
 	text := b.GetText()
 
-	lastOpenedTags := make([]model.BlockContentTextMarkType, 0)
-
-	writeTag := func(m *model.BlockContentTextMark, start bool) {
-		switch m.Type {
-		case model.BlockContentTextMark_Strikethrough:
-			if start {
-				h.buf.WriteString("<s>")
-			} else {
-				h.buf.WriteString("</s>")
-			}
-		case model.BlockContentTextMark_Keyboard:
-			if start {
-				h.buf.WriteString(`<kbd style="` + styleKbd + `">`)
-			} else {
-				h.buf.WriteString(`</kbd>`)
-			}
-		case model.BlockContentTextMark_Italic:
-			if start {
-				h.buf.WriteString("<i>")
-			} else {
-				h.buf.WriteString("</i>")
-			}
-		case model.BlockContentTextMark_Bold:
-			if start {
-				h.buf.WriteString("<b>")
-			} else {
-				h.buf.WriteString("</b>")
-			}
-		case model.BlockContentTextMark_Link:
-			if start {
-				fmt.Fprintf(h.buf, `<a href="%s">`, m.Param)
-			} else {
-				h.buf.WriteString("</a>")
-			}
-		case model.BlockContentTextMark_TextColor:
-			if start {
-				fmt.Fprintf(h.buf, `<span style="color:%s">`, textColor(m.Param))
-			} else {
-				h.buf.WriteString("</span>")
-			}
-		case model.BlockContentTextMark_BackgroundColor:
-			if start {
-				fmt.Fprintf(h.buf, `<span style="backgound-color:%s">`, backgroundColor(m.Param))
-			} else {
-				h.buf.WriteString("</span>")
-			}
-		case model.BlockContentTextMark_Underscored:
-			if start {
-				h.buf.WriteString("<u>")
-			} else {
-				h.buf.WriteString("</u>")
-			}
-		}
-	}
-
-	closeTagsUntil := func(bottom model.BlockContentTextMarkType, index int) {
-		closed := 0
-		for _, tag := range lastOpenedTags {
-			if tag == bottom {
-				lastOpenedTags = lastOpenedTags[closed:]
-				return
-			}
-			for _, mark := range text.Marks.Marks {
-				if mark.Type == tag && int(mark.Range.From) < index && int(mark.Range.To) >= index {
-					writeTag(mark, false)
-					if int(mark.Range.To) == index {
-						mark.Range.To--
-					} else {
-						mark.Range.From = int32(index)
-					}
-					break
-				}
-			}
-			closed++
-		}
-	}
-
-	renderText := func() {
-		var breakpoints = make(map[int]struct{})
-		if text.Marks != nil {
-			for _, m := range text.Marks.Marks {
-				breakpoints[int(m.Range.From)] = struct{}{}
-				breakpoints[int(m.Range.To)] = struct{}{}
-			}
-		}
-
-		textLen := utf16.UTF16RuneCountString(text.Text)
-		runes := []rune(text.Text)
-		// the end position of markdown text equals full length of text
-		for i := 0; i <= textLen; i++ {
-			if _, ok := breakpoints[i]; ok {
-				// iterate marks forwards to put closing tags
-				for _, m := range text.Marks.Marks {
-					if int(m.Range.To) == i {
-						//TODO: check lastOpenedTags on zero length ?
-						if lastOpenedTags[0] != m.Type {
-							closeTagsUntil(m.Type, i)
-						}
-						writeTag(m, false)
-						lastOpenedTags = lastOpenedTags[1:]
-					}
-				}
-				// iterate marks backwards to put opening tags
-				for j := len(text.Marks.Marks) - 1; j >= 0; j-- {
-					m := text.Marks.Marks[j]
-					if int(m.Range.From) == i {
-						writeTag(m, true)
-						lastOpenedTags = append([]model.BlockContentTextMarkType{m.Type}, lastOpenedTags...)
-					}
-				}
-
-			}
-			if i < len(runes) {
-				h.buf.WriteString(html.EscapeString(string(runes[i])))
-			}
-		}
+	processUnaryBlock := func(openTag, closeTag string) {
+		rs.Close()
+		h.buf.WriteString(openTag)
+		h.writeTextToBuf(text)
+		h.renderChildren(b)
+		h.buf.WriteString(closeTag)
 	}
 
 	switch text.Style {
 	case model.BlockContentText_Header1:
-		rs.Close()
-		h.buf.WriteString(`<h1 style="` + styleHeader1 + `">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</h1>`)
+		processUnaryBlock(`<h1 style="`+styleHeader1+`">`, `</h1>`)
 	case model.BlockContentText_Header2:
-		rs.Close()
-		h.buf.WriteString(`<h2 style="` + styleHeader2 + `">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</h2>`)
+		processUnaryBlock(`<h2 style="`+styleHeader2+`">`, `</h2>`)
 	case model.BlockContentText_Header3:
-		rs.Close()
-		h.buf.WriteString(`<h3 style="` + styleHeader3 + `">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</h3>`)
+		processUnaryBlock(`<h3 style="`+styleHeader2+`">`, `</h3>`)
 	case model.BlockContentText_Header4:
-		rs.Close()
-		h.buf.WriteString(`<h4 style="` + styleHeader4 + `">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</h4>`)
+		processUnaryBlock(`<h4 style="`+styleHeader2+`">`, `</h4>`)
 	case model.BlockContentText_Quote:
-		rs.Close()
-		h.buf.WriteString(`<quote style="` + styleQuote + `">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</quote>`)
+		processUnaryBlock(`<quote style="`+styleQuote+`">`, `</quote>`)
 	case model.BlockContentText_Code:
-		rs.Close()
-		h.buf.WriteString(`<code style="` + styleCode + `"><pre>`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</pre></code>`)
+		processUnaryBlock(`<code style="`+styleCode+`"><pre>`, `</pre></code>`)
 	case model.BlockContentText_Title:
-		rs.Close()
-		h.buf.WriteString(`<h1 style="` + styleTitle + `">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</h1>`)
+		processUnaryBlock(`<h1 style="`+styleTitle+`">`, `</h1>`)
 	case model.BlockContentText_Checkbox:
-		rs.Close()
-		h.buf.WriteString(`<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</div>`)
+		processUnaryBlock(`<div style="`+styleCheckbox+`" class="check"><input type="checkbox"/>`, `</div>`)
+	case model.BlockContentText_Toggle:
+		processUnaryBlock(`<div style="`+styleToggle+`" class="toggle">`, `</div>`)
 	case model.BlockContentText_Marked:
 		if rs.isFirst {
 			rs.OpenUL()
 		}
 		h.buf.WriteString(`<li>`)
-		renderText()
+		h.writeTextToBuf(text)
 		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
 		if rs.isLast {
@@ -338,18 +142,12 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 			rs.OpenOL()
 		}
 		h.buf.WriteString(`<li>`)
-		renderText()
+		h.writeTextToBuf(text)
 		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
 		if rs.isLast {
 			rs.Close()
 		}
-	case model.BlockContentText_Toggle:
-		rs.Close()
-		h.buf.WriteString(`<div style="` + styleToggle + `" class="toggle">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</div>`)
 	case model.BlockContentText_Callout:
 		rs.Close()
 
@@ -359,15 +157,11 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		}
 
 		fmt.Fprintf(h.buf, `<div style="%s">%s`, styleCallout, img)
-		renderText()
+		h.writeTextToBuf(text)
 		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	default:
-		rs.Close()
-		h.buf.WriteString(`<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">`)
-		renderText()
-		h.renderChildren(b)
-		h.buf.WriteString(`</div>`)
+		processUnaryBlock(`<div style="`+styleParagraph+`" class="paragraph" style="`+styleParagraph+`">`, `</div>`)
 	}
 }
 
@@ -559,6 +353,130 @@ func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell m
 	}
 }
 
+func (h *HTML) writeTag(m *model.BlockContentTextMark, start bool) {
+	switch m.Type {
+	case model.BlockContentTextMark_Strikethrough:
+		if start {
+			h.buf.WriteString("<s>")
+		} else {
+			h.buf.WriteString("</s>")
+		}
+	case model.BlockContentTextMark_Keyboard:
+		if start {
+			h.buf.WriteString(`<kbd style="` + styleKbd + `">`)
+		} else {
+			h.buf.WriteString(`</kbd>`)
+		}
+	case model.BlockContentTextMark_Italic:
+		if start {
+			h.buf.WriteString("<i>")
+		} else {
+			h.buf.WriteString("</i>")
+		}
+	case model.BlockContentTextMark_Bold:
+		if start {
+			h.buf.WriteString("<b>")
+		} else {
+			h.buf.WriteString("</b>")
+		}
+	case model.BlockContentTextMark_Link:
+		if start {
+			fmt.Fprintf(h.buf, `<a href="%s">`, m.Param)
+		} else {
+			h.buf.WriteString("</a>")
+		}
+	case model.BlockContentTextMark_TextColor:
+		if start {
+			fmt.Fprintf(h.buf, `<span style="color:%s">`, textColor(m.Param))
+		} else {
+			h.buf.WriteString("</span>")
+		}
+	case model.BlockContentTextMark_BackgroundColor:
+		if start {
+			fmt.Fprintf(h.buf, `<span style="backgound-color:%s">`, backgroundColor(m.Param))
+		} else {
+			h.buf.WriteString("</span>")
+		}
+	case model.BlockContentTextMark_Underscored:
+		if start {
+			h.buf.WriteString("<u>")
+		} else {
+			h.buf.WriteString("</u>")
+		}
+	}
+}
+
+func (h *HTML) closeTagsUntil(
+	text *model.BlockContentText,
+	lastOpenedTags *[]model.BlockContentTextMarkType,
+	bottom model.BlockContentTextMarkType,
+	index int,
+) {
+	closed := 0
+	for _, tag := range *lastOpenedTags {
+		if tag == bottom {
+			*lastOpenedTags = (*lastOpenedTags)[closed:]
+			return
+		}
+		for _, mark := range text.Marks.Marks {
+			if mark.Type == tag && int(mark.Range.From) < index && int(mark.Range.To) >= index {
+				h.writeTag(mark, false)
+				if int(mark.Range.To) == index {
+					mark.Range.To--
+				} else {
+					mark.Range.From = int32(index)
+				}
+				break
+			}
+		}
+		closed++
+	}
+}
+
+func (h *HTML) writeTextToBuf(text *model.BlockContentText) {
+	var (
+		breakpoints    = make(map[int]struct{})
+		lastOpenedTags = make([]model.BlockContentTextMarkType, 0)
+	)
+	if text.Marks != nil {
+		for _, m := range text.Marks.Marks {
+			breakpoints[int(m.Range.From)] = struct{}{}
+			breakpoints[int(m.Range.To)] = struct{}{}
+		}
+	}
+
+	textLen := utf16.UTF16RuneCountString(text.Text)
+	runes := []rune(text.Text)
+	// the end position of markdown text equals full length of text
+	for i := 0; i <= textLen; i++ {
+		if _, ok := breakpoints[i]; ok {
+			// iterate marks forwards to put closing tags
+			for _, m := range text.Marks.Marks {
+				if int(m.Range.To) == i {
+					//TODO: check lastOpenedTags on zero length ?
+					if lastOpenedTags[0] != m.Type {
+						h.closeTagsUntil(text, &lastOpenedTags, m.Type, i)
+					}
+					h.writeTag(m, false)
+					lastOpenedTags = lastOpenedTags[1:]
+				}
+			}
+			// iterate marks backwards to put opening tags
+			for j := len(text.Marks.Marks) - 1; j >= 0; j-- {
+				m := text.Marks.Marks[j]
+				if int(m.Range.From) == i {
+					h.writeTag(m, true)
+					lastOpenedTags = append([]model.BlockContentTextMarkType{m.Type}, lastOpenedTags...)
+				}
+			}
+
+		}
+		if i < len(runes) {
+			h.buf.WriteString(html.EscapeString(string(runes[i])))
+		}
+	}
+}
+
 func (h *HTML) getImageBase64(hash string) (res string) {
 	im, err := h.fileService.ImageByHash(context.TODO(), hash)
 	if err != nil {
@@ -575,99 +493,4 @@ func (h *HTML) getImageBase64(hash string) (res string) {
 	data, _ := ioutil.ReadAll(rd)
 	dataBase64 := base64.StdEncoding.EncodeToString(data)
 	return fmt.Sprintf("data:%s;base64, %s", f.Meta().Media, dataBase64)
-}
-
-type renderState struct {
-	ulOpened, olOpened bool
-	isFirst, isLast    bool
-
-	h *HTML
-}
-
-func (rs *renderState) OpenUL() {
-	if rs.ulOpened {
-		return
-	}
-	if rs.olOpened {
-		rs.Close()
-	}
-	rs.h.buf.WriteString(`<ul style="font-size:15px;">`)
-	rs.ulOpened = true
-}
-
-func (rs *renderState) OpenOL() {
-	if rs.olOpened {
-		return
-	}
-	if rs.ulOpened {
-		rs.Close()
-	}
-	rs.h.buf.WriteString("<ol style=\"font-size:15px;\">")
-	rs.olOpened = true
-}
-
-func (rs *renderState) Close() {
-	if rs.ulOpened {
-		rs.h.buf.WriteString("</ul>")
-		rs.ulOpened = false
-	} else if rs.olOpened {
-		rs.h.buf.WriteString("</ol>")
-		rs.olOpened = false
-	}
-}
-
-func textColor(color string) string {
-	switch color {
-	case "grey":
-		return "#aca996"
-	case "yellow":
-		return "#ecd91b"
-	case "orange":
-		return "#ffb522"
-	case "red":
-		return "#f55522"
-	case "pink":
-		return "#e51ca0"
-	case "purple":
-		return "#ab50cc"
-	case "blue":
-		return "#3e58"
-	case "ice":
-		return "#2aa7ee"
-	case "teal":
-		return "#0fc8ba"
-	case "lime":
-		return "#5dd400"
-	case "black":
-		return "#2c2b27"
-	default:
-		return color
-	}
-}
-
-func backgroundColor(color string) string {
-	switch color {
-	case "grey":
-		return "#f3f2ec"
-	case "yellow":
-		return "#fef9cc"
-	case "orange":
-		return "#fef3c5"
-	case "red":
-		return "#ffebe5"
-	case "pink":
-		return "#fee3f5"
-	case "purple":
-		return "#f4e3fa"
-	case "blue":
-		return "#f4e3fa"
-	case "ice":
-		return "#d6effd"
-	case "teal":
-		return "#d6f5f3"
-	case "lime":
-		return "#e3f7d0"
-	default:
-		return color
-	}
 }
