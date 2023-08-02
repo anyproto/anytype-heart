@@ -57,20 +57,20 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	}
 
 	newAccount, err := mw.accountCreate(cctx, req)
-	code := unwrapErrorCode[pb.RpcAccountCreateResponseErrorCode](err)
+	code, err := unwrapError[pb.RpcAccountCreateResponseErrorCode](err)
 	return response(newAccount, code, err)
 }
 
-func unwrapErrorCode[T ~int32](err error) T {
+func unwrapError[T ~int32](err error) (T, error) {
 	if err == nil {
 		// Null error
-		return 0
+		return 0, nil
 	}
 	if coded, ok := err.(errorWithCode[T]); ok {
-		return coded.code
+		return coded.code, coded.err
 	} else {
 		// Unknown error
-		return 1
+		return 1, err
 	}
 }
 
@@ -209,9 +209,6 @@ func (mw *Middleware) setAccountAndProfileDetails(ctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
-	mw.m.Lock()
-	defer mw.m.Unlock()
-
 	response := func(code pb.RpcAccountRecoverResponseErrorCode, err error) *pb.RpcAccountRecoverResponse {
 		m := &pb.RpcAccountRecoverResponse{Error: &pb.RpcAccountRecoverResponseError{Code: code}}
 		if err != nil {
@@ -221,21 +218,41 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 		return m
 	}
 
-	sendAccountAddEvent := func(index int, account *model.Account) {
-		m := &pb.Event{Messages: []*pb.EventMessage{{&pb.EventMessageValueOfAccountShow{AccountShow: &pb.EventAccountShow{Index: int32(index), Account: account}}}}}
-		mw.EventSender.Broadcast(m)
-	}
+	err := mw.accountRecover()
+	code, err := unwrapError[pb.RpcAccountRecoverResponseErrorCode](err)
+	return response(code, err)
+}
+
+func (mw *Middleware) accountRecover() error {
+	mw.m.Lock()
+	defer mw.m.Unlock()
 
 	if mw.mnemonic == "" {
-		return response(pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST, nil)
+		return errWithCode(nil, pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST)
 	}
 
 	res, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
-		return response(pb.RpcAccountRecoverResponseError_BAD_INPUT, err)
+		return errWithCode(err, pb.RpcAccountRecoverResponseError_BAD_INPUT)
 	}
-	sendAccountAddEvent(0, &model.Account{Id: res.Identity.GetPublic().Account(), Name: ""})
-	return response(pb.RpcAccountRecoverResponseError_NULL, nil)
+
+	event := &pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfAccountShow{
+					AccountShow: &pb.EventAccountShow{
+						Account: &model.Account{
+							Id:   res.Identity.GetPublic().Account(),
+							Name: "",
+						},
+					},
+				},
+			},
+		},
+	}
+	mw.EventSender.Broadcast(event)
+
+	return nil
 }
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
