@@ -52,6 +52,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
+	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 
@@ -100,8 +101,10 @@ func New(
 		sbtProvider:     sbtProvider,
 		layoutConverter: layoutConverter,
 		closing:         make(chan struct{}),
-		syncer:          map[string]*treeSyncer{},
-		openedObjects:   make(map[string]bool),
+		openedObjs: &openedObjects{
+			objects: make(map[string]bool),
+			lock:    &sync.Mutex{},
+		},
 	}
 }
 
@@ -165,7 +168,12 @@ type Service struct {
 	closing     chan struct{}
 
 	predefinedObjectWasMissing bool
-	openedObjects              map[string]bool
+	openedObjs                 *openedObjects
+}
+
+type openedObjects struct {
+	objects map[string]bool
+	lock    *sync.Mutex
 }
 
 func (s *Service) Name() string {
@@ -273,7 +281,7 @@ func (s *Service) OpenBlock(
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
 		SmartblockType: int(sbType),
 	})
-	s.openedObjects[id] = true
+	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id] = true; return nil })
 	return obj, nil
 }
 
@@ -313,12 +321,12 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 			s.sendOnRemoveEvent(id)
 		}
 	}
-	delete(s.openedObjects, id)
+	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id); return nil })
 	return nil
 }
 
 func (s *Service) GetOpenedObjects() []string {
-	return lo.Keys(s.openedObjects)
+	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
 }
 
 func (s *Service) CloseBlocks() {

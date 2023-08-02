@@ -123,14 +123,14 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		mc := dot.NewMultiConverter(format, e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter(e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
@@ -279,12 +279,24 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	return objectDetails, nil
 }
 
-func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
+func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue, includeFiles bool) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
 			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
-				return mw.Add(b.NewState().Copy())
+				if err = mw.Add(b.NewState().Copy()); err != nil {
+					return err
+				}
+				if !includeFiles {
+					return nil
+				}
+				fileHashes := b.GetAndUnsetFileKeys()
+				for _, fh := range fileHashes {
+					if saveFileErr := e.saveFile(ctx, wr, fh.Hash); saveFileErr != nil {
+						log.With("hash", fh.Hash).Warnf("can't save file: %v", saveFileErr)
+					}
+				}
+				return nil
 			})
 			if err != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
@@ -300,28 +312,6 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
 		return 0, err
 	}
-
-	for _, fh := range mw.FileHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveFile(ctx, wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
-			}
-		}); err != nil {
-			return
-		}
-	}
-	for _, fh := range mw.ImageHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveImage(ctx, wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-			}
-		}); err != nil {
-			return
-		}
-	}
-
 	err = nil
 	return
 }
@@ -360,28 +350,23 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		if !exportFiles {
 			return nil
 		}
-		for _, fh := range conv.FileHashes() {
-			fileHash := fh
-			if err = queue.Add(func() {
-				if werr := e.saveFile(ctx, wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save file: %v", werr)
-				}
-			}); err != nil {
-				return err
-			}
-		}
-		for _, fh := range conv.ImageHashes() {
-			fileHash := fh
-			if err = queue.Add(func() {
-				if werr := e.saveImage(ctx, wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-				}
-			}); err != nil {
-				return err
-			}
-		}
+		e.saveFiles(ctx, b, queue, wr, docID)
 		return nil
 	})
+}
+
+func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, queue process.Queue, wr writer, docID string) {
+	fileHashes := b.GetAndUnsetFileKeys()
+	for _, fh := range fileHashes {
+		fh := fh
+		if err := queue.Add(func() {
+			if werr := e.saveFile(ctx, wr, fh.Hash); werr != nil {
+				log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
+			}
+		}); err != nil {
+			log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
+		}
+	}
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err error) {
@@ -389,41 +374,27 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
-	file, err := e.fileService.FileByHash(ctx, domain.FullID{
+	id := domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: hash,
-	})
+	}
+	file, err := e.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return
+	}
+	if strings.HasPrefix(file.Info().Media, "image") {
+		image, err := e.fileService.ImageByHash(context.TODO(), id)
+		if err != nil {
+			return err
+		}
+		file, err = image.GetOriginalFile(context.TODO())
+		if err != nil {
+			return err
+		}
 	}
 	origName := file.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
-	if err != nil {
-		return
-	}
-	return wr.WriteFile(filename, rd)
-}
-
-func (e *export) saveImage(ctx context.Context, wr writer, hash string) (err error) {
-	spaceID, err := e.objectStore.ResolveSpaceID(hash)
-	if err != nil {
-		return fmt.Errorf("resolve spaceID: %w", err)
-	}
-	file, err := e.fileService.ImageByHash(ctx, domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: hash,
-	})
-	if err != nil {
-		return
-	}
-	orig, err := file.GetOriginalFile(ctx)
-	if err != nil {
-		return
-	}
-	origName := orig.Meta().Name
-	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := orig.Reader(context.Background())
 	if err != nil {
 		return
 	}

@@ -77,6 +77,7 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 	}
 	layout := model.ObjectTypeLayout(noLayout)
 	d, err := s.store.GetDetails(id)
+	var ot string
 	if err == nil {
 		if pbtypes.HasField(d.GetDetails(), bundle.RelationKeyLayout.String()) {
 			layoutIndex := pbtypes.GetInt64(d.GetDetails(), bundle.RelationKeyLayout.String())
@@ -84,6 +85,7 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 				layout = model.ObjectTypeLayout(layoutIndex)
 			}
 		}
+		ot = pbtypes.GetString(d.GetDetails(), bundle.RelationKeyType.String())
 	}
 	var uk uniquekey.UniqueKey
 	if u := pbtypes.GetString(d.GetDetails(), bundle.RelationKeyUniqueKey.String()); u != "" {
@@ -92,7 +94,7 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 			log.Errorf("failed to parse unique key %s: %v", u, err)
 		}
 	}
-	obj := newRestrictionHolder(id, sbType, layout, uk)
+	obj := newRestrictionHolder(id, sbType, layout, uk, ot)
 	if err != nil {
 		return Restrictions{}, err
 	}

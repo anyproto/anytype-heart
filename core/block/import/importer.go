@@ -93,58 +93,79 @@ func (i *Import) Init(a *app.App) (err error) {
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) error {
 	progress := i.setupProgressBar(req)
-	defer progress.Finish()
+	var returnedErr error
+	defer func() {
+		i.finishImportProcess(returnedErr, progress)
+	}()
 	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
 	}
-	allErrors := converter.NewError()
 	if c, ok := i.converters[req.Type.String()]; ok {
-		res, err := c.GetSnapshots(ctx, req, progress)
-		if !err.IsEmpty() {
-			resultErr := err.GetResultError(req.Type)
-			if shouldReturnError(resultErr, res, req) {
-				return resultErr
-			}
-			allErrors.Merge(err)
-		}
-
-		if res == nil {
-			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
-		}
-
-		if len(res.Snapshots) == 0 {
-			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
-		}
-
-		i.createObjects(ctx, res, progress, req, allErrors)
-		return allErrors.GetResultError(req.Type)
+		returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
+		return returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
-		if req.Snapshots != nil {
-			sn := make([]*converter.Snapshot, len(req.Snapshots))
-			for i, s := range req.Snapshots {
-				sn[i] = &converter.Snapshot{
-					Id:       s.GetId(),
-					Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
-				}
-			}
-			res := &converter.Response{
-				Snapshots: sn,
-			}
-			i.createObjects(ctx, res, progress, req, allErrors)
-			if !allErrors.IsEmpty() {
-				return allErrors.GetResultError(req.Type)
-			}
-			return nil
-		}
-		return converter.ErrNoObjectsToImport
+		returnedErr = i.importFromExternalSource(ctx, req, progress)
+		return returnedErr
 	}
-	return fmt.Errorf("unknown import type %s", req.Type)
+	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
+	return returnedErr
+}
+
+func (i *Import) importFromBuiltinConverter(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	c converter.Converter,
+	progress process.Progress) error {
+	allErrors := converter.NewError()
+	res, err := c.GetSnapshots(ctx, req, progress)
+	if !err.IsEmpty() {
+		resultErr := err.GetResultError(req.Type)
+		if shouldReturnError(resultErr, res, req) {
+			return resultErr
+		}
+		allErrors.Merge(err)
+	}
+	if res == nil {
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+	}
+
+	if len(res.Snapshots) == 0 {
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+	}
+
+	i.createObjects(ctx, res, progress, req, allErrors)
+	return allErrors.GetResultError(req.Type)
+}
+
+func (i *Import) importFromExternalSource(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
+	allErrors := converter.NewError()
+	if req.Snapshots != nil {
+		sn := make([]*converter.Snapshot, len(req.Snapshots))
+		for i, s := range req.Snapshots {
+			sn[i] = &converter.Snapshot{
+				Id:       s.GetId(),
+				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+			}
+		}
+		res := &converter.Response{
+			Snapshots: sn,
+		}
+		i.createObjects(ctx, res, progress, req, allErrors)
+		if !allErrors.IsEmpty() {
+			return allErrors.GetResultError(req.Type)
+		}
+		return nil
+	}
+	return converter.ErrNoObjectsToImport
+}
+
+func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
+	progress.Finish(returnedErr)
 }
 
 func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		errors.Is(e, converter.ErrFailedToReceiveListOfObjects) ||
+		errors.Is(e, converter.ErrFailedToReceiveListOfObjects) || errors.Is(e, converter.ErrLimitExceeded) ||
 		(errors.Is(e, converter.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
 		errors.Is(e, converter.ErrCancel)
 }
@@ -188,7 +209,7 @@ func (i *Import) ValidateNotionToken(
 
 func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
-	defer progress.Finish()
+	defer progress.Finish(nil)
 	allErrors := converter.NewError()
 
 	progress.SetProgressMessage("Parse url")

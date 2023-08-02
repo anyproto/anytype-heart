@@ -10,7 +10,6 @@ package-lock.json
 /clientlibrary/jsaddon/build
 .vscode
 /vendor/
-*_mock.go
 *gomock_reflect*
 lib-server/service.pb.go
 dist/cli

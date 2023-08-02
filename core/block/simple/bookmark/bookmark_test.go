@@ -1,6 +1,7 @@
 package bookmark
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -71,13 +72,17 @@ func TestBookmark_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetBookmark).BlockSetBookmark
-		assert.NotNil(t, change.Title)
-		assert.NotNil(t, change.Description)
-		assert.NotNil(t, change.Url)
-		assert.NotNil(t, change.Type)
-		assert.NotNil(t, change.ImageHash)
-		assert.NotNil(t, change.FaviconHash)
-		assert.NotNil(t, change.TargetObjectId)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetBookmark{
+			BlockSetBookmark: &pb.EventBlockSetBookmark{
+				Id:             b1.Id,
+				Url:            &pb.EventBlockSetBookmarkUrl{Value: "1"},
+				Title:          &pb.EventBlockSetBookmarkTitle{Value: "2"},
+				Description:    &pb.EventBlockSetBookmarkDescription{Value: "3"},
+				ImageHash:      &pb.EventBlockSetBookmarkImageHash{Value: "ih"},
+				FaviconHash:    &pb.EventBlockSetBookmarkFaviconHash{Value: "fh"},
+				Type:           &pb.EventBlockSetBookmarkType{Value: 6},
+				TargetObjectId: &pb.EventBlockSetBookmarkTargetObjectId{Value: "newobject"},
+			},
+		}), diff)
 	})
 }

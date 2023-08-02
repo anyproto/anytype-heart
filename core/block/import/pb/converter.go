@@ -175,30 +175,6 @@ func (p *Pb) getProfileFromFiles(files map[string]io.ReadCloser) (*pb.Profile, e
 	return profile, nil
 }
 
-func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Snapshot) {
-	var workspace *converter.Snapshot
-	if profile == nil {
-		return
-	}
-	for _, snapshot := range snapshots {
-		if snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
-			workspace = snapshot
-		}
-	}
-
-	if workspace != nil {
-		spaceName := pbtypes.GetString(workspace.Snapshot.Data.Details, bundle.RelationKeyName.String())
-		if spaceName == "" || spaceName == "Personal space" { // migrate legacy name
-			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(profile.Name)
-		}
-
-		iconOption := pbtypes.GetInt64(workspace.Snapshot.Data.Details, bundle.RelationKeyIconOption.String())
-		if iconOption == 0 {
-			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.getIconOption())
-		}
-	}
-
-}
 func (p *Pb) getSnapshotsFromFiles(
 	spaceID string,
 	req *pb.RpcObjectImportRequest,

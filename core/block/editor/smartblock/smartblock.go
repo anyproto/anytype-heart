@@ -377,6 +377,8 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 }
 
 func (sb *smartBlock) Show() (*model.ObjectView, error) {
+	sb.updateRestrictions()
+
 	details, objectTypes, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
