@@ -100,6 +100,7 @@ func New(
 		sbtProvider:     sbtProvider,
 		layoutConverter: layoutConverter,
 		closing:         make(chan struct{}),
+		syncer:          map[string]*treeSyncer{},
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
 			lock:    &sync.Mutex{},
