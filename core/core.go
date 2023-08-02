@@ -31,9 +31,8 @@ type Middleware struct {
 	pin      string
 	mnemonic string
 	// memoized private key derived from mnemonic
-	sessionKey          []byte
-	accountSearchCancel context.CancelFunc
-	EventSender         event.Sender
+	sessionKey  []byte
+	EventSender event.Sender
 
 	sessions          session.Service
 	clientWithVersion string
@@ -44,8 +43,7 @@ type Middleware struct {
 
 func New() *Middleware {
 	mw := &Middleware{
-		accountSearchCancel: func() {},
-		sessions:            session.New(),
+		sessions: session.New(),
 	}
 	return mw
 }
@@ -155,7 +153,6 @@ func (mw *Middleware) stop() error {
 		}
 
 		mw.app = nil
-		mw.accountSearchCancel()
 	}
 	return nil
 }

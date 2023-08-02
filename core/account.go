@@ -46,10 +46,6 @@ func (mw *Middleware) refreshRemoteAccountState() {
 }
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
-	mw.accountSearchCancel()
-	mw.m.Lock()
-
-	defer mw.m.Unlock()
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		var clientConfig *pb.RpcAccountConfig
 		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
@@ -60,48 +56,109 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		return m
 	}
 
+	newAccount, err := mw.accountCreate(cctx, req)
+	code := unwrapErrorCode[pb.RpcAccountCreateResponseErrorCode](err)
+	return response(newAccount, code, err)
+}
+
+func unwrapErrorCode[T ~int32](err error) T {
+	if err == nil {
+		// Null error
+		return 0
+	}
+	if coded, ok := err.(errorWithCode[T]); ok {
+		return coded.code
+	} else {
+		// Unknown error
+		return 1
+	}
+}
+
+type errorWithCode[T ~int32] struct {
+	err  error
+	code T
+}
+
+func (e errorWithCode[T]) Error() string {
+	if e.err == nil {
+		return ""
+	}
+	return e.err.Error()
+}
+
+func errWithCode[T ~int32](err error, code T) error {
+	return errorWithCode[T]{err, code}
+}
+
+func (mw *Middleware) accountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
 	if err := mw.stop(); err != nil {
-		response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
+		return nil, errWithCode(err, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
+	mw.requireClientWithVersion()
 
 	derivationResult, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
-		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
+		return nil, err
 	}
-	address := derivationResult.Identity.GetPublic().Account()
+	accountID := derivationResult.Identity.GetPublic().Account()
 
 	if err = core.WalletInitRepo(mw.rootPath, derivationResult.Identity); err != nil {
-		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
-	}
-	if req.StorePath != "" && req.StorePath != mw.rootPath {
-		configPath := filepath.Join(mw.rootPath, address, config.ConfigFileName)
-		storePath := filepath.Join(req.StorePath, address)
-		err := os.MkdirAll(storePath, 0700)
-		if err != nil {
-			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, oserror.TransformError(err))
-		}
-		if err := config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
-			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
-		}
+		return nil, err
 	}
 
-	newAcc := &model.Account{Id: address}
+	if err = mw.handleCustomStorageLocation(req, accountID); err != nil {
+		return nil, err
+	}
 
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(mw.rootPath, derivationResult),
 		mw.EventSender,
 	}
 
-	mw.requireClientWithVersion()
-	if mw.app, err = anytype.StartNewApp(
-		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "account_create"),
-		mw.clientWithVersion,
-		comps...,
-	); err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
+	newAcc := &model.Account{Id: accountID}
+
+	mw.app, err = anytype.StartNewApp(ctx, mw.clientWithVersion, comps...)
+	if err != nil {
+		return newAcc, errWithCode(err, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE)
+	}
+
+	if err = mw.setAccountAndProfileDetails(ctx, req, newAcc); err != nil {
+		return newAcc, err
+	}
+
+	return newAcc, nil
+}
+
+func (mw *Middleware) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, accountID string) error {
+	if req.StorePath != "" && req.StorePath != mw.rootPath {
+		configPath := filepath.Join(mw.rootPath, accountID, config.ConfigFileName)
+		storePath := filepath.Join(req.StorePath, accountID)
+		err := os.MkdirAll(storePath, 0700)
+		if err != nil {
+			return errWithCode(oserror.TransformError(err), pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO)
+		}
+		// Bootstrap config will later read this config with custom storage location
+		if err := config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
+			return errWithCode(err, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG)
+		}
+	}
+	return nil
+}
+
+func (mw *Middleware) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
+	newAcc.Name = req.Name
+
+	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
+	var err error
+	newAcc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx, spaceID)
+	if err != nil {
+		return err
 	}
 
 	bs := mw.app.MustComponent(block.CName).(*block.Service)
@@ -118,7 +175,6 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 	profileDetails := make([]*pb.RpcObjectSetDetailsDetail, 0)
 	profileDetails = append(profileDetails, commonDetails...)
 
-	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
 	if req.GetAvatarLocalPath() != "" {
 		hash, err := bs.UploadFile(context.Background(), spaceID, pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
@@ -135,28 +191,21 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		}
 	}
 
-	newAcc.Name = req.Name
-	newAcc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(cctx, spaceID)
-	if err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
-	}
-
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.AccountObjects().Profile,
 		Details:   profileDetails,
 	}); err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+		return errWithCode(err, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME)
 	}
 
-	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.AccountObjects().Account,
 		Details:   commonDetails,
 	}); err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
+		return errWithCode(err, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME)
 	}
-
-	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
+	return nil
 }
 
 func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
@@ -203,9 +252,6 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	if req.Id == "" {
 		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_BAD_INPUT, fmt.Errorf("account id is empty"))
 	}
-
-	// cancel pending account searches and it will release the mutex
-	mw.accountSearchCancel()
 
 	mw.m.Lock()
 	defer mw.m.Unlock()
@@ -286,7 +332,6 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 }
 
 func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
-	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
@@ -319,7 +364,6 @@ func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRe
 }
 
 func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
-	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
@@ -573,7 +617,6 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 	if err != nil {
 		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, oserror.TransformError(err)
 	}
-	mw.accountSearchCancel()
 	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) {
 		if walletErr := core.WalletInitRepo(mw.rootPath, res.Identity); walletErr != nil {
 			return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr

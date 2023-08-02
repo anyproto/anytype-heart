@@ -69,8 +69,6 @@ func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecov
 		return m
 	}
 
-	mw.accountSearchCancel()
-
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
