@@ -266,47 +266,56 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		return m
 	}
 
+	acc, err := mw.accountSelect(cctx, req)
+	code, err := unwrapError[pb.RpcAccountSelectResponseErrorCode](err)
+	return response(acc, code, err)
+}
+
+func (mw *Middleware) accountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) (*model.Account, error) {
 	if req.Id == "" {
-		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_BAD_INPUT, fmt.Errorf("account id is empty"))
+		return nil, errWithCode(fmt.Errorf("account id is empty"), pb.RpcAccountSelectResponseError_BAD_INPUT)
 	}
 
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
+	mw.requireClientWithVersion()
+
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account() {
 		bs := mw.app.MustComponent(treemanager.CName).(*block.Service)
 		bs.CloseBlocks()
-		acc := &model.Account{Id: req.Id}
+
 		spaceID := app.MustComponent[space.Service](mw.app).AccountId()
+		acc := &model.Account{Id: req.Id}
 		var err error
-		acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(cctx, spaceID)
+		acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx, spaceID)
 		if err != nil {
-			return response(acc, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+			return nil, err
 		}
-		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
+		return acc, nil
 	}
 
 	// in case user selected account other than the first one(used to perform search)
 	// or this is the first time in this session we run the Anytype node
 	if err := mw.stop(); err != nil {
-		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
+		return nil, errWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE)
 	}
 	if req.RootPath != "" {
 		mw.rootPath = req.RootPath
 	}
 	if mw.mnemonic == "" {
-		return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, fmt.Errorf("no mnemonic provided"))
+		return nil, errWithCode(fmt.Errorf("no mnemonic provided"), pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET)
 	}
 	res, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
-		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+		return nil, err
 	}
 	var repoWasMissing bool
 	if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
 		repoWasMissing = true
 		if err = core.WalletInitRepo(mw.rootPath, res.Identity); err != nil {
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			return nil, errWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO)
 		}
 	}
 
@@ -321,31 +330,33 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		// if we have created the repo, we need to highlight that we are recovering the account
 		request = request + "_recover"
 	}
-	mw.requireClientWithVersion()
-	if mw.app, err = anytype.StartNewApp(
+
+	mw.app, err = anytype.StartNewApp(
 		context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, request),
 		mw.clientWithVersion,
 		comps...,
-	); err != nil {
+	)
+	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
+			return nil, errWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO)
 		}
 		if err == core.ErrRepoCorrupted {
-			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+			return nil, errWithCode(err, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED)
 		}
 		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
-			return response(nil, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
+			return nil, errWithCode(err, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING)
 		}
 		if errors.Is(err, handshake.ErrIncompatibleVersion) {
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION, fmt.Errorf("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version"))
+			err = fmt.Errorf("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version")
+			return nil, errWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION)
 		}
-		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
+		return nil, errWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE)
 	}
 
 	acc := &model.Account{Id: req.Id}
 	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
-	acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(cctx, spaceID)
-	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
+	acc.Info, err = app.MustComponent[account.Service](mw.app).GetInfo(ctx, spaceID)
+	return acc, nil
 }
 
 func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
