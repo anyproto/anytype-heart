@@ -398,29 +398,44 @@ func (s *Service) AddBundledObjectToSpace(
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
 	// todo: we should add route to object via workspace
-	var details = make([]*types.Struct, 0, len(sourceObjectIds))
-
 	for _, sourceObjectId := range sourceObjectIds {
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
 			d, err := s.convertBundledObjectToInstalled(ctx, spaceID, b.Id(), b.CombinedDetails())
 			if err != nil {
 				return err
 			}
-			details = append(details, d)
+
+			uk, err := uniquekey.UniqueKeyFromString(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
+			if err != nil {
+				return err
+			}
+
+			// create via the state directly, because we have cyclic dependencies and we want to avoid typeId resolving from the details
+			state := state.NewDocWithUniqueKey("", nil, uk.(uniquekey.UniqueKeyInternal)).(*state.State)
+			state.SetDetails(d)
+
+			if b.Type() == model.SmartBlockType_STRelation {
+				state.SetObjectType(bundle.TypeKeyRelation.String())
+			} else if b.Type() == model.SmartBlockType_STType {
+				state.SetObjectType(bundle.TypeKeyObjectType.String())
+			} else {
+				return fmt.Errorf("unsupported object type: %s", b.Type())
+			}
+
+			id, object, err := s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockType(b.Type()), nil, state)
+			if err != nil {
+				// todo: check alreadyexists error
+				// we don't want to stop adding other objects
+				log.Errorf("error while block create: %v", err)
+				return nil
+			}
+			ids = append(ids, id)
+			objects = append(objects, object)
 			return nil
 		})
 		if err != nil {
 			return
 		}
-	}
-
-	for _, d := range details {
-		id, object, err := s.CreateObject(ctx, spaceID, &model.ObjectDetails{Details: d}, "")
-		if err != nil {
-			return nil, nil, err
-		}
-		ids = append(ids, id)
-		objects = append(objects, object)
 	}
 
 	return

@@ -34,7 +34,7 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 	}
 
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
+		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.BundledURL()),
 		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
 		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
 		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
@@ -51,44 +51,4 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		bundle.RelationKeyWorkspaceId.String():          pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 		bundle.RelationKeySpaceId.String():              pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 	}}
-}
-
-// deprecated
-func MigrateObjectTypeIds(ids []string) (normalized []string, idsToMigrate []string) {
-	// todo: remove this and all dependencies on it
-
-	hasIdsToMigrate := false
-	for i := range ids {
-		_, err := bundle.TypeKeyFromUrl(ids[i])
-		if err == nil {
-			hasIdsToMigrate = true
-			break
-		}
-	}
-	if !hasIdsToMigrate {
-		return ids, nil
-	}
-
-	// in-place migration for bundled object types moved into workspace
-	normalized = make([]string, len(ids))
-	idsToMigrate = make([]string, 0, len(ids))
-	var migrated bool
-	for i := range ids {
-		normalized[i], migrated = MigrateObjectTypeId(ids[i])
-		if migrated {
-			idsToMigrate = append(idsToMigrate, ids[i])
-		}
-	}
-
-	return normalized, idsToMigrate
-}
-
-// deprecated
-func MigrateObjectTypeId(id string) (normalized string, isMigrated bool) {
-	// todo: remove this and all dependencies on it
-	t, err := bundle.TypeKeyFromUrl(id)
-	if err == nil {
-		return addr.ObjectTypeKeyToIdPrefix + t.String(), true
-	}
-	return id, false
 }

@@ -165,10 +165,10 @@ func (a *Anytype) start() {
 }
 
 func (a *Anytype) DeriveObjectId(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (string, error) {
-	// todo: cache it
+	// todo: cache it or use the objectstore
 	payload, err := a.deriver.DeriveTreeCreatePayload(ctx, spaceID, key)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to derive tree create payload for space %s and key %s: %w", spaceID, key, err)
 	}
 
 	return payload.RootRawChange.Id, nil

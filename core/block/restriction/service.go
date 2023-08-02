@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -84,7 +85,14 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 			}
 		}
 	}
-	obj := newRestrictionHolder(id, sbType, layout)
+	var uk uniquekey.UniqueKey
+	if u := pbtypes.GetString(d.GetDetails(), bundle.RelationKeyUniqueKey.String()); u != "" {
+		uk, err = uniquekey.UniqueKeyFromString(u)
+		if err != nil {
+			log.Errorf("failed to parse unique key %s: %v", u, err)
+		}
+	}
+	obj := newRestrictionHolder(id, sbType, layout, uk)
 	if err != nil {
 		return Restrictions{}, err
 	}

@@ -81,7 +81,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 		if err := bs.addRelationLink(detail.Key, st); err != nil {
 			return nil, err
 		}
-		if err := bs.relationService.ValidateFormat(detail.Key, detail.Value); err != nil {
+		if err := bs.relationService.ValidateFormat(st.SpaceID(), detail.Key, detail.Value); err != nil {
 			return nil, fmt.Errorf("failed to validate relation: %w", err)
 		}
 	}
@@ -105,7 +105,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 
 func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
 	// TODO: add relation.WithWorkspaceId(workspaceId) filter
-	rel, err := bs.relationService.FetchKey(relationKey)
+	rel, err := bs.relationService.FetchKey(st.SpaceID(), relationKey)
 	if err != nil || rel == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}

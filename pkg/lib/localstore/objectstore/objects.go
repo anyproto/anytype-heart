@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
@@ -156,6 +157,7 @@ type ObjectStore interface {
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 	GetObjectType(url string) (*model.ObjectType, error)
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
+	GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error)
 
 	ResolveSpaceID(objectID string) (spaceID string, err error)
 	StoreSpaceID(objectID, spaceID string) error
@@ -250,8 +252,9 @@ func (s *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Float64(float64(model.ObjectType_relationOption)),
+				// todo: revert check by objectType
 			},
 		},
 	})
@@ -299,7 +302,7 @@ func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
 		return nil, err
 	}
 
-	if pbtypes.GetString(det.GetDetails(), bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
+	if pbtypes.GetString(det.GetDetails(), bundle.RelationKeyRelationKey.String()) == "" {
 		return nil, fmt.Errorf("object %s is not a relation", id)
 	}
 
@@ -316,11 +319,6 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Value:       pbtypes.String(key),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
 			},
 		},
 	}
@@ -663,12 +661,12 @@ func extractIDFromKey(key string) (id string) {
 	return key[i+1:]
 }
 
-func (s *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
-	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
-		return bundle.GetTypeByUrl(url)
+func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return bundle.GetTypeByUrl(id)
 	}
 
-	details, err := s.GetDetails(url)
+	details, err := s.GetDetails(id)
 	if err != nil {
 		return nil, err
 	}
@@ -681,11 +679,50 @@ func (s *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 		return nil, fmt.Errorf("type was removed")
 	}
 
-	if pbtypes.GetString(details.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
-		return nil, fmt.Errorf("object %s is not an object type", url)
+	uk, err := uniquekey.UniqueKeyFromString(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse unique key %s: %w", pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()), err)
 	}
 
-	return s.extractObjectTypeFromDetails(details.Details, url), nil
+	if uk.SmartblockType() != model.SmartBlockType_STType {
+		return nil, fmt.Errorf("object %s is not an object type", id)
+	}
+
+	ot := s.extractObjectTypeFromDetails(details.Details, id)
+	ot.Key = uk.(uniquekey.UniqueKeyInternal).InternalKey()
+	return ot, nil
+}
+
+func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error) {
+	records, _, err := s.Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Value:       pbtypes.String(uniqueKey),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+		Limit: 2,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, ErrObjectNotFound
+	}
+
+	if len(records) > 1 {
+		// should never happen
+		return nil, fmt.Errorf("multiple objects with unique key %s", uniqueKey)
+	}
+
+	return &model.ObjectDetails{Details: records[0].Details}, nil
 }
 
 func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {
@@ -705,7 +742,7 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url 
 func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.Struct, objectType *model.ObjectType) {
 	// relationKeys := objectInfos[0].RelationKeys
 	for _, relationID := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
-		relationKey, err := pbtypes.RelationIdToKey(relationID)
+		relationKey, err := pbtypes.BundledRelationIdToKey(relationID)
 		if err == nil {
 			//nolint:govet
 			relation, err := s.GetRelationByKey(relationKey)
@@ -723,10 +760,10 @@ func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.St
 	}
 }
 
-func (s *dsObjectStore) GetObjectTypes(urls []string) (ots []*model.ObjectType, err error) {
-	ots = make([]*model.ObjectType, 0, len(urls))
-	for _, url := range urls {
-		ot, e := s.GetObjectType(url)
+func (s *dsObjectStore) GetObjectTypes(ids []string) (ots []*model.ObjectType, err error) {
+	ots = make([]*model.ObjectType, 0, len(ids))
+	for _, id := range ids {
+		ot, e := s.GetObjectType(id)
 		if e != nil {
 			err = e
 		} else {

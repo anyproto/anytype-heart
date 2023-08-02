@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -79,6 +80,7 @@ type service struct {
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
 	objectStore       objectstore.ObjectStore
+	coreService       core.Service
 }
 
 func New(statusWatcher SyncStatusWatcher, objectStore objectstore.ObjectStore) Service {
@@ -93,6 +95,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
 	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
+
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	return nil

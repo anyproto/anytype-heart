@@ -30,11 +30,6 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
-    - [Change._RelationAdd](#anytype-Change-_RelationAdd)
-    - [Change._RelationRemove](#anytype-Change-_RelationRemove)
-    - [Change._RelationUpdate](#anytype-Change-_RelationUpdate)
-    - [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict)
-    - [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes)
   
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
@@ -1790,9 +1785,6 @@ the element of change tree used to store and internal apply smartBlock history
 | relationRemove | [Change.RelationRemove](#anytype-Change-RelationRemove) |  |  |
 | detailsSet | [Change.DetailsSet](#anytype-Change-DetailsSet) |  |  |
 | detailsUnset | [Change.DetailsUnset](#anytype-Change-DetailsUnset) |  |  |
-| old_relationAdd | [Change._RelationAdd](#anytype-Change-_RelationAdd) |  | deprecated |
-| old_relationRemove | [Change._RelationRemove](#anytype-Change-_RelationRemove) |  |  |
-| old_relationUpdate | [Change._RelationUpdate](#anytype-Change-_RelationUpdate) |  |  |
 | objectTypeAdd | [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd) |  |  |
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove) |  |  |
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
@@ -1876,6 +1868,7 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -1891,6 +1884,7 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -2050,87 +2044,6 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationAdd"></a>
-
-### Change._RelationAdd
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationRemove"></a>
-
-### Change._RelationRemove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate"></a>
-
-### Change._RelationUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| format | [model.RelationFormat](#anytype-model-RelationFormat) |  |  |
-| name | [string](#string) |  |  |
-| defaultValue | [google.protobuf.Value](#google-protobuf-Value) |  |  |
-| objectTypes | [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes) |  |  |
-| multi | [bool](#bool) |  |  |
-| selectDict | [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate-Dict"></a>
-
-### Change._RelationUpdate.Dict
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| dict | [model.Relation.Option](#anytype-model-Relation-Option) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate-ObjectTypes"></a>
-
-### Change._RelationUpdate.ObjectTypes
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypes | [string](#string) | repeated |  |
 
 
 

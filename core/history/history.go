@@ -92,7 +92,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		}
 	}
 
-	rels, _ := h.relationService.FetchLinks(s.PickRelationLinks())
+	rels, _ := h.relationService.FetchLinks(id.SpaceID, s.PickRelationLinks())
 	return &model.ObjectView{
 		RootId:        id.ObjectID,
 		Type:          model.SmartBlockType(sbType),

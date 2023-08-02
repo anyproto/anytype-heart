@@ -49,7 +49,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 		return nil, err
 	}
 	rel.Creator = addr.AnytypeProfileId
-	details := bundle.GetDetailsForRelation(true, rel)
+	details := bundle.GetDetailsForBundledRelation(rel)
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)

@@ -560,7 +560,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	for k := range relationKeys {
 		relationKeysList = append(relationKeysList, k)
 	}
-	relations, err := cb.relationService.FetchKeys(relationKeysList...)
+	relations, err := cb.relationService.FetchKeys(cb.SpaceID(), relationKeysList...)
 	if err != nil {
 		return fmt.Errorf("failed to fetch relation keys of dataview: %v", err)
 	}

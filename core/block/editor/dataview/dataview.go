@@ -2,7 +2,6 @@ package dataview
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -21,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -133,7 +131,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.relationService.FetchKey(key)
+		relation, err2 := d.relationService.FetchKey(s.SpaceID(), key)
 		if err2 != nil {
 			return err2
 		}
@@ -380,8 +378,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 			return nil, err
 		}
 
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		if sbt == smartblock2.SmartBlockTypeBundledObjectType {
+		if sbt == smartblock2.SmartBlockTypeObjectType {
 			if hasRelations {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
@@ -391,18 +388,11 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 			hasType = true
 		}
 
-		if strings.HasPrefix(source, addr.RelationKeyToIdPrefix) {
+		if sbt == smartblock2.SmartBlockTypeRelation {
 			if hasType {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
 			hasRelations = true
-		}
-
-		if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
-			if hasRelations {
-				return nil, fmt.Errorf("dataview source contains both type and relation")
-			}
-			hasType = true
 		}
 	}
 	if hasType {
@@ -463,14 +453,15 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	if !dvChanged {
 		return
 	}
+	systemtypes := d.anytype.PredefinedObjects(d.SpaceID()).SystemTypes
 	var restrictedSources = []string{
-		bundle.TypeKeyFile.URL(),
-		bundle.TypeKeyImage.URL(),
-		bundle.TypeKeyVideo.URL(),
-		bundle.TypeKeyAudio.URL(),
-		bundle.TypeKeyObjectType.URL(),
-		bundle.TypeKeySet.URL(),
-		bundle.TypeKeyRelation.URL(),
+		systemtypes[bundle.TypeKeyFile],
+		systemtypes[bundle.TypeKeyImage],
+		systemtypes[bundle.TypeKeyVideo],
+		systemtypes[bundle.TypeKeyAudio],
+		systemtypes[bundle.TypeKeyObjectType],
+		systemtypes[bundle.TypeKeySet],
+		systemtypes[bundle.TypeKeyRelation],
 	}
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]

@@ -150,7 +150,6 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 
 	commonDetails := calculateCommonDetails(
 		i.hash,
-		bundle.TypeKeyImage,
 		model.ObjectType_image,
 		i.extractLastModifiedDate(ctx, imageExif),
 	)
@@ -159,6 +158,8 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: commonDetails,
 	}
+	typeID := i.service.coreService.PredefinedObjects(i.spaceID).SystemTypes[bundle.TypeKeyImage]
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()

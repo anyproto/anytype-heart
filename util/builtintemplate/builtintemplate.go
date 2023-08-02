@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"io/ioutil"
 
 	"github.com/anyproto/any-sync/app"
+	relation2 "github.com/anyproto/anytype-heart/core/relation"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -22,8 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtintemplate"
@@ -41,12 +41,15 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	source        source.Service
-	generatedHash string
+	source          source.Service
+	relationService relation2.Service
+	generatedHash   string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
+	b.relationService = a.MustComponent(relation2.CName).(relation2.Service)
+
 	b.makeGenHash(4)
 	return
 }
@@ -95,7 +98,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		snapshot = snapshotWithType.Snapshot
 	}
 
-	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)
+	st := state.NewDocFromSnapshot("", snapshot).(*state.State)
 	st = st.NewState()
 	id := st.RootId()
 	st = st.Copy()
@@ -107,7 +110,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.BundledURL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
 
-	st.InjectDerivedDetails()
+	st.InjectDerivedDetails(b.relationService)
 
 	// fix divergence between extra relations and simple block relations
 	st.Iterate(func(b simple.Block) (isContinue bool) {

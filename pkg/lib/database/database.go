@@ -81,7 +81,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{bundle.TypeKeySpace.URL()})})
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.Float64(float64(model.ObjectType_space))})
 	}
 	return filters
 }

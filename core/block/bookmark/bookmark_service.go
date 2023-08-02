@@ -63,6 +63,7 @@ type service struct {
 	linkPreview    linkpreview.LinkPreview
 	tempDirService *core.TempDirService
 	fileService    files.Service
+	coreService    core.Service
 }
 
 func New(tempDirService *core.TempDirService) Service {
@@ -74,6 +75,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
+
 	s.fileService = app.MustComponent[files.Service](a)
 	return nil
 }
@@ -89,6 +92,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 		return "", nil, fmt.Errorf("empty details")
 	}
 
+	typeID := s.coreService.PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyBookmark]
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
 	records, _, err := s.store.Query(nil, database.Query{
@@ -107,7 +111,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyBookmark.URL()),
+				Value:       pbtypes.String(typeID),
 			},
 		},
 		Limit: 1,
@@ -120,7 +124,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 		rec := records[0]
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypePage, details, nil)
 		if err != nil {
 			return "", nil, fmt.Errorf("create bookmark object: %w", err)

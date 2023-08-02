@@ -10,6 +10,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -31,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -161,7 +162,7 @@ type DocInfo struct {
 type InitContext struct {
 	IsNewObject    bool
 	Source         source.Source
-	ObjectTypeUrls []string
+	ObjectTypeKeys []string
 	RelationKeys   []string
 	State          *state.State
 	Relations      []*model.Relation
@@ -255,6 +256,10 @@ func (sb *smartBlock) Id() string {
 
 func (sb *smartBlock) SpaceID() string {
 	return sb.spaceID
+}
+func (sb *smartBlock) UniqueKey() uniquekey.UniqueKey {
+	uk, _ := uniquekey.NewUniqueKey(sb.Type(), sb.Doc.UniqueKeyInternal())
+	return uk
 }
 
 func (s *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
@@ -564,7 +569,12 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+			relId, err := sb.relationService.GetRelationId(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
+			if err != nil {
+				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
+				continue
+			}
+			ids = append(ids, relId)
 		}
 		if !includeDetails {
 			continue
@@ -799,7 +809,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	s.InjectDerivedDetails()
+	s.InjectDerivedDetails(sb.relationService)
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -877,7 +887,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.relationService.FetchKeys(relationKeys...)
+	relations, err := sb.relationService.FetchKeys(s.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -910,6 +920,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		}
 	}
 
+	sb.UniqueKey()
 	if sb.objectStore == nil {
 		return nil
 	}
@@ -984,7 +995,7 @@ func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
+	st.SetObjectTypes([]string{sb.Anytype().PredefinedObjects(sb.spaceID).SystemTypes[bundle.TypeKeyTemplate], st.ObjectType()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)
@@ -1008,7 +1019,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
-	s.InjectDerivedDetails()
+	s.InjectDerivedDetails(sb.relationService)
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -1036,7 +1047,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	d.(*state.State).InjectDerivedDetails()
+	d.(*state.State).InjectDerivedDetails(sb.relationService)
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1239,7 +1250,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.RelationService().FetchLinks(links)
+	rels, _ := sb.RelationService().FetchLinks(sb.spaceID, links)
 	return rels
 }
 

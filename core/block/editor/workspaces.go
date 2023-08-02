@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
@@ -126,6 +125,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
 	}
 
+	spaceId := ctx.State.SpaceID()
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
@@ -134,7 +134,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
-		template.WithForcedObjectTypes([]string{bundle.TypeKeySpace.URL()}),
+		template.WithForcedObjectTypes([]string{p.anytype.PredefinedObjects(spaceId).SystemTypes[bundle.TypeKeySpace]}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedObjects(p.SpaceID()).Profile)),
 		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
@@ -169,10 +169,11 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 		// type was not installed from marketplace
 		return nil, nil
 	}
-
+	spaceId := w.SpaceID()
+	predefinedIds := w.anytype.PredefinedObjects(spaceId)
 	var skipIDs = map[string]struct{}{}
 	for _, rel := range bundle.SystemRelations {
-		skipIDs[addr.RelationKeyToIdPrefix+rel.String()] = struct{}{}
+		skipIDs[predefinedIds.SystemRelations[rel]] = struct{}{}
 	}
 
 	relIds := pbtypes.GetStringList(obj.Details, bundle.RelationKeyRecommendedRelations.String())
@@ -205,7 +206,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyObjectType.URL()),
+				Value:       pbtypes.String(predefinedIds.SystemTypes[bundle.TypeKeyObjectType]),
 			},
 			{
 				RelationKey: bundle.RelationKeyRecommendedRelations.String(),
@@ -213,7 +214,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 				Value:       pbtypes.StringList(relIds),
 			},
 			{
-				RelationKey: bundle.RelationKeyWorkspaceId.String(),
+				RelationKey: bundle.RelationKeyWorkspaceId.String(), // todo: replace with spaceId
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(w.Id()),
 			},
@@ -240,7 +241,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 		if _, exists := skipIDs[relId]; exists {
 			continue
 		}
-		relKey, err := pbtypes.RelationIdToKey(relId)
+		relKey, err := pbtypes.BundledRelationIdToKey(relId)
 		if err != nil {
 			log.Errorf("failed to get relation key from id %s: %s", relId, err.Error())
 			continue

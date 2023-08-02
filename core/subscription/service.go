@@ -2,8 +2,8 @@ package subscription
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -109,6 +108,21 @@ func (s *service) Run(context.Context) (err error) {
 	return
 }
 
+func spaceIdFromFilters(filters []*model.BlockContentDataviewFilter) (spaceId string, err error) {
+	for _, f := range filters {
+		// todo: this doesn't support IN filters
+		if f.Condition != model.BlockContentDataviewFilter_Equal {
+			continue
+		}
+		if f.RelationKey == bundle.RelationKeySpaceId.String() {
+			spaceId = f.Value.GetStringValue()
+			return
+		}
+	}
+	err = fmt.Errorf("spaceId not found")
+	return
+}
+
 func (s *service) Search(ctx session.Context, req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
@@ -126,7 +140,11 @@ func (s *service) Search(ctx session.Context, req pb.RpcObjectSearchSubscribeReq
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		spaceId, err := spaceIdFromFilters(req.Filters)
+		if err != nil {
+			return nil, fmt.Errorf("source set but can't get spaceId from filters: %w", err)
+		}
+		sourceFilter, err := s.filtersFromSource(spaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
@@ -290,7 +308,11 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		spaceId, err := spaceIdFromFilters(req.Filters)
+		if err != nil {
+			return nil, fmt.Errorf("source set but can't get spaceId from filters: %w", err)
+		}
+		sourceFilter, err := s.filtersFromSource(spaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
@@ -463,40 +485,22 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	return dur
 }
 
-func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
-	var objTypeIds, relTypeKeys []string
-
-	for _, source := range sources {
-		if source == "" {
-			continue
-		}
-		sbt, err := s.sbtProvider.Type("", source)
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		if err == nil && sbt == smartblock.SmartBlockTypeBundledObjectType {
-			objTypeIds = append(objTypeIds, source)
-		} else {
-			if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
-				objTypeIds = append(objTypeIds, source)
-				continue
-			}
-			relKey, err := pbtypes.RelationIdToKey(source)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get relation key from id %s: %s", source, err.Error())
-			}
-			relTypeKeys = append(relTypeKeys, relKey)
-		}
+func (s *service) filtersFromSource(spaceID string, sources []string) (filter.Filter, error) {
+	m, err := s.sbtProvider.Map(spaceID, sources)
+	if err != nil {
+		return nil, err
 	}
-
 	var relTypeFilter filter.OrFilters
-
-	if len(objTypeIds) > 0 {
+	if len(m[smartblock.SmartBlockTypeObjectType]) > 0 {
 		relTypeFilter = append(relTypeFilter, filter.In{
 			Key:   bundle.RelationKeyType.String(),
-			Value: pbtypes.StringList(objTypeIds).GetListValue(),
+			Value: pbtypes.StringList(m[smartblock.SmartBlockTypeObjectType]).GetListValue(),
 		})
 	}
 
-	for _, key := range relTypeKeys {
+	for _, key := range m[smartblock.SmartBlockTypeRelation] {
+		// todo: fix this
+		return nil, errors.New("relation filter not supported")
 		relTypeFilter = append(relTypeFilter, filter.Exists{
 			Key: key,
 		})

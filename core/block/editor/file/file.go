@@ -9,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -36,9 +37,14 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
+type PredefinedObjectsGetter interface {
+	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
+}
+
 func NewFile(
 	sb smartblock.SmartBlock,
 	fileSource BlockService,
+	idGetter PredefinedObjectsGetter,
 	tempDirProvider core.TempDirProvider,
 	fileService files.Service,
 	picker getblock.Picker,
@@ -78,10 +84,11 @@ type FileSource struct {
 
 type sfile struct {
 	smartblock.SmartBlock
-	fileSource      BlockService
-	tempDirProvider core.TempDirProvider
-	fileService     files.Service
-	picker          getblock.Picker
+	fileSource        BlockService
+	tempDirProvider   core.TempDirProvider
+	fileService       files.Service
+	picker            getblock.Picker
+	predefinedObjects PredefinedObjectsGetter
 }
 
 func (sf *sfile) Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -217,9 +224,11 @@ func (sf *sfile) UploadFileWithHash(blockId string, source FileSource) (UploadRe
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
 	s := sf.NewState().SetGroupId(groupId)
+	pageTypeId := sf.predefinedObjects.PredefinedObjects(sf.SpaceID()).SystemTypes[bundle.TypeKeyPage]
 	for _, entry := range entries {
 		var blockId, pageId string
 		if entry.isDir {
+
 			if err = sf.Apply(s); err != nil {
 				return
 			}
@@ -231,7 +240,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				Position:  pos,
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{
-						"type":      pbtypes.String(bundle.TypeKeyPage.URL()),
+						"type":      pbtypes.String(pageTypeId),
 						"name":      pbtypes.String(entry.name),
 						"iconEmoji": pbtypes.String("📁"),
 					},

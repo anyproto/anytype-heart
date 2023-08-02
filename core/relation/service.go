@@ -1,18 +1,20 @@
 package relation
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -34,21 +36,58 @@ func New() Service {
 }
 
 type Service interface {
-	FetchKeys(keys ...string) (relations relationutils.Relations, err error)
-	FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
-	ListAll(opts ...FetchOption) (relations relationutils.Relations, err error)
+	FetchKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
+	FetchKey(spaceId string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
+	ListAll(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error)
+	GetRelationId(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error)
+	// GetSystemTypeId is the optimized version of GetTypeId,
+	// cause all system types are precalculated
+	GetSystemTypeId(spaceId string, key bundle.TypeKey) (id string, err error)
+	GetTypeId(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
 
-	FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
-	ValidateFormat(key string, v *types.Value) error
+	FetchLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
+	ValidateFormat(spaceId string, key string, v *types.Value) error
 	app.Component
 }
 
 type service struct {
 	objectStore objectstore.ObjectStore
+	core        core.Service
+}
+
+func (s *service) GetTypeId(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
+	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, key.String())
+	if err != nil {
+		return "", err
+	}
+
+	return s.core.DeriveObjectId(ctx, spaceId, uk)
+}
+
+func (s *service) GetSystemTypeId(spaceId string, key bundle.TypeKey) (id string, err error) {
+	predefined := s.core.PredefinedObjects(spaceId)
+	if len(predefined.SystemTypes) == 0 {
+		return "", fmt.Errorf("predefined not found for the space")
+	}
+	if v, ok := predefined.SystemTypes[key]; !ok {
+		return "", fmt.Errorf("system type not found")
+	} else {
+		return v, nil
+	}
+}
+
+func (s *service) GetRelationId(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {
+	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, key.String())
+	if err != nil {
+		return "", err
+	}
+
+	return s.core.DeriveObjectId(ctx, spaceId, uk)
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	s.core = a.MustComponent(core.CName).(core.Service)
 	return
 }
 
@@ -56,60 +95,73 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) FetchLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+func (s *service) FetchLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
 	keys := make([]string, 0, len(links))
 	for _, l := range links {
 		keys = append(keys, l.Key)
 	}
-	return s.fetchKeys(keys...)
+	return s.fetchKeys(spaceId, keys...)
 }
 
-func (s *service) FetchKeys(keys ...string) (relations relationutils.Relations, err error) {
-	return s.fetchKeys(keys...)
+func (s *service) FetchKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error) {
+	return s.fetchKeys(spaceId, keys...)
 }
 
-func (s *service) fetchKeys(keys ...string) (relations []*relationutils.Relation, err error) {
-	ids := make([]string, 0, len(keys))
+func (s *service) fetchKeys(spaceId string, keys ...string) (relations []*relationutils.Relation, err error) {
+	uks := make([]string, 0, len(keys))
+
 	for _, key := range keys {
-		ids = append(ids, addr.RelationKeyToIdPrefix+key)
+		uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, key)
+		if err != nil {
+			return nil, err
+		}
+		uks = append(uks, uk.String())
 	}
-	records, err := s.objectStore.QueryByID(ids)
+	records, _, err := s.objectStore.Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(uks),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
 	if err != nil {
 		return
 	}
 
 	for _, rec := range records {
-		if pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
-			continue
-		}
 		relations = append(relations, relationutils.RelationFromStruct(rec.Details))
 	}
 	return
 }
 
-func (s *service) ListAll(opts ...FetchOption) (relations relationutils.Relations, err error) {
-	return s.listAll(opts...)
+func (s *service) ListAll(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
+	return s.listAll(spaceId, opts...)
 }
 
-func (s *service) listAll(opts ...FetchOption) (relations relationutils.Relations, err error) {
+func (s *service) listAll(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
 	filters := []*model.BlockContentDataviewFilter{
 		{
-			RelationKey: bundle.RelationKeyType.String(),
+			RelationKey: bundle.RelationKeyLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
+			Value:       pbtypes.Float64(float64(model.ObjectType_relation)),
 		},
 	}
 	o := &fetchOptions{}
 	for _, apply := range opts {
 		apply(o)
 	}
-	if o.workspaceId != nil {
-		filters = append(filters, &model.BlockContentDataviewFilter{
-			RelationKey: bundle.RelationKeyWorkspaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(*o.workspaceId),
-		})
-	}
+	filters = append(filters, &model.BlockContentDataviewFilter{
+		RelationKey: bundle.RelationKeyWorkspaceId.String(),
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       pbtypes.String(spaceId),
+	})
 
 	relations2, _, err := s.objectStore.Query(nil, database.Query{
 		Filters: filters,
@@ -125,47 +177,38 @@ func (s *service) listAll(opts ...FetchOption) (relations relationutils.Relation
 }
 
 type fetchOptions struct {
-	workspaceId *string
 }
 
 type FetchOption func(options *fetchOptions)
 
-func WithWorkspaceId(id string) FetchOption {
-	return func(options *fetchOptions) {
-		options.workspaceId = &id
-	}
+func (s *service) FetchKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
+	return s.fetchKey(spaceID, key, opts...)
 }
 
-func (s *service) FetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
-	return s.fetchKey(key, opts...)
-}
-
-func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
+func (s *service) fetchKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
 	o := &fetchOptions{}
 	for _, apply := range opts {
 		apply(o)
+	}
+	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, key)
+	if err != nil {
+		return nil, err
 	}
 	q := database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Value:       pbtypes.String(key),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Value:       pbtypes.String(uk.String()),
 			},
 		},
 	}
-	if o.workspaceId != nil {
-		q.Filters = append(q.Filters, &model.BlockContentDataviewFilter{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyWorkspaceId.String(),
-			Value:       pbtypes.String(*o.workspaceId),
-		})
-	}
+	q.Filters = append(q.Filters, &model.BlockContentDataviewFilter{
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		RelationKey: bundle.RelationKeySpaceId.String(),
+		Value:       pbtypes.String(spaceID),
+	})
+
 	records, _, err := s.objectStore.Query(nil, q)
 	if err != nil {
 		return
@@ -176,8 +219,8 @@ func (s *service) fetchKey(key string, opts ...FetchOption) (relation *relationu
 	return nil, ErrNotFound
 }
 
-func (s *service) ValidateFormat(key string, v *types.Value) error {
-	r, err := s.FetchKey(key)
+func (s *service) ValidateFormat(spaceID string, key string, v *types.Value) error {
+	r, err := s.FetchKey(spaceID, key)
 	if err != nil {
 		return err
 	}

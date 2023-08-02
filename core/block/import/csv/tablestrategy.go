@@ -42,7 +42,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, useFirst
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
+		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
 		Collections:   st.Store(),
 		RelationLinks: st.GetRelationLinks(),
 	}

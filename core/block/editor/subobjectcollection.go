@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -176,8 +175,6 @@ func (c *SubObjectCollection) subState(st *state.State, collection string, fullI
 		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
 	}
 
-	restrictions := restriction.GetRestrictionsForSubobject(fullId)
-	subst.SetLocalDetail(bundle.RelationKeyRestrictions.String(), restrictions.ToPB())
 	subst.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList([]string{}))
 	changeId := st.StoreChangeIdForPath(collection + addr.SubObjectCollectionIdSeparator + subId)
 	if changeId == "" {

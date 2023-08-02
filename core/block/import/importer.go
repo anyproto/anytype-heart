@@ -245,7 +245,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
 		// we will get id of relation options after we figure out according relations keys
-		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.URL()) {
+		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}

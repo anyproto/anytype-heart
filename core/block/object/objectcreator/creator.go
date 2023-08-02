@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -16,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -55,6 +55,7 @@ type Creator struct {
 	blockPicker       block.Picker
 	objectStore       objectstore.ObjectStore
 	collectionService CollectionService
+	relationService   relation.Service
 	bookmark          bookmark.Service
 	objectFactory     *editor.ObjectFactory
 	app               *app.App
@@ -84,6 +85,8 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.collectionService = app.MustComponent[CollectionService](a)
+	c.relationService = app.MustComponent[relation.Service](a)
+
 	c.anytype = a.MustComponent(core.CName).(core.Service)
 	c.app = a
 	return nil
@@ -122,18 +125,45 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 		createState = state.NewDoc("", nil).(*state.State)
 	}
 	startTime := time.Now()
-	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-	if objectTypes == nil {
-		objectTypes = createState.ObjectTypes()
-		if objectTypes == nil {
-			objectTypes = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
+	// priority:
+	// 1. details
+	// 2. createState
+	// 3. createState details
+	// 4. default object type by smartblock type
+	objectTypeIds := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
+	objectTypeKeys := make([]string, 0, len(objectTypeIds))
+	if objectTypeIds == nil {
+		objectTypeKeys = createState.ObjectTypes()
+		if objectTypeKeys == nil {
+			objectTypeIds = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
+		} else {
+			for _, objectTypeKey := range objectTypeKeys {
+				typeId, err := c.relationService.GetTypeId(ctx, spaceID, bundle.TypeKey(objectTypeKey))
+				if err != nil {
+					return "", nil, err
+				}
+				objectTypeIds = append(objectTypeIds, typeId)
+			}
 		}
 	}
-	if len(objectTypes) == 0 {
+	if len(objectTypeIds) == 0 {
 		if ot, exists := bundle.DefaultObjectTypePerSmartblockType[sbType]; exists {
-			objectTypes = []string{ot.URL()}
+			objectTypeKeys = []string{ot.String()}
 		} else {
-			objectTypes = []string{bundle.TypeKeyPage.URL()}
+			objectTypeKeys = []string{bundle.TypeKeyPage.String()}
+		}
+	}
+
+	if len(objectTypeIds) > 0 && len(objectTypeKeys) == 0 {
+		ots, err := c.objectStore.GetObjectTypes(objectTypeIds)
+		if err != nil {
+			return "", nil, err
+		}
+		if len(ots) != len(objectTypeIds) {
+			return "", nil, fmt.Errorf("can't find all object types")
+		}
+		for _, ot := range ots {
+			objectTypeKeys = append(objectTypeKeys, ot.Key)
 		}
 	}
 
@@ -141,12 +171,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	var workspaceID string
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
-			relId := addr.RelationKeyToIdPrefix + k
-			if _, err2 := c.objectStore.GetRelationByID(relId); err != nil {
-				// check if installed
-				err = fmt.Errorf("failed to get installed relation %s: %w", relId, err2)
-				return
-			}
+			// todo: check if relation exists locally
 			relationKeys = append(relationKeys, k)
 			createState.SetDetail(k, v)
 		}
@@ -168,6 +193,9 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID(spaceID)))
 
+	// todo: find a proper way to inject the spaceID as soon as possible into the createState
+	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
+
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
@@ -175,12 +203,12 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	ctx = context.WithValue(ctx, eventCreate, ev)
 	initFunc := func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
-		createState.SetObjectTypes(objectTypes)
-		createState.InjectDerivedDetails()
+
+		createState.InjectDerivedDetails(c.relationService)
 
 		return &smartblock.InitContext{
 			Ctx:            ctx,
-			ObjectTypeUrls: objectTypes,
+			ObjectTypeKeys: objectTypeKeys,
 			State:          createState,
 			RelationKeys:   relationKeys,
 		}
@@ -188,7 +216,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 
 	var sb smartblock.SmartBlock
 
-	if uKey := createState.UniqueKey(); uKey != "" {
+	if uKey := createState.UniqueKeyInternal(); uKey != "" {
 		uk, err := uniquekey.NewUniqueKey(sbType.ToProto(), uKey)
 		if err != nil {
 			return "", nil, err
@@ -233,25 +261,26 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 	source := req.Source
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
-	if len(source) == 0 {
-		source = []string{converter.DefaultSetSource.URL()}
-	}
-	if dvContent, dvSchema, err = dataview.DataviewBlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, source); err != nil {
-		return
-	}
+	var blockContent *model.BlockContentOfDataview
 
 	newState := state.NewDoc("", nil).NewState()
 
+	if len(source) > 0 {
+		// todo: decide the behaviour in case of empty source
+		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, source); err != nil {
+			return
+		}
+
+		if dvSchema != nil {
+			blockContent = &dvContent
+		}
+
+		if len(req.Source) > 0 {
+			newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
+		}
+	}
 	tmpls := []template.StateTransformer{
 		template.WithRequiredRelations(),
-	}
-	var blockContent *model.BlockContentOfDataview
-	if dvSchema != nil {
-		blockContent = &dvContent
-	}
-
-	if len(req.Source) > 0 {
-		newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
 	}
 
 	if blockContent != nil {
@@ -310,6 +339,7 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	if key == "" {
 		key = bson.NewObjectId().Hex()
+
 	} else {
 		// no need to check for the generated bson's
 		if bundle.HasRelation(key) {
@@ -330,7 +360,7 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 	// todo: check the objectTypes
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, details, nil)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, object, nil)
 }
 
 func (w *Creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
@@ -357,9 +387,7 @@ func (w *Creator) createRelationOption(ctx context.Context, spaceID string, deta
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
 
-	object.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelationOption.URL())
-
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, details, nil)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, object, nil)
 }
 
 type internalKeyGetter interface {
@@ -380,7 +408,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	key := uk.(internalKeyGetter).InternalKey()
 	var recommendedRelationKeys []string
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
-		relKey, err2 := pbtypes.RelationIdToKey(relId)
+		relKey, err2 := pbtypes.BundledRelationIdToKey(relId)
 		if err2 != nil {
 			log.Errorf("create object type: invalid recommended relation id: %s", relId)
 			continue
@@ -486,7 +514,11 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		}
 	}()
 
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, object, nil)
+	// we need to create it here directly, because we need to set the object type
+	createState := state.NewDoc("", nil).(*state.State)
+	createState.SetObjectType(bundle.TypeKeyObjectType.String())
+	createState.SetDetails(object)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, nil, createState)
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {
@@ -503,6 +535,33 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 
+	objectTypeId := pbtypes.GetString(details, bundle.RelationKeyType.String())
+	var objectTypeKey bundle.TypeKey
+	if forcedType != "" {
+		objectTypeId, err = c.relationService.GetSystemTypeId(spaceID, forcedType)
+		if err != nil {
+			return "", nil, err
+		}
+		objectTypeKey = forcedType
+	} else if objectTypeId == "" {
+		// here we can't rely on DefaultObjectTypePerSmartblockType, because we don't know the smartblock type yet
+		// it's actually opposite. We assume that client provides the object type, so we can determine the smartblock type
+		// todo: client has the default objectType setting, so probably we should assume that it is up for a client and just return error if it's not provided
+		objectTypeId, err = c.relationService.GetSystemTypeId(spaceID, bundle.TypeKeyPage)
+		if err != nil {
+			return "", nil, err
+		}
+		objectTypeKey = bundle.TypeKeyPage
+	} else {
+		ot, err := c.objectStore.GetObjectType(objectTypeId)
+		if err != nil {
+			return "", nil, err
+		}
+
+		objectTypeKey = bundle.TypeKey(ot.Key)
+	}
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectTypeId)
+
 	var internalFlags []*model.InternalFlag
 	if v, ok := req.(block.InternalFlagsGetter); ok {
 		internalFlags = v.GetInternalFlags()
@@ -512,31 +571,6 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 	var templateID string
 	if v, ok := req.(block.TemplateIDGetter); ok {
 		templateID = v.GetTemplateId()
-	}
-
-	var (
-		objectTypeKey bundle.TypeKey
-		objectTypeId  string
-	)
-	if forcedType != "" {
-		objectTypeKey = forcedType
-		uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, forcedType.String())
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to create unique key: %w", err)
-		}
-		objectTypeId, err = c.anytype.DeriveObjectId(ctx, spaceID, uk)
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
-		}
-	} else if objectTypeId = pbtypes.GetString(details, bundle.RelationKeyType.String()); objectTypeId == "" {
-		return "", nil, fmt.Errorf("missing type in details or in forcedType")
-	} else {
-		for typeKey, typeId := range c.anytype.PredefinedObjects(spaceID).SystemTypes {
-			if typeId == objectTypeId {
-				objectTypeKey = typeKey
-				break
-			}
-		}
 	}
 
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectTypeId)

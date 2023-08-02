@@ -117,7 +117,8 @@ func fixStateForNoteLayout(
 	req pb.RpcBlockListConvertToObjectsRequest,
 	newRoot string,
 ) {
-	if req.ObjectType == bundle.TypeKeyNote.URL() {
+	// todo: add check or remove this. It supposed to be run only for note
+	{
 		objState.Add(base.NewBase(&model.Block{
 			// This id will be replaced by id of the new object
 			Id:          "_root",

@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -184,12 +183,12 @@ func (ds *Service) getRelationSnapshot(databaseProperty property.DatabasePropert
 	relationDetails := ds.getRelationDetails(databaseProperty, name, relationKey)
 	relationSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     relationDetails,
-		ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
+		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
 	}
 	snapshot := &converter.Snapshot{
-		Id:       addr.RelationKeyToIdPrefix + relationKey,
+		Id:       relationKey,
 		Snapshot: &pb.ChangeSnapshot{Data: relationSnapshot},
-		SbType:   sb.SmartBlockTypeSubObject,
+		SbType:   sb.SmartBlockTypeRelation,
 	}
 	return relationSnapshot, snapshot
 }
@@ -198,7 +197,6 @@ func (ds *Service) getRelationDetails(propertyFormat property.DatabasePropertyHa
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propertyFormat.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
@@ -243,7 +241,7 @@ func (ds *Service) provideSnapshot(d Database, st *state.State, detailsStruct *t
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
-		ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
+		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 		Collections:   st.Store(),
 		RelationLinks: st.GetRelationLinks(),
 	}

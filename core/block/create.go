@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -55,10 +55,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		st.SetLocalDetails(nil)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
 		t := st.ObjectTypes()
-		t, _ = relationutils.MigrateObjectTypeIds(t)
 		st.SetObjectTypes(t)
-		targetObjectType, _ := relationutils.MigrateObjectTypeId(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
-		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectType))
 		return nil
 	}); err != nil {
 		return
@@ -108,7 +105,11 @@ func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, otID
 	}
 	var st = state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otID))
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otID})
+	templateTypeID, err := s.relationService.GetSystemTypeId(spaceID, bundle.TypeKeyTemplate)
+	if err != nil {
+		return "", fmt.Errorf("get template type id: %w", err)
+	}
+	st.SetObjectTypes([]string{templateTypeID, otID})
 	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
@@ -180,6 +181,11 @@ func (s *Service) CreateLinkToTheNewObject(
 		return
 	}
 
+	fmt.Printf("%+v", s.anytype.PredefinedObjects(req.SpaceId))
+	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
+	sss, _ := s.anytype.DeriveObjectId(ctx, req.SpaceId, uk)
+	fmt.Printf("%+v", sss)
+
 	s.objectCreator.InjectWorkspaceID(req.Details, req.SpaceId, req.ContextId)
 	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, "")
 	if err != nil {
@@ -220,7 +226,11 @@ func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) e
 		st := b.NewState()
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 		commonOperations.SetLayoutInState(st, model.ObjectType_set)
-		st.SetObjectType(bundle.TypeKeySet.URL())
+		setTypeID, err := s.relationService.GetSystemTypeId(st.SpaceID(), bundle.TypeKeySet)
+		if err != nil {
+			return fmt.Errorf("get set type id: %w", err)
+		}
+		st.SetObjectType(setTypeID)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

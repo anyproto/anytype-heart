@@ -10,11 +10,12 @@ import (
 
 const (
 	SubObjectCollectionIdSeparator = "-"
-	RelationKeyToIdPrefix          = "rel-" //
-	ObjectTypeKeyToIdPrefix        = "ot-"  //
+	// deprecated
+	RelationKeyToIdPrefix = "rel-" //
+	// deprecated
+	ObjectTypeKeyToIdPrefix = "ot-" //
 
-	BundledRelationURLPrefix    = "_br"
-	OldIndexedRelationURLPrefix = "_ir"
+	BundledRelationURLPrefix = "_br"
 
 	BundledObjectTypeURLPrefix = "_ot"
 
@@ -43,16 +44,6 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 		return model.SmartBlockType(v), nil
 	}
 	return 0, fmt.Errorf("sb type '%s' not found", sbTypeName)
-}
-
-func ConvertBundledObjectIdToInstalledId(bundledId string) (string, error) {
-	if strings.HasPrefix(bundledId, BundledRelationURLPrefix) {
-		return RelationKeyToIdPrefix + strings.TrimPrefix(bundledId, BundledRelationURLPrefix), nil
-	} else if strings.HasPrefix(bundledId, BundledObjectTypeURLPrefix) {
-		return ObjectTypeKeyToIdPrefix + strings.TrimPrefix(bundledId, BundledObjectTypeURLPrefix), nil
-	}
-
-	return "", fmt.Errorf("unknown bundled id")
 }
 
 func TimeToID(t time.Time) string {

@@ -372,7 +372,7 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, relationService relation
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := relationService.FetchKey(req.RelationKey)
+	rel, err := relationService.FetchKey(s.SpaceID(), req.RelationKey)
 	if err != nil {
 		return
 	}

@@ -203,9 +203,13 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 		return m
 	}
 
-	var (
-		ids []string
-	)
+	resp := mw.ObjectListDelete(cctx, &pb.RpcObjectListDeleteRequest{
+		ObjectIds: req.ObjectIds,
+	})
 
-	return response(ids, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, fmt.Errorf("not implemented"))
+	if resp.Error != nil {
+		return response([]string{}, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to delete objects: %s", resp.Error.Description))
+	}
+
+	return response(req.ObjectIds, 0, nil)
 }

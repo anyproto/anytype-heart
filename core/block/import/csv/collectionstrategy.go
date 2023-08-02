@@ -105,7 +105,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 			SbType: smartblock.SmartBlockTypeSubObject,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 				Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
-				ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
+				ObjectTypes: []string{bundle.TypeKeyRelation.String()},
 			}},
 		})
 	}
@@ -157,7 +157,6 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(format)
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	return details
@@ -222,7 +221,7 @@ func provideObjectSnapshot(st *state.State, details *types.Struct) *converter.Sn
 				Blocks:        st.Blocks(),
 				Details:       details,
 				RelationLinks: st.GetRelationLinks(),
-				ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
+				ObjectTypes:   []string{bundle.TypeKeyPage.String()},
 			},
 		},
 	}
@@ -249,7 +248,7 @@ func (c *CollectionStrategy) provideCollectionSnapshots(details *types.Struct, s
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
+		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 		Collections:   st.Store(),
 		RelationLinks: st.GetRelationLinks(),
 	}

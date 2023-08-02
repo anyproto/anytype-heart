@@ -2,8 +2,8 @@ package converter
 
 import (
 	"fmt"
-	"strings"
 
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
@@ -125,11 +124,11 @@ func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
 
 func (c *LayoutConverter) fromAnyToSet(st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
-	if len(source) == 0 {
-		source = []string{DefaultSetSource.URL()}
-	}
-
 	addFeaturedRelationSetOf(st)
+	if len(source) == 0 {
+		// do not create dataview block if source is empty
+		return nil
+	}
 
 	dvBlock, _, err := dataview.DataviewBlockBySource(st.SpaceID(), c.sbtProvider, c.objectStore, source)
 	if err != nil {
@@ -153,13 +152,14 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
-	typesFromSet := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	setSourceIds := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	spaceId := st.SpaceID()
 
 	c.removeRelationSetOf(st)
 
 	dvBlock.Model().GetDataview().IsCollection = true
 
-	ids, err := c.listIDsFromSet(typesFromSet)
+	ids, err := c.listIDsFromSet(spaceId, setSourceIds)
 	if err != nil {
 		return err
 	}
@@ -167,11 +167,11 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) listIDsFromSet(typesFromSet []string) ([]string, error) {
+func (c *LayoutConverter) listIDsFromSet(spaceId string, typesFromSet []string) ([]string, error) {
 	records, _, err := c.objectStore.Query(
 		nil,
 		database.Query{
-			Filters: generateFilters(typesFromSet),
+			Filters: generateFilters(spaceId, c.sbtProvider, typesFromSet),
 		},
 	)
 	if err != nil {
@@ -260,11 +260,15 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 	return res, nil
 }
 
-func generateFilters(typesAndRelations []string) []*model.BlockContentDataviewFilter {
+func generateFilters(spaceId string, sbtProvider typeprovider.SmartBlockTypeProvider, typesAndRelations []string) []*model.BlockContentDataviewFilter {
 	var filters []*model.BlockContentDataviewFilter
-	types, relations := separate(typesAndRelations)
-	filters = appendTypesFilter(types, filters)
-	filters = appendRelationFilters(relations, filters)
+	m, err := sbtProvider.Map(spaceId, typesAndRelations)
+	if err != nil {
+		// todo: log error
+		return nil
+	}
+	filters = appendTypesFilter(m[coresb.SmartBlockTypeObjectType], filters)
+	filters = appendRelationFilters(m[coresb.SmartBlockTypeRelation], filters)
 	return filters
 }
 
@@ -289,15 +293,4 @@ func appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilt
 		})
 	}
 	return filters
-}
-
-func separate(typesAndRels []string) (types []string, rels []string) {
-	for _, id := range typesAndRels {
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			types = append(types, id)
-		} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			rels = append(rels, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
-		}
-	}
-	return
 }

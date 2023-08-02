@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/util/slice"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -253,9 +252,15 @@ func (p *Pb) getSnapshotForPbFile(spaceID string, name, profileID, path string,
 		}
 		snapshot.SbType = newSbType
 	}
+
 	if snapshot.SbType == model.SmartBlockType_SubObject {
-		id = p.getIDForSubObject(snapshot, id)
+		if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_objectType.String() {
+			snapshot.SbType = model.SmartBlockType_STType
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relation.String() {
+			snapshot.SbType = model.SmartBlockType_STRelation
+		}
 	}
+
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
 		id = p.getIDForUserProfile(spaceID, snapshot, profileID, id, isMigration)
 		p.setProfileIconOption(snapshot, profileID)
@@ -437,15 +442,6 @@ func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[strin
 	if len(objectsInCollections) != 0 {
 		st.UpdateStoreSlice(template.CollectionStoreKey, objectsInCollections)
 	}
-}
-
-// getIDForSubObject preserves original id from snapshot for relations and object types
-func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
-	originalId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	if strings.HasPrefix(originalId, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(originalId, addr.RelationKeyToIdPrefix) {
-		return originalId
-	}
-	return id
 }
 
 // cleanupEmptyBlockMigration is fixing existing pages, imported from Notion

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -26,16 +27,17 @@ import (
 var log = logging.Logger("collection-service")
 
 type Service struct {
-	lock        *sync.RWMutex
-	collections map[string]map[string]chan []string
-
-	picker      block.Picker
-	objectStore objectstore.ObjectStore
+	lock            *sync.RWMutex
+	collections     map[string]map[string]chan []string
+	relationService relation.Service
+	picker          block.Picker
+	objectStore     objectstore.ObjectStore
 }
 
 func New(
 	picker block.Picker,
 	store objectstore.ObjectStore,
+	relationService relation.Service,
 ) *Service {
 	return &Service{
 		picker:      picker,
@@ -50,6 +52,10 @@ func (s *Service) Init(a *app.App) (err error) {
 }
 
 func (s *Service) Name() string {
+	return "collection"
+}
+
+func (s *Service) CollectionType() string {
 	return "collection"
 }
 
@@ -207,7 +213,11 @@ func (s *Service) ObjectToCollection(id string) error {
 		}
 		st := b.NewState()
 		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
-		st.SetObjectType(bundle.TypeKeyCollection.URL())
+		collectionTypeID, err := s.relationService.GetSystemTypeId(st.SpaceID(), bundle.TypeKeyCollection)
+		if err != nil {
+			return fmt.Errorf("get set type id: %w", err)
+		}
+		st.SetObjectType(collectionTypeID)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -26,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -120,7 +118,6 @@ func (oc *ObjectCreator) Create(
 			filesToDelete = oc.relationSyncer.Sync(st, link.Key)
 		}
 	}
-	oc.updateDetailsKey(st, oldIDtoNew)
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
 	var respDetails *types.Struct
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
@@ -299,35 +296,6 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 			log.Errorf("failed to set spaceDashBoardID, %s", err.Error())
 		}
 	}
-}
-
-func (oc *ObjectCreator) updateDetailsKey(st *state.State, oldIDtoNew map[string]string) {
-	details := st.Details()
-	keyToUpdate := make([]string, 0)
-	for k, v := range details.GetFields() {
-		if newKey, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+k]; ok && newKey != addr.RelationKeyToIdPrefix+k {
-			relKey := strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix)
-			st.SetDetail(relKey, v)
-			keyToUpdate = append(keyToUpdate, k)
-		}
-	}
-	oc.updateRelationLinks(st, keyToUpdate, oldIDtoNew)
-	st.RemoveRelation(keyToUpdate...)
-
-}
-
-func (oc *ObjectCreator) updateRelationLinks(st *state.State, keyToUpdate []string, oldToNewIDs map[string]string) {
-	relLinksToUpdate := make([]*model.RelationLink, 0)
-	for _, key := range keyToUpdate {
-		if relLink := st.GetRelationLinks().Get(key); relLink != nil {
-			newKey := oldToNewIDs[addr.RelationKeyToIdPrefix+key]
-			relLinksToUpdate = append(relLinksToUpdate, &model.RelationLink{
-				Key:    strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix),
-				Format: relLink.Format,
-			})
-		}
-	}
-	st.AddRelationLinks(relLinksToUpdate...)
 }
 
 func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {

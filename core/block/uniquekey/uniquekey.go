@@ -25,6 +25,12 @@ type UniqueKey interface {
 	SmartblockType() model.SmartBlockType
 }
 
+type UniqueKeyInternal interface {
+	String() string
+	SmartblockType() model.SmartBlockType
+	InternalKey() string
+}
+
 type uniqueKey struct {
 	sbt model.SmartBlockType
 	key string
