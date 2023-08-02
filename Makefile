@@ -77,7 +77,7 @@ test-deps:
 
 clear-test-deps:
 	@echo 'Removing test mocks...'
-	@find util/testMock -name "*_mock.go" | xargs -r rm -v
+	@find . -name "*_mock.go" | xargs -r rm -v
 
 build-lib:
 	@echo 'Building library...'

@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -27,7 +28,10 @@ import (
 
 var logger = logging.Logger("import-csv")
 
-const defaultRelationName = "Field"
+const (
+	defaultRelationName = "Field"
+	rowSourceName       = "row"
+)
 
 type CollectionStrategy struct {
 	collectionService *collection.Service
@@ -47,7 +51,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 		return "", nil, err
 	}
 	relations, relationsSnapshots, errRelationLimit := getDetailsFromCSVTable(csvTable, useFirstRowForRelations)
-	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(csvTable, relations, useFirstRowForRelations)
+	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(path, csvTable, relations, useFirstRowForRelations)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -163,7 +167,7 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	return details
 }
 
-func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) ([]*converter.Snapshot, error) {
+func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) ([]*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
 	numberOfObjectsLimit := len(csvTable)
 	var err error
@@ -186,7 +190,7 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 				},
 			}),
 		}).NewState()
-		details, relationLinks := getDetailsForObject(csvTable[i], relations)
+		details, relationLinks := getDetailsForObject(csvTable[i], relations, path, i)
 		st.SetDetails(details)
 		st.AddRelationLinks(relationLinks...)
 		template.InitTemplate(st, template.WithTitle)
@@ -196,7 +200,15 @@ func getObjectsFromCSVRows(csvTable [][]string, relations []*model.Relation, use
 	return snapshots, err
 }
 
-func getDetailsForObject(relationsValues []string, relations []*model.Relation) (*types.Struct, []*model.RelationLink) {
+func buildSourcePath(path string, i int) string {
+	return path +
+		string(filepath.Separator) +
+		rowSourceName +
+		string(filepath.Separator) +
+		strconv.FormatInt(int64(i), 10)
+}
+
+func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int) (*types.Struct, []*model.RelationLink) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	relationLinks := make([]*model.RelationLink, 0)
 	for j, value := range relationsValues {
@@ -210,6 +222,7 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation) 
 			Format: relation.Format,
 		})
 	}
+	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, objectOrderIndex))
 	return details, relationLinks
 }
 

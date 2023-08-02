@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -524,12 +525,22 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 	}
 
 	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		var (
+			mErr       multierror.Error
+			anySucceed bool
+		)
 		for _, objID := range req.ObjectIds {
 			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
-				return err
+				log.With("objectID", objID).Errorf("failed to set object type to object '%s': %v", objID, err)
+				mErr.Errors = append(mErr.Errors, err)
+			} else {
+				anySucceed = true
 			}
 		}
-		return nil
+		if anySucceed {
+			return nil
+		}
+		return mErr.ErrorOrNil()
 	}); err != nil {
 		return response(pb.RpcObjectListSetObjectTypeResponseError_UNKNOWN_ERROR, err)
 	}

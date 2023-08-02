@@ -67,12 +67,13 @@ func (ds *Service) GetPages(ctx context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
 	notionImportContext *block.NotionImportContext,
+	relations *property.PropertiesStore,
 	progress process.Progress) (*converter.Response, *converter.ConvertError) {
+	progress.SetProgressMessage("Start creating pages from notion")
 	convertError := ds.fillNotionImportContext(pages, progress, notionImportContext)
 	if convertError != nil {
 		return nil, convertError
 	}
-	progress.SetProgressMessage("Start creating blocks")
 	numWorkers := workerPoolSize
 	if len(pages) < workerPoolSize {
 		numWorkers = 1
@@ -81,7 +82,7 @@ func (ds *Service) GetPages(ctx context.Context,
 
 	go ds.addWorkToPool(pages, pool)
 
-	do := NewDataObject(ctx, apiKey, mode, notionImportContext)
+	do := NewDataObject(ctx, apiKey, mode, notionImportContext, relations)
 	go pool.Start(do)
 
 	allSnapshots, converterError := ds.readResultFromPool(pool, mode, progress)
@@ -158,7 +159,10 @@ func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progre
 		if p.Parent.DatabaseID != "" {
 			importContext.ParentPageToChildIDs[p.Parent.DatabaseID] = append(importContext.ParentPageToChildIDs[p.Parent.DatabaseID], p.ID)
 		}
-		if p.Parent.PageID == "" && p.Parent.DatabaseID == "" {
+		if p.Parent.BlockID != "" {
+			importContext.ParentPageToChildIDs[p.Parent.BlockID] = append(importContext.ParentPageToChildIDs[p.Parent.BlockID], p.ID)
+		}
+		if p.Parent.PageID == "" && p.Parent.DatabaseID == "" && p.Parent.BlockID == "" {
 			importContext.ParentPageToChildIDs[""] = append(importContext.ParentPageToChildIDs[""], p.ID)
 		}
 		importContext.PageNameToID[p.ID] = ds.extractTitleFromPages(p)

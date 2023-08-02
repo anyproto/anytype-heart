@@ -76,6 +76,7 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 	}
 	layout := model.ObjectTypeLayout(noLayout)
 	d, err := s.store.GetDetails(id)
+	var ot string
 	if err == nil {
 		if pbtypes.HasField(d.GetDetails(), bundle.RelationKeyLayout.String()) {
 			layoutIndex := pbtypes.GetInt64(d.GetDetails(), bundle.RelationKeyLayout.String())
@@ -83,8 +84,9 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 				layout = model.ObjectTypeLayout(layoutIndex)
 			}
 		}
+		ot = pbtypes.GetString(d.GetDetails(), bundle.RelationKeyType.String())
 	}
-	obj := newRestrictionHolder(id, sbType, layout)
+	obj := newRestrictionHolder(id, sbType, layout, ot)
 	if err != nil {
 		return Restrictions{}, err
 	}

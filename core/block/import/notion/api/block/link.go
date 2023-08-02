@@ -85,15 +85,15 @@ type ChildPage struct {
 }
 
 func (b *ChildPageBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
-	bl := b.ChildPage.GetLinkToObjectBlock(req, pageID)
+	bl := b.ChildPage.GetLinkToObjectBlock(req, pageID, b.Parent.BlockID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{bl.Id},
 	}
 }
 
-func (p ChildPage) GetLinkToObjectBlock(importContext *NotionImportContext, pageID string) *model.Block {
-	targetBlockID, err := getTargetBlock(importContext.ParentPageToChildIDs, importContext.PageNameToID, importContext.NotionPageIdsToAnytype, pageID, p.Title)
+func (p ChildPage) GetLinkToObjectBlock(importContext *NotionImportContext, pageID, parentBlockID string) *model.Block {
+	targetBlockID, err := getTargetBlock(importContext, importContext.PageNameToID, importContext.NotionPageIdsToAnytype, pageID, p.Title, parentBlockID)
 
 	id := bson.NewObjectId().Hex()
 	if err != nil {
@@ -127,7 +127,7 @@ type ChildDatabaseBlock struct {
 }
 
 func (b *ChildDatabaseBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
-	bl := b.ChildDatabase.GetDataviewBlock(req, pageID)
+	bl := b.ChildDatabase.GetBlock(req, pageID, b.Parent.BlockID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
 		BlockIDs: []string{bl.Id},
@@ -138,21 +138,30 @@ type ChildDatabase struct {
 	Title string `json:"title"`
 }
 
-func (c *ChildDatabase) GetDataviewBlock(importContext *NotionImportContext, pageID string) *model.Block {
-	targetBlockID, _ := getTargetBlock(importContext.ParentPageToChildIDs,
+func (c *ChildDatabase) GetBlock(importContext *NotionImportContext, pageID, parentBlockID string) *model.Block {
+	targetBlockID, err := getTargetBlock(importContext,
 		importContext.DatabaseNameToID,
 		importContext.NotionDatabaseIdsToAnytype,
-		pageID, c.Title)
+		pageID, c.Title, parentBlockID)
 
-	// todo: should we handle targetBlockID not found here?
 	id := bson.NewObjectId().Hex()
-	block := template.MakeCollectionDataviewContent()
-	block.Dataview.TargetObjectId = targetBlockID
-
+	if err != nil || targetBlockID == "" {
+		block := template.MakeCollectionDataviewContent()
+		block.Dataview.TargetObjectId = targetBlockID
+		return &model.Block{
+			Id:          id,
+			ChildrenIds: nil,
+			Content:     block,
+		}
+	}
 	return &model.Block{
 		Id:          id,
 		ChildrenIds: nil,
-		Content:     block,
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: targetBlockID,
+			},
+		},
 	}
 }
 
@@ -230,14 +239,14 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 // returned to us by the Notion API. As a result we get Anytype ID of child page and make it targetBlockID
 // But we can end up with 3 links to the same page, and to avoid that,
 // we remove the childID from the parentIDToChildrenID map. So it helps to not create links with the same targetBlockID.
-func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, notionIDsToAnytype map[string]string, pageID, title string) (string, error) {
+func getTargetBlock(importContext *NotionImportContext, pageIDToName, notionIDsToAnytype map[string]string, pageID, title, parentBlockID string) (string, error) {
 	var (
 		targetBlockID string
 		ok            bool
 	)
 
 	findByPageAndTitle := func(pageID, title string) string {
-		if childIDs, exist := parentPageIDToChildIDs[pageID]; exist {
+		if childIDs, exist := importContext.ParentPageToChildIDs[pageID]; exist {
 			for childIdx, childID := range childIDs {
 				if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
 					if targetBlockID, ok = notionIDsToAnytype[childID]; !ok {
@@ -248,12 +257,22 @@ func getTargetBlock(parentPageIDToChildIDs map[string][]string, pageIDToName, no
 					break
 				}
 			}
-			parentPageIDToChildIDs[pageID] = childIDs
+			importContext.ParentPageToChildIDs[pageID] = childIDs
 		}
 
 		return targetBlockID
 	}
-	// first, try to find it in the list of child of the current page
+
+	// first, try to find page in parent blocks
+	if parentBlockID != "" {
+		targetBlockID = findByPageAndTitle(parentBlockID, title)
+		if targetBlockID != "" {
+			importContext.ParentBlockToPage[parentBlockID] = pageID
+			return targetBlockID, nil
+		}
+	}
+
+	// try to find it in the list of child of the current page
 	targetBlockID = findByPageAndTitle(pageID, title)
 	if targetBlockID != "" {
 		return targetBlockID, nil

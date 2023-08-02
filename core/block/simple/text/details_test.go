@@ -38,6 +38,15 @@ func TestTextDetails_DetailsInit(t *testing.T) {
 	assert.Equal(t, "titleFromDetails", db.GetText())
 }
 
+func TestTextDetails_DetailsInit_DoNotChangeCheckedStateIfNotPresent(t *testing.T) {
+	db := simple.New(testBlock).Copy().(DetailsBlock)
+	db.SetChecked(true)
+	db.DetailsInit(&testDetailsService{Struct: &types.Struct{
+		Fields: map[string]*types.Value{},
+	}})
+	assert.Equal(t, db.GetChecked(), true)
+}
+
 func TestTextDetails_ApplyToDetails(t *testing.T) {
 	orig := simple.New(testBlock).Copy().(DetailsBlock)
 	db := orig.Copy().(DetailsBlock)
