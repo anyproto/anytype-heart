@@ -485,7 +485,6 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 	// return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
-// SetPagesIsArchived is deprecated
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
 	objectIDsPerSpace, err := s.partitionObjectIDsBySpaceID(req.ObjectIds)
 	if err != nil {
@@ -499,6 +498,7 @@ func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSe
 	for spaceID, objectIDs := range objectIDsPerSpace {
 		err = s.setIsArchivedForObjects(spaceID, objectIDs, req.IsArchived)
 		if err != nil {
+			log.With("spaceID", spaceID, "objectIDs", objectIDs).Errorf("failed to set isArchived=%t objects in space: %s", req.IsArchived, err)
 			multiErr.Errors = append(multiErr.Errors, err)
 		} else {
 			anySucceed = true
@@ -535,7 +535,7 @@ func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 				}
 			}
 			if err != nil {
-				log.Warnf("failed to archive %s: %s", id, err.Error())
+				log.With("objectID", id).Errorf("failed to set isArchived=%t for object: %s", isArchived, err)
 				multiErr.Errors = append(multiErr.Errors, err)
 				continue
 			}
