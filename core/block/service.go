@@ -485,49 +485,83 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 	// return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
-// SetPagesIsArchived is deprecated
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
-	// TODO Resolve space ID for each id
-	return fmt.Errorf("have to be fixed")
-	// return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
-	// 	archive, ok := b.(collection.Collection)
-	// 	if !ok {
-	// 		return fmt.Errorf("unexpected archive block type: %T", b)
-	// 	}
-	//
-	// 	var merr multierror.Error
-	// 	var anySucceed bool
-	// 	ids, err := s.objectStore.HasIDs(req.ObjectIds...)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	for _, id := range ids {
-	// 		var err error
-	// 		if restrErr := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), id); restrErr != nil {
-	// 			err = restrErr
-	// 		} else {
-	// 			if req.IsArchived {
-	// 				err = archive.AddObject(id)
-	// 			} else {
-	// 				err = archive.RemoveObject(id)
-	// 			}
-	// 		}
-	// 		if err != nil {
-	// 			log.Warnf("failed to archive %s: %s", id, err.Error())
-	// 			merr.Errors = append(merr.Errors, err)
-	// 			continue
-	// 		}
-	// 		anySucceed = true
-	// 	}
-	//
-	// 	if err := merr.ErrorOrNil(); err != nil {
-	// 		log.Warnf("failed to archive: %s", err)
-	// 	}
-	// 	if anySucceed {
-	// 		return nil
-	// 	}
-	// 	return merr.ErrorOrNil()
-	// })
+	objectIDsPerSpace, err := s.partitionObjectIDsBySpaceID(req.ObjectIds)
+	if err != nil {
+		return fmt.Errorf("partition object ids by spaces: %w", err)
+	}
+
+	var (
+		multiErr   multierror.Error
+		anySucceed bool
+	)
+	for spaceID, objectIDs := range objectIDsPerSpace {
+		err = s.setIsArchivedForObjects(spaceID, objectIDs, req.IsArchived)
+		if err != nil {
+			log.With("spaceID", spaceID, "objectIDs", objectIDs).Errorf("failed to set isArchived=%t objects in space: %s", req.IsArchived, err)
+			multiErr.Errors = append(multiErr.Errors, err)
+		} else {
+			anySucceed = true
+		}
+	}
+	if anySucceed {
+		return nil
+	}
+	return multiErr.ErrorOrNil()
+}
+
+func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, isArchived bool) error {
+	return Do(s, s.anytype.PredefinedObjects(spaceID).Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(collection.Collection)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		var multiErr multierror.Error
+		var anySucceed bool
+		ids, err := s.objectStore.HasIDs(objectIDs...)
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			var err error
+			if restrErr := s.checkArchivedRestriction(isArchived, spaceID, id); restrErr != nil {
+				err = restrErr
+			} else {
+				if isArchived {
+					err = archive.AddObject(id)
+				} else {
+					err = archive.RemoveObject(id)
+				}
+			}
+			if err != nil {
+				log.With("objectID", id).Errorf("failed to set isArchived=%t for object: %s", isArchived, err)
+				multiErr.Errors = append(multiErr.Errors, err)
+				continue
+			}
+			anySucceed = true
+		}
+
+		if err := multiErr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to archive: %s", err)
+		}
+		if anySucceed {
+			return nil
+		}
+		return multiErr.ErrorOrNil()
+	})
+}
+
+func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
+	res := map[string][]string{}
+	for _, objectID := range objectIDs {
+		spaceID, err := s.objectStore.ResolveSpaceID(objectID)
+		if err != nil {
+			return nil, fmt.Errorf("resolve spaceID: %w", err)
+		}
+		res[spaceID] = append(res[spaceID], objectID)
+	}
+	return res, nil
 }
 
 // SetPagesIsFavorite is deprecated
