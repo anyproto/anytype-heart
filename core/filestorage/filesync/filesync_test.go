@@ -19,11 +19,11 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/dgraph-io/badger/v3"
-	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"

@@ -11,13 +11,15 @@ import (
 
 	commonspace "github.com/anyproto/any-sync/commonspace"
 	headsync "github.com/anyproto/any-sync/commonspace/headsync"
+	list "github.com/anyproto/any-sync/commonspace/object/acl/list"
 	treechangeproto "github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	objectsync "github.com/anyproto/any-sync/commonspace/objectsync"
 	objecttreebuilder "github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
 	spacesyncproto "github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	syncstatus "github.com/anyproto/any-sync/commonspace/syncstatus"
-	gomock "github.com/golang/mock/gomock"
+	peer "github.com/anyproto/any-sync/net/peer"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockSpace is a mock of Space interface.
@@ -41,6 +43,20 @@ func NewMockSpace(ctrl *gomock.Controller) *MockSpace {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockSpace) EXPECT() *MockSpaceMockRecorder {
 	return m.recorder
+}
+
+// Acl mocks base method.
+func (m *MockSpace) Acl() list.AclList {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Acl")
+	ret0, _ := ret[0].(list.AclList)
+	return ret0
+}
+
+// Acl indicates an expected call of Acl.
+func (mr *MockSpaceMockRecorder) Acl() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Acl", reflect.TypeOf((*MockSpace)(nil).Acl))
 }
 
 // Close mocks base method.
@@ -112,6 +128,21 @@ func (m *MockSpace) Description() (commonspace.SpaceDescription, error) {
 func (mr *MockSpaceMockRecorder) Description() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Description", reflect.TypeOf((*MockSpace)(nil).Description))
+}
+
+// GetNodePeers mocks base method.
+func (m *MockSpace) GetNodePeers(arg0 context.Context) ([]peer.Peer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNodePeers", arg0)
+	ret0, _ := ret[0].([]peer.Peer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNodePeers indicates an expected call of GetNodePeers.
+func (mr *MockSpaceMockRecorder) GetNodePeers(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodePeers", reflect.TypeOf((*MockSpace)(nil).GetNodePeers), arg0)
 }
 
 // HandleMessage mocks base method.

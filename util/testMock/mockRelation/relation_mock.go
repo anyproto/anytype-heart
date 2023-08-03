@@ -12,7 +12,7 @@ import (
 	relationutils "github.com/anyproto/anytype-heart/core/relation/relationutils"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.

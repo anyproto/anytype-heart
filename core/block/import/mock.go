@@ -13,7 +13,7 @@ import (
 	session "github.com/anyproto/anytype-heart/core/session"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockCreator is a mock of Creator interface.

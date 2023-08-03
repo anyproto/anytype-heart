@@ -15,7 +15,7 @@ import (
 	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockFileService is a mock of Service interface.

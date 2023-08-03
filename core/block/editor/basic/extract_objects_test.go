@@ -5,7 +5,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"

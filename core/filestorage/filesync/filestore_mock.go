@@ -12,7 +12,7 @@ import (
 	localstore "github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	filestore "github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockFileStore is a mock of FileStore interface.

@@ -4,7 +4,7 @@ package mockRelation
 import (
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 )
 
 func RegisterMockRelation(ctrl *gomock.Controller, ta *testapp.TestApp) *MockService {

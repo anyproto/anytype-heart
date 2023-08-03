@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_registerBuiltin(t *testing.T) {

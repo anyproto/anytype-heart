@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/blevesearch/bleve/v2"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/wallet"
