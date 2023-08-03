@@ -42,29 +42,24 @@ func (p *Properties) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	props, err := parsePropertyConfigs(raw)
-	if err != nil {
-		return err
-	}
-
+	props := parsePropertyConfigs(raw)
 	*p = props
 	return nil
 }
 
-func parsePropertyConfigs(raw map[string]interface{}) (Properties, error) {
+func parsePropertyConfigs(raw map[string]interface{}) Properties {
 	result := make(Properties)
 	for k, v := range raw {
-		p, err := getPropertyObject(v)
-		if err != nil {
-			return nil, err
+		p := getPropertyObject(v)
+		if p == nil {
+			continue
 		}
 		result[k] = p
 	}
-
-	return result, nil
+	return result
 }
 
-func getPropertyObject(v interface{}) (Object, error) {
+func getPropertyObject(v interface{}) Object {
 	var p Object
 	switch rawProperty := v.(type) {
 	case map[string]interface{}:
@@ -111,22 +106,28 @@ func getPropertyObject(v interface{}) (Object, error) {
 			p = &StatusItem{}
 		case PropertyConfigVerification:
 			p = &VerificationItem{}
+		case PropertyConfigUniqueID:
+			p = &UniqueIDItem{}
 		default:
-			return nil, fmt.Errorf("unsupported property type: %s", rawProperty["type"].(string))
+			logger.Errorf("failed to get notion properties: unsupported property type: %s", rawProperty["type"].(string))
+			return nil
 		}
 		b, err := json.Marshal(rawProperty)
 		if err != nil {
-			return nil, err
+			logger.Errorf("failed to get notion properties, error: %s", err.Error())
+			return nil
 		}
 
 		if err = json.Unmarshal(b, &p); err != nil {
-			return nil, err
+			logger.Errorf("failed to get notion properties, error: %s", err.Error())
+			return nil
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported property format %T", v)
+		logger.Errorf("failed to get notion properties: unsupported property format %T", v)
+		return nil
 	}
-	return p, nil
+	return p
 }
 
 type Service struct {
