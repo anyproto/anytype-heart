@@ -16,7 +16,7 @@ import (
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	schema "github.com/anyproto/anytype-heart/pkg/lib/schema"
 	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockObjectStore is a mock of ObjectStore interface.

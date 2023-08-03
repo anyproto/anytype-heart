@@ -11,8 +11,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	filesync "github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	gomock "github.com/golang/mock/gomock"
 	format "github.com/ipfs/go-ipld-format"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockFileSync is a mock of FileSync interface.

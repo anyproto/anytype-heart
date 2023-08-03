@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 

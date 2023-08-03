@@ -9,7 +9,7 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockSmartBlockTypeProvider is a mock of SmartBlockTypeProvider interface.

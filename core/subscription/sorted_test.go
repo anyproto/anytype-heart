@@ -3,7 +3,7 @@ package subscription
 import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"

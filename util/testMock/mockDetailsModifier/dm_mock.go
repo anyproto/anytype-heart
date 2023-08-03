@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockDetailsModifier is a mock of DetailsModifier interface.

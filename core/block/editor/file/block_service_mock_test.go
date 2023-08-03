@@ -12,7 +12,7 @@ import (
 	process "github.com/anyproto/anytype-heart/core/block/process"
 	session "github.com/anyproto/anytype-heart/core/session"
 	pb "github.com/anyproto/anytype-heart/pb"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockBlockService is a mock of BlockService interface.
