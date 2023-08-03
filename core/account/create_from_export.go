@@ -60,7 +60,7 @@ func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExp
 		return "", oserror.TransformError(err)
 	}
 
-	err = s.Stop()
+	err = s.stop()
 	if err != nil {
 		return "", err
 	}

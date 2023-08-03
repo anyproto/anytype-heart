@@ -23,7 +23,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if err := s.Stop(); err != nil {
+	if err := s.stop(); err != nil {
 		return nil, domain.WrapErrorWithCode(err, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE)
 	}
 

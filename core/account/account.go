@@ -48,6 +48,12 @@ func (s *Service) requireClientWithVersion() {
 }
 
 func (s *Service) Stop() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.stop()
+}
+
+func (s *Service) stop() error {
 	if s != nil && s.app != nil {
 		err := s.app.Close(context.Background())
 		if err != nil {

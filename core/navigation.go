@@ -33,8 +33,6 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 
 		return m
 	}
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 
 	if mw.accountService.GetApp() == nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))

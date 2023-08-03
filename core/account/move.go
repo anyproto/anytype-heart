@@ -52,7 +52,7 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 		return domain.WrapErrorWithCode(oserror.TransformError(err), pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO)
 	}
 
-	err = s.Stop()
+	err = s.stop()
 	if err != nil {
 		return domain.WrapErrorWithCode(err, pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE)
 	}

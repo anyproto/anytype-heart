@@ -5,8 +5,6 @@ import (
 	"errors"
 	"os"
 	"runtime/debug"
-	"sync"
-
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -28,8 +26,6 @@ var (
 
 type Middleware struct {
 	accountService *account.Service
-
-	m sync.RWMutex
 }
 
 func New() *Middleware {
@@ -40,8 +36,6 @@ func New() *Middleware {
 }
 
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
-	mw.m.Lock()
-	defer mw.m.Unlock()
 	mw.accountService.Stop()
 	return &pb.RpcAppShutdownResponse{
 		Error: &pb.RpcAppShutdownResponseError{
@@ -61,28 +55,22 @@ func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetD
 }
 
 func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.accountService.GetApp() != nil {
-		return mw.accountService.GetApp().MustComponent(block.CName).(*block.Service), nil
+	if a := mw.accountService.GetApp(); a != nil {
+		return a.MustComponent(block.CName).(*block.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
 
 func (mw *Middleware) getRelationService() (rs relation.Service, err error) {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.accountService.GetApp() != nil {
-		return mw.accountService.GetApp().MustComponent(relation.CName).(relation.Service), nil
+	if a := mw.accountService.GetApp(); a != nil {
+		return a.MustComponent(relation.CName).(relation.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
 
 func (mw *Middleware) getAccountService() (a space.Service, err error) {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.accountService.GetApp() != nil {
-		return mw.accountService.GetApp().MustComponent(space.CName).(space.Service), nil
+	if a := mw.accountService.GetApp(); a != nil {
+		return a.MustComponent(space.CName).(space.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -96,9 +84,7 @@ func (mw *Middleware) doBlockService(f func(bs *block.Service) error) (err error
 }
 
 func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) (err error) {
-	mw.m.RLock()
 	a := mw.accountService.GetApp()
-	mw.m.RUnlock()
 	if a == nil {
 		return ErrNotLoggedIn
 	}
@@ -106,9 +92,7 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 }
 
 func getService[T any](mw *Middleware) T {
-	mw.m.RLock()
 	a := mw.accountService.GetApp()
-	mw.m.RUnlock()
 	requireApp(a)
 	return app.MustComponent[T](a)
 }
@@ -136,17 +120,13 @@ func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error
 }
 
 func (mw *Middleware) GetAnytype() core.Service {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.accountService.GetApp() != nil {
-		return mw.accountService.GetApp().MustComponent("anytype").(core.Service)
+	if a := mw.accountService.GetApp(); a != nil {
+		return a.MustComponent("anytype").(core.Service)
 	}
 	return nil
 }
 
 func (mw *Middleware) GetApp() *app.App {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 	return mw.accountService.GetApp()
 }
 

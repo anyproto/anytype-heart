@@ -103,9 +103,6 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 		return m
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return response(pb.RpcObjectSearchResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
@@ -273,9 +270,6 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 		return r
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return errResponse(fmt.Errorf("account must be started"))
 	}
@@ -304,9 +298,6 @@ func (mw *Middleware) ObjectGroupsSubscribe(cctx context.Context, req *pb.RpcObj
 		return r
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return errResponse(errors.New("app must be started"))
 	}
@@ -333,9 +324,6 @@ func (mw *Middleware) ObjectSubscribeIds(_ context.Context, req *pb.RpcObjectSub
 		}
 		return r
 	}
-
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 
 	if mw.accountService.GetApp() == nil {
 		return errResponse(fmt.Errorf("account must be started"))
@@ -365,9 +353,6 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 		return r
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return response(fmt.Errorf("account must be started"))
 	}
@@ -382,9 +367,6 @@ func (mw *Middleware) ObjectSearchUnsubscribe(cctx context.Context, req *pb.RpcO
 }
 
 func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return objectResponse(
 			pb.RpcObjectGraphResponseError_BAD_INPUT,
@@ -819,9 +801,6 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return response(pb.RpcObjectImportResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("user didn't log in"))
 	}
@@ -853,9 +832,6 @@ func (mw *Middleware) ObjectImportList(cctx context.Context, req *pb.RpcObjectIm
 		}
 		return m
 	}
-
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 
 	importer := mw.accountService.GetApp().MustComponent(importer.CName).(importer.Importer)
 	res, err := importer.ListImports(req)
@@ -890,9 +866,6 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 		return &pb.RpcObjectImportNotionValidateTokenResponse{Error: err}
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return response(pb.RpcObjectImportNotionValidateTokenResponseError_ACCOUNT_IS_NOT_RUNNING, nil)
 	}
@@ -914,9 +887,6 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 		}
 		return resp
 	}
-
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
 	return response(objCreator.CreateObjectsForUseCase(cctx, req.SpaceId, req.UseCase))

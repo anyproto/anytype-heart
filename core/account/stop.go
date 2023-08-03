@@ -25,7 +25,7 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 			return domain.WrapErrorWithCode(oserror.TransformError(err), pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA)
 		}
 	} else {
-		err := s.Stop()
+		err := s.stop()
 		if err != nil {
 			return domain.WrapErrorWithCode(err, pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE)
 		}
@@ -43,7 +43,7 @@ func (s *Service) accountRemoveLocalData() error {
 		return err
 	}
 
-	err := s.Stop()
+	err := s.stop()
 	if err != nil {
 		return err
 	}

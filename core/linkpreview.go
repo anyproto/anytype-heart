@@ -25,9 +25,6 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		}
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.accountService.GetApp() == nil {
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
