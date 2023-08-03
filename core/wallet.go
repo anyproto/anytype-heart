@@ -16,7 +16,7 @@ func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreate
 		return m
 	}
 
-	mnemonic, err := mw.accountService.WalletCreate(req)
+	mnemonic, err := mw.applicationService.WalletCreate(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcWalletCreateResponseErrorCode](err)
 	return response(mnemonic, code, err)
 }
@@ -31,7 +31,7 @@ func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecov
 		return m
 	}
 
-	err := mw.accountService.WalletRecover(req)
+	err := mw.applicationService.WalletRecover(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcWalletRecoverResponseErrorCode](err)
 	return response(code, err)
 }
@@ -46,7 +46,7 @@ func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConve
 		return m
 	}
 
-	mnemonic, entropy, err := mw.accountService.WalletConvert(req)
+	mnemonic, entropy, err := mw.applicationService.WalletConvert(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcWalletConvertResponseErrorCode](err)
 	return response(mnemonic, entropy, code, err)
 }
@@ -60,7 +60,7 @@ func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalle
 		return m
 	}
 
-	token, err := mw.accountService.CreateSession(req)
+	token, err := mw.applicationService.CreateSession(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcWalletCreateSessionResponseErrorCode](err)
 	return response(token, code, err)
 }
@@ -75,7 +75,7 @@ func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWallet
 		return m
 	}
 
-	err := mw.accountService.CloseSession(req)
+	err := mw.applicationService.CloseSession(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcWalletCloseSessionResponseErrorCode](err)
 	return response(code, err)
 }

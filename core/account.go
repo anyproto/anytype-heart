@@ -18,7 +18,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		return m
 	}
 
-	newAccount, err := mw.accountService.AccountCreate(cctx, req)
+	newAccount, err := mw.applicationService.AccountCreate(cctx, req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountCreateResponseErrorCode](err)
 	return response(newAccount, code, err)
 }
@@ -33,7 +33,7 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 		return m
 	}
 
-	err := mw.accountService.AccountRecover()
+	err := mw.applicationService.AccountRecover()
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountRecoverResponseErrorCode](err)
 	return response(code, err)
 }
@@ -49,7 +49,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		return m
 	}
 
-	acc, err := mw.accountService.AccountSelect(cctx, req)
+	acc, err := mw.applicationService.AccountSelect(cctx, req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountSelectResponseErrorCode](err)
 	return response(acc, code, err)
 }
@@ -64,7 +64,7 @@ func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRe
 		return m
 	}
 
-	err := mw.accountService.AccountStop(req)
+	err := mw.applicationService.AccountStop(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountStopResponseErrorCode](err)
 	return response(code, err)
 }
@@ -78,7 +78,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 		return m
 	}
 
-	err := mw.accountService.AccountMove(req)
+	err := mw.applicationService.AccountMove(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountMoveResponseErrorCode](err)
 	return response(code, err)
 }
@@ -95,7 +95,7 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 		return m
 	}
 
-	status, err := mw.accountService.AccountDelete(cctx, req)
+	status, err := mw.applicationService.AccountDelete(cctx, req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountDeleteResponseErrorCode](err)
 	return response(status, code, err)
 }
@@ -109,7 +109,7 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 		return m
 	}
 
-	err := mw.accountService.AccountConfigUpdate(req)
+	err := mw.applicationService.AccountConfigUpdate(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountConfigUpdateResponseErrorCode](err)
 	return response(code, err)
 }
@@ -124,7 +124,7 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 		return m
 	}
 
-	address, err := mw.accountService.CreateAccountFromExport(req)
+	address, err := mw.applicationService.CreateAccountFromExport(req)
 	code, err := domain.UnwrapCodeFromError[pb.RpcAccountRecoverFromLegacyExportResponseErrorCode](err)
 	return response(address, code, err)
 }

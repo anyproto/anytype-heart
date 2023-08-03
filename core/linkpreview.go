@@ -25,14 +25,14 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		}
 	}
 
-	if mw.accountService.GetApp() == nil {
+	if mw.applicationService.GetApp() == nil {
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
 				Code: pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
 			},
 		}
 	}
-	lp := mw.accountService.GetApp().MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	lp := mw.applicationService.GetApp().MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	data, err := lp.Fetch(ctx, u.String())
 	if err != nil {
 		// trim the actual url from the error

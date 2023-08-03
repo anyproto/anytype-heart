@@ -1,4 +1,4 @@
-package account
+package application
 
 import (
 	"fmt"

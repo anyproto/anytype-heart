@@ -62,11 +62,11 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		return m
 	}
 
-	if mw.accountService.GetApp() == nil {
+	if mw.applicationService.GetApp() == nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileService := app.MustComponent[files.Service](mw.accountService.GetApp())
+	fileService := app.MustComponent[files.Service](mw.applicationService.GetApp())
 	totalBytesOffloaded, totalFilesOffloaded, err := fileService.FileListOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
@@ -85,11 +85,11 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 		return m
 	}
 
-	if mw.accountService.GetApp() == nil {
+	if mw.applicationService.GetApp() == nil {
 		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileService := app.MustComponent[files.Service](mw.accountService.GetApp())
+	fileService := app.MustComponent[files.Service](mw.applicationService.GetApp())
 
 	bytesRemoved, err := fileService.FileOffload(cctx, req.Id, req.IncludeNotPinned)
 	if err != nil {

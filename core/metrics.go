@@ -21,7 +21,7 @@ func (mw *Middleware) MetricsSetParameters(cctx context.Context, req *pb.RpcMetr
 		return response(pb.RpcMetricsSetParametersResponseError_BAD_INPUT,
 			errors.New("version is empty. Version must be in format: 1.0.0-optional-commit-hash-for-dev-builds"))
 	}
-	mw.accountService.SetClientVersion(req.Platform, req.Version)
+	mw.applicationService.SetClientVersion(req.Platform, req.Version)
 
 	metrics.SharedClient.SetPlatform(req.Platform)
 

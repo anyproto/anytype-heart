@@ -34,7 +34,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return m
 	}
 
-	if mw.accountService.GetApp() == nil {
+	if mw.applicationService.GetApp() == nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
@@ -50,7 +50,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return filtered
 	}
 
-	store := app.MustComponent[objectstore.ObjectStore](mw.accountService.GetApp())
+	store := app.MustComponent[objectstore.ObjectStore](mw.applicationService.GetApp())
 	spaceID, err := store.ResolveSpaceID(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("resolve spaceID: %w", err))

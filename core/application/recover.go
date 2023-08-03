@@ -1,4 +1,4 @@
-package account
+package application
 
 import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/core/account"
+	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/event"
 )
 
@@ -25,18 +25,18 @@ var (
 )
 
 type Middleware struct {
-	accountService *account.Service
+	applicationService *application.Service
 }
 
 func New() *Middleware {
 	mw := &Middleware{
-		accountService: account.New(),
+		applicationService: application.New(),
 	}
 	return mw
 }
 
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
-	mw.accountService.Stop()
+	mw.applicationService.Stop()
 	return &pb.RpcAppShutdownResponse{
 		Error: &pb.RpcAppShutdownResponseError{
 			Code: pb.RpcAppShutdownResponseError_NULL,
@@ -45,7 +45,7 @@ func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdo
 }
 
 func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
-	mw.accountService.GetApp().SetDeviceState(int(req.DeviceState))
+	mw.applicationService.GetApp().SetDeviceState(int(req.DeviceState))
 
 	return &pb.RpcAppSetDeviceStateResponse{
 		Error: &pb.RpcAppSetDeviceStateResponseError{
@@ -55,21 +55,21 @@ func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetD
 }
 
 func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
-	if a := mw.accountService.GetApp(); a != nil {
+	if a := mw.applicationService.GetApp(); a != nil {
 		return a.MustComponent(block.CName).(*block.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
 
 func (mw *Middleware) getRelationService() (rs relation.Service, err error) {
-	if a := mw.accountService.GetApp(); a != nil {
+	if a := mw.applicationService.GetApp(); a != nil {
 		return a.MustComponent(relation.CName).(relation.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
 
 func (mw *Middleware) getAccountService() (a space.Service, err error) {
-	if a := mw.accountService.GetApp(); a != nil {
+	if a := mw.applicationService.GetApp(); a != nil {
 		return a.MustComponent(space.CName).(space.Service), nil
 	}
 	return nil, ErrNotLoggedIn
@@ -84,7 +84,7 @@ func (mw *Middleware) doBlockService(f func(bs *block.Service) error) (err error
 }
 
 func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) (err error) {
-	a := mw.accountService.GetApp()
+	a := mw.applicationService.GetApp()
 	if a == nil {
 		return ErrNotLoggedIn
 	}
@@ -92,7 +92,7 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 }
 
 func getService[T any](mw *Middleware) T {
-	a := mw.accountService.GetApp()
+	a := mw.applicationService.GetApp()
 	requireApp(a)
 	return app.MustComponent[T](a)
 }
@@ -120,14 +120,14 @@ func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error
 }
 
 func (mw *Middleware) GetAnytype() core.Service {
-	if a := mw.accountService.GetApp(); a != nil {
+	if a := mw.applicationService.GetApp(); a != nil {
 		return a.MustComponent("anytype").(core.Service)
 	}
 	return nil
 }
 
 func (mw *Middleware) GetApp() *app.App {
-	return mw.accountService.GetApp()
+	return mw.applicationService.GetApp()
 }
 
 func (mw *Middleware) OnPanic(v interface{}) {
@@ -137,5 +137,5 @@ func (mw *Middleware) OnPanic(v interface{}) {
 }
 
 func (mw *Middleware) SetEventSender(sender event.Sender) {
-	mw.accountService.SetEventSender(sender)
+	mw.applicationService.SetEventSender(sender)
 }

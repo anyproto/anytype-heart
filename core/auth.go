@@ -32,7 +32,7 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	}
 	tok := v[0]
 
-	err = mw.accountService.ValidateSessionToken(tok)
+	err = mw.applicationService.ValidateSessionToken(tok)
 	if err != nil {
 		return
 	}
