@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/core/account"
 )
 
 var log = logging.Logger("anytype-mw-api")
@@ -33,6 +34,8 @@ type Middleware struct {
 	// memoized private key derived from mnemonic
 	sessionKey  []byte
 	EventSender event.Sender
+
+	accountService *account.Service
 
 	sessions          session.Service
 	clientWithVersion string
@@ -51,7 +54,7 @@ func New() *Middleware {
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
 	mw.m.Lock()
 	defer mw.m.Unlock()
-	mw.stop()
+	mw.accountService.Stop()
 	return &pb.RpcAppShutdownResponse{
 		Error: &pb.RpcAppShutdownResponseError{
 			Code: pb.RpcAppShutdownResponseError_NULL,
@@ -144,19 +147,6 @@ func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error
 	return f(bs)
 }
 
-// Stop stops the anytype node and HTTP gateway
-func (mw *Middleware) stop() error {
-	if mw != nil && mw.app != nil {
-		err := mw.app.Close(context.Background())
-		if err != nil {
-			log.Warnf("error while stop anytype: %v", err)
-		}
-
-		mw.app = nil
-	}
-	return nil
-}
-
 func (mw *Middleware) GetAnytype() core.Service {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
@@ -176,10 +166,4 @@ func (mw *Middleware) OnPanic(v interface{}) {
 	stack := debug.Stack()
 	os.Stderr.Write(stack)
 	log.With("stack", stack).Errorf("panic recovered: %v", v)
-}
-
-func (mw *Middleware) requireClientWithVersion() {
-	if mw.clientWithVersion == "" {
-		panic(errors.New("client platform with the version must be set using the MetricsSetParameters method"))
-	}
 }
