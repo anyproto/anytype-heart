@@ -23,7 +23,6 @@ var log = logger.NewNamed(CName)
 
 type provider struct {
 	pool       pool.Pool
-	commonPool pool.Pool
 	streamPool streampool.StreamPool
 	peerStore  peerstore.PeerStore
 }
@@ -31,7 +30,6 @@ type provider struct {
 func (p *provider) Init(a *app.App) (err error) {
 	p.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	poolService := a.MustComponent(pool.CName).(pool.Service)
-	p.commonPool = poolService
 	p.pool = poolService
 	p.streamPool = a.MustComponent(space.CName).(space.Service).StreamPool()
 	return nil
@@ -51,7 +49,7 @@ func (p *provider) NewPeerManager(ctx context.Context, spaceId string) (peermana
 }
 
 func (p *provider) UnaryPeerPool() pool.Pool {
-	return p.commonPool
+	return p.pool
 }
 
 func (p *provider) StreamPeerPool() pool.Pool {
