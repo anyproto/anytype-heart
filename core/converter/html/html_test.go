@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -23,65 +21,65 @@ func TestHTML_Convert(t *testing.T) {
 	})
 
 	t.Run("markup", func(t *testing.T) {
-		//given
+		// given
 		doc := givenMarkup()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(markupExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("lists", func(t *testing.T) {
-		//given
+		// given
 		doc := givenLists()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(listExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("lists in lists", func(t *testing.T) {
-		//given
+		// given
 		doc := givenListsInLists()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(listInListExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("intersection of marks", func(t *testing.T) {
-		//given
+		// given
 		doc := givenIntersectMarks()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(intersectMarksExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("columns", func(t *testing.T) {
-		//given
+		// given
 		doc := givenColumns()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(columnsExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
@@ -89,7 +87,7 @@ func TestHTML_Convert(t *testing.T) {
 }
 
 func convertHtml(s *state.State) string {
-	return NewHTMLConverter(nil, s).Convert()
+	return NewHTMLConverter("space1", nil, s).Convert()
 }
 
 func givenMarkup() *state.State {
