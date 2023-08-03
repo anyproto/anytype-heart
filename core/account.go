@@ -360,9 +360,6 @@ func (mw *Middleware) accountSelect(ctx context.Context, req *pb.RpcAccountSelec
 }
 
 func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
-	mw.m.Lock()
-	defer mw.m.Unlock()
-
 	response := func(code pb.RpcAccountStopResponseErrorCode, err error) *pb.RpcAccountStopResponse {
 		m := &pb.RpcAccountStopResponse{Error: &pb.RpcAccountStopResponseError{Code: code}}
 		if err != nil {
@@ -372,23 +369,31 @@ func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRe
 		return m
 	}
 
+	err := mw.accountStop(req)
+	code, err := unwrapError[pb.RpcAccountStopResponseErrorCode](err)
+	return response(code, err)
+}
+
+func (mw *Middleware) accountStop(req *pb.RpcAccountStopRequest) error {
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
 	if mw.app == nil {
-		return response(pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
+		return errWithCode(fmt.Errorf("anytype node not set"), pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING)
 	}
 
 	if req.RemoveData {
-		err := mw.AccountRemoveLocalData()
+		err := mw.accountRemoveLocalData()
 		if err != nil {
-			return response(pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
+			return errWithCode(oserror.TransformError(err), pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA)
 		}
 	} else {
 		err := mw.stop()
 		if err != nil {
-			return response(pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE, err)
+			return errWithCode(err, pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE)
 		}
 	}
-
-	return response(pb.RpcAccountStopResponseError_NULL, nil)
+	return nil
 }
 
 func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
@@ -553,7 +558,7 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 	return response(pb.RpcAccountConfigUpdateResponseError_NULL, err)
 }
 
-func (mw *Middleware) AccountRemoveLocalData() error {
+func (mw *Middleware) accountRemoveLocalData() error {
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 	address := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 
