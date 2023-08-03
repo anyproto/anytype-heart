@@ -38,6 +38,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		opt(&sOpts)
 	}
 	blocks := make(map[string]simple.Block)
+	for _, b := range snapshot.Data.Blocks {
+		blocks[b.Id] = simple.New(b)
+	}
 	fileKeys := make([]pb.ChangeFileKeys, 0, len(snapshot.FileKeys))
 	for _, fk := range snapshot.FileKeys {
 		fileKeys = append(fileKeys, *fk)
