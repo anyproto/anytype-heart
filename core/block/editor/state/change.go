@@ -5,22 +5,23 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
-	"github.com/mb0/diff"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/mb0/diff"
 )
 
 type snapshotOptions struct {
-	changeId string
+	changeId          string
+	migrateUniqueKeys model.SmartBlockType // set >0 to migrate unique keys
 }
 
 type SnapshotOption func(*snapshotOptions)
@@ -28,6 +29,13 @@ type SnapshotOption func(*snapshotOptions)
 func WithChangeId(changeId string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.changeId = changeId
+		return
+	}
+}
+
+func WithUniqueKeyMigration(sbType model.SmartBlockType) func(*snapshotOptions) {
+	return func(o *snapshotOptions) {
+		o.migrateUniqueKeys = sbType
 		return
 	}
 }
@@ -62,16 +70,21 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		pbtypes.NormalizeStruct(detailsToSave)
 	}
 
+	if sOpts.migrateUniqueKeys > 0 {
+		migrateAddMissingUniqueKey(sOpts.migrateUniqueKeys, snapshot)
+	}
+
 	s := &State{
-		changeId:        sOpts.changeId,
-		rootId:          rootId,
-		blocks:          blocks,
-		details:         detailsToSave,
-		relationLinks:   snapshot.Data.RelationLinks,
-		objectTypes:     migrateObjectTypeIdsToKeys(snapshot.Data.ObjectTypes),
-		fileKeys:        fileKeys,
-		store:           snapshot.Data.Collections,
-		storeKeyRemoved: removedCollectionKeysMap,
+		changeId:          sOpts.changeId,
+		rootId:            rootId,
+		blocks:            blocks,
+		details:           detailsToSave,
+		relationLinks:     snapshot.Data.RelationLinks,
+		objectTypes:       migrateObjectTypeIdsToKeys(snapshot.Data.ObjectTypes),
+		fileKeys:          fileKeys,
+		store:             snapshot.Data.Collections,
+		storeKeyRemoved:   removedCollectionKeysMap,
+		uniqueKeyInternal: snapshot.Data.Key,
 	}
 	if s.store != nil {
 		for collName, coll := range s.store.Fields {
@@ -775,4 +788,21 @@ func migrateObjectTypeIdsToKeys(ots []string) []string {
 		}
 	}
 	return ots
+}
+
+func migrateAddMissingUniqueKey(sbType model.SmartBlockType, snapshot *pb.ChangeSnapshot) {
+	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
+	uk, err := uniquekey.UniqueKeyFromString(id)
+	if err != nil {
+		// means that sbtype is not supported
+		return
+	}
+	if uk.SmartblockType() != sbType {
+		log.Errorf("missingKeyMigration: wrong sbtype %s != %s", uk.SmartblockType(), sbType)
+		return
+	}
+
+	if v, ok := uk.(uniquekey.UniqueKeyInternal); ok {
+		snapshot.Data.Key = v.InternalKey()
+	}
 }

@@ -59,8 +59,8 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveTreeCreatePayload(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (*treestorage.TreeStorageCreatePayload, error)
-	DeriveObject(ctx context.Context, spaceID string, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
+	DeriveTreeCreatePayload(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (treestorage.TreeStorageCreatePayload, error)
+	DeriveObject(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
 }
 
 type Anytype struct {
@@ -196,7 +196,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 		coresb.SmartBlockTypeWidget,
 		coresb.SmartBlockTypeHome,
 	}
-	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
+	payloads := make([]treestorage.TreeStorageCreatePayload, len(sbTypes))
 	predefinedObjectIDs.SystemRelations = make(map[bundle.RelationKey]string)
 	predefinedObjectIDs.SystemTypes = make(map[bundle.TypeKey]string)
 

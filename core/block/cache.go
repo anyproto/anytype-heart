@@ -351,7 +351,7 @@ func (s *Service) CreateTreeObjectWithUniqueKey(ctx context.Context, spaceID str
 		return nil, err
 	}
 
-	tr, err := space.TreeBuilder().PutTree(ctx, *payload, nil)
+	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
@@ -372,30 +372,30 @@ func (s *Service) DeriveTreeCreatePayload(
 	ctx context.Context,
 	spaceID string,
 	key uniquekey.UniqueKey,
-) (*treestorage.TreeStorageCreatePayload, error) {
+) (treestorage.TreeStorageCreatePayload, error) {
 	space, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
-		return nil, err
+		return treestorage.TreeStorageCreatePayload{}, err
 	}
 	changePayload, err := createChangePayload(coresb.SmartBlockType(key.SmartblockType()), key)
 	if err != nil {
-		return nil, err
+		return treestorage.TreeStorageCreatePayload{}, err
 	}
 	treePayload := derivePayload(space.Id(), s.commonAccount.Account().SignKey, changePayload)
 	create, err := space.TreeBuilder().CreateTree(context.Background(), treePayload)
-	return &create, err
+	return create, err
 }
 
 // DeriveObject derives the object with id specified in the payload and triggers cache.Get
 // DeriveTreeCreatePayload should be called first to prepare the payload and derive the tree
 func (s *Service) DeriveObject(
-	ctx context.Context, spaceID string, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
+	ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, newAccount bool,
 ) (err error) {
 	space, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	_, err = s.getDerivedObject(ctx, space, payload, newAccount, func(id string) *smartblock.InitContext {
+	_, err = s.getDerivedObject(ctx, space, &payload, newAccount, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
 	})
 	if err != nil {

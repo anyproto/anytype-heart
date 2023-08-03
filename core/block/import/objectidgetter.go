@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -82,7 +83,17 @@ func (ou *ObjectIDGetter) Get(
 		}
 	}
 
-	payload, err := ou.service.CreateTreePayload(context.Background(), spaceID, sbType, createdTime)
+	var payload treestorage.TreeStorageCreatePayload
+	if sbType == sb.SmartBlockTypeRelation || sbType == sb.SmartBlockTypeObjectType {
+		id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		uk, err := uniquekey.UniqueKeyFromString(id)
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, err
+		}
+		payload, err = ou.service.DeriveTreeCreatePayload(context.Background(), spaceID, uk)
+	} else {
+		payload, err = ou.service.CreateTreePayload(context.Background(), spaceID, sbType, createdTime)
+	}
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}

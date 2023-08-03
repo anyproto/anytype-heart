@@ -329,7 +329,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 		})...)
 	}
 	for _, snapshot := range snapshots {
-		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
+		st := state.NewDocFromSnapshot("", snapshot.Snapshot, state.WithUniqueKeyMigration(snapshot.SbType.ToProto()))
 		err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileIDs)
 		if err != nil {
 			allErrors.Add(err)
