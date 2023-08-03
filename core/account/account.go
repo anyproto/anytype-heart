@@ -12,7 +12,7 @@ import (
 var log = logging.Logger("anytype-core-account")
 
 type Service struct {
-	lock sync.Mutex
+	lock sync.RWMutex
 
 	app               *app.App
 	mnemonic          string

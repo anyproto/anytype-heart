@@ -2,19 +2,10 @@ package core
 
 import (
 	"context"
-	"fmt"
-	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/core/domain"
 )
-
-func (mw *Middleware) refreshRemoteAccountState() {
-	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	fetcher.Refetch()
-}
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
@@ -104,37 +95,9 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 		return m
 	}
 
-	var st *model.AccountStatus
-	err := mw.doAccountService(func(a space.Service) (err error) {
-		resp, err := a.DeleteAccount(cctx, req.Revert)
-		if err != nil {
-			return
-		}
-		st = &model.AccountStatus{
-			StatusType:   model.AccountStatusType(resp.Status),
-			DeletionDate: resp.DeletionDate.Unix(),
-		}
-		return
-	})
-
-	// so we will receive updated account status
-	mw.refreshRemoteAccountState()
-
-	if err == nil {
-		return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
-	}
-	code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
-	switch err {
-	case space.ErrSpaceIsDeleted:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
-	case space.ErrSpaceDeletionPending:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
-	case space.ErrSpaceIsCreated:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
-	default:
-		break
-	}
-	return response(nil, code, err)
+	status, err := mw.accountService.AccountDelete(cctx, req)
+	code, err := domain.UnwrapCodeFromError[pb.RpcAccountDeleteResponseErrorCode](err)
+	return response(status, code, err)
 }
 
 func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
@@ -146,20 +109,9 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 		return m
 	}
 
-	if mw.app == nil {
-		return response(pb.RpcAccountConfigUpdateResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
-	}
-
-	conf := mw.app.MustComponent(config.CName).(*config.Config)
-	cfg := config.ConfigRequired{}
-	cfg.TimeZone = req.TimeZone
-	cfg.CustomFileStorePath = req.IPFSStorageAddr
-	err := config.WriteJsonConfig(conf.GetConfigPath(), cfg)
-	if err != nil {
-		return response(pb.RpcAccountConfigUpdateResponseError_FAILED_TO_WRITE_CONFIG, err)
-	}
-
-	return response(pb.RpcAccountConfigUpdateResponseError_NULL, err)
+	err := mw.accountService.AccountConfigUpdate(req)
+	code, err := domain.UnwrapCodeFromError[pb.RpcAccountConfigUpdateResponseErrorCode](err)
+	return response(code, err)
 }
 
 func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
