@@ -392,9 +392,6 @@ func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRe
 }
 
 func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
-	mw.m.Lock()
-	defer mw.m.Unlock()
-
 	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
 		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
 		if err != nil {
@@ -403,14 +400,14 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 		return m
 	}
 
-	removeDirs := func(src string, dirs []string) error {
-		for _, dir := range dirs {
-			if err := os.RemoveAll(filepath.Join(src, dir)); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
+	err := mw.accountMove(req)
+	code, err := unwrapError[pb.RpcAccountMoveResponseErrorCode](err)
+	return response(code, err)
+}
+
+func (mw *Middleware) accountMove(req *pb.RpcAccountMoveRequest) error {
+	mw.m.Lock()
+	defer mw.m.Unlock()
 
 	dirs := []string{filestorage.FlatfsDirName}
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
@@ -419,7 +416,7 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	srcPath := conf.RepoPath
 	fileConf := config.ConfigRequired{}
 	if err := config.GetFileConfig(configPath, &fileConf); err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
+		return errWithCode(err, pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG)
 	}
 	if fileConf.CustomFileStorePath != "" {
 		srcPath = fileConf.CustomFileStorePath
@@ -428,54 +425,62 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 	parts := strings.Split(srcPath, string(filepath.Separator))
 	accountDir := parts[len(parts)-1]
 	if accountDir == "" {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR, errors.New("fail to identify account dir"))
+		return errWithCode(errors.New("fail to identify account dir"), pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR)
 	}
 
 	destination := filepath.Join(req.NewPath, accountDir)
 	if srcPath == destination {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, errors.New("source path should not be equal destination path"))
+		return errWithCode(errors.New("source path should not be equal destination path"), pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO)
 	}
 
 	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
-		if err := removeDirs(destination, dirs); err != nil {
-			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
+		if err := removeDirsRelativeToPath(destination, dirs); err != nil {
+			return errWithCode(oserror.TransformError(err), pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA)
 		}
 	}
 
 	err := os.MkdirAll(destination, 0700)
 	if err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, oserror.TransformError(err))
+		return errWithCode(oserror.TransformError(err), pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO)
 	}
 
 	err = mw.stop()
 	if err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
+		return errWithCode(err, pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE)
 	}
 
 	for _, dir := range dirs {
 		if _, err := os.Stat(filepath.Join(srcPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
 			if err := cp.Copy(filepath.Join(srcPath, dir), filepath.Join(destination, dir), cp.Options{PreserveOwner: true}); err != nil {
-				return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+				return errWithCode(err, pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO)
 			}
 		}
 	}
 
 	err = config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: destination})
 	if err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
+		return errWithCode(err, pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG)
 	}
 
-	if err := removeDirs(srcPath, dirs); err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
+	if err := removeDirsRelativeToPath(srcPath, dirs); err != nil {
+		return errWithCode(oserror.TransformError(err), pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA)
 	}
 
 	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
 		if err := os.RemoveAll(srcPath); err != nil {
-			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, oserror.TransformError(err))
+			return errWithCode(oserror.TransformError(err), pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA)
 		}
 	}
+	return nil
+}
 
-	return response(pb.RpcAccountMoveResponseError_NULL, nil)
+func removeDirsRelativeToPath(rootPath string, dirs []string) error {
+	for _, dir := range dirs {
+		if err := os.RemoveAll(filepath.Join(rootPath, dir)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
@@ -590,12 +595,9 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
 	if err != nil {
 		return response("", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, oserror.TransformError(err))
 	}
-	address, code, err := mw.createAccountFromExport(profile, req)
-	if err != nil {
-		return response("", code, err)
-	}
-
-	return response(address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil)
+	address, err := mw.createAccountFromExport(profile, req)
+	code, err := unwrapError[pb.RpcAccountRecoverFromLegacyExportResponseErrorCode](err)
+	return response(address, code, err)
 }
 
 func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
@@ -624,35 +626,35 @@ func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profi
 	return &profile, nil
 }
 
-func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (accountId string, code pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, err error) {
+func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAccountRecoverFromLegacyExportRequest) (accountId string, err error) {
 	mw.m.Lock()
 	defer mw.m.Unlock()
 	err = mw.stop()
 	if err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", err
 	}
 
 	res, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", err
 	}
 	address := res.Identity.GetPublic().Account()
 	if profile.Address != res.OldAccountKey.GetPublic().Account() && profile.Address != address {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT, fmt.Errorf("backup was made from different account")
+		return "", errWithCode(fmt.Errorf("backup was made from different account"), pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT)
 	}
 	mw.rootPath = req.RootPath
 	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, oserror.TransformError(err)
+		return "", oserror.TransformError(err)
 	}
 	if _, statErr := os.Stat(filepath.Join(mw.rootPath, address)); os.IsNotExist(statErr) {
 		if walletErr := core.WalletInitRepo(mw.rootPath, res.Identity); walletErr != nil {
-			return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, walletErr
+			return "", walletErr
 		}
 	}
 	cfg, err := mw.getBootstrapConfig(req)
 	if err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", err
 	}
 
 	if profile.AnalyticsId != "" {
@@ -663,20 +665,20 @@ func (mw *Middleware) createAccountFromExport(profile *pb.Profile, req *pb.RpcAc
 
 	err = mw.startApp(cfg, res)
 	if err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", err
 	}
 
 	err = mw.setDetails(profile, req.Icon)
 	if err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_UNKNOWN_ERROR, err
+		return "", err
 	}
 
 	spaceID := app.MustComponent[space.Service](mw.app).AccountId()
 	if err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
-		return "", pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT, err
+		return "", errWithCode(err, pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT)
 	}
 
-	return address, pb.RpcAccountRecoverFromLegacyExportResponseError_NULL, nil
+	return address, nil
 }
 
 func (mw *Middleware) startApp(cfg *config.Config, derivationResult crypto.DerivationResult) error {
@@ -729,9 +731,7 @@ func (mw *Middleware) setDetails(profile *pb.Profile, icon int64) error {
 	return nil
 }
 
-func buildDetails(profile *pb.Profile, icon int64) (
-	profileDetails []*pb.RpcObjectSetDetailsDetail, accountDetails []*pb.RpcObjectSetDetailsDetail,
-) {
+func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*pb.RpcObjectSetDetailsDetail, accountDetails []*pb.RpcObjectSetDetailsDetail, ) {
 	profileDetails = []*pb.RpcObjectSetDetailsDetail{{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(profile.Name),
