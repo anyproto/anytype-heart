@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	//nolint: gosec
+	// nolint: gosec
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -85,7 +85,7 @@ func main() {
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGUSR1)
 
 	var mw = core.New()
-	mw.EventSender = event.NewGrpcSender()
+	mw.SetEventSender(event.NewGrpcSender())
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -203,7 +203,7 @@ func main() {
 	service.RegisterClientCommandsServer(server, mw)
 	if metrics.Enabled {
 		grpc_prometheus.EnableHandlingTimeHistogram()
-		//grpc_prometheus.Register(server)
+		// grpc_prometheus.Register(server)
 	}
 
 	webrpc := grpcweb.WrapServer(

@@ -20,6 +20,10 @@ type CallbackSender struct {
 	callback func(event *pb.Event)
 }
 
+func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
+	return &CallbackSender{callback: callback}
+}
+
 var _ = Sender(&CallbackSender{})
 
 func (es *CallbackSender) Init(a *app.App) (err error) {
@@ -28,10 +32,6 @@ func (es *CallbackSender) Init(a *app.App) (err error) {
 
 func (es *CallbackSender) Name() (name string) {
 	return CName
-}
-
-func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
-	return &CallbackSender{callback: callback}
 }
 
 func (es *CallbackSender) IsActive(token string) bool {

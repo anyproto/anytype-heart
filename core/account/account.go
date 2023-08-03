@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"errors"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 )
 
 var log = logging.Logger("anytype-core-account")
@@ -14,11 +15,30 @@ var log = logging.Logger("anytype-core-account")
 type Service struct {
 	lock sync.RWMutex
 
-	app               *app.App
-	mnemonic          string
+	app *app.App
+
+	mnemonic string
+
+	// memoized private key derived from mnemonic, used for signing session tokens
+	sessionKey []byte
+
 	rootPath          string
 	clientWithVersion string
 	eventSender       event.Sender
+
+	sessions session.Service
+}
+
+func New() *Service {
+	return &Service{
+		sessions: session.New(),
+	}
+}
+
+func (s *Service) GetApp() *app.App {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.app
 }
 
 func (s *Service) requireClientWithVersion() {
@@ -37,4 +57,22 @@ func (s *Service) Stop() error {
 		s.app = nil
 	}
 	return nil
+}
+
+func (s *Service) SetClientVersion(platform string, version string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.clientWithVersion = platform + ":" + version
+}
+
+func (s *Service) SetEventSender(sender event.Sender) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.eventSender = sender
+}
+
+func (s *Service) GetEventSender() event.Sender {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.eventSender
 }

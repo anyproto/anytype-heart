@@ -35,7 +35,7 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 		err error
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hs := mw.app.MustComponent(history.CName).(history.History)
+		hs := mw.accountService.GetApp().MustComponent(history.CName).(history.History)
 		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
 		if err != nil {
 			return fmt.Errorf("resolve spaceID: %w", err)
@@ -73,7 +73,7 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 		err  error
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hs := mw.app.MustComponent(history.CName).(history.History)
+		hs := mw.accountService.GetApp().MustComponent(history.CName).(history.History)
 		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
 		if err != nil {
 			return fmt.Errorf("resolve spaceID: %w", err)
@@ -104,7 +104,7 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 		return
 	}
 	return response(mw.doBlockService(func(bs *block.Service) (err error) {
-		hs := mw.app.MustComponent(history.CName).(history.History)
+		hs := mw.accountService.GetApp().MustComponent(history.CName).(history.History)
 		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
 		if err != nil {
 			return fmt.Errorf("resolve spaceID: %w", err)

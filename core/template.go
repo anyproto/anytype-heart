@@ -112,8 +112,8 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 		path string
 	)
 	err := mw.doBlockService(func(_ *block.Service) error {
-		es := mw.app.MustComponent(export.CName).(export.Export)
-		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+		es := mw.accountService.GetApp().MustComponent(export.CName).(export.Export)
+		ds := mw.accountService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		docIds, _, err := ds.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -161,8 +161,8 @@ func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspace
 		path string
 	)
 	err := mw.doBlockService(func(_ *block.Service) error {
-		es := mw.app.MustComponent(export.CName).(export.Export)
-		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+		es := mw.accountService.GetApp().MustComponent(export.CName).(export.Export)
+		ds := mw.accountService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		docIds, _, err := ds.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{

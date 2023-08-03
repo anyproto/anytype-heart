@@ -28,9 +28,9 @@ func main() {
 
 		defer os.RemoveAll(rootPath)
 
-		mw.EventSender = event.NewCallbackSender(func(event *pb.Event) {
+		mw.SetEventSender(event.NewCallbackSender(func(event *pb.Event) {
 			// nothing to do
-		})
+		}))
 
 		ctx := context.Background()
 
