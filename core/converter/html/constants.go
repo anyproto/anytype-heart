@@ -21,7 +21,7 @@ const (
 				.callout-image img { width: 100%; object-fit: cover; }
 				a { cursor: pointer; }
 				kbd { display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px; }
-				ul { margin: 0px; }
+				ul { margin: 15px 0px; }
 			</style>
 		</head>
 		<body>`
@@ -74,7 +74,7 @@ var styleTags = map[model.BlockContentTextStyle]styleTag{
 	model.BlockContentText_Title:    {OpenTag: `<h1 style="` + styleTitle + `">`, CloseTag: `</h1>`},
 	model.BlockContentText_Checkbox: {OpenTag: `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`, CloseTag: `</div>`},
 	model.BlockContentText_Toggle:   {OpenTag: `<div style="` + styleToggle + `" class="toggle">`, CloseTag: `</div>`},
-	defaultStyle:                    {OpenTag: `<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">`, CloseTag: `</div>`},
+	defaultStyle:                    {OpenTag: `<div style="` + styleParagraph + `" class="paragraph">`, CloseTag: `</div>`},
 }
 
 func textColor(color string) string {
