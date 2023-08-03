@@ -29,7 +29,6 @@ var (
 
 type Middleware struct {
 	rootPath string
-	pin      string
 	mnemonic string
 	// memoized private key derived from mnemonic
 	sessionKey  []byte
