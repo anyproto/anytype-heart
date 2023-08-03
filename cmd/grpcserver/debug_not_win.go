@@ -10,8 +10,5 @@ import (
 var signals = append(commonOSSignals, syscall.SIGUSR1)
 
 func shouldSaveStack(signal os.Signal) bool {
-	if signal == syscall.SIGUSR1 {
-		return true
-	}
-	return false
+	return signal == syscall.SIGUSR1
 }
