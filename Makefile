@@ -70,7 +70,7 @@ test-race:
 
 test-deps:
 	@echo 'Generating test mocks...'
-	@go build -o deps github.com/golang/mock/mockgen
+	@go build -o deps go.uber.org/mock/mockgen
 	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
 	@mockery --all

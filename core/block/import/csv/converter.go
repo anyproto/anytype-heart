@@ -158,7 +158,7 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params.UseFirstRowForRelations, progress)
+		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params, progress)
 		if err != nil {
 			cErr.Add(err)
 			if errors.Is(err, converter.ErrLimitExceeded) {

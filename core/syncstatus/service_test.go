@@ -6,7 +6,7 @@ package syncstatus
 // 	"testing"
 // 	"time"
 //
-// 	"github.com/golang/mock/gomock"
+// 	"go.uber.org/mock/gomock"
 // 	"github.com/stretchr/testify/require"
 //
 // 	"github.com/anyproto/anytype-heart/core/anytype/config"
