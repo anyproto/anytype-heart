@@ -93,6 +93,9 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 				updateRelationID(block.(dataview.Block), relation, view, newID)
 			}
 		}
+		if view.DefaultTemplateId != "" {
+			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
+		}
 	}
 	for _, group := range dataView.GetGroupOrders() {
 		for _, vg := range group.ViewGroups {
