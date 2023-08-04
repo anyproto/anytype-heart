@@ -83,11 +83,10 @@ var (
 	WarningAfter = time.Second * 1
 )
 
-func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
+func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
-		config.WithCreateBuiltinTemplates(createBuiltinTemplates),
 	)
 }
 

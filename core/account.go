@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	cp "github.com/otiai10/copy"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
@@ -131,7 +132,11 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
+
+	if req.DisableLocalNetworkSync {
+		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
 
 	derivationResult, err := core.WalletAccountAt(mw.mnemonic, 0)
 	if err != nil {
@@ -305,8 +310,13 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		}
 	}
 
+	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
+	if req.DisableLocalNetworkSync {
+		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
+
 	comps := []app.Component{
-		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false),
+		cfg,
 		anytype.BootstrapWallet(mw.rootPath, res),
 		mw.EventSender,
 	}
@@ -533,6 +543,28 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 	return response(pb.RpcAccountConfigUpdateResponseError_NULL, err)
 }
 
+func (mw *Middleware) AccountEnableLocalNetworkSync(_ context.Context, req *pb.RpcAccountEnableLocalNetworkSyncRequest) *pb.RpcAccountEnableLocalNetworkSyncResponse {
+	response := func(code pb.RpcAccountEnableLocalNetworkSyncResponseErrorCode, err error) *pb.RpcAccountEnableLocalNetworkSyncResponse {
+		m := &pb.RpcAccountEnableLocalNetworkSyncResponse{Error: &pb.RpcAccountEnableLocalNetworkSyncResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	if mw.app == nil {
+		return response(pb.RpcAccountEnableLocalNetworkSyncResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
+	}
+
+	ld := mw.app.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
+	err := ld.Start()
+	if err != nil {
+		return response(pb.RpcAccountEnableLocalNetworkSyncResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcAccountEnableLocalNetworkSyncResponseError_NULL, err)
+}
+
 func (mw *Middleware) AccountRemoveLocalData() error {
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 	address := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
@@ -689,7 +721,7 @@ func (mw *Middleware) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExpo
 		return nil, fmt.Errorf("failed to extract config: %w", err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
 	return cfg, nil
 }
