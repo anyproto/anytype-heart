@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	undo "github.com/anyproto/anytype-heart/core/block/undo"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockHistory is a mock of History interface.

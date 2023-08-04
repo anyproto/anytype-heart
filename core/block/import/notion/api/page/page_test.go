@@ -621,3 +621,86 @@ func Test_handleRollupProperties(t *testing.T) {
 	rollup := pbtypes.GetStringListValue(details[key])
 	assert.Equal(t, rollup[0], "Title")
 }
+
+func Test_handlePagePropertiesUniqueID(t *testing.T) {
+	t.Run("create relation from unique property - empty prefix", func(t *testing.T) {
+		// given
+		c := client.NewClient()
+		details := make(map[string]*types.Value, 0)
+
+		p := property.UniqueIDItem{
+			ID:   "id",
+			Type: "unique_id",
+			UniqueID: property.UniqueID{
+				Number: 1,
+			},
+		}
+		pr := property.Properties{"ID": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		store := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: store,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 1)
+
+		assert.Len(t, store.PropertyIdsToSnapshots, 1)
+		assert.NotEmpty(t, store.PropertyIdsToSnapshots["id"])
+		key := pbtypes.GetString(store.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
+		assert.Equal(t, details[key].GetStringValue(), "1")
+	})
+
+	t.Run("create relation from unique property - not empty prefix", func(t *testing.T) {
+		// given
+		c := client.NewClient()
+		details := make(map[string]*types.Value, 0)
+
+		p := property.UniqueIDItem{
+			ID:   "id",
+			Type: "unique_id",
+			UniqueID: property.UniqueID{
+				Number: 1,
+				Prefix: "PR",
+			},
+		}
+		pr := property.Properties{"ID": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		store := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: store,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 1)
+
+		assert.Len(t, store.PropertyIdsToSnapshots, 1)
+		assert.NotEmpty(t, store.PropertyIdsToSnapshots["id"])
+		key := pbtypes.GetString(store.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
+		assert.Equal(t, details[key].GetStringValue(), "PR-1")
+	})
+}

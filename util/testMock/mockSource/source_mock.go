@@ -15,7 +15,7 @@ import (
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	types "github.com/gogo/protobuf/types"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.

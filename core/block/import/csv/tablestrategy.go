@@ -22,7 +22,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, useFirstRowForHeader bool, progress process.Progress) (string, []*converter.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*converter.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -32,7 +32,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, useFirst
 	}).NewState()
 
 	if len(csvTable) != 0 {
-		err := c.createTable(st, csvTable, useFirstRowForHeader)
+		err := c.createTable(st, csvTable, params.UseFirstRowForRelations)
 		if err != nil {
 			return "", nil, err
 		}

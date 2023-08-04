@@ -9,7 +9,7 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	kanban "github.com/anyproto/anytype-heart/core/kanban"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.
