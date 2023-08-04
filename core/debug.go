@@ -100,6 +100,10 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 	return response(nil, spaceSummary)
 }
 
+func (mw *Middleware) DebugSystem(cctx context.Context, req *pb.RpcDebugSystemRequest) *pb.RpcDebugSystemResponse {
+
+}
+
 func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
 	response := func(path string, err error) (res *pb.RpcDebugExportLocalstoreResponse) {
 		res = &pb.RpcDebugExportLocalstoreResponse{

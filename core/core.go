@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"os"
 	"runtime/debug"
 	"sync"
@@ -184,5 +186,19 @@ func (mw *Middleware) OnPanic(v interface{}) {
 func (mw *Middleware) requireClientWithVersion() {
 	if mw.clientWithVersion == "" {
 		panic(errors.New("client platform with the version must be set using the MetricsSetParameters method"))
+	}
+}
+
+func (mw *Middleware) SaveGoroutinesStack(path string) error {
+	a := mw.GetApp()
+	if a == nil {
+		return fmt.Errorf("failed to save stacktrace: need to start app first")
+	}
+	wl := a.Component(wallet.CName)
+	if wl == nil {
+		return fmt.Errorf("failed to save stacktrace: need to start wallet first")
+	}
+	if err := debug.SaveStackToRepo(wl.(wallet.Wallet).RepoPath(), true); err != nil {
+		return fmt.Errorf(err.Error())
 	}
 }
