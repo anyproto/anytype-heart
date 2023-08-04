@@ -1,11 +1,12 @@
 package clipboard
 
 import (
+	"strconv"
+	"testing"
+
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
-	"strconv"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -842,36 +843,73 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 }
 
 func Test_PasteText(t *testing.T) {
-	sb := smarttest.New("text")
-	require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
-	s := sb.NewState()
-	b1 := simple.New(&model.Block{
-		Id: "1",
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text: "some text 1",
-			},
-		},
-	})
-	s.Add(b1)
-	s.InsertTo("", model.Block_Inner, b1.Model().Id)
-	b2 := simple.New(&model.Block{
-		Id: "2",
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text: "some text 2",
-			},
-		},
-	})
-	s.Add(b2)
-	s.InsertTo("", model.Block_Inner, b2.Model().Id)
-	require.NoError(t, sb.Apply(s))
-	cb := NewClipboard(sb, nil, nil, nil, nil)
-	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
-		SelectedBlockIds: []string{"1", "2"},
-		TextSlot:         "One string",
-	}, "")
-	require.NoError(t, err)
-	assert.Equal(t, "One string", sb.NewState().Snippet())
 
+	t.Run("paste", func(t *testing.T) {
+		//given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		b1 := simple.New(&model.Block{
+			Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "some text 1",
+				},
+			},
+		})
+		s.Add(b1)
+		s.InsertTo("", model.Block_Inner, b1.Model().Id)
+		b2 := simple.New(&model.Block{
+			Id: "2",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "some text 2",
+				},
+			},
+		})
+		s.Add(b2)
+		s.InsertTo("", model.Block_Inner, b2.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		//when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			SelectedBlockIds: []string{"1", "2"},
+			TextSlot:         "One string",
+		}, "")
+
+		//then
+		require.NoError(t, err)
+		assert.Equal(t, "One string", sb.NewState().Snippet())
+	})
+
+	t.Run("paste - when asterisks", func(t *testing.T) {
+		//given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		b1 := simple.New(&model.Block{
+			Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "some text 1",
+				},
+			},
+		})
+		s.Add(b1)
+		s.InsertTo("", model.Block_Inner, b1.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		//when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			SelectedBlockIds: []string{"1"},
+			TextSlot:         "a * b * c",
+			HtmlSlot:         "<meta charset='utf-8'><p data-pm-slice=\"1 1 []\">a *<em> b</em> * c</p>",
+		}, "")
+
+		//then
+		require.NoError(t, err)
+		assert.Equal(t, "a * b * c", sb.NewState().Snippet())
+	})
 }
