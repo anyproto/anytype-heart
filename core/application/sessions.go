@@ -1,10 +1,10 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
 	"fmt"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token string, err error) {
@@ -12,7 +12,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	if s.mnemonic != req.Mnemonic {
 		return "", domain.WrapErrorWithCode(fmt.Errorf("incorrect mnemonic"), pb.RpcWalletCreateSessionResponseError_BAD_INPUT)
 	}
-	return s.sessions.StartSession(s.sessionKey)
+	return s.sessions.StartSession(s.sessionSigningKey)
 }
 
 func (s *Service) CloseSession(req *pb.RpcWalletCloseSessionRequest) error {
@@ -23,5 +23,5 @@ func (s *Service) CloseSession(req *pb.RpcWalletCloseSessionRequest) error {
 }
 
 func (s *Service) ValidateSessionToken(token string) error {
-	return s.sessions.ValidateToken(s.sessionKey, token)
+	return s.sessions.ValidateToken(s.sessionSigningKey, token)
 }

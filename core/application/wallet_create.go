@@ -1,12 +1,12 @@
 package application
 
 import (
-	"fmt"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"os"
 	"crypto/rand"
+	"fmt"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"os"
 )
 
 const wordCount int = 12
@@ -40,6 +40,6 @@ func (s *Service) setMnemonic(mnemonic string) error {
 	if _, err := rand.Read(buf); err != nil {
 		return err
 	}
-	s.sessionKey = buf
+	s.sessionSigningKey = buf
 	return nil
 }

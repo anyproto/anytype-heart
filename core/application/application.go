@@ -1,13 +1,13 @@
 package application
 
 import (
-	"sync"
-	"github.com/anyproto/any-sync/app"
 	"context"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"errors"
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"sync"
 )
 
 var log = logging.Logger("anytype-core-account")
@@ -20,7 +20,7 @@ type Service struct {
 	mnemonic string
 
 	// memoized private key derived from mnemonic, used for signing session tokens
-	sessionKey []byte
+	sessionSigningKey []byte
 
 	rootPath          string
 	clientWithVersion string
