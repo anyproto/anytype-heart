@@ -39,8 +39,10 @@ type localDiscovery struct {
 	peerId string
 	port   int
 
-	notifier   Notifier
-	drpcServer clientserver.ClientServer
+	notifier    Notifier
+	drpcServer  clientserver.ClientServer
+	manualStart bool
+	m           sync.Mutex
 }
 
 func (l *localDiscovery) PeerDiscovered(peer DiscoveredPeer, own OwnAddresses) {
@@ -79,10 +81,23 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.drpcServer = a.MustComponent(clientserver.CName).(clientserver.ClientServer)
+	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
+
 	return
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
+	if l.manualStart {
+		// let's wait for the explicit command to enable local discovery
+		return
+	}
+
+	return l.Start()
+}
+
+func (l *localDiscovery) Start() (err error) {
+	l.m.Lock()
+	defer l.m.Unlock()
 	if !l.drpcServer.ServerStarted() {
 		return
 	}
