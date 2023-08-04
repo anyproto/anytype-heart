@@ -16,11 +16,13 @@ type rpcHandler struct {
 	s *service
 }
 
-func (r *rpcHandler) AclAddRecord(ctx context.Context, request *spacesyncproto.AclAddRecordRequest) (*spacesyncproto.AclAddRecordResponse, error) {
+// nolint:revive
+func (r *rpcHandler) AclAddRecord(_ context.Context, _ *spacesyncproto.AclAddRecordRequest) (*spacesyncproto.AclAddRecordResponse, error) {
 	return nil, fmt.Errorf("should not be called")
 }
 
-func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.AclGetRecordsRequest) (*spacesyncproto.AclGetRecordsResponse, error) {
+// nolint:revive
+func (r *rpcHandler) AclGetRecords(_ context.Context, _ *spacesyncproto.AclGetRecordsRequest) (*spacesyncproto.AclGetRecordsResponse, error) {
 	return nil, fmt.Errorf("should not be called")
 }
 

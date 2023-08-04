@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"

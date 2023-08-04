@@ -2,8 +2,6 @@ package property
 
 import (
 	"encoding/json"
-	"fmt"
-
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -19,31 +17,26 @@ func (p *DatabaseProperties) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	props, err := parseDatabaseProperty(raw)
-	if err != nil {
-		return err
-	}
-
+	props := parseDatabaseProperty(raw)
 	*p = props
 	return nil
 }
 
-func parseDatabaseProperty(raw map[string]interface{}) (DatabaseProperties, error) {
+func parseDatabaseProperty(raw map[string]interface{}) DatabaseProperties {
 	result := make(DatabaseProperties)
 	for k, v := range raw {
-		p, err := getDatabasePropertyHandler(v)
-		if err != nil {
-			return nil, err
+		p := getDatabasePropertyHandler(v)
+		if p == nil {
+			continue
 		}
 		if p != nil {
 			result[k] = p
 		}
 	}
-
-	return result, nil
+	return result
 }
 
-func getDatabasePropertyHandler(v interface{}) (DatabasePropertyHandler, error) {
+func getDatabasePropertyHandler(v interface{}) DatabasePropertyHandler {
 	var p DatabasePropertyHandler
 	switch rawProperty := v.(type) {
 	case map[string]interface{}:
@@ -74,12 +67,12 @@ func getDatabasePropertyHandler(v interface{}) (DatabasePropertyHandler, error) 
 			p = &DatabaseNumber{}
 		case PropertyConfigTypeFormula:
 			// Database property Formula doesn't have information about its format in database properties, so we don't add it
-			return nil, nil
+			return nil
 		case PropertyConfigTypeRelation:
 			p = &DatabaseRelation{}
 		case PropertyConfigTypeRollup:
 			// Database property Rollup doesn't have information about its format in database properties, so we don't add it
-			return nil, nil
+			return nil
 		case PropertyConfigCreatedTime:
 			p = &DatabaseCreatedTime{}
 		case PropertyConfigCreatedBy:
@@ -92,22 +85,27 @@ func getDatabasePropertyHandler(v interface{}) (DatabasePropertyHandler, error) 
 			p = &DatabaseStatus{}
 		case PropertyConfigVerification:
 			p = &DatabaseVerification{}
+		case PropertyConfigUniqueID:
+			p = &DatabaseUnique{}
 		default:
-			return nil, fmt.Errorf("unsupported property type: %s", rawProperty["type"].(string))
+			logger.Errorf("failed to get notion properties: unsupported property type: %s", rawProperty["type"].(string))
+			return nil
 		}
 		b, err := json.Marshal(rawProperty)
 		if err != nil {
-			return nil, err
+			logger.Errorf("failed to get notion properties, error: %s", err.Error())
+			return nil
 		}
 
 		if err = json.Unmarshal(b, &p); err != nil {
-			return nil, err
+			logger.Errorf("failed to get notion properties, error: %s", err.Error())
+			return nil
 		}
-
 	default:
-		return nil, fmt.Errorf("unsupported property format %T", v)
+		logger.Errorf("failed to get notion properties: unsupported property format %T", v)
+		return nil
 	}
-	return p, nil
+	return p
 }
 
 type DatabasePropertyHandler interface {
@@ -423,5 +421,21 @@ func (v *DatabaseVerification) GetID() string {
 }
 
 func (v *DatabaseVerification) SetDetail(key string, details map[string]*types.Value) {
+	details[key] = pbtypes.StringList(nil)
+}
+
+type DatabaseUnique struct {
+	Property
+}
+
+func (u *DatabaseUnique) GetFormat() model.RelationFormat {
+	return model.RelationFormat_longtext
+}
+
+func (u *DatabaseUnique) GetID() string {
+	return u.ID
+}
+
+func (u *DatabaseUnique) SetDetail(key string, details map[string]*types.Value) {
 	details[key] = pbtypes.StringList(nil)
 }

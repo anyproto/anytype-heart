@@ -193,6 +193,18 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 			assert.True(t, name == "name" || name == "price")
 		}
 	}
+
+	var collection *converter.Snapshot
+	for _, snapshot := range sn.Snapshots {
+		// only objects created from rows
+		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) &&
+			pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()) == "transpose Transpose" {
+			collection = snapshot
+		}
+	}
+
+	assert.NotNil(t, collection)
 }
 
 func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
