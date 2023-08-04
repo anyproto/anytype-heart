@@ -89,7 +89,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	return s
 }
 
-func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key uniquekey.UniqueKeyInternal) Doc {
+func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key uniquekey.UniqueKey) Doc {
 	if blocks == nil {
 		blocks = make(map[string]simple.Block)
 	}
@@ -956,7 +956,7 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 }
 
 type TypeIDGetter interface {
-	GetTypeId(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
 }
 
 func (s *State) InjectDerivedDetails(getter TypeIDGetter) {
@@ -970,7 +970,7 @@ func (s *State) InjectDerivedDetails(getter TypeIDGetter) {
 		if getter == nil {
 			log.Errorf("failed to get type id for %s: no getter provided", ot)
 		} else {
-			typeID, err := getter.GetTypeId(context.Background(), s.SpaceID(), bundle.TypeKey(ot))
+			typeID, err := getter.GetTypeIdByKey(context.Background(), s.SpaceID(), bundle.TypeKey(ot))
 			if err != nil {
 				log.Errorf("failed to get type id for %s: %v", ot, err)
 			}
@@ -981,6 +981,10 @@ func (s *State) InjectDerivedDetails(getter TypeIDGetter) {
 	snippet := s.Snippet()
 	if snippet != "" || s.LocalDetails() != nil {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
+	}
+
+	if uk := s.UniqueKeyInternal(); uk != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk))
 	}
 }
 

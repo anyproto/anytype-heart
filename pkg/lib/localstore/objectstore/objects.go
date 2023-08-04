@@ -689,7 +689,7 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 	}
 
 	ot := s.extractObjectTypeFromDetails(details.Details, id)
-	ot.Key = uk.(uniquekey.UniqueKeyInternal).InternalKey()
+	ot.Key = uk.InternalKey()
 	return ot, nil
 }
 

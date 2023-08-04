@@ -571,7 +571,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			relId, err := sb.relationService.GetRelationId(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
+			relId, err := sb.relationService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
 				continue
@@ -889,7 +889,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.relationService.FetchKeys(s.SpaceID(), relationKeys...)
+	relations, err := sb.relationService.FetchRelationByKeys(s.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -1252,7 +1252,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.RelationService().FetchLinks(sb.spaceID, links)
+	rels, _ := sb.RelationService().FetchRelationByLinks(sb.spaceID, links)
 	return rels
 }
 

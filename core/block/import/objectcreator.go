@@ -148,6 +148,21 @@ func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[st
 	return oc.resetState(newID, st)
 }
 
+func (oc *ObjectCreator) installBundledRelationsAndTypes(
+	ctx context.Context,
+	spaceID string,
+	links []model.RelationLink,
+	types []bundle.TypeKey,
+	oldIDtoNew map[string]string) (*types.Struct, error) {
+
+	for _, link := range links {
+		if !bundle.HasRelation(link.Key) {
+			continue
+		}
+	}
+	oc.service.AddBundledObjectToSpace()
+}
+
 func (oc *ObjectCreator) createNewObject(
 	ctx context.Context,
 	spaceID string,

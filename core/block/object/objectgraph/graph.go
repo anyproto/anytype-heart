@@ -122,7 +122,7 @@ func (gr *Builder) extractGraph(
 }
 
 func (gr *Builder) provideRelations(spaceID string) (relationutils.Relations, error) {
-	relations, err := gr.relationService.ListAll(spaceID)
+	relations, err := gr.relationService.ListAllRelations(spaceID)
 	return relations, err
 }
 

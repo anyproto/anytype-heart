@@ -575,7 +575,7 @@ func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSet
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return fmt.Errorf("not implemented")
 		// todo: implement me
-		/*rel, err := s.relationService.FetchKey(b.req.Key)
+		/*rel, err := s.relationService.FetchRelationByKey(b.req.Key)
 		if err != nil {
 			return err
 		}

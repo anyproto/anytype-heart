@@ -138,7 +138,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			objectTypeIds = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
 		} else {
 			for _, objectTypeKey := range objectTypeKeys {
-				typeId, err := c.relationService.GetTypeId(ctx, spaceID, bundle.TypeKey(objectTypeKey))
+				typeId, err := c.relationService.GetTypeIdByKey(ctx, spaceID, bundle.TypeKey(objectTypeKey))
 				if err != nil {
 					return "", nil, err
 				}

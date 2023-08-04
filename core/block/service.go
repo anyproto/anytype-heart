@@ -420,7 +420,7 @@ func (s *Service) AddBundledObjectToSpace(
 			}
 
 			// create via the state directly, because we have cyclic dependencies and we want to avoid typeId resolving from the details
-			state := state.NewDocWithUniqueKey("", nil, uk.(uniquekey.UniqueKeyInternal)).(*state.State)
+			state := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
 			state.SetDetails(d)
 
 			if b.Type() == model.SmartBlockType_STRelation {

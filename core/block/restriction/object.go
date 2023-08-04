@@ -221,12 +221,12 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 func GetRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r ObjectRestrictions) {
 	switch uk.SmartblockType() {
 	case model.SmartBlockType_STType:
-		key := uk.(uniquekey.UniqueKeyInternal).InternalKey()
+		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(key)) {
 			return sysTypesRestrictions
 		}
 	case model.SmartBlockType_STRelation:
-		key := uk.(uniquekey.UniqueKeyInternal).InternalKey()
+		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
 			return sysRelationsRestrictions
 		}
@@ -238,7 +238,7 @@ func GetDataviewRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r DataviewRest
 	r, _ = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
 	switch uk.SmartblockType() {
 	case model.SmartBlockType_STType:
-		key := uk.(uniquekey.UniqueKeyInternal).InternalKey()
+		key := uk.InternalKey()
 		if lo.Contains(bundle.InternalTypes, bundle.TypeKey(key)) {
 			return append(r.Copy(), model.RestrictionsDataviewRestrictions{
 				BlockId:      DataviewBlockId,

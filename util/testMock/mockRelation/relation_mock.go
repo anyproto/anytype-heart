@@ -45,7 +45,7 @@ func (m *MockService) FetchKey(arg0 string, arg1 ...relation.FetchOption) (*rela
 	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "FetchKey", varargs...)
+	ret := m.ctrl.Call(m, "FetchRelationByKey", varargs...)
 	ret0, _ := ret[0].(*relationutils.Relation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -55,7 +55,7 @@ func (m *MockService) FetchKey(arg0 string, arg1 ...relation.FetchOption) (*rela
 func (mr *MockServiceMockRecorder) FetchKey(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0}, arg1...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchKey", reflect.TypeOf((*MockService)(nil).FetchKey), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchRelationByKey", reflect.TypeOf((*MockService)(nil).FetchKey), varargs...)
 }
 
 // FetchKeys mocks base method.
@@ -65,7 +65,7 @@ func (m *MockService) FetchKeys(arg0 ...string) (relationutils.Relations, error)
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "FetchKeys", varargs...)
+	ret := m.ctrl.Call(m, "FetchRelationByKeys", varargs...)
 	ret0, _ := ret[0].(relationutils.Relations)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -74,13 +74,13 @@ func (m *MockService) FetchKeys(arg0 ...string) (relationutils.Relations, error)
 // FetchKeys indicates an expected call of FetchKeys.
 func (mr *MockServiceMockRecorder) FetchKeys(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchKeys", reflect.TypeOf((*MockService)(nil).FetchKeys), arg0...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchRelationByKeys", reflect.TypeOf((*MockService)(nil).FetchKeys), arg0...)
 }
 
 // FetchLinks mocks base method.
 func (m *MockService) FetchLinks(arg0 pbtypes.RelationLinks) (relationutils.Relations, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchLinks", arg0)
+	ret := m.ctrl.Call(m, "FetchRelationByLinks", arg0)
 	ret0, _ := ret[0].(relationutils.Relations)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -89,7 +89,7 @@ func (m *MockService) FetchLinks(arg0 pbtypes.RelationLinks) (relationutils.Rela
 // FetchLinks indicates an expected call of FetchLinks.
 func (mr *MockServiceMockRecorder) FetchLinks(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchLinks", reflect.TypeOf((*MockService)(nil).FetchLinks), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchRelationByLinks", reflect.TypeOf((*MockService)(nil).FetchLinks), arg0)
 }
 
 // Init mocks base method.
@@ -113,7 +113,7 @@ func (m *MockService) ListAll(arg0 ...relation.FetchOption) (relationutils.Relat
 	for _, a := range arg0 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "ListAll", varargs...)
+	ret := m.ctrl.Call(m, "ListAllRelations", varargs...)
 	ret0, _ := ret[0].(relationutils.Relations)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -122,7 +122,7 @@ func (m *MockService) ListAll(arg0 ...relation.FetchOption) (relationutils.Relat
 // ListAll indicates an expected call of ListAll.
 func (mr *MockServiceMockRecorder) ListAll(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAll", reflect.TypeOf((*MockService)(nil).ListAll), arg0...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllRelations", reflect.TypeOf((*MockService)(nil).ListAll), arg0...)
 }
 
 // Name mocks base method.
