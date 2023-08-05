@@ -5,29 +5,31 @@ Middleware library for Anytype, distributed as part of the Anytype clients.
 1. Install Golang 1.19.x [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
-
-
 ### Install local deps 
 
 #### Mac
-As of 16.01.23 last protobuf version (21.12) broke the JS plugin support, so you can use the v3 branch:
-```
+As of 16.01.23 last protobuf version (21.12) [broke the JS plugin support](https://github.com/protocolbuffers/protobuf-javascript/issues/127), so you can use the v3 branch:
+```shell
 brew install protobuf@3
 ```
 
+Note that the package may not be symlinked to `/usr/local`, so consider modify your `PATH` per instructed by `brew`.
+
 To generate Swift protobuf:
-```
+```shell
 brew install swift-protobuf
 ```
 
 #### Debian/Ubuntu
 We need to have protoc binary (3.x version) and libprotoc headers in orderto build the grpc-web plugin
-```
+```shell
 apt install protobuf-compiler libprotoc-dev
 ```
 
 ### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
-`make install-dev-js` — build the local server and copy it and protobuf binding into `../anytype-ts`
+The desktop client repository [`anytype-ts`](https://github.com/anyproto/anytype-ts) should be cloned first, and put at the same level as this repository.
+
+Then run `make install-dev-js` to build the local server and copy it and protobuf binding into `../anytype-ts`
 
 Parameters:
 - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)
@@ -54,40 +56,40 @@ This repo uses custom protoc located at [anyproto/protobuf](https://github.com/a
 This protobuf generator will replace your `protoc` binary, BTW it doesn't have any breaking changes for other protobuf and grpc code
 
 You can override the binary with a simple command:
-```
+```shell
 make setup-protoc
 ```
 
 Then you can easily regenerate proto files:
-```
+```shell
 make protos
 ```
 
 ## Run tests
 Install dependencies for running tests and generate mocks:
-```
+```shell
 make test-deps
 ```
 
 GO test:
-```
+```shell
 make test
 ```
 You'll need to install latest (at least clang 15)
-```
+```shell
 brew install llvm 
 echo 'export PATH="/<homebrew location>/llvm/bin:$PATH"' >> ~/.zshrc 
 ```
 
 ### Integration tests
 First you need to start a docker container via docker-compose:
-```
+```shell
 export ANYTYPE_TEST_GRPC_PORT=31088
 docker-compose up -d
 ```
 
 Then you can run the basic integration tests:
-```
+```shell
 make test-integration
 ```
 
@@ -149,27 +151,27 @@ You should specify import-path to the root of anytype-heart repository and gRPC 
 Command examples:
 
 - List available methods
-```
+```shell
 grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto localhost:31007 describe
 ```
 
 - Describe method signature
-```
+```shell
 grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto localhost:31007 describe anytype.ClientCommands.ObjectCreate
 ```
 
 - Describe structure of specified protobuf message
-```
+```shell
 grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto localhost:31007 describe .anytype.Rpc.Object.Create.Request
 ```
 
 - Call method with specified plain-text payload
-```
+```shell
 grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d '{"details": {"name": "hello there", "type": "ot-page"}}' localhost:31007 anytype.ClientCommands.ObjectCreate
 ```
 
 - Call method using unix pipe
-```
+```shell
 echo '{"details": {"name": "hello there", "type": "ot-page"}}' | grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d @ localhost:31007 anytype.ClientCommands.ObjectCreate
 ```
 
