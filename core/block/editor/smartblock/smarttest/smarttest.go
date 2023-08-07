@@ -299,6 +299,10 @@ func (st *SmartTest) Inner() smartblock.SmartBlock {
 	return nil
 }
 
+func (st *SmartTest) Delete() error {
+	return nil
+}
+
 type Results struct {
 	Events  [][]simple.EventMessage
 	Applies [][]*model.Block

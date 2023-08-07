@@ -79,6 +79,7 @@ type sourceDeps struct {
 	spaceService   space.Service
 	sbtProvider    typeprovider.SmartBlockTypeProvider
 	fileService    files.Service
+	stateCache     state.Cache
 }
 
 func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
@@ -92,6 +93,7 @@ func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
 		accountService: deps.accountService,
 		sbtProvider:    deps.sbtProvider,
 		fileService:    deps.fileService,
+		stateCache:     deps.stateCache,
 	}, nil
 }
 
@@ -116,6 +118,7 @@ type source struct {
 	accountService accountservice.Service
 	spaceService   space.Service
 	sbtProvider    typeprovider.SmartBlockTypeProvider
+	stateCache     state.Cache
 }
 
 func (s *source) Tree() objecttree.ObjectTree {
@@ -186,9 +189,20 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedBlocks().Profile)
-	if err != nil {
-		return
+	var (
+		found                       bool
+		st                          *state.State
+		changesAppliedSinceSnapshot int
+	)
+	doc, err = s.stateCache.GetState(s.Id(), s.ObjectTree.Heads())
+	if err == nil && doc != nil {
+		st = doc.(*state.State)
+		found = true
+	} else {
+		st, _, changesAppliedSinceSnapshot, err = BuildState(nil, s.ObjectTree, s.coreService.PredefinedBlocks().Profile)
+		if err != nil {
+			return
+		}
 	}
 	validationErr := st.Validate()
 	if validationErr != nil {
@@ -205,6 +219,11 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// TODO: check if we can use apply fast one
 	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
+	}
+	if !found {
+		if err = s.stateCache.SaveState(s.ObjectTree.Heads(), st, s.GetHeadStateFileKeys(st)); err != nil {
+			log.Errorf("failed to save state in store, %v", err)
+		}
 	}
 	return st, nil
 }
@@ -392,6 +411,41 @@ func (s *source) Close() (err error) {
 		<-s.closed
 	}
 	return s.ObjectTree.Close()
+}
+
+func (s *source) GetHeadStateFileKeys(st *state.State) []*pb.ChangeFileKeys {
+	// first lets try to find all the keys cached in the filestore because it's cheap
+	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
+	keys := make([]*pb.ChangeFileKeys, 0, len(fileHashes))
+	var missingHashes []string
+	for _, hash := range fileHashes {
+		fk, err := s.fileService.FileGetKeys(hash)
+		if err != nil {
+			missingHashes = append(missingHashes, hash)
+			log.With("objectID", s.Id()).With("hash", hash).Debug("can't find keys for the head state in the tree")
+			continue
+		}
+		keys = append(keys, &pb.ChangeFileKeys{Hash: hash, Keys: fk.Keys})
+	}
+	if len(missingHashes) == 0 {
+		return keys
+	}
+	if len(missingHashes) > 0 {
+		log.With("objectID", s.Id()).Warnf("%d keys for the head state are missing in the file store; loading from the tree", len(missingHashes))
+	}
+
+	fileKeys := s.GetFileKeysSnapshot()
+	for _, missingHash := range missingHashes {
+		i := slice.Find(fileKeys, func(fk *pb.ChangeFileKeys) bool {
+			return fk.Hash == missingHash
+		})
+		if i >= 0 {
+			keys = append(keys, fileKeys[i])
+		} else {
+			log.With("objectID", s.Id()).With("hash", missingHash).Errorf("can't find keys for the head state in the tree")
+		}
+	}
+	return keys
 }
 
 func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {

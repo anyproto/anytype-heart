@@ -48,6 +48,7 @@ type service struct {
 	fileStore    filestore.FileStore
 	spaceService space.Service
 	fileService  files.Service
+	stateStore   state.Cache
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -61,6 +62,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.fileService = app.MustComponent[files.Service](a)
+	s.stateStore = app.MustComponent[state.Cache](a)
 	return
 }
 
@@ -128,6 +130,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		spaceService:   s.spaceService,
 		sbtProvider:    s.sbtProvider,
 		fileService:    s.fileService,
+		stateCache:     s.stateStore,
 	}
 	return newTreeSource(id, deps)
 }
