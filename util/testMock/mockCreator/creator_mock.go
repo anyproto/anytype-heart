@@ -87,38 +87,6 @@ func (mr *MockServiceMockRecorder) CreateSmartBlockFromTemplate(arg0, arg1, arg2
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSmartBlockFromTemplate", reflect.TypeOf((*MockService)(nil).CreateSmartBlockFromTemplate), arg0, arg1, arg2, arg3, arg4)
 }
 
-// CreateSubObjectInWorkspace mocks base method.
-func (m *MockService) CreateSubObjectInWorkspace(arg0 context.Context, arg1 *types.Struct, arg2 string) (string, *types.Struct, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSubObjectInWorkspace", arg0, arg1, arg2)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(*types.Struct)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// CreateSubObjectInWorkspace indicates an expected call of CreateSubObjectInWorkspace.
-func (mr *MockServiceMockRecorder) CreateSubObjectInWorkspace(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSubObjectInWorkspace", reflect.TypeOf((*MockService)(nil).CreateSubObjectInWorkspace), arg0, arg1, arg2)
-}
-
-// CreateSubObjectsInWorkspace mocks base method.
-func (m *MockService) CreateSubObjectsInWorkspace(arg0 context.Context, arg1 string, arg2 []*types.Struct) ([]string, []*types.Struct, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSubObjectsInWorkspace", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].([]*types.Struct)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// CreateSubObjectsInWorkspace indicates an expected call of CreateSubObjectsInWorkspace.
-func (mr *MockServiceMockRecorder) CreateSubObjectsInWorkspace(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSubObjectsInWorkspace", reflect.TypeOf((*MockService)(nil).CreateSubObjectsInWorkspace), arg0, arg1, arg2)
-}
-
 // Init mocks base method.
 func (m *MockService) Init(arg0 *app.App) error {
 	m.ctrl.T.Helper()

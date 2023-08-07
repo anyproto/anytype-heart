@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	uniquekey "github.com/anyproto/anytype-heart/core/block/uniquekey"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 	gomock "github.com/golang/mock/gomock"
@@ -63,6 +64,21 @@ func (m *MockService) Close(arg0 context.Context) error {
 func (mr *MockServiceMockRecorder) Close(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockService)(nil).Close), arg0)
+}
+
+// DeriveObjectId mocks base method.
+func (m *MockService) DeriveObjectId(arg0 context.Context, arg1 string, arg2 uniquekey.UniqueKey) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeriveObjectId", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeriveObjectId indicates an expected call of DeriveObjectId.
+func (mr *MockServiceMockRecorder) DeriveObjectId(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeriveObjectId", reflect.TypeOf((*MockService)(nil).DeriveObjectId), arg0, arg1, arg2)
 }
 
 // DerivePredefinedObjects mocks base method.

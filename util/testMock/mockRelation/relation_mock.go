@@ -5,11 +5,13 @@
 package mockRelation
 
 import (
+	context "context"
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
 	relation "github.com/anyproto/anytype-heart/core/relation"
 	relationutils "github.com/anyproto/anytype-heart/core/relation/relationutils"
+	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 	types "github.com/gogo/protobuf/types"
 	gomock "github.com/golang/mock/gomock"
@@ -39,10 +41,10 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // FetchKey mocks base method.
-func (m *MockService) FetchKey(arg0 string, arg1 ...relation.FetchOption) (*relationutils.Relation, error) {
+func (m *MockService) FetchKey(arg0, arg1 string, arg2 ...relation.FetchOption) (*relationutils.Relation, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FetchKey", varargs...)
@@ -52,17 +54,17 @@ func (m *MockService) FetchKey(arg0 string, arg1 ...relation.FetchOption) (*rela
 }
 
 // FetchKey indicates an expected call of FetchKey.
-func (mr *MockServiceMockRecorder) FetchKey(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) FetchKey(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchKey", reflect.TypeOf((*MockService)(nil).FetchKey), varargs...)
 }
 
 // FetchKeys mocks base method.
-func (m *MockService) FetchKeys(arg0 ...string) (relationutils.Relations, error) {
+func (m *MockService) FetchKeys(arg0 string, arg1 ...string) (relationutils.Relations, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FetchKeys", varargs...)
@@ -72,24 +74,70 @@ func (m *MockService) FetchKeys(arg0 ...string) (relationutils.Relations, error)
 }
 
 // FetchKeys indicates an expected call of FetchKeys.
-func (mr *MockServiceMockRecorder) FetchKeys(arg0 ...interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) FetchKeys(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchKeys", reflect.TypeOf((*MockService)(nil).FetchKeys), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchKeys", reflect.TypeOf((*MockService)(nil).FetchKeys), varargs...)
 }
 
 // FetchLinks mocks base method.
-func (m *MockService) FetchLinks(arg0 pbtypes.RelationLinks) (relationutils.Relations, error) {
+func (m *MockService) FetchLinks(arg0 string, arg1 pbtypes.RelationLinks) (relationutils.Relations, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchLinks", arg0)
+	ret := m.ctrl.Call(m, "FetchLinks", arg0, arg1)
 	ret0, _ := ret[0].(relationutils.Relations)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FetchLinks indicates an expected call of FetchLinks.
-func (mr *MockServiceMockRecorder) FetchLinks(arg0 interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) FetchLinks(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchLinks", reflect.TypeOf((*MockService)(nil).FetchLinks), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchLinks", reflect.TypeOf((*MockService)(nil).FetchLinks), arg0, arg1)
+}
+
+// GetRelationId mocks base method.
+func (m *MockService) GetRelationId(arg0 context.Context, arg1 string, arg2 bundle.RelationKey) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationId", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationId indicates an expected call of GetRelationId.
+func (mr *MockServiceMockRecorder) GetRelationId(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationId", reflect.TypeOf((*MockService)(nil).GetRelationId), arg0, arg1, arg2)
+}
+
+// GetSystemTypeId mocks base method.
+func (m *MockService) GetSystemTypeId(arg0 string, arg1 bundle.TypeKey) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSystemTypeId", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSystemTypeId indicates an expected call of GetSystemTypeId.
+func (mr *MockServiceMockRecorder) GetSystemTypeId(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemTypeId", reflect.TypeOf((*MockService)(nil).GetSystemTypeId), arg0, arg1)
+}
+
+// GetTypeId mocks base method.
+func (m *MockService) GetTypeId(arg0 context.Context, arg1 string, arg2 bundle.TypeKey) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTypeId", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTypeId indicates an expected call of GetTypeId.
+func (mr *MockServiceMockRecorder) GetTypeId(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTypeId", reflect.TypeOf((*MockService)(nil).GetTypeId), arg0, arg1, arg2)
 }
 
 // Init mocks base method.
@@ -107,10 +155,10 @@ func (mr *MockServiceMockRecorder) Init(arg0 interface{}) *gomock.Call {
 }
 
 // ListAll mocks base method.
-func (m *MockService) ListAll(arg0 ...relation.FetchOption) (relationutils.Relations, error) {
+func (m *MockService) ListAll(arg0 string, arg1 ...relation.FetchOption) (relationutils.Relations, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{}
-	for _, a := range arg0 {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ListAll", varargs...)
@@ -120,9 +168,10 @@ func (m *MockService) ListAll(arg0 ...relation.FetchOption) (relationutils.Relat
 }
 
 // ListAll indicates an expected call of ListAll.
-func (mr *MockServiceMockRecorder) ListAll(arg0 ...interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) ListAll(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAll", reflect.TypeOf((*MockService)(nil).ListAll), arg0...)
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAll", reflect.TypeOf((*MockService)(nil).ListAll), varargs...)
 }
 
 // Name mocks base method.
@@ -140,15 +189,15 @@ func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 }
 
 // ValidateFormat mocks base method.
-func (m *MockService) ValidateFormat(arg0 string, arg1 *types.Value) error {
+func (m *MockService) ValidateFormat(arg0, arg1 string, arg2 *types.Value) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateFormat", arg0, arg1)
+	ret := m.ctrl.Call(m, "ValidateFormat", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ValidateFormat indicates an expected call of ValidateFormat.
-func (mr *MockServiceMockRecorder) ValidateFormat(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) ValidateFormat(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateFormat", reflect.TypeOf((*MockService)(nil).ValidateFormat), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateFormat", reflect.TypeOf((*MockService)(nil).ValidateFormat), arg0, arg1, arg2)
 }

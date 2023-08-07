@@ -29,7 +29,6 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
 	recs, _, err := s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)

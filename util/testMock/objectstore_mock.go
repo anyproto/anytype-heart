@@ -14,7 +14,6 @@ import (
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	schema "github.com/anyproto/anytype-heart/pkg/lib/schema"
 	types "github.com/gogo/protobuf/types"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -246,6 +245,21 @@ func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).GetLastIndexedHeadsHash), arg0)
 }
 
+// GetObjectByUniqueKey mocks base method.
+func (m *MockObjectStore) GetObjectByUniqueKey(arg0, arg1 string) (*model.ObjectDetails, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetObjectByUniqueKey", arg0, arg1)
+	ret0, _ := ret[0].(*model.ObjectDetails)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetObjectByUniqueKey indicates an expected call of GetObjectByUniqueKey.
+func (mr *MockObjectStoreMockRecorder) GetObjectByUniqueKey(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectByUniqueKey", reflect.TypeOf((*MockObjectStore)(nil).GetObjectByUniqueKey), arg0, arg1)
+}
+
 // GetObjectType mocks base method.
 func (m *MockObjectStore) GetObjectType(arg0 string) (*model.ObjectType, error) {
 	m.ctrl.T.Helper()
@@ -429,9 +443,9 @@ func (mr *MockObjectStoreMockRecorder) Name() *gomock.Call {
 }
 
 // Query mocks base method.
-func (m *MockObjectStore) Query(arg0 schema.Schema, arg1 database.Query) ([]database.Record, int, error) {
+func (m *MockObjectStore) Query(arg0 database.Query) ([]database.Record, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Query", arg0, arg1)
+	ret := m.ctrl.Call(m, "Query", arg0)
 	ret0, _ := ret[0].([]database.Record)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -439,9 +453,9 @@ func (m *MockObjectStore) Query(arg0 schema.Schema, arg1 database.Query) ([]data
 }
 
 // Query indicates an expected call of Query.
-func (mr *MockObjectStoreMockRecorder) Query(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) Query(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockObjectStore)(nil).Query), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockObjectStore)(nil).Query), arg0)
 }
 
 // QueryByID mocks base method.
