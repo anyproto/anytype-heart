@@ -218,7 +218,7 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 
 func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.URL)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(d.ID)
 	if len(d.Title) > 0 {
 		details[bundle.RelationKeyName.String()] = pbtypes.String(d.Title[0].PlainText)
 	}

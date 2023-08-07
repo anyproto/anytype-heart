@@ -113,7 +113,7 @@ func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]
 
 func (pt *Task) prepareDetails() map[string]*types.Value {
 	details := make(map[string]*types.Value, 0)
-	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(pt.p.URL)
+	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(pt.p.ID)
 	if pt.p.Icon != nil && pt.p.Icon.Emoji != nil {
 		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*pt.p.Icon.Emoji)
 	}
