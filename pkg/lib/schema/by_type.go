@@ -1,11 +1,12 @@
 package schema
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"fmt"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/samber/lo"
 )
 
 type schemaByType struct {
@@ -18,19 +19,10 @@ func NewByType(objType *model.ObjectType, relations []*model.RelationLink) Schem
 }
 
 func (sch *schemaByType) ListRelations() []*model.RelationLink {
-	var total = len(sch.OptionalRelations) + len(sch.ObjType.RelationLinks)
-
-	var m = make(map[string]struct{}, total)
-	var rels = make([]*model.RelationLink, 0, total)
-	for _, rel := range append(sch.ObjType.RelationLinks, sch.OptionalRelations...) {
-		if _, exists := m[rel.Key]; exists {
-			continue
-		}
-		m[rel.Key] = struct{}{}
-		rels = append(rels, rel)
-	}
-
-	return rels
+	allRelations := append(sch.ObjType.RelationLinks, sch.OptionalRelations...)
+	return lo.UniqBy(allRelations, func(rel *model.RelationLink) string {
+		return rel.Key
+	})
 }
 
 func (sch *schemaByType) RequiredRelations() []*model.RelationLink {

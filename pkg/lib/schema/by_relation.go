@@ -1,11 +1,12 @@
 package schema
 
 import (
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"fmt"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/samber/lo"
 )
 
 type schemaByRelations struct {
@@ -19,31 +20,21 @@ func NewByRelations(objTypes []string, commonRelations, optionalRelations []*mod
 }
 
 func (sch *schemaByRelations) RequiredRelations() []*model.RelationLink {
-	required := []*model.RelationLink{
+	alwaysRequired := []*model.RelationLink{
 		bundle.MustGetRelationLink(bundle.RelationKeyName),
 		bundle.MustGetRelationLink(bundle.RelationKeyType),
 	}
-	for _, rel := range sch.CommonRelations {
-		if !pbtypes.HasRelationLink(required, rel.Key) {
-			required = append(required, rel)
-		}
-	}
-	return required
+	required := append(alwaysRequired, sch.CommonRelations...)
+	return lo.UniqBy(required, func(rel *model.RelationLink) string {
+		return rel.Key
+	})
 }
 
 func (sch *schemaByRelations) ListRelations() []*model.RelationLink {
-	total := len(sch.OptionalRelations) + len(sch.CommonRelations)
-	uniq := make(map[string]struct{}, total)
-	relations := make([]*model.RelationLink, 0, total)
-	for _, rel := range append(sch.CommonRelations, sch.OptionalRelations...) {
-		if _, exists := uniq[rel.Key]; exists {
-			continue
-		}
-		uniq[rel.Key] = struct{}{}
-		relations = append(relations, rel)
-	}
-
-	return relations
+	allRelations := append(sch.CommonRelations, sch.OptionalRelations...)
+	return lo.UniqBy(allRelations, func(rel *model.RelationLink) string {
+		return rel.Key
+	})
 }
 
 func (sch *schemaByRelations) Filters() filter.Filter {
