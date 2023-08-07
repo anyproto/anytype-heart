@@ -165,32 +165,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
-	tempDirService := core.NewTempDirService()
-	spaceService := space.New()
-	sbtProvider := typeprovider.New()
-	objectStore := objectstore.New()
-	objectCreator := objectcreator.NewCreator()
-	layoutConverter := converter.NewLayoutConverter()
-	blockService := block.New()
-	collectionService := collection.New()
-	relationService := relation.New()
-	coreService := core.New()
-	graphRenderer := objectgraph.NewBuilder()
-	fileSyncService := filesync.New()
-	fileStore := filestore.New()
-
-	datastoreProvider := clientds.New()
-	nodeConf := nodeconf.New()
-
 	const fileWatcherUpdateInterval = 5 * time.Second
-	syncStatusService := syncstatus.New(fileWatcherUpdateInterval)
-	fileService := files.New()
-	indexerService := indexer.New()
 
-	a.Register(datastoreProvider).
+	a.Register(clientds.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
-		Register(nodeConf).
+		Register(nodeconf.New()).
 		Register(peerstore.New()).
 		Register(syncstatusprovider.New()).
 		Register(storage.New()).
@@ -207,29 +187,29 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
-		Register(spaceService).
-		Register(fileStore).
+		Register(space.New()).
+		Register(filestore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
-		Register(fileSyncService).
+		Register(filesync.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
-		Register(sbtProvider).
-		Register(relationService).
+		Register(typeprovider.New()).
+		Register(relation.New()).
 		Register(ftsearch.New()).
-		Register(objectStore).
-		Register(layoutConverter).
+		Register(objectstore.New()).
+		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
-		Register(fileService).
+		Register(files.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
-		Register(coreService).
-		Register(tempDirService).
+		Register(core.New()).
+		Register(core.NewTempDirService()).
 		Register(builtintemplate.New()).
-		Register(blockService).
-		Register(indexerService).
-		Register(syncStatusService).
+		Register(block.New()).
+		Register(indexer.New()).
+		Register(syncstatus.New(fileWatcherUpdateInterval)).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
@@ -237,17 +217,17 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
-		Register(collectionService).
+		Register(collection.New()).
 		Register(subscription.New()).
 		Register(builtinobjects.New()).
 		Register(bookmark.New()).
 		Register(session.New()).
 		Register(importer.New()).
 		Register(decorator.New()).
-		Register(objectCreator).
+		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory()).
-		Register(graphRenderer)
+		Register(objectgraph.NewBuilder())
 }
 
 func MiddlewareVersion() string {
