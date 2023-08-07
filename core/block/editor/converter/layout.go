@@ -168,12 +168,9 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 }
 
 func (c *LayoutConverter) listIDsFromSet(spaceId string, typesFromSet []string) ([]string, error) {
-	records, _, err := c.objectStore.Query(
-		nil,
-		database.Query{
-			Filters: generateFilters(spaceId, c.sbtProvider, typesFromSet),
-		},
-	)
+	records, _, err := c.objectStore.Query(database.Query{
+		Filters: generateFilters(spaceId, c.sbtProvider, typesFromSet),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("can't get records for collection: %w", err)
 	}

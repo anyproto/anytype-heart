@@ -195,7 +195,7 @@ func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bo
 
 func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
-	res, _, err := e.objectStore.Query(nil, database.Query{
+	res, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),

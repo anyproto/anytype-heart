@@ -127,13 +127,10 @@ func (gr *Builder) provideRelations(spaceID string) (relationutils.Relations, er
 }
 
 func (gr *Builder) queryRecords(req *pb.RpcObjectGraphRequest) ([]database.Record, error) {
-	records, _, err := gr.objectStore.Query(
-		nil,
-		database.Query{
-			Filters: req.Filters,
-			Limit:   int(req.Limit),
-		},
-	)
+	records, _, err := gr.objectStore.Query(database.Query{
+		Filters: req.Filters,
+		Limit:   int(req.Limit),
+	})
 	return records, err
 }
 

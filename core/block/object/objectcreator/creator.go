@@ -356,7 +356,7 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 	if pbtypes.GetInt64(details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_status) {
 		object.Fields[bundle.RelationKeyRelationMaxCount.String()] = pbtypes.Int64(1)
 	}
-	//objectTypes := pbtypes.GetStringList(object, bundle.RelationKeyRelationFormatObjectTypes.String())
+	// objectTypes := pbtypes.GetStringList(object, bundle.RelationKeyRelationFormatObjectTypes.String())
 	// todo: check the objectTypes
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 
@@ -458,7 +458,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	if details.GetFields() == nil {
 		details.Fields = map[string]*types.Value{}
 	}
-	bundledTemplates, _, err := w.objectStore.Query(nil, database.Query{
+	bundledTemplates, _, err := w.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -473,7 +473,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		},
 	})
 
-	alreadyInstalledTemplates, _, err := w.objectStore.Query(nil, database.Query{
+	alreadyInstalledTemplates, _, err := w.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
