@@ -6,17 +6,42 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/testMock"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
+type fixture struct {
+	Service
+}
+
+func newFixture(t *testing.T) *fixture {
+	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore.EXPECT().Name().Return("objectstore")
+	objectStore.EXPECT().GetObjectType(mock.Anything).Return(nil, nil)
+
+	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	sbtProvider.EXPECT().Name().Return("sbtProvider")
+
+	a := &app.App{}
+	a.Register(objectStore)
+	a.Register(sbtProvider)
+	s := New()
+	err := s.Init(a)
+	require.NoError(t, err)
+	return &fixture{
+		Service: s,
+	}
+}
+
 func TestService_ObjectRestrictionsById(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	store := testMock.NewMockObjectStore(ctrl)
-	store.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
-	rest := New()
+	rest := newFixture(t)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id:         "",

@@ -21,8 +21,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/stretchr/testify/mock"
 )
 
 func Test_GrouperTags(t *testing.T) {
@@ -31,11 +32,14 @@ func Test_GrouperTags(t *testing.T) {
 
 	app := testapp.New()
 	defer app.Close(context.Background())
-	tp := typeprovider.New(nil)
-	tp.Init(nil)
+	tp := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	tp.EXPECT().Name().Return("mock_typeprovider")
+	tp.EXPECT().Init(mock.Anything).Return(nil)
+	tp.EXPECT().Type("rel-tag").Return(smartblock2.SmartBlockTypeSubObject, nil)
 	ds := objectstore.New()
 	kanbanSrv := New()
 	err := app.With(&config.DefaultConfig).
+		With(tp).
 		With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
 		With(clientds.New()).
 		With(ftsearch.New()).
@@ -84,10 +88,6 @@ func Test_GrouperTags(t *testing.T) {
 	id2 := bson.NewObjectId().Hex()
 	id3 := bson.NewObjectId().Hex()
 	id4 := bson.NewObjectId().Hex()
-	tp.RegisterStaticType(id1, smartblock2.SmartBlockTypePage)
-	tp.RegisterStaticType(id2, smartblock2.SmartBlockTypePage)
-	tp.RegisterStaticType(id3, smartblock2.SmartBlockTypePage)
-	tp.RegisterStaticType(id4, smartblock2.SmartBlockTypePage)
 
 	require.NoError(t, ds.UpdateObjectDetails(id1, &types.Struct{
 		Fields: map[string]*types.Value{"name": pbtypes.String("one")},
