@@ -53,14 +53,9 @@ type Import struct {
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 }
 
-func New(
-	tempDirProvider core.TempDirProvider,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) Importer {
+func New() Importer {
 	return &Import{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		converters:      make(map[string]converter.Converter, 0),
+		converters: make(map[string]converter.Converter, 0),
 	}
 }
 
@@ -88,6 +83,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer, fileStore)
+	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
@@ -20,10 +21,17 @@ type TempDirService struct {
 	tempDir             string
 }
 
-func NewTempDirService(wallet wallet.Wallet) *TempDirService {
-	return &TempDirService{
-		wallet: wallet,
-	}
+func NewTempDirService() *TempDirService {
+	return &TempDirService{}
+}
+
+func (s *TempDirService) Init(a *app.App) error {
+	s.wallet = app.MustComponent[wallet.Wallet](a)
+	return nil
+}
+
+func (s *TempDirService) Name() string {
+	return "core.tmpdir"
 }
 
 func (s *TempDirService) TempDir() string {

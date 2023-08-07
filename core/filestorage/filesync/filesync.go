@@ -14,6 +14,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -73,9 +74,8 @@ type fileSync struct {
 	spaceStats     map[string]SpaceStat
 }
 
-func New(sendEvent func(event *pb.Event)) FileSync {
+func New() FileSync {
 	return &fileSync{
-		sendEvent:  sendEvent,
 		spaceStats: map[string]SpaceStat{},
 	}
 }
@@ -86,6 +86,7 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.spaceService = app.MustComponent[space.Service](a)
+	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return

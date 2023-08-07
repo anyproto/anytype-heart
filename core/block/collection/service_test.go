@@ -26,7 +26,7 @@ func TestBroadcast(t *testing.T) {
 	sb := smarttest.New(collectionID)
 
 	picker := &testPicker{sb: sb}
-	s := New(picker, nil, nil, nil)
+	s := New()
 
 	_, subCh1, err := s.SubscribeForCollection(collectionID, "sub1")
 	require.NoError(t, err)

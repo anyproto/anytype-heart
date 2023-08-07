@@ -33,7 +33,7 @@ func Test_GrouperTags(t *testing.T) {
 	defer app.Close(context.Background())
 	tp := typeprovider.New(nil)
 	tp.Init(nil)
-	ds := objectstore.New(tp)
+	ds := objectstore.New()
 	kanbanSrv := New()
 	err := app.With(&config.DefaultConfig).
 		With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).

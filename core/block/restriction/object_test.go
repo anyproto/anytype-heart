@@ -3,8 +3,8 @@ package restriction
 import (
 	"testing"
 
-	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -16,7 +16,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := testMock.NewMockObjectStore(ctrl)
 	store.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
-	rest := New(nil, store)
+	rest := New()
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id:         "",
@@ -114,7 +114,7 @@ func TestTemplateRestriction(t *testing.T) {
 	store := testMock.NewMockObjectStore(ctrl)
 	store.EXPECT().GetObjectType(bundle.TypeKeyPage.URL()).Return(nil, objectstore.ErrObjectNotFound)
 	store.EXPECT().GetObjectType(bundle.TypeKeyContact.URL()).Return(&model.ObjectType{}, nil)
-	rs := New(nil, store)
+	rs := New()
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		id:         "cannot make template from Template smartblock type",

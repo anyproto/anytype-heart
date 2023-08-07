@@ -27,7 +27,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -83,9 +82,7 @@ func TestFileSync_RemoveFile(t *testing.T) {
 
 func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
-		FileSync: New(func(event *pb.Event) {
-			fmt.Println(event)
-		}),
+		FileSync:    New(),
 		fileService: fileservice.New(),
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),

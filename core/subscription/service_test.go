@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
-	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/pb"
@@ -319,7 +319,7 @@ func newFixture(t *testing.T) *fixture {
 	testMock.RegisterMockObjectStore(ctrl, a)
 	testMock.RegisterMockKanban(ctrl, a)
 	fx := &fixture{
-		Service: New(&collectionServiceMock{}, nil),
+		Service: New(),
 		a:       a,
 		ctrl:    ctrl,
 		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
