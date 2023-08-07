@@ -9,14 +9,17 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestService_Search(t *testing.T) {
@@ -313,6 +316,12 @@ func (c *collectionServiceMock) SubscribeForCollection(collectionID string, subs
 func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
 }
 
+func (c *collectionServiceMock) Name() string {
+	return "collectionService"
+}
+
+func (c *collectionServiceMock) Init(a *app.App) error { return nil }
+
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := testapp.New()
@@ -329,6 +338,13 @@ func newFixture(t *testing.T) *fixture {
 	}}
 	a.Register(fx.Service)
 	a.Register(fx.sender)
+	a.Register(&collectionServiceMock{updateCh: make(chan []string, 1)})
+
+	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	sbtProvider.EXPECT().Name().Return("sbtProvider")
+	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
+
+	a.Register(sbtProvider)
 
 	fx.store.EXPECT().SubscribeForAll(gomock.Any())
 	require.NoError(t, a.Start(context.Background()))
