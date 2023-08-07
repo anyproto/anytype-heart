@@ -75,6 +75,9 @@ func (l *localDiscovery) Start() (err error) {
 	}
 	l.m.Lock()
 	defer l.m.Unlock()
+	if l.started {
+		return
+	}
 	l.started = true
 
 	l.port = l.drpcServer.Port()
