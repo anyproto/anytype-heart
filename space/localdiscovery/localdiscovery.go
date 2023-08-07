@@ -39,6 +39,7 @@ type localDiscovery struct {
 	ipv4        []string
 	ipv6        []string
 	manualStart bool
+	started     bool
 	notifier    Notifier
 	m           sync.Mutex
 }
@@ -69,11 +70,13 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 }
 
 func (l *localDiscovery) Start() (err error) {
-	l.m.Lock()
-	defer l.m.Unlock()
 	if !l.drpcServer.ServerStarted() {
 		return
 	}
+	l.m.Lock()
+	defer l.m.Unlock()
+	l.started = true
+
 	l.port = l.drpcServer.Port()
 	l.periodicCheck.Run()
 	return
@@ -87,6 +90,13 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	if !l.drpcServer.ServerStarted() {
 		return
 	}
+	l.m.Lock()
+	if !l.started {
+		l.m.Unlock()
+		return
+	}
+	l.m.Unlock()
+
 	l.periodicCheck.Close()
 	l.cancel()
 	if l.server != nil {
