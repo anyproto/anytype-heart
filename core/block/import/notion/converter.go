@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
@@ -14,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/samber/lo"
 )
 
 const (
