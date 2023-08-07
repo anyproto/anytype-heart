@@ -369,8 +369,9 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
+// TODO optionalRelations are never used
 func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
-	var hasRelations, hasType bool
+	var relationFound, typeFound bool
 
 	for _, source := range sources {
 		sbt, err := sbtProvider.Type(spaceID, source)
@@ -379,23 +380,23 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		}
 
 		if sbt == smartblock2.SmartBlockTypeObjectType {
-			if hasRelations {
+			if relationFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			if hasType {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains more than one object type")
 			}
-			hasType = true
+			typeFound = true
 		}
 
 		if sbt == smartblock2.SmartBlockTypeRelation {
-			if hasType {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			hasRelations = true
+			relationFound = true
 		}
 	}
-	if hasType {
+	if typeFound {
 		objectType, err := store.GetObjectType(sources[0])
 		if err != nil {
 			return nil, err
@@ -404,7 +405,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		return sch, nil
 	}
 
-	if hasRelations {
+	if relationFound {
 		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
 		ids, _, err := store.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
@@ -435,10 +436,6 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 	}
 
 	return nil, fmt.Errorf("relation or type not found")
-}
-
-func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
-	return SchemaBySources(d.SpaceID(), d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
