@@ -629,10 +629,10 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		}
 		oldIDToNew := make(map[string]string, 0)
 
-		// then
+		//when
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
 
-		//when
+		// then
 		assert.Equal(t, "key", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
 	})
 	t.Run("oldIDToNew map have relation id", func(t *testing.T) {
@@ -652,10 +652,10 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		}
 		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
 
-		// then
+		//when
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
 
-		//when
+		// then
 		assert.Equal(t, "newkey", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
 	})
 
@@ -672,10 +672,10 @@ func TestImport_replaceRelationKeyWithNew(t *testing.T) {
 		}
 		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
 
-		// then
+		//when
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
 
-		//when
+		// then
 		assert.Nil(t, option.Snapshot.Data.Details)
 	})
 }
