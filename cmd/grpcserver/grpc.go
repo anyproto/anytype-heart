@@ -46,6 +46,7 @@ const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 
 var log = logging.Logger("anytype-grpc-server")
 var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
+var localAPIAuthDisabled = false
 
 func main() {
 	var addr string
@@ -234,6 +235,9 @@ func main() {
 	}()
 	fmt.Println("gRPC server started at: " + addr)
 
+	if localAPIAuthDisabled {
+		fmt.Println("⚠️WARNING: local API auth is disabled. It should be used only for the testing purposes.")
+	}
 	go func() {
 		if err := proxy.Serve(webLis); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("proxy error: %v", err)
