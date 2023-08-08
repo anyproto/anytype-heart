@@ -237,6 +237,10 @@ build-server: setup-network-config
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
+
+ifdef ANYTYPE_NO_LOCAL_AUTH
+	@$(eval TAGS := $(TAGS) noauth)
+endif
 	go build -v -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" github.com/anyproto/anytype-heart/cmd/grpcserver
 
 run-server: build-server
