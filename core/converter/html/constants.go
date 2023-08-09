@@ -12,15 +12,15 @@ const (
 			<meta name="CocoaVersion" content="1894.1">
 			<style type="text/css">
 				.row > * { display: flex; }
-				.header1 { padding: 23px 0px 1px 0px; font-size: 28px; line-height: 32px; letter-spacing: -0.36px; font-weight: 600; }
-				.header2 { padding: 15px 0px 1px 0px; font-size: 22px; line-height: 28px; letter-spacing: -0.16px; font-weight: 600; }
-				.header3 { padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600; }
-				.quote { padding: 7px 0px 7px 0px; font-size: 18px; line-height: 26px; font-style: italic; }
-				.paragraph { font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word; }
+				.header1 {` + styleHeader1 + `}
+				.header2 {` + styleHeader2 + `}
+				.header3 {` + styleHeader3 + `}
+				.quote {` + styleQuote + `}
+				.paragraph {` + styleParagraph + `}
 				.callout-image { width: 20px; height: 20px; font-size: 16px; line-height: 20px; margin-right: 6px; display: inline-block; }
 				.callout-image img { width: 100%; object-fit: cover; }
 				a { cursor: pointer; }
-				kbd { display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px; }
+				kbd {` + styleKbd + `}
 				ul { margin: 15px 0px; }
 			</style>
 		</head>
