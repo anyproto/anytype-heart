@@ -27,11 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const (
-	detailSizeLimit = 65 * 1024
-	blockSizeLimit  = 256 * 1024
-	changeSizeLimit = 10 * 1024 * 1024
-)
+const changeSizeLimit = 10 * 1024 * 1024
 
 var log = logging.Logger("anytype-mw-source")
 var (
@@ -239,10 +235,6 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		Version:   params.State.MigrationVersion(),
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
-		if err = checkSnapshotSizeLimits(params.State); err != nil {
-			log.With("objectID", params.State.RootId()).Errorf(err.Error())
-			return
-		}
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:        params.State.BlocksToSave(),
@@ -301,24 +293,6 @@ func (s *source) ListIds() (ids []string, err error) {
 	})
 	// exclude account thread id
 	return ids, nil
-}
-
-func checkSnapshotSizeLimits(st *state.State) error {
-	for key, value := range st.Details().Fields {
-		data, _ := value.Marshal()
-		if len(data) > detailSizeLimit {
-			return fmt.Errorf("detail size is above the limit of %d bytes. Detail name: %s. Size: %d bytes",
-				detailSizeLimit, key, len(data))
-		}
-	}
-	for _, bl := range st.Blocks() {
-		data, _ := bl.Marshal()
-		if len(data) > blockSizeLimit {
-			return fmt.Errorf("block size is above the limit of %d bytes. Block id: %s. Size: %d bytes",
-				blockSizeLimit, bl.Id, len(data))
-		}
-	}
-	return nil
 }
 
 func snapshotChance(changesSinceSnapshot int) bool {
