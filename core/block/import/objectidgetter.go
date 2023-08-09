@@ -202,10 +202,6 @@ func (ou *ObjectIDGetter) getExistingRelation(snapshot *converter.Snapshot, ids 
 func (ou *ObjectIDGetter) getExistingRelationOption(snapshot *converter.Snapshot, ids []string, oldToNewIDs map[string]string) ([]string, error) {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	relationID := addr.RelationKeyToIdPrefix + key
-	if newRelationID, ok := oldToNewIDs[relationID]; ok {
-		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
-	}
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{

@@ -34,6 +34,7 @@ type Notifier interface {
 
 type LocalDiscovery interface {
 	SetNotifier(Notifier)
+	Start() error // Start the local discovery. Used when automatic start is disabled.
 	app.ComponentRunnable
 }
 
