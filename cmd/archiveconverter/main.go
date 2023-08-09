@@ -4,17 +4,18 @@ import (
 	"archive/zip"
 	"flag"
 	"fmt"
-	"github.com/anyproto/anytype-heart/util/constant"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/anyproto/anytype-heart/pb"
+	
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 var (
