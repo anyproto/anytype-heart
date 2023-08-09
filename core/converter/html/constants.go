@@ -21,7 +21,7 @@ const (
 				.callout-image img { width: 100%; object-fit: cover; }
 				a { cursor: pointer; }
 				kbd {` + styleKbd + `}
-				ul { margin: 15px 0px; }
+				ul { margin: 0px; }
 			</style>
 		</head>
 		<body>`
