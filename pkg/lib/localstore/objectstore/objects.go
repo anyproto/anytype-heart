@@ -142,6 +142,7 @@ type ObjectStore interface {
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetObjectType(url string) (*model.ObjectType, error)
+	HasObjectType(id string) (bool, error)
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
 }
 
@@ -644,6 +645,28 @@ func extractIDFromKey(key string) (id string) {
 		return
 	}
 	return key[i+1:]
+}
+
+func (s *dsObjectStore) HasObjectType(id string) (bool, error) {
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return bundle.HasObjectTypeID(id), nil
+	}
+
+	details, err := s.GetDetails(id)
+	if err != nil {
+		return false, err
+	}
+
+	if pbtypes.IsStructEmpty(details.GetDetails()) {
+		return false, nil
+	}
+	if pbtypes.GetBool(details.GetDetails(), bundle.RelationKeyIsDeleted.String()) {
+		return false, nil
+	}
+	if pbtypes.GetString(details.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (s *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {

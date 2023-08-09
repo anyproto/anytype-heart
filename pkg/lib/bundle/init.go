@@ -57,6 +57,15 @@ func init() {
 	}
 }
 
+func HasObjectTypeID(id string) bool {
+	if !strings.HasPrefix(id, TypePrefix) {
+		return false
+	}
+	tk := TypeKey(strings.TrimPrefix(id, TypePrefix))
+	_, exists := types[tk]
+	return exists
+}
+
 func GetTypeByUrl(u string) (*model.ObjectType, error) {
 	if !strings.HasPrefix(u, TypePrefix) {
 		return nil, fmt.Errorf("invalid url with no bundled type prefix")
