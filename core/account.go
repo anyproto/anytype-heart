@@ -2,9 +2,11 @@ package core
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/core/application"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/errcode"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -39,19 +41,25 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 }
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
-	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
-		var clientConfig *pb.RpcAccountConfig
-		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
+	account, err := mw.applicationService.AccountSelect(cctx, req)
+	code := errcode.Map(err,
+		errcode.To(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
+		errcode.To(application.ErrFailedToStopSearcherNode, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
+		errcode.To(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
+		errcode.To(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
+		errcode.To(application.ErrFailedToFindAccountInfo, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO),
+		errcode.To(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
+		errcode.To(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
+		errcode.To(application.ErrFailedToRunNode, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
+	)
+	return &pb.RpcAccountSelectResponse{
+		Config:  nil,
+		Account: account,
+		Error: &pb.RpcAccountSelectResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
 	}
-
-	acc, err := mw.applicationService.AccountSelect(cctx, req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountSelectResponseErrorCode](err)
-	return response(acc, code, err)
 }
 
 func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {

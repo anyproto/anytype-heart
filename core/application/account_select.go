@@ -1,34 +1,43 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"context"
+	"errors"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"fmt"
-	"github.com/anyproto/any-sync/net/secureservice/handshake"
-	"strings"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/any-sync/net/secureservice/handshake"
 	"github.com/anyproto/anytype-heart/core/anytype"
+	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"os"
 	"path/filepath"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
-	"context"
-	"github.com/anyproto/anytype-heart/core/block"
-	"errors"
+	"strings"
 )
 
 // we cannot check the constant error from badger because they hardcoded it there
 const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
 
+var (
+	ErrEmptyAccountID           = errors.New("empty account id")
+	ErrFailedToStopSearcherNode = errors.New("failed to stop searcher node")
+	ErrNoMnemonicProvided       = errors.New("no mnemonic provided")
+	ErrFailedToCreateLocalRepo  = errors.New("failed to create local repo")
+	ErrIncompatibleVersion      = errors.New("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version")
+	ErrFailedToRunNode          = errors.New("failed to run node")
+	ErrAnotherProcessIsRunning  = errors.New("another anytype process is running")
+	ErrFailedToFindAccountInfo  = errors.New("failed to find account info")
+)
+
 func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) (*model.Account, error) {
 	if req.Id == "" {
-		return nil, domain.WrapErrorWithCode(fmt.Errorf("account id is empty"), pb.RpcAccountSelectResponseError_BAD_INPUT)
+		return nil, ErrEmptyAccountID
 	}
 
 	s.lock.Lock()
@@ -54,13 +63,13 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	// in case user selected account other than the first one(used to perform search)
 	// or this is the first time in this session we run the Anytype node
 	if err := s.stop(); err != nil {
-		return nil, domain.WrapErrorWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE)
+		return nil, errors.Join(ErrFailedToStopSearcherNode, err)
 	}
 	if req.RootPath != "" {
 		s.rootPath = req.RootPath
 	}
 	if s.mnemonic == "" {
-		return nil, domain.WrapErrorWithCode(fmt.Errorf("no mnemonic provided"), pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET)
+		return nil, ErrNoMnemonicProvided
 	}
 	res, err := core.WalletAccountAt(s.mnemonic, 0)
 	if err != nil {
@@ -70,7 +79,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	if _, err := os.Stat(filepath.Join(s.rootPath, req.Id)); os.IsNotExist(err) {
 		repoWasMissing = true
 		if err = core.WalletInitRepo(s.rootPath, res.Identity); err != nil {
-			return nil, domain.WrapErrorWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO)
+			return nil, errors.Join(ErrFailedToCreateLocalRepo, err)
 		}
 	}
 
@@ -93,19 +102,15 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	)
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-			return nil, domain.WrapErrorWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO)
-		}
-		if err == core.ErrRepoCorrupted {
-			return nil, domain.WrapErrorWithCode(err, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED)
+			return nil, errors.Join(ErrFailedToFindAccountInfo, err)
 		}
 		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
-			return nil, domain.WrapErrorWithCode(err, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING)
+			return nil, errors.Join(ErrAnotherProcessIsRunning, err)
 		}
 		if errors.Is(err, handshake.ErrIncompatibleVersion) {
-			err = fmt.Errorf("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version")
-			return nil, domain.WrapErrorWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION)
+			return nil, ErrIncompatibleVersion
 		}
-		return nil, domain.WrapErrorWithCode(err, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE)
+		return nil, errors.Join(ErrFailedToRunNode, err)
 	}
 
 	acc := &model.Account{Id: req.Id}

@@ -3,19 +3,19 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/anyproto/any-sync/app"
 	"os"
 	"runtime/debug"
-	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/core/application"
-	"github.com/anyproto/anytype-heart/core/event"
 )
 
 var log = logging.Logger("anytype-mw-api")
@@ -138,4 +138,11 @@ func (mw *Middleware) OnPanic(v interface{}) {
 
 func (mw *Middleware) SetEventSender(sender event.Sender) {
 	mw.applicationService.SetEventSender(sender)
+}
+
+func getErrorDescription(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
