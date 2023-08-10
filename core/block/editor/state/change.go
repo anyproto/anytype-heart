@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -687,6 +688,7 @@ func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChi
 					if prevOp != 1 {
 						makeTarget(pos)
 					}
+					metrics.CopyCounter.WithLabelValues("makeStructureChanges").Inc()
 					cb.Add(targetId, targetPos, s.Pick(id).Copy().Model())
 					prevOp = 1
 				} else {

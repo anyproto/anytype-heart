@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -15,6 +16,7 @@ var bytesPool = &sync.Pool{
 }
 
 func CopyBlock(in *model.Block) (out *model.Block) {
+	metrics.CopyCounter.WithLabelValues("MAIN").Inc()
 	buf := bytesPool.Get().([]byte)
 	size := in.Size()
 	if cap(buf) < size {

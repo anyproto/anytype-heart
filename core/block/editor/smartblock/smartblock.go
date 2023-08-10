@@ -1238,7 +1238,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
-		State:      st.Copy(),
+		State:      st, // Don't copy state because we don't change it later
 	}
 }
 
