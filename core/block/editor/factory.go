@@ -46,16 +46,8 @@ type ObjectFactory struct {
 	subObjectFactory subObjectFactory
 }
 
-func NewObjectFactory(
-	tempDirProvider core.TempDirProvider,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-) *ObjectFactory {
-	return &ObjectFactory{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		layoutConverter: layoutConverter,
-	}
+func NewObjectFactory() *ObjectFactory {
+	return &ObjectFactory{}
 }
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
@@ -71,6 +63,9 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
+	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	f.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 
 	f.subObjectFactory = subObjectFactory{
 		coreService:        f.anytype,

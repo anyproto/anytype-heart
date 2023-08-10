@@ -53,24 +53,23 @@ type Export interface {
 }
 
 type export struct {
-	bs          *block.Service
-	objectStore objectstore.ObjectStore
-	a           core.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-	fileService files.Service
+	blockService *block.Service
+	objectStore  objectstore.ObjectStore
+	coreService  core.Service
+	sbtProvider  typeprovider.SmartBlockTypeProvider
+	fileService  files.Service
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
-	return &export{
-		sbtProvider: sbtProvider,
-	}
+func New() Export {
+	return &export{}
 }
 
 func (e *export) Init(a *app.App) (err error) {
-	e.bs = a.MustComponent(block.CName).(*block.Service)
-	e.a = a.MustComponent(core.CName).(core.Service)
+	e.blockService = a.MustComponent(block.CName).(*block.Service)
+	e.coreService = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
+	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	return
 }
 
@@ -79,7 +78,7 @@ func (e *export) Name() (name string) {
 }
 
 func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
-	queue := e.bs.Process().NewQueue(pb.ModelProcess{
+	queue := e.blockService.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
 		State: 0,
@@ -278,7 +277,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
-			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
+			werr := e.blockService.Do(did, func(b sb.SmartBlock) error {
 				if err = mw.Add(b.NewState().Copy()); err != nil {
 					return err
 				}
@@ -312,14 +311,14 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 }
 
 func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
-	return e.bs.Do(docID, func(b sb.SmartBlock) error {
+	return e.blockService.Do(docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
 		var conv converter.Converter
 		switch format {
 		case pb.RpcObjectListExport_Markdown:
-			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
+			conv = md.NewMDConverter(e.coreService, b.NewState(), wr.Namer())
 		case pb.RpcObjectListExport_Protobuf:
 			conv = pbc.NewConverter(b, isJSON)
 		case pb.RpcObjectListExport_JSON:
@@ -336,7 +335,7 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 			}
 			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docID == e.a.PredefinedBlocks().Home {
+		if docID == e.coreService.PredefinedBlocks().Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -390,18 +389,18 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 
 func (e *export) createProfileFile(wr writer) error {
 	var spaceDashBoardID string
-	pr, err := e.a.LocalProfile()
+	pr, err := e.coreService.LocalProfile()
 	if err != nil {
 		return err
 	}
-	err = e.bs.Do(e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+	err = e.blockService.Do(e.coreService.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	profileID := e.a.ProfileID()
+	profileID := e.coreService.ProfileID()
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,

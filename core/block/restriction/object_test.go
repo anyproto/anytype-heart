@@ -3,20 +3,44 @@ package restriction
 import (
 	"testing"
 
-	"go.uber.org/mock/gomock"
-	"github.com/stretchr/testify/assert"
-
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/testMock"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
+type fixture struct {
+	Service
+	objectStoreMock *mock_objectstore.MockObjectStore
+}
+
+func newFixture(t *testing.T) *fixture {
+	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore.EXPECT().Name().Return("objectstore")
+
+	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	sbtProvider.EXPECT().Name().Return("sbtProvider")
+
+	a := &app.App{}
+	a.Register(objectStore)
+	a.Register(sbtProvider)
+	s := New()
+	err := s.Init(a)
+	require.NoError(t, err)
+	return &fixture{
+		Service:         s,
+		objectStoreMock: objectStore,
+	}
+}
+
 func TestService_ObjectRestrictionsById(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	store := testMock.NewMockObjectStore(ctrl)
-	store.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
-	rest := New(nil, store)
+	rest := newFixture(t)
+	rest.objectStoreMock.EXPECT().GetObjectType(mock.Anything).Return(nil, nil)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id:         "",
@@ -110,11 +134,9 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 }
 
 func TestTemplateRestriction(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	store := testMock.NewMockObjectStore(ctrl)
-	store.EXPECT().GetObjectType(bundle.TypeKeyPage.URL()).Return(nil, objectstore.ErrObjectNotFound)
-	store.EXPECT().GetObjectType(bundle.TypeKeyContact.URL()).Return(&model.ObjectType{}, nil)
-	rs := New(nil, store)
+	rs := newFixture(t)
+	rs.objectStoreMock.EXPECT().GetObjectType(bundle.TypeKeyPage.URL()).Return(nil, objectstore.ErrObjectNotFound)
+	rs.objectStoreMock.EXPECT().GetObjectType(bundle.TypeKeyContact.URL()).Return(&model.ObjectType{}, nil)
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		id:         "cannot make template from Template smartblock type",

@@ -44,21 +44,15 @@ type Builder struct {
 	*app.App
 }
 
-func NewBuilder(
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	relationService relation.Service,
-	objectStore objectstore.ObjectStore,
-	coreService core.Service,
-) *Builder {
-	return &Builder{
-		sbtProvider:     sbtProvider,
-		relationService: relationService,
-		objectStore:     objectStore,
-		coreService:     coreService,
-	}
+func NewBuilder() *Builder {
+	return &Builder{}
 }
 
 func (gr *Builder) Init(a *app.App) (err error) {
+	gr.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	gr.relationService = app.MustComponent[relation.Service](a)
+	gr.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	gr.coreService = app.MustComponent[core.Service](a)
 	return nil
 }
 
