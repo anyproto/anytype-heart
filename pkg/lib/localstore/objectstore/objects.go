@@ -82,7 +82,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
 	datastoreService := a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.db, err = datastoreService.LocalstoreBadger()
+	s.db, err = datastoreService.LocalStorage()
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}

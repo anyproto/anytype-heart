@@ -74,7 +74,7 @@ var (
 
 type dsFileStore struct {
 	dsIface datastore.Datastore
-	ds      ds.TxnDatastore
+	db      *badger.DB
 }
 
 var log = logging.Logger("anytype-localstore")
@@ -116,11 +116,10 @@ func (ls *dsFileStore) Init(a *app.App) (err error) {
 }
 
 func (ls *dsFileStore) Run(context.Context) (err error) {
-	ds1, err := ls.dsIface.LocalstoreDS()
+	ls.db, err = ls.dsIface.LocalStorage()
 	if err != nil {
 		return err
 	}
-	ls.ds = ds.New(ds1)
 	return
 }
 
