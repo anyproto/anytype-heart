@@ -139,10 +139,3 @@ func (mw *Middleware) OnPanic(v interface{}) {
 func (mw *Middleware) SetEventSender(sender event.Sender) {
 	mw.applicationService.SetEventSender(sender)
 }
-
-func getErrorDescription(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
-}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/domain/errcode"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -42,15 +41,15 @@ func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecov
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	account, err := mw.applicationService.AccountSelect(cctx, req)
-	code := errcode.Map(err,
-		errcode.To(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
-		errcode.To(application.ErrFailedToStopSearcherNode, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
-		errcode.To(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
-		errcode.To(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
-		errcode.To(application.ErrFailedToFindAccountInfo, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO),
-		errcode.To(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
-		errcode.To(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
-		errcode.To(application.ErrFailedToRunNode, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
+	code := mapErrorCode(err,
+		errToCode(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
+		errToCode(application.ErrFailedToStopSearcherNode, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
+		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
+		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
+		errToCode(application.ErrFailedToFindAccountInfo, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO),
+		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
+		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
+		errToCode(application.ErrFailedToRunNode, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
 	)
 	return &pb.RpcAccountSelectResponse{
 		Config:  nil,
