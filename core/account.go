@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"github.com/anyproto/anytype-heart/core/application"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -123,17 +122,17 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 	}
 }
 
-func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
-	req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
-	response := func(address string, code pb.RpcAccountRecoverFromLegacyExportResponseErrorCode, err error) *pb.RpcAccountRecoverFromLegacyExportResponse {
-		m := &pb.RpcAccountRecoverFromLegacyExportResponse{AccountId: address, Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
+func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
+	accountID, err := mw.applicationService.CreateAccountFromExport(req)
+	code := mapErrorCode(err,
+		errToCode(application.ErrAccountMismatch, pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT),
+		errToCode(application.ErrBadInput, pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT),
+	)
+	return &pb.RpcAccountRecoverFromLegacyExportResponse{
+		AccountId: accountID,
+		Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
 	}
-
-	address, err := mw.applicationService.CreateAccountFromExport(req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountRecoverFromLegacyExportResponseErrorCode](err)
-	return response(address, code, err)
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -23,6 +22,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"encoding/json"
 	"context"
+	"errors"
+)
+
+var (
+	ErrAccountMismatch = errors.New("backup was made from different account")
 )
 
 func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profile, error) {
@@ -71,7 +75,7 @@ func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExp
 	}
 	address := res.Identity.GetPublic().Account()
 	if profile.Address != res.OldAccountKey.GetPublic().Account() && profile.Address != address {
-		return "", domain.WrapErrorWithCode(fmt.Errorf("backup was made from different account"), pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT)
+		return "", ErrAccountMismatch
 	}
 	s.rootPath = req.RootPath
 	err = os.MkdirAll(s.rootPath, 0700)
@@ -106,7 +110,7 @@ func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExp
 
 	spaceID := app.MustComponent[space.Service](s.app).AccountId()
 	if err = s.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
-		return "", domain.WrapErrorWithCode(err, pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT)
+		return "", errors.Join(ErrBadInput, err)
 	}
 
 	return address, nil
