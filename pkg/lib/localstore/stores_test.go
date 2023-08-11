@@ -159,7 +159,7 @@ func Test_RunLargeOperationWithRetries(t *testing.T) {
 
 	tx, err := ds.NewTransaction(false)
 	require.NoError(t, err)
-	res, err := GetKeys(tx, targetPrefix.String(), 0)
+	res := GetKeys(tx, targetPrefix.String(), 0)
 	require.NoError(t, err)
 	total, err := CountAllKeysFromResults(res)
 	require.NoError(t, err)
@@ -169,7 +169,7 @@ func Test_RunLargeOperationWithRetries(t *testing.T) {
 	require.NoError(t, err)
 	tx, err = ds.NewTransaction(false)
 	require.NoError(t, err)
-	res, err = GetKeys(tx, index.Prefix, 0)
+	res = GetKeys(tx, index.Prefix, 0)
 	require.NoError(t, err)
 	total, err = CountAllKeysFromResults(res)
 	require.NoError(t, err)
