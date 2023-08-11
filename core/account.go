@@ -78,17 +78,21 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 }
 
 func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
-	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
-		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
 	err := mw.applicationService.AccountMove(req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountMoveResponseErrorCode](err)
-	return response(code, err)
+	code := mapErrorCode(err,
+		errToCode(application.ErrGetConfig, pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG),
+		errToCode(application.ErrIdentifyAccountDir, pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR),
+		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO),
+		errToCode(application.ErrRemoveAccountData, pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA),
+		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE),
+		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG),
+	)
+	return &pb.RpcAccountMoveResponse{
+		Error: &pb.RpcAccountMoveResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
