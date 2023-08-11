@@ -2,7 +2,6 @@ package application
 
 import (
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/any-sync/app"
 	"os"
@@ -10,13 +9,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"path/filepath"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/core/block"
 	"context"
+	"errors"
 )
 
 func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
@@ -24,7 +23,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	defer s.lock.Unlock()
 
 	if err := s.stop(); err != nil {
-		return nil, domain.WrapErrorWithCode(err, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE)
+		return nil, errors.Join(ErrFailedToStopApplication, err)
 	}
 
 	s.requireClientWithVersion()
@@ -54,7 +53,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	s.app, err = anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
 	if err != nil {
-		return newAcc, domain.WrapErrorWithCode(err, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE)
+		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
 
 	if err = s.setAccountAndProfileDetails(ctx, req, newAcc); err != nil {
@@ -70,11 +69,11 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 		storePath := filepath.Join(req.StorePath, accountID)
 		err := os.MkdirAll(storePath, 0700)
 		if err != nil {
-			return domain.WrapErrorWithCode(oserror.TransformError(err), pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO)
+			return errors.Join(ErrFailedToCreateLocalRepo, err)
 		}
 		// Bootstrap config will later read this config with custom storage location
 		if err := config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
-			return domain.WrapErrorWithCode(err, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG)
+			return errors.Join(ErrFailedToWriteConfig, err)
 		}
 	}
 	return nil
@@ -125,14 +124,14 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		ContextId: coreService.AccountObjects().Profile,
 		Details:   profileDetails,
 	}); err != nil {
-		return domain.WrapErrorWithCode(err, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME)
+		return errors.Join(ErrSetDetails, err)
 	}
 
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.AccountObjects().Account,
 		Details:   commonDetails,
 	}); err != nil {
-		return domain.WrapErrorWithCode(err, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME)
+		return errors.Join(ErrSetDetails, err)
 	}
 	return nil
 }

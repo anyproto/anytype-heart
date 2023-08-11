@@ -9,19 +9,21 @@ import (
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
-	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
-		var clientConfig *pb.RpcAccountConfig
-		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-
 	newAccount, err := mw.applicationService.AccountCreate(cctx, req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountCreateResponseErrorCode](err)
-	return response(newAccount, code, err)
+	code := mapErrorCode(err,
+		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE),
+		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE),
+		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
+		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG),
+		errToCode(application.ErrSetDetails, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME),
+	)
+	return &pb.RpcAccountCreateResponse{
+		Config:  nil,
+		Account: newAccount,
+		Error: &pb.RpcAccountCreateResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		}}
 }
 
 func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
@@ -43,13 +45,13 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	account, err := mw.applicationService.AccountSelect(cctx, req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
-		errToCode(application.ErrFailedToStopSearcherNode, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
+		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 		errToCode(application.ErrFailedToFindAccountInfo, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO),
 		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 		errToCode(application.ErrIncompatibleVersion, pb.RpcAccountSelectResponseError_FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION),
-		errToCode(application.ErrFailedToRunNode, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
+		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
 	)
 	return &pb.RpcAccountSelectResponse{
 		Config:  nil,

@@ -25,14 +25,12 @@ import (
 const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
 
 var (
-	ErrEmptyAccountID           = errors.New("empty account id")
-	ErrFailedToStopSearcherNode = errors.New("failed to stop searcher node")
-	ErrNoMnemonicProvided       = errors.New("no mnemonic provided")
-	ErrFailedToCreateLocalRepo  = errors.New("failed to create local repo")
-	ErrIncompatibleVersion      = errors.New("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version")
-	ErrFailedToRunNode          = errors.New("failed to run node")
-	ErrAnotherProcessIsRunning  = errors.New("another anytype process is running")
-	ErrFailedToFindAccountInfo  = errors.New("failed to find account info")
+	ErrEmptyAccountID      = errors.New("empty account id")
+	ErrNoMnemonicProvided  = errors.New("no mnemonic provided")
+	ErrIncompatibleVersion = errors.New("can't fetch account's data because remote nodes have incompatible protocol version. Please update anytype to the latest version")
+
+	ErrAnotherProcessIsRunning = errors.New("another anytype process is running")
+	ErrFailedToFindAccountInfo = errors.New("failed to find account info")
 )
 
 func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) (*model.Account, error) {
@@ -63,7 +61,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	// in case user selected account other than the first one(used to perform search)
 	// or this is the first time in this session we run the Anytype node
 	if err := s.stop(); err != nil {
-		return nil, errors.Join(ErrFailedToStopSearcherNode, err)
+		return nil, errors.Join(ErrFailedToStopApplication, err)
 	}
 	if req.RootPath != "" {
 		s.rootPath = req.RootPath
@@ -110,7 +108,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		if errors.Is(err, handshake.ErrIncompatibleVersion) {
 			return nil, ErrIncompatibleVersion
 		}
-		return nil, errors.Join(ErrFailedToRunNode, err)
+		return nil, errors.Join(ErrFailedToStartApplication, err)
 	}
 
 	acc := &model.Account{Id: req.Id}
