@@ -39,7 +39,7 @@ func start(t *testing.T, eventSender event.Sender) (setId string, rootPath strin
 	respWalletCreate := mw.WalletCreate(context.Background(), &pb.RpcWalletCreateRequest{RootPath: rootPath})
 	require.Equal(t, 0, int(respWalletCreate.Error.Code), respWalletCreate.Error.Description)
 
-	respAccountCreate := mw.AccountCreate(context.Background(), &pb.RpcAccountCreateRequest{Name: "profile", AlphaInviteCode: "elbrus"})
+	respAccountCreate := mw.AccountCreate(context.Background(), &pb.RpcAccountCreateRequest{Name: "profile"})
 	require.Equal(t, 0, int(respAccountCreate.Error.Code), respAccountCreate.Error.Description)
 
 	resp := mw.ObjectCreateSet(context.Background(), &pb.RpcObjectCreateSetRequest{

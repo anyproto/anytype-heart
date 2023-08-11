@@ -113,25 +113,26 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	// TODO multi-spaces: init for each space: GO-1681
-	{
-		spaceID := f.spaceService.AccountId()
-		_, err = f.SpaceStat(ctx, spaceID)
-		if err != nil {
-			// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-			f.setSpaceStats(spaceID, SpaceStat{
-				SpaceId:    spaceID,
-				BytesLimit: 1024 * 1024 * 1024, // 1 GB
-			})
-			log.Error("can't init space stats", zap.String("spaceID", f.spaceService.AccountId()), zap.Error(err))
-			err = nil
-		}
-	}
+	go f.precacheSpaceStats()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.addLoop()
 	go f.removeLoop()
 	return
+}
+
+func (f *fileSync) precacheSpaceStats() {
+	// TODO multi-spaces: init for each space: GO-1681
+	spaceID := f.spaceService.AccountId()
+	_, err := f.SpaceStat(context.Background(), spaceID)
+	if err != nil {
+		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
+		f.setSpaceStats(spaceID, SpaceStat{
+			SpaceId:    spaceID,
+			BytesLimit: 1024 * 1024 * 1024, // 1 GB
+		})
+		log.Error("can't init space stats", zap.String("spaceID", f.spaceService.AccountId()), zap.Error(err))
+	}
 }
 
 func (f *fileSync) Close(ctx context.Context) (err error) {

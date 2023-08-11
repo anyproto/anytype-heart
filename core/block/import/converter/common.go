@@ -87,6 +87,10 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
+
+		if view.DefaultTemplateId != "" {
+			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
+		}
 	}
 	for _, group := range dataView.GetGroupOrders() {
 		for _, vg := range group.ViewGroups {

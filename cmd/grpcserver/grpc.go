@@ -45,6 +45,7 @@ const defaultUnaryWarningAfter = time.Second * 3
 const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 
 var log = logging.Logger("anytype-grpc-server")
+var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
 
 func main() {
 	var addr string
@@ -82,7 +83,7 @@ func main() {
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 
 	var signalChan = make(chan os.Signal, 2)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGUSR1)
+	signal.Notify(signalChan, signals...)
 
 	var mw = core.New()
 	mw.EventSender = event.NewGrpcSender()
@@ -244,8 +245,8 @@ func main() {
 
 	for {
 		sig := <-signalChan
-		if sig == syscall.SIGUSR1 {
-			handleSIGUSR1(mw)
+		if shouldSaveStack(sig) {
+			saveStack(mw)
 			continue
 		}
 		server.Stop()
@@ -292,7 +293,7 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 	return resp
 }
 
-func handleSIGUSR1(mw *core.Middleware) {
+func saveStack(mw *core.Middleware) {
 	a := mw.GetApp()
 	if a == nil {
 		log.Errorf("failed to save stacktrace: need to start app first")
