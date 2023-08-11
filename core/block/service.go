@@ -94,16 +94,9 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func New(
-	tempDirProvider *core.TempDirService,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-) *Service {
+func New() *Service {
 	return &Service{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		layoutConverter: layoutConverter,
-		closing:         make(chan struct{}),
+		closing: make(chan struct{}),
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
 			lock:    &sync.Mutex{},
@@ -191,6 +184,11 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
+
+	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
+
 	s.cache = s.createCache()
 	s.app = a
 	return

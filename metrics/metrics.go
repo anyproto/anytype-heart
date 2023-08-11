@@ -45,13 +45,6 @@ var (
 		Name:      "details_index_heads_not_changed",
 		Help:      "Details head not changed optimization",
 	})
-
-	CopyCounter = promauto.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "anytype",
-		Subsystem: "mw",
-		Name:      "copy",
-		Help:      "Copy struct",
-	}, []string{"place"})
 )
 
 func registerPrometheusExpvars() {

@@ -61,10 +61,8 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) ObjectStore {
-	return &dsObjectStore{
-		sbtProvider: sbtProvider,
-	}
+func New() ObjectStore {
+	return &dsObjectStore{}
 }
 
 type SourceDetailsFromID interface {
@@ -72,6 +70,7 @@ type SourceDetailsFromID interface {
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	src := a.Component("source")
 	if src != nil {
 		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)

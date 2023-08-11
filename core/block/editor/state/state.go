@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -194,7 +193,6 @@ func (s *State) Get(id string) (b simple.Block) {
 	}
 	if s.parent != nil {
 		if b = s.Pick(id); b != nil {
-			metrics.CopyCounter.WithLabelValues("state.Get").Inc()
 			b = b.Copy()
 			s.blocks[id] = b
 			return
@@ -471,7 +469,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	for _, id := range affectedIds {
 		orig := s.PickOrigin(id)
 		if orig == nil {
-			metrics.CopyCounter.WithLabelValues("apply1").Inc()
 			bc := s.blocks[id].Copy()
 			newBlocks = append(newBlocks, bc.Model())
 			action.Add = append(action.Add, bc)
@@ -494,7 +491,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 						file.State = model.BlockContentFile_Empty
 					}
 				}
-				metrics.CopyCounter.WithLabelValues("apply2").Add(2)
 				action.Change = append(action.Change, undo.Change{
 					Before: orig.Copy(),
 					After:  b.Copy(),
@@ -569,7 +565,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	// apply to parent
 	if s.parent != nil {
 		for _, id := range toRemove {
-			metrics.CopyCounter.WithLabelValues("apply3").Inc()
 			action.Remove = append(action.Remove, s.PickOrigin(id).Copy())
 			delete(s.parent.blocks, id)
 		}
@@ -733,7 +728,6 @@ func (s *State) Blocks() []*model.Block {
 		ids = ids[1:]
 
 		if b := s.Pick(next); b != nil {
-			metrics.CopyCounter.WithLabelValues("state.Blocks").Inc()
 			blocks = append(blocks, b.Copy().Model())
 			ids = append(ids, b.Model().ChildrenIds...)
 		}
@@ -753,7 +747,6 @@ func (s *State) BlocksToSave() []*model.Block {
 		ids = ids[1:]
 
 		if b := s.Pick(next); b != nil {
-			metrics.CopyCounter.WithLabelValues("state.BlocksToSave").Inc()
 			blocks = append(blocks, b.Copy().ModelToSave())
 			ids = append(ids, b.Model().ChildrenIds...)
 		}
@@ -1346,7 +1339,6 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 func (s *State) Copy() *State {
 	blocks := make(map[string]simple.Block, len(s.blocks))
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		metrics.CopyCounter.WithLabelValues("state.Copy").Inc()
 		blocks[b.Model().Id] = b.Copy()
 		return true
 	})
