@@ -2,6 +2,7 @@ package anytype
 
 import (
 	"context"
+	"github.com/anyproto/any-sync/net/transport/quic"
 	"os"
 	"regexp"
 	"time"
@@ -186,6 +187,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pool.New()).
 		Register(peerservice.New()).
 		Register(yamux.New()).
+		Register(quic.New()).
 		Register(clientserver.New()).
 		Register(streampool.New()).
 		Register(coordinatorclient.New()).
