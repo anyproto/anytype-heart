@@ -3,9 +3,9 @@ package application
 import (
 	"github.com/anyproto/anytype-heart/pb"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"encoding/base64"
 	"github.com/anyproto/any-sync/util/crypto"
+	"errors"
 )
 
 // WalletConvert converts mnemonic to base64 representation of mnemonic's entropy and vice versa.
@@ -15,23 +15,23 @@ func (s *Service) WalletConvert(req *pb.RpcWalletConvertRequest) (mnemonicString
 	if req.Mnemonic == "" && req.Entropy != "" {
 		b, err := base64.RawStdEncoding.DecodeString(req.Entropy)
 		if err != nil {
-			return "", "", domain.WrapErrorWithCode(fmt.Errorf("invalid base64 format for entropy: %w", err), pb.RpcWalletConvertResponseError_BAD_INPUT)
+			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid base64 format for entropy: %w", err))
 		}
 		mnemonic, err := crypto.NewMnemonicGenerator().WithEntropy(b)
 		if err != nil {
-			return "", "", domain.WrapErrorWithCode(fmt.Errorf("invalid entropy: %w", err), pb.RpcWalletConvertResponseError_BAD_INPUT)
+			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid entropy: %w", err))
 		}
 		return string(mnemonic), "", nil
 	} else if req.Mnemonic != "" && req.Entropy == "" {
 		mnemonic := crypto.Mnemonic(req.Mnemonic)
 		entropy, err := mnemonic.Bytes()
 		if err != nil {
-			return "", "", domain.WrapErrorWithCode(err, pb.RpcWalletConvertResponseError_BAD_INPUT)
+			return "", "", errors.Join(ErrBadInput, err)
 		}
 
 		base64Entropy = base64.RawStdEncoding.EncodeToString(entropy)
 		return "", base64Entropy, nil
 	}
 
-	return "", "", domain.WrapErrorWithCode(fmt.Errorf("you should specify either entropy or mnemonic to convert"), pb.RpcWalletConvertResponseError_BAD_INPUT)
+	return "", "", errors.Join(ErrBadInput, fmt.Errorf("you should specify either entropy or mnemonic to convert"))
 }

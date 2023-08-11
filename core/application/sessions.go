@@ -2,15 +2,15 @@ package application
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"errors"
 )
 
 func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token string, err error) {
 	// test if mnemonic is correct
 	if s.mnemonic != req.Mnemonic {
-		return "", domain.WrapErrorWithCode(fmt.Errorf("incorrect mnemonic"), pb.RpcWalletCreateSessionResponseError_BAD_INPUT)
+		return "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
 	return s.sessions.StartSession(s.sessionSigningKey)
 }

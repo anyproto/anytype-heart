@@ -2,9 +2,9 @@ package application
 
 import (
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"os"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"errors"
 )
 
 func (s *Service) WalletRecover(req *pb.RpcWalletRecoverRequest) error {
@@ -19,12 +19,12 @@ func (s *Service) WalletRecover(req *pb.RpcWalletRecoverRequest) error {
 	// test if mnemonic is correct
 	_, err := core.WalletAccountAt(req.Mnemonic, 0)
 	if err != nil {
-		return domain.WrapErrorWithCode(err, pb.RpcWalletRecoverResponseError_BAD_INPUT)
+		return errors.Join(ErrBadInput, err)
 	}
 
 	err = os.MkdirAll(req.RootPath, 0700)
 	if err != nil {
-		return domain.WrapErrorWithCode(err, pb.RpcWalletRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO)
+		return errors.Join(ErrFailedToCreateLocalRepo, err)
 	}
 
 	if err = s.setMnemonic(req.Mnemonic); err != nil {
