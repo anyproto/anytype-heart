@@ -3,10 +3,10 @@ package application
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"os"
+	"errors"
 )
 
 const wordCount int = 12
@@ -19,7 +19,7 @@ func (s *Service) WalletCreate(req *pb.RpcWalletCreateRequest) (string, error) {
 
 	err := os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
-		return "", domain.WrapErrorWithCode(err, pb.RpcWalletCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO)
+		return "", errors.Join(ErrFailedToCreateLocalRepo, err)
 	}
 
 	mnemonic, err := core.WalletGenerateMnemonic(wordCount)

@@ -4,21 +4,21 @@ import (
 	"context"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/application"
 )
 
 func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
-	response := func(mnemonic string, code pb.RpcWalletCreateResponseErrorCode, err error) *pb.RpcWalletCreateResponse {
-		m := &pb.RpcWalletCreateResponse{Mnemonic: mnemonic, Error: &pb.RpcWalletCreateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-
 	mnemonic, err := mw.applicationService.WalletCreate(req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcWalletCreateResponseErrorCode](err)
-	return response(mnemonic, code, err)
+	code := mapErrorCode(err,
+		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcWalletCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
+	)
+	return &pb.RpcWalletCreateResponse{
+		Mnemonic: mnemonic,
+		Error: &pb.RpcWalletCreateResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) WalletRecover(cctx context.Context, req *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse {
