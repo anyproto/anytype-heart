@@ -167,7 +167,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	const fileWatcherUpdateInterval = 5 * time.Second
 
-	a.Register(clientds.New()).
+	a.
+		// Data storages
+		Register(clientds.New()).
+		Register(ftsearch.New()).
+		Register(objectstore.New()).
+		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
@@ -196,8 +201,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		Register(relation.New()).
-		Register(ftsearch.New()).
-		Register(objectstore.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
