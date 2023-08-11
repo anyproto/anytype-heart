@@ -5,7 +5,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -96,20 +95,18 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 }
 
 func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
-	response := func(status *model.AccountStatus, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
-		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Status = status
-		}
-
-		return m
-	}
-
 	status, err := mw.applicationService.AccountDelete(cctx, req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountDeleteResponseErrorCode](err)
-	return response(status, code, err)
+	code := mapErrorCode(err,
+		errToCode(application.ErrAccountIsAlreadyDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
+		errToCode(application.ErrAccountIsActive, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE),
+	)
+	return &pb.RpcAccountDeleteResponse{
+		Status: status,
+		Error: &pb.RpcAccountDeleteResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {

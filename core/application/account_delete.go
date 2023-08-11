@@ -1,12 +1,17 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"context"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
+	"errors"
+)
+
+var (
+	ErrAccountIsAlreadyDeleted = errors.New("account is already deleted")
+	ErrAccountIsActive         = errors.New("account is active")
 )
 
 func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) (*model.AccountStatus, error) {
@@ -23,16 +28,15 @@ func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteReq
 	// so we will receive updated account status
 	s.refreshRemoteAccountState()
 
-	code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
 	switch err {
 	case space.ErrSpaceIsDeleted:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+		return nil, ErrAccountIsAlreadyDeleted
 	case space.ErrSpaceDeletionPending:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+		return nil, ErrAccountIsAlreadyDeleted
 	case space.ErrSpaceIsCreated:
-		code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
+		return nil, ErrAccountIsActive
 	}
-	return status, domain.WrapErrorWithCode(err, code)
+	return status, err
 }
 
 func (s *Service) refreshRemoteAccountState() {
