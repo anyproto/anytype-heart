@@ -81,7 +81,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		pbtypes.NormalizeStruct(detailsToSave)
 	}
 
-	(&State{rootId: rootId}).shortenDetailsToLimit(detailsToSave.Fields)
+	if detailsToSave != nil && detailsToSave.Fields != nil {
+		(&State{rootId: rootId}).shortenDetailsToLimit(detailsToSave.Fields)
+	}
 
 	s := &State{
 		changeId:        sOpts.changeId,

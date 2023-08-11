@@ -807,7 +807,9 @@ func (s *State) StringDebug() string {
 }
 
 func (s *State) SetDetails(d *types.Struct) *State {
-	s.shortenDetailsToLimit(d.Fields)
+	if d != nil && d.Fields != nil {
+		s.shortenDetailsToLimit(d.Fields)
+	}
 	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
 		for k, v := range local.Fields {
