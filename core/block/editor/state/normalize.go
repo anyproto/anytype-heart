@@ -307,7 +307,7 @@ func (s *State) normalizeSmartBlock(b simple.Block) {
 func (s *State) shortenDetailsToLimit(details map[string]*types.Value) {
 	for key, value := range details {
 		if value.Size() > detailSizeLimit {
-			log.With("objectID", s.rootId).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortenning it",
+			log.With("objectID", s.rootId).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
 				key, value.Size(), detailSizeLimit)
 			value, _ = shortenValueOnN(value, value.Size()-detailSizeLimit)
 		}
