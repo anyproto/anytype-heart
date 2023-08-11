@@ -9,4 +9,5 @@ var (
 	ErrFailedToCreateLocalRepo  = errors.New("failed to create local repo")
 	ErrFailedToWriteConfig      = errors.New("failed to write config")
 	ErrSetDetails               = errors.New("failed to set details")
+	ErrBadInput                 = errors.New("bad input")
 )

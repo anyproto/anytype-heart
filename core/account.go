@@ -27,18 +27,17 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 }
 
 func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
-	response := func(code pb.RpcAccountRecoverResponseErrorCode, err error) *pb.RpcAccountRecoverResponse {
-		m := &pb.RpcAccountRecoverResponse{Error: &pb.RpcAccountRecoverResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-
 	err := mw.applicationService.AccountRecover()
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountRecoverResponseErrorCode](err)
-	return response(code, err)
+	code := mapErrorCode(err,
+		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST),
+		errToCode(application.ErrBadInput, pb.RpcAccountRecoverResponseError_BAD_INPUT),
+	)
+	return &pb.RpcAccountRecoverResponse{
+		Error: &pb.RpcAccountRecoverResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {

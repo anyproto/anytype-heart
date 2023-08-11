@@ -3,8 +3,8 @@ package application
 import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"errors"
 )
 
 func (s *Service) AccountRecover() error {
@@ -12,12 +12,12 @@ func (s *Service) AccountRecover() error {
 	defer s.lock.Unlock()
 
 	if s.mnemonic == "" {
-		return domain.WrapErrorWithCode(nil, pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST)
+		return ErrNoMnemonicProvided
 	}
 
 	res, err := core.WalletAccountAt(s.mnemonic, 0)
 	if err != nil {
-		return domain.WrapErrorWithCode(err, pb.RpcAccountRecoverResponseError_BAD_INPUT)
+		return errors.Join(ErrBadInput, err)
 	}
 
 	event := &pb.Event{
