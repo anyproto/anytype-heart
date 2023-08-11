@@ -198,9 +198,6 @@ func (f *ftSearch) Has(id string) (exists bool, err error) {
 }
 
 func (f *ftSearch) Delete(id string) (err error) {
-	if f.index == nil {
-		fmt.Println("index is not initialized")
-	}
 	return f.index.Delete(id)
 }
 
