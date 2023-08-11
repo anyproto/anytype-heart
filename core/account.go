@@ -110,17 +110,17 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 }
 
 func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
-	response := func(code pb.RpcAccountConfigUpdateResponseErrorCode, err error) *pb.RpcAccountConfigUpdateResponse {
-		m := &pb.RpcAccountConfigUpdateResponse{Error: &pb.RpcAccountConfigUpdateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
 	err := mw.applicationService.AccountConfigUpdate(req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountConfigUpdateResponseErrorCode](err)
-	return response(code, err)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountConfigUpdateResponseError_ACCOUNT_IS_NOT_RUNNING),
+		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountConfigUpdateResponseError_FAILED_TO_WRITE_CONFIG),
+	)
+	return &pb.RpcAccountConfigUpdateResponse{
+		Error: &pb.RpcAccountConfigUpdateResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context,
