@@ -8,7 +8,6 @@ import (
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	dsCtx "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 	"github.com/multiformats/go-base32"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -183,23 +182,6 @@ func GetKeysByIndexParts(txn *badger.Txn, prefix string, keyIndexName string, ke
 	return GetKeys(txn, key.String(), limit), nil
 }
 
-func CountAllKeysFromResults(results query.Results) (int, error) {
-	var count int
-	for {
-		res, ok := <-results.Next()
-		if !ok {
-			break
-		}
-		if res.Error != nil {
-			return -1, res.Error
-		}
-
-		count++
-	}
-
-	return count, nil
-}
-
 func GetLeavesFromResults(keys []string) ([]string, error) {
 	var leaves = make([]string, len(keys))
 	for i, key := range keys {
@@ -254,7 +236,6 @@ func GetKeysByIndex(index Index, txn *badger.Txn, val interface{}, limit int) ([
 	return GetKeys(txn, key.String(), limit), nil
 }
 
-// TODO badger: move to utility lib
 func GetKeys(txn *badger.Txn, prefix string, limit int) []string {
 	iter := txn.NewIterator(badger.IteratorOptions{
 		Prefix:         []byte(prefix),
@@ -274,4 +255,27 @@ func GetKeys(txn *badger.Txn, prefix string, limit int) []string {
 		keys = append(keys, string(key))
 	}
 	return keys
+}
+
+// EraseIndex deletes the whole index
+func EraseIndex(index Index, db *badger.DB, txn *badger.Txn) (*badger.Txn, error) {
+	indexKey := IndexBase.ChildString(index.Prefix).ChildString(index.Name)
+	keys := GetKeys(txn, indexKey.String(), 0)
+
+	for _, key := range keys {
+		key := dsCtx.NewKey(key).Bytes()
+		err := txn.Delete(key)
+		if err == badger.ErrTxnTooBig {
+			err = txn.Commit()
+			if err != nil {
+				return txn, fmt.Errorf("commit big transaction: %w", err)
+			}
+			txn = db.NewTransaction(true)
+			err = txn.Delete(key)
+		}
+		if err != nil {
+			return txn, fmt.Errorf("delete key %s: %w", key, err)
+		}
+	}
+	return txn, nil
 }

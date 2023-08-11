@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
@@ -15,7 +14,7 @@ import (
 func TestService_ObjectRestrictionsById(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := testMock.NewMockObjectStore(ctrl)
-	store.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
+	store.EXPECT().HasObjectType(gomock.Any()).Return(false, nil)
 	rest := New(nil, store)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
@@ -112,8 +111,8 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 func TestTemplateRestriction(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := testMock.NewMockObjectStore(ctrl)
-	store.EXPECT().GetObjectType(bundle.TypeKeyPage.URL()).Return(nil, objectstore.ErrObjectNotFound)
-	store.EXPECT().GetObjectType(bundle.TypeKeyContact.URL()).Return(&model.ObjectType{}, nil)
+	store.EXPECT().HasObjectType(bundle.TypeKeyPage.URL()).Return(false, nil)
+	store.EXPECT().HasObjectType(bundle.TypeKeyContact.URL()).Return(true, nil)
 	rs := New(nil, store)
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{

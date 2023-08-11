@@ -113,7 +113,7 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
 	objectStore.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
-	objectStore.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
+	objectStore.EXPECT().HasObjectType(gomock.Any()).Return(false, nil).AnyTimes()
 
 	objectStore.EXPECT().Name().Return(objectstore.CName).AnyTimes()
 
