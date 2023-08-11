@@ -6,6 +6,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"fmt"
 	"github.com/gogo/protobuf/proto"
+	"encoding/binary"
 )
 
 func RetryOnConflict(proc func() error) error {
@@ -49,6 +50,8 @@ func SetValueTxn(txn *badger.Txn, key []byte, value any) error {
 func marshalValue(value any) ([]byte, error) {
 	if value != nil {
 		switch v := value.(type) {
+		case int:
+			return binary.LittleEndian.AppendUint64(nil, uint64(v)), nil
 		case proto.Message:
 			return proto.Marshal(v)
 		case string:
@@ -58,6 +61,10 @@ func marshalValue(value any) ([]byte, error) {
 		}
 	}
 	return nil, nil
+}
+
+func UnmarshalInt(raw []byte) (int, error) {
+	return int(binary.LittleEndian.Uint64(raw)), nil
 }
 
 func DeleteValue(db *badger.DB, key []byte) error {
@@ -87,4 +94,18 @@ func GetValueTxn[T any](txn *badger.Txn, key []byte, unmarshaler func([]byte) (T
 		return err
 	})
 	return res, err
+}
+
+func IsNotFound(err error) bool {
+	return errors.Is(err, badger.ErrKeyNotFound)
+}
+
+func ViewTxnWithResult[T any](db *badger.DB, f func(txn *badger.Txn) (T, error)) (T, error) {
+	var res T
+	resErr := db.View(func(txn *badger.Txn) error {
+		var err error
+		res, err = f(txn)
+		return err
+	})
+	return res, resErr
 }

@@ -263,11 +263,13 @@ func GetKeys(txn *badger.Txn, prefix string, limit int) []string {
 	defer iter.Close()
 
 	var keys []string
+
+	var count int
 	for iter.Rewind(); iter.Valid(); iter.Next() {
-		if limit == 0 {
+		count++
+		if limit > 0 && count > limit {
 			break
 		}
-		limit--
 		key := iter.Item().KeyCopy(nil)
 		keys = append(keys, string(key))
 	}

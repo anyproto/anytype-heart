@@ -2,8 +2,6 @@ package filestore
 
 import (
 	"context"
-	"encoding/binary"
-	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -145,17 +143,47 @@ func (m *dsFileStore) Indexes() []localstore.Index {
 }
 
 func (m *dsFileStore) Add(file *storage.FileInfo) error {
-	return retryOnConflict(func() error {
-		return m.db.Update(func(txn *badger.Txn) error {
-			fileInfoKey := filesInfoBase.ChildString(file.Hash)
+	return m.updateTxn(func(txn *badger.Txn) error {
+		fileInfoKey := filesInfoBase.ChildString(file.Hash)
 
-			log.Debugf("file add %s", file.Hash)
+		log.Debugf("file add %s", file.Hash)
+		exists, err := badgerhelper.Has(txn, fileInfoKey.Bytes())
+		if err != nil {
+			return err
+		}
+		if exists {
+			return localstore.ErrDuplicateKey
+		}
+
+		b, err := proto.Marshal(file)
+		if err != nil {
+			return err
+		}
+
+		err = txn.Set(fileInfoKey.Bytes(), b)
+		if err != nil {
+			return err
+		}
+
+		err = localstore.AddIndexesWithTxn(m, txn, file, file.Hash)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// AddMulti add multiple files and ignores possible duplicate errors, tx with all inserts discarded in case of other errors
+func (m *dsFileStore) AddMulti(upsert bool, files ...*storage.FileInfo) error {
+	return m.updateTxn(func(txn *badger.Txn) error {
+		for _, file := range files {
+			fileInfoKey := filesInfoBase.ChildString(file.Hash)
 			exists, err := badgerhelper.Has(txn, fileInfoKey.Bytes())
 			if err != nil {
 				return err
 			}
-			if exists {
-				return localstore.ErrDuplicateKey
+			if exists && !upsert {
+				continue
 			}
 
 			b, err := proto.Marshal(file)
@@ -172,108 +200,68 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 			if err != nil {
 				return err
 			}
-			return nil
-		})
-	})
-}
-
-// AddMulti add multiple files and ignores possible duplicate errors, tx with all inserts discarded in case of other errors
-func (m *dsFileStore) AddMulti(upsert bool, files ...*storage.FileInfo) error {
-	return retryOnConflict(func() error {
-		return m.db.Update(func(txn *badger.Txn) error {
-			for _, file := range files {
-				fileInfoKey := filesInfoBase.ChildString(file.Hash)
-				exists, err := badgerhelper.Has(txn, fileInfoKey.Bytes())
-				if err != nil {
-					return err
-				}
-				if exists && !upsert {
-					continue
-				}
-
-				b, err := proto.Marshal(file)
-				if err != nil {
-					return err
-				}
-
-				err = txn.Set(fileInfoKey.Bytes(), b)
-				if err != nil {
-					return err
-				}
-
-				err = localstore.AddIndexesWithTxn(m, txn, file, file.Hash)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+		}
+		return nil
 	})
 }
 
 func (m *dsFileStore) AddFileKeys(fileKeys ...FileKeys) error {
-	return retryOnConflict(func() error {
-		return m.db.Update(func(txn *badger.Txn) error {
-			for _, fk := range fileKeys {
-				if len(fk.Keys) == 0 {
+	return m.updateTxn(func(txn *badger.Txn) error {
+		for _, fk := range fileKeys {
+			if len(fk.Keys) == 0 {
+				continue
+			}
+			err := m.addSingleFileKeys(txn, fk.Hash, fk.Keys)
+			if err != nil {
+				if err == localstore.ErrDuplicateKey {
 					continue
 				}
-				err := m.addSingleFileKeys(txn, fk.Hash, fk.Keys)
-				if err != nil {
-					if err == localstore.ErrDuplicateKey {
-						continue
-					}
-					return err
-				}
+				return err
 			}
-			return nil
-		})
+		}
+		return nil
 	})
 }
 
 func (m *dsFileStore) RemoveEmptyFileKeys() error {
-	return retryOnConflict(func() error {
-		return m.db.Update(func(txn *badger.Txn) error {
-			res := localstore.GetKeys(txn, filesKeysBase.String(), 0)
+	return m.updateTxn(func(txn *badger.Txn) error {
+		res := localstore.GetKeys(txn, filesKeysBase.String(), 0)
 
-			hashes, err := localstore.GetLeavesFromResults(res)
+		hashes, err := localstore.GetLeavesFromResults(res)
+		if err != nil {
+			return err
+		}
+
+		var removed int
+		for _, hash := range hashes {
+			// TODO USE TXN
+			v, err := m.GetFileKeys(hash)
 			if err != nil {
-				return err
-			}
-
-			var removed int
-			for _, hash := range hashes {
-				// TODO USE TXN
-				v, err := m.GetFileKeys(hash)
 				if err != nil {
-					if err != nil {
-						log.Errorf("RemoveEmptyFileKeys failed to get keys: %s", err)
-					}
-					continue
+					log.Errorf("RemoveEmptyFileKeys failed to get keys: %s", err)
 				}
-				if len(v) == 0 {
-					removed++
-					// TODO USE TXN
-					err = m.deleteFileKeys(hash)
-					if err != nil {
-						log.Errorf("RemoveEmptyFileKeys failed to delete empty file keys: %s", err)
-					}
+				continue
+			}
+			if len(v) == 0 {
+				removed++
+				// TODO USE TXN
+				err = m.deleteFileKeys(hash)
+				if err != nil {
+					log.Errorf("RemoveEmptyFileKeys failed to delete empty file keys: %s", err)
 				}
 			}
-			if removed > 0 {
-				log.Errorf("RemoveEmptyFileKeys removed %d empty file keys", removed)
-			}
-			return nil
-		})
+		}
+		if removed > 0 {
+			log.Errorf("RemoveEmptyFileKeys removed %d empty file keys", removed)
+		}
+		return nil
 	})
 }
 
 func (m *dsFileStore) deleteFileKeys(hash string) error {
-	return retryOnConflict(func() error {
-		return m.db.Update(func(txn *badger.Txn) error {
-			fileKeysKey := filesKeysBase.ChildString(hash)
-			return txn.Delete(fileKeysKey.Bytes())
-		})
+	return m.updateTxn(func(txn *badger.Txn) error {
+		fileKeysKey := filesKeysBase.ChildString(hash)
+		return txn.Delete(fileKeysKey.Bytes())
 	})
 }
 
@@ -288,65 +276,27 @@ func (m *dsFileStore) addSingleFileKeys(txn *badger.Txn, hash string, keys map[s
 		return localstore.ErrDuplicateKey
 	}
 
-	b, err := proto.Marshal(&storage.FileKeys{
+	return badgerhelper.SetValueTxn(txn, fileKeysKey.Bytes(), &storage.FileKeys{
 		KeysByPath: keys,
 	})
-	if err != nil {
-		return err
-	}
-
-	return txn.Set(fileKeysKey.Bytes(), b)
 }
 
 func (m *dsFileStore) GetFileKeys(hash string) (map[string]string, error) {
-	var fileKeys storage.FileKeys
-	err := retryOnConflict(func() error {
-		return m.db.View(func(txn *badger.Txn) error {
-			fileKeysKey := filesKeysBase.ChildString(hash)
-
-			b, err := txn.Get(fileKeysKey)
-			if err != nil {
-				if err == dsCtx.ErrNotFound {
-					return nil, localstore.ErrNotFound
-				}
-				return nil, err
-			}
-
-			err = proto.Unmarshal(b, &fileKeys)
-			if err != nil {
-				return nil, err
-			}
-
-			return fileKeys.KeysByPath, nil
-		})
+	fileKeysKey := filesKeysBase.ChildString(hash)
+	fileKeys, err := badgerhelper.GetValue(m.db, fileKeysKey.Bytes(), func(raw []byte) (v storage.FileKeys, err error) {
+		return v, proto.Unmarshal(raw, &v)
 	})
+	if badgerhelper.IsNotFound(err) {
+		return nil, localstore.ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
 	return fileKeys.KeysByPath, nil
 }
 
-func retryOnConflict(proc func() error) error {
-	for {
-		err := proc()
-		if err == nil {
-			return nil
-		}
-		if errors.Is(err, badger.ErrConflict) {
-			continue
-		}
-		return err
-	}
-}
-
 func (m *dsFileStore) AddTarget(hash string, target string) error {
-	return retryOnConflict(func() error {
-		txn, err := m.ds.NewTransaction(false)
-		if err != nil {
-			return fmt.Errorf("new transaction: %w", err)
-		}
-		defer txn.Discard()
-
+	return m.updateTxn(func(txn *badger.Txn) error {
 		file, err := m.getByHash(txn, hash)
 		if err != nil {
 			return err
@@ -361,152 +311,88 @@ func (m *dsFileStore) AddTarget(hash string, target string) error {
 
 		file.Targets = append(file.Targets, target)
 
-		raw, err := proto.Marshal(file)
-		if err != nil {
-			return err
-		}
-
 		fileInfoKey := filesInfoBase.ChildString(file.Hash)
-		err = localstore.AddIndexWithTxn(indexTargets, txn, file, file.Hash)
-		if err != nil {
-			return err
-		}
-
-		err = txn.Put(fileInfoKey, raw)
+		err = badgerhelper.SetValueTxn(txn, fileInfoKey.Bytes(), file)
 		if err != nil {
 			return fmt.Errorf("put updated file info: %w", err)
 		}
 
-		return txn.Commit()
+		err = localstore.AddIndexWithTxn(indexTargets, txn, file, file.Hash)
+		if err != nil {
+			return err
+		}
+		return nil
 	})
 }
 
 func (m *dsFileStore) GetByHash(hash string) (*storage.FileInfo, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("new transaction: %w", err)
-	}
-	defer txn.Discard()
-
-	return m.getByHash(txn, hash)
+	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
+		return m.getByHash(txn, hash)
+	})
 }
 
 func (m *dsFileStore) getByHash(txn *badger.Txn, hash string) (*storage.FileInfo, error) {
 	fileInfoKey := filesInfoBase.ChildString(hash)
-	b, err := txn.Get(fileInfoKey)
-	if err != nil {
-		if err == dsCtx.ErrNotFound {
-			return nil, localstore.ErrNotFound
-		}
-		return nil, fmt.Errorf("get file info: %w", err)
+	file, err := badgerhelper.GetValueTxn(txn, fileInfoKey.Bytes(), unmarshalFileInfo)
+	if badgerhelper.IsNotFound(err) {
+		return nil, localstore.ErrNotFound
 	}
-	var file storage.FileInfo
-	err = proto.Unmarshal(b, &file)
 	if err != nil {
 		return nil, err
 	}
-	return &file, nil
+	return file, nil
 }
 
 func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*storage.FileInfo, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	key, err := localstore.GetKeyByIndex(indexMillChecksum, txn, &storage.FileInfo{Mill: mill, Checksum: checksum})
-	if err != nil {
-		return nil, err
-	}
-
-	val, err := txn.Get(filesInfoBase.ChildString(key))
-	if err != nil {
-		return nil, err
-	}
-
-	file := storage.FileInfo{}
-	err = proto.Unmarshal(val, &file)
-	if err != nil {
-		return nil, err
-	}
-
-	return &file, nil
-}
-
-func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*storage.FileInfo, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	key, err := localstore.GetKeyByIndex(indexMillSourceOpts, txn, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
-	if err != nil {
-		return nil, err
-	}
-
-	val, err := txn.Get(filesInfoBase.ChildString(key))
-	if err != nil {
-		return nil, err
-	}
-
-	file := storage.FileInfo{}
-	err = proto.Unmarshal(val, &file)
-	if err != nil {
-		return nil, err
-	}
-
-	return &file, nil
-}
-
-func (m *dsFileStore) ListTargets() ([]string, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	targetPrefix := localstore.IndexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
-
-	res := localstore.GetKeys(txn, targetPrefix, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	keys, err := localstore.ExtractKeysFromResults(res)
-	if err != nil {
-		return nil, err
-	}
-
-	var targets = make([]string, len(keys))
-	for i, key := range keys {
-		target, err := localstore.CarveKeyParts(key, -2, -1)
+	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
+		key, err := localstore.GetKeyByIndex(indexMillChecksum, txn, &storage.FileInfo{Mill: mill, Checksum: checksum})
 		if err != nil {
 			return nil, err
 		}
-		targets[i] = target
-	}
+		return badgerhelper.GetValueTxn(txn, filesInfoBase.ChildString(key).Bytes(), unmarshalFileInfo)
+	})
+}
 
-	return lo.Uniq(targets), nil
+func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*storage.FileInfo, error) {
+	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
+		key, err := localstore.GetKeyByIndex(indexMillSourceOpts, txn, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
+		if err != nil {
+			return nil, err
+		}
+		return badgerhelper.GetValueTxn(txn, filesInfoBase.ChildString(key).Bytes(), unmarshalFileInfo)
+	})
+}
+
+func (m *dsFileStore) ListTargets() ([]string, error) {
+	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) ([]string, error) {
+		targetPrefix := localstore.IndexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
+
+		keys := localstore.GetKeys(txn, targetPrefix, 0)
+		targets := make([]string, len(keys))
+		for i, key := range keys {
+			target, err := localstore.CarveKeyParts(key, -2, -1)
+			if err != nil {
+				return nil, err
+			}
+			targets[i] = target
+		}
+
+		return lo.Uniq(targets), nil
+	})
 }
 
 func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
+	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) ([]*storage.FileInfo, error) {
+		files, err := m.listByTarget(txn, target)
+		if err != nil {
+			return nil, err
+		}
 
-	files, err := m.listByTarget(target, txn)
-	if err != nil {
-		return nil, err
-	}
-
-	return files, nil
+		return files, nil
+	})
 }
 
-func (m *dsFileStore) listByTarget(target string, txn *badger.Txn) ([]*storage.FileInfo, error) {
+func (m *dsFileStore) listByTarget(txn *badger.Txn, target string) ([]*storage.FileInfo, error) {
 	results, err := localstore.GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{target}, "", indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
@@ -519,99 +405,72 @@ func (m *dsFileStore) listByTarget(target string, txn *badger.Txn) ([]*storage.F
 
 	var files []*storage.FileInfo
 	for _, key := range keys {
-		val, err := txn.Get(filesInfoBase.ChildString(key))
+		file, err := badgerhelper.GetValueTxn(txn, filesInfoBase.ChildString(key).Bytes(), unmarshalFileInfo)
 		if err != nil {
 			return nil, err
 		}
-
-		file := storage.FileInfo{}
-		err = proto.Unmarshal(val, &file)
-		if err != nil {
-			return nil, err
-		}
-
-		files = append(files, &file)
+		files = append(files, file)
 	}
 	return files, nil
 }
 
 func (m *dsFileStore) List() ([]*storage.FileInfo, error) {
-	var infos []*storage.FileInfo
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
+	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) ([]*storage.FileInfo, error) {
+		keys := localstore.GetKeys(txn, filesInfoBase.String(), 0)
 
-	res := localstore.GetKeys(txn, filesInfoBase.String(), 0)
-	if err != nil {
-		return nil, err
-	}
-
-	hashes, err := localstore.GetLeavesFromResults(res)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, hash := range hashes {
-		info, err := m.GetByHash(hash)
+		hashes, err := localstore.GetLeavesFromResults(keys)
 		if err != nil {
 			return nil, err
 		}
 
-		infos = append(infos, info)
-	}
+		infos := make([]*storage.FileInfo, 0, len(hashes))
+		for _, hash := range hashes {
+			info, err := m.getByHash(txn, hash)
+			if err != nil {
+				return nil, err
+			}
 
-	return infos, nil
+			infos = append(infos, info)
+		}
+
+		return infos, nil
+	})
 }
 
 func (m *dsFileStore) DeleteFile(hash string) error {
-	return retryOnConflict(func() error {
-		txn, err := m.ds.NewTransaction(false)
-		if err != nil {
-			return fmt.Errorf("create txn: %w", err)
-		}
-		defer txn.Discard()
-
-		files, err := m.listByTarget(hash, txn)
+	return m.updateTxn(func(txn *badger.Txn) error {
+		files, err := m.listByTarget(txn, hash)
 		if err != nil {
 			return fmt.Errorf("list files by target: %w", err)
 		}
 
-		for _, f := range files {
+		for _, file := range files {
 			// Remove indexed targets
-			if err = localstore.RemoveIndexWithTxn(indexTargets, txn, f, f.Hash); err != nil {
+			if err = localstore.RemoveIndexWithTxn(indexTargets, txn, file, file.Hash); err != nil {
 				return fmt.Errorf("remove index: %w", err)
 			}
-			f.Targets = slice.Remove(f.Targets, hash)
+			file.Targets = slice.Remove(file.Targets, hash)
 
-			if len(f.Targets) == 0 {
-				if derr := m.deleteFile(txn, f); derr != nil {
-					return fmt.Errorf("failed to delete file %s: %w", f.Hash, derr)
+			if len(file.Targets) == 0 {
+				if derr := m.deleteFile(txn, file); derr != nil {
+					return fmt.Errorf("failed to delete file %s: %w", file.Hash, derr)
 				}
 			} else {
-				// Update targets
-				raw, err := proto.Marshal(f)
-				if err != nil {
-					return err
-				}
-				err = txn.Put(filesInfoBase.ChildString(f.Hash), raw)
-				if err != nil {
-					return err
-				}
+				// Update targets by saving the whole file structure
+				err = badgerhelper.SetValueTxn(txn, filesInfoBase.ChildString(file.Hash).Bytes(), file)
+
 				// Add updated targets to index
-				if err = localstore.AddIndexWithTxn(indexTargets, txn, f, f.Hash); err != nil {
+				if err = localstore.AddIndexWithTxn(indexTargets, txn, file, file.Hash); err != nil {
 					return fmt.Errorf("update index: %w", err)
 				}
 			}
 		}
 
-		err = txn.Delete(filesKeysBase.ChildString(hash))
+		err = txn.Delete(filesKeysBase.ChildString(hash).Bytes())
 		if err != nil {
 			return err
 		}
-
-		return txn.Commit()
+		return nil
 	})
 }
 
@@ -622,25 +481,7 @@ func (m *dsFileStore) deleteFile(txn *badger.Txn, file *storage.FileInfo) error 
 	}
 
 	fileInfoKey := filesInfoBase.ChildString(file.Hash)
-	return txn.Delete(fileInfoKey)
-}
-
-func (m *dsFileStore) getInt(key dsCtx.Key) (int, error) {
-	val, err := m.ds.Get(key)
-	if err != nil {
-		if err == dsCtx.ErrNotFound {
-			return 0, localstore.ErrNotFound
-		}
-		return 0, err
-	}
-	return int(binary.LittleEndian.Uint64(val)), nil
-}
-
-func (m *dsFileStore) setInt(key dsCtx.Key, val int) error {
-	return retryOnConflict(func() error {
-		raw := binary.LittleEndian.AppendUint64(nil, uint64(val))
-		return m.ds.Put(key, raw)
-	})
+	return txn.Delete(fileInfoKey.Bytes())
 }
 
 func (m *dsFileStore) GetChunksCount(hash string) (int, error) {

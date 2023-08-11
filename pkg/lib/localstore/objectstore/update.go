@@ -33,7 +33,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	key := pagesDetailsBase.ChildString(id).Bytes()
 	txErr := s.updateTxn(func(txn *badger.Txn) error {
 		oldDetails, err := s.extractDetailsByKey(txn, key)
-		if err != nil && !isNotFound(err) {
+		if err != nil && !badgerhelper.IsNotFound(err) {
 			return fmt.Errorf("extract details: %w", err)
 		}
 		if oldDetails != nil && oldDetails.Details.Equal(newDetails.Details) {
@@ -83,7 +83,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		key := pendingDetailsBase.ChildString(id).Bytes()
 
 		objDetails, err := s.getPendingLocalDetails(txn, key)
-		if err != nil && !isNotFound(err) {
+		if err != nil && !badgerhelper.IsNotFound(err) {
 			return fmt.Errorf("get pending details: %w", err)
 		}
 

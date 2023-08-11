@@ -47,7 +47,7 @@ func (s *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
 func (s *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
 	headsHash, err = badgerhelper.GetValue(s.db, indexedHeadsState.ChildString(id).Bytes(), bytesToString)
-	if err != nil && !isNotFound(err) {
+	if err != nil && !badgerhelper.IsNotFound(err) {
 		return "", err
 	}
 	return headsHash, nil

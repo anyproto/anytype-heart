@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"errors"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
@@ -30,8 +29,4 @@ func iterateKeysByPrefixTx(txn *badger.Txn, prefix []byte, processKeyFn func(key
 		processKeyFn(key)
 	}
 	return nil
-}
-
-func isNotFound(err error) bool {
-	return errors.Is(err, badger.ErrKeyNotFound)
 }

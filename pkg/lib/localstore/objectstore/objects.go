@@ -401,7 +401,7 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 		details, err = s.extractDetailsFromItem(it)
 		return err
 	})
-	if isNotFound(err) {
+	if badgerhelper.IsNotFound(err) {
 		return &model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
 		}, nil
@@ -571,7 +571,7 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.Object
 		details = detailsModel.Details
 	}
 	snippet, err := badgerhelper.GetValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
-	if err != nil && !isNotFound(err) {
+	if err != nil && !badgerhelper.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
@@ -588,7 +588,7 @@ func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, ids []string) ([]*model.
 	for _, id := range ids {
 		info, err := s.getObjectInfo(txn, id)
 		if err != nil {
-			if isNotFound(err) || err == ErrObjectNotFound || err == ErrNotAnObject {
+			if badgerhelper.IsNotFound(err) || err == ErrObjectNotFound || err == ErrNotAnObject {
 				continue
 			}
 			return nil, err
