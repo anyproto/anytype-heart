@@ -1,6 +1,6 @@
 module github.com/anyproto/anytype-heart
 
-go 1.19
+go 1.21
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.3.7
