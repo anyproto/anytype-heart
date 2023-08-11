@@ -62,19 +62,19 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 	}
 }
 
-func (mw *Middleware) AccountStop(cctx context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
-	response := func(code pb.RpcAccountStopResponseErrorCode, err error) *pb.RpcAccountStopResponse {
-		m := &pb.RpcAccountStopResponse{Error: &pb.RpcAccountStopResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-
+func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
 	err := mw.applicationService.AccountStop(req)
-	code, err := domain.UnwrapCodeFromError[pb.RpcAccountStopResponseErrorCode](err)
-	return response(code, err)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING),
+		errToCode(application.ErrRemoveAccountData, pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA),
+		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE),
+	)
+	return &pb.RpcAccountStopResponse{
+		Error: &pb.RpcAccountStopResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {

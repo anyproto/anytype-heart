@@ -2,13 +2,16 @@ package application
 
 import (
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/domain"
 	oserror "github.com/anyproto/anytype-heart/util/os"
-	"fmt"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"path/filepath"
 	"os"
+	"errors"
+)
+
+var (
+	ErrRemoveAccountData = errors.New("remove account data")
 )
 
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
@@ -16,18 +19,18 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 	defer s.lock.Unlock()
 
 	if s.app == nil {
-		return domain.WrapErrorWithCode(fmt.Errorf("anytype node not set"), pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING)
+		return ErrApplicationIsNotRunning
 	}
 
 	if req.RemoveData {
 		err := s.accountRemoveLocalData()
 		if err != nil {
-			return domain.WrapErrorWithCode(oserror.TransformError(err), pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA)
+			return errors.Join(ErrRemoveAccountData, oserror.TransformError(err))
 		}
 	} else {
 		err := s.stop()
 		if err != nil {
-			return domain.WrapErrorWithCode(err, pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE)
+			return ErrFailedToStopApplication
 		}
 	}
 	return nil
