@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
@@ -40,7 +39,7 @@ func newFixture(t *testing.T) *fixture {
 
 func TestService_ObjectRestrictionsById(t *testing.T) {
 	rest := newFixture(t)
-	rest.objectStoreMock.EXPECT().GetObjectType(mock.Anything).Return(nil, nil)
+	rest.objectStoreMock.EXPECT().HasObjectType(mock.Anything).Return(false, nil)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		id:         "",
@@ -135,8 +134,8 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 
 func TestTemplateRestriction(t *testing.T) {
 	rs := newFixture(t)
-	rs.objectStoreMock.EXPECT().GetObjectType(bundle.TypeKeyPage.URL()).Return(nil, objectstore.ErrObjectNotFound)
-	rs.objectStoreMock.EXPECT().GetObjectType(bundle.TypeKeyContact.URL()).Return(&model.ObjectType{}, nil)
+	rs.objectStoreMock.EXPECT().HasObjectType(bundle.TypeKeyPage.URL()).Return(false, nil)
+	rs.objectStoreMock.EXPECT().HasObjectType(bundle.TypeKeyContact.URL()).Return(true, nil)
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		id:         "cannot make template from Template smartblock type",
