@@ -41,14 +41,13 @@ type provider struct {
 	cache        map[string]smartblock.SmartBlockType
 }
 
-func New(spaceService space.Service) SmartBlockTypeProvider {
-	return &provider{
-		spaceService: spaceService,
-	}
+func New() SmartBlockTypeProvider {
+	return &provider{}
 }
 
 func (p *provider) Init(a *app.App) (err error) {
 	p.cache = map[string]smartblock.SmartBlockType{}
+	p.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 

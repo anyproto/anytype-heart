@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -32,10 +33,8 @@ const FlatfsDirName = "flatfs"
 
 var log = logger.NewNamed(CName)
 
-func New(sendEvent func(event *pb.Event)) FileStorage {
-	return &fileStorage{
-		sendEvent: sendEvent,
-	}
+func New() FileStorage {
+	return &fileStorage{}
 }
 
 type FileStorage interface {
@@ -73,6 +72,7 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
 	f.spaceService = a.MustComponent(space.CName).(space.Service)
+	f.sendEvent = app.MustComponent[event.Sender](a).Send
 	if fileCfg.IPFSStorageAddr == "" {
 		f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), FlatfsDirName)
 	} else {
