@@ -204,13 +204,14 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	initFunc := func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
 
-		createState.InjectDerivedDetails(c.relationService)
+		createState.InjectDerivedDetails(c.relationService, spaceID, sbType.ToProto())
 
 		return &smartblock.InitContext{
 			Ctx:            ctx,
 			ObjectTypeKeys: objectTypeKeys,
 			State:          createState,
 			RelationKeys:   relationKeys,
+			SpaceID:        spaceID,
 		}
 	}
 

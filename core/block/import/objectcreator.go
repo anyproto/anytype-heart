@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -120,6 +121,10 @@ func (oc *ObjectCreator) Create(
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
 	var respDetails *types.Struct
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypes(), oldIDtoNew)
+	if err != nil {
+		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err.Error())
+	}
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
@@ -151,16 +156,30 @@ func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[st
 func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	ctx context.Context,
 	spaceID string,
-	links []model.RelationLink,
-	types []bundle.TypeKey,
-	oldIDtoNew map[string]string) (*types.Struct, error) {
+	links pbtypes.RelationLinks,
+	types []string,
+	oldIDtoNew map[string]string) error {
 
+	var idsToCheck = make([]string, 0, len(links)+len(types))
 	for _, link := range links {
+		// TODO: check if we have them in oldIDtoNew
 		if !bundle.HasRelation(link.Key) {
 			continue
 		}
+
+		idsToCheck = append(idsToCheck, addr.BundledRelationURLPrefix+link.Key)
 	}
-	oc.service.AddBundledObjectToSpace()
+
+	for _, t := range types {
+		if !bundle.HasObjectType(t) {
+			continue
+		}
+		// TODO: check if we have them in oldIDtoNew
+		idsToCheck = append(idsToCheck, addr.BundledObjectTypeURLPrefix+t)
+	}
+
+	_, _, err := oc.service.AddBundledObjectToSpace(ctx, spaceID, idsToCheck)
+	return err
 }
 
 func (oc *ObjectCreator) createNewObject(
@@ -175,12 +194,15 @@ func (oc *ObjectCreator) createNewObject(
 			Ctx:         ctx,
 			IsNewObject: true,
 			State:       st,
+			SpaceID:     spaceID,
 		}
 	})
+
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
 		return nil, err
 	}
+	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
 	respDetails := sb.Details()
 	// update collection after we create it
 	if st.Store() != nil {

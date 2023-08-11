@@ -226,11 +226,7 @@ func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) e
 		st := b.NewState()
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 		commonOperations.SetLayoutInState(st, model.ObjectType_set)
-		setTypeID, err := s.relationService.GetSystemTypeId(st.SpaceID(), bundle.TypeKeySet)
-		if err != nil {
-			return fmt.Errorf("get set type id: %w", err)
-		}
-		st.SetObjectType(setTypeID)
+		st.SetObjectType(bundle.TypeKeySet.String())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

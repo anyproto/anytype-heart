@@ -152,10 +152,14 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
+	// deprecated, use relationService
 	GetRelationByID(id string) (relation *model.Relation, err error)
+	// deprecated, use relatinoService
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
+	// deprecated, use relatinoService
 	GetObjectType(url string) (*model.ObjectType, error)
+	// deprecated, use relatinoService
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error)
 
@@ -727,7 +731,7 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (
 
 func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {
 	objectType := &model.ObjectType{}
-	s.fillObjectTypeWithRecommendedRelations(details, objectType)
+	//s.fillObjectTypeWithRecommendedRelations(details, objectType)
 	objectType.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
 	objectType.Layout = model.ObjectTypeLayout(int(pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())))
 	objectType.IconEmoji = pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String())
@@ -742,6 +746,7 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url 
 func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.Struct, objectType *model.ObjectType) {
 	// relationKeys := objectInfos[0].RelationKeys
 	for _, relationID := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		// todo: fix or remove
 		relationKey, err := pbtypes.BundledRelationIdToKey(relationID)
 		if err == nil {
 			//nolint:govet

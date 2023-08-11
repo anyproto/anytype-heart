@@ -230,10 +230,15 @@ func (p *Pb) getSnapshotForPbFile(spaceID string, name, profileID, path string,
 	}
 
 	if snapshot.SbType == model.SmartBlockType_SubObject {
+		// migrate old sub objects into real objects
 		if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_objectType.String() {
 			snapshot.SbType = model.SmartBlockType_STType
 		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relation.String() {
 			snapshot.SbType = model.SmartBlockType_STRelation
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relationOption.String() {
+			snapshot.SbType = model.SmartBlockType_Page
+		} else {
+			return nil, fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
 		}
 	}
 

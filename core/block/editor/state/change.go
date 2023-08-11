@@ -96,8 +96,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		}
 	}
 
-	// todo: pass the relationservice
-	s.InjectDerivedDetails(nil)
 	return s
 }
 

@@ -52,6 +52,8 @@ func (m *missingObject) ReadDoc(ctx context.Context, receiver ChangeReceiver, em
 	d := m.getDetails()
 
 	s.SetDetails(d)
+	s.InjectDerivedDetails(&bundledTypeIdGetter{}, addr.AnytypeMarketplaceWorkspace, model.SmartBlockType_MissingObject)
+
 	return s, nil
 }
 

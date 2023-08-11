@@ -84,8 +84,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
-	// todo: this fires debug logs regarding objectType
-	s.InjectDerivedDetails(nil)
+	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
 	return s
 }
 
@@ -98,8 +97,6 @@ func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key uniq
 		blocks:            blocks,
 		uniqueKeyInternal: key.InternalKey(),
 	}
-	// todo: this fires debug logs regarding objectType
-	s.InjectDerivedDetails(nil)
 	return s
 }
 
@@ -946,7 +943,7 @@ func (s *State) SetObjectType(objectType string) *State {
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	for _, ot := range objectTypes {
-		if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) {
+		if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(ot, addr.BundledObjectTypeURLPrefix) {
 			panic(fmt.Sprintf("SetObjectTypes used to set IDs instead of keys: %v", objectTypes))
 		}
 	}
@@ -959,10 +956,17 @@ type TypeIDGetter interface {
 	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
 }
 
-func (s *State) InjectDerivedDetails(getter TypeIDGetter) {
+// InjectDerivedDetails injects the local deta
+func (s *State) InjectDerivedDetails(getter TypeIDGetter, spaceId string, sbt model.SmartBlockType) {
 	id := s.RootId()
 	if id != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
+	}
+
+	if spaceId != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceId))
+	} else {
+		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", s.rootId)
 	}
 	if ot := s.ObjectType(); ot != "" {
 		// todo: we need to move this code out of the state,
@@ -974,7 +978,24 @@ func (s *State) InjectDerivedDetails(getter TypeIDGetter) {
 			if err != nil {
 				log.Errorf("failed to get type id for %s: %v", ot, err)
 			}
+
 			s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeID))
+		}
+	}
+
+	if uki := s.UniqueKeyInternal(); uki != "" {
+		// todo: remove this hack after spaceService refactored to include marketplace virtual space
+		if sbt == model.SmartBlockType_BundledObjectType {
+			sbt = model.SmartBlockType_STType
+		} else if sbt == model.SmartBlockType_BundledRelation {
+			sbt = model.SmartBlockType_STRelation
+		}
+
+		uk, err := uniquekey.NewUniqueKey(sbt, uki)
+		if err != nil {
+			log.Errorf("failed to get unique key for %s: %v", uki, err)
+		} else {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.String()))
 		}
 	}
 
@@ -983,9 +1004,6 @@ func (s *State) InjectDerivedDetails(getter TypeIDGetter) {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
 	}
 
-	if uk := s.UniqueKeyInternal(); uk != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk))
-	}
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
@@ -1183,7 +1201,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 	}
 
 	if objTypes {
-		for _, ot := range s.ObjectTypes() {
+		for _, ot := range pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeyType.String()) {
 			if ot == "" { // TODO is it possible?
 				log.Errorf("sb %s has empty ot", s.RootId())
 				continue

@@ -77,7 +77,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
 	s.SetObjectType(bundle.TypeKeyRelation.String())
-	s.InjectDerivedDetails(&bundledTypeIdGetter{})
+	s.InjectDerivedDetails(&bundledTypeIdGetter{}, addr.AnytypeMarketplaceWorkspace, uk.SmartblockType())
 	return s, nil
 }
 

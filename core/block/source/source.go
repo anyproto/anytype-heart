@@ -203,7 +203,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 
-	st.InjectDerivedDetails(s.relationService)
+	// todo: should we do it here?
+	st.InjectDerivedDetails(s.relationService, s.spaceID, s.Type())
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {

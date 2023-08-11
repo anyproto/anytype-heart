@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/dgraph-io/badger/v3"
 )
 
@@ -28,6 +29,9 @@ func longSpaceToShortKey(longSpaceID string) []byte {
 
 func (s *dsObjectStore) ResolveSpaceID(objectID string) (string, error) {
 	var spaceID string
+	if addr.IsBundledId(objectID) {
+		return addr.AnytypeMarketplaceWorkspace, nil
+	}
 	err := s.db.View(func(txn *badger.Txn) error {
 		shortSpaceID, err := s.getObjectShortSpaceID(txn, objectID)
 		if err != nil {

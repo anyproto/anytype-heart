@@ -213,11 +213,7 @@ func (s *Service) ObjectToCollection(id string) error {
 		}
 		st := b.NewState()
 		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
-		collectionTypeID, err := s.relationService.GetSystemTypeId(st.SpaceID(), bundle.TypeKeyCollection)
-		if err != nil {
-			return fmt.Errorf("get set type id: %w", err)
-		}
-		st.SetObjectType(collectionTypeID)
+		st.SetObjectType(bundle.TypeKeyCollection.String())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

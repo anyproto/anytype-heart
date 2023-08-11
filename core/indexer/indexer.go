@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -182,6 +183,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
+	if info.SpaceID == "" || pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeySpaceId.String()) == "" {
+		log.Warnf("index spaceID is empty for object %s %v", info.Id, info.State.ObjectTypes())
+	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
@@ -263,7 +267,10 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			}
 		}
 
-		i.indexLinkedFiles(block.CacheOptsSetSpaceID(ctx, info.SpaceID), info.FileHashes)
+		// todo: remove this hack
+		if info.SpaceID != addr.AnytypeMarketplaceWorkspace {
+			i.indexLinkedFiles(block.CacheOptsSetSpaceID(ctx, info.SpaceID), info.FileHashes)
+		}
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}

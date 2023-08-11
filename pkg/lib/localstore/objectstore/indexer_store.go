@@ -1,12 +1,17 @@
 package objectstore
 
 import (
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (s *dsObjectStore) AddToIndexQueue(id string) error {
+	if id == "index" {
+		fmt.Println()
+	}
 	return setValue(s.db, indexQueueBase.ChildString(id).Bytes(), nil)
 }
 
