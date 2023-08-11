@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	ErrGetConfig          = errors.New("get config")
-	ErrIdentifyAccountDir = errors.New("can't identify account dir")
+	ErrFailedToGetConfig          = errors.New("get config")
+	ErrFailedToIdentifyAccountDir = errors.New("failed to identify account dir")
 )
 
 func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
@@ -28,7 +28,7 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 	srcPath := conf.RepoPath
 	fileConf := config.ConfigRequired{}
 	if err := config.GetFileConfig(configPath, &fileConf); err != nil {
-		return errors.Join(ErrGetConfig, err)
+		return errors.Join(ErrFailedToGetConfig, err)
 	}
 	if fileConf.CustomFileStorePath != "" {
 		srcPath = fileConf.CustomFileStorePath
@@ -37,7 +37,7 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 	parts := strings.Split(srcPath, string(filepath.Separator))
 	accountDir := parts[len(parts)-1]
 	if accountDir == "" {
-		return ErrIdentifyAccountDir
+		return ErrFailedToIdentifyAccountDir
 	}
 
 	destination := filepath.Join(req.NewPath, accountDir)
@@ -47,7 +47,7 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 
 	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
 		if err := removeDirsRelativeToPath(destination, dirs); err != nil {
-			return errors.Join(ErrRemoveAccountData, oserror.TransformError(err))
+			return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
 		}
 	}
 
@@ -75,12 +75,12 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 	}
 
 	if err := removeDirsRelativeToPath(srcPath, dirs); err != nil {
-		return errors.Join(ErrRemoveAccountData, oserror.TransformError(err))
+		return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
 	}
 
 	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
 		if err := os.RemoveAll(srcPath); err != nil {
-			return errors.Join(ErrRemoveAccountData, oserror.TransformError(err))
+			return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
 		}
 	}
 	return nil

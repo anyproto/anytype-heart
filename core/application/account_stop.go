@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrRemoveAccountData = errors.New("remove account data")
+	ErrFailedToRemoveAccountData = errors.New("failed to remove account data")
 )
 
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
@@ -25,7 +25,7 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 	if req.RemoveData {
 		err := s.accountRemoveLocalData()
 		if err != nil {
-			return errors.Join(ErrRemoveAccountData, oserror.TransformError(err))
+			return errors.Join(ErrFailedToRemoveAccountData, oserror.TransformError(err))
 		}
 	} else {
 		err := s.stop()

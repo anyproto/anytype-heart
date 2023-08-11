@@ -2,7 +2,6 @@ package application
 
 import "errors"
 
-// TODO Remove Failed prefix, it's an error already
 var (
 	ErrFailedToStartApplication = errors.New("failed to run node")
 	ErrFailedToStopApplication  = errors.New("failed to stop running node")

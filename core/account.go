@@ -21,7 +21,8 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		Error: &pb.RpcAccountCreateResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
-		}}
+		},
+	}
 }
 
 func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
@@ -64,7 +65,7 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 	err := mw.applicationService.AccountStop(req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING),
-		errToCode(application.ErrRemoveAccountData, pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA),
+		errToCode(application.ErrFailedToRemoveAccountData, pb.RpcAccountStopResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE),
 	)
 	return &pb.RpcAccountStopResponse{
@@ -78,10 +79,10 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
 	err := mw.applicationService.AccountMove(req)
 	code := mapErrorCode(err,
-		errToCode(application.ErrGetConfig, pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG),
-		errToCode(application.ErrIdentifyAccountDir, pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR),
+		errToCode(application.ErrFailedToGetConfig, pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG),
+		errToCode(application.ErrFailedToIdentifyAccountDir, pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO),
-		errToCode(application.ErrRemoveAccountData, pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA),
+		errToCode(application.ErrFailedToRemoveAccountData, pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE),
 		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG),
 	)
