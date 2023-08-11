@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 func (s *dsObjectStore) DeleteDetails(id string) error {
@@ -44,7 +45,7 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		return fmt.Errorf("failed to overwrite details and relations: %w", err)
 	}
 
-	return retryOnConflict(func() error {
+	return badgerhelper.RetryOnConflict(func() error {
 		txn := s.db.NewTransaction(true)
 		defer txn.Discard()
 

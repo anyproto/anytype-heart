@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 var log = logging.Logger("anytype-localstore")
@@ -198,7 +199,7 @@ func (s *dsObjectStore) EraseIndexes() error {
 }
 
 func (s *dsObjectStore) eraseLinks() (outboundRemoved int, inboundRemoved int, err error) {
-	err = retryOnConflict(func() error {
+	err = badgerhelper.RetryOnConflict(func() error {
 		txn := s.db.NewTransaction(true)
 		defer txn.Discard()
 		txn, outboundRemoved, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String())
@@ -569,7 +570,7 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, id string) (*model.Object
 		}
 		details = detailsModel.Details
 	}
-	snippet, err := getValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
+	snippet, err := badgerhelper.GetValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
 	if err != nil && !isNotFound(err) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
