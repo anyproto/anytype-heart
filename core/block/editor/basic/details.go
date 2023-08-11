@@ -18,8 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const detailSizeLimit = 64 * 1024
-
 var log = logging.Logger("anytype-mw-editor-basic")
 
 type detailUpdate struct {
@@ -29,11 +27,6 @@ type detailUpdate struct {
 
 func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	s := bs.NewStateCtx(ctx)
-
-	if err = checkDetailSizes(details); err != nil {
-		log.With("objectID", bs.Id()).Errorf(err.Error())
-		return err
-	}
 
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
@@ -46,15 +39,6 @@ func (bs *basic) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDeta
 	}
 
 	bs.discardOwnSetDetailsEvent(ctx, showEvent)
-	return nil
-}
-
-func checkDetailSizes(details []*pb.RpcObjectSetDetailsDetail) error {
-	for _, d := range details {
-		if d.Size() > detailSizeLimit {
-			return fmt.Errorf("failed to set detail %s as its size (%d) is above the limit of %d", d.Key, d.Size(), detailSizeLimit)
-		}
-	}
 	return nil
 }
 

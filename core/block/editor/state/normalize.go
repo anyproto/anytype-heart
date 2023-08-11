@@ -2,7 +2,9 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -12,6 +14,8 @@ import (
 
 var (
 	maxChildrenThreshold = 40
+	blockSizeLimit       = 65 * 1024
+	detailSizeLimit      = 65 * 1024
 )
 
 func (s *State) Normalize(withLayouts bool) (err error) {
@@ -24,9 +28,17 @@ type Normalizable interface {
 }
 
 func (s *State) normalize(withLayouts bool) (err error) {
-	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
+	if iErr := s.Iterate(func(b simple.Block) (isContinue bool) {
+		if b.Model().Size() > blockSizeLimit {
+			err = fmt.Errorf("size of block '%s' (%d) is above the limit of %d", b.Model().Id, b.Model().Size(), blockSizeLimit)
+			return false
+		}
 		return true
-	}); err != nil {
+	}); iErr != nil {
+		return iErr
+	}
+	if err != nil {
+		log.With("objectID", s.rootId).Errorf(err.Error())
 		return err
 	}
 	// remove invalid children
@@ -290,6 +302,48 @@ func (s *State) normalizeSmartBlock(b simple.Block) {
 			Smartblock: &model.BlockContentSmartblock{},
 		}
 	}
+}
+
+func (s *State) shortenDetailsToLimit(details map[string]*types.Value) {
+	for key, value := range details {
+		if value.Size() > detailSizeLimit {
+			log.With("objectID", s.rootId).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortenning it",
+				key, value.Size(), detailSizeLimit)
+			value, _ = shortenValueOnN(value, value.Size()-detailSizeLimit)
+		}
+	}
+}
+
+func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) {
+	switch value.Kind.(type) {
+	case *types.Value_StringValue:
+		str := value.GetStringValue()
+		if len(str) > n {
+			return pbtypes.String(str[:len(str)-n]), 0
+		}
+		return pbtypes.String(""), n - len(str)
+	case *types.Value_ListValue:
+		var newValue *types.Value
+		for i, v := range value.GetListValue().Values {
+			newValue, n = shortenValueOnN(v, n)
+			value.GetListValue().Values[i] = newValue
+			if n == 0 {
+				return value, 0
+			}
+		}
+		return value, n
+	case *types.Value_StructValue:
+		var newValue *types.Value
+		for key, v := range value.GetStructValue().GetFields() {
+			newValue, n = shortenValueOnN(v, n)
+			value.GetStructValue().Fields[key] = newValue
+			if n == 0 {
+				return value, 0
+			}
+		}
+		return value, n
+	}
+	return value, n
 }
 
 func isBlockEmpty(b simple.Block) bool {

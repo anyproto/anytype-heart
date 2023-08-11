@@ -807,6 +807,7 @@ func (s *State) StringDebug() string {
 }
 
 func (s *State) SetDetails(d *types.Struct) *State {
+	s.shortenDetailsToLimit(d.Fields)
 	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
 		for k, v := range local.Fields {
@@ -864,6 +865,8 @@ func (s *State) SetLocalDetails(d *types.Struct) {
 }
 
 func (s *State) SetDetail(key string, value *types.Value) {
+	s.shortenDetailsToLimit(map[string]*types.Value{key: value})
+
 	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
 		s.SetLocalDetail(key, value)
 		return

@@ -310,8 +310,8 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 	}()
 
 	if len(req.Text) > textSizeLimit {
-		log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block", textSizeLimit)
-		return fmt.Errorf("block of text is limited to %d symbols", textSizeLimit)
+		log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortenning it", textSizeLimit)
+		req.Text = req.Text[:textSizeLimit]
 	}
 
 	ctx := session.NewChildContext(parentCtx)

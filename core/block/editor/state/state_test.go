@@ -5,6 +5,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -2700,4 +2701,47 @@ func TestState_ApplyChangeIgnoreErrSliceUpdate(t *testing.T) {
 		assert.Len(t, st.Store().GetFields()["objects"].GetListValue().Values, 1)
 		assert.Equal(t, "id1", st.Store().GetFields()["objects"].GetListValue().Values[0].GetStringValue())
 	})
+}
+
+func Test_ShortenDetailsToLimit(t *testing.T) {
+	t.Run("SetDetails", func(t *testing.T) {
+		//given
+		s := &State{rootId: "first"}
+		detail := pbtypes.StringList([]string{"hello", "world", strings.Repeat("a", detailSizeLimit-9)})
+
+		//when
+		s.SetDetails(&types.Struct{Fields: map[string]*types.Value{
+			"key": pbtypes.CopyVal(detail),
+		}})
+
+		//then
+		assert.Greater(t, detail.Size(), detailSizeLimit)
+		assert.True(t, assertAllDetailsLessThenLimit(s.CombinedDetails()))
+	})
+
+	t.Run("SetDetail", func(t *testing.T) {
+		//given
+		s := &State{rootId: "first"}
+		detail := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
+			"a": pbtypes.String(strings.Repeat("a", detailSizeLimit/2)),
+			"b": pbtypes.String(strings.Repeat("b", detailSizeLimit/2)),
+			"i": pbtypes.Int64(99),
+		}})
+
+		//when
+		s.SetDetail(bundle.RelationKeyType.String(), pbtypes.CopyVal(detail))
+
+		//then
+		assert.Greater(t, detail.Size(), detailSizeLimit)
+		assert.True(t, assertAllDetailsLessThenLimit(s.CombinedDetails()))
+	})
+}
+
+func assertAllDetailsLessThenLimit(details *types.Struct) bool {
+	for _, v := range details.Fields {
+		if v.Size() > detailSizeLimit {
+			return false
+		}
+	}
+	return true
 }

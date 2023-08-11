@@ -372,3 +372,87 @@ func BenchmarkNormalize(b *testing.B) {
 		ApplyState(r.NewState(), true)
 	}
 }
+
+func TestShortenValueOnN(t *testing.T) {
+	t.Run("string value", func(t *testing.T) {
+		//given
+		value := pbtypes.String("abrakadabra")
+
+		//when
+		value, left := shortenValueOnN(value, 7)
+
+		//then
+		assert.Equal(t, 0, left)
+		assert.Equal(t, "abra", value.GetStringValue())
+	})
+
+	t.Run("string list", func(t *testing.T) {
+		//given
+		value := pbtypes.StringList([]string{"Liberté", "Égalité", "Fraternité"})
+
+		//when
+		value, left := shortenValueOnN(value, 15)
+
+		//then
+		expected := pbtypes.StringList([]string{"", "É", "Fraternité"})
+
+		assert.Equal(t, 0, left)
+		assert.Equal(t, expected, value)
+	})
+
+	t.Run("complex struct", func(t *testing.T) {
+		//given
+		bornDied := pbtypes.IntList(1828, 1910)
+		isNovelist := pbtypes.Bool(true)
+		value := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
+			"name":       pbtypes.String("Leo"),
+			"surname":    pbtypes.String("Tolstoy"),
+			"bornDied":   bornDied,
+			"isNovelist": isNovelist,
+			"books":      pbtypes.StringList([]string{"War And Peace", "Anna Karenina", "Youth", "After the Ball"}),
+		}})
+		n := len("Leo" + "Tolstoy" + "War And Peace" + "Anna Karenina" + "Youth" + "After the Ball")
+
+		//when
+		value, left := shortenValueOnN(value, 32)
+
+		//then
+		assert.Equal(t, 0, left)
+		assert.Equal(t, bornDied, value.GetStructValue().Fields["bornDied"])
+		assert.Equal(t, isNovelist, value.GetStructValue().Fields["isNovelist"])
+		assert.Equal(t, n-32, countStringsLength(value))
+	})
+
+	t.Run("cut off all strings", func(t *testing.T) {
+		//given
+		value := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
+			"name":  pbtypes.String("My Favorite emojis"),
+			"happy": pbtypes.StringList([]string{"😂", "😄", "🥰"}),
+			"sad":   pbtypes.StringList([]string{"😔", "😰", "😥"}),
+			"vegs":  pbtypes.StringList([]string{"🥕", "🍅", "🌶"}),
+		}})
+
+		//when
+		value, left := shortenValueOnN(value, 100)
+
+		//then
+		assert.Equal(t, 100-(18+9*4), left)
+		assert.Equal(t, 0, countStringsLength(value))
+	})
+}
+
+func countStringsLength(value *types.Value) (n int) {
+	switch value.Kind.(type) {
+	case *types.Value_StringValue:
+		return len(value.GetStringValue())
+	case *types.Value_ListValue:
+		for _, v := range value.GetListValue().Values {
+			n += countStringsLength(v)
+		}
+	case *types.Value_StructValue:
+		for _, v := range value.GetStructValue().GetFields() {
+			n += countStringsLength(v)
+		}
+	}
+	return n
+}

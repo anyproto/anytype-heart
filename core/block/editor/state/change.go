@@ -81,6 +81,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		pbtypes.NormalizeStruct(detailsToSave)
 	}
 
+	(&State{rootId: rootId}).shortenDetailsToLimit(detailsToSave.Fields)
+
 	s := &State{
 		changeId:        sOpts.changeId,
 		rootId:          rootId,
@@ -251,6 +253,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 			Fields: make(map[string]*types.Value),
 		}
 	}
+	s.shortenDetailsToLimit(det.Fields)
 	s.details = pbtypes.CopyStruct(det)
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
