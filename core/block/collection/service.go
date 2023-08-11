@@ -203,7 +203,10 @@ func (s *Service) ObjectToCollection(id string) error {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
 		}
 		st := b.NewState()
-		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
+		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_collection)
+		if err != nil {
+			return fmt.Errorf("set layout: %w", err)
+		}
 		st.SetObjectType(bundle.TypeKeyCollection.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
