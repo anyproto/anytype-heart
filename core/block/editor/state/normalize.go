@@ -28,9 +28,30 @@ type Normalizable interface {
 }
 
 func (s *State) normalize(withLayouts bool) (err error) {
+	if err = s.normalizeSize(); err != nil {
+		return err
+	}
+	// remove invalid children
+	for _, b := range s.blocks {
+		s.normalizeChildren(b)
+	}
+
+	if err = s.doCustomBlockNormalizations(); err != nil {
+		return err
+	}
+
+	s.normalizeLayout()
+	if withLayouts {
+		return s.normalizeTree()
+	}
+	return
+}
+
+func (s *State) normalizeSize() (err error) {
 	if iErr := s.Iterate(func(b simple.Block) (isContinue bool) {
-		if b.Model().Size() > blockSizeLimit {
-			err = fmt.Errorf("size of block '%s' (%d) is above the limit of %d", b.Model().Id, b.Model().Size(), blockSizeLimit)
+		size := b.Model().Size()
+		if size > blockSizeLimit {
+			err = fmt.Errorf("size of block '%s' (%d) is above the limit of %d", b.Model().Id, size, blockSizeLimit)
 			return false
 		}
 		return true
@@ -39,39 +60,35 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	}
 	if err != nil {
 		log.With("objectID", s.rootId).Errorf(err.Error())
-		return err
 	}
-	// remove invalid children
-	for _, b := range s.blocks {
-		s.normalizeChildren(b)
-	}
+	return err
+}
 
+func (s *State) doCustomBlockNormalizations() (err error) {
 	for _, b := range s.blocks {
 		if n, ok := b.(Normalizable); ok {
-			if err := n.Normalize(s); err != nil {
-				return fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
+			if err = n.Normalize(s); err != nil {
+				return fmt.Errorf("failed to do custom normalization for block %s: %w", b.Model().Id, err)
 			}
 		}
 		if b.Model().Id == s.RootId() {
 			s.normalizeSmartBlock(b)
 		}
 	}
+	return nil
+}
 
-	// remove empty layouts
+func (s *State) normalizeLayout() {
 	s.removeEmptyLayoutBlocks(s.blocks)
 	if s.parent != nil {
 		s.removeEmptyLayoutBlocks(s.parent.blocks)
 	}
-	// normalize rows
+
 	for _, b := range s.blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
 			s.normalizeLayoutRow(b)
 		}
 	}
-	if withLayouts {
-		return s.normalizeTree()
-	}
-	return
 }
 
 func (s *State) removeEmptyLayoutBlocks(blocks map[string]simple.Block) {
@@ -306,10 +323,11 @@ func (s *State) normalizeSmartBlock(b simple.Block) {
 
 func (s *State) shortenDetailsToLimit(details map[string]*types.Value) {
 	for key, value := range details {
-		if value.Size() > detailSizeLimit {
+		size := value.Size()
+		if size > detailSizeLimit {
 			log.With("objectID", s.rootId).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
-				key, value.Size(), detailSizeLimit)
-			value, _ = shortenValueOnN(value, value.Size()-detailSizeLimit)
+				key, size, detailSizeLimit)
+			value, _ = shortenValueOnN(value, size-detailSizeLimit)
 		}
 	}
 }

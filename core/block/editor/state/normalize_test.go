@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -313,6 +314,69 @@ func TestState_Normalize(t *testing.T) {
 		s.normalizeTree()
 		ApplyState(s, true)
 		assert.Equal(t, "header", s.Pick(s.RootId()).Model().ChildrenIds[0])
+	})
+
+	t.Run("normalize size - big details", func(t *testing.T) {
+		//given
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id: "root",
+				Fields: &types.Struct{Fields: map[string]*types.Value{
+					"name": pbtypes.String(strings.Repeat("a", blockSizeLimit)),
+				}},
+			},
+			)}
+		s := NewDoc("root", blocks).(*State)
+
+		//when
+		err := s.normalizeSize()
+
+		//then
+		assert.Less(t, blockSizeLimit, s.blocks["root"].Model().Size())
+		assert.Error(t, err)
+	})
+
+	t.Run("normalize size - big content", func(t *testing.T) {
+		//given
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id: "root",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+					Text: strings.Repeat("b", blockSizeLimit)},
+				},
+			}),
+		}
+		s := NewDoc("root", blocks).(*State)
+
+		//when
+		err := s.normalizeSize()
+
+		//then
+		assert.Less(t, blockSizeLimit, s.blocks["root"].Model().Size())
+		assert.Error(t, err)
+	})
+
+	t.Run("normalize size - no error", func(t *testing.T) {
+		//given
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id: "root",
+				Fields: &types.Struct{Fields: map[string]*types.Value{
+					"name": pbtypes.String(strings.Repeat("a", blockSizeLimit/3)),
+				}},
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+					Text: strings.Repeat("b", blockSizeLimit/3)},
+				},
+			}),
+		}
+		s := NewDoc("root", blocks).(*State)
+
+		//when
+		err := s.normalizeSize()
+
+		//then
+		assert.Less(t, s.blocks["root"].Model().Size(), blockSizeLimit)
+		assert.NoError(t, err)
 	})
 }
 
