@@ -34,22 +34,22 @@ var (
 	log = logging.Logger("anytype-mw-source")
 
 	encodedChangePool = sync.Pool{New: func() any { return make([]byte, 4096) }}
-	data              []byte
+	//buf              []byte
 
 	ErrObjectNotFound = errors.New("object not found")
 	ErrReadOnly       = errors.New("object is read only")
 )
 
 func MarshallChange(c *pb.Change) (res []byte, err error) {
-	data = encodedChangePool.Get().([]byte)
-	data, err = c.Marshal()
+	buf := encodedChangePool.Get().([]byte)
+	data, err := c.Marshal()
 	if err != nil {
 		return
 	}
-	res = snappy.Encode(nil, data)
+	res = snappy.Encode(buf, data)
 	log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
 		len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
-	encodedChangePool.Put(data)
+	encodedChangePool.Put(buf)
 	return
 }
 
