@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/golang/snappy"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -27,11 +29,59 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-var log = logging.Logger("anytype-mw-source")
 var (
+	log = logging.Logger("anytype-mw-source")
+
+	dataType = DataType{Version: "v1", Type: "snappy"}
+
 	ErrObjectNotFound = errors.New("object not found")
 	ErrReadOnly       = errors.New("object is read only")
 )
+
+type DataType struct {
+	Version, Type string
+}
+
+func (t DataType) String() string {
+	return t.Version + "/" + t.Type
+}
+
+func ParseDataType(str string) *DataType {
+	if str == "" {
+		return nil
+	}
+	substrings := strings.Split(str, "/")
+	if len(substrings) != 2 {
+		return nil
+	}
+	return &DataType{
+		Version: substrings[0],
+		Type:    substrings[1],
+	}
+}
+
+func UnmarshallChange(decrypted []byte) (res any, err error) {
+	ch := &pb.Change{}
+	err = proto.Unmarshal(decrypted, ch)
+	if err != nil {
+		var decoded []byte
+		decoded, err = snappy.Decode(nil, decrypted)
+		err = proto.Unmarshal(decoded, ch)
+	}
+	res = ch
+	return
+}
+
+func MarshallChange(c *pb.Change) (res []byte, err error) {
+	data, err := c.Marshal()
+	if err != nil {
+		return
+	}
+	res = snappy.Encode(nil, data)
+	log.Debugf("change is shrinked by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
+		len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
+	return
+}
 
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
@@ -227,7 +277,38 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if params.Time.IsZero() {
 		params.Time = time.Now()
 	}
-	c := &pb.Change{
+
+	c := s.buildChange(params)
+	data, err := MarshallChange(c)
+	if err != nil {
+		return
+	}
+
+	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
+		Data:        data,
+		Key:         s.accountService.Account().SignKey,
+		IsSnapshot:  c.Snapshot != nil,
+		IsEncrypted: true,
+		DataType:    dataType.String(),
+	})
+	if err != nil {
+		return
+	}
+	id = addResult.Heads[0]
+
+	if c.Snapshot != nil {
+		s.lastSnapshotId = id
+		s.changesSinceSnapshot = 0
+		log.Infof("%s: pushed snapshot", s.id)
+	} else {
+		s.changesSinceSnapshot++
+		log.Debugf("%s: pushed %d changes", s.id, len(c.Content))
+	}
+	return
+}
+
+func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
+	c = &pb.Change{
 		Timestamp: params.Time.Unix(),
 		Version:   params.State.MigrationVersion(),
 	}
@@ -245,30 +326,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	c.Content = params.Changes
 	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
-	data, err := c.Marshal()
-	if err != nil {
-		return
-	}
-	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
-		Data:        data,
-		Key:         s.accountService.Account().SignKey,
-		IsSnapshot:  c.Snapshot != nil,
-		IsEncrypted: true,
-	})
-	if err != nil {
-		return
-	}
-	id = addResult.Heads[0]
-
-	if c.Snapshot != nil {
-		s.lastSnapshotId = id
-		s.changesSinceSnapshot = 0
-		log.Infof("%s: pushed snapshot", s.id)
-	} else {
-		s.changesSinceSnapshot++
-		log.Debugf("%s: pushed %d changes", s.id, len(c.Content))
-	}
-	return
+	return c
 }
 
 func (s *source) ListIds() (ids []string, err error) {
@@ -317,16 +375,6 @@ func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return s.getFileHashesForSnapshot(nil)
 }
 
-func (s *source) iterate(startId string, iterFunc objecttree.ChangeIterateFunc) (err error) {
-	unmarshall := func(decrypted []byte) (res any, err error) {
-		ch := &pb.Change{}
-		err = proto.Unmarshal(decrypted, ch)
-		res = ch
-		return
-	}
-	return s.ObjectTree.IterateFrom(startId, unmarshall, iterFunc)
-}
-
 func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {
 	fileKeys := s.getFileKeysByHashes(changeHashes)
 	var uniqKeys = make(map[string]struct{})
@@ -341,7 +389,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 			}
 		}
 	}
-	err := s.iterate(s.ObjectTree.Root().Id, func(c *objecttree.Change) (isContinue bool) {
+	err := s.ObjectTree.IterateRoot(UnmarshallChange, func(c *objecttree.Change) (isContinue bool) {
 		model, ok := c.Model.(*pb.Change)
 		if !ok {
 			return false
@@ -409,15 +457,8 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 	}
 
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId,
-		func(decrypted []byte) (any, error) {
-			ch := &pb.Change{}
-			err = proto.Unmarshal(decrypted, ch)
-			if err != nil {
-				return nil, err
-			}
-			return ch, nil
-		}, func(change *objecttree.Change) bool {
+	err = ot.IterateFrom(startId, UnmarshallChange,
+		func(change *objecttree.Change) bool {
 			count++
 			lastChange = change
 			// that means that we are starting from tree root
@@ -485,54 +526,46 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 	}
 
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId,
-		func(decrypted []byte) (any, error) {
-			ch := &pb.Change{}
-			err = proto.Unmarshal(decrypted, ch)
-			if err != nil {
-				return nil, err
-			}
-			return ch, nil
-		}, func(change *objecttree.Change) bool {
-			count++
-			lastChange = change
-			// that means that we are starting from tree root
-			if change.Id == ot.Id() {
-				st = state.NewDoc(ot.Id(), nil).(*state.State)
-				st.SetChangeId(change.Id)
-				return true
-			}
+	err = ot.IterateFrom(startId, UnmarshallChange, func(change *objecttree.Change) bool {
+		count++
+		lastChange = change
+		// that means that we are starting from tree root
+		if change.Id == ot.Id() {
+			st = state.NewDoc(ot.Id(), nil).(*state.State)
+			st.SetChangeId(change.Id)
+			return true
+		}
 
-			model := change.Model.(*pb.Change)
-			if model.Version > lastMigrationVersion {
-				lastMigrationVersion = model.Version
-			}
-			if startId == change.Id {
-				if st == nil {
-					changesAppliedSinceSnapshot = 0
-					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
-					return true
-				} else {
-					st = st.NewState()
-				}
-				return true
-			}
-			if model.Snapshot != nil {
+		model := change.Model.(*pb.Change)
+		if model.Version > lastMigrationVersion {
+			lastMigrationVersion = model.Version
+		}
+		if startId == change.Id {
+			if st == nil {
 				changesAppliedSinceSnapshot = 0
+				st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
+				return true
 			} else {
-				changesAppliedSinceSnapshot++
-			}
-			ns := st.NewState()
-			appliedContent = append(appliedContent, model.Content...)
-			ns.SetChangeId(change.Id)
-			ns.ApplyChangeIgnoreErr(model.Content...)
-			ns.AddFileKeys(model.FileKeys...)
-			_, _, err = state.ApplyStateFastOne(ns)
-			if err != nil {
-				return false
+				st = st.NewState()
 			}
 			return true
-		})
+		}
+		if model.Snapshot != nil {
+			changesAppliedSinceSnapshot = 0
+		} else {
+			changesAppliedSinceSnapshot++
+		}
+		ns := st.NewState()
+		appliedContent = append(appliedContent, model.Content...)
+		ns.SetChangeId(change.Id)
+		ns.ApplyChangeIgnoreErr(model.Content...)
+		ns.AddFileKeys(model.FileKeys...)
+		_, _, err = state.ApplyStateFastOne(ns)
+		if err != nil {
+			return false
+		}
+		return true
+	})
 	if err != nil {
 		return
 	}

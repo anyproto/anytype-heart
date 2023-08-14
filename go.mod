@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-sync v0.2.19
+	github.com/anyproto/any-sync v0.2.17-0.20230808103533-217b6fc30b3d
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve/v2 v2.3.9
@@ -32,6 +32,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/golang/mock v1.6.0
+	github.com/golang/snappy v0.0.4
 	github.com/google/uuid v1.3.0
 	github.com/gosimple/slug v1.13.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -52,7 +53,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/libp2p/go-libp2p v0.29.0
+	github.com/libp2p/go-libp2p v0.29.1
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.7
@@ -155,7 +156,6 @@ require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
