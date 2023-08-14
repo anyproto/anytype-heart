@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -125,11 +126,17 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 			ds.handleNameProperty(databaseProperty, st)
 		}
 	}
-	for key, databaseProperty := range d.Properties {
+	hasTag := isDbContainsTagProperty(d.Properties)
+	for name, databaseProperty := range d.Properties {
 		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
 			continue
 		}
-		if snapshot := ds.makeRelationSnapshotFromDatabaseProperty(relations, databaseProperty, key, st); snapshot != nil {
+		relationKey := bson.NewObjectId().Hex()
+		if tagName, tagRelationKey := ds.getNameAndRelationKeyForTagProperty(databaseProperty, hasTag); tagName != "" && tagRelationKey != "" {
+			name = tagName
+			relationKey = tagRelationKey
+		}
+		if snapshot := ds.makeRelationSnapshotFromDatabaseProperty(relations, databaseProperty, name, relationKey, st); snapshot != nil {
 			snapshots = append(snapshots, snapshot)
 		}
 	}
@@ -149,6 +156,24 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	return snapshots, nil
 }
 
+func (ds *Service) getNameAndRelationKeyForTagProperty(databaseProperty property.DatabasePropertyHandler, hasTag bool) (string, string) {
+	var name, relationKey string
+	if tags, ok := databaseProperty.(*property.DatabaseMultiSelect); ok {
+		if property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
+			name = bundle.RelationKeyTag.String()
+			relationKey = bundle.RelationKeyTag.String()
+		}
+	} else {
+		if tags, ok := databaseProperty.(*property.DatabaseSelect); ok {
+			if property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
+				name = bundle.RelationKeyTag.String()
+				relationKey = bundle.RelationKeyTag.String()
+			}
+		}
+	}
+	return name, relationKey
+}
+
 func (ds *Service) handleNameProperty(databaseProperty property.DatabasePropertyHandler, st *state.State) *converter.Snapshot {
 	databaseProperty.SetDetail(bundle.RelationKeyName.String(), st.Details().GetFields())
 	relationLinks := &model.RelationLink{
@@ -165,14 +190,14 @@ func (ds *Service) handleNameProperty(databaseProperty property.DatabaseProperty
 
 func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.PropertiesStore,
 	databaseProperty property.DatabasePropertyHandler,
-	key string,
+	name, relationKey string,
 	st *state.State) *converter.Snapshot {
 	var (
 		rel *model.SmartBlockSnapshotBase
 		sn  *converter.Snapshot
 	)
 	if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
-		rel, sn = ds.getRelationSnapshot(databaseProperty, key)
+		rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
 		relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
 	}
 	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
@@ -180,6 +205,13 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	relationLinks := &model.RelationLink{
 		Key:    relKey,
 		Format: databaseProperty.GetFormat(),
+	}
+	if relationKey == bundle.RelationKeyTag.String() {
+		err := converter.DeleteRelationsFromDataView(st, relationKey)
+		if err != nil {
+			logger.Errorf("failed to add relation to notion database, %s", err.Error())
+		}
+		return sn
 	}
 	st.AddRelationLinks(relationLinks)
 	err := converter.AddRelationsToDataView(st, relationLinks)
@@ -189,8 +221,7 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	return sn
 }
 
-func (ds *Service) getRelationSnapshot(databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {
-	relationKey := bson.NewObjectId().Hex()
+func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {
 	relationDetails := ds.getRelationDetails(databaseProperty, name, relationKey)
 	relationSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     relationDetails,
@@ -359,6 +390,22 @@ func (ds *Service) getAnytypeIDForRootCollection(notionContext *block.NotionImpo
 		}
 	}
 	return ""
+}
+
+func isDbContainsTagProperty(databaseProperties property.DatabaseProperties) bool {
+	for key, databaseProperty := range databaseProperties {
+		if _, ok := databaseProperty.(*property.DatabaseMultiSelect); ok {
+			if strings.TrimSpace(key) == property.TagNameProperty {
+				return true
+			}
+		}
+		if _, ok := databaseProperty.(*property.DatabaseSelect); ok {
+			if strings.TrimSpace(key) == property.TagNameProperty {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*converter.Snapshot {

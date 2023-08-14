@@ -361,3 +361,18 @@ func ConvertStringToTime(t string) int64 {
 	}
 	return parsedTime.Unix()
 }
+
+func DeleteRelationsFromDataView(collectionState *state.State, relationKey string) error {
+	return collectionState.Iterate(func(block simple.Block) (isContinue bool) {
+		if dataView, ok := block.(dataview.Block); ok {
+			if len(block.Model().GetDataview().GetViews()) == 0 {
+				return true
+			}
+			err := dataView.DeleteRelation(relationKey)
+			if err != nil {
+				return true
+			}
+		}
+		return true
+	})
+}
