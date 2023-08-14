@@ -74,11 +74,8 @@ func (ds *Service) GetDatabase(_ context.Context,
 	progress process.Progress,
 	req *block.NotionImportContext) (*converter.Response, *property.PropertiesStore, *converter.ConvertError) {
 	var (
-		allSnapshots         = make([]*converter.Snapshot, 0)
-		notionIdsToAnytype   = make(map[string]string, 0)
-		databaseNameToID     = make(map[string]string, 0)
-		parentPageToChildIDs = make(map[string][]string, 0)
-		convertError         = converter.NewError()
+		allSnapshots = make([]*converter.Snapshot, 0)
+		convertError = converter.NewError()
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	relations := &property.PropertiesStore{
@@ -89,7 +86,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 		if err := progress.TryStep(1); err != nil {
 			return nil, nil, converter.NewCancelError(err)
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs, relations)
+		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, converter.NewFromError(err)
 		}
@@ -99,9 +96,6 @@ func (ds *Service) GetDatabase(_ context.Context,
 		}
 		allSnapshots = append(allSnapshots, snapshot...)
 	}
-	req.NotionDatabaseIdsToAnytype = notionIdsToAnytype
-	req.DatabaseNameToID = databaseNameToID
-	req.ParentPageToChildIDs = parentPageToChildIDs
 	if convertError.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots}, relations, nil
 	}
@@ -109,8 +103,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 }
 
 func (ds *Service) makeDatabaseSnapshot(d Database,
-	notionIdsToAnytype, databaseNameToID map[string]string,
-	parentPageToChildIDs map[string][]string,
+	req *block.NotionImportContext,
 	relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
@@ -120,6 +113,24 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 		return nil, err
 	}
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
+	snapshots := ds.makeRelationsSnapshots(d, st, relations)
+	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct)
+	req.NotionDatabaseIdsToAnytype[d.ID] = id
+	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+	if d.Parent.DatabaseID != "" {
+		req.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
+	}
+	if d.Parent.PageID != "" {
+		req.ParentPageToChildIDs[d.Parent.PageID] = append(req.ParentPageToChildIDs[d.Parent.PageID], d.ID)
+	}
+	if d.Parent.BlockID != "" {
+		req.ParentPageToChildIDs[d.Parent.BlockID] = append(req.ParentPageToChildIDs[d.Parent.BlockID], d.ID)
+	}
+	snapshots = append(snapshots, databaseSnapshot)
+	return snapshots, nil
+}
+
+func (ds *Service) makeRelationsSnapshots(d Database, st *state.State, relations *property.PropertiesStore) []*converter.Snapshot {
 	snapshots := make([]*converter.Snapshot, 0)
 	for _, databaseProperty := range d.Properties {
 		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
@@ -140,36 +151,17 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 			snapshots = append(snapshots, snapshot)
 		}
 	}
-	id, databaseSnapshot := ds.provideSnapshot(d, st, detailsStruct)
-	notionIdsToAnytype[d.ID] = id
-	databaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
-	if d.Parent.DatabaseID != "" {
-		parentPageToChildIDs[d.Parent.DatabaseID] = append(parentPageToChildIDs[d.Parent.DatabaseID], d.ID)
-	}
-	if d.Parent.PageID != "" {
-		parentPageToChildIDs[d.Parent.PageID] = append(parentPageToChildIDs[d.Parent.PageID], d.ID)
-	}
-	if d.Parent.BlockID != "" {
-		parentPageToChildIDs[d.Parent.BlockID] = append(parentPageToChildIDs[d.Parent.BlockID], d.ID)
-	}
-	snapshots = append(snapshots, databaseSnapshot)
-	return snapshots, nil
+	return snapshots
 }
 
 func (ds *Service) getNameAndRelationKeyForTagProperty(databaseProperty property.DatabasePropertyHandler, hasTag bool) (string, string) {
 	var name, relationKey string
-	if tags, ok := databaseProperty.(*property.DatabaseMultiSelect); ok {
-		if property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
-			name = bundle.RelationKeyTag.String()
-			relationKey = bundle.RelationKeyTag.String()
-		}
-	} else {
-		if tags, ok := databaseProperty.(*property.DatabaseSelect); ok {
-			if property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
-				name = bundle.RelationKeyTag.String()
-				relationKey = bundle.RelationKeyTag.String()
-			}
-		}
+	if tags, ok := databaseProperty.(*property.DatabaseMultiSelect); ok && property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
+		name = bundle.RelationKeyTag.String()
+		relationKey = bundle.RelationKeyTag.String()
+	} else if tags, ok := databaseProperty.(*property.DatabaseSelect); ok && property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
+		name = bundle.RelationKeyTag.String()
+		relationKey = bundle.RelationKeyTag.String()
 	}
 	return name, relationKey
 }
@@ -207,11 +199,10 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 		Format: databaseProperty.GetFormat(),
 	}
 	if relationKey == bundle.RelationKeyTag.String() {
-		err := converter.DeleteRelationsFromDataView(st, relationKey)
+		err := converter.DeleteRelationsFromDataView(st, []string{relationKey})
 		if err != nil {
-			logger.Errorf("failed to add relation to notion database, %s", err.Error())
+			logger.Errorf("failed to delete relation to notion database, %s", err.Error())
 		}
-		return sn
 	}
 	st.AddRelationLinks(relationLinks)
 	err := converter.AddRelationsToDataView(st, relationLinks)
@@ -281,7 +272,7 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 	return details
 }
 
-func (ds *Service) provideSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *converter.Snapshot) {
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *converter.Snapshot) {
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
