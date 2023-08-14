@@ -101,7 +101,21 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 }
 
 func (mw *Middleware) DebugSystem(cctx context.Context, req *pb.RpcDebugSystemRequest) *pb.RpcDebugSystemResponse {
+	response := func(err error) (res *pb.RpcDebugSystemResponse) {
+		res = &pb.RpcDebugSystemResponse{
+			Error: &pb.RpcDebugSystemResponseError{
+				Code: pb.RpcDebugSystemResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcDebugSystemResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+		}
+		return res
+	}
 
+	err := mw.SaveGoroutinesStack(req.Path)
+	return response(err)
 }
 
 func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {

@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 
 var log = logging.Logger("anytype-mw-api")
@@ -189,16 +190,17 @@ func (mw *Middleware) requireClientWithVersion() {
 	}
 }
 
-func (mw *Middleware) SaveGoroutinesStack(path string) error {
-	a := mw.GetApp()
-	if a == nil {
-		return fmt.Errorf("failed to save stacktrace: need to start app first")
+func (mw *Middleware) SaveGoroutinesStack(path string) (err error) {
+	if path == "" {
+		a := mw.GetApp()
+		if a == nil {
+			return fmt.Errorf("failed to save stacktrace: need to start app first")
+		}
+		wl := a.Component(wallet.CName)
+		if wl == nil {
+			return fmt.Errorf("failed to save stacktrace: need to start wallet first")
+		}
+		path = wl.(wallet.Wallet).RepoPath()
 	}
-	wl := a.Component(wallet.CName)
-	if wl == nil {
-		return fmt.Errorf("failed to save stacktrace: need to start wallet first")
-	}
-	if err := debug.SaveStackToRepo(wl.(wallet.Wallet).RepoPath(), true); err != nil {
-		return fmt.Errorf(err.Error())
-	}
+	return utildebug.SaveStackToRepo(path, true)
 }

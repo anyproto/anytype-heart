@@ -30,7 +30,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
@@ -246,7 +245,7 @@ func main() {
 	for {
 		sig := <-signalChan
 		if shouldSaveStack(sig) {
-			saveStack(mw)
+			_ = mw.SaveGoroutinesStack("")
 			continue
 		}
 		server.Stop()
@@ -300,20 +299,4 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 		},
 	}
 	return resp
-}
-
-func saveStack(mw *core.Middleware) {
-	a := mw.GetApp()
-	if a == nil {
-		log.Errorf("failed to save stacktrace: need to start app first")
-		return
-	}
-	wl := a.Component(wallet.CName)
-	if wl == nil {
-		log.Errorf("failed to save stacktrace: need to start wallet first")
-		return
-	}
-	if err := debug.SaveStackToRepo(wl.(wallet.Wallet).RepoPath(), true); err != nil {
-		log.Errorf(err.Error())
-	}
 }
