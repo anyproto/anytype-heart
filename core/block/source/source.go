@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"slices"
 	"sync"
 	"time"
 
@@ -28,28 +29,33 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const dataType = "1/s"
+const (
+	dataType = "1/s"
+	poolSize = 4096
+)
 
 var (
 	log = logging.Logger("anytype-mw-source")
 
-	encodedChangePool = sync.Pool{New: func() any { return make([]byte, 4096) }}
-	//buf              []byte
+	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
 
 	ErrObjectNotFound = errors.New("object not found")
 	ErrReadOnly       = errors.New("object is read only")
 )
 
 func MarshallChange(c *pb.Change) (res []byte, err error) {
-	buf := encodedChangePool.Get().([]byte)
-	data, err := c.Marshal()
+	data := bytesPool.Get().([]byte)[:0]
+	defer bytesPool.Put(data)
+
+	data = slices.Grow(data, c.Size())
+	n, err := c.MarshalTo(data)
 	if err != nil {
 		return
 	}
-	res = snappy.Encode(buf, data)
+	data = data[:n]
+	res = snappy.Encode(nil, data)
 	log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
 		len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
-	encodedChangePool.Put(buf)
 	return
 }
 
