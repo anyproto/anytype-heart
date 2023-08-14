@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/space/clientserver"
 )

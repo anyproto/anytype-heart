@@ -2,7 +2,7 @@
 Middleware library for Anytype, distributed as part of the Anytype clients.
 
 ## Build from Source
-1. Install Golang 1.19.x [from here](http://golang.org/dl/) or using preferred package manager
+1. Install Golang 1.21.x [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
 

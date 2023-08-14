@@ -33,17 +33,16 @@ type Service interface {
 
 type service struct {
 	sbtProvider typeprovider.SmartBlockTypeProvider
-	store       objectstore.ObjectStore
+	objectStore objectstore.ObjectStore
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider, objectStore objectstore.ObjectStore) Service {
-	return &service{
-		sbtProvider: sbtProvider,
-		store:       objectStore,
-	}
+func New() Service {
+	return &service{}
 }
 
-func (s *service) Init(*app.App) (err error) {
+func (s *service) Init(a *app.App) (err error) {
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 
@@ -75,7 +74,7 @@ func (s *service) getRestrictionsById(id string) (r Restrictions, err error) {
 		return Restrictions{}, fmt.Errorf("get smartblock type: %w", err)
 	}
 	layout := model.ObjectTypeLayout(noLayout)
-	d, err := s.store.GetDetails(id)
+	d, err := s.objectStore.GetDetails(id)
 	var ot string
 	if err == nil {
 		if pbtypes.HasField(d.GetDetails(), bundle.RelationKeyLayout.String()) {

@@ -9,7 +9,7 @@ import (
 )
 
 func TestService_GetRestrictions(t *testing.T) {
-	s := New(nil, nil)
+	s := New()
 	res := s.GetRestrictions(&restrictionHolder{tp: model.SmartBlockType_BundledObjectType})
 	assert.NotEmpty(t, res.Object)
 }
