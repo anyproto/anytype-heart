@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -31,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -53,14 +55,9 @@ type Import struct {
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 }
 
-func New(
-	tempDirProvider core.TempDirProvider,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) Importer {
+func New() Importer {
 	return &Import{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		converters:      make(map[string]converter.Converter, 0),
+		converters: make(map[string]converter.Converter, 0),
 	}
 }
 
@@ -88,6 +85,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer, fileStore)
+	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	return nil
 }
 
@@ -282,6 +281,7 @@ func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Respons
 		}
 	}
 	for _, option := range relationOptions {
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
 		err := i.getObjectID(ctx, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
 		if err != nil {
 			allErrors.Add(err)
@@ -292,6 +292,18 @@ func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Respons
 		}
 	}
 	return oldIDToNew, createPayloads, nil
+}
+
+func (i *Import) replaceRelationKeyWithNew(option *converter.Snapshot, oldIDToNew map[string]string) {
+	if option.Snapshot.Data.Details == nil || len(option.Snapshot.Data.Details.Fields) == 0 {
+		return
+	}
+	key := pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	relationID := addr.RelationKeyToIdPrefix + key
+	if newRelationID, ok := oldIDToNew[relationID]; ok {
+		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
+	}
+	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 }
 
 func (i *Import) getObjectID(ctx *session.Context,

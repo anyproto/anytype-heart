@@ -53,6 +53,10 @@
     - [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request)
     - [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response)
     - [Rpc.Account.Delete.Response.Error](#anytype-Rpc-Account-Delete-Response-Error)
+    - [Rpc.Account.EnableLocalNetworkSync](#anytype-Rpc-Account-EnableLocalNetworkSync)
+    - [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request)
+    - [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response)
+    - [Rpc.Account.EnableLocalNetworkSync.Response.Error](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error)
     - [Rpc.Account.GetConfig](#anytype-Rpc-Account-GetConfig)
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
@@ -931,6 +935,7 @@
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
+    - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
@@ -1488,6 +1493,7 @@
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
+| AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
@@ -2290,7 +2296,7 @@ Front end to middleware request-to-create-an account
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
-| alphaInviteCode | [string](#string) |  | DEPRECATED |
+| disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 
 
 
@@ -2380,6 +2386,57 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync"></a>
+
+### Rpc.Account.EnableLocalNetworkSync
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Request"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Response"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.EnableLocalNetworkSync.Response.Error](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2605,6 +2662,7 @@ User can select an account from those, that came with an AccountAdd events
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  | Root path is optional, set if this is a first request |
+| disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 
 
 
@@ -15138,6 +15196,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
 | ACCOUNT_IS_ACTIVE | 102 |  |
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
 
 
 

@@ -2,75 +2,51 @@ name: Mirror Changes to any-block
 
 on:
   push:
+    paths:
+      - 'pkg/lib/pb/model/protos/models.proto'
+      - 'pb/protos/changes.proto'
+      - 'pb/protos/events.proto'
+      - 'pb/protos/snapshot.proto'
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   mirror-anyblock:
+    if: ${{ github.repository_owner == 'anyproto' }}
     runs-on: ubuntu-latest
     steps:
     - name: Checkout anytype-heart
       uses: actions/checkout@v3
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.ANY_CLA_TOKEN }}
         fetch-depth: 2
         path: anytype-heart
 
     - name: Set variables
       run: |
-        echo "any-block-files=pkg/lib/pb/model/protos/models.proto,pb/protos/changes.proto,pb/protos/events.proto" >> "$GITHUB_ENV"
-
-    - name: Find changed files
-      run: |
-        cd anytype-heart
-        files=$(comm -12 <(echo "${{ env.any-block-files }}" | tr ',' '\n' | sort) <(git diff --name-only HEAD HEAD~1 | sort))
-        if [ -z "$files" ]; then
-          echo "changed=false" >> "$GITHUB_ENV"
-        else
-          echo "changed=true" >> "$GITHUB_ENV"
-        fi
+        echo "any-block-files=pkg/lib/pb/model/protos/models.proto,pb/protos/changes.proto,pb/protos/events.proto,pb/protos/snapshot.proto" >> "$GITHUB_ENV"
 
     - name: Update import paths
-      if: ${{ env.changed == 'true' }}
       run: |
         for file in $(echo "${{ env.any-block-files }}" | tr ',' ' '); do
           sed -i -E '/google/! s/(import\s+")([^\/]+\/)*([^\/]+\.proto")/\1\3/g' "anytype-heart/$file"
         done
 
     - name: Clone any-block
-      if: ${{ env.changed == 'true' }}
       uses: actions/checkout@v3
       with:
         repository: anyproto/any-block
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.ANY_CLA_TOKEN }}
         path: any-block
 
     - name: Copy changed files to any-block
-      if: ${{ env.changed == 'true' }}
       run: |
         for file in $(echo "${{ env.any-block-files }}" | tr ',' ' '); do
           cp -f "anytype-heart/$file" any-block/
         done
 
-    - name: Install Go
-      if: ${{ env.changed == 'true' }}
-      uses: actions/setup-go@v4
-      with:
-        go-version: 'stable'
-    
-    - name: Generate documentation using proto-gen-doc
-      if: ${{ env.changed == 'true' }}
-      run: |
-        cd any-block
-        echo "Installing proto"
-        sudo apt-get update && sudo apt-get install -y protobuf-compiler
-        echo "Installing protoc-gen-doc"
-        go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@latest
-        echo "Running protoc"
-        protoc --doc_out=. --doc_opt=html,index.html *.proto
-
     - name: Commit and push changes to any-block
-      if: ${{ env.changed == 'true' }}
       run: |
         cd any-block
         git config --global user.email "association@anytype.io"
