@@ -97,6 +97,7 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	a = new(app.App)
 	a.SetVersionName(appVersion(a, clientWithVersion))
 	Bootstrap(a, components...)
+	logging.SetVersion(clientWithVersion)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
 	startTime := time.Now()
