@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"strings"
 	"sync"
 	"time"
 
@@ -29,35 +28,29 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+const dataType = "1/s"
+
 var (
 	log = logging.Logger("anytype-mw-source")
 
-	dataType = DataType{Version: "v1", Type: "snappy"}
+	encodedChangePool = sync.Pool{New: func() any { return make([]byte, 4096) }}
+	data              []byte
 
 	ErrObjectNotFound = errors.New("object not found")
 	ErrReadOnly       = errors.New("object is read only")
 )
 
-type DataType struct {
-	Version, Type string
-}
-
-func (t DataType) String() string {
-	return t.Version + "/" + t.Type
-}
-
-func ParseDataType(str string) *DataType {
-	if str == "" {
-		return nil
+func MarshallChange(c *pb.Change) (res []byte, err error) {
+	data = encodedChangePool.Get().([]byte)
+	data, err = c.Marshal()
+	if err != nil {
+		return
 	}
-	substrings := strings.Split(str, "/")
-	if len(substrings) != 2 {
-		return nil
-	}
-	return &DataType{
-		Version: substrings[0],
-		Type:    substrings[1],
-	}
+	res = snappy.Encode(nil, data)
+	log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
+		len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
+	encodedChangePool.Put(data)
+	return
 }
 
 func UnmarshallChange(decrypted []byte) (res any, err error) {
@@ -69,17 +62,6 @@ func UnmarshallChange(decrypted []byte) (res any, err error) {
 		err = proto.Unmarshal(decoded, ch)
 	}
 	res = ch
-	return
-}
-
-func MarshallChange(c *pb.Change) (res []byte, err error) {
-	data, err := c.Marshal()
-	if err != nil {
-		return
-	}
-	res = snappy.Encode(nil, data)
-	log.Debugf("change is shrinked by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
-		len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
 	return
 }
 
@@ -289,7 +271,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		Key:         s.accountService.Account().SignKey,
 		IsSnapshot:  c.Snapshot != nil,
 		IsEncrypted: true,
-		DataType:    dataType.String(),
+		DataType:    dataType,
 	})
 	if err != nil {
 		return
