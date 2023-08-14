@@ -245,7 +245,9 @@ func main() {
 	for {
 		sig := <-signalChan
 		if shouldSaveStack(sig) {
-			_ = mw.SaveGoroutinesStack("")
+			if err = mw.SaveGoroutinesStack(""); err != nil {
+				log.Errorf("failed to save stack of goroutines: %s", err.Error())
+			}
 			continue
 		}
 		server.Stop()

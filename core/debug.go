@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -100,7 +101,7 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 	return response(nil, spaceSummary)
 }
 
-func (mw *Middleware) DebugSystem(cctx context.Context, req *pb.RpcDebugSystemRequest) *pb.RpcDebugSystemResponse {
+func (mw *Middleware) DebugSystem(_ context.Context, req *pb.RpcDebugSystemRequest) *pb.RpcDebugSystemResponse {
 	response := func(err error) (res *pb.RpcDebugSystemResponse) {
 		res = &pb.RpcDebugSystemResponse{
 			Error: &pb.RpcDebugSystemResponseError{
