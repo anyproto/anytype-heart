@@ -252,10 +252,10 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if err != nil {
 		return
 	}
-	log.Debugf("Change size is %d bytes", len(data))
-	if len(data) > changeSizeLimit {
-		log.With("objectID", params.State.RootId()).Errorf("change size (%d bytes) is above the limit of %d bytes", len(data), changeSizeLimit)
-		return "", ErrBigChangeSize
+	if err = checkChangeSize(data, changeSizeLimit); err != nil {
+		log.With("objectID", params.State.RootId()).
+			Errorf("change size (%d bytes) is above the limit of %d bytes", len(data), changeSizeLimit)
+		return "", err
 	}
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
@@ -277,6 +277,14 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		log.Debugf("%s: pushed %d changes", s.id, len(c.Content))
 	}
 	return
+}
+
+func checkChangeSize(data []byte, maxSize int) error {
+	log.Debugf("Change size is %d bytes", len(data))
+	if len(data) > maxSize {
+		return ErrBigChangeSize
+	}
+	return nil
 }
 
 func (s *source) ListIds() (ids []string, err error) {
