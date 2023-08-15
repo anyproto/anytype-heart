@@ -8,7 +8,8 @@ fi
 
 for FILE in $STAGED_GO_FILES
 do
-  gci write $FILE -s "standard,default,prefix(github.com/anytype-heart),blank,dot"
+  echo $FILE
+  gci write $FILE -s "standard,default,prefix(github.com/anyproto/anytype-heart),blank,dot"
 done
 
 exit 0
