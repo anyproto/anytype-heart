@@ -179,7 +179,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 	relIds := pbtypes.GetStringList(obj.Details, bundle.RelationKeyRecommendedRelations.String())
 
 	// find relations that are custom(was not installed from somewhere)
-	records, _, err := w.objectStore.Query(nil, database.Query{
+	records, _, err := w.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -201,7 +201,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 	}
 
 	// check if this relation is used in some other installed object types
-	records, _, err = w.objectStore.Query(nil, database.Query{
+	records, _, err = w.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -246,7 +246,7 @@ func (w *Workspaces) objectTypeRelationsForGC(objectTypeID string) (ids []string
 			log.Errorf("failed to get relation key from id %s: %s", relId, err.Error())
 			continue
 		}
-		records, _, err := w.objectStore.Query(nil, database.Query{
+		records, _, err := w.objectStore.Query(database.Query{
 			Limit: 1,
 			Filters: []*model.BlockContentDataviewFilter{
 				{

@@ -145,7 +145,7 @@ func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
 		}
 	}
 	id := sn.Id
-	records, _, err := ou.objectStore.Query(nil, database.Query{
+	records, _, err := ou.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

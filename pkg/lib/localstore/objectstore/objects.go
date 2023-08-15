@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -124,7 +123,7 @@ type ObjectStore interface {
 
 	SubscribeForAll(callback func(rec database.Record))
 
-	Query(schema schema.Schema, q database.Query) (records []database.Record, total int, err error)
+	Query(q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
@@ -247,7 +246,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 // GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
 func (s *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error) {
 	// todo: add workspace
-	records, _, err := s.Query(nil, database.Query{
+	records, _, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -327,7 +326,7 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 		},
 	}
 
-	records, _, err := s.Query(nil, q)
+	records, _, err := s.Query(q)
 	if err != nil {
 		return nil, err
 	}
@@ -720,7 +719,7 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 }
 
 func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error) {
-	records, _, err := s.Query(nil, database.Query{
+	records, _, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

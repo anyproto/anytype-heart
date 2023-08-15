@@ -369,8 +369,8 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
-	var hasRelations, hasType bool
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore) (schema.Schema, error) {
+	var relationFound, typeFound bool
 
 	for _, source := range sources {
 		sbt, err := sbtProvider.Type(spaceID, source)
@@ -379,48 +379,32 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		}
 
 		if sbt == smartblock2.SmartBlockTypeObjectType {
-			if hasRelations {
+			if relationFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			if hasType {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains more than one object type")
 			}
-			hasType = true
+			typeFound = true
 		}
 
 		if sbt == smartblock2.SmartBlockTypeRelation {
-			if hasType {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			hasRelations = true
+			relationFound = true
 		}
 	}
-	if hasType {
+	if typeFound {
 		objectType, err := store.GetObjectType(sources[0])
 		if err != nil {
 			return nil, err
 		}
-		sch := schema.NewByType(objectType, optionalRelations)
+		sch := schema.NewByType(objectType)
 		return sch, nil
 	}
 
-	if hasRelations {
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		ids, _, err := store.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyRecommendedRelations.String(),
-					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       pbtypes.StringList(sources),
-				},
-			},
-		}, []smartblock2.SmartBlockType{
-			smartblock2.SmartBlockTypeBundledObjectType,
-		})
-		if err != nil {
-			return nil, err
-		}
-
+	if relationFound {
 		var relations []*model.RelationLink
 		for _, relId := range sources {
 			rel, err := store.GetRelationByID(relId)
@@ -430,15 +414,11 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 
 			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
 		}
-		sch := schema.NewByRelations(ids, relations, optionalRelations)
+		sch := schema.NewByRelations(relations)
 		return sch, nil
 	}
 
 	return nil, fmt.Errorf("relation or type not found")
-}
-
-func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
-	return SchemaBySources(d.SpaceID(), d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -572,7 +552,7 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 }
 
 func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
-	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store, nil); err != nil {
+	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store); err != nil {
 		return
 	}
 

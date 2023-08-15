@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -35,20 +34,6 @@ type Query struct {
 	Sorts    []*model.BlockContentDataviewSort   // order results. apply hierarchically
 	Limit    int                                 // maximum number of results
 	Offset   int                                 // skip given number of results
-}
-
-func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
-	qq.Limit = q.Limit
-	qq.Offset = q.Offset
-	f, err := NewFilters(q, sch, nil)
-	if err != nil {
-		return
-	}
-	qq.Filters = []query.Filter{f}
-	if f.hasOrders() {
-		qq.Orders = []query.Order{f}
-	}
-	return
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
@@ -86,15 +71,11 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
-func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (filters *Filters, err error) {
+func NewFilters(qry Query, store filter.OptionsGetter) (filters *Filters, err error) {
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
-	filterObj, dateKeys, qryFilters := applySchema(nil, schema, filters.dateKeys, qry.Filters)
-	qry.Filters = qryFilters
-	filters.dateKeys = dateKeys
-
-	filterObj, err = compose(qry.Filters, store, filterObj)
+	filterObj, err := compose(qry.Filters, store)
 	if err != nil {
 		return
 	}
@@ -107,8 +88,8 @@ func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (fi
 func compose(
 	filters []*model.BlockContentDataviewFilter,
 	store filter.OptionsGetter,
-	filterObj filter.AndFilters,
 ) (filter.AndFilters, error) {
+	var filterObj filter.AndFilters
 	qryFilter, err := filter.MakeAndFilter(filters, store)
 	if err != nil {
 		return nil, err
@@ -118,55 +99,6 @@ func compose(
 		filterObj = append(filterObj, qryFilter)
 	}
 	return filterObj, nil
-}
-
-func applySchema(
-	relations []*model.BlockContentDataviewRelation,
-	schema schema.Schema,
-	dateKeys []string,
-	filters []*model.BlockContentDataviewFilter,
-) (filter.AndFilters, []string, []*model.BlockContentDataviewFilter) {
-	mainFilter := filter.AndFilters{}
-	if schema != nil {
-		dateKeys = extractDateRelationKeys(relations, schema, dateKeys)
-		filters = applyFilterDateOnlyWhenExactDate(filters, dateKeys)
-		mainFilter = appendSchemaFilters(schema, mainFilter)
-	}
-	return mainFilter, dateKeys, filters
-}
-
-func appendSchemaFilters(schema schema.Schema, mainFilter filter.AndFilters) filter.AndFilters {
-	if schemaFilter := schema.Filters(); schemaFilter != nil {
-		mainFilter = append(mainFilter, schemaFilter)
-	}
-	return mainFilter
-}
-
-func applyFilterDateOnlyWhenExactDate(
-	filters []*model.BlockContentDataviewFilter,
-	dateKeys []string,
-) []*model.BlockContentDataviewFilter {
-	for _, filtr := range filters {
-		if lo.Contains(dateKeys, filtr.RelationKey) && filtr.QuickOption == model.BlockContentDataviewFilter_ExactDate {
-			filtr.Value = dateOnly(filtr.Value)
-		}
-	}
-	return filters
-}
-
-func extractDateRelationKeys(
-	relations []*model.BlockContentDataviewRelation,
-	schema schema.Schema,
-	dateKeys []string,
-) []string {
-	for _, relationLink := range schema.ListRelations() {
-		if relationLink.Format == model.RelationFormat_date {
-			if relation := getRelationByKey(relations, relationLink.Key); relation == nil || !relation.DateIncludeTime {
-				dateKeys = append(dateKeys, relationLink.Key)
-			}
-		}
-	}
-	return dateKeys
 }
 
 func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsGetter) filter.SetOrder {

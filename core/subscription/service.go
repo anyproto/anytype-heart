@@ -133,7 +133,7 @@ func (s *service) Search(ctx session.Context, req pb.RpcObjectSearchSubscribeReq
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, nil, s.objectStore)
+	f, err := database.NewFilters(q, s.objectStore)
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
@@ -301,7 +301,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		Filters: req.Filters,
 	}
 
-	flt, err := database.NewFilters(q, nil, s.objectStore)
+	flt, err := database.NewFilters(q, s.objectStore)
 	if err != nil {
 		return nil, err
 	}

@@ -128,7 +128,7 @@ func (s *service) fetchRelationByKeys(spaceId string, keys ...string) (relations
 		}
 		uks = append(uks, uk.String())
 	}
-	records, _, err := s.objectStore.Query(nil, database.Query{
+	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
@@ -174,7 +174,7 @@ func (s *service) listAllRelations(spaceId string, opts ...FetchOption) (relatio
 		Value:       pbtypes.String(spaceId),
 	})
 
-	relations2, _, err := s.objectStore.Query(nil, database.Query{
+	relations2, _, err := s.objectStore.Query(database.Query{
 		Filters: filters,
 	})
 	if err != nil {
@@ -220,7 +220,7 @@ func (s *service) fetchRelationKey(spaceID string, key string, opts ...FetchOpti
 		Value:       pbtypes.String(spaceID),
 	})
 
-	records, _, err := s.objectStore.Query(nil, q)
+	records, _, err := s.objectStore.Query(q)
 	if err != nil {
 		return
 	}
