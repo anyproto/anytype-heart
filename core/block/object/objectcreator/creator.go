@@ -60,21 +60,18 @@ type Creator struct {
 	creator           Service //nolint:unused
 
 	// TODO: remove it?
-	anytype core.Service
+	coreService core.Service
 }
 
 type CollectionService interface {
 	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 }
 
-func NewCreator(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
-	return &Creator{
-		sbtProvider: sbtProvider,
-	}
+func NewCreator() *Creator {
+	return &Creator{}
 }
 
 func (c *Creator) Init(a *app.App) (err error) {
-	c.anytype = a.MustComponent(core.CName).(core.Service)
 	c.blockService = a.MustComponent(block.CName).(BlockService)
 	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
@@ -82,7 +79,8 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.collectionService = app.MustComponent[CollectionService](a)
-	c.anytype = a.MustComponent(core.CName).(core.Service)
+	c.coreService = app.MustComponent[core.Service](a)
+	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.app = a
 	return nil
 }
@@ -155,14 +153,14 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 
 	// if we don't have anything in details then check the object store
 	if workspaceID == "" {
-		workspaceID = c.anytype.PredefinedObjects(spaceID).Account
+		workspaceID = c.coreService.PredefinedObjects(spaceID).Account
 	}
 
 	if workspaceID != "" {
 		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceID))
 	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID(spaceID)))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.coreService.ProfileID(spaceID)))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
@@ -197,7 +195,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 }
 
 func (c *Creator) InjectWorkspaceID(details *types.Struct, spaceID string, objectID string) {
-	workspaceID, err := c.anytype.GetWorkspaceIdForObject(spaceID, objectID)
+	workspaceID, err := c.coreService.GetWorkspaceIdForObject(spaceID, objectID)
 	if err != nil {
 		workspaceID = ""
 	}
@@ -267,7 +265,7 @@ func (c *Creator) CreateSubObjectInWorkspace(ctx context.Context, details *types
 
 // TODO: it must be in another component
 func (c *Creator) CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error) {
-	err = block.Do(c.blockPicker, c.anytype.PredefinedObjects(spaceID).Account, func(b smartblock.SmartBlock) error {
+	err = block.Do(c.blockPicker, c.coreService.PredefinedObjects(spaceID).Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
@@ -347,15 +345,15 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		return c.CreateSmartBlockFromState(ctx, spaceID, sbType, details, st)
 	case bundle.TypeKeyObjectType.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.coreService.PredefinedObjects(spaceID).Account)
 
 	case bundle.TypeKeyRelation.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.coreService.PredefinedObjects(spaceID).Account)
 
 	case bundle.TypeKeyRelationOption.URL():
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
-		return c.CreateSubObjectInWorkspace(ctx, details, c.anytype.PredefinedObjects(spaceID).Account)
+		return c.CreateSubObjectInWorkspace(ctx, details, c.coreService.PredefinedObjects(spaceID).Account)
 
 	case bundle.TypeKeyTemplate.URL():
 		sbType = coresb.SmartBlockTypeTemplate

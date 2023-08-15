@@ -51,17 +51,18 @@ type unsplashService struct {
 	tempDirProvider core.TempDirProvider
 }
 
-func (l *unsplashService) Init(app *app.App) (err error) {
+func New() Unsplash {
+	return &unsplashService{}
+}
+
+func (l *unsplashService) Init(a *app.App) (err error) {
 	l.cache = ocache.New(l.search, ocache.WithTTL(cacheTTL), ocache.WithGCPeriod(cacheGCPeriod))
+	l.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	return
 }
 
 func (l *unsplashService) Name() (name string) {
 	return CName
-}
-
-func New(tempDirProvider core.TempDirProvider) Unsplash {
-	return &unsplashService{tempDirProvider: tempDirProvider}
 }
 
 type Result struct {

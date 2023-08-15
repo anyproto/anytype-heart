@@ -10,10 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/anyproto/anytype-heart/pb"
+	
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 var (
@@ -66,16 +68,19 @@ func processFile(file File, outputFile string) {
 	}
 
 	// assuming Snapshot is a protobuf message
-	snapshot := pb.SnapshotWithType{}
+	var snapshot proto.Message = &pb.SnapshotWithType{}
+	if strings.HasPrefix(file.Name, constant.ProfileFile) {
+		snapshot = &pb.Profile{}
+	}
 
 	if strings.HasSuffix(file.Name, ".json") {
 
-		if err := jsonpb.UnmarshalString(string(content), &snapshot); err != nil {
+		if err := jsonpb.UnmarshalString(string(content), snapshot); err != nil {
 			log.Fatalf("Failed to parse jsonpb message: %v", err)
 		}
 
 		// convert to pb and write to outputFile
-		pbData, err := proto.Marshal(&snapshot)
+		pbData, err := proto.Marshal(snapshot)
 		if err != nil {
 			log.Fatalf("Failed to marshal jsonpb message to protobuf: %v", err)
 		}
@@ -88,12 +93,12 @@ func processFile(file File, outputFile string) {
 
 	} else {
 
-		if err := proto.Unmarshal(content, &snapshot); err != nil {
+		if err := proto.Unmarshal(content, snapshot); err != nil {
 			log.Fatalf("Failed to parse protobuf message: %v", err)
 		}
 
 		// convert to jsonpb and write to outputFile
-		jsonData, err := jsonM.MarshalToString(&snapshot)
+		jsonData, err := jsonM.MarshalToString(snapshot)
 		if err != nil {
 			log.Fatalf("Failed to marshal protobuf message to json: %v", err)
 		}
@@ -193,8 +198,14 @@ func createZipFromDirectory(input, output string) {
 				return err
 			}
 
+			isProfile := strings.HasPrefix(info.Name(), constant.ProfileFile)
+
 			// assuming Snapshot is a protobuf message
-			snapshot := &pb.SnapshotWithType{}
+			var snapshot proto.Message = &pb.SnapshotWithType{}
+			if isProfile {
+				snapshot = &pb.Profile{}
+			}
+
 			err = jsonpb.UnmarshalString(string(data), snapshot)
 			if err != nil {
 				return err
@@ -205,7 +216,11 @@ func createZipFromDirectory(input, output string) {
 				return err
 			}
 
-			fw, err := w.Create(strings.TrimSuffix(rel, ".json") + ".pb")
+			name := strings.TrimSuffix(rel, ".json") + ".pb"
+			if isProfile {
+				name = strings.TrimSuffix(name, ".pb")
+			}
+			fw, err := w.Create(name)
 			if err != nil {
 				return err
 			}

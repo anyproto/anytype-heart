@@ -46,10 +46,8 @@ type provider struct {
 	cache        map[string]smartblock.SmartBlockType
 }
 
-func New(spaceService space.Service) SmartBlockTypeProvider {
-	return &provider{
-		spaceService: spaceService,
-	}
+func New() SmartBlockTypeProvider {
+	return &provider{}
 }
 
 var badgerPrefix = []byte("typeprovider/")
@@ -60,7 +58,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("get badger storage: %w", err)
 	}
-	// TODO I forgot why we need this
+	// TODO multi-space: I forgot why we need this
 	err = p.badger.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.Prefix = badgerPrefix
@@ -84,6 +82,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("init cache from badger: %w", err)
 	}
+	p.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 

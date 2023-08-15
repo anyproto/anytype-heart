@@ -66,15 +66,8 @@ var (
 	ftIndexForceMinInterval = time.Second * 10
 )
 
-func New(
-	picker block.Picker,
-	spaceService space.Service,
-	fileService files.Service,
-) Indexer {
+func New() Indexer {
 	return &indexer{
-		picker:       picker,
-		spaceService: spaceService,
-		fileService:  fileService,
 		indexedFiles: &sync.Map{},
 	}
 }
@@ -133,6 +126,9 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
 	i.syncStarter = app.MustComponent[syncStarter](a)
+	i.picker = app.MustComponent[block.Picker](a)
+	i.spaceService = app.MustComponent[space.Service](a)
+	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return

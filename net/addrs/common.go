@@ -71,7 +71,7 @@ func parseInterfaceName(name string) (prefix string, bus int, num int64) {
 }
 
 func (i InterfacesAddrs) SortWithPriority(priority []string) {
-	slices.SortFunc(i.Interfaces, func(a, b net.Interface) bool {
+	less := func(a, b net.Interface) bool {
 		aPrefix, aBus, aNum := parseInterfaceName(a.Name)
 		bPrefix, bBus, bNum := parseInterfaceName(b.Name)
 
@@ -99,6 +99,12 @@ func (i InterfacesAddrs) SortWithPriority(priority []string) {
 		} else {
 			return false
 		}
+	}
+	slices.SortFunc(i.Interfaces, func(a, b net.Interface) int {
+		if less(a, b) {
+			return -1
+		}
+		return 1
 	})
 }
 

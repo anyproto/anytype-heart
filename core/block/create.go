@@ -219,7 +219,10 @@ func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) e
 		}
 		st := b.NewState()
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		commonOperations.SetLayoutInState(st, model.ObjectType_set)
+		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_set)
+		if err != nil {
+			return fmt.Errorf("set layout: %w", err)
+		}
 		st.SetObjectType(bundle.TypeKeySet.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)

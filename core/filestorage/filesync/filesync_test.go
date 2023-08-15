@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/stretchr/testify/mock"
 )
 
 var ctx = context.Background()
@@ -84,7 +85,7 @@ func TestFileSync_RemoveFile(t *testing.T) {
 func newFixture(t *testing.T) *fixture {
 	sender := mock_event.NewMockSender(t)
 	fx := &fixture{
-		FileSync:    New(sender),
+		FileSync:    New(),
 		fileService: fileservice.New(),
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),
@@ -118,13 +119,19 @@ func newFixture(t *testing.T) *fixture {
 	spaceService.EXPECT().AccountId().Return("space1").AnyTimes()
 	spaceService.EXPECT().Close(gomock.Any()).AnyTimes()
 
+	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Name().Return("event")
+	sender.EXPECT().Init(mock.Anything).Return(nil)
+	sender.EXPECT().Send(mock.Anything).Return().Maybe()
+
 	fx.a.Register(fx.fileService).
 		Register(&inMemBlockStore{data: map[string]blocks.Block{}}).
 		Register(bp).
 		Register(mockRpcStoreService).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
-		Register(spaceService)
+		Register(spaceService).
+		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }

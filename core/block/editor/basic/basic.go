@@ -57,6 +57,7 @@ type CommonOperations interface {
 	SetObjectTypesInState(s *state.State, objectTypes []string) (err error)
 	SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
+	SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error)
 }
 
 type DetailsSettable interface {
