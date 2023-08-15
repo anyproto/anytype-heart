@@ -3,7 +3,7 @@ package collection
 import (
 	"fmt"
 	"sync"
-	
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
