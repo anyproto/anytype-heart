@@ -478,7 +478,6 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	dur := time.Since(st)
 
 	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
-	// TODO Maybe route object events according to the spaceID?
 	s.eventSender.Broadcast(event)
 	return dur
 }
