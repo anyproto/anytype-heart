@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/core/relation"
 )
 
 var log = logging.Logger("collection-service")
@@ -34,20 +35,17 @@ type Service struct {
 	objectStore     objectstore.ObjectStore
 }
 
-func New(
-	picker block.Picker,
-	store objectstore.ObjectStore,
-	relationService relation.Service,
-) *Service {
+func New() *Service {
 	return &Service{
-		picker:      picker,
-		objectStore: store,
 		lock:        &sync.RWMutex{},
 		collections: map[string]map[string]chan []string{},
 	}
 }
 
 func (s *Service) Init(a *app.App) (err error) {
+	s.picker = app.MustComponent[block.Picker](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.relationService = app.MustComponent[relation.Service](a)
 	return nil
 }
 
@@ -212,7 +210,10 @@ func (s *Service) ObjectToCollection(id string) error {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
 		}
 		st := b.NewState()
-		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
+		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_collection)
+		if err != nil {
+			return fmt.Errorf("set layout: %w", err)
+		}
 		st.SetObjectType(bundle.TypeKeyCollection.String())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)

@@ -223,6 +223,10 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 		return fmt.Errorf("layout change is restricted for object '%s': %v", bs.Id(), err)
 	}
 
+	return bs.SetLayoutInStateAndIgnoreRestriction(s, toLayout)
+}
+
+func (bs *basic) SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
 	fromLayout, _ := s.Layout()
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))

@@ -74,11 +74,11 @@ type builtinObjects struct {
 	coreService    core.Service
 	importer       importer.Importer
 	store          objectstore.ObjectStore
-	tempDirService *core.TempDirService
+	tempDirService core.TempDirProvider
 }
 
-func New(tempDirService *core.TempDirService) BuiltinObjects {
-	return &builtinObjects{tempDirService: tempDirService}
+func New() BuiltinObjects {
+	return &builtinObjects{}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
@@ -86,6 +86,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
+	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	return
 }
 

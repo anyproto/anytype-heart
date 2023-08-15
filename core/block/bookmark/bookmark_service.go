@@ -61,13 +61,13 @@ type service struct {
 	creator        ObjectCreator
 	store          objectstore.ObjectStore
 	linkPreview    linkpreview.LinkPreview
-	tempDirService *core.TempDirService
+	tempDirService core.TempDirProvider
 	fileService    files.Service
 	coreService    core.Service
 }
 
-func New(tempDirService *core.TempDirService) Service {
-	return &service{tempDirService: tempDirService}
+func New() Service {
+	return &service{}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -78,6 +78,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.coreService = a.MustComponent(core.CName).(core.Service)
 
 	s.fileService = app.MustComponent[files.Service](a)
+	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	return nil
 }
 

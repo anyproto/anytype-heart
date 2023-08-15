@@ -73,10 +73,9 @@ type fileSync struct {
 	spaceStats     map[string]SpaceStat
 }
 
-func New(eventSender event.Sender) FileSync {
+func New() FileSync {
 	return &fileSync{
-		eventSender: eventSender,
-		spaceStats:  map[string]SpaceStat{},
+		spaceStats: map[string]SpaceStat{},
 	}
 }
 
@@ -86,6 +85,7 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.spaceService = app.MustComponent[space.Service](a)
+	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return

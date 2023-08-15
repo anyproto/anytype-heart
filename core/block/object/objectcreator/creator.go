@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor"
@@ -63,21 +62,18 @@ type Creator struct {
 	creator           Service //nolint:unused
 
 	// TODO: remove it?
-	anytype core.Service
+	coreService core.Service
 }
 
 type CollectionService interface {
 	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 }
 
-func NewCreator(sbtProvider typeprovider.SmartBlockTypeProvider) Service {
-	return &Creator{
-		sbtProvider: sbtProvider,
-	}
+func NewCreator() *Creator {
+	return &Creator{}
 }
 
 func (c *Creator) Init(a *app.App) (err error) {
-	c.anytype = a.MustComponent(core.CName).(core.Service)
 	c.blockService = a.MustComponent(block.CName).(BlockService)
 	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
@@ -86,8 +82,8 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.collectionService = app.MustComponent[CollectionService](a)
 	c.relationService = app.MustComponent[relation.Service](a)
-
-	c.anytype = a.MustComponent(core.CName).(core.Service)
+	c.coreService = app.MustComponent[core.Service](a)
+	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.app = a
 	return nil
 }
@@ -184,14 +180,14 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 
 	// if we don't have anything in details then check the object store
 	if workspaceID == "" {
-		workspaceID = c.anytype.PredefinedObjects(spaceID).Account
+		workspaceID = c.coreService.PredefinedObjects(spaceID).Account
 	}
 
 	if workspaceID != "" {
 		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceID))
 	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.anytype.ProfileID(spaceID)))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.coreService.ProfileID(spaceID)))
 
 	// todo: find a proper way to inject the spaceID as soon as possible into the createState
 	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
@@ -242,7 +238,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 }
 
 func (c *Creator) InjectWorkspaceID(details *types.Struct, spaceID string, objectID string) {
-	workspaceID, err := c.anytype.GetWorkspaceIdForObject(spaceID, objectID)
+	workspaceID, err := c.coreService.GetWorkspaceIdForObject(spaceID, objectID)
 	if err != nil {
 		workspaceID = ""
 	}

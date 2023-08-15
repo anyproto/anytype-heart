@@ -365,7 +365,7 @@ func givenTrimmedString(s string) string {
 }
 
 const markupExpectation = `
-<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;">
+<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph">
 	<b>0
 		<i>1</i>
 	</b>
@@ -434,7 +434,7 @@ const intersectMarksExpectation = `
 const columnsExpectation = `
 <div class="row" style="display: flex">
 	<div class="column" >
-		<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;">1</div></div><div class="column" ><div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph" style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;">
+		<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph">1</div></div><div class="column" ><div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph">
 			2
 		</div>
 	</div>

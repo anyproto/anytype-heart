@@ -22,3 +22,9 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/converter:
     interfaces:
       Converter:
+  github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
+    interfaces:
+      ObjectStore:
+  github.com/anyproto/anytype-heart/core/block/restriction:
+    interfaces:
+      Service:
