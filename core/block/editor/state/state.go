@@ -2,7 +2,6 @@ package state
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -952,60 +951,6 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	// we don't set it in the localDetails here
 	return s
-}
-
-type TypeIDGetter interface {
-	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
-}
-
-// InjectDerivedDetails injects the local deta
-func (s *State) InjectDerivedDetails(getter TypeIDGetter, spaceId string, sbt model.SmartBlockType) {
-	id := s.RootId()
-	if id != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
-	}
-
-	if spaceId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceId))
-	} else {
-		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", s.rootId)
-	}
-	if ot := s.ObjectType(); ot != "" {
-		// todo: we need to move this code out of the state,
-		// it shouldn't depend on some external service
-		if getter == nil {
-			log.Errorf("failed to get type id for %s: no getter provided", ot)
-		} else {
-			typeID, err := getter.GetTypeIdByKey(context.Background(), s.SpaceID(), bundle.TypeKey(ot))
-			if err != nil {
-				log.Errorf("failed to get type id for %s: %v", ot, err)
-			}
-
-			s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeID))
-		}
-	}
-
-	if uki := s.UniqueKeyInternal(); uki != "" {
-		// todo: remove this hack after spaceService refactored to include marketplace virtual space
-		if sbt == model.SmartBlockType_BundledObjectType {
-			sbt = model.SmartBlockType_STType
-		} else if sbt == model.SmartBlockType_BundledRelation {
-			sbt = model.SmartBlockType_STRelation
-		}
-
-		uk, err := uniquekey.New(sbt, uki)
-		if err != nil {
-			log.Errorf("failed to get unique key for %s: %v", uki, err)
-		} else {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
-		}
-	}
-
-	snippet := s.Snippet()
-	if snippet != "" || s.LocalDetails() != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
-	}
-
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {

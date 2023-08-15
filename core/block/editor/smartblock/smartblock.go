@@ -328,7 +328,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-	ctx.State.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(ctx.State, sb.spaceID, sb.Type())
 	return
 }
 
@@ -783,7 +783,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	s.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -985,7 +985,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
-	s.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -1013,7 +1013,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	d.(*state.State).InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(d.(*state.State), sb.spaceID, sb.Type())
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1352,4 +1352,50 @@ func SkipIfHeadsNotChanged(o *IndexOptions) {
 
 func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 	o.SkipFullTextIfHeadsNotChanged = true
+}
+
+// injectDerivedDetails injects the local deta
+func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt model.SmartBlockType) {
+	id := s.RootId()
+	if id != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
+	}
+
+	if spaceId != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceId))
+	} else {
+		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", id)
+	}
+	if ot := s.ObjectType(); ot != "" {
+		// todo: we need to move this code out of the state,
+		// it shouldn't depend on some external service
+
+		typeID, err := sb.relationService.GetTypeIdByKey(context.Background(), s.SpaceID(), bundle.TypeKey(ot))
+		if err != nil {
+			log.Errorf("failed to get type id for %s: %v", ot, err)
+		}
+
+		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeID))
+	}
+
+	if uki := s.UniqueKeyInternal(); uki != "" {
+		// todo: remove this hack after spaceService refactored to include marketplace virtual space
+		if sbt == model.SmartBlockType_BundledObjectType {
+			sbt = model.SmartBlockType_STType
+		} else if sbt == model.SmartBlockType_BundledRelation {
+			sbt = model.SmartBlockType_STRelation
+		}
+
+		uk, err := uniquekey.New(sbt, uki)
+		if err != nil {
+			log.Errorf("failed to get unique key for %s: %v", uki, err)
+		} else {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
+		}
+	}
+
+	snippet := s.Snippet()
+	if snippet != "" || s.LocalDetails() != nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
+	}
 }
