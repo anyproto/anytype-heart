@@ -95,7 +95,7 @@ type SmartblockOpener interface {
 func New() *Service {
 	return &Service{
 		closing: make(chan struct{}),
-		syncer:          map[string]*treeSyncer{},
+		syncer:  map[string]*treeSyncer{},
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
 			lock:    &sync.Mutex{},
@@ -406,7 +406,7 @@ func (s *Service) AddBundledObjectToSpace(
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
 	// todo: replace this func to the universal space to space copy
-	existingObjects, _, err := s.objectStore.Query(nil, database.Query{
+	existingObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeySourceObject.String(),

@@ -31,6 +31,16 @@ type uniqueKey struct {
 	key string
 }
 
+func NewUniqueKey(sbt model.SmartBlockType, key string) (UniqueKey, error) {
+	if _, exists := smartBlockTypeToKey[sbt]; !exists {
+		return nil, fmt.Errorf("smartblocktype %s not supported", sbt.String())
+	}
+	return &uniqueKey{
+		sbt: sbt,
+		key: key,
+	}, nil
+}
+
 func UniqueKeyFromString(uKey string) (UniqueKey, error) {
 	parts := strings.Split(uKey, separator)
 	if uKey == "" || len(parts) > 2 {
@@ -50,16 +60,6 @@ func UniqueKeyFromString(uKey string) (UniqueKey, error) {
 		}
 	}
 	return nil, fmt.Errorf("smartblocktype %s not supported", parts[0])
-}
-
-func NewUniqueKey(sbt model.SmartBlockType, key string) (UniqueKey, error) {
-	if _, exists := smartBlockTypeToKey[sbt]; !exists {
-		return nil, fmt.Errorf("smartblocktype %s not supported", sbt.String())
-	}
-	return &uniqueKey{
-		sbt: sbt,
-		key: key,
-	}, nil
 }
 
 func (uk *uniqueKey) String() string {
