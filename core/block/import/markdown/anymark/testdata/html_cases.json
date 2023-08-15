@@ -185,5 +185,10 @@
     "desc": "Deleted blocks",
     "html": "<div>This code is <del>deleted</del></div>",
     "blocks": [{"id":"1","Content":{"text":{"text":"This code is deleted","marks":{"marks":[{"range":{"from":13,"to":20}}]}}}}]
+  },
+  {
+    "desc": "Image from wiki without alt",
+    "html": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\"><img style=\"display: block;-webkit-user-select: none;margin: auto;background-color: hsl(0, 0%, 90%);transition: background-color 300ms;\" src=\"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Sharon_Stone_%2833374127422%29_%28cropped%29.jpg/220px-Sharon_Stone_%2833374127422%29_%28cropped%29.jpg\">",
+    "blocks": [{"id":"1","Content":{"file":{"name":"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Sharon_Stone_(33374127422)_(cropped).jpg/220px-Sharon_Stone_(33374127422)_(cropped).jpg","type":2}}}]
   }
 ]
