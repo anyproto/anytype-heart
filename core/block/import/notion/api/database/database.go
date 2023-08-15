@@ -103,7 +103,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 }
 
 func (ds *Service) makeDatabaseSnapshot(d Database,
-	req *block.NotionImportContext,
+	importContext *block.NotionImportContext,
 	relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
@@ -115,6 +115,12 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	snapshots := ds.makeRelationsSnapshots(d, st, relations)
 	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct)
+	ds.fillImportContext(d, importContext, id, databaseSnapshot)
+	snapshots = append(snapshots, databaseSnapshot)
+	return snapshots, nil
+}
+
+func (ds *Service) fillImportContext(d Database, req *block.NotionImportContext, id string, databaseSnapshot *converter.Snapshot) {
 	req.NotionDatabaseIdsToAnytype[d.ID] = id
 	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	if d.Parent.DatabaseID != "" {
@@ -126,8 +132,6 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	if d.Parent.BlockID != "" {
 		req.ParentPageToChildIDs[d.Parent.BlockID] = append(req.ParentPageToChildIDs[d.Parent.BlockID], d.ID)
 	}
-	snapshots = append(snapshots, databaseSnapshot)
-	return snapshots, nil
 }
 
 func (ds *Service) makeRelationsSnapshots(d Database, st *state.State, relations *property.PropertiesStore) []*converter.Snapshot {
