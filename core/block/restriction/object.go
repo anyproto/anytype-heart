@@ -1,9 +1,9 @@
 package restriction
 
 import (
-	"errors"
 	"fmt"
 	"strings"
+	"errors"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -216,7 +216,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	}
 
 	if !errors.Is(r.Check(model.Restrictions_Template), ErrRestricted) {
-		if _, err := s.objectStore.GetObjectType(rh.ObjectType()); err != nil {
+		if ok, err := s.objectStore.HasObjectType(rh.ObjectType()); err != nil || !ok {
 			r = append(r, model.Restrictions_Template)
 		}
 	}

@@ -359,6 +359,21 @@ func (mr *MockObjectStoreMockRecorder) HasIDs(arg0 ...interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasIDs", reflect.TypeOf((*MockObjectStore)(nil).HasIDs), arg0...)
 }
 
+// HasObjectType mocks base method.
+func (m *MockObjectStore) HasObjectType(arg0 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasObjectType", arg0)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HasObjectType indicates an expected call of HasObjectType.
+func (mr *MockObjectStoreMockRecorder) HasObjectType(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasObjectType", reflect.TypeOf((*MockObjectStore)(nil).HasObjectType), arg0)
+}
+
 // Init mocks base method.
 func (m *MockObjectStore) Init(arg0 *app.App) error {
 	m.ctrl.T.Helper()
