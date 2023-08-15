@@ -21,13 +21,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/anyproto/anytype-heart/util/testMock/mockRelation"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 )
 
 func TestSmartBlock_Init(t *testing.T) {
@@ -130,7 +130,7 @@ func newFixture(t *testing.T) *fixture {
 
 	restrictionService := mock_restriction.NewMockService(t)
 	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
-	relationService := mockRelation.NewMockService(ctrl)
+	relationService := mock_relation.NewMockService(t)
 
 	fileService := testMock.NewMockFileService(ctrl)
 
