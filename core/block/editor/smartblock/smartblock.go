@@ -192,9 +192,9 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	spaceID             string
-	depIds              []string // slice must be sorted
-	sessions            map[string]session.Context
+	spaceID        string
+	depIds         []string // slice must be sorted
+	sessions       map[string]session.Context
 	undo           undo.History
 	source         source.Source
 	lastDepDetails map[string]*pb.EventObjectDetailsSet
@@ -891,10 +891,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		}
 	}
 
-	sb.UniqueKey()
-	if sb.objectStore == nil {
-		return nil
-	}
 	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
 	if err != nil {
 		return err
