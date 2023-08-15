@@ -29,37 +29,20 @@ type Service struct {
 	lock        *sync.RWMutex
 	collections map[string]map[string]chan []string
 
-	picker        block.Picker
-	objectStore   objectstore.ObjectStore
-	objectCreator ObjectCreator
-	objectDeleter ObjectDeleter
+	picker      block.Picker
+	objectStore objectstore.ObjectStore
 }
 
-type ObjectCreator interface {
-	CreateObject(req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
-}
-
-type ObjectDeleter interface {
-	DeleteObject(id string) (err error)
-}
-
-func New(
-	picker block.Picker,
-	store objectstore.ObjectStore,
-	objectCreator ObjectCreator,
-	objectDeleter ObjectDeleter,
-) *Service {
+func New() *Service {
 	return &Service{
-		picker:        picker,
-		objectStore:   store,
-		objectCreator: objectCreator,
-		objectDeleter: objectDeleter,
-		lock:          &sync.RWMutex{},
-		collections:   map[string]map[string]chan []string{},
+		lock:        &sync.RWMutex{},
+		collections: map[string]map[string]chan []string{},
 	}
 }
 
 func (s *Service) Init(a *app.App) (err error) {
+	s.picker = app.MustComponent[block.Picker](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -220,7 +203,10 @@ func (s *Service) ObjectToCollection(id string) error {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
 		}
 		st := b.NewState()
-		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
+		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_collection)
+		if err != nil {
+			return fmt.Errorf("set layout: %w", err)
+		}
 		st.SetObjectType(bundle.TypeKeyCollection.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)

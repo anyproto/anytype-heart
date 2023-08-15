@@ -137,6 +137,9 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		tags, ok := styleTags[text.Style]
 		if !ok {
 			tags = styleTags[defaultStyle]
+			if text.Text == "" {
+				tags = styleTag{OpenTag: "<p>", CloseTag: "</p>"}
+			}
 		}
 		rs.Close()
 		h.buf.WriteString(tags.OpenTag)

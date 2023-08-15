@@ -36,6 +36,20 @@ func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
 	})
 }
 
+func newCodeBlock(id, contentText string, childrenIds ...string) simple.Block {
+	return text.NewText(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  contentText,
+				Style: model.BlockContentText_Code,
+			},
+		},
+		ChildrenIds:     childrenIds,
+		BackgroundColor: "grey",
+	})
+}
+
 func TestTextImpl_UpdateTextBlocks(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
@@ -131,6 +145,37 @@ func TestTextImpl_Split(t *testing.T) {
 		assert.Equal(t, []string{newId, "inner2"}, r.Pick("1").Model().ChildrenIds)
 		assert.Equal(t, "one", r.Pick("1").Model().GetText().Text)
 		assert.Equal(t, "two", r.Pick(newId).Model().GetText().Text)
+	})
+	t.Run("split - when code block", func(t *testing.T) {
+		//given
+		sb := smarttest.New("test")
+		sb.AddBlock(
+			simple.New(
+				&model.Block{
+					Id:          "test",
+					ChildrenIds: []string{"1"},
+				},
+			),
+		).AddBlock(newCodeBlock("1", "onetwo"))
+		tb := NewText(sb, nil)
+
+		//when
+		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
+			BlockId: "1",
+			Range:   &model.Range{From: 3, To: 3},
+			Style:   model.BlockContentText_Checkbox,
+			Mode:    pb.RpcBlockSplitRequest_BOTTOM,
+		})
+
+		//then
+		require.NoError(t, err)
+		require.NotEmpty(t, newId)
+		r := sb.NewState()
+		assert.Equal(t, []string{"1", newId}, r.Pick(r.RootId()).Model().ChildrenIds)
+		assert.Equal(t, "one", r.Pick("1").Model().GetText().Text)
+		assert.Equal(t, "two", r.Pick(newId).Model().GetText().Text)
+		assert.Equal(t, "", r.Pick(newId).Model().BackgroundColor)
+		assert.Equal(t, model.BlockContentText_Checkbox, r.Pick(newId).Model().GetText().Style)
 	})
 }
 
