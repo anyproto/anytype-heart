@@ -69,12 +69,12 @@ func (s *service) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	picker := app.MustComponent[getblock.Picker](a)
 	cfg := app.MustComponent[*config.Config](a)
-	sendEvent := app.MustComponent[event.Sender](a).Send
+	eventSender := app.MustComponent[event.Sender](a)
 
 	fileStatusRegistry := newFileStatusRegistry(s.fileSyncService, fileStore, picker, s.fileWatcherUpdateInterval)
 	s.linkedFilesWatcher = newLinkedFilesWatcher(spaceService, fileStatusRegistry)
 	s.subObjectsWatcher = newSubObjectsWatcher()
-	s.updateReceiver = newUpdateReceiver(coreService, s.linkedFilesWatcher, s.subObjectsWatcher, nodeConfService, cfg, sendEvent)
+	s.updateReceiver = newUpdateReceiver(coreService, s.linkedFilesWatcher, s.subObjectsWatcher, nodeConfService, cfg, eventSender)
 	s.fileWatcher = newFileWatcher(spaceService, dbProvider, fileStatusRegistry, s.updateReceiver, s.fileWatcherUpdateInterval)
 	s.objectWatcher = newObjectWatcher(spaceService, s.updateReceiver)
 

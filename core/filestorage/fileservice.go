@@ -68,7 +68,7 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
-	f.sendEvent = app.MustComponent[event.Sender](a).Send
+	f.eventSender = app.MustComponent[event.Sender](a)
 	if fileCfg.IPFSStorageAddr == "" {
 		f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), FlatfsDirName)
 	} else {
