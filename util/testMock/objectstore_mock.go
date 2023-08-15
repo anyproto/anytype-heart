@@ -246,6 +246,21 @@ func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).GetLastIndexedHeadsHash), arg0)
 }
 
+// GetObjectByUniqueKey mocks base method.
+func (m *MockObjectStore) GetObjectByUniqueKey(arg0, arg1 string) (*model.ObjectDetails, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetObjectByUniqueKey", arg0, arg1)
+	ret0, _ := ret[0].(*model.ObjectDetails)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetObjectByUniqueKey indicates an expected call of GetObjectByUniqueKey.
+func (mr *MockObjectStoreMockRecorder) GetObjectByUniqueKey(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectByUniqueKey", reflect.TypeOf((*MockObjectStore)(nil).GetObjectByUniqueKey), arg0, arg1)
+}
+
 // GetObjectType mocks base method.
 func (m *MockObjectStore) GetObjectType(arg0 string) (*model.ObjectType, error) {
 	m.ctrl.T.Helper()

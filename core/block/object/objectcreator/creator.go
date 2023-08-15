@@ -6,13 +6,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor"
@@ -20,11 +13,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -33,7 +30,10 @@ import (
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/uri"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("object-service")
@@ -441,7 +441,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to create unique key: %w", err)
 		}
-		id, err := w.anytype.DeriveObjectId(ctx, spaceID, uk)
+		id, err := w.coreService.DeriveObjectId(ctx, spaceID, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}
@@ -475,7 +475,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(w.anytype.PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyTemplate]),
+				Value:       pbtypes.String(w.coreService.PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyTemplate]),
 			},
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),

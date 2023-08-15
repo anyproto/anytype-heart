@@ -49,6 +49,21 @@ func (mr *MockSmartBlockTypeProviderMockRecorder) Init(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Init), arg0)
 }
 
+// Map mocks base method.
+func (m *MockSmartBlockTypeProvider) Map(arg0 string, arg1 []string) (map[smartblock.SmartBlockType][]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Map", arg0, arg1)
+	ret0, _ := ret[0].(map[smartblock.SmartBlockType][]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Map indicates an expected call of Map.
+func (mr *MockSmartBlockTypeProviderMockRecorder) Map(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Map", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Map), arg0, arg1)
+}
+
 // Name mocks base method.
 func (m *MockSmartBlockTypeProvider) Name() string {
 	m.ctrl.T.Helper()

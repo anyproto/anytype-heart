@@ -3,16 +3,14 @@ package collection
 import (
 	"fmt"
 	"sync"
-
+	
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -22,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("collection-service")
