@@ -908,6 +908,17 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 	details := storedDetails.GetDetails()
 
+	if pbtypes.GetStruct(details, bundle.RelationKeyBacklinks.String()) == nil {
+		var backLinks []string
+		backLinks, err = sb.objectStore.GetInboundLinksByID(sb.Id())
+		if err != nil {
+			return err
+		}
+		if backLinks != nil {
+			details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
+		}
+	}
+
 	var hasPendingLocalDetails bool
 	// Consume pending details
 	err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {

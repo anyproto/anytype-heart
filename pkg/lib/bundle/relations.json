@@ -1399,5 +1399,15 @@
     "name": "Default Template ID",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "List of backlinks",
+    "format": "object",
+    "key": "backlinks",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Backlinks",
+    "readonly": false,
+    "source": "derived"
   }
 ]
