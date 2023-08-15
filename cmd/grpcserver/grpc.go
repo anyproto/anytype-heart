@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/util/debug"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -34,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/debug"
 )
 
 const defaultAddr = "127.0.0.1:31007"
