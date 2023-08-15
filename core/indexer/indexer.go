@@ -333,6 +333,8 @@ func (i *indexer) reindexIfNeeded() error {
 			FilesForceReindexCounter:         ForceFilesReindexCounter,
 			IdxRebuildCounter:                ForceIdxRebuildCounter,
 			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+			FulltextRebuild:                  ForceFulltextIndexCounter,
+			BundledObjects:                   ForceBundledObjectsReindexCounter,
 		}
 	}
 
