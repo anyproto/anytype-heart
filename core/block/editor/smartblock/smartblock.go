@@ -195,13 +195,12 @@ type smartBlock struct {
 	spaceID             string
 	depIds              []string // slice must be sorted
 	sessions            map[string]session.Context
-	undo                undo.History
-	source              source.Source
-	lastDepDetails      map[string]*pb.EventObjectDetailsSet
-	restrictionsUpdater func()
-	restrictions        restriction.Restrictions
-	isDeleted           bool
-	disableLayouts      bool
+	undo           undo.History
+	source         source.Source
+	lastDepDetails map[string]*pb.EventObjectDetailsSet
+	restrictions   restriction.Restrictions
+	isDeleted      bool
+	disableLayouts bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -295,10 +294,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
-	sb.restrictionsUpdater = func() {
-		restrictions := sb.restrictionService.GetRestrictions(sb)
-		sb.SetRestrictions(restrictions)
-	}
 	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
@@ -339,9 +334,8 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	if sb.restrictionsUpdater != nil {
-		sb.restrictionsUpdater()
-	}
+	restrictions := sb.restrictionService.GetRestrictions(sb)
+	sb.SetRestrictions(restrictions)
 }
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
@@ -423,17 +417,6 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 		return
 	}
 
-	var uniqueObjTypes []string
-
-	var addObjectTypesByDetails = func(det *types.Struct) {
-		for _, key := range []string{bundle.RelationKeyType.String(), bundle.RelationKeyTargetObjectType.String()} {
-			ot := pbtypes.GetString(det, key)
-			if ot != "" && slice.FindPos(uniqueObjTypes, ot) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, ot)
-			}
-		}
-	}
-
 	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
 
 	// add self details
@@ -441,16 +424,13 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
-	addObjectTypesByDetails(sb.CombinedDetails())
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})
-		addObjectTypesByDetails(rec.Details)
 	}
-
 	go sb.metaListener(recordsCh)
 	return
 }
@@ -1287,7 +1267,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
-		State:      st.Copy(),
+		State:      st, // Don't copy state because we don't change it later
 	}
 }
 

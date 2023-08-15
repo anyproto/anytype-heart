@@ -383,14 +383,16 @@ func (s *State) InState(id string) (ok bool) {
 	return
 }
 
-func (s *State) SearchText() (text string) {
+func (s *State) SearchText() string {
+	var builder strings.Builder
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if tb := b.Model().GetText(); tb != nil {
-			text += tb.Text + "\n"
+			builder.WriteString(tb.Text)
+			builder.WriteRune('\n')
 		}
 		return true
 	})
-	return
+	return builder.String()
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {

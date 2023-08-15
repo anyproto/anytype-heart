@@ -28,3 +28,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/relation:
+    interfaces:
+      Service:
