@@ -656,7 +656,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 	}
-	s.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
 	beforeApplyStateTime := time.Now()
 
 	migrationVersionUpdated := true

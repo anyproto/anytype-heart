@@ -76,7 +76,6 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 	}
 	s.SetDetails(d)
 	s.SetObjectType(bundle.TypeKeyObjectType.String())
-	s.InjectDerivedDetails(&bundledTypeIdGetter{}, addr.AnytypeMarketplaceWorkspace, uk.SmartblockType())
 
 	return s, nil
 }

@@ -123,7 +123,6 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		targetObjectType = strings.TrimPrefix(targetObjectType, addr.BundledObjectTypeURLPrefix)
 	}
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.String(), targetObjectType})
-	st.InjectDerivedDetails(b.relationService, addr.AnytypeMarketplaceWorkspace, model.SmartBlockType_BundledTemplate)
 
 	// fix divergence between extra relations and simple block relations
 	st.Iterate(func(b simple.Block) (isContinue bool) {
