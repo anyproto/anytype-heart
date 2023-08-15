@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	//nolint: gosec
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -34,6 +32,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
+
+	//nolint: gosec
+	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"

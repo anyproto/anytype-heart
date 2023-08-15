@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	
+
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
