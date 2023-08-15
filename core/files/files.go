@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/gogo/protobuf/proto"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
@@ -79,13 +80,11 @@ type service struct {
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
 	objectStore       objectstore.ObjectStore
+	coreService       core.Service
 }
 
-func New(statusWatcher SyncStatusWatcher, objectStore objectstore.ObjectStore) Service {
-	return &service{
-		syncStatusWatcher: statusWatcher,
-		objectStore:       objectStore,
-	}
+func New() Service {
+	return &service{}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -93,8 +92,12 @@ func (s *service) Init(a *app.App) (err error) {
 	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
 	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
+
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.syncStatusWatcher = app.MustComponent[SyncStatusWatcher](a)
 	return nil
 }
 

@@ -1412,5 +1412,15 @@
     "name": "Default Template ID",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Unique key used to ensure object uniqueness within the space",
+    "format": "longtext",
+    "key": "uniqueKey",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Unique object key",
+    "readonly": true,
+    "source": "derived"
   }
 ]

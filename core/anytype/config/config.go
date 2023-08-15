@@ -44,10 +44,10 @@ type ConfigRequired struct {
 }
 
 type Config struct {
-	ConfigRequired           `json:",inline"`
-	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
-	Offline                  bool
-	DisableThreadsSyncEvents bool
+	ConfigRequired                         `json:",inline"`
+	NewAccount                             bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
+	DisableThreadsSyncEvents               bool
+	DontStartLocalNetworkSyncAutomatically bool
 
 	RepoPath    string
 	AnalyticsId string
@@ -55,10 +55,9 @@ type Config struct {
 	DebugAddr       string
 	LocalServerAddr string
 
-	DS                     clientds.Config
-	FS                     FSConfig
-	DisableFileConfig      bool `ignored:"true"` // set in order to skip reading/writing config from/to file
-	CreateBuiltinTemplates bool
+	DS                clientds.Config
+	FS                FSConfig
+	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 }
 
 type FSConfig struct {
@@ -75,8 +74,6 @@ const (
 )
 
 var DefaultConfig = Config{
-	Offline: false,
-
 	LocalServerAddr: ":0",
 	DS:              clientds.DefaultConfig,
 }
@@ -96,17 +93,15 @@ func WithDebugAddr(addr string) func(*Config) {
 	}
 }
 
-func WithLocalServer(addr string) func(*Config) {
+func WithDisabledLocalNetworkSync() func(*Config) {
 	return func(c *Config) {
-		c.LocalServerAddr = addr
+		c.DontStartLocalNetworkSyncAutomatically = true
 	}
 }
 
-// WithCreateBuiltinTemplates flag had wrong meaning and is no longer used
-// deprecated
-func WithCreateBuiltinTemplates(createBuiltinTemplates bool) func(*Config) {
+func WithLocalServer(addr string) func(*Config) {
 	return func(c *Config) {
-		c.CreateBuiltinTemplates = createBuiltinTemplates
+		c.LocalServerAddr = addr
 	}
 }
 

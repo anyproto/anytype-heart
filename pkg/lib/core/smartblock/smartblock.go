@@ -26,7 +26,10 @@ const (
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeWorkspace         = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget            = SmartBlockType(model.SmartBlockType_Widget)
-	SmartBlockTypeMissingObject     = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeRelation          = SmartBlockType(model.SmartBlockType_STRelation)
+	SmartBlockTypeObjectType        = SmartBlockType(model.SmartBlockType_STType)
+
+	SmartBlockTypeMissingObject = SmartBlockType(model.SmartBlockType_MissingObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")

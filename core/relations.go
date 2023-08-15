@@ -55,6 +55,10 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 		return m
 	}
 
+	rs, err := mw.getRelationService()
+	if err != nil {
+		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, err)
+	}
 	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
@@ -64,11 +68,21 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		spaceId, err := bs.ResolveSpaceID(req.ObjectTypeUrl)
+		if err != nil {
+			return err
+		}
+
 		err = bs.ModifyDetails(ctx, req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
+
 			for _, relKey := range req.RelationKeys {
-				relId := addr.RelationKeyToIdPrefix + relKey
+				relId, err := rs.GetRelationIdByKey(cctx, spaceId, bundle.RelationKey(relKey))
+				if err != nil {
+					return nil, err
+				}
+
 				if slice.FindPos(list, relId) == -1 {
 					list = append(list, relId)
 				}

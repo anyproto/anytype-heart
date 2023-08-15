@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -82,7 +81,7 @@ func (oc *ObjectCreator) Create(
 
 	oc.setWorkspaceID(spaceID, newID, snapshot)
 
-	st := state.NewDocFromSnapshot(newID, sn.Snapshot).(*state.State)
+	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType.ToProto())).(*state.State)
 	st.SetRootId(newID)
 	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
@@ -104,10 +103,6 @@ func (oc *ObjectCreator) Create(
 	}()
 
 	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
-	if sn.SbType == coresb.SmartBlockTypeSubObject {
-		oc.handleSubObject(spaceID, st, newID)
-		return nil, newID, nil
-	}
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
@@ -124,9 +119,12 @@ func (oc *ObjectCreator) Create(
 			filesToDelete = oc.relationSyncer.Sync(st, link.Key)
 		}
 	}
-	oc.updateDetailsKey(st, oldIDtoNew)
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
 	var respDetails *types.Struct
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypes(), oldIDtoNew)
+	if err != nil {
+		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err.Error())
+	}
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
@@ -155,6 +153,35 @@ func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[st
 	return oc.resetState(newID, st)
 }
 
+func (oc *ObjectCreator) installBundledRelationsAndTypes(
+	ctx context.Context,
+	spaceID string,
+	links pbtypes.RelationLinks,
+	types []string,
+	oldIDtoNew map[string]string) error {
+
+	var idsToCheck = make([]string, 0, len(links)+len(types))
+	for _, link := range links {
+		// TODO: check if we have them in oldIDtoNew
+		if !bundle.HasRelation(link.Key) {
+			continue
+		}
+
+		idsToCheck = append(idsToCheck, addr.BundledRelationURLPrefix+link.Key)
+	}
+
+	for _, t := range types {
+		if !bundle.HasObjectType(t) {
+			continue
+		}
+		// TODO: check if we have them in oldIDtoNew
+		idsToCheck = append(idsToCheck, addr.BundledObjectTypeURLPrefix+t)
+	}
+
+	_, _, err := oc.service.AddBundledObjectToSpace(ctx, spaceID, idsToCheck)
+	return err
+}
+
 func (oc *ObjectCreator) createNewObject(
 	ctx context.Context,
 	spaceID string,
@@ -167,12 +194,15 @@ func (oc *ObjectCreator) createNewObject(
 			Ctx:         ctx,
 			IsNewObject: true,
 			State:       st,
+			SpaceID:     spaceID,
 		}
 	})
+
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
 		return nil, err
 	}
+	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
 	respDetails := sb.Details()
 	// update collection after we create it
 	if st.Store() != nil {
@@ -266,20 +296,6 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
-func (oc *ObjectCreator) handleSubObject(spaceID string, st *state.State, newID string) {
-	oc.mu.Lock()
-	defer oc.mu.Unlock()
-	if deleted := pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsDeleted.String()); deleted {
-		err := oc.service.RemoveSubObjectsInWorkspace(spaceID, []string{newID}, true)
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to remove from collections %s: %s", newID, err.Error())
-		}
-		return
-	}
-
-	// RQ: the rest handling were removed
-}
-
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []*pb.RpcObjectSetDetailsDetail
@@ -317,35 +333,6 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 			log.Errorf("failed to set spaceDashBoardID, %s", err.Error())
 		}
 	}
-}
-
-func (oc *ObjectCreator) updateDetailsKey(st *state.State, oldIDtoNew map[string]string) {
-	details := st.Details()
-	keyToUpdate := make([]string, 0)
-	for k, v := range details.GetFields() {
-		if newKey, ok := oldIDtoNew[addr.RelationKeyToIdPrefix+k]; ok && newKey != addr.RelationKeyToIdPrefix+k {
-			relKey := strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix)
-			st.SetDetail(relKey, v)
-			keyToUpdate = append(keyToUpdate, k)
-		}
-	}
-	oc.updateRelationLinks(st, keyToUpdate, oldIDtoNew)
-	st.RemoveRelation(keyToUpdate...)
-
-}
-
-func (oc *ObjectCreator) updateRelationLinks(st *state.State, keyToUpdate []string, oldToNewIDs map[string]string) {
-	relLinksToUpdate := make([]*model.RelationLink, 0)
-	for _, key := range keyToUpdate {
-		if relLink := st.GetRelationLinks().Get(key); relLink != nil {
-			newKey := oldToNewIDs[addr.RelationKeyToIdPrefix+key]
-			relLinksToUpdate = append(relLinksToUpdate, &model.RelationLink{
-				Key:    strings.TrimPrefix(newKey, addr.RelationKeyToIdPrefix),
-				Format: relLink.Format,
-			})
-		}
-	}
-	st.AddRelationLinks(relLinksToUpdate...)
 }
 
 func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {

@@ -79,7 +79,8 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 			}
 			if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypes()) != 2 || fixOt) {
 				if targetType := pbtypes.Get(s.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue(); targetType != "" {
-					s.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
+					// todo: return
+					//s.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
 				}
 			}
 		},

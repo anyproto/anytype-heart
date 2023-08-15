@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -75,25 +76,27 @@ type sourceDeps struct {
 	sbt smartblock.SmartBlockType
 	ot  objecttree.ObjectTree
 
-	coreService    core.Service
-	accountService accountservice.Service
-	spaceService   space.Service
-	sbtProvider    typeprovider.SmartBlockTypeProvider
-	fileService    files.Service
+	coreService     core.Service
+	accountService  accountservice.Service
+	spaceService    space.Service
+	sbtProvider     typeprovider.SmartBlockTypeProvider
+	fileService     files.Service
+	relationService relation.Service
 }
 
 func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err error) {
 	return &source{
-		ObjectTree:     deps.ot,
-		id:             id,
-		spaceID:        spaceID,
-		coreService:    deps.coreService,
-		spaceService:   deps.spaceService,
-		openedAt:       time.Now(),
-		smartblockType: deps.sbt,
-		accountService: deps.accountService,
-		sbtProvider:    deps.sbtProvider,
-		fileService:    deps.fileService,
+		ObjectTree:      deps.ot,
+		id:              id,
+		spaceID:         spaceID,
+		coreService:     deps.coreService,
+		spaceService:    deps.spaceService,
+		openedAt:        time.Now(),
+		smartblockType:  deps.sbt,
+		accountService:  deps.accountService,
+		sbtProvider:     deps.sbtProvider,
+		fileService:     deps.fileService,
+		relationService: deps.relationService,
 	}, nil
 }
 
@@ -114,11 +117,12 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
-	coreService    core.Service
-	fileService    files.Service
-	accountService accountservice.Service
-	spaceService   space.Service
-	sbtProvider    typeprovider.SmartBlockTypeProvider
+	coreService     core.Service
+	fileService     files.Service
+	accountService  accountservice.Service
+	spaceService    space.Service
+	sbtProvider     typeprovider.SmartBlockTypeProvider
+	relationService relation.Service
 }
 
 func (s *source) Tree() objecttree.ObjectTree {
@@ -198,7 +202,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		log.With("objectID", s.id).Errorf("not valid state: %v", validationErr)
 	}
 	st.BlocksInit(st)
-	st.InjectDerivedDetails()
+
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
@@ -242,6 +246,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 				ObjectTypes:   params.State.ObjectTypes(),
 				Collections:   params.State.Store(),
 				RelationLinks: params.State.PickRelationLinks(),
+				Key:           params.State.UniqueKeyInternal(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}

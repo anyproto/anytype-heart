@@ -56,26 +56,25 @@ type Export interface {
 }
 
 type export struct {
-	bs          *block.Service
+	blockService *block.Service
 	picker      getblock.Picker
-	objectStore objectstore.ObjectStore
-	a           core.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-	fileService files.Service
+	objectStore  objectstore.ObjectStore
+	coreService  core.Service
+	sbtProvider  typeprovider.SmartBlockTypeProvider
+	fileService  files.Service
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
-	return &export{
-		sbtProvider: sbtProvider,
-	}
+func New() Export {
+	return &export{}
 }
 
 func (e *export) Init(a *app.App) (err error) {
-	e.bs = a.MustComponent(block.CName).(*block.Service)
-	e.a = a.MustComponent(core.CName).(core.Service)
+	e.blockService = a.MustComponent(block.CName).(*block.Service)
+	e.coreService = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
 	e.picker = app.MustComponent[getblock.Picker](a)
+	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	return
 }
 
@@ -84,7 +83,7 @@ func (e *export) Name() (name string) {
 }
 
 func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
-	queue := e.bs.Process().NewQueue(pb.ModelProcess{
+	queue := e.blockService.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
 		State: 0,
@@ -195,7 +194,7 @@ func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bo
 
 func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested bool) (map[string]*types.Struct, error) {
 	docs := make(map[string]*types.Struct)
-	res, _, err := e.objectStore.Query(nil, database.Query{
+	res, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyId.String(),
@@ -324,7 +323,7 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		var conv converter.Converter
 		switch format {
 		case pb.RpcObjectListExport_Markdown:
-			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
+			conv = md.NewMDConverter(e.coreService, b.NewState(), wr.Namer())
 		case pb.RpcObjectListExport_Protobuf:
 			conv = pbc.NewConverter(b, isJSON)
 		case pb.RpcObjectListExport_JSON:
@@ -341,7 +340,7 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 			}
 			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docID == e.a.PredefinedObjects(b.SpaceID()).Home {
+		if docID == e.coreService.PredefinedObjects(b.SpaceID()).Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -403,18 +402,18 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {
 	var spaceDashBoardID string
-	pr, err := e.a.LocalProfile(spaceID)
+	pr, err := e.coreService.LocalProfile(spaceID)
 	if err != nil {
 		return err
 	}
-	err = getblock.Do(e.picker, e.a.PredefinedObjects(spaceID).Account, func(b sb.SmartBlock) error {
+	err = getblock.Do(e.picker, e.coreService.PredefinedObjects(spaceID).Account, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	profileID := e.a.ProfileID(spaceID)
+	profileID := e.coreService.ProfileID(spaceID)
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,

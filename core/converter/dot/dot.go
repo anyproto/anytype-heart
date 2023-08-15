@@ -110,38 +110,7 @@ func (d *dot) Add(st *state.State) error {
 	layout := pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())
 	n.Set("layout", fmt.Sprintf("%d", layout))
 
-	// TODO: rewrite to relation service
-	for _, rel := range st.OldExtraRelations() {
-		if rel.Format != model.RelationFormat_object {
-			continue
-		}
-		if rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyId.String() {
-			continue
-		}
-
-		objIds := pbtypes.GetStringList(st.Details(), rel.Key)
-
-		for _, objId := range objIds {
-			t, err := d.sbtProvider.Type(st.SpaceID(), objId)
-			if err != nil {
-				continue
-			}
-			if _, ok := d.knownDocs[objId]; !ok {
-				continue
-			}
-			if t != smartblock.SmartBlockTypeAnytypeProfile && t != smartblock.SmartBlockTypePage {
-				continue
-			}
-
-			d.linksByNode[st.RootId()] = append(d.linksByNode[st.RootId()], linkInfo{
-				target:   objId,
-				edgeType: EdgeTypeRelation,
-				name:     rel.Name,
-				full:     rel.Description,
-			})
-
-		}
-	}
+	// TODO: add relations
 
 	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
 		t, err := d.sbtProvider.Type(st.SpaceID(), depID)

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"os"
@@ -25,8 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
 const (
@@ -75,11 +74,11 @@ type builtinObjects struct {
 	coreService    core.Service
 	importer       importer.Importer
 	store          objectstore.ObjectStore
-	tempDirService *core.TempDirService
+	tempDirService core.TempDirProvider
 }
 
-func New(tempDirService *core.TempDirService) BuiltinObjects {
-	return &builtinObjects{tempDirService: tempDirService}
+func New() BuiltinObjects {
+	return &builtinObjects{}
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
@@ -87,6 +86,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
+	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	return
 }
 
@@ -341,7 +341,7 @@ func (b *builtinObjects) getWidgetBlockIdByNumber(spaceID string, index int) (st
 	}
 	root := w.Pick(w.RootId())
 	if root == nil {
-		return "", fmt.Errorf("failed to pick root block of Widget object: %s", err.Error())
+		return "", fmt.Errorf("failed to pick root block of Widget object")
 	}
 	if len(root.Model().ChildrenIds) < index+1 {
 		return "", fmt.Errorf("failed to get %d block of Widget object as there olny %d of them", index+1, len(root.Model().ChildrenIds))

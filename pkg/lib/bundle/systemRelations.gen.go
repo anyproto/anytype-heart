@@ -4,7 +4,7 @@ source: pkg/lib/bundle/systemRelations.json
 */
 package bundle
 
-const SystemRelationsChecksum = "93b0e3bb6392835ac2b730e3a8880d7fb597085277c501aa4917df9589addda1"
+const SystemRelationsChecksum = "52a7aca208e980e660143952c766ed51797770def4e21e72e9a8f7fe1c3ea64a"
 
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
 // in case EVERY object depend on the relation please add it to RequiredInternalRelations
@@ -45,4 +45,5 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeySourceFilePath,
 	RelationKeyFileSyncStatus,
 	RelationKeyDefaultTemplateId,
+	RelationKeyUniqueKey,
 }...)

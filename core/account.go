@@ -137,3 +137,16 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context, req *
 		},
 	}
 }
+
+func (mw *Middleware) AccountEnableLocalNetworkSync(_ context.Context, req *pb.RpcAccountEnableLocalNetworkSyncRequest) *pb.RpcAccountEnableLocalNetworkSyncResponse {
+	err := mw.applicationService.EnableLocalNetworkSync()
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountEnableLocalNetworkSyncResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountEnableLocalNetworkSyncResponse{
+		Error: &pb.RpcAccountEnableLocalNetworkSyncResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

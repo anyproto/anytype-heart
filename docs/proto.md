@@ -30,11 +30,6 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
-    - [Change._RelationAdd](#anytype-Change-_RelationAdd)
-    - [Change._RelationRemove](#anytype-Change-_RelationRemove)
-    - [Change._RelationUpdate](#anytype-Change-_RelationUpdate)
-    - [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict)
-    - [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes)
   
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
@@ -53,6 +48,10 @@
     - [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request)
     - [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response)
     - [Rpc.Account.Delete.Response.Error](#anytype-Rpc-Account-Delete-Response-Error)
+    - [Rpc.Account.EnableLocalNetworkSync](#anytype-Rpc-Account-EnableLocalNetworkSync)
+    - [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request)
+    - [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response)
+    - [Rpc.Account.EnableLocalNetworkSync.Response.Error](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error)
     - [Rpc.Account.GetConfig](#anytype-Rpc-Account-GetConfig)
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
@@ -931,6 +930,7 @@
     - [Rpc.Account.ConfigUpdate.Timezones](#anytype-Rpc-Account-ConfigUpdate-Timezones)
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
+    - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
@@ -1489,6 +1489,7 @@
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
+| AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
@@ -1796,9 +1797,6 @@ the element of change tree used to store and internal apply smartBlock history
 | relationRemove | [Change.RelationRemove](#anytype-Change-RelationRemove) |  |  |
 | detailsSet | [Change.DetailsSet](#anytype-Change-DetailsSet) |  |  |
 | detailsUnset | [Change.DetailsUnset](#anytype-Change-DetailsUnset) |  |  |
-| old_relationAdd | [Change._RelationAdd](#anytype-Change-_RelationAdd) |  | deprecated |
-| old_relationRemove | [Change._RelationRemove](#anytype-Change-_RelationRemove) |  |  |
-| old_relationUpdate | [Change._RelationUpdate](#anytype-Change-_RelationUpdate) |  |  |
 | objectTypeAdd | [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd) |  |  |
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove) |  |  |
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
@@ -1882,6 +1880,7 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -1897,6 +1896,7 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -2061,87 +2061,6 @@ the element of change tree used to store and internal apply smartBlock history
 
 
 
-
-<a name="anytype-Change-_RelationAdd"></a>
-
-### Change._RelationAdd
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationRemove"></a>
-
-### Change._RelationRemove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate"></a>
-
-### Change._RelationUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| format | [model.RelationFormat](#anytype-model-RelationFormat) |  |  |
-| name | [string](#string) |  |  |
-| defaultValue | [google.protobuf.Value](#google-protobuf-Value) |  |  |
-| objectTypes | [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes) |  |  |
-| multi | [bool](#bool) |  |  |
-| selectDict | [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate-Dict"></a>
-
-### Change._RelationUpdate.Dict
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| dict | [model.Relation.Option](#anytype-model-Relation-Option) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate-ObjectTypes"></a>
-
-### Change._RelationUpdate.ObjectTypes
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypes | [string](#string) | repeated |  |
-
-
-
-
-
  
 
  
@@ -2290,7 +2209,7 @@ Front end to middleware request-to-create-an account
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
 | storePath | [string](#string) |  | Path to local storage |
 | icon | [int64](#int64) |  | Option of pre-installed icon |
-| alphaInviteCode | [string](#string) |  | DEPRECATED |
+| disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 
 
 
@@ -2380,6 +2299,57 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync"></a>
+
+### Rpc.Account.EnableLocalNetworkSync
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Request"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Response"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.EnableLocalNetworkSync.Response.Error](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2605,6 +2575,7 @@ User can select an account from those, that came with an AccountAdd events
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Id of a selected account |
 | rootPath | [string](#string) |  | Root path is optional, set if this is a first request |
+| disableLocalNetworkSync | [bool](#bool) |  | Disable local network discovery |
 
 
 
@@ -15165,6 +15136,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code"></a>
+
+### Rpc.Account.EnableLocalNetworkSync.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 4 |  |
+
+
+
 <a name="anytype-Rpc-Account-Move-Response-Error-Code"></a>
 
 ### Rpc.Account.Move.Response.Error.Code
@@ -21939,6 +21924,7 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | smartBlockType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -21964,6 +21950,7 @@ Used to decode block meta only, without the content itself
 | types | [SmartBlockType](#anytype-model-SmartBlockType) | repeated |  |
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 | installedByDefault | [bool](#bool) |  |  |
+| key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 
 
 
@@ -22222,6 +22209,7 @@ stored |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
+| key | [string](#string) |  | this field is not passing to the crdt changes and can be only set in the snapshot |
 
 
 
@@ -22665,6 +22653,9 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | relationOptionsList | 12 |  |
 | relationOption | 13 |  |
 | collection | 14 |  |
+| audio | 15 |  |
+| video | 16 |  |
+| date | 17 |  |
 | database | 20 | to be released later |
 
 
@@ -22773,10 +22764,12 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | BundledTemplate | 289 |  |
 | BundledRelation | 512 | DEPRECATED |
 | SubObject | 513 |  |
-| BundledObjectType | 514 |  |
+| BundledObjectType | 514 | DEPRECATED |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | Workspace | 518 |  |
+| STRelation | 521 |  |
+| STType | 528 |  |
 | MissingObject | 519 |  |
 
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -17,12 +18,14 @@ import (
 
 func NewBundledRelation(id string) (s Source) {
 	return &bundledRelation{
-		id: id,
+		id:     id,
+		relKey: bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)),
 	}
 }
 
 type bundledRelation struct {
-	id string
+	id     string
+	relKey bundle.RelationKey
 }
 
 func (v *bundledRelation) ReadOnly() bool {
@@ -47,7 +50,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 		return nil, err
 	}
 	rel.Creator = addr.AnytypeProfileId
-	details := bundle.GetDetailsForRelation(true, rel)
+	details := bundle.GetDetailsForBundledRelation(rel)
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
@@ -58,8 +61,14 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 }
 
 func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	s := state.NewDoc(v.id, nil).(*state.State)
+	// we use STRelation instead of BundledRelation for a reason we want to have the same prefix
+	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
+	uk, err := uniquekey.New(model.SmartBlockType_STRelation, v.relKey.String())
+	if err != nil {
+		return nil, err
+	}
 
+	s := state.NewDocWithUniqueKey(v.id, nil, uk).(*state.State)
 	d, err := v.getDetails(v.id)
 	if err != nil {
 		return nil, err
@@ -67,7 +76,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	for k, v := range d.Fields {
 		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
-	s.SetObjectType(bundle.TypeKeyRelation.BundledURL())
+	s.SetObjectType(bundle.TypeKeyRelation.String())
 	return s, nil
 }
 

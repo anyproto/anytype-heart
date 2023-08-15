@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -33,17 +34,16 @@ type Service interface {
 
 type service struct {
 	sbtProvider typeprovider.SmartBlockTypeProvider
-	store       objectstore.ObjectStore
+	objectStore objectstore.ObjectStore
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider, objectStore objectstore.ObjectStore) Service {
-	return &service{
-		sbtProvider: sbtProvider,
-		store:       objectStore,
-	}
+func New() Service {
+	return &service{}
 }
 
-func (s *service) Init(*app.App) (err error) {
+func (s *service) Init(a *app.App) (err error) {
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return
 }
 
@@ -75,7 +75,7 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 		return Restrictions{}, fmt.Errorf("get smartblock type: %w", err)
 	}
 	layout := model.ObjectTypeLayout(noLayout)
-	d, err := s.store.GetDetails(id)
+	d, err := s.objectStore.GetDetails(id)
 	var ot string
 	if err == nil {
 		if pbtypes.HasField(d.GetDetails(), bundle.RelationKeyLayout.String()) {
@@ -86,7 +86,14 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 		}
 		ot = pbtypes.GetString(d.GetDetails(), bundle.RelationKeyType.String())
 	}
-	obj := newRestrictionHolder(id, sbType, layout, ot)
+	var uk uniquekey.UniqueKey
+	if u := pbtypes.GetString(d.GetDetails(), bundle.RelationKeyUniqueKey.String()); u != "" {
+		uk, err = uniquekey.UnmarshalFromString(u)
+		if err != nil {
+			log.Errorf("failed to parse unique key %s: %v", u, err)
+		}
+	}
+	obj := newRestrictionHolder(id, sbType, layout, uk, ot)
 	if err != nil {
 		return Restrictions{}, err
 	}

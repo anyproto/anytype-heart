@@ -49,7 +49,11 @@ func (p *objectLinksCollection) AddObject(id string) (err error) {
 	})
 	s.Add(link)
 	var lastTarget string
-	if chIds := s.Get(s.RootId()).Model().ChildrenIds; len(chIds) > 0 {
+	if s == nil || s.Get(s.RootId()) == nil || s.Get(s.RootId()).Model() == nil {
+		// todo: find a reason of empty state
+		return fmt.Errorf("root block not found")
+	}
+	if chIds := s.Get(s.RootId()).Model().GetChildrenIds(); len(chIds) > 0 {
 		lastTarget = chIds[0]
 	}
 	if err = s.InsertTo(lastTarget, model.Block_Top, link.Model().Id); err != nil {

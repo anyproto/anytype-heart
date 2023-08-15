@@ -105,6 +105,61 @@ func (_c *MockSmartBlockTypeProvider_Name_Call) RunAndReturn(run func() string) 
 	return _c
 }
 
+// PartitionIDsByType provides a mock function with given fields: spaceId, ids
+func (_m *MockSmartBlockTypeProvider) PartitionIDsByType(spaceId string, ids []string) (map[smartblock.SmartBlockType][]string, error) {
+	ret := _m.Called(spaceId, ids)
+
+	var r0 map[smartblock.SmartBlockType][]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []string) (map[smartblock.SmartBlockType][]string, error)); ok {
+		return rf(spaceId, ids)
+	}
+	if rf, ok := ret.Get(0).(func(string, []string) map[smartblock.SmartBlockType][]string); ok {
+		r0 = rf(spaceId, ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[smartblock.SmartBlockType][]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []string) error); ok {
+		r1 = rf(spaceId, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSmartBlockTypeProvider_PartitionIDsByType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PartitionIDsByType'
+type MockSmartBlockTypeProvider_PartitionIDsByType_Call struct {
+	*mock.Call
+}
+
+// PartitionIDsByType is a helper method to define mock.On call
+//   - spaceId string
+//   - ids []string
+func (_e *MockSmartBlockTypeProvider_Expecter) PartitionIDsByType(spaceId interface{}, ids interface{}) *MockSmartBlockTypeProvider_PartitionIDsByType_Call {
+	return &MockSmartBlockTypeProvider_PartitionIDsByType_Call{Call: _e.mock.On("PartitionIDsByType", spaceId, ids)}
+}
+
+func (_c *MockSmartBlockTypeProvider_PartitionIDsByType_Call) Run(run func(spaceId string, ids []string)) *MockSmartBlockTypeProvider_PartitionIDsByType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSmartBlockTypeProvider_PartitionIDsByType_Call) Return(_a0 map[smartblock.SmartBlockType][]string, _a1 error) *MockSmartBlockTypeProvider_PartitionIDsByType_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSmartBlockTypeProvider_PartitionIDsByType_Call) RunAndReturn(run func(string, []string) (map[smartblock.SmartBlockType][]string, error)) *MockSmartBlockTypeProvider_PartitionIDsByType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterStaticType provides a mock function with given fields: id, tp
 func (_m *MockSmartBlockTypeProvider) RegisterStaticType(id string, tp smartblock.SmartBlockType) {
 	_m.Called(id, tp)

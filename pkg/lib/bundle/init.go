@@ -27,11 +27,12 @@ func (rk RelationKey) IsSystem() bool {
 	return ok
 }
 
-var FormatFilePossibleTargetObjectTypes = []string{
-	TypeKeyFile.URL(),
-	TypeKeyImage.URL(),
-	TypeKeyVideo.URL(),
-	TypeKeyAudio.URL()}
+var FormatFilePossibleTargetObjectTypes = []TypeKey{
+	TypeKeyFile,
+	TypeKeyImage,
+	TypeKeyVideo,
+	TypeKeyAudio,
+}
 
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypePage:        TypeKeyPage,
@@ -39,6 +40,8 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
 	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
 	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
 	coresb.SmartBlockTypeWidget:      TypeKeyDashboard,
+	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
+	coresb.SmartBlockTypeRelation:    TypeKeyRelation,
 }
 
 // filled in init
@@ -57,13 +60,24 @@ func init() {
 	}
 }
 
+func HasObjectTypeID(id string) bool {
+	if !strings.HasPrefix(id, TypePrefix) {
+		return false
+	}
+	tk := TypeKey(strings.TrimPrefix(id, TypePrefix))
+	_, exists := types[tk]
+	return exists
+}
+
 func GetTypeByUrl(u string) (*model.ObjectType, error) {
 	if !strings.HasPrefix(u, TypePrefix) {
 		return nil, fmt.Errorf("invalid url with no bundled type prefix")
 	}
 	tk := TypeKey(strings.TrimPrefix(u, TypePrefix))
 	if v, exists := types[tk]; exists {
-		return pbtypes.CopyObjectType(v), nil
+		t := pbtypes.CopyObjectType(v)
+		t.Key = tk.String()
+		return t, nil
 	}
 
 	return nil, ErrNotFound
@@ -73,7 +87,9 @@ func GetTypeByUrl(u string) (*model.ObjectType, error) {
 // PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
 func MustGetType(tk TypeKey) *model.ObjectType {
 	if v, exists := types[tk]; exists {
-		return pbtypes.CopyObjectType(v)
+		t := pbtypes.CopyObjectType(v)
+		t.Key = tk.String()
+		return t
 	}
 
 	// we can safely panic in case TypeKey is a generated constant
@@ -207,20 +223,15 @@ func ListTypesKeys() []TypeKey {
 	return keys
 }
 
-func GetDetailsForRelation(bundled bool, rel *model.Relation) *types2.Struct {
-	var prefix string
-	if bundled {
-		prefix = addr.BundledRelationURLPrefix
-	} else {
-		prefix = addr.RelationKeyToIdPrefix
-	}
-
+func GetDetailsForBundledRelation(rel *model.Relation) *types2.Struct {
 	return &types2.Struct{Fields: map[string]*types2.Value{
-		RelationKeyName.String():                      pbtypes.String(rel.Name),
-		RelationKeyDescription.String():               pbtypes.String(rel.Description),
-		RelationKeyId.String():                        pbtypes.String(prefix + rel.Key),
-		RelationKeyRelationKey.String():               pbtypes.String(rel.Key),
-		RelationKeyType.String():                      pbtypes.String(TypeKeyRelation.URL()),
+		RelationKeyName.String():        pbtypes.String(rel.Name),
+		RelationKeyDescription.String(): pbtypes.String(rel.Description),
+		RelationKeyId.String():          pbtypes.String(addr.BundledRelationURLPrefix + rel.Key),
+		RelationKeyRelationKey.String(): pbtypes.String(rel.Key),
+		RelationKeyUniqueKey.String():   pbtypes.String(rel.Key),
+
+		RelationKeyType.String():                      pbtypes.String(TypeKeyRelation.BundledURL()),
 		RelationKeyCreator.String():                   pbtypes.String(rel.Creator),
 		RelationKeyLayout.String():                    pbtypes.Float64(float64(model.ObjectType_relation)),
 		RelationKeyRelationFormat.String():            pbtypes.Float64(float64(rel.Format)),

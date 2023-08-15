@@ -36,7 +36,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 
 	assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
 	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
-	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
 	var (
 		found bool

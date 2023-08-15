@@ -81,8 +81,12 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		}
 	}
 
+	cfg := anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1")
+	if req.DisableLocalNetworkSync {
+		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
 	comps := []app.Component{
-		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1", false),
+		cfg,
 		anytype.BootstrapWallet(s.rootPath, res),
 		s.eventSender,
 	}

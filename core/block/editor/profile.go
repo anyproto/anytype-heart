@@ -34,6 +34,7 @@ type Profile struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	table.TableEditor
+	anytype core.Service
 
 	eventSender event.Sender
 }
@@ -43,6 +44,7 @@ func NewProfile(
 	objectStore objectstore.ObjectStore,
 	relationService relation.Service,
 	fileBlockService file.BlockService,
+	anytype core.Service,
 	picker getblock.Picker,
 	bookmarkService bookmark.BookmarkService,
 	tempDirProvider core.TempDirProvider,
@@ -53,6 +55,7 @@ func NewProfile(
 	f := file.NewFile(
 		sb,
 		fileBlockService,
+		anytype,
 		tempDirProvider,
 		fileService,
 		picker,
@@ -82,6 +85,7 @@ func NewProfile(
 		),
 		TableEditor: table.NewEditor(sb),
 		eventSender: eventSender,
+		anytype:     anytype,
 	}
 }
 
@@ -93,11 +97,12 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	profileType := p.anytype.PredefinedObjects(p.SpaceID()).SystemTypes[bundle.TypeKeyProfile]
 	return migration.Migration{
 		Version: 1,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
-				template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}, model.ObjectType_profile),
+				template.WithObjectTypesAndLayout([]string{profileType}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 				template.WithTitle,
 				template.WithFeaturedRelations,

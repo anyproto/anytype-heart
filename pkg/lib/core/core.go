@@ -10,6 +10,8 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/zap"
 
@@ -37,6 +39,9 @@ type Service interface {
 	IsStarted() bool
 
 	DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
+
+	DeriveObjectId(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (string, error)
+
 	EnsurePredefinedBlocks(ctx context.Context, spaceID string) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
@@ -54,8 +59,8 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveTreeCreatePayload(ctx context.Context, spaceID string, tp coresb.SmartBlockType) (*treestorage.TreeStorageCreatePayload, error)
-	DeriveObject(ctx context.Context, spaceID string, payload *treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
+	DeriveTreeCreatePayload(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (treestorage.TreeStorageCreatePayload, error)
+	DeriveObject(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
 }
 
 type Anytype struct {
@@ -159,6 +164,16 @@ func (a *Anytype) start() {
 	a.isStarted = true
 }
 
+func (a *Anytype) DeriveObjectId(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (string, error) {
+	// todo: cache it or use the objectstore
+	payload, err := a.deriver.DeriveTreeCreatePayload(ctx, spaceID, key)
+	if err != nil {
+		return "", fmt.Errorf("failed to derive tree create payload for space %s and key %s: %w", spaceID, key, err)
+	}
+
+	return payload.RootRawChange.Id, nil
+}
+
 func (a *Anytype) DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
 	a.lock.RLock()
 	ids, ok := a.predefinedObjectsPerSpace[spaceID]
@@ -181,7 +196,10 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 		coresb.SmartBlockTypeWidget,
 		coresb.SmartBlockTypeHome,
 	}
-	payloads := make([]*treestorage.TreeStorageCreatePayload, len(sbTypes))
+	payloads := make([]treestorage.TreeStorageCreatePayload, len(sbTypes))
+	predefinedObjectIDs.SystemRelations = make(map[bundle.RelationKey]string)
+	predefinedObjectIDs.SystemTypes = make(map[bundle.TypeKey]string)
+
 	for i, sbt := range sbTypes {
 		a.lock.RLock()
 		exists := a.predefinedObjectsPerSpace[spaceID].HasID(sbt)
@@ -190,25 +208,56 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 		if exists {
 			continue
 		}
-		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, spaceID, sbt)
+		// we have only 1 object per sbtype so key is empty (also for the backward compatibility, because before we didn't have a key)
+		uk, err := uniquekey.New(sbt.ToProto(), "")
+		if err != nil {
+			return predefinedObjectIDs, err
+		}
+		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, spaceID, uk)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived tree object with error")
 			return predefinedObjectIDs, fmt.Errorf("derive tree create payload: %w", err)
 		}
 		predefinedObjectIDs.InsertId(sbt, payloads[i].RootRawChange.Id)
-
-		a.lock.Lock()
-		a.predefinedObjectsPerSpace[spaceID] = predefinedObjectIDs
-		a.lock.Unlock()
 	}
 
+	for _, ot := range bundle.SystemTypes {
+		uk, err := uniquekey.New(coresb.SmartBlockTypeObjectType.ToProto(), ot.String())
+		if err != nil {
+			return predefinedObjectIDs, err
+		}
+		id, err := a.DeriveObjectId(ctx, spaceID, uk)
+		if err != nil {
+			return predefinedObjectIDs, err
+		}
+		predefinedObjectIDs.SystemTypes[ot] = id
+	}
+
+	for _, rk := range bundle.SystemRelations {
+		uk, err := uniquekey.New(coresb.SmartBlockTypeRelation.ToProto(), rk.String())
+		if err != nil {
+			return predefinedObjectIDs, err
+		}
+		id, err := a.DeriveObjectId(ctx, spaceID, uk)
+		if err != nil {
+			return predefinedObjectIDs, err
+		}
+		predefinedObjectIDs.SystemRelations[rk] = id
+	}
+
+	a.lock.Lock()
+	a.predefinedObjectsPerSpace[spaceID] = predefinedObjectIDs
+	a.lock.Unlock()
+
 	for _, payload := range payloads {
+		// todo: move types/relations derivation here
 		err = a.deriver.DeriveObject(ctx, spaceID, payload, createTrees)
 		if err != nil {
 			log.With(zap.Error(err)).Debug("derived object with error")
 			return predefinedObjectIDs, fmt.Errorf("derive object: %w", err)
 		}
 	}
+
 	return
 }
 

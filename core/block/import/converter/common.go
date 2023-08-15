@@ -87,11 +87,9 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
-		for _, relation := range view.Relations {
-			relationID := addr.RelationKeyToIdPrefix + relation.Key
-			if newID, ok := oldIDtoNew[relationID]; ok && newID != relationID {
-				updateRelationID(block.(dataview.Block), relation, view, newID)
-			}
+
+		if view.DefaultTemplateId != "" {
+			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
 		}
 	}
 	for _, group := range dataView.GetGroupOrders() {
@@ -107,26 +105,6 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 				group.ObjectIds[i] = newId
 			}
 		}
-	}
-}
-
-func updateRelationID(db dataview.Block, relation *model.BlockContentDataviewRelation, view *model.BlockContentDataviewView, newID string) {
-	oldKey := relation.Key
-	err := db.RemoveViewRelations(view.Id, []string{oldKey})
-	if err != nil {
-		log.Error("failed to remove relation from view, %s", err.Error())
-		return
-	}
-	relation.Key = strings.TrimPrefix(newID, addr.RelationKeyToIdPrefix)
-	err = db.AddViewRelation(view.Id, relation)
-	if err != nil {
-		log.Error("failed to add new relations from view, %s", err.Error())
-		return
-	}
-	if relationLink, ok := lo.Find(db.Model().GetDataview().GetRelationLinks(), func(relationLink *model.RelationLink) bool {
-		return relationLink.Key == oldKey
-	}); ok {
-		relationLink.Key = relation.Key
 	}
 }
 

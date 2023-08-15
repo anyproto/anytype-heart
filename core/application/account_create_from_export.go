@@ -1,28 +1,28 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/anytype"
-	"github.com/anyproto/anytype-heart/util/constant"
-	"io"
-	oserror "github.com/anyproto/anytype-heart/util/os"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"archive/zip"
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-heart/core/anytype"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
-	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/util/constant"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"io"
+	"os"
 	"path/filepath"
-	"archive/zip"
-	"github.com/anyproto/anytype-heart/core/block"
-	"encoding/json"
-	"context"
-	"errors"
 )
 
 var (
@@ -141,7 +141,7 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 		return nil, fmt.Errorf("failed to extract config: %w", err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", false)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
 	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
 	return cfg, nil
 }
@@ -166,7 +166,7 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	return nil
 }
 
-func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*pb.RpcObjectSetDetailsDetail, accountDetails []*pb.RpcObjectSetDetailsDetail, ) {
+func buildDetails(profile *pb.Profile, icon int64) (profileDetails []*pb.RpcObjectSetDetailsDetail, accountDetails []*pb.RpcObjectSetDetailsDetail) {
 	profileDetails = []*pb.RpcObjectSetDetailsDetail{{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(profile.Name),

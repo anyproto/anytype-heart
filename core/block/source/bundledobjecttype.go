@@ -2,7 +2,10 @@ package source
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -15,12 +18,14 @@ import (
 
 func NewBundledObjectType(id string) (s Source) {
 	return &bundledObjectType{
-		id: id,
+		id:      id,
+		typeKey: bundle.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),
 	}
 }
 
 type bundledObjectType struct {
-	id string
+	id      string
+	typeKey bundle.TypeKey
 }
 
 func (v *bundledObjectType) ReadOnly() bool {
@@ -42,16 +47,26 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 	}
 	extraRels = []*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelationLink(bundle.RelationKeyRecommendedLayout)}
 
-	for i := range ot.RelationLinks {
-		extraRels = append(extraRels, ot.RelationLinks[i])
+	for _, rl := range ot.RelationLinks {
+		relationLink := &model.RelationLink{
+			Key:    rl.Key,
+			Format: rl.Format,
+		}
+		extraRels = append(extraRels, relationLink)
 	}
 
-	return extraRels, (&relationutils.ObjectType{ot}).ToStruct(), nil
+	return extraRels, (&relationutils.ObjectType{ot}).BundledTypeDetails(), nil
 }
 
 func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	s := state.NewDoc(v.id, nil).(*state.State)
+	// we use STType instead of BundledObjectType for a reason we want to have the same prefix
+	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
+	uk, err := uniquekey.New(model.SmartBlockType_STType, v.typeKey.String())
+	if err != nil {
+		return nil, err
+	}
 
+	s := state.NewDocWithUniqueKey(v.id, nil, uk).(*state.State)
 	rels, d, err := getDetailsForBundledObjectType(v.id)
 	if err != nil {
 		return nil, err
@@ -60,7 +75,8 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyObjectType.BundledURL())
+	s.SetObjectType(bundle.TypeKeyObjectType.String())
+
 	return s, nil
 }
 
@@ -90,4 +106,14 @@ func (s *bundledObjectType) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 
 func (s *bundledObjectType) GetCreationInfo() (creator string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
+}
+
+type bundledTypeIdGetter struct {
+}
+
+func (b *bundledTypeIdGetter) GetTypeIdByKey(_ context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
+	if spaceId != addr.AnytypeMarketplaceWorkspace {
+		return "", fmt.Errorf("incorrect space id: should be %s", addr.AnytypeMarketplaceWorkspace)
+	}
+	return key.BundledURL(), nil
 }

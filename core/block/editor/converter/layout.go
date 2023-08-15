@@ -2,8 +2,8 @@ package converter
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/anyproto/any-sync/app"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -11,8 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
@@ -22,19 +22,31 @@ import (
 
 const DefaultSetSource = bundle.TypeKeyPage
 
-type LayoutConverter struct {
+type LayoutConverter interface {
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	app.Component
+}
+
+type layoutConverter struct {
 	objectStore objectstore.ObjectStore
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-func NewLayoutConverter(objectStore objectstore.ObjectStore, sbtProvider typeprovider.SmartBlockTypeProvider) LayoutConverter {
-	return LayoutConverter{
-		objectStore: objectStore,
-		sbtProvider: sbtProvider,
-	}
+func NewLayoutConverter() LayoutConverter {
+	return &layoutConverter{}
 }
 
-func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) Init(a *app.App) error {
+	c.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	return nil
+}
+
+func (c *layoutConverter) Name() string {
+	return "layout-converter"
+}
+
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
 	}
@@ -78,7 +90,7 @@ func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 	return c.fromAnyToAny(st)
 }
 
-func (c *LayoutConverter) fromAnyToAny(st *state.State) error {
+func (c *layoutConverter) fromAnyToAny(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
@@ -86,7 +98,7 @@ func (c *LayoutConverter) fromAnyToAny(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToBookmark(st *state.State) error {
+func (c *layoutConverter) fromAnyToBookmark(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
@@ -95,7 +107,7 @@ func (c *LayoutConverter) fromAnyToBookmark(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToTodo(st *state.State) error {
+func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	if err := st.SetAlign(model.Block_AlignLeft); err != nil {
 		return err
 	}
@@ -107,7 +119,7 @@ func (c *LayoutConverter) fromAnyToTodo(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
+func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -123,13 +135,13 @@ func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToSet(st *state.State) error {
+func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
-	if len(source) == 0 {
-		source = []string{DefaultSetSource.URL()}
-	}
-
 	addFeaturedRelationSetOf(st)
+	if len(source) == 0 {
+		// do not create dataview block if source is empty
+		return nil
+	}
 
 	dvBlock, _, err := dataview.DataviewBlockBySource(st.SpaceID(), c.sbtProvider, c.objectStore, source)
 	if err != nil {
@@ -147,19 +159,20 @@ func addFeaturedRelationSetOf(st *state.State) {
 	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 }
 
-func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
+func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 	dvBlock := st.Get(template.DataviewBlockId)
 	if dvBlock == nil {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
-	typesFromSet := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	setSourceIds := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	spaceId := st.SpaceID()
 
 	c.removeRelationSetOf(st)
 
 	dvBlock.Model().GetDataview().IsCollection = true
 
-	ids, err := c.listIDsFromSet(typesFromSet)
+	ids, err := c.listIDsFromSet(spaceId, setSourceIds)
 	if err != nil {
 		return err
 	}
@@ -167,13 +180,10 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) listIDsFromSet(typesFromSet []string) ([]string, error) {
-	records, _, err := c.objectStore.Query(
-		nil,
-		database.Query{
-			Filters: generateFilters(typesFromSet),
-		},
-	)
+func (c *layoutConverter) listIDsFromSet(spaceId string, typesFromSet []string) ([]string, error) {
+	records, _, err := c.objectStore.Query(database.Query{
+		Filters: generateFilters(spaceId, c.sbtProvider, typesFromSet),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("can't get records for collection: %w", err)
 	}
@@ -184,7 +194,7 @@ func (c *LayoutConverter) listIDsFromSet(typesFromSet []string) ([]string, error
 	return ids, nil
 }
 
-func (c *LayoutConverter) fromNoteToCollection(st *state.State) error {
+func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -197,13 +207,13 @@ func (c *LayoutConverter) fromNoteToCollection(st *state.State) error {
 	return c.fromAnyToCollection(st)
 }
 
-func (c *LayoutConverter) fromAnyToCollection(st *state.State) error {
+func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 	blockContent := template.MakeCollectionDataviewContent()
 	template.InitTemplate(st, template.WithDataview(*blockContent, false))
 	return nil
 }
 
-func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
+func (c *layoutConverter) fromNoteToAny(st *state.State) error {
 	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
 
 	if !ok || name.GetStringValue() == "" {
@@ -228,7 +238,7 @@ func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
+func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithNameToFirstBlock,
 		template.WithNoTitle,
@@ -237,7 +247,7 @@ func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) removeRelationSetOf(st *state.State) {
+func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 	st.RemoveDetail(bundle.RelationKeySetOf.String())
 
 	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
@@ -260,11 +270,15 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 	return res, nil
 }
 
-func generateFilters(typesAndRelations []string) []*model.BlockContentDataviewFilter {
+func generateFilters(spaceId string, sbtProvider typeprovider.SmartBlockTypeProvider, typesAndRelations []string) []*model.BlockContentDataviewFilter {
 	var filters []*model.BlockContentDataviewFilter
-	types, relations := separate(typesAndRelations)
-	filters = appendTypesFilter(types, filters)
-	filters = appendRelationFilters(relations, filters)
+	m, err := sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
+	if err != nil {
+		// todo: log error
+		return nil
+	}
+	filters = appendTypesFilter(m[coresb.SmartBlockTypeObjectType], filters)
+	filters = appendRelationFilters(m[coresb.SmartBlockTypeRelation], filters)
 	return filters
 }
 
@@ -289,15 +303,4 @@ func appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilt
 		})
 	}
 	return filters
-}
-
-func separate(typesAndRels []string) (types []string, rels []string) {
-	for _, id := range typesAndRels {
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			types = append(types, id)
-		} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			rels = append(rels, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
-		}
-	}
-	return
 }

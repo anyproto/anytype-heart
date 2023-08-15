@@ -22,16 +22,3 @@ func OptionFromStruct(st *types.Struct) *Option {
 type Option struct {
 	*model.RelationOption
 }
-
-func (o *Option) ToStruct() *types.Struct {
-	return &types.Struct{
-		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():                  pbtypes.String(o.Id),
-			bundle.RelationKeyType.String():                pbtypes.String(bundle.TypeKeyRelationOption.URL()),
-			bundle.RelationKeyName.String():                pbtypes.String(o.Text),
-			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(o.Color),
-			bundle.RelationKeyRelationKey.String():         pbtypes.String(o.RelationKey),
-			bundle.RelationKeyLayout.String():              pbtypes.Int64(int64(model.ObjectType_relationOption)),
-		},
-	}
-}

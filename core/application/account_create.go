@@ -1,21 +1,21 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/anytype"
-	"github.com/anyproto/any-sync/app"
-	"os"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"path/filepath"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/core/block"
 	"context"
 	"errors"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/anytype"
+	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"os"
+	"path/filepath"
 )
 
 func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
@@ -42,7 +42,10 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return nil, err
 	}
 
-	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1", true)
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
+	if req.DisableLocalNetworkSync {
+		cfg.DontStartLocalNetworkSyncAutomatically = true
+	}
 	comps := []app.Component{
 		cfg,
 		anytype.BootstrapWallet(s.rootPath, derivationResult),

@@ -57,6 +57,7 @@ type CommonOperations interface {
 	SetObjectTypesInState(s *state.State, objectTypes []string) (err error)
 	SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
+	SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error)
 }
 
 type DetailsSettable interface {
@@ -372,7 +373,7 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, relationService relation
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := relationService.FetchKey(req.RelationKey)
+	rel, err := relationService.FetchRelationByKey(s.SpaceID(), req.RelationKey)
 	if err != nil {
 		return
 	}

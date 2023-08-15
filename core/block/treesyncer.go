@@ -2,13 +2,14 @@ package block
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
 	"go.uber.org/zap"
-	"sync"
-	"time"
 )
 
 type executor struct {

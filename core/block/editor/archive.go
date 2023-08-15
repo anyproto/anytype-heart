@@ -82,7 +82,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	records, _, err := p.objectStore.Query(nil, database.Query{
+	records, _, err := p.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsArchived.String(),

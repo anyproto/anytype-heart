@@ -28,6 +28,7 @@ func (t *GroupTag) InitGroups(f *database.Filters) error {
 		f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}
 	}
 
+	// todo: use type
 	f.FilterObj = filter.OrFilters{f.FilterObj, filter.AndFilters{
 		filter.Eq{
 			Key:   bundle.RelationKeyRelationKey.String(),
@@ -35,9 +36,9 @@ func (t *GroupTag) InitGroups(f *database.Filters) error {
 			Value: pbtypes.String(t.Key),
 		},
 		filter.Eq{
-			Key:   bundle.RelationKeyType.String(),
+			Key:   bundle.RelationKeyLayout.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}}
 

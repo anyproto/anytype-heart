@@ -85,38 +85,7 @@ func (g *graphjson) Add(st *state.State) error {
 	}
 
 	g.nodes[st.RootId()] = &n
-	// TODO: rewrite to relation service
-	for _, rel := range st.OldExtraRelations() {
-		if rel.Format != model.RelationFormat_object {
-			continue
-		}
-		if rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyId.String() {
-			continue
-		}
-
-		objIds := pbtypes.GetStringList(st.Details(), rel.Key)
-
-		for _, objId := range objIds {
-			t, err := g.sbtProvider.Type(st.SpaceID(), objId)
-			if err != nil {
-				continue
-			}
-			if _, ok := g.knownDocs[objId]; !ok {
-				continue
-			}
-			if t != smartblock.SmartBlockTypeAnytypeProfile && t != smartblock.SmartBlockTypePage {
-				continue
-			}
-
-			g.linksByNode[st.RootId()] = append(g.linksByNode[st.RootId()], &Edge{
-				Source:   st.RootId(),
-				Target:   objId,
-				EdgeType: EdgeTypeRelation,
-				Name:     rel.Name,
-			})
-
-		}
-	}
+	// TODO: add relations
 
 	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
 		t, err := g.sbtProvider.Type(st.SpaceID(), depID)

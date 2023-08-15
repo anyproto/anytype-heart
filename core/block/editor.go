@@ -441,12 +441,12 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 	})
 }
 
-func (s *Service) UploadBlockFile(ctx session.Context, req pb.RpcBlockUploadRequest, groupId string) (err error) {
+func (s *Service) UploadBlockFile(ctx session.Context, req pb.RpcBlockUploadRequest, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
-			GroupId: groupId,
+			GroupID: groupID,
 		}, false)
 		return err
 	})
@@ -517,7 +517,7 @@ func (s *Service) UploadFileBlockWithHash(
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
-			GroupId: "",
+			GroupID: "",
 		})
 		if err != nil {
 			return err
@@ -573,13 +573,15 @@ func (s *Service) BookmarkCreateAndFetch(
 
 func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		rel, err := s.relationService.FetchKey(req.Key)
+		return fmt.Errorf("not implemented")
+		// todo: implement me
+		/*rel, err := s.relationService.FetchRelationByKey(b.req.Key)
 		if err != nil {
 			return err
 		}
 		return b.AddRelationAndSet(ctx, s.relationService, pb.RpcBlockRelationAddRequest{
 			RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId,
-		})
+		})*/
 	})
 }
 

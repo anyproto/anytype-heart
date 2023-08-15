@@ -2,7 +2,6 @@ package dataview
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -21,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -133,7 +131,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.relationService.FetchKey(key)
+		relation, err2 := d.relationService.FetchRelationByKey(s.SpaceID(), key)
 		if err2 != nil {
 			return err2
 		}
@@ -371,8 +369,8 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
-	var hasRelations, hasType bool
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore) (schema.Schema, error) {
+	var relationFound, typeFound bool
 
 	for _, source := range sources {
 		sbt, err := sbtProvider.Type(spaceID, source)
@@ -380,57 +378,33 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 			return nil, err
 		}
 
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		if sbt == smartblock2.SmartBlockTypeBundledObjectType {
-			if hasRelations {
+		if sbt == smartblock2.SmartBlockTypeObjectType {
+			if relationFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			if hasType {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains more than one object type")
 			}
-			hasType = true
+			typeFound = true
 		}
 
-		if strings.HasPrefix(source, addr.RelationKeyToIdPrefix) {
-			if hasType {
+		if sbt == smartblock2.SmartBlockTypeRelation {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			hasRelations = true
-		}
-
-		if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
-			if hasRelations {
-				return nil, fmt.Errorf("dataview source contains both type and relation")
-			}
-			hasType = true
+			relationFound = true
 		}
 	}
-	if hasType {
+	if typeFound {
 		objectType, err := store.GetObjectType(sources[0])
 		if err != nil {
 			return nil, err
 		}
-		sch := schema.NewByType(objectType, optionalRelations)
+		sch := schema.NewByType(objectType)
 		return sch, nil
 	}
 
-	if hasRelations {
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		ids, _, err := store.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyRecommendedRelations.String(),
-					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       pbtypes.StringList(sources),
-				},
-			},
-		}, []smartblock2.SmartBlockType{
-			smartblock2.SmartBlockTypeBundledObjectType,
-		})
-		if err != nil {
-			return nil, err
-		}
-
+	if relationFound {
 		var relations []*model.RelationLink
 		for _, relId := range sources {
 			rel, err := store.GetRelationByID(relId)
@@ -440,15 +414,11 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 
 			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
 		}
-		sch := schema.NewByRelations(ids, relations, optionalRelations)
+		sch := schema.NewByRelations(relations)
 		return sch, nil
 	}
 
 	return nil, fmt.Errorf("relation or type not found")
-}
-
-func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
-	return SchemaBySources(d.SpaceID(), d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -463,14 +433,15 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	if !dvChanged {
 		return
 	}
+	systemtypes := d.anytype.PredefinedObjects(d.SpaceID()).SystemTypes
 	var restrictedSources = []string{
-		bundle.TypeKeyFile.URL(),
-		bundle.TypeKeyImage.URL(),
-		bundle.TypeKeyVideo.URL(),
-		bundle.TypeKeyAudio.URL(),
-		bundle.TypeKeyObjectType.URL(),
-		bundle.TypeKeySet.URL(),
-		bundle.TypeKeyRelation.URL(),
+		systemtypes[bundle.TypeKeyFile],
+		systemtypes[bundle.TypeKeyImage],
+		systemtypes[bundle.TypeKeyVideo],
+		systemtypes[bundle.TypeKeyAudio],
+		systemtypes[bundle.TypeKeyObjectType],
+		systemtypes[bundle.TypeKeySet],
+		systemtypes[bundle.TypeKeyRelation],
 	}
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]
@@ -581,7 +552,7 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 }
 
 func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
-	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store, nil); err != nil {
+	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store); err != nil {
 		return
 	}
 
