@@ -396,31 +396,25 @@ func (_c *MockObjectStore_GetAggregatedOptions_Call) RunAndReturn(run func(strin
 	return _c
 }
 
-// GetByIDs provides a mock function with given fields: ids
-func (_m *MockObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
-	_va := make([]interface{}, len(ids))
-	for _i := range ids {
-		_va[_i] = ids[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// GetByIDs provides a mock function with given fields: spaceID, ids
+func (_m *MockObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error) {
+	ret := _m.Called(spaceID, ids)
 
 	var r0 []*model.ObjectInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(...string) ([]*model.ObjectInfo, error)); ok {
-		return rf(ids...)
+	if rf, ok := ret.Get(0).(func(string, []string) ([]*model.ObjectInfo, error)); ok {
+		return rf(spaceID, ids)
 	}
-	if rf, ok := ret.Get(0).(func(...string) []*model.ObjectInfo); ok {
-		r0 = rf(ids...)
+	if rf, ok := ret.Get(0).(func(string, []string) []*model.ObjectInfo); ok {
+		r0 = rf(spaceID, ids)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.ObjectInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(...string) error); ok {
-		r1 = rf(ids...)
+	if rf, ok := ret.Get(1).(func(string, []string) error); ok {
+		r1 = rf(spaceID, ids)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -434,21 +428,15 @@ type MockObjectStore_GetByIDs_Call struct {
 }
 
 // GetByIDs is a helper method to define mock.On call
-//   - ids ...string
-func (_e *MockObjectStore_Expecter) GetByIDs(ids ...interface{}) *MockObjectStore_GetByIDs_Call {
-	return &MockObjectStore_GetByIDs_Call{Call: _e.mock.On("GetByIDs",
-		append([]interface{}{}, ids...)...)}
+//   - spaceID string
+//   - ids []string
+func (_e *MockObjectStore_Expecter) GetByIDs(spaceID interface{}, ids interface{}) *MockObjectStore_GetByIDs_Call {
+	return &MockObjectStore_GetByIDs_Call{Call: _e.mock.On("GetByIDs", spaceID, ids)}
 }
 
-func (_c *MockObjectStore_GetByIDs_Call) Run(run func(ids ...string)) *MockObjectStore_GetByIDs_Call {
+func (_c *MockObjectStore_GetByIDs_Call) Run(run func(spaceID string, ids []string)) *MockObjectStore_GetByIDs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]string, len(args)-0)
-		for i, a := range args[0:] {
-			if a != nil {
-				variadicArgs[i] = a.(string)
-			}
-		}
-		run(variadicArgs...)
+		run(args[0].(string), args[1].([]string))
 	})
 	return _c
 }
@@ -458,7 +446,7 @@ func (_c *MockObjectStore_GetByIDs_Call) Return(_a0 []*model.ObjectInfo, _a1 err
 	return _c
 }
 
-func (_c *MockObjectStore_GetByIDs_Call) RunAndReturn(run func(...string) ([]*model.ObjectInfo, error)) *MockObjectStore_GetByIDs_Call {
+func (_c *MockObjectStore_GetByIDs_Call) RunAndReturn(run func(string, []string) ([]*model.ObjectInfo, error)) *MockObjectStore_GetByIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -997,25 +985,25 @@ func (_c *MockObjectStore_GetRelationByKey_Call) RunAndReturn(run func(string) (
 	return _c
 }
 
-// GetWithLinksInfoByID provides a mock function with given fields: id
-func (_m *MockObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error) {
-	ret := _m.Called(id)
+// GetWithLinksInfoByID provides a mock function with given fields: spaceID, id
+func (_m *MockObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
+	ret := _m.Called(spaceID, id)
 
 	var r0 *model.ObjectInfoWithLinks
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*model.ObjectInfoWithLinks, error)); ok {
-		return rf(id)
+	if rf, ok := ret.Get(0).(func(string, string) (*model.ObjectInfoWithLinks, error)); ok {
+		return rf(spaceID, id)
 	}
-	if rf, ok := ret.Get(0).(func(string) *model.ObjectInfoWithLinks); ok {
-		r0 = rf(id)
+	if rf, ok := ret.Get(0).(func(string, string) *model.ObjectInfoWithLinks); ok {
+		r0 = rf(spaceID, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.ObjectInfoWithLinks)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(id)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceID, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1029,14 +1017,15 @@ type MockObjectStore_GetWithLinksInfoByID_Call struct {
 }
 
 // GetWithLinksInfoByID is a helper method to define mock.On call
+//   - spaceID string
 //   - id string
-func (_e *MockObjectStore_Expecter) GetWithLinksInfoByID(id interface{}) *MockObjectStore_GetWithLinksInfoByID_Call {
-	return &MockObjectStore_GetWithLinksInfoByID_Call{Call: _e.mock.On("GetWithLinksInfoByID", id)}
+func (_e *MockObjectStore_Expecter) GetWithLinksInfoByID(spaceID interface{}, id interface{}) *MockObjectStore_GetWithLinksInfoByID_Call {
+	return &MockObjectStore_GetWithLinksInfoByID_Call{Call: _e.mock.On("GetWithLinksInfoByID", spaceID, id)}
 }
 
-func (_c *MockObjectStore_GetWithLinksInfoByID_Call) Run(run func(id string)) *MockObjectStore_GetWithLinksInfoByID_Call {
+func (_c *MockObjectStore_GetWithLinksInfoByID_Call) Run(run func(spaceID string, id string)) *MockObjectStore_GetWithLinksInfoByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -1046,7 +1035,7 @@ func (_c *MockObjectStore_GetWithLinksInfoByID_Call) Return(_a0 *model.ObjectInf
 	return _c
 }
 
-func (_c *MockObjectStore_GetWithLinksInfoByID_Call) RunAndReturn(run func(string) (*model.ObjectInfoWithLinks, error)) *MockObjectStore_GetWithLinksInfoByID_Call {
+func (_c *MockObjectStore_GetWithLinksInfoByID_Call) RunAndReturn(run func(string, string) (*model.ObjectInfoWithLinks, error)) *MockObjectStore_GetWithLinksInfoByID_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1160,25 +1149,25 @@ func (_c *MockObjectStore_Init_Call) RunAndReturn(run func(*app.App) error) *Moc
 	return _c
 }
 
-// List provides a mock function with given fields:
-func (_m *MockObjectStore) List() ([]*model.ObjectInfo, error) {
-	ret := _m.Called()
+// List provides a mock function with given fields: spaceID
+func (_m *MockObjectStore) List(spaceID string) ([]*model.ObjectInfo, error) {
+	ret := _m.Called(spaceID)
 
 	var r0 []*model.ObjectInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]*model.ObjectInfo, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string) ([]*model.ObjectInfo, error)); ok {
+		return rf(spaceID)
 	}
-	if rf, ok := ret.Get(0).(func() []*model.ObjectInfo); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) []*model.ObjectInfo); ok {
+		r0 = rf(spaceID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.ObjectInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(spaceID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1192,13 +1181,14 @@ type MockObjectStore_List_Call struct {
 }
 
 // List is a helper method to define mock.On call
-func (_e *MockObjectStore_Expecter) List() *MockObjectStore_List_Call {
-	return &MockObjectStore_List_Call{Call: _e.mock.On("List")}
+//   - spaceID string
+func (_e *MockObjectStore_Expecter) List(spaceID interface{}) *MockObjectStore_List_Call {
+	return &MockObjectStore_List_Call{Call: _e.mock.On("List", spaceID)}
 }
 
-func (_c *MockObjectStore_List_Call) Run(run func()) *MockObjectStore_List_Call {
+func (_c *MockObjectStore_List_Call) Run(run func(spaceID string)) *MockObjectStore_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -1208,7 +1198,7 @@ func (_c *MockObjectStore_List_Call) Return(_a0 []*model.ObjectInfo, _a1 error) 
 	return _c
 }
 
-func (_c *MockObjectStore_List_Call) RunAndReturn(run func() ([]*model.ObjectInfo, error)) *MockObjectStore_List_Call {
+func (_c *MockObjectStore_List_Call) RunAndReturn(run func(string) ([]*model.ObjectInfo, error)) *MockObjectStore_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1732,6 +1722,58 @@ func (_c *MockObjectStore_RemoveIDsFromFullTextQueue_Call) RunAndReturn(run func
 	return _c
 }
 
+// ResolveSpaceID provides a mock function with given fields: objectID
+func (_m *MockObjectStore) ResolveSpaceID(objectID string) (string, error) {
+	ret := _m.Called(objectID)
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
+		return rf(objectID)
+	}
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(objectID)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(objectID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_ResolveSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveSpaceID'
+type MockObjectStore_ResolveSpaceID_Call struct {
+	*mock.Call
+}
+
+// ResolveSpaceID is a helper method to define mock.On call
+//   - objectID string
+func (_e *MockObjectStore_Expecter) ResolveSpaceID(objectID interface{}) *MockObjectStore_ResolveSpaceID_Call {
+	return &MockObjectStore_ResolveSpaceID_Call{Call: _e.mock.On("ResolveSpaceID", objectID)}
+}
+
+func (_c *MockObjectStore_ResolveSpaceID_Call) Run(run func(objectID string)) *MockObjectStore_ResolveSpaceID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_ResolveSpaceID_Call) Return(spaceID string, err error) *MockObjectStore_ResolveSpaceID_Call {
+	_c.Call.Return(spaceID, err)
+	return _c
+}
+
+func (_c *MockObjectStore_ResolveSpaceID_Call) RunAndReturn(run func(string) (string, error)) *MockObjectStore_ResolveSpaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockObjectStore) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -1939,6 +1981,49 @@ func (_c *MockObjectStore_SetCurrentWorkspaceID_Call) Return(err error) *MockObj
 }
 
 func (_c *MockObjectStore_SetCurrentWorkspaceID_Call) RunAndReturn(run func(string) error) *MockObjectStore_SetCurrentWorkspaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StoreSpaceID provides a mock function with given fields: objectID, spaceID
+func (_m *MockObjectStore) StoreSpaceID(objectID string, spaceID string) error {
+	ret := _m.Called(objectID, spaceID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(objectID, spaceID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_StoreSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StoreSpaceID'
+type MockObjectStore_StoreSpaceID_Call struct {
+	*mock.Call
+}
+
+// StoreSpaceID is a helper method to define mock.On call
+//   - objectID string
+//   - spaceID string
+func (_e *MockObjectStore_Expecter) StoreSpaceID(objectID interface{}, spaceID interface{}) *MockObjectStore_StoreSpaceID_Call {
+	return &MockObjectStore_StoreSpaceID_Call{Call: _e.mock.On("StoreSpaceID", objectID, spaceID)}
+}
+
+func (_c *MockObjectStore_StoreSpaceID_Call) Run(run func(objectID string, spaceID string)) *MockObjectStore_StoreSpaceID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_StoreSpaceID_Call) Return(_a0 error) *MockObjectStore_StoreSpaceID_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_StoreSpaceID_Call) RunAndReturn(run func(string, string) error) *MockObjectStore_StoreSpaceID_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -24,20 +24,20 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// CheckRestrictions provides a mock function with given fields: id, cr
-func (_m *MockService) CheckRestrictions(id string, cr ...model.RestrictionsObjectRestriction) error {
+// CheckRestrictions provides a mock function with given fields: spaceID, id, cr
+func (_m *MockService) CheckRestrictions(spaceID string, id string, cr ...model.RestrictionsObjectRestriction) error {
 	_va := make([]interface{}, len(cr))
 	for _i := range cr {
 		_va[_i] = cr[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, id)
+	_ca = append(_ca, spaceID, id)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, ...model.RestrictionsObjectRestriction) error); ok {
-		r0 = rf(id, cr...)
+	if rf, ok := ret.Get(0).(func(string, string, ...model.RestrictionsObjectRestriction) error); ok {
+		r0 = rf(spaceID, id, cr...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -51,22 +51,23 @@ type MockService_CheckRestrictions_Call struct {
 }
 
 // CheckRestrictions is a helper method to define mock.On call
+//   - spaceID string
 //   - id string
 //   - cr ...model.RestrictionsObjectRestriction
-func (_e *MockService_Expecter) CheckRestrictions(id interface{}, cr ...interface{}) *MockService_CheckRestrictions_Call {
+func (_e *MockService_Expecter) CheckRestrictions(spaceID interface{}, id interface{}, cr ...interface{}) *MockService_CheckRestrictions_Call {
 	return &MockService_CheckRestrictions_Call{Call: _e.mock.On("CheckRestrictions",
-		append([]interface{}{id}, cr...)...)}
+		append([]interface{}{spaceID, id}, cr...)...)}
 }
 
-func (_c *MockService_CheckRestrictions_Call) Run(run func(id string, cr ...model.RestrictionsObjectRestriction)) *MockService_CheckRestrictions_Call {
+func (_c *MockService_CheckRestrictions_Call) Run(run func(spaceID string, id string, cr ...model.RestrictionsObjectRestriction)) *MockService_CheckRestrictions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]model.RestrictionsObjectRestriction, len(args)-1)
-		for i, a := range args[1:] {
+		variadicArgs := make([]model.RestrictionsObjectRestriction, len(args)-2)
+		for i, a := range args[2:] {
 			if a != nil {
 				variadicArgs[i] = a.(model.RestrictionsObjectRestriction)
 			}
 		}
-		run(args[0].(string), variadicArgs...)
+		run(args[0].(string), args[1].(string), variadicArgs...)
 	})
 	return _c
 }
@@ -76,7 +77,7 @@ func (_c *MockService_CheckRestrictions_Call) Return(_a0 error) *MockService_Che
 	return _c
 }
 
-func (_c *MockService_CheckRestrictions_Call) RunAndReturn(run func(string, ...model.RestrictionsObjectRestriction) error) *MockService_CheckRestrictions_Call {
+func (_c *MockService_CheckRestrictions_Call) RunAndReturn(run func(string, string, ...model.RestrictionsObjectRestriction) error) *MockService_CheckRestrictions_Call {
 	_c.Call.Return(run)
 	return _c
 }

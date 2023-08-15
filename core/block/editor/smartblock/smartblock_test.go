@@ -23,13 +23,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/testMock"
 	"github.com/anyproto/anytype-heart/util/testMock/mockRelation"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
-
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/text"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestSmartBlock_Init(t *testing.T) {

@@ -83,7 +83,6 @@ func TestFileSync_RemoveFile(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
-	sender := mock_event.NewMockSender(t)
 	fx := &fixture{
 		FileSync:    New(),
 		fileService: fileservice.New(),
@@ -122,7 +121,7 @@ func newFixture(t *testing.T) *fixture {
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
 	sender.EXPECT().Init(mock.Anything).Return(nil)
-	sender.EXPECT().Send(mock.Anything).Return().Maybe()
+	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	fx.a.Register(fx.fileService).
 		Register(&inMemBlockStore{data: map[string]blocks.Block{}}).
