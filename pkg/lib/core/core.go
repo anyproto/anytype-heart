@@ -209,7 +209,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 			continue
 		}
 		// we have only 1 object per sbtype so key is empty (also for the backward compatibility, because before we didn't have a key)
-		uk, err := uniquekey.NewUniqueKey(sbt.ToProto(), "")
+		uk, err := uniquekey.New(sbt.ToProto(), "")
 		if err != nil {
 			return predefinedObjectIDs, err
 		}
@@ -222,7 +222,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 	}
 
 	for _, ot := range bundle.SystemTypes {
-		uk, err := uniquekey.NewUniqueKey(coresb.SmartBlockTypeObjectType.ToProto(), ot.String())
+		uk, err := uniquekey.New(coresb.SmartBlockTypeObjectType.ToProto(), ot.String())
 		if err != nil {
 			return predefinedObjectIDs, err
 		}
@@ -234,7 +234,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 	}
 
 	for _, rk := range bundle.SystemRelations {
-		uk, err := uniquekey.NewUniqueKey(coresb.SmartBlockTypeRelation.ToProto(), rk.String())
+		uk, err := uniquekey.New(coresb.SmartBlockTypeRelation.ToProto(), rk.String())
 		if err != nil {
 			return predefinedObjectIDs, err
 		}

@@ -6,11 +6,11 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -182,7 +182,7 @@ func (s *Service) CreateLinkToTheNewObject(
 	}
 
 	fmt.Printf("%+v", s.anytype.PredefinedObjects(req.SpaceId))
-	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
+	uk, err := uniquekey.New(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
 	sss, _ := s.anytype.DeriveObjectId(ctx, req.SpaceId, uk)
 	fmt.Printf("%+v", sss)
 

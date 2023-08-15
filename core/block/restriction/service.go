@@ -88,7 +88,7 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 	}
 	var uk uniquekey.UniqueKey
 	if u := pbtypes.GetString(d.GetDetails(), bundle.RelationKeyUniqueKey.String()); u != "" {
-		uk, err = uniquekey.UniqueKeyFromString(u)
+		uk, err = uniquekey.UnmarshalFromString(u)
 		if err != nil {
 			log.Errorf("failed to parse unique key %s: %v", u, err)
 		}

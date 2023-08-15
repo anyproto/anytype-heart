@@ -704,7 +704,7 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 		return nil, fmt.Errorf("type was removed")
 	}
 
-	uk, err := uniquekey.UniqueKeyFromString(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
+	uk, err := uniquekey.UnmarshalFromString(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse unique key %s: %w", pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()), err)
 	}
@@ -752,7 +752,7 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (
 
 func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {
 	objectType := &model.ObjectType{}
-	//s.fillObjectTypeWithRecommendedRelations(details, objectType)
+	// s.fillObjectTypeWithRecommendedRelations(details, objectType)
 	objectType.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
 	objectType.Layout = model.ObjectTypeLayout(int(pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())))
 	objectType.IconEmoji = pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String())

@@ -993,11 +993,11 @@ func (s *State) InjectDerivedDetails(getter TypeIDGetter, spaceId string, sbt mo
 			sbt = model.SmartBlockType_STRelation
 		}
 
-		uk, err := uniquekey.NewUniqueKey(sbt, uki)
+		uk, err := uniquekey.New(sbt, uki)
 		if err != nil {
 			log.Errorf("failed to get unique key for %s: %v", uki, err)
 		} else {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.String()))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
 		}
 	}
 
@@ -1221,7 +1221,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 		// do not index local dates such as lastOpened/lastModified
 		if relations {
 			// todo: add the relation ids somewhere else
-			//ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+			// ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
 		}
 
 		if !details {

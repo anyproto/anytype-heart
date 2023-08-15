@@ -382,7 +382,7 @@ func (s *Service) convertBundledObjectToInstalled(ctx context.Context, spaceId, 
 	if len(relations) > 0 {
 		for i, r := range relations {
 			// replace relation url with id
-			uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
+			uk, err := uniquekey.New(model.SmartBlockType_STRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -430,7 +430,7 @@ func (s *Service) AddBundledObjectToSpace(
 				return err
 			}
 
-			uk, err := uniquekey.UniqueKeyFromString(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
+			uk, err := uniquekey.UnmarshalFromString(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
 			if err != nil {
 				return err
 			}

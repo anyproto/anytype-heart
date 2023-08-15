@@ -257,7 +257,7 @@ func (sb *smartBlock) SpaceID() string {
 	return sb.spaceID
 }
 func (sb *smartBlock) UniqueKey() uniquekey.UniqueKey {
-	uk, _ := uniquekey.NewUniqueKey(sb.Type(), sb.Doc.UniqueKeyInternal())
+	uk, _ := uniquekey.New(sb.Type(), sb.Doc.UniqueKeyInternal())
 	return uk
 }
 

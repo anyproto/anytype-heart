@@ -63,7 +63,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	// we use STRelation instead of BundledRelation for a reason we want to have the same prefix
 	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
-	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, v.relKey.String())
+	uk, err := uniquekey.New(model.SmartBlockType_STRelation, v.relKey.String())
 	if err != nil {
 		return nil, err
 	}

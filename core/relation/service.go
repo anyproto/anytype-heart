@@ -57,7 +57,7 @@ type service struct {
 }
 
 func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
-	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, key.String())
+	uk, err := uniquekey.New(model.SmartBlockType_STType, key.String())
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +83,7 @@ func (s *service) GetSystemTypeId(spaceId string, key bundle.TypeKey) (id string
 }
 
 func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {
-	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, key.String())
+	uk, err := uniquekey.New(model.SmartBlockType_STRelation, key.String())
 	if err != nil {
 		return "", err
 	}
@@ -122,11 +122,11 @@ func (s *service) fetchRelationByKeys(spaceId string, keys ...string) (relations
 	uks := make([]string, 0, len(keys))
 
 	for _, key := range keys {
-		uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, key)
+		uk, err := uniquekey.New(model.SmartBlockType_STRelation, key)
 		if err != nil {
 			return nil, err
 		}
-		uks = append(uks, uk.String())
+		uks = append(uks, uk.Marshal())
 	}
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -201,7 +201,7 @@ func (s *service) fetchRelationKey(spaceID string, key string, opts ...FetchOpti
 	for _, apply := range opts {
 		apply(o)
 	}
-	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, key)
+	uk, err := uniquekey.New(model.SmartBlockType_STRelation, key)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func (s *service) fetchRelationKey(spaceID string, key string, opts ...FetchOpti
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(uk.String()),
+				Value:       pbtypes.String(uk.Marshal()),
 			},
 		},
 	}

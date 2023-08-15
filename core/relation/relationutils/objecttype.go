@@ -28,7 +28,7 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		sbTypes = append(sbTypes, int(t))
 	}
 
-	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, ot.Key)
+	uk, err := uniquekey.New(model.SmartBlockType_STType, ot.Key)
 	if err != nil {
 		return nil
 	}
@@ -39,7 +39,7 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
 		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
 		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
-		bundle.RelationKeyUniqueKey.String():            pbtypes.String(uk.String()),
+		bundle.RelationKeyUniqueKey.String():            pbtypes.String(uk.Marshal()),
 		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),
 		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),
 		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),

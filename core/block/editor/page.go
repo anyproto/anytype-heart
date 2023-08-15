@@ -117,11 +117,11 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			if !ok {
 				// nolint:errcheck
 				lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
-				uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, lastTypeKey)
+				uk, err := uniquekey.New(model.SmartBlockType_STType, lastTypeKey)
 				if err != nil {
 					log.Errorf("failed to create unique key: %v", err)
 				} else {
-					otype, err := p.objectStore.GetObjectByUniqueKey(s.SpaceID(), uk.String())
+					otype, err := p.objectStore.GetObjectByUniqueKey(s.SpaceID(), uk.Marshal())
 					if err != nil {
 						log.Errorf("failed to get object by unique key: %v", err)
 					} else {

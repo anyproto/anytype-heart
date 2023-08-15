@@ -21,7 +21,7 @@ var smartBlockTypeToKey = map[model.SmartBlockType]string{
 }
 
 type UniqueKey interface {
-	String() string
+	Marshal() string
 	SmartblockType() model.SmartBlockType
 	InternalKey() string // underlying key, e.g. for "ot-page" it's "page"
 }
@@ -31,7 +31,7 @@ type uniqueKey struct {
 	key string
 }
 
-func NewUniqueKey(sbt model.SmartBlockType, key string) (UniqueKey, error) {
+func New(sbt model.SmartBlockType, key string) (UniqueKey, error) {
 	if _, exists := smartBlockTypeToKey[sbt]; !exists {
 		return nil, fmt.Errorf("smartblocktype %s not supported", sbt.String())
 	}
@@ -41,12 +41,13 @@ func NewUniqueKey(sbt model.SmartBlockType, key string) (UniqueKey, error) {
 	}, nil
 }
 
-func UniqueKeyFromString(uKey string) (UniqueKey, error) {
-	parts := strings.Split(uKey, separator)
-	if uKey == "" || len(parts) > 2 {
+func UnmarshalFromString(raw string) (UniqueKey, error) {
+	parts := strings.Split(raw, separator)
+	if raw == "" || len(parts) > 2 {
 		return nil, errors.New("invalid key format")
 	}
 
+	// UniqueKey can be without second component, for example, unique key for Workspace object
 	var key string
 	if len(parts) == 2 {
 		key = parts[1]
@@ -62,7 +63,7 @@ func UniqueKeyFromString(uKey string) (UniqueKey, error) {
 	return nil, fmt.Errorf("smartblocktype %s not supported", parts[0])
 }
 
-func (uk *uniqueKey) String() string {
+func (uk *uniqueKey) Marshal() string {
 	if uk.key == "" {
 		return smartBlockTypeToKey[uk.sbt]
 	}

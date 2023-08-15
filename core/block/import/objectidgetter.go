@@ -86,7 +86,7 @@ func (ou *ObjectIDGetter) Get(
 	var payload treestorage.TreeStorageCreatePayload
 	if sbType == sb.SmartBlockTypeRelation || sbType == sb.SmartBlockTypeObjectType {
 		id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		uk, err := uniquekey.UniqueKeyFromString(id)
+		uk, err := uniquekey.UnmarshalFromString(id)
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, err
 		}
