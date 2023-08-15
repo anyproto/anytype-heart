@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -24,7 +23,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/testMock"
 	"github.com/anyproto/anytype-heart/util/testMock/mockRelation"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
-
+	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -128,7 +128,8 @@ func newFixture(t *testing.T) *fixture {
 	indexer := NewMockIndexer(ctrl)
 	indexer.EXPECT().Name().Return("indexer").AnyTimes()
 
-	restrictionService := restriction.New(nil, objectStore)
+	restrictionService := mock_restriction.NewMockService(t)
+	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 	relationService := mockRelation.NewMockService(ctrl)
 
 	fileService := testMock.NewMockFileService(ctrl)

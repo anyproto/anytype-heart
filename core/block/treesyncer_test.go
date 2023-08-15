@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"

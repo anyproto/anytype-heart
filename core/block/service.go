@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -91,16 +92,9 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func New(
-	tempDirProvider *core.TempDirService,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-) *Service {
+func New() *Service {
 	return &Service{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		layoutConverter: layoutConverter,
-		closing:         make(chan struct{}),
+		closing: make(chan struct{}),
 		syncer:          map[string]*treeSyncer{},
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
@@ -199,6 +193,11 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
+
+	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
+
 	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.cache = s.createCache()
@@ -406,8 +405,25 @@ func (s *Service) AddBundledObjectToSpace(
 	spaceID string,
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
-	// todo: we should add route to object via workspace
+	// todo: replace this func to the universal space to space copy
+	existingObjects, _, err := s.objectStore.Query(nil, database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySourceObject.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(sourceObjectIds),
+			},
+		},
+	})
+	var existingObjectMap = make(map[string]struct{})
+	for _, existingObject := range existingObjects {
+		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
+	}
+
 	for _, sourceObjectId := range sourceObjectIds {
+		if _, ok := existingObjectMap[sourceObjectId]; ok {
+			continue
+		}
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
 			d, err := s.convertBundledObjectToInstalled(ctx, spaceID, b.Id(), b.CombinedDetails())
 			if err != nil {
@@ -420,18 +436,18 @@ func (s *Service) AddBundledObjectToSpace(
 			}
 
 			// create via the state directly, because we have cyclic dependencies and we want to avoid typeId resolving from the details
-			state := state.NewDocWithUniqueKey("", nil, uk.(uniquekey.UniqueKeyInternal)).(*state.State)
+			state := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
 			state.SetDetails(d)
 
-			if b.Type() == model.SmartBlockType_STRelation {
+			if uk.SmartblockType() == model.SmartBlockType_STRelation {
 				state.SetObjectType(bundle.TypeKeyRelation.String())
-			} else if b.Type() == model.SmartBlockType_STType {
+			} else if uk.SmartblockType() == model.SmartBlockType_STType {
 				state.SetObjectType(bundle.TypeKeyObjectType.String())
 			} else {
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
-			id, object, err := s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockType(b.Type()), nil, state)
+			id, object, err := s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockType(uk.SmartblockType()), nil, state)
 			if err != nil {
 				// todo: check alreadyexists error
 				// we don't want to stop adding other objects
@@ -900,6 +916,17 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
+	if spaceID == "" {
+		// todo: feels dirty
+		if opts, ok := ctx.Value(optsKey).(cacheOpts); ok {
+			if opts.spaceId != "" {
+				spaceID = opts.spaceId
+				s.objectStore.StoreSpaceID(objectID, opts.spaceId)
+			}
+		}
+
+	}
+
 	return s.getSmartblock(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,

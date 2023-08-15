@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_registerBuiltin(t *testing.T) {

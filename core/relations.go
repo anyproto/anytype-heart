@@ -78,7 +78,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 
 			for _, relKey := range req.RelationKeys {
-				relId, err := rs.GetRelationId(cctx, spaceId, bundle.RelationKey(relKey))
+				relId, err := rs.GetRelationIdByKey(cctx, spaceId, bundle.RelationKey(relKey))
 				if err != nil {
 					return nil, err
 				}

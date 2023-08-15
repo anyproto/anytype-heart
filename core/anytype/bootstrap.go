@@ -41,7 +41,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -84,11 +83,10 @@ var (
 	WarningAfter = time.Second * 1
 )
 
-func BootstrapConfig(newAccount bool, isStaging bool, createBuiltinTemplates bool) *config.Config {
+func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
 	return config.New(
 		config.WithDebugAddr(os.Getenv("ANYTYPE_DEBUG_ADDR")),
 		config.WithNewAccount(newAccount),
-		config.WithCreateBuiltinTemplates(createBuiltinTemplates),
 	)
 }
 
@@ -98,7 +96,9 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
-	a.SetVersionName(appVersion(a, clientWithVersion))
+	complexAppVersion := appVersion(a, clientWithVersion)
+	a.SetVersionName(complexAppVersion)
+	logging.SetVersion(complexAppVersion)
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
@@ -167,49 +167,18 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
-	walletService := a.Component(wallet.CName).(wallet.Wallet)
-	eventService := a.Component(event.CName).(event.Sender)
-	cfg := a.Component(config.CName).(*config.Config)
-
-	tempDirService := core.NewTempDirService(walletService)
-	spaceService := space.New()
-	sbtProvider := typeprovider.New(spaceService)
-	objectStore := objectstore.New(sbtProvider)
-	objectCreator := objectcreator.NewCreator(sbtProvider)
-	layoutConverter := converter.NewLayoutConverter(objectStore, sbtProvider)
-	blockService := block.New(tempDirService, sbtProvider, layoutConverter)
-	relationService := relation.New()
-	collectionService := collection.New(blockService, objectStore, relationService)
-	coreService := core.New()
-	graphRenderer := objectgraph.NewBuilder(sbtProvider, relationService, objectStore, coreService)
-	fileSyncService := filesync.New(eventService)
-	fileStore := filestore.New()
-
-	datastoreProvider := clientds.New()
-	nodeConf := nodeconf.New()
 
 	const fileWatcherUpdateInterval = 5 * time.Second
-	syncStatusService := syncstatus.New(
-		sbtProvider,
-		datastoreProvider,
-		spaceService,
-		coreService,
-		fileSyncService,
-		nodeConf,
-		fileStore,
-		blockService,
-		cfg,
-		eventService,
-		fileWatcherUpdateInterval,
-	)
-	fileSyncService.OnUpload(syncStatusService.OnFileUpload)
-	fileService := files.New(syncStatusService, objectStore)
-	indexerService := indexer.New(blockService, spaceService, fileService)
 
-	a.Register(datastoreProvider).
+	a.
+		// Data storages
+		Register(clientds.New()).
+		Register(ftsearch.New()).
+		Register(objectstore.New()).
+		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
-		Register(nodeConf).
+		Register(nodeconf.New()).
 		Register(peerstore.New()).
 		Register(syncstatusprovider.New()).
 		Register(storage.New()).
@@ -226,45 +195,45 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
-		Register(spaceService).
-		Register(fileStore).
+		Register(space.New()).
+		Register(filestore.New()).
 		Register(fileservice.New()).
-		Register(filestorage.New(eventService)).
-		Register(fileSyncService).
+		Register(filestorage.New()).
+		Register(filesync.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
-		Register(sbtProvider).
-		Register(relationService).
-		Register(ftsearch.New()).
-		Register(objectStore).
+		Register(typeprovider.New()).
+		Register(relation.New()).
+		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
-		Register(fileService).
+		Register(files.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(source.New()).
-		Register(coreService).
+		Register(core.New()).
+		Register(core.NewTempDirService()).
 		Register(builtintemplate.New()).
-		Register(blockService).
-		Register(indexerService).
-		Register(syncStatusService).
+		Register(block.New()).
+		Register(indexer.New()).
+		Register(syncstatus.New(fileWatcherUpdateInterval)).
 		Register(history.New()).
 		Register(gateway.New()).
-		Register(export.New(sbtProvider)).
+		Register(export.New()).
 		Register(linkpreview.New()).
-		Register(unsplash.New(tempDirService)).
-		Register(restriction.New(sbtProvider, objectStore)).
+		Register(unsplash.New()).
+		Register(restriction.New()).
 		Register(debug.New()).
-		Register(collectionService).
-		Register(subscription.New(collectionService, sbtProvider)).
-		Register(builtinobjects.New(tempDirService)).
-		Register(bookmark.New(tempDirService)).
+		Register(collection.New()).
+		Register(subscription.New()).
+		Register(builtinobjects.New()).
+		Register(bookmark.New()).
 		Register(session.New()).
-		Register(importer.New(tempDirService, sbtProvider)).
+		Register(importer.New()).
 		Register(decorator.New()).
-		Register(objectCreator).
+		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
-		Register(editor.NewObjectFactory(tempDirService, sbtProvider, layoutConverter)).
-		Register(graphRenderer).
+		Register(editor.NewObjectFactory()).
+		Register(objectgraph.NewBuilder()).
 		Register(account.New())
 }
 

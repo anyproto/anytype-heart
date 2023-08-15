@@ -3,16 +3,13 @@ package collection
 import (
 	"fmt"
 	"sync"
-
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -22,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("collection-service")
@@ -34,20 +32,17 @@ type Service struct {
 	objectStore     objectstore.ObjectStore
 }
 
-func New(
-	picker block.Picker,
-	store objectstore.ObjectStore,
-	relationService relation.Service,
-) *Service {
+func New() *Service {
 	return &Service{
-		picker:      picker,
-		objectStore: store,
 		lock:        &sync.RWMutex{},
 		collections: map[string]map[string]chan []string{},
 	}
 }
 
 func (s *Service) Init(a *app.App) (err error) {
+	s.picker = app.MustComponent[block.Picker](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.relationService = app.MustComponent[relation.Service](a)
 	return nil
 }
 
@@ -212,12 +207,11 @@ func (s *Service) ObjectToCollection(id string) error {
 			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
 		}
 		st := b.NewState()
-		commonOperations.SetLayoutInState(st, model.ObjectType_collection)
-		collectionTypeID, err := s.relationService.GetSystemTypeId(st.SpaceID(), bundle.TypeKeyCollection)
+		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_collection)
 		if err != nil {
-			return fmt.Errorf("get set type id: %w", err)
+			return fmt.Errorf("set layout: %w", err)
 		}
-		st.SetObjectType(collectionTypeID)
+		st.SetObjectType(bundle.TypeKeyCollection.String())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

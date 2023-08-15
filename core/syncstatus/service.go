@@ -36,8 +36,10 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	typeProvider typeprovider.SmartBlockTypeProvider
-	spaceService space.Service
+	typeProvider              typeprovider.SmartBlockTypeProvider
+	spaceService              space.Service
+	fileSyncService           filesync.FileSync
+	fileWatcherUpdateInterval time.Duration
 
 	coreService core.Service
 
@@ -48,38 +50,35 @@ type service struct {
 	updateReceiver     *updateReceiver
 }
 
-func New(
-	typeProvider typeprovider.SmartBlockTypeProvider,
-	dbProvider datastore.Datastore,
-	spaceService space.Service,
-	coreService core.Service,
-	fileSyncService filesync.FileSync,
-	nodeConfService nodeconf.Service,
-	fileStore filestore.FileStore,
-	picker getblock.Picker,
-	cfg *config.Config,
-	eventSender event.Sender,
-	fileWatcherUpdateInterval time.Duration,
-) Service {
-	fileStatusRegistry := newFileStatusRegistry(fileSyncService, fileStore, picker, fileWatcherUpdateInterval)
-	linkedFilesWatcher := newLinkedFilesWatcher(spaceService, fileStatusRegistry)
-	subObjectsWatcher := newSubObjectsWatcher()
-	updateReceiver := newUpdateReceiver(coreService, linkedFilesWatcher, subObjectsWatcher, nodeConfService, cfg, eventSender)
-	fileWatcher := newFileWatcher(spaceService, dbProvider, fileStatusRegistry, updateReceiver, fileWatcherUpdateInterval)
-	objectWatcher := newObjectWatcher(spaceService, updateReceiver)
+func New(fileWatcherUpdateInterval time.Duration) Service {
 	return &service{
-		spaceService:       spaceService,
-		typeProvider:       typeProvider,
-		coreService:        coreService,
-		fileWatcher:        fileWatcher,
-		objectWatcher:      objectWatcher,
-		subObjectsWatcher:  subObjectsWatcher,
-		linkedFilesWatcher: linkedFilesWatcher,
-		updateReceiver:     updateReceiver,
+		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.coreService = app.MustComponent[core.Service](a)
+	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
+
+	dbProvider := app.MustComponent[datastore.Datastore](a)
+	spaceService := app.MustComponent[space.Service](a)
+	coreService := app.MustComponent[core.Service](a)
+	nodeConfService := app.MustComponent[nodeconf.Service](a)
+	fileStore := app.MustComponent[filestore.FileStore](a)
+	picker := app.MustComponent[getblock.Picker](a)
+	cfg := app.MustComponent[*config.Config](a)
+	eventSender := app.MustComponent[event.Sender](a)
+
+	fileStatusRegistry := newFileStatusRegistry(s.fileSyncService, fileStore, picker, s.fileWatcherUpdateInterval)
+	s.linkedFilesWatcher = newLinkedFilesWatcher(spaceService, fileStatusRegistry)
+	s.subObjectsWatcher = newSubObjectsWatcher()
+	s.updateReceiver = newUpdateReceiver(coreService, s.linkedFilesWatcher, s.subObjectsWatcher, nodeConfService, cfg, eventSender)
+	s.fileWatcher = newFileWatcher(spaceService, dbProvider, fileStatusRegistry, s.updateReceiver, s.fileWatcherUpdateInterval)
+	s.objectWatcher = newObjectWatcher(spaceService, s.updateReceiver)
+
+	s.fileSyncService.OnUpload(s.OnFileUpload)
 	return s.fileWatcher.init()
 }
 

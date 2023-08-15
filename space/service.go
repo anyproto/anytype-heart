@@ -186,10 +186,15 @@ func (s *service) CreateSpace(ctx context.Context) (container commonspace.Space,
 	if err != nil {
 		return nil, fmt.Errorf("parse account's replication key: %w", err)
 	}
+	metadataPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return nil, fmt.Errorf("generate metadata key: %w", err)
+	}
 	payload := commonspace.SpaceCreatePayload{
 		SigningKey:     s.wallet.GetAccountPrivkey(),
 		MasterKey:      s.wallet.GetMasterKey(),
-		ReadKey:        crypto.NewAES().Bytes(),
+		ReadKey:        crypto.NewAES(),
+		MetadataKey:    metadataPrivKey,
 		SpaceType:      SpaceType,
 		ReplicationKey: replicationKey,
 	}

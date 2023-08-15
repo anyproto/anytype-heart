@@ -131,7 +131,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.relationService.FetchKey(s.SpaceID(), key)
+		relation, err2 := d.relationService.FetchRelationByKey(s.SpaceID(), key)
 		if err2 != nil {
 			return err2
 		}

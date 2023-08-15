@@ -1,0 +1,15 @@
+#!/bin/sh
+
+STAGED_GO_FILES=$(git diff --cached --name-only | grep ".go$")
+
+if [[ "$STAGED_GO_FILES" = "" ]]; then
+  exit 0
+fi
+
+for FILE in $STAGED_GO_FILES
+do
+  echo $FILE
+  gci write $FILE -s "standard,default,prefix(github.com/anyproto/anytype-heart),blank,dot"
+done
+
+exit 0

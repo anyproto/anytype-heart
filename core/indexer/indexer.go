@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -65,15 +66,8 @@ var (
 	ftIndexForceMinInterval = time.Second * 10
 )
 
-func New(
-	picker block.Picker,
-	spaceService space.Service,
-	fileService files.Service,
-) Indexer {
+func New() Indexer {
 	return &indexer{
-		picker:       picker,
-		spaceService: spaceService,
-		fileService:  fileService,
 		indexedFiles: &sync.Map{},
 	}
 }
@@ -137,6 +131,9 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.objectCreator = app.MustComponent[objectCreator](a)
 	i.syncStarter = app.MustComponent[syncStarter](a)
+	i.picker = app.MustComponent[block.Picker](a)
+	i.spaceService = app.MustComponent[space.Service](a)
+	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -181,6 +178,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
+	}
+	if info.SpaceID == "" || pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeySpaceId.String()) == "" {
+		log.Warnf("index spaceID is empty for object %s %v", info.Id, info.State.ObjectTypes())
 	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
@@ -263,7 +263,10 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			}
 		}
 
-		i.indexLinkedFiles(block.CacheOptsSetSpaceID(ctx, info.SpaceID), info.FileHashes)
+		// todo: remove this hack
+		if info.SpaceID != addr.AnytypeMarketplaceWorkspace {
+			i.indexLinkedFiles(block.CacheOptsSetSpaceID(ctx, info.SpaceID), info.FileHashes)
+		}
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}

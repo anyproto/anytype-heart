@@ -31,6 +31,8 @@ var logger = logging.Logger("import-csv")
 const (
 	defaultRelationName = "Field"
 	rowSourceName       = "row"
+	transposeSource     = "transpose"
+	transposeName       = "Transpose"
 )
 
 type CollectionStrategy struct {
@@ -41,17 +43,18 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, useFirstRowForRelations bool, progress process.Progress) (string, []*converter.Snapshot, error) {
+func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	details := converter.GetCommonDetails(path, "", "")
 	details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+	updateDetailsForTransposeCollection(details, params.TransposeRowsAndColumns)
 	_, _, st, err := c.collectionService.CreateCollection(details, nil)
 	if err != nil {
 		return "", nil, err
 	}
-	relations, relationsSnapshots, errRelationLimit := getDetailsFromCSVTable(csvTable, useFirstRowForRelations)
-	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(path, csvTable, relations, useFirstRowForRelations)
+	relations, relationsSnapshots, errRelationLimit := getDetailsFromCSVTable(csvTable, params.UseFirstRowForRelations)
+	objectsSnapshots, errRowLimit := getObjectsFromCSVRows(path, csvTable, relations, params)
 	targetIDs := make([]string, 0, len(objectsSnapshots))
 	for _, objectsSnapshot := range objectsSnapshots {
 		targetIDs = append(targetIDs, objectsSnapshot.Id)
@@ -69,6 +72,17 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, use
 		return "", nil, converter.ErrLimitExceeded
 	}
 	return snapshot.Id, snapshots, nil
+}
+
+func updateDetailsForTransposeCollection(details *types.Struct, transpose bool) {
+	if transpose {
+		source := pbtypes.GetString(details, bundle.RelationKeySourceFilePath.String())
+		source = source + string(filepath.Separator) + transposeSource
+		details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(source)
+		name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+		name = name + " " + transposeName
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
+	}
 }
 
 func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) ([]*model.Relation, []*converter.Snapshot, error) {
@@ -166,20 +180,20 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	return details
 }
 
-func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.Relation, useFirstRowForRelations bool) ([]*converter.Snapshot, error) {
+func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.Relation, params *pb.RpcObjectImportRequestCsvParams) ([]*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
 	numberOfObjectsLimit := len(csvTable)
 	var err error
 	if numberOfObjectsLimit > limitForRows {
 		err = converter.ErrLimitExceeded
 		numberOfObjectsLimit = limitForRows
-		if useFirstRowForRelations {
+		if params.UseFirstRowForRelations {
 			numberOfObjectsLimit++ // because first row is relations, so we need to add plus 1 row
 		}
 	}
 	for i := 0; i < numberOfObjectsLimit; i++ {
 		// skip first row if option is turned on
-		if i == 0 && useFirstRowForRelations {
+		if i == 0 && params.UseFirstRowForRelations {
 			continue
 		}
 		st := state.NewDoc("root", map[string]simple.Block{
@@ -189,7 +203,7 @@ func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.
 				},
 			}),
 		}).NewState()
-		details, relationLinks := getDetailsForObject(csvTable[i], relations, path, i)
+		details, relationLinks := getDetailsForObject(csvTable[i], relations, path, i, params.TransposeRowsAndColumns)
 		st.SetDetails(details)
 		st.AddRelationLinks(relationLinks...)
 		template.InitTemplate(st, template.WithTitle)
@@ -199,15 +213,21 @@ func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.
 	return snapshots, err
 }
 
-func buildSourcePath(path string, i int) string {
+func buildSourcePath(path string, i int, transpose bool) string {
+	var transposePart string
+	if transpose {
+		transposePart = string(filepath.Separator) + transposeSource
+	}
 	return path +
 		string(filepath.Separator) +
 		rowSourceName +
 		string(filepath.Separator) +
-		strconv.FormatInt(int64(i), 10)
+		strconv.FormatInt(int64(i), 10) +
+		string(filepath.Separator) +
+		transposePart
 }
 
-func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int) (*types.Struct, []*model.RelationLink) {
+func getDetailsForObject(relationsValues []string, relations []*model.Relation, path string, objectOrderIndex int, transpose bool) (*types.Struct, []*model.RelationLink) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	relationLinks := make([]*model.RelationLink, 0)
 	for j, value := range relationsValues {
@@ -221,7 +241,7 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 			Format: relation.Format,
 		})
 	}
-	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, objectOrderIndex))
+	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, objectOrderIndex, transpose))
 	return details, relationLinks
 }
 

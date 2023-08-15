@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
@@ -36,16 +37,16 @@ func New() Service {
 }
 
 type Service interface {
-	FetchKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
-	FetchKey(spaceId string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
-	ListAll(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error)
-	GetRelationId(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error)
+	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
+	FetchRelationByKey(spaceId string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
+	ListAllRelations(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error)
+	GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error)
 	// GetSystemTypeId is the optimized version of GetTypeId,
 	// cause all system types are precalculated
 	GetSystemTypeId(spaceId string, key bundle.TypeKey) (id string, err error)
-	GetTypeId(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
 
-	FetchLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
+	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	ValidateFormat(spaceId string, key string, v *types.Value) error
 	app.Component
 }
@@ -55,10 +56,15 @@ type service struct {
 	core        core.Service
 }
 
-func (s *service) GetTypeId(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
+func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
 	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STType, key.String())
 	if err != nil {
 		return "", err
+	}
+
+	// todo: it should be done via a virtual space
+	if spaceId == addr.AnytypeMarketplaceWorkspace {
+		return addr.BundledObjectTypeURLPrefix + key.String(), nil
 	}
 
 	return s.core.DeriveObjectId(ctx, spaceId, uk)
@@ -76,10 +82,15 @@ func (s *service) GetSystemTypeId(spaceId string, key bundle.TypeKey) (id string
 	}
 }
 
-func (s *service) GetRelationId(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {
+func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {
 	uk, err := uniquekey.NewUniqueKey(model.SmartBlockType_STRelation, key.String())
 	if err != nil {
 		return "", err
+	}
+
+	// todo: it should be done via a virtual space
+	if spaceId == addr.AnytypeMarketplaceWorkspace {
+		return addr.BundledRelationURLPrefix + key.String(), nil
 	}
 
 	return s.core.DeriveObjectId(ctx, spaceId, uk)
@@ -95,19 +106,19 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) FetchLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+func (s *service) FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
 	keys := make([]string, 0, len(links))
 	for _, l := range links {
 		keys = append(keys, l.Key)
 	}
-	return s.fetchKeys(spaceId, keys...)
+	return s.fetchRelationByKeys(spaceId, keys...)
 }
 
-func (s *service) FetchKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error) {
-	return s.fetchKeys(spaceId, keys...)
+func (s *service) FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error) {
+	return s.fetchRelationByKeys(spaceId, keys...)
 }
 
-func (s *service) fetchKeys(spaceId string, keys ...string) (relations []*relationutils.Relation, err error) {
+func (s *service) fetchRelationByKeys(spaceId string, keys ...string) (relations []*relationutils.Relation, err error) {
 	uks := make([]string, 0, len(keys))
 
 	for _, key := range keys {
@@ -141,11 +152,11 @@ func (s *service) fetchKeys(spaceId string, keys ...string) (relations []*relati
 	return
 }
 
-func (s *service) ListAll(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
-	return s.listAll(spaceId, opts...)
+func (s *service) ListAllRelations(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
+	return s.listAllRelations(spaceId, opts...)
 }
 
-func (s *service) listAll(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
+func (s *service) listAllRelations(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
 	filters := []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyLayout.String(),
@@ -181,11 +192,11 @@ type fetchOptions struct {
 
 type FetchOption func(options *fetchOptions)
 
-func (s *service) FetchKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
-	return s.fetchKey(spaceID, key, opts...)
+func (s *service) FetchRelationByKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
+	return s.fetchRelationKey(spaceID, key, opts...)
 }
 
-func (s *service) fetchKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
+func (s *service) fetchRelationKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
 	o := &fetchOptions{}
 	for _, apply := range opts {
 		apply(o)
@@ -220,7 +231,7 @@ func (s *service) fetchKey(spaceID string, key string, opts ...FetchOption) (rel
 }
 
 func (s *service) ValidateFormat(spaceID string, key string, v *types.Value) error {
-	r, err := s.FetchKey(spaceID, key)
+	r, err := s.FetchRelationByKey(spaceID, key)
 	if err != nil {
 		return err
 	}

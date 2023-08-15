@@ -396,7 +396,7 @@ func (s *Service) DeriveObject(
 		return fmt.Errorf("get space: %w", err)
 	}
 	_, err = s.getDerivedObject(ctx, space, &payload, newAccount, func(id string) *smartblock.InitContext {
-		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
+		return &smartblock.InitContext{Ctx: ctx, SpaceID: spaceID, State: state.NewDoc(id, nil).(*state.State)}
 	})
 	if err != nil {
 		log.With(zap.Error(err)).Debug("derived object with error")
@@ -454,6 +454,11 @@ func (s *Service) getDerivedObject(
 }
 
 func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+	err = s.objectStore.StoreSpaceID(id.ObjectID, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store space id: %w", err)
+	}
+
 	ctx = context.WithValue(ctx, optsKey, cacheOpts{
 		createOption: &treeCreateCache{
 			initFunc: initFunc,

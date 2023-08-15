@@ -32,7 +32,9 @@ func Test_GrouperTags(t *testing.T) {
 	a := new(app.App)
 	defer a.Close(context.Background())
 	tp := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	ds := objectstore.New(tp)
+	tp.EXPECT().Name().Return("typeprovider")
+	tp.EXPECT().Init(a).Return(nil)
+	ds := objectstore.New()
 	kanbanSrv := New()
 	err := a.Register(&config.DefaultConfig).
 		Register(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
@@ -40,6 +42,7 @@ func Test_GrouperTags(t *testing.T) {
 		Register(ftsearch.New()).
 		Register(ds).
 		Register(kanbanSrv).
+		Register(tp).
 		Start(context.Background())
 	require.NoError(t, err)
 

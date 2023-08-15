@@ -6,6 +6,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -21,19 +22,31 @@ import (
 
 const DefaultSetSource = bundle.TypeKeyPage
 
-type LayoutConverter struct {
+type LayoutConverter interface {
+	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	app.Component
+}
+
+type layoutConverter struct {
 	objectStore objectstore.ObjectStore
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
-func NewLayoutConverter(objectStore objectstore.ObjectStore, sbtProvider typeprovider.SmartBlockTypeProvider) LayoutConverter {
-	return LayoutConverter{
-		objectStore: objectStore,
-		sbtProvider: sbtProvider,
-	}
+func NewLayoutConverter() LayoutConverter {
+	return &layoutConverter{}
 }
 
-func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) Init(a *app.App) error {
+	c.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	return nil
+}
+
+func (c *layoutConverter) Name() string {
+	return "layout-converter"
+}
+
+func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
 	}
@@ -77,7 +90,7 @@ func (c *LayoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 	return c.fromAnyToAny(st)
 }
 
-func (c *LayoutConverter) fromAnyToAny(st *state.State) error {
+func (c *layoutConverter) fromAnyToAny(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
@@ -85,7 +98,7 @@ func (c *LayoutConverter) fromAnyToAny(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToBookmark(st *state.State) error {
+func (c *layoutConverter) fromAnyToBookmark(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
@@ -94,7 +107,7 @@ func (c *LayoutConverter) fromAnyToBookmark(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToTodo(st *state.State) error {
+func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	if err := st.SetAlign(model.Block_AlignLeft); err != nil {
 		return err
 	}
@@ -106,7 +119,7 @@ func (c *LayoutConverter) fromAnyToTodo(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
+func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -122,7 +135,7 @@ func (c *LayoutConverter) fromNoteToSet(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToSet(st *state.State) error {
+func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
 	addFeaturedRelationSetOf(st)
 	if len(source) == 0 {
@@ -146,7 +159,7 @@ func addFeaturedRelationSetOf(st *state.State) {
 	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 }
 
-func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
+func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 	dvBlock := st.Get(template.DataviewBlockId)
 	if dvBlock == nil {
 		return fmt.Errorf("dataview block is not found")
@@ -167,7 +180,7 @@ func (c *LayoutConverter) fromSetToCollection(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) listIDsFromSet(spaceId string, typesFromSet []string) ([]string, error) {
+func (c *layoutConverter) listIDsFromSet(spaceId string, typesFromSet []string) ([]string, error) {
 	records, _, err := c.objectStore.Query(database.Query{
 		Filters: generateFilters(spaceId, c.sbtProvider, typesFromSet),
 	})
@@ -181,7 +194,7 @@ func (c *LayoutConverter) listIDsFromSet(spaceId string, typesFromSet []string) 
 	return ids, nil
 }
 
-func (c *LayoutConverter) fromNoteToCollection(st *state.State) error {
+func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -194,13 +207,13 @@ func (c *LayoutConverter) fromNoteToCollection(st *state.State) error {
 	return c.fromAnyToCollection(st)
 }
 
-func (c *LayoutConverter) fromAnyToCollection(st *state.State) error {
+func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 	blockContent := template.MakeCollectionDataviewContent()
 	template.InitTemplate(st, template.WithDataview(*blockContent, false))
 	return nil
 }
 
-func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
+func (c *layoutConverter) fromNoteToAny(st *state.State) error {
 	name, ok := st.Details().Fields[bundle.RelationKeyName.String()]
 
 	if !ok || name.GetStringValue() == "" {
@@ -225,7 +238,7 @@ func (c *LayoutConverter) fromNoteToAny(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
+func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithNameToFirstBlock,
 		template.WithNoTitle,
@@ -234,7 +247,7 @@ func (c *LayoutConverter) fromAnyToNote(st *state.State) error {
 	return nil
 }
 
-func (c *LayoutConverter) removeRelationSetOf(st *state.State) {
+func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 	st.RemoveDetail(bundle.RelationKeySetOf.String())
 
 	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())

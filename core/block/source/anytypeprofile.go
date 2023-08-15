@@ -58,6 +58,8 @@ func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, e
 	d := v.getDetails()
 
 	s.SetDetails(d)
+	s.InjectDerivedDetails(&bundledTypeIdGetter{}, addr.AnytypeMarketplaceWorkspace, model.SmartBlockType_AnytypeProfile)
+
 	// todo: add object type
 	//s.SetObjectType(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
 	return s, nil

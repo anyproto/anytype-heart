@@ -36,6 +36,7 @@ service ClientCommands {
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);
     rpc AccountDelete (anytype.Rpc.Account.Delete.Request) returns (anytype.Rpc.Account.Delete.Response);
     rpc AccountSelect (anytype.Rpc.Account.Select.Request) returns (anytype.Rpc.Account.Select.Response);
+    rpc AccountEnableLocalNetworkSync (anytype.Rpc.Account.EnableLocalNetworkSync.Request) returns (anytype.Rpc.Account.EnableLocalNetworkSync.Response);
     rpc AccountStop (anytype.Rpc.Account.Stop.Request) returns (anytype.Rpc.Account.Stop.Response);
     rpc AccountMove (anytype.Rpc.Account.Move.Request) returns (anytype.Rpc.Account.Move.Response);
     rpc AccountConfigUpdate (anytype.Rpc.Account.ConfigUpdate.Request) returns (anytype.Rpc.Account.ConfigUpdate.Response);

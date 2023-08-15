@@ -96,8 +96,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		}
 	}
 
-	// todo: pass the relationservice
-	s.InjectDerivedDetails(nil)
 	return s
 }
 
@@ -802,7 +800,5 @@ func migrateAddMissingUniqueKey(sbType model.SmartBlockType, snapshot *pb.Change
 		return
 	}
 
-	if v, ok := uk.(uniquekey.UniqueKeyInternal); ok {
-		snapshot.Data.Key = v.InternalKey()
-	}
+	snapshot.Data.Key = uk.InternalKey()
 }

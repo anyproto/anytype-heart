@@ -8,7 +8,7 @@ import (
 )
 
 func TestService_DataviewRestrictions(t *testing.T) {
-	rest := New(nil, nil)
+	rest := New()
 	assert.True(t, rest.GetRestrictions(&restrictionHolder{
 		id:     bundle.TypeKeyAudio.URL(),
 		tp:     model.SmartBlockType_SubObject,

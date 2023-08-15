@@ -5,19 +5,23 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/golang/mock/gomock"
+	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/converter/mock_converter"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_ImportSuccess(t *testing.T) {
@@ -602,4 +606,73 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
+}
+
+func TestImport_replaceRelationKeyWithNew(t *testing.T) {
+	t.Run("no matching relation id in oldIDToNew map", func(t *testing.T) {
+		// given
+		i := Import{}
+		option := &cv.Snapshot{
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String("key"),
+						},
+					},
+				},
+			},
+			SbType: smartblock.SmartBlockTypeSubObject,
+		}
+		oldIDToNew := make(map[string]string, 0)
+
+		// when
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
+
+		// then
+		assert.Equal(t, "key", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+	})
+	t.Run("oldIDToNew map have relation id", func(t *testing.T) {
+		// given
+		i := Import{}
+		option := &cv.Snapshot{
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String("key"),
+						},
+					},
+				},
+			},
+			SbType: smartblock.SmartBlockTypeSubObject,
+		}
+		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
+
+		// when
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
+
+		// then
+		assert.Equal(t, "newkey", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+	})
+
+	t.Run("no details", func(t *testing.T) {
+		// given
+		i := Import{}
+		option := &cv.Snapshot{
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: nil,
+				},
+			},
+			SbType: smartblock.SmartBlockTypeSubObject,
+		}
+		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
+
+		// when
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
+
+		// then
+		assert.Nil(t, option.Snapshot.Data.Details)
+	})
 }

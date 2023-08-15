@@ -23,12 +23,7 @@ var smartBlockTypeToKey = map[model.SmartBlockType]string{
 type UniqueKey interface {
 	String() string
 	SmartblockType() model.SmartBlockType
-}
-
-type UniqueKeyInternal interface {
-	String() string
-	SmartblockType() model.SmartBlockType
-	InternalKey() string
+	InternalKey() string // underlying key, e.g. for "ot-page" it's "page"
 }
 
 type uniqueKey struct {

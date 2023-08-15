@@ -333,6 +333,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
+	ctx.State.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
 	return
 }
 
@@ -379,14 +380,9 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	sb.updateRestrictions()
 
-	details, objectTypes, err := sb.fetchMeta()
+	details, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
-	}
-	// omit relations
-	// todo: switch to other pb type
-	for _, ot := range objectTypes {
-		ot.RelationLinks = nil
 	}
 
 	undo, redo := sb.History().Counters()
@@ -407,7 +403,7 @@ func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	}, nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, objectTypes []*model.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err error) {
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -455,11 +451,6 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		addObjectTypesByDetails(rec.Details)
 	}
 
-	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
-	if err != nil {
-		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
-		err = nil
-	}
 	go sb.metaListener(recordsCh)
 	return
 }
@@ -571,7 +562,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			relId, err := sb.relationService.GetRelationId(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
+			relId, err := sb.relationService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
 				continue
@@ -685,6 +676,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 	}
+	s.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
 	beforeApplyStateTime := time.Now()
 
 	migrationVersionUpdated := true
@@ -696,6 +688,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
+
 	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
@@ -811,7 +804,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	s.InjectDerivedDetails(sb.relationService)
+	s.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -889,7 +882,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.relationService.FetchKeys(s.SpaceID(), relationKeys...)
+	relations, err := sb.relationService.FetchRelationByKeys(s.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -909,10 +902,6 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()) == "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(sb.spaceID))
-	}
-
 	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
 		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.SpaceID(), sb.Id())
 		if wsId != "" {
@@ -1021,7 +1010,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
-	s.InjectDerivedDetails(sb.relationService)
+	s.InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -1049,7 +1038,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	d.(*state.State).InjectDerivedDetails(sb.relationService)
+	d.(*state.State).InjectDerivedDetails(sb.relationService, sb.spaceID, sb.Type())
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1252,7 +1241,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.RelationService().FetchLinks(sb.spaceID, links)
+	rels, _ := sb.RelationService().FetchRelationByLinks(sb.spaceID, links)
 	return rels
 }
 

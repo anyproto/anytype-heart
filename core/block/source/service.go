@@ -88,7 +88,9 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 }
 
 func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
-
+	if spaceID == "" {
+		log.With("id", id).Errorf("NewSource spaceID is empty")
+	}
 	err = s.objectStore.StoreSpaceID(id, spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("store spaceID: %w", err)

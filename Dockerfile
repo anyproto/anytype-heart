@@ -1,4 +1,4 @@
-FROM golang:1.19 AS builder
+FROM golang:1.21 AS builder
 MAINTAINER Anytype <dev@anytype.io>
 
 # This is (in large part) copied (with love) from

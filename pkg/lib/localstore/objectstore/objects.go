@@ -60,10 +60,8 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) ObjectStore {
-	return &dsObjectStore{
-		sbtProvider: sbtProvider,
-	}
+func New() ObjectStore {
+	return &dsObjectStore{}
 }
 
 type SourceDetailsFromID interface {
@@ -71,6 +69,7 @@ type SourceDetailsFromID interface {
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	src := a.Component("source")
 	if src != nil {
 		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
@@ -151,10 +150,14 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
+	// deprecated, use relationService
 	GetRelationByID(id string) (relation *model.Relation, err error)
+	// deprecated, use relatinoService
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
+	// deprecated, use relatinoService
 	GetObjectType(url string) (*model.ObjectType, error)
+	// deprecated, use relatinoService
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error)
 
@@ -688,7 +691,7 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 	}
 
 	ot := s.extractObjectTypeFromDetails(details.Details, id)
-	ot.Key = uk.(uniquekey.UniqueKeyInternal).InternalKey()
+	ot.Key = uk.InternalKey()
 	return ot, nil
 }
 
@@ -726,7 +729,7 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (
 
 func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {
 	objectType := &model.ObjectType{}
-	s.fillObjectTypeWithRecommendedRelations(details, objectType)
+	//s.fillObjectTypeWithRecommendedRelations(details, objectType)
 	objectType.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
 	objectType.Layout = model.ObjectTypeLayout(int(pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())))
 	objectType.IconEmoji = pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String())
@@ -741,6 +744,7 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url 
 func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.Struct, objectType *model.ObjectType) {
 	// relationKeys := objectInfos[0].RelationKeys
 	for _, relationID := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		// todo: fix or remove
 		relationKey, err := pbtypes.BundledRelationIdToKey(relationID)
 		if err == nil {
 			//nolint:govet

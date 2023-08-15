@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -225,12 +225,11 @@ func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) e
 		}
 		st := b.NewState()
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		commonOperations.SetLayoutInState(st, model.ObjectType_set)
-		setTypeID, err := s.relationService.GetSystemTypeId(st.SpaceID(), bundle.TypeKeySet)
+		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_set)
 		if err != nil {
-			return fmt.Errorf("get set type id: %w", err)
+			return fmt.Errorf("set layout: %w", err)
 		}
-		st.SetObjectType(setTypeID)
+		st.SetObjectType(bundle.TypeKeySet.String())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

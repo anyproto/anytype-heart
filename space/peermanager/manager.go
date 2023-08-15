@@ -19,14 +19,22 @@ import (
 
 type clientPeerManager struct {
 	spaceId            string
-	responsiblePeerIds []string
+	responsibleNodeIds []string
 	p                  *provider
 	peerStore          peerstore.PeerStore
 	sync.Mutex
 }
 
+func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer, err error) {
+	p, err := n.p.pool.GetOneOf(ctx, n.responsibleNodeIds)
+	if err == nil {
+		peers = []peer.Peer{p}
+	}
+	return
+}
+
 func (n *clientPeerManager) Init(_ *app.App) (err error) {
-	n.responsiblePeerIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
+	n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 	return
 }
 
@@ -57,7 +65,7 @@ func (n *clientPeerManager) Broadcast(ctx context.Context, msg *spacesyncproto.O
 }
 
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
-	p, err := n.p.commonPool.GetOneOf(ctx, n.responsiblePeerIds)
+	p, err := n.p.pool.GetOneOf(ctx, n.responsibleNodeIds)
 	if err == nil {
 		peers = []peer.Peer{p}
 	}
@@ -66,7 +74,7 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 		if slices.ContainsFunc(peers, func(p peer.Peer) bool { return p.Id() == peerId }) {
 			continue
 		}
-		clientPeer, err := n.p.commonPool.Get(ctx, peerId)
+		clientPeer, err := n.p.pool.Get(ctx, peerId)
 		if err != nil {
 			log.Debug("removing peer", zap.String("peerId", peerId), zap.Error(err))
 			n.peerStore.RemoveLocalPeer(peerId)
@@ -91,7 +99,7 @@ func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (pe
 func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	var peerIds []string
 	// lookup in common pool for existing connection
-	p, nodeErr := n.p.commonPool.GetOneOf(ctx, n.responsiblePeerIds)
+	p, nodeErr := n.p.pool.GetOneOf(ctx, n.responsibleNodeIds)
 	if nodeErr != nil {
 		log.Warn("failed to get responsible peer from common pool", zap.Error(nodeErr))
 	} else {
