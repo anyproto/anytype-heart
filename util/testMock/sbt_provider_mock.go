@@ -8,8 +8,9 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	gomock "go.uber.org/mock/gomock"
+
+	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 // MockSmartBlockTypeProvider is a mock of SmartBlockTypeProvider interface.
@@ -49,21 +50,6 @@ func (mr *MockSmartBlockTypeProviderMockRecorder) Init(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Init), arg0)
 }
 
-// Map mocks base method.
-func (m *MockSmartBlockTypeProvider) Map(arg0 string, arg1 []string) (map[smartblock.SmartBlockType][]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Map", arg0, arg1)
-	ret0, _ := ret[0].(map[smartblock.SmartBlockType][]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Map indicates an expected call of Map.
-func (mr *MockSmartBlockTypeProviderMockRecorder) Map(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Map", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Map), arg0, arg1)
-}
-
 // Name mocks base method.
 func (m *MockSmartBlockTypeProvider) Name() string {
 	m.ctrl.T.Helper()
@@ -76,6 +62,21 @@ func (m *MockSmartBlockTypeProvider) Name() string {
 func (mr *MockSmartBlockTypeProviderMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Name))
+}
+
+// PartitionIDsByType mocks base method.
+func (m *MockSmartBlockTypeProvider) PartitionIDsByType(arg0 string, arg1 []string) (map[smartblock.SmartBlockType][]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PartitionIDsByType", arg0, arg1)
+	ret0, _ := ret[0].(map[smartblock.SmartBlockType][]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PartitionIDsByType indicates an expected call of PartitionIDsByType.
+func (mr *MockSmartBlockTypeProviderMockRecorder) PartitionIDsByType(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PartitionIDsByType", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).PartitionIDsByType), arg0, arg1)
 }
 
 // RegisterStaticType mocks base method.

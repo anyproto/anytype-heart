@@ -3,15 +3,15 @@ package converter
 import (
 	"fmt"
 
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/any-sync/app"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -272,7 +272,7 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 
 func generateFilters(spaceId string, sbtProvider typeprovider.SmartBlockTypeProvider, typesAndRelations []string) []*model.BlockContentDataviewFilter {
 	var filters []*model.BlockContentDataviewFilter
-	m, err := sbtProvider.Map(spaceId, typesAndRelations)
+	m, err := sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
 	if err != nil {
 		// todo: log error
 		return nil

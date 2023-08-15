@@ -37,10 +37,10 @@ type SmartBlockTypeProvider interface {
 	app.Component
 	Type(spaceID string, id string) (smartblock.SmartBlockType, error)
 	RegisterStaticType(id string, tp smartblock.SmartBlockType)
-	Map(spaceId string, ids []string) (map[smartblock.SmartBlockType][]string, error)
+	PartitionIDsByType(spaceId string, ids []string) (map[smartblock.SmartBlockType][]string, error)
 }
 
-func (p *provider) Map(spaceId string, ids []string) (map[smartblock.SmartBlockType][]string, error) {
+func (p *provider) PartitionIDsByType(spaceId string, ids []string) (map[smartblock.SmartBlockType][]string, error) {
 	result := map[smartblock.SmartBlockType][]string{}
 	for _, id := range ids {
 		t, err := p.Type(spaceId, id)

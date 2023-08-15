@@ -2,7 +2,6 @@ package subscription
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -485,23 +484,25 @@ func (s *service) onChange(entries []*entry) time.Duration {
 }
 
 func (s *service) filtersFromSource(spaceID string, sources []string) (filter.Filter, error) {
-	m, err := s.sbtProvider.Map(spaceID, sources)
+	idsByType, err := s.sbtProvider.PartitionIDsByType(spaceID, sources)
 	if err != nil {
 		return nil, err
 	}
 	var relTypeFilter filter.OrFilters
-	if len(m[smartblock.SmartBlockTypeObjectType]) > 0 {
+	if len(idsByType[smartblock.SmartBlockTypeObjectType]) > 0 {
 		relTypeFilter = append(relTypeFilter, filter.In{
 			Key:   bundle.RelationKeyType.String(),
-			Value: pbtypes.StringList(m[smartblock.SmartBlockTypeObjectType]).GetListValue(),
+			Value: pbtypes.StringList(idsByType[smartblock.SmartBlockTypeObjectType]).GetListValue(),
 		})
 	}
 
-	for _, key := range m[smartblock.SmartBlockTypeRelation] {
-		// todo: fix this
-		return nil, errors.New("relation filter not supported")
+	for _, relationID := range idsByType[smartblock.SmartBlockTypeRelation] {
+		relationDetails, err := s.objectStore.GetDetails(relationID)
+		if err != nil {
+			return nil, fmt.Errorf("get relation %s details: %w", relationDetails, err)
+		}
 		relTypeFilter = append(relTypeFilter, filter.Exists{
-			Key: key,
+			Key: pbtypes.GetString(relationDetails.Details, bundle.RelationKeyRelationKey.String()),
 		})
 	}
 	return relTypeFilter, nil
