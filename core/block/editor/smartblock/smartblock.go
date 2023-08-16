@@ -935,7 +935,7 @@ func (sb *smartBlock) injectWorkspaceID(s *state.State) {
 	}
 	wsID, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
 	if wsID != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsID))
 	} else if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDeleted.String()) && err != core.ErrObjectDoesNotBelongToWorkspace {
 		log.With("objectID", sb.Id()).Warnf("injectLocalDetails empty workspace: %v", err)
 	}
