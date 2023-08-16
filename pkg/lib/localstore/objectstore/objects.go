@@ -323,6 +323,11 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Value:       pbtypes.String(key),
 			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
 		},
 	}
 

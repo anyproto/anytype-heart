@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/stretchr/testify/mock"
 )
 
 func Test_GrouperTags(t *testing.T) {
@@ -30,10 +31,10 @@ func Test_GrouperTags(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	a := new(app.App)
-	defer a.Close(context.Background())
 	tp := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	tp.EXPECT().Name().Return("typeprovider")
 	tp.EXPECT().Init(a).Return(nil)
+
 	ds := objectstore.New()
 	kanbanSrv := New()
 	err := a.Register(&config.DefaultConfig).
@@ -46,13 +47,16 @@ func Test_GrouperTags(t *testing.T) {
 		Start(context.Background())
 	require.NoError(t, err)
 
-	tp.EXPECT().Type("", "rel-tag").Return(smartblock.SmartBlockTypeSubObject, nil)
+	// Just catch-all
+	tp.EXPECT().Type("", mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
+
 	require.NoError(t, ds.UpdateObjectDetails("rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":             pbtypes.String("rel-tag"),
 			"relationKey":    pbtypes.String("tag"),
 			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
 			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
+			"layout":         pbtypes.Int64(int64(model.ObjectType_relation)),
 		},
 	}))
 
@@ -65,6 +69,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag1),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 
@@ -73,6 +78,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag2),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 	require.NoError(t, ds.UpdateObjectDetails(idTag3, &types.Struct{
@@ -80,6 +86,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag3),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 
