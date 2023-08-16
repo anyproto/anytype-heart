@@ -120,7 +120,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		})
 		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
 			Id:     addr.RelationKeyToIdPrefix + id,
-			SbType: smartblock.SmartBlockTypePage,
+			SbType: smartblock.SmartBlockTypeRelation,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 				Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
 				ObjectTypes: []string{bundle.TypeKeyRelation.String()},
