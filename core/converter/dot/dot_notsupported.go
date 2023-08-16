@@ -8,11 +8,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
-func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
+func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider, _ relation.Service) converter.MultiConverter {
 	return &dot{}
 }
 
