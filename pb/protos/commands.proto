@@ -5361,7 +5361,7 @@ message Rpc {
             }
         }
 
-        message System {
+        message StackGoroutines {
             message Request {
                 string path = 1;
             }
