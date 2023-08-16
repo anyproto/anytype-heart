@@ -41,6 +41,14 @@ func New(sbt model.SmartBlockType, key string) (UniqueKey, error) {
 	}, nil
 }
 
+func MustUniqueKey(sbt model.SmartBlockType, key string) UniqueKey {
+	uk, err := New(sbt, key)
+	if err != nil {
+		panic(err)
+	}
+	return uk
+}
+
 func UnmarshalFromString(raw string) (UniqueKey, error) {
 	parts := strings.Split(raw, separator)
 	if raw == "" || len(parts) > 2 {
