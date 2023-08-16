@@ -198,7 +198,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 	for _, snapshot := range sn.Snapshots {
 		// only objects created from rows
 		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
-			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) &&
+			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.String()) &&
 			pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()) == "transpose Transpose" {
 			collection = snapshot
 		}

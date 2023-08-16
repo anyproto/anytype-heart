@@ -176,6 +176,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithDescription,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 				)
+				// TODO case for relationOption?
 			default:
 				templates = append(templates,
 					template.WithTitle,
