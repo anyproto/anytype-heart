@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -200,17 +201,21 @@ func TestGetObjectType(t *testing.T) {
 		s := newStoreFixture(t)
 
 		id := "id1"
+		relationID := "derivedFrom(assignee)"
+		uniqueKey, err := uniquekey.New(model.SmartBlockType_STType, "note")
+		require.NoError(t, err)
 		obj := testObject{
 			bundle.RelationKeyId:                   pbtypes.String(id),
 			bundle.RelationKeyType:                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
 			bundle.RelationKeyName:                 pbtypes.String("my note"),
-			bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{bundle.RelationKeyAssignee.URL()}),
+			bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{relationID}),
 			bundle.RelationKeyRecommendedLayout:    pbtypes.Int64(int64(model.ObjectType_note)),
 			bundle.RelationKeyIconEmoji:            pbtypes.String("📝"),
 			bundle.RelationKeyIsArchived:           pbtypes.Bool(true),
+			bundle.RelationKeyUniqueKey:            pbtypes.String(uniqueKey.Marshal()),
 		}
 		relObj := testObject{
-			bundle.RelationKeyId:          pbtypes.String("id2"),
+			bundle.RelationKeyId:          pbtypes.String(relationID),
 			bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAssignee.String()),
 			bundle.RelationKeyType:        pbtypes.String(bundle.TypeKeyRelation.URL()),
 		}
@@ -228,6 +233,7 @@ func TestGetObjectType(t *testing.T) {
 			IconEmoji:  "📝",
 			IsArchived: true,
 			Types:      []model.SmartBlockType{model.SmartBlockType_Page},
+			Key:        "note",
 			RelationLinks: []*model.RelationLink{
 				{
 					Key:    bundle.RelationKeyAssignee.String(),
@@ -286,6 +292,7 @@ func makeRelationOptionObject(id, name, color, relationKey string) testObject {
 		bundle.RelationKeyName:                pbtypes.String(name),
 		bundle.RelationKeyRelationOptionColor: pbtypes.String(color),
 		bundle.RelationKeyRelationKey:         pbtypes.String(relationKey),
+		bundle.RelationKeyLayout:              pbtypes.Int64(int64(model.ObjectType_relationOption)),
 	}
 }
 
@@ -293,7 +300,7 @@ func TestGetRelationById(t *testing.T) {
 	t.Run("relation is not found", func(t *testing.T) {
 		s := newStoreFixture(t)
 
-		_, err := s.GetRelationByID(bundle.RelationKeyTag.URL())
+		_, err := s.GetRelationByID("relationID")
 		require.Error(t, err)
 	})
 
@@ -309,13 +316,14 @@ func TestGetRelationById(t *testing.T) {
 	t.Run("relation is found", func(t *testing.T) {
 		s := newStoreFixture(t)
 
-		rel := &relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyName)}
-		rel.Id = bundle.RelationKeyName.URL()
-		relObject := rel.ToStruct()
-		err := s.UpdateObjectDetails(rel.Id, relObject)
+		relation := &relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyName)}
+		relationID := "derivedFrom(name)"
+		relation.Id = relationID
+		relObject := relation.ToStruct()
+		err := s.UpdateObjectDetails(relation.Id, relObject)
 		require.NoError(t, err)
 
-		got, err := s.GetRelationByID(bundle.RelationKeyName.URL())
+		got, err := s.GetRelationByID(relationID)
 		require.NoError(t, err)
 		assert.Equal(t, relationutils.RelationFromStruct(relObject).Relation, got)
 	})
