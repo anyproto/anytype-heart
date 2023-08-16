@@ -821,9 +821,6 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
 	if mw.app == nil {
 		return response(pb.RpcObjectImportResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("user didn't log in"))
 	}
