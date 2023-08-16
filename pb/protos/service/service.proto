@@ -264,7 +264,7 @@ service ClientCommands {
     rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
     rpc DebugTreeHeads (anytype.Rpc.Debug.TreeHeads.Request) returns (anytype.Rpc.Debug.TreeHeads.Response);
     rpc DebugSpaceSummary (anytype.Rpc.Debug.SpaceSummary.Request) returns (anytype.Rpc.Debug.SpaceSummary.Response);
-    rpc DebugSystem (anytype.Rpc.Debug.System.Request) returns (anytype.Rpc.Debug.System.Response);
+    rpc DebugStackGoroutines (anytype.Rpc.Debug.StackGoroutines.Request) returns (anytype.Rpc.Debug.StackGoroutines.Response);
     rpc DebugExportLocalstore (anytype.Rpc.Debug.ExportLocalstore.Request) returns (anytype.Rpc.Debug.ExportLocalstore.Response);
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);

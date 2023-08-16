@@ -101,15 +101,15 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 	return response(nil, spaceSummary)
 }
 
-func (mw *Middleware) DebugSystem(_ context.Context, req *pb.RpcDebugSystemRequest) *pb.RpcDebugSystemResponse {
-	response := func(err error) (res *pb.RpcDebugSystemResponse) {
-		res = &pb.RpcDebugSystemResponse{
-			Error: &pb.RpcDebugSystemResponseError{
-				Code: pb.RpcDebugSystemResponseError_NULL,
+func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
+	response := func(err error) (res *pb.RpcDebugStackGoroutinesResponse) {
+		res = &pb.RpcDebugStackGoroutinesResponse{
+			Error: &pb.RpcDebugStackGoroutinesResponseError{
+				Code: pb.RpcDebugStackGoroutinesResponseError_NULL,
 			},
 		}
 		if err != nil {
-			res.Error.Code = pb.RpcDebugSystemResponseError_UNKNOWN_ERROR
+			res.Error.Code = pb.RpcDebugStackGoroutinesResponseError_UNKNOWN_ERROR
 			res.Error.Description = err.Error()
 		}
 		return res
