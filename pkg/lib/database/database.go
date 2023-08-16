@@ -87,9 +87,9 @@ func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
 func compose(
 	filters []*model.BlockContentDataviewFilter,
 	store ObjectStore,
-) (filter.AndFilters, error) {
-	var filterObj filter.AndFilters
-	qryFilter, err := filter.MakeAndFilter(filters, store)
+) (AndFilters, error) {
+	var filterObj AndFilters
+	qryFilter, err := MakeAndFilter(filters, store)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func compose(
 	return filterObj, nil
 }
 
-func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsGetter) filter.SetOrder {
+func extractOrder(sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
