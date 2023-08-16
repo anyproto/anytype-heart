@@ -27,13 +27,13 @@ func TestService_DataviewRestrictions(t *testing.T) {
 	}).Dataview)
 
 	assert.Nil(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeyType.URL(),
+		id:     bundle.RelationKeyType.String(),
 		tp:     model.SmartBlockType_SubObject,
 		layout: model.ObjectType_relation,
 	}).Dataview)
 
 	assert.Nil(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeySizeInBytes.URL(),
+		id:     bundle.RelationKeySizeInBytes.String(),
 		tp:     model.SmartBlockType_SubObject,
 		layout: model.ObjectType_relation,
 	}).Dataview)

@@ -112,7 +112,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	))
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		id:         bundle.RelationKeyName.URL(),
+		id:         bundle.RelationKeyName.String(),
 		tp:         model.SmartBlockType_SubObject,
 		layout:     model.ObjectType_relation,
 		objectType: bundle.TypeKeyRelation.URL(),
