@@ -51,7 +51,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 
 	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
 	assert.NotEmpty(t, res.Snapshots[1].Snapshot.Data.ObjectTypes)
-	assert.Equal(t, res.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+	assert.Equal(t, res.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 }
 
 func Test_GetSnapshotsFailedReadZip(t *testing.T) {

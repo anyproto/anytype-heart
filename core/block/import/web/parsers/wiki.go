@@ -54,7 +54,7 @@ func (w *DumbWikiParser) ParseUrl(url string) (*model.SmartBlockSnapshotBase, er
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():   pbtypes.String(name),
 			bundle.RelationKeySource.String(): pbtypes.String(url),
-			bundle.RelationKeyType.String():   pbtypes.String(bundle.TypeKeyBookmark.URL()),
+			bundle.RelationKeyType.String():   pbtypes.String(bundle.TypeKeyBookmark.String()),
 			bundle.RelationKeySource.String(): pbtypes.String(url),
 		},
 	}

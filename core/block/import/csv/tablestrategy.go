@@ -22,7 +22,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, useFirstRowForHeader bool, progress process.Progress) (string, []*converter.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*converter.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -32,7 +32,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, useFirst
 	}).NewState()
 
 	if len(csvTable) != 0 {
-		err := c.createTable(st, csvTable, useFirstRowForHeader)
+		err := c.createTable(st, csvTable, params.UseFirstRowForRelations)
 		if err != nil {
 			return "", nil, err
 		}
@@ -42,7 +42,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, useFirst
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
+		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
 		Collections:   st.Store(),
 		RelationLinks: st.GetRelationLinks(),
 	}
@@ -119,6 +119,9 @@ func (c *TableStrategy) createEmptyHeader(st *state.State, tableID string, colum
 
 func (c *TableStrategy) createCells(columns []string, st *state.State, rowID string, columnIDs []string) error {
 	for i := 0; i < len(columns); i++ {
+		if i >= len(columnIDs) {
+			continue
+		}
 		textBlock := &model.Block{
 			Id: uuid.New().String(),
 			Content: &model.BlockContentOfText{

@@ -1,12 +1,14 @@
 package basic
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -81,7 +83,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 		if err := bs.addRelationLink(detail.Key, st); err != nil {
 			return nil, err
 		}
-		if err := bs.relationService.ValidateFormat(detail.Key, detail.Value); err != nil {
+		if err := bs.relationService.ValidateFormat(st.SpaceID(), detail.Key, detail.Value); err != nil {
 			return nil, fmt.Errorf("failed to validate relation: %w", err)
 		}
 	}
@@ -105,7 +107,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 
 func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
 	// TODO: add relation.WithWorkspaceId(workspaceId) filter
-	rel, err := bs.relationService.FetchKey(relationKey)
+	rel, err := bs.relationService.FetchRelationByKey(st.SpaceID(), relationKey)
 	if err != nil || rel == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
@@ -148,22 +150,6 @@ func (bs *basic) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (
 
 func (bs *basic) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
 	s := bs.NewStateCtx(ctx)
-
-	var toLayout model.ObjectTypeLayout
-	if len(objectTypes) > 0 {
-		//nolint:govet
-		ot, err := bs.objectStore.GetObjectType(objectTypes[0])
-		if err != nil {
-			return err
-		}
-
-		toLayout = ot.Layout
-	}
-
-	if err = bs.SetLayoutInState(s, toLayout); err != nil {
-		return fmt.Errorf("convert layout: %w", err)
-	}
-
 	if err = bs.SetObjectTypesInState(s, objectTypes); err != nil {
 		return
 	}
@@ -184,6 +170,10 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
 
+	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
+		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
+	}
+
 	otypes, err := bs.objectStore.GetObjectTypes(objectTypes)
 	if err != nil {
 		return
@@ -192,15 +182,36 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 		return fmt.Errorf("object types not found")
 	}
 
-	ot := otypes[len(otypes)-1]
 	// nolint:errcheck
 	prevType, _ := bs.objectStore.GetObjectType(s.ObjectType())
+	ots, err := bs.objectStore.GetObjectTypes(objectTypes)
+	if err != nil {
+		return err
+	}
+	var objectTypeKeys = make([]string, 0, len(ots))
+	if len(ots) > 1 {
+		//nolint:govet
+		log.With("objectID", s.RootId()).Warnf("set object types: more than one object type, setting layout to the first one")
+	}
+	if len(ots) == 0 {
+		return fmt.Errorf("object types not found")
+	}
+	toLayout := ots[0].Layout
+	for _, ot := range ots {
+		objectTypeKeys = append(objectTypeKeys, ot.Key)
+	}
 
-	s.SetObjectTypes(objectTypes)
+	if err = bs.SetLayoutInState(s, toLayout); err != nil {
+		return fmt.Errorf("convert layout: %w", err)
+	}
+
+	s.SetObjectTypes(objectTypeKeys)
+
+	// todo: clean up this mess
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
 		prevType == nil || // if we have no type set for some reason or it is missing
 		float64(prevType.Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
-		if err = bs.SetLayoutInState(s, ot.Layout); err != nil {
+		if err = bs.SetLayoutInState(s, toLayout); err != nil {
 			return
 		}
 	}
@@ -208,6 +219,14 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 }
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
+		return fmt.Errorf("layout change is restricted for object '%s': %v", bs.Id(), err)
+	}
+
+	return bs.SetLayoutInStateAndIgnoreRestriction(s, toLayout)
+}
+
+func (bs *basic) SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
 	fromLayout, _ := s.Layout()
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))

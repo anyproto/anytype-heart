@@ -9,12 +9,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) Query(sch database.Schema, q database.Query) ([]database.Record, int, error) {
-	filters, err := s.buildQuery(sch, q)
+func (s *dsObjectStore) Query(q database.Query) ([]database.Record, int, error) {
+	filters, err := s.buildQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
@@ -67,8 +68,8 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	return records, nil
 }
 
-func (s *dsObjectStore) buildQuery(sch database.Schema, q database.Query) (*database.Filters, error) {
-	filters, err := database.NewFilters(q, sch, s)
+func (s *dsObjectStore) buildQuery(q database.Query) (*database.Filters, error) {
+	filters, err := database.NewFilters(q, s)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
@@ -124,7 +125,7 @@ func iterateOverAndFilters(fs []database.Filter) (spaceID string) {
 
 // TODO: objstore: no one uses total
 func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
-	filters, err := s.buildQuery(nil, q)
+	filters, err := s.buildQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}

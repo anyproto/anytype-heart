@@ -16,9 +16,11 @@ type TypeKey string
 func (tk TypeKey) String() string {
 	return string(tk)
 }
+
 func (tk TypeKey) URL() string {
 	return string(addr.ObjectTypeKeyToIdPrefix + tk)
 }
+
 func (tk TypeKey) BundledURL() string {
 	return string(addr.BundledObjectTypeURLPrefix + tk)
 }

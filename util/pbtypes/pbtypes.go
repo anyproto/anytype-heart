@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -328,16 +328,12 @@ func ValueToInterface(v *types.Value) interface{} {
 	}
 }
 
-func RelationIdToKey(id string) (string, error) {
-	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
-	}
+// deprecated
+func BundledRelationIdToKey(id string) (string, error) {
 	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return strings.TrimPrefix(id, addr.BundledRelationURLPrefix), nil
 	}
-	if strings.HasPrefix(id, addr.OldIndexedRelationURLPrefix) {
-		return strings.TrimPrefix(id, addr.OldIndexedRelationURLPrefix), nil
-	}
+
 	return "", fmt.Errorf("incorrect id format")
 }
 
@@ -555,4 +551,16 @@ func IsStructEmpty(s *types.Struct) bool {
 		return true
 	}
 	return false
+}
+
+// deprecated
+func RelationIdToKey(id string) (string, error) {
+	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+		return strings.TrimPrefix(id, addr.RelationKeyToIdPrefix), nil
+	}
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		return strings.TrimPrefix(id, addr.BundledRelationURLPrefix), nil
+	}
+
+	return "", fmt.Errorf("incorrect id format")
 }

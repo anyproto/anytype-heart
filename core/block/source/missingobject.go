@@ -52,6 +52,7 @@ func (m *missingObject) ReadDoc(ctx context.Context, receiver ChangeReceiver, em
 	d := m.getDetails()
 
 	s.SetDetails(d)
+
 	return s, nil
 }
 

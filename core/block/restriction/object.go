@@ -2,10 +2,10 @@ package restriction
 
 import (
 	"fmt"
-	"strings"
+	"errors"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -82,10 +82,18 @@ var (
 		},
 		model.ObjectType_image: objRestrictAll,
 		model.ObjectType_note:  {},
-		model.ObjectType_space: {},
+		model.ObjectType_space: {
+			model.Restrictions_Template,
+		},
 
 		model.ObjectType_bookmark:       {},
 		model.ObjectType_relationOption: objRestrictEdit,
+		model.ObjectType_relationOptionsList: {
+			model.Restrictions_Template,
+		},
+		model.ObjectType_database: {
+			model.Restrictions_Template,
+		},
 	}
 
 	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
@@ -125,7 +133,9 @@ var (
 		},
 		model.SmartBlockType_BundledObjectType: objRestrictAll,
 		model.SmartBlockType_BundledTemplate:   objRestrictAll,
-		model.SmartBlockType_Template:          {},
+		model.SmartBlockType_Template: {
+			model.Restrictions_Template,
+		},
 		model.SmartBlockType_Widget: {
 			model.Restrictions_Relations,
 			model.Restrictions_Details,
@@ -137,6 +147,9 @@ var (
 		},
 		model.SmartBlockType_MissingObject: objRestrictAll,
 		model.SmartBlockType_Date:          objRestrictAll,
+		model.SmartBlockType_AccountOld: {
+			model.Restrictions_Template,
+		},
 	}
 )
 
@@ -180,14 +193,9 @@ func (or ObjectRestrictions) ToPB() *types.Value {
 }
 
 func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
-	layout, hasLayout := rh.Layout()
-	if hasLayout {
-		switch layout {
-		case model.ObjectType_objectType, model.ObjectType_relation:
-			if rh.Type() == model.SmartBlockType_SubObject {
-				return GetRestrictionsForSubobject(rh.Id())
-			}
-		}
+	uk := rh.UniqueKey()
+	if uk != nil {
+		return GetRestrictionsForUniqueKey(rh.UniqueKey())
 	}
 
 	var ok bool
@@ -196,31 +204,50 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	}
 
 	if l, has := rh.Layout(); has {
-		if r, ok = objectRestrictionsByLayout[l]; ok {
-			return
+		if r, ok = objectRestrictionsByLayout[l]; !ok {
+			r = ObjectRestrictions{}
 		}
 	}
 
-	return ObjectRestrictions{}
+	if !errors.Is(r.Check(model.Restrictions_Template), ErrRestricted) {
+		if ok, err := s.objectStore.HasObjectType(rh.ObjectType()); err != nil || !ok {
+			r = append(r, model.Restrictions_Template)
+		}
+	}
+
+	return
 }
 
-func GetRestrictionsForSubobject(id string) (r ObjectRestrictions) {
-	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
-	sep := addr.SubObjectCollectionIdSeparator
-	parts := strings.Split(id, sep)
-	if len(parts) != 2 {
-		// options
-		return r
-	}
-	switch parts[0] + sep {
-	case addr.ObjectTypeKeyToIdPrefix:
-		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(parts[1])) {
+func GetRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r ObjectRestrictions) {
+	switch uk.SmartblockType() {
+	case model.SmartBlockType_STType:
+		key := uk.InternalKey()
+		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(key)) {
 			return sysTypesRestrictions
 		}
-	case addr.RelationKeyToIdPrefix:
-		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(parts[1])) {
+	case model.SmartBlockType_STRelation:
+		key := uk.InternalKey()
+		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
 			return sysRelationsRestrictions
 		}
 	}
+	return
+}
+
+func GetDataviewRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r DataviewRestrictions) {
+	r, _ = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
+	switch uk.SmartblockType() {
+	case model.SmartBlockType_STType:
+		key := uk.InternalKey()
+		if lo.Contains(bundle.InternalTypes, bundle.TypeKey(key)) {
+			return append(r.Copy(), model.RestrictionsDataviewRestrictions{
+				BlockId:      DataviewBlockId,
+				Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
+			})
+		}
+	case model.SmartBlockType_STRelation:
+		// should we handle this?
+	}
+
 	return
 }

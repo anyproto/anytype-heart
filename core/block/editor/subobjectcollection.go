@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -15,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -26,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -62,8 +59,6 @@ type SubObjectCollection struct {
 
 	sourceService source.Service
 	objectStore   objectstore.ObjectStore
-
-	subObjectFactory subObjectFactory
 }
 
 func NewSubObjectCollection(
@@ -75,7 +70,6 @@ func NewSubObjectCollection(
 	sourceService source.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	subObjectFactory subObjectFactory,
 	eventSender event.Sender,
 ) *SubObjectCollection {
 	return &SubObjectCollection{
@@ -99,7 +93,6 @@ func NewSubObjectCollection(
 		sourceService:         sourceService,
 		defaultCollectionName: defaultCollectionName,
 		collections:           map[string]map[string]SubObjectImpl{},
-		subObjectFactory:      subObjectFactory,
 	}
 }
 
@@ -117,28 +110,16 @@ func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (
 		if data == nil {
 			continue
 		}
-		// we create the sb impl here in order to call InitState on it
-		subObj, err := c.subObjectFactory.produce(coll)
-		if err != nil {
-			log.Errorf("failed to produce sub object: %v", err)
-			continue
-		}
+
 		for subId := range data.GetFields() {
 			fullId := c.getId(coll, subId)
 
-			sub, err := c.subState(st, coll, fullId, workspaceID)
+			_, err := c.subState(st, coll, fullId, workspaceID)
 			if err != nil {
 				log.Errorf("failed to get sub object %s: %v", subId, err)
 				continue
 			}
-			subObj.InitState(sub)
-			if !f(smartblock.DocInfo{
-				Id:      fullId,
-				SpaceID: c.SpaceID(),
-				State:   sub,
-			}) {
-				break
-			}
+			// todo: migrate
 		}
 	}
 	return
@@ -163,57 +144,6 @@ func (c *SubObjectCollection) getCollectionAndKeyFromId(id string) (collection, 
 	return
 }
 
-func (c *SubObjectCollection) Open(subId string) (sb smartblock.SmartBlock, err error) {
-	c.Lock()
-	defer c.Unlock()
-
-	collection, key := c.getCollectionAndKeyFromId(subId)
-	if coll, exists := c.collections[collection]; exists {
-		if sub, exists := coll[key]; exists {
-			return sub, nil
-		} else {
-			return nil, ErrSubObjectNotFound
-		}
-	}
-
-	return nil, ErrCollectionNotFound
-}
-
-func (c *SubObjectCollection) DeleteSubObject(objectId string) error {
-	st := c.NewState()
-	err := c.removeObject(st, objectId)
-	if err != nil {
-		return err
-	}
-	return c.Apply(st, smartblock.NoEvent, smartblock.NoHistory, smartblock.NoHooks)
-}
-
-func (c *SubObjectCollection) removeObject(st *state.State, objectId string) (err error) {
-	collection, key := c.getCollectionAndKeyFromId(objectId)
-	// todo: check inbound links
-	links, err := c.objectStore.GetInboundLinksByID(objectId)
-	if err != nil {
-		return err
-	}
-	if len(links) > 0 {
-		log.With("id", objectId).With("total", len(links)).Debugf("workspace removeObject: found inbound links: %v", links)
-	}
-	st.RemoveFromStore([]string{collection, key})
-	if v, exists := c.collections[collection]; exists {
-		if o, exists := v[key]; exists {
-			o.SetIsDeleted()
-			delete(v, key)
-		}
-	}
-	c.sourceService.RemoveStaticSource(objectId)
-
-	err = c.objectStore.DeleteObject(objectId)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (c *SubObjectCollection) Locked() bool {
 	c.Lock()
 	defer c.Unlock()
@@ -228,187 +158,6 @@ func (c *SubObjectCollection) Locked() bool {
 		}
 	}
 	return false
-}
-
-func (c *SubObjectCollection) updateSubObject(ctx context.Context) func(info smartblock.ApplyInfo) (err error) {
-	return func(info smartblock.ApplyInfo) (err error) {
-		if len(info.Changes) == 0 {
-			return nil
-		}
-		st := c.NewState()
-		for _, ch := range info.Changes {
-			if keySet := ch.GetStoreKeySet(); keySet != nil {
-				if len(keySet.Path) < 2 {
-					continue
-				}
-				var (
-					collName = keySet.Path[0]
-					subId    = keySet.Path[1]
-				)
-				coll, exists := c.collections[collName]
-				if !exists {
-					coll = map[string]SubObjectImpl{}
-					c.collections[collName] = coll
-				}
-				if opt, ok := coll[subId]; ok {
-					if e := opt.SetStruct(pbtypes.GetStruct(c.NewState().GetSubObjectCollection(collName), subId)); e != nil {
-						log.With("treeId", c.Id()).
-							Errorf("options: can't set struct %s-%s: %v", collName, subId, e)
-					}
-				} else {
-					if err = c.initSubObject(ctx, st, collName, subId, false); err != nil {
-						return
-					}
-				}
-			} else if keyUnset := ch.GetStoreKeyUnset(); keyUnset != nil {
-				err = c.removeObject(st, strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator))
-				if err != nil {
-					log.With("objectID", c.Id()).Errorf("failed to remove object %s: %v", strings.Join(keyUnset.Path, addr.SubObjectCollectionIdSeparator), err)
-					return err
-				}
-			}
-		}
-		return
-	}
-}
-
-// cleanSubObjectDetails returns the new type.Struct but the values of fields are passed by reference
-func cleanSubObjectDetails(details *types.Struct) *types.Struct {
-	dataToSave := &types.Struct{Fields: map[string]*types.Value{}}
-	for k, v := range details.GetFields() {
-		r, _ := bundle.GetRelation(bundle.RelationKey(k))
-		if r == nil {
-			continue
-		}
-		if r.DataSource == model.Relation_details || slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
-			dataToSave.Fields[k] = v
-		}
-	}
-	return dataToSave
-}
-
-func (c *SubObjectCollection) onSubObjectChange(collection, subId string) func(p source.PushChangeParams) (string, error) {
-	return func(p source.PushChangeParams) (string, error) {
-		st := c.NewState()
-
-		coll, exists := c.collections[collection]
-		if !exists {
-			return "", fmt.Errorf("collection not found")
-		}
-
-		if _, ok := coll[subId]; !ok {
-			return "", fmt.Errorf("onSubObjectChange: subObject '%s' not exists in collection '%s'", subId, collection)
-		}
-
-		dataToSave := cleanSubObjectDetails(p.State.CombinedDetails())
-
-		var hasPersistentDetails bool
-		for k, _ := range dataToSave.Fields {
-			if slice.FindPos(append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...), k) == -1 ||
-				slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
-				hasPersistentDetails = true
-				break
-			}
-		}
-		prevSubState := pbtypes.GetStruct(st.GetSubObjectCollection(collection), subId)
-
-		if !hasPersistentDetails {
-			// todo: it shouldn't be done here, we have a place for it in the state, but it's not possible to set the virtual changes there
-			// revert lastModifiedDate details
-			if prevSubState.GetFields() != nil && prevSubState.Fields[bundle.RelationKeyLastModifiedDate.String()] != nil {
-				dataToSave.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevSubState.Fields[bundle.RelationKeyLastModifiedDate.String()]
-			}
-		}
-
-		// ignore lastModifiedDate if this is the only thing that has changed
-		if pbtypes.StructCompareIgnoreKeys(dataToSave, prevSubState, []string{bundle.RelationKeyLastModifiedDate.String()}) {
-			// nothing changed
-			return "", nil
-		}
-
-		changed := st.SetInStore([]string{collection, subId}, pbtypes.Struct(dataToSave))
-		if !changed {
-			return "", nil
-		}
-		err := c.Apply(st, smartblock.NoHooks)
-		if err != nil {
-			return "", err
-		}
-
-		return c.SmartBlock.(state.Doc).ChangeId(), nil
-	}
-}
-
-func (c *SubObjectCollection) initSubObject(ctx context.Context, st *state.State, collection string, subId string, justCreated bool) (err error) {
-	if len(strings.Split(subId, addr.SubObjectCollectionIdSeparator)) > 1 {
-		// handle invalid cases for our own accounts
-		return fmt.Errorf("invalid id: %s", subId)
-	}
-
-	var fullId string
-	if collection == "" || collection == c.defaultCollectionName {
-		fullId = subId
-		collection = c.defaultCollectionName
-	} else {
-		fullId = collection + addr.SubObjectCollectionIdSeparator + subId
-	}
-
-	if v := st.StoreKeysRemoved(); v != nil {
-		if _, exists := v[fullId]; exists {
-			log.Errorf("initSubObject %s: found keyremoved, calling removeObject", fullId)
-			return c.removeObject(st, fullId)
-		}
-	}
-
-	storedDetails, err := c.objectStore.GetDetails(fullId)
-	if storedDetails.GetDetails() != nil && pbtypes.GetBool(storedDetails.Details, bundle.RelationKeyIsDeleted.String()) {
-		// we have removed this subobject previously, so let's removed stored details(with isDeleted=true) so it will not be injected to the new subobject
-		err = c.objectStore.DeleteDetails(fullId)
-		if err != nil {
-			log.Errorf("initSubObject %s: failed to delete deleted details: %v", fullId, err)
-		}
-	}
-
-	workspaceID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
-	if workspaceID == "" {
-		// SubObjectCollection is used only workspaces now so get ID from the workspace object
-		workspaceID = st.RootId()
-	}
-	subState, err := c.subState(st, collection, fullId, workspaceID)
-	if err != nil {
-		return
-	}
-	if justCreated {
-		det := subState.CombinedDetails()
-		internalflag.PutToDetails(det, []*model.InternalFlag{{Value: model.InternalFlag_editorDeleteEmpty}})
-		subState.SetDetails(det)
-		// inject the internal flag to the state
-	}
-
-	subObj, err := c.subObjectFactory.produce(collection)
-	if err != nil {
-		return fmt.Errorf("new sub-object: %w", err)
-	}
-
-	subObj.InitState(subState)
-	if _, exists := c.collections[collection]; !exists {
-		c.collections[collection] = map[string]SubObjectImpl{}
-	}
-	c.collections[collection][subId] = subObj
-
-	if err = subObj.Init(&smartblock.InitContext{
-		Ctx:     ctx,
-		SpaceID: c.SpaceID(),
-		Source:  c.sourceService.NewStaticSource(fullId, model.SmartBlockType_SubObject, subState, c.onSubObjectChange(collection, subId)),
-	}); err != nil {
-		return
-	}
-
-	// we need to call Apply to make sure it propogates to the indexer
-	// BTW, if subObj.InitState made any changes, they will be ignored, cause we do the NewState() call here
-	// todo: decide if this is correct
-	subObj.Apply(subState.NewState())
-	return
 }
 
 // subState returns a details-only state for a subobject
@@ -426,8 +175,6 @@ func (c *SubObjectCollection) subState(st *state.State, collection string, fullI
 		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
 	}
 
-	restrictions := restriction.GetRestrictionsForSubobject(fullId)
-	subst.SetLocalDetail(bundle.RelationKeyRestrictions.String(), restrictions.ToPB())
 	subst.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList([]string{}))
 	changeId := st.StoreChangeIdForPath(collection + addr.SubObjectCollectionIdSeparator + subId)
 	if changeId == "" {
@@ -457,7 +204,14 @@ func structToState(id string, data *types.Struct) *state.State {
 		}
 	}
 	subState.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
-	subState.SetObjectType(pbtypes.GetString(data, bundle.RelationKeyType.String()))
+	switch pbtypes.GetInt64(data, bundle.RelationKeyLayout.String()) {
+	case int64(model.ObjectType_relationOption):
+		subState.SetObjectType(bundle.TypeKeyRelationOption.String())
+	case int64(model.ObjectType_relation):
+		subState.SetObjectType(bundle.TypeKeyRelation.String())
+	case int64(model.ObjectType_objectType):
+		subState.SetObjectType(bundle.TypeKeyObjectType.String())
+	}
 
 	return subState
 }

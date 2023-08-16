@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/simple/widget"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -117,11 +116,6 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewSourceSet:
 		if err = apply(o.BlockDataviewSourceSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				url, migrated := relationutils.MigrateObjectTypeIds(o.BlockDataviewSourceSet.Source)
-				if len(migrated) > 0 {
-					s.SetObjectTypesToMigrate(append(s.ObjectTypesToMigrate(), migrated...))
-					o.BlockDataviewSourceSet.Source = url
-				}
 				return f.SetSource(o.BlockDataviewSourceSet.Source)
 			}
 			return fmt.Errorf("not a dataview block")

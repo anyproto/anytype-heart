@@ -8,7 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -306,7 +306,7 @@ func assertNonEscapedQuery(t *testing.T, tmpDir string) {
 		Text:  "two",
 	}))
 
-	validateSearch(t, ft, "", ".*?([])", 0)
+	validateSearch(t, ft, "", "*", 0)
 
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "1",

@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Page struct {
@@ -56,6 +58,7 @@ func NewPage(
 	f := file.NewFile(
 		sb,
 		fileBlockService,
+		anytype,
 		tempDirProvider,
 		fileService,
 		picker,
@@ -96,10 +99,8 @@ func NewPage(
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.ObjectTypeUrls == nil && (ctx.State == nil || len(ctx.State.ObjectTypes()) == 0) {
-		// todo: revise this logic
-		// we can have other default type on client side
-		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
+	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypes()) == 0) && ctx.IsNewObject {
+		ctx.ObjectTypeKeys = []string{bundle.TypeKeyPage.String()}
 	}
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
@@ -115,13 +116,21 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			layout, ok := ctx.State.Layout()
 			if !ok {
 				// nolint:errcheck
-				otypes, _ := p.objectStore.GetObjectTypes(ctx.ObjectTypeUrls)
-				for _, ot := range otypes {
-					layout = ot.Layout
+				lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
+				uk, err := uniquekey.New(model.SmartBlockType_STType, lastTypeKey)
+				if err != nil {
+					log.Errorf("failed to create unique key: %v", err)
+				} else {
+					otype, err := p.objectStore.GetObjectByUniqueKey(s.SpaceID(), uk.Marshal())
+					if err != nil {
+						log.Errorf("failed to get object by unique key: %v", err)
+					} else {
+						layout = model.ObjectTypeLayout(pbtypes.GetInt64(otype.Details, bundle.RelationKeyRecommendedLayout.String()))
+					}
 				}
 			}
-			if len(ctx.ObjectTypeUrls) > 0 && len(ctx.State.ObjectTypes()) == 0 {
-				ctx.State.SetObjectTypes(ctx.ObjectTypeUrls)
+			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypes()) == 0 {
+				ctx.State.SetObjectTypes(ctx.ObjectTypeKeys)
 			}
 			// TODO Templates must be dumb here, no migration logic
 
@@ -154,6 +163,18 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithDescription,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithBookmarkBlocks,
+				)
+			case model.ObjectType_relation:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+				)
+			case model.ObjectType_objectType:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 				)
 			default:
 				templates = append(templates,

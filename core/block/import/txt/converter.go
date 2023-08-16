@@ -151,7 +151,7 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot,
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
 		Details:     converter.GetCommonDetails(p, "", ""),
-		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
+		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 
 	snapshot := &converter.Snapshot{

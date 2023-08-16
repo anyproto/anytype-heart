@@ -29,8 +29,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
-	recs, _, err := s.Query(database.NewByType(ot, nil), database.Query{})
+	recs, _, err := s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -40,7 +39,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	recs, _, err = s.Query(database.NewByType(ot, nil), database.Query{})
+	recs, _, err = s.Query(database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -168,31 +167,41 @@ func TestGetObjectType(t *testing.T) {
 	t.Run("get bundled type", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
+		id := bundle.TypeKeyTask.BundledURL()
 		got, err := s.GetObjectType(bundle.TypeKeyTask.BundledURL())
 		require.NoError(t, err)
 
 		want := bundle.MustGetType(bundle.TypeKeyTask)
 		assert.Equal(t, want, got)
+		ok, err := s.HasObjectType(id)
+		require.NoError(t, err)
+		assert.True(t, ok)
 	})
 
 	t.Run("with object is not type expect error", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
+		id := "id1"
 		obj := TestObject{
-			bundle.RelationKeyId:   pbtypes.String("id1"),
+			bundle.RelationKeyId:   pbtypes.String(id),
 			bundle.RelationKeyType: pbtypes.String(bundle.TypeKeyNote.URL()),
 		}
 		s.AddObjects(t, []TestObject{obj})
 
-		_, err := s.GetObjectType("id1")
+		_, err := s.GetObjectType(id)
 		require.Error(t, err)
+		ok, err := s.HasObjectType(id)
+		require.NoError(t, err)
+		assert.False(t, ok)
 	})
 
 	t.Run("with object is type", func(t *testing.T) {
+		// Given
 		s := NewStoreFixture(t)
 
+		id := "id1"
 		obj := TestObject{
-			bundle.RelationKeyId:                   pbtypes.String("id1"),
+			bundle.RelationKeyId:                   pbtypes.String(id),
 			bundle.RelationKeyType:                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
 			bundle.RelationKeyName:                 pbtypes.String("my note"),
 			bundle.RelationKeyRecommendedRelations: pbtypes.StringList([]string{bundle.RelationKeyAssignee.URL()}),
@@ -207,11 +216,13 @@ func TestGetObjectType(t *testing.T) {
 		}
 		s.AddObjects(t, []TestObject{obj, relObj})
 
-		got, err := s.GetObjectType("id1")
+		// When
+		got, err := s.GetObjectType(id)
 		require.NoError(t, err)
 
+		// Then
 		want := &model.ObjectType{
-			Url:        "id1",
+			Url:        id,
 			Name:       "my note",
 			Layout:     model.ObjectType_note,
 			IconEmoji:  "📝",
@@ -226,6 +237,9 @@ func TestGetObjectType(t *testing.T) {
 		}
 
 		assert.Equal(t, want, got)
+		ok, err := s.HasObjectType(id)
+		require.NoError(t, err)
+		assert.True(t, ok)
 	})
 }
 

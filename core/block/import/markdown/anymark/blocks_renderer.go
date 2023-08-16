@@ -186,11 +186,11 @@ func (r *blocksRenderer) GetText() string {
 func (r *blocksRenderer) AddTextToBuffer(text string) {
 	if len(r.openedTextBlocks) > 0 {
 		last := r.openedTextBlocks[len(r.openedTextBlocks)-1]
-		last.textBuffer += strings.ReplaceAll(text, "*", "")
+		last.textBuffer += text
 		return
 	}
 
-	r.textBuffer += strings.ReplaceAll(text, "*", "")
+	r.textBuffer += text
 }
 
 func (r *blocksRenderer) AddImageBlock(source string) {

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -113,7 +114,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, _, err := ds.Query(nil, database.Query{
+	records, _, err := ds.Query(database.Query{
 		Filters:  req.Filters,
 		Sorts:    req.Sorts,
 		Offset:   int(req.Offset),
@@ -490,6 +491,61 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 	return response(pb.RpcObjectRelationListAvailableResponseError_NULL, rels, nil)
 }
 
+func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectSetObjectTypeResponse {
+		m := &pb.RpcObjectSetObjectTypeResponse{Error: &pb.RpcObjectSetObjectTypeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = mw.getResponseEvent(ctx)
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUrl})
+	}); err != nil {
+		return response(pb.RpcObjectSetObjectTypeResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectSetObjectTypeResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcObjectListSetObjectTypeRequest) *pb.RpcObjectListSetObjectTypeResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectListSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectListSetObjectTypeResponse {
+		m := &pb.RpcObjectListSetObjectTypeResponse{Error: &pb.RpcObjectListSetObjectTypeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		var (
+			mErr       multierror.Error
+			anySucceed bool
+		)
+		for _, objID := range req.ObjectIds {
+			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
+				log.With("objectID", objID).Errorf("failed to set object type to object '%s': %v", objID, err)
+				mErr.Errors = append(mErr.Errors, err)
+			} else {
+				anySucceed = true
+			}
+		}
+		if anySucceed {
+			return nil
+		}
+		return mErr.ErrorOrNil()
+	}); err != nil {
+		return response(pb.RpcObjectListSetObjectTypeResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectListSetObjectTypeResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
@@ -511,13 +567,10 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 }
 
 func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
 		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}

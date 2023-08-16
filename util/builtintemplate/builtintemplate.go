@@ -5,13 +5,16 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 
 	"github.com/anyproto/any-sync/app"
+	relation2 "github.com/anyproto/anytype-heart/core/relation"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -22,8 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtintemplate"
@@ -41,12 +42,15 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	source        source.Service
-	generatedHash string
+	source          source.Service
+	relationService relation2.Service
+	generatedHash   string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
+	b.relationService = a.MustComponent(relation2.CName).(relation2.Service)
+
 	b.makeGenHash(4)
 	return
 }
@@ -94,10 +98,18 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		}
 		snapshot = snapshotWithType.Snapshot
 	}
+	var id string
+	for _, block := range snapshot.Data.Blocks {
+		if block.GetSmartblock() != nil {
+			id = block.Id
+			break
+		}
+	}
 
-	st := state.NewDocFromSnapshot("", snapshot, state.DoNotMigrateTypes).(*state.State)
+	id = addr.BundledTemplatesURLPrefix + id
+	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
+	st.SetRootId(id)
 	st = st.NewState()
-	id := st.RootId()
 	st = st.Copy()
 	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
@@ -105,9 +117,12 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
 	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.BundledURL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
-
-	st.InjectDerivedDetails()
+	targetObjectType := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+	if strings.HasPrefix(targetObjectType, addr.BundledObjectTypeURLPrefix) {
+		// todo: remove this hack after fixing bundled templates
+		targetObjectType = strings.TrimPrefix(targetObjectType, addr.BundledObjectTypeURLPrefix)
+	}
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.String(), targetObjectType})
 
 	// fix divergence between extra relations and simple block relations
 	st.Iterate(func(b simple.Block) (isContinue bool) {
@@ -130,7 +145,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 
 func (b *builtinTemplate) validate(st *state.State) (err error) {
 	cd := st.CombinedDetails()
-	if st.ObjectType() != bundle.TypeKeyTemplate.BundledURL() {
+	if st.ObjectType() != bundle.TypeKeyTemplate.String() {
 		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectType())
 	}
 	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {

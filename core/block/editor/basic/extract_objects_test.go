@@ -6,7 +6,8 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -191,7 +192,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectType: bundle.TypeKeyNote.URL(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter(nil, nil)).ExtractBlocksToObjects(ctx, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string

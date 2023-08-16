@@ -61,7 +61,7 @@ func TestGroupTag(t *testing.T) {
 
 	q := database.Query{}
 
-	f, err := database.NewFilters(q, nil, database.NewMockObjectStore(t))
+	f, err := database.NewFilters(q, database.NewMockObjectStore(t))
 	require.NoError(t, err)
 	filterTag := database.Not{Filter: database.Empty{Key: kanbanKey}}
 	f.FilterObj = database.AndFilters{f.FilterObj, filterTag}

@@ -5,16 +5,21 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
+	"go.uber.org/mock/gomock"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/testMock"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestService_Search(t *testing.T) {
@@ -349,6 +354,39 @@ func TestNestedSubscription(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+func (c *collectionServiceMock) Name() string {
+	return "collectionService"
+}
+
+func (c *collectionServiceMock) Init(a *app.App) error { return nil }
+
+func newFixture(t *testing.T) *fixture {
+	ctrl := gomock.NewController(t)
+	a := new(app.App)
+	testMock.RegisterMockObjectStore(ctrl, a)
+	testMock.RegisterMockKanban(ctrl, a)
+	fx := &fixture{
+		Service: New(),
+		a:       a,
+		ctrl:    ctrl,
+		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
+	}
+	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Init(mock.Anything).Return(nil)
+	sender.EXPECT().Name().Return(event.CName)
+	sender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
+		fx.events = append(fx.events, e)
+	}).Maybe()
+	fx.sender = sender
+	a.Register(fx.Service)
+	a.Register(fx.sender)
+	a.Register(&collectionServiceMock{updateCh: make(chan []string, 1)})
+
+	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	sbtProvider.EXPECT().Name().Return("sbtProvider")
+	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
+
+	a.Register(sbtProvider)
 		fx.waitEvents(t,
 			&pb.EventMessageValueOfSubscriptionRemove{
 				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{

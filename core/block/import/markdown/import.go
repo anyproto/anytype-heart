@@ -408,7 +408,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 				Blocks:      file.ParsedBlocks,
 				Details:     details[name],
-				ObjectTypes: []string{bundle.TypeKeyPage.URL()},
+				ObjectTypes: []string{bundle.TypeKeyPage.String()},
 			}},
 		})
 	}

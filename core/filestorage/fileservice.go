@@ -31,10 +31,8 @@ const FlatfsDirName = "flatfs"
 
 var log = logger.NewNamed(CName)
 
-func New(eventSender event.Sender) FileStorage {
-	return &fileStorage{
-		eventSender: eventSender,
-	}
+func New() FileStorage {
+	return &fileStorage{}
 }
 
 type FileStorage interface {
@@ -70,6 +68,7 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	f.handler = &rpcHandler{spaceStorage: f.spaceStorage}
+	f.eventSender = app.MustComponent[event.Sender](a)
 	if fileCfg.IPFSStorageAddr == "" {
 		f.flatfsPath = filepath.Join(app.MustComponent[wallet.Wallet](a).RepoPath(), FlatfsDirName)
 	} else {

@@ -61,6 +61,22 @@ func TestKeyOrder_Compare(t *testing.T) {
 	})
 }
 
+func TestKeyUnicodeOrder_Compare(t *testing.T) {
+	t.Run("asc", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("Єгипет")}
+		b := testGetter{"k": pbtypes.String("Японія")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
+	t.Run("dsc", func(t *testing.T) {
+		a := testGetter{"k": pbtypes.String("Ürkmez")}
+		b := testGetter{"k": pbtypes.String("Zurich")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Desc}
+		assert.Equal(t, 1, asc.Compare(a, b))
+	})
+}
+
 func TestSetOrder_Compare(t *testing.T) {
 	so := SetOrder{
 		&KeyOrder{Key: "a", Type: model.BlockContentDataviewSort_Asc},

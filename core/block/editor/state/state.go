@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
@@ -58,7 +59,6 @@ type Doc interface {
 	CombinedDetails() *types.Struct
 	LocalDetails() *types.Struct
 
-	OldExtraRelations() []*model.Relation
 	GetRelationLinks() pbtypes.RelationLinks
 
 	ObjectTypes() []string
@@ -67,6 +67,8 @@ type Doc interface {
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
+	UniqueKeyInternal() string
+
 	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
@@ -81,36 +83,43 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
-	// todo: this fires debug logs regarding objectType
-	s.InjectDerivedDetails()
+	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
+	return s
+}
+
+func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key uniquekey.UniqueKey) Doc {
+	if blocks == nil {
+		blocks = make(map[string]simple.Block)
+	}
+	s := &State{
+		rootId:            rootId,
+		blocks:            blocks,
+		uniqueKeyInternal: key.InternalKey(),
+	}
 	return s
 }
 
 type State struct {
-	ctx           session.Context
-	parent        *State
-	blocks        map[string]simple.Block
-	rootId        string
-	newIds        []string
-	changeId      string
-	changes       []*pb.ChangeContent
-	fileKeys      []pb.ChangeFileKeys
-	details       *types.Struct
-	localDetails  *types.Struct
-	relationLinks pbtypes.RelationLinks
+	ctx               session.Context
+	parent            *State
+	blocks            map[string]simple.Block
+	rootId            string
+	uniqueKeyInternal string // Used together with smartblockType for the ID derivation which will be unique and reproducable within the same space
+	newIds            []string
+	changeId          string
+	changes           []*pb.ChangeContent
+	fileKeys          []pb.ChangeFileKeys
+	details           *types.Struct
+	localDetails      *types.Struct
+	relationLinks     pbtypes.RelationLinks
 
 	migrationVersion uint32
-
-	// deprecated, used for migration
-	extraRelations              []*model.Relation
-	aggregatedOptionsByRelation map[string][]*model.RelationOption // deprecated, used for migration
 
 	store                   *types.Struct
 	storeKeyRemoved         map[string]struct{}
 	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
-	objectTypes          []string
-	objectTypesToMigrate []string
+	objectTypes []string // here we store object type keys, not IDs
 
 	changesStructureIgnoreIds []string
 
@@ -148,11 +157,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
 }
 
 func (s *State) Context() session.Context {
@@ -373,14 +382,16 @@ func (s *State) InState(id string) (ok bool) {
 	return
 }
 
-func (s *State) SearchText() (text string) {
+func (s *State) SearchText() string {
+	var builder strings.Builder
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if tb := b.Model().GetText(); tb != nil {
-			text += tb.Text + "\n"
+			builder.WriteString(tb.Text)
+			builder.WriteRune('\n')
 		}
 		return true
 	})
-	return
+	return builder.String()
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
@@ -605,22 +616,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
-	if s.parent != nil && s.objectTypesToMigrate != nil {
-		prev := s.parent.ObjectTypesToMigrate()
-		if !slice.UnsortedEquals(prev, s.objectTypesToMigrate) {
-			s.parent.objectTypesToMigrate = s.objectTypesToMigrate
-		}
-	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 
 	if s.parent != nil && s.relationLinks != nil {
 		s.parent.relationLinks = s.relationLinks
-	}
-
-	if s.parent != nil && s.extraRelations != nil {
-		s.parent.extraRelations = s.extraRelations
 	}
 
 	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
@@ -685,9 +686,7 @@ func (s *State) intermediateApply() {
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
 	}
-	if s.objectTypesToMigrate != nil {
-		s.parent.objectTypesToMigrate = s.objectTypesToMigrate
-	}
+
 	if s.store != nil {
 		s.parent.store = s.store
 	}
@@ -944,53 +943,14 @@ func (s *State) SetObjectType(objectType string) *State {
 }
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {
+	for _, ot := range objectTypes {
+		if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(ot, addr.BundledObjectTypeURLPrefix) {
+			panic(fmt.Sprintf("SetObjectTypes used to set IDs instead of keys: %v", objectTypes))
+		}
+	}
 	s.objectTypes = objectTypes
-	// todo: we lost the second type here, so it becomes inconsistent with the objectTypes in the state
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
+	// we don't set it in the localDetails here
 	return s
-}
-
-func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
-	s.objectTypesToMigrate = objectTypes
-	return s
-}
-
-func (s *State) InjectDerivedDetails() {
-	id := s.RootId()
-	if id != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
-	}
-	if ot := s.ObjectType(); ot != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
-	}
-
-	snippet := s.Snippet()
-	if snippet != "" || s.LocalDetails() != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
-	}
-}
-
-func ListSmartblockTypes(objectId string) ([]int, error) {
-	if strings.HasPrefix(objectId, addr.BundledObjectTypeURLPrefix) {
-		var err error
-		objectType, err := bundle.GetTypeByUrl(objectId)
-		if err != nil {
-			if err == bundle.ErrNotFound {
-				return nil, fmt.Errorf("unknown object type")
-			}
-			return nil, err
-		}
-		res := make([]int, 0, len(objectType.Types))
-		for _, t := range objectType.Types {
-			res = append(res, int(t))
-		}
-		return res, nil
-	} else if strings.HasPrefix(objectId, addr.ObjectTypeKeyToIdPrefix) && !strings.HasPrefix(objectId, "b") {
-		return nil, fmt.Errorf("incorrect object type URL format")
-	}
-
-	// Default smartblock type for all custom object types
-	return []int{int(model.SmartBlockType_Page)}, nil
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
@@ -1011,14 +971,6 @@ func (s *State) LocalDetails() *types.Struct {
 	}
 
 	return s.localDetails
-}
-
-func (s *State) AggregatedOptionsByRelation() map[string][]*model.RelationOption {
-	if s.aggregatedOptionsByRelation == nil && s.parent != nil {
-		return s.parent.AggregatedOptionsByRelation()
-	}
-
-	return s.aggregatedOptionsByRelation
 }
 
 func (s *State) CombinedDetails() *types.Struct {
@@ -1042,13 +994,8 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-func (s *State) OldExtraRelations() []*model.Relation {
-	if s.extraRelations == nil && s.parent != nil {
-		return s.parent.OldExtraRelations()
-	}
-	return s.extraRelations
-}
-
+// ObjectTypes returns the object types keys of the object
+// in order to get object type id you need to derive it for the space
 func (s *State) ObjectTypes() []string {
 	if s.objectTypes == nil && s.parent != nil {
 		return s.parent.ObjectTypes()
@@ -1056,14 +1003,7 @@ func (s *State) ObjectTypes() []string {
 	return s.objectTypes
 }
 
-func (s *State) ObjectTypesToMigrate() []string {
-	if s.objectTypes == nil && s.parent != nil {
-		return s.parent.ObjectTypesToMigrate()
-	}
-	return s.objectTypesToMigrate
-}
-
-// ObjectType returns only the first objectType and produce warning in case the state has more than 1 object type
+// ObjectType returns only the first objectType key and produce warning in case the state has more than 1 object type
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
 func (s *State) ObjectType() string {
 	objTypes := s.ObjectTypes()
@@ -1208,8 +1148,8 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 	}
 
 	if objTypes {
-		for _, ot := range s.ObjectTypes() {
-			if ot == "" {
+		for _, ot := range pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeyType.String()) {
+			if ot == "" { // TODO is it possible?
 				log.Errorf("sb %s has empty ot", s.RootId())
 				continue
 			}
@@ -1225,7 +1165,8 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 	for _, rel := range s.GetRelationLinks() {
 		// do not index local dates such as lastOpened/lastModified
 		if relations {
-			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+			// todo: add the relation ids somewhere else
+			// ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
 		}
 
 		if !details {
@@ -1370,9 +1311,6 @@ func (s *State) Copy() *State {
 	objTypes := make([]string, len(s.ObjectTypes()))
 	copy(objTypes, s.ObjectTypes())
 
-	objTypesToMigrate := make([]string, len(s.ObjectTypesToMigrate()))
-	copy(objTypesToMigrate, s.ObjectTypesToMigrate())
-
 	storeKeyRemoved := s.StoreKeysRemoved()
 	storeKeyRemovedCopy := make(map[string]struct{}, len(storeKeyRemoved))
 	for i := range storeKeyRemoved {
@@ -1385,14 +1323,13 @@ func (s *State) Copy() *State {
 		details:                 pbtypes.CopyStruct(s.Details()),
 		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
 		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
-		extraRelations:          pbtypes.CopyRelations(s.OldExtraRelations()),
 		objectTypes:             objTypes,
-		objectTypesToMigrate:    objTypesToMigrate,
 		noObjectType:            s.noObjectType,
 		migrationVersion:        s.migrationVersion,
 		store:                   pbtypes.CopyStruct(s.Store()),
 		storeLastChangeIdByPath: s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
 		storeKeyRemoved:         storeKeyRemovedCopy,
+		uniqueKeyInternal:       s.uniqueKeyInternal,
 	}
 	return copy
 }
@@ -1587,28 +1524,10 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 		if store.Fields == nil {
 			store.Fields = map[string]*types.Value{}
 		}
-		_, ok := store.Fields[key]
-		// TODO: refactor this with pbtypes
-		if !ok {
-			store.Fields[key] = &types.Value{
-				Kind: &types.Value_StructValue{
-					StructValue: &types.Struct{
-						Fields: map[string]*types.Value{},
-					},
-				},
-			}
+		if nestedStore := pbtypes.GetStruct(store, key); nestedStore == nil {
+			store.Fields[key] = pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{}})
 		}
-		_, ok = store.Fields[key].Kind.(*types.Value_StructValue)
-		if !ok {
-			store.Fields[key] = &types.Value{
-				Kind: &types.Value_StructValue{
-					StructValue: &types.Struct{
-						Fields: map[string]*types.Value{},
-					},
-				},
-			}
-		}
-		store = store.Fields[key].Kind.(*types.Value_StructValue).StructValue
+		store = pbtypes.GetStruct(store, key)
 		storeStack = append(storeStack, store)
 	}
 	if store.Fields == nil {
@@ -1621,7 +1540,7 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
 		s.setStoreChangeId(pathJoined, s.changeId)
-		// in case we have previously removed this key
+		// in case we have previously removed this uniqueKeyInternal
 		delete(s.storeKeyRemoved, pathJoined)
 		return
 	}
@@ -1651,19 +1570,11 @@ func (s *State) ContainsInStore(path []string) bool {
 	}
 	nested := path[:len(path)-1]
 	for _, key := range nested {
-		if store.Fields == nil {
+		nestedStore := pbtypes.GetStruct(store, key)
+		if nestedStore == nil {
 			return false
 		}
-		// TODO: refactor this with pbtypes
-		_, ok := store.Fields[key]
-		if !ok {
-			return false
-		}
-		_, ok = store.Fields[key].Kind.(*types.Value_StructValue)
-		if !ok {
-			return false
-		}
-		store = store.Fields[key].Kind.(*types.Value_StructValue).StructValue
+		store = nestedStore
 	}
 	if store.Fields == nil {
 		return false
@@ -1949,6 +1860,10 @@ func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
 		links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
 	}
 	s.AddRelationLinks(links...)
+}
+
+func (s *State) UniqueKeyInternal() string {
+	return s.uniqueKeyInternal
 }
 
 type linkSource interface {

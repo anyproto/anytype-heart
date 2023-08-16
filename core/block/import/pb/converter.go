@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/util/slice"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -176,30 +175,6 @@ func (p *Pb) getProfileFromFiles(files map[string]io.ReadCloser) (*pb.Profile, e
 	return profile, nil
 }
 
-func (p *Pb) setWorkspaceDetails(profile *pb.Profile, snapshots []*converter.Snapshot) {
-	var workspace *converter.Snapshot
-	if profile == nil {
-		return
-	}
-	for _, snapshot := range snapshots {
-		if snapshot.SbType == smartblock.SmartBlockTypeWorkspace {
-			workspace = snapshot
-		}
-	}
-
-	if workspace != nil {
-		spaceName := pbtypes.GetString(workspace.Snapshot.Data.Details, bundle.RelationKeyName.String())
-		if spaceName == "" || spaceName == "Personal space" { // migrate legacy name
-			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(profile.Name)
-		}
-
-		iconOption := pbtypes.GetInt64(workspace.Snapshot.Data.Details, bundle.RelationKeyIconOption.String())
-		if iconOption == 0 {
-			workspace.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(p.getIconOption())
-		}
-	}
-
-}
 func (p *Pb) getSnapshotsFromFiles(
 	spaceID string,
 	req *pb.RpcObjectImportRequest,
@@ -253,9 +228,20 @@ func (p *Pb) getSnapshotForPbFile(spaceID string, name, profileID, path string,
 		}
 		snapshot.SbType = newSbType
 	}
+
 	if snapshot.SbType == model.SmartBlockType_SubObject {
-		id = p.getIDForSubObject(snapshot, id)
+		// migrate old sub objects into real objects
+		if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_objectType.String() {
+			snapshot.SbType = model.SmartBlockType_STType
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relation.String() {
+			snapshot.SbType = model.SmartBlockType_STRelation
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relationOption.String() {
+			snapshot.SbType = model.SmartBlockType_Page
+		} else {
+			return nil, fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
+		}
 	}
+
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
 		id = p.getIDForUserProfile(spaceID, snapshot, profileID, id, isMigration)
 		p.setProfileIconOption(snapshot, profileID)
@@ -348,7 +334,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 		})...)
 	}
 	for _, snapshot := range snapshots {
-		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
+		st := state.NewDocFromSnapshot("", snapshot.Snapshot, state.WithUniqueKeyMigration(snapshot.SbType.ToProto()))
 		err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileIDs)
 		if err != nil {
 			allErrors.Add(err)
@@ -437,15 +423,6 @@ func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[strin
 	if len(objectsInCollections) != 0 {
 		st.UpdateStoreSlice(template.CollectionStoreKey, objectsInCollections)
 	}
-}
-
-// getIDForSubObject preserves original id from snapshot for relations and object types
-func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
-	originalId := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	if strings.HasPrefix(originalId, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(originalId, addr.RelationKeyToIdPrefix) {
-		return originalId
-	}
-	return id
 }
 
 // cleanupEmptyBlockMigration is fixing existing pages, imported from Notion

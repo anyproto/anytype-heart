@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -30,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -52,14 +54,9 @@ type Import struct {
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 }
 
-func New(
-	tempDirProvider core.TempDirProvider,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) Importer {
+func New() Importer {
 	return &Import{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		converters:      make(map[string]converter.Converter, 0),
+		converters: make(map[string]converter.Converter, 0),
 	}
 }
 
@@ -87,64 +84,87 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore, picker)
+	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) error {
 	progress := i.setupProgressBar(req)
-	defer progress.Finish()
+	var returnedErr error
+	defer func() {
+		i.finishImportProcess(returnedErr, progress)
+	}()
 	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
 	}
-	allErrors := converter.NewError()
 	if c, ok := i.converters[req.Type.String()]; ok {
-		res, err := c.GetSnapshots(ctx, req, progress)
-		if !err.IsEmpty() {
-			resultErr := err.GetResultError(req.Type)
-			if shouldReturnError(resultErr, res, req) {
-				return resultErr
-			}
-			allErrors.Merge(err)
-		}
-
-		if res == nil {
-			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
-		}
-
-		if len(res.Snapshots) == 0 {
-			return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
-		}
-
-		i.createObjects(ctx, res, progress, req, allErrors)
-		return allErrors.GetResultError(req.Type)
+		returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
+		return returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
-		if req.Snapshots != nil {
-			sn := make([]*converter.Snapshot, len(req.Snapshots))
-			for i, s := range req.Snapshots {
-				sn[i] = &converter.Snapshot{
-					Id:       s.GetId(),
-					Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
-				}
-			}
-			res := &converter.Response{
-				Snapshots: sn,
-			}
-			i.createObjects(ctx, res, progress, req, allErrors)
-			if !allErrors.IsEmpty() {
-				return allErrors.GetResultError(req.Type)
-			}
-			return nil
-		}
-		return converter.ErrNoObjectsToImport
+		returnedErr = i.importFromExternalSource(ctx, req, progress)
+		return returnedErr
 	}
-	return fmt.Errorf("unknown import type %s", req.Type)
+	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
+	return returnedErr
+}
+
+func (i *Import) importFromBuiltinConverter(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	c converter.Converter,
+	progress process.Progress) error {
+	allErrors := converter.NewError()
+	res, err := c.GetSnapshots(ctx, req, progress)
+	if !err.IsEmpty() {
+		resultErr := err.GetResultError(req.Type)
+		if shouldReturnError(resultErr, res, req) {
+			return resultErr
+		}
+		allErrors.Merge(err)
+	}
+	if res == nil {
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+	}
+
+	if len(res.Snapshots) == 0 {
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+	}
+
+	i.createObjects(ctx, res, progress, req, allErrors)
+	return allErrors.GetResultError(req.Type)
+}
+
+func (i *Import) importFromExternalSource(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
+	allErrors := converter.NewError()
+	if req.Snapshots != nil {
+		sn := make([]*converter.Snapshot, len(req.Snapshots))
+		for i, s := range req.Snapshots {
+			sn[i] = &converter.Snapshot{
+				Id:       s.GetId(),
+				Snapshot: &pb.ChangeSnapshot{Data: s.Snapshot},
+			}
+		}
+		res := &converter.Response{
+			Snapshots: sn,
+		}
+		i.createObjects(ctx, res, progress, req, allErrors)
+		if !allErrors.IsEmpty() {
+			return allErrors.GetResultError(req.Type)
+		}
+		return nil
+	}
+	return converter.ErrNoObjectsToImport
+}
+
+func (i *Import) finishImportProcess(returnedErr error, progress process.Progress) {
+	progress.Finish(returnedErr)
 }
 
 func shouldReturnError(e error, res *converter.Response, req *pb.RpcObjectImportRequest) bool {
 	return (e != nil && req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS) ||
-		errors.Is(e, converter.ErrFailedToReceiveListOfObjects) ||
+		errors.Is(e, converter.ErrFailedToReceiveListOfObjects) || errors.Is(e, converter.ErrLimitExceeded) ||
 		(errors.Is(e, converter.ErrNoObjectsToImport) && (res == nil || len(res.Snapshots) == 0)) || // return error only if we don't have object to import
 		errors.Is(e, converter.ErrCancel)
 }
@@ -188,7 +208,7 @@ func (i *Import) ValidateNotionToken(
 
 func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
-	defer progress.Finish()
+	defer progress.Finish(nil)
 	allErrors := converter.NewError()
 
 	progress.SetProgressMessage("Parse url")
@@ -245,7 +265,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
 	for _, snapshot := range res.Snapshots {
 		// we will get id of relation options after we figure out according relations keys
-		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.URL()) {
+		if lo.Contains(snapshot.Snapshot.GetData().GetObjectTypes(), bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
@@ -259,6 +279,7 @@ func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response
 		}
 	}
 	for _, option := range relationOptions {
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
 		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects)
 		if err != nil {
 			allErrors.Add(err)
@@ -269,6 +290,18 @@ func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response
 		}
 	}
 	return oldIDToNew, createPayloads, nil
+}
+
+func (i *Import) replaceRelationKeyWithNew(option *converter.Snapshot, oldIDToNew map[string]string) {
+	if option.Snapshot.Data.Details == nil || len(option.Snapshot.Data.Details.Fields) == 0 {
+		return
+	}
+	key := pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	relationID := addr.RelationKeyToIdPrefix + key
+	if newRelationID, ok := oldIDToNew[relationID]; ok {
+		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
+	}
+	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 }
 
 func (i *Import) getObjectID(

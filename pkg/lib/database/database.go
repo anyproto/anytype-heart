@@ -35,20 +35,6 @@ type Query struct {
 	Offset   int                                 // skip given number of results
 }
 
-func (q Query) DSQuery(sch Schema) (qq query.Query, err error) {
-	qq.Limit = q.Limit
-	qq.Offset = q.Offset
-	f, err := NewFilters(q, sch, nil)
-	if err != nil {
-		return
-	}
-	qq.Filters = []query.Filter{f}
-	if f.hasOrders() {
-		qq.Orders = []query.Order{f}
-	}
-	return
-}
-
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
 	var (
 		hasArchivedFilter bool
@@ -79,20 +65,16 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{bundle.TypeKeySpace.URL()})})
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.Float64(float64(model.ObjectType_space))})
 	}
 	return filters
 }
 
-func NewFilters(qry Query, schema Schema, store ObjectStore) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
-	filterObj, dateKeys, qryFilters := applySchema(nil, schema, filters.dateKeys, qry.Filters)
-	qry.Filters = qryFilters
-	filters.dateKeys = dateKeys
-
-	filterObj, err = compose(qry.Filters, store, filterObj)
+	filterObj, err := compose(qry.Filters, store)
 	if err != nil {
 		return
 	}
@@ -105,9 +87,9 @@ func NewFilters(qry Query, schema Schema, store ObjectStore) (filters *Filters, 
 func compose(
 	filters []*model.BlockContentDataviewFilter,
 	store ObjectStore,
-	filterObj AndFilters,
-) (AndFilters, error) {
-	qryFilter, err := MakeAndFilter(filters, store)
+) (filter.AndFilters, error) {
+	var filterObj filter.AndFilters
+	qryFilter, err := filter.MakeAndFilter(filters, store)
 	if err != nil {
 		return nil, err
 	}
@@ -118,56 +100,7 @@ func compose(
 	return filterObj, nil
 }
 
-func applySchema(
-	relations []*model.BlockContentDataviewRelation,
-	schema Schema,
-	dateKeys []string,
-	filters []*model.BlockContentDataviewFilter,
-) (AndFilters, []string, []*model.BlockContentDataviewFilter) {
-	mainFilter := AndFilters{}
-	if schema != nil {
-		dateKeys = extractDateRelationKeys(relations, schema, dateKeys)
-		filters = applyFilterDateOnlyWhenExactDate(filters, dateKeys)
-		mainFilter = appendSchemaFilters(schema, mainFilter)
-	}
-	return mainFilter, dateKeys, filters
-}
-
-func appendSchemaFilters(schema Schema, mainFilter AndFilters) AndFilters {
-	if schemaFilter := schema.Filters(); schemaFilter != nil {
-		mainFilter = append(mainFilter, schemaFilter)
-	}
-	return mainFilter
-}
-
-func applyFilterDateOnlyWhenExactDate(
-	filters []*model.BlockContentDataviewFilter,
-	dateKeys []string,
-) []*model.BlockContentDataviewFilter {
-	for _, filtr := range filters {
-		if lo.Contains(dateKeys, filtr.RelationKey) && filtr.QuickOption == model.BlockContentDataviewFilter_ExactDate {
-			filtr.Value = dateOnly(filtr.Value)
-		}
-	}
-	return filters
-}
-
-func extractDateRelationKeys(
-	relations []*model.BlockContentDataviewRelation,
-	schema Schema,
-	dateKeys []string,
-) []string {
-	for _, relationLink := range schema.ListRelations() {
-		if relationLink.Format == model.RelationFormat_date {
-			if relation := getRelationByKey(relations, relationLink.Key); relation == nil || !relation.DateIncludeTime {
-				dateKeys = append(dateKeys, relationLink.Key)
-			}
-		}
-	}
-	return dateKeys
-}
-
-func extractOrder(sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
+func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsGetter) filter.SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {

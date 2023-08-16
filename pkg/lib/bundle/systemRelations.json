@@ -60,5 +60,6 @@
   "sizeInBytes",
   "sourceFilePath",
   "fileSyncStatus",
-  "defaultTemplateId"
+  "defaultTemplateId",
+  "uniqueKey"
 ]

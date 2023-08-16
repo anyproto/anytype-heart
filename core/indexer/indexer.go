@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -22,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -66,15 +66,8 @@ var (
 	ftIndexForceMinInterval = time.Second * 10
 )
 
-func New(
-	picker block.Picker,
-	spaceService space.Service,
-	fileService files.Service,
-) Indexer {
+func New() Indexer {
 	return &indexer{
-		picker:       picker,
-		spaceService: spaceService,
-		fileService:  fileService,
 		indexedFiles: &sync.Map{},
 	}
 }
@@ -90,8 +83,13 @@ type Hasher interface {
 	Hash() string
 }
 
-type subObjectCreator interface {
-	CreateSubObjectsInWorkspace(ctx context.Context, spaceID string, details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+type objectCreator interface {
+	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+	AddBundledObjectToSpace(
+		ctx context.Context,
+		spaceID string,
+		sourceObjectIds []string,
+	) (ids []string, objects []*types.Struct, err error)
 }
 
 type syncStarter interface {
@@ -99,15 +97,15 @@ type syncStarter interface {
 }
 
 type indexer struct {
-	store            objectstore.ObjectStore
-	fileStore        filestore.FileStore
-	anytype          core.Service
-	source           source.Service
-	picker           block.Picker
-	ftsearch         ftsearch.FTSearch
-	subObjectCreator subObjectCreator
-	syncStarter      syncStarter
-	fileService      files.Service
+	store         objectstore.ObjectStore
+	fileStore     filestore.FileStore
+	anytype       core.Service
+	source        source.Service
+	picker        block.Picker
+	ftsearch      ftsearch.FTSearch
+	objectCreator objectCreator
+	syncStarter   syncStarter
+	fileService   files.Service
 
 	quit       chan struct{}
 	mu         sync.Mutex
@@ -131,8 +129,11 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
+	i.objectCreator = app.MustComponent[objectCreator](a)
 	i.syncStarter = app.MustComponent[syncStarter](a)
+	i.picker = app.MustComponent[block.Picker](a)
+	i.spaceService = app.MustComponent[space.Service](a)
+	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -177,6 +178,9 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
+	}
+	if info.SpaceID == "" || pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeySpaceId.String()) == "" {
+		log.Warnf("index spaceID is empty for object %s %v", info.Id, info.State.ObjectTypes())
 	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
@@ -259,7 +263,10 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			}
 		}
 
-		i.indexLinkedFiles(ctx, info.FileHashes)
+		// todo: remove this hack
+		if info.SpaceID != addr.AnytypeMarketplaceWorkspace {
+			i.indexLinkedFiles(block.CacheOptsSetSpaceID(ctx, info.SpaceID), info.FileHashes)
+		}
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -326,6 +333,8 @@ func (i *indexer) reindexIfNeeded() error {
 			FilesForceReindexCounter:         ForceFilesReindexCounter,
 			IdxRebuildCounter:                ForceIdxRebuildCounter,
 			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+			FulltextRebuild:                  ForceFulltextIndexCounter,
+			BundledObjects:                   ForceBundledObjectsReindexCounter,
 		}
 	}
 
@@ -574,33 +583,23 @@ func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexTyp
 	return nil
 }
 
+// todo: remove this and create objects within derivePredefinedObjects
 func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
-	var objects []*types.Struct
-
 	start := time.Now()
+	var ids []string
 	for _, ot := range bundle.SystemTypes {
-		t, err := bundle.GetTypeByUrl(ot.BundledURL())
-		if err != nil {
-			continue
-		}
-		objects = append(objects, (&relationutils.ObjectType{ObjectType: t}).ToStruct())
+
+		ids = append(ids, ot.BundledURL())
 	}
 
 	for _, rk := range bundle.SystemRelations {
-		rel := bundle.MustGetRelation(rk)
-		for _, opt := range rel.SelectDict {
-			opt.RelationKey = rel.Key
-			objects = append(objects, (&relationutils.Option{RelationOption: opt}).ToStruct())
-		}
-		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
+		ids = append(ids, rk.BundledURL())
 	}
-	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(context.Background(), spaceID, objects)
+	i.objectCreator.AddBundledObjectToSpace(context.Background(), spaceID, ids)
+
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 
-	if errors.Is(err, editor.ErrSubObjectAlreadyExists) {
-		return nil
-	}
-	return err
+	return nil
 }
 
 func (i *indexer) saveLatestChecksums() error {

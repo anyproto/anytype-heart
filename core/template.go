@@ -49,7 +49,7 @@ func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateClo
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateClone(req.ContextId)
+		templateId, err = bs.TemplateClone(req.SpaceId, req.ContextId)
 		return
 	})
 	return response(templateId, err)

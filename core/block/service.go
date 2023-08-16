@@ -13,6 +13,8 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -51,6 +53,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
+	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 
@@ -89,18 +92,14 @@ type SmartblockOpener interface {
 	Open(id string) (sb smartblock.SmartBlock, err error)
 }
 
-func New(
-	tempDirProvider *core.TempDirService,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-) *Service {
+func New() *Service {
 	return &Service{
-		tempDirProvider: tempDirProvider,
-		sbtProvider:     sbtProvider,
-		layoutConverter: layoutConverter,
-		closing:         make(chan struct{}),
-		syncer:          map[string]*treeSyncer{},
-		openedObjects:   make(map[string]bool),
+		closing: make(chan struct{}),
+		syncer:  map[string]*treeSyncer{},
+		openedObjs: &openedObjects{
+			objects: make(map[string]bool),
+			lock:    &sync.Mutex{},
+		},
 	}
 }
 
@@ -164,7 +163,12 @@ type Service struct {
 	closing     chan struct{}
 
 	predefinedObjectWasMissing bool
-	openedObjects              map[string]bool
+	openedObjs                 *openedObjects
+}
+
+type openedObjects struct {
+	objects map[string]bool
+	lock    *sync.Mutex
 }
 
 func (s *Service) Name() string {
@@ -189,6 +193,11 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
+
+	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
+
 	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.cache = s.createCache()
@@ -272,7 +281,7 @@ func (s *Service) OpenBlock(
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
 		SmartblockType: int(sbType),
 	})
-	s.openedObjects[id] = true
+	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id] = true; return nil })
 	return obj, nil
 }
 
@@ -312,12 +321,12 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 			s.sendOnRemoveEvent(id)
 		}
 	}
-	delete(s.openedObjects, id)
+	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id); return nil })
 	return nil
 }
 
 func (s *Service) GetOpenedObjects() []string {
-	return lo.Keys(s.openedObjects)
+	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
 }
 
 func (s *Service) CloseBlocks() {
@@ -335,7 +344,7 @@ func (s *Service) AddSubObjectToWorkspace(
 	spaceID string,
 	sourceObjectId string,
 ) (id string, object *types.Struct, err error) {
-	ids, details, err := s.AddSubObjectsToWorkspace(ctx, spaceID, []string{sourceObjectId})
+	ids, details, err := s.AddBundledObjectToSpace(ctx, spaceID, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -346,67 +355,113 @@ func (s *Service) AddSubObjectToWorkspace(
 	return ids[0], details[0], nil
 }
 
-func (s *Service) AddSubObjectsToWorkspace(
+func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID string, installedID string, bundledDetails *types.Struct) (*types.Struct, error) {
+	newDetails := pbtypes.CopyStruct(bundledDetails)
+	sourceId := pbtypes.GetString(newDetails, bundle.RelationKeyId.String())
+	if pbtypes.GetString(newDetails, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
+		return nil, errors.New("object is not bundled")
+	}
+	newDetails.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
+	newDetails.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(spaceID)
+
+	newDetails.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
+	// newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(installedID)
+	newDetails.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+
+	predefinedObjects := s.anytype.PredefinedObjects(spaceID)
+	switch pbtypes.GetString(newDetails, bundle.RelationKeyType.String()) {
+	case bundle.TypeKeyObjectType.BundledURL():
+		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyObjectType])
+	case bundle.TypeKeyRelation.BundledURL():
+		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyRelation])
+	default:
+		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(newDetails, bundle.RelationKeyType.String()))
+	}
+	relations := pbtypes.GetStringList(newDetails, bundle.RelationKeyRecommendedRelations.String())
+
+	if len(relations) > 0 {
+		for i, r := range relations {
+			// replace relation url with id
+			uk, err := uniquekey.New(model.SmartBlockType_STRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uk)
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			relations[i] = id
+		}
+		newDetails.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relations)
+
+	}
+	return newDetails, nil
+}
+
+func (s *Service) AddBundledObjectToSpace(
 	ctx context.Context,
 	spaceID string,
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
-	workspaceID := s.anytype.PredefinedObjects(spaceID).Account
-
-	// todo: we should add route to object via workspace
-	var details = make([]*types.Struct, 0, len(sourceObjectIds))
+	// todo: replace this func to the universal space to space copy
+	existingObjects, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySourceObject.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(sourceObjectIds),
+			},
+		},
+	})
+	var existingObjectMap = make(map[string]struct{})
+	for _, existingObject := range existingObjects {
+		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
+	}
 
 	for _, sourceObjectId := range sourceObjectIds {
+		if _, ok := existingObjectMap[sourceObjectId]; ok {
+			continue
+		}
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
-			d := pbtypes.CopyStruct(b.Details())
-			if pbtypes.GetString(d, bundle.RelationKeyWorkspaceId.String()) == workspaceID {
-				return errors.New("object already in collection")
-			}
-			d.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
-			u, err := addr.ConvertBundledObjectIdToInstalledId(b.ObjectType())
+			d, err := s.prepareDetailsForInstallingObject(ctx, spaceID, b.Id(), b.CombinedDetails())
 			if err != nil {
-				u = b.ObjectType()
+				return err
 			}
-			d.Fields[bundle.RelationKeyType.String()] = pbtypes.String(u)
-			d.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
-			d.Fields[bundle.RelationKeyId.String()] = pbtypes.String(b.Id())
 
-			details = append(details, d)
+			uk, err := uniquekey.UnmarshalFromString(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
+			if err != nil {
+				return err
+			}
+
+			// create via the state directly, because we have cyclic dependencies and we want to avoid typeId resolving from the details
+			state := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
+			state.SetDetails(d)
+
+			if uk.SmartblockType() == model.SmartBlockType_STRelation {
+				state.SetObjectType(bundle.TypeKeyRelation.String())
+			} else if uk.SmartblockType() == model.SmartBlockType_STType {
+				state.SetObjectType(bundle.TypeKeyObjectType.String())
+			} else {
+				return fmt.Errorf("unsupported object type: %s", b.Type())
+			}
+
+			id, object, err := s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockType(uk.SmartblockType()), nil, state)
+			if err != nil {
+				// todo: check alreadyexists error
+				// we don't want to stop adding other objects
+				log.Errorf("error while block create: %v", err)
+				return nil
+			}
+			ids = append(ids, id)
+			objects = append(objects, object)
 			return nil
 		})
 		if err != nil {
 			return
 		}
 	}
-
-	err = Do(s, workspaceID, func(b smartblock.SmartBlock) error {
-		ws, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect workspace id")
-		}
-		ids, objects, err = ws.CreateSubObjects(ctx, details)
-		return err
-	})
-
-	return
-}
-
-func (s *Service) RemoveSubObjectsInWorkspace(spaceID string, objectIds []string, orphansGC bool) (err error) {
-	// TODO Resolve spaceID for each object, batch them
-	workspaceID := s.anytype.PredefinedObjects(spaceID).Account
-	for _, objectID := range objectIds {
-		if err = s.restriction.CheckRestrictions(spaceID, objectID, model.Restrictions_Delete); err != nil {
-			return err
-		}
-	}
-	err = Do(s, workspaceID, func(b smartblock.SmartBlock) error {
-		ws, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect workspace id")
-		}
-		err = ws.RemoveSubObjects(objectIds, orphansGC)
-		return err
-	})
 
 	return
 }
@@ -476,49 +531,83 @@ func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link s
 	// return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
-// SetPagesIsArchived is deprecated
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
-	// TODO Resolve space ID for each id
-	return fmt.Errorf("have to be fixed")
-	// return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
-	// 	archive, ok := b.(collection.Collection)
-	// 	if !ok {
-	// 		return fmt.Errorf("unexpected archive block type: %T", b)
-	// 	}
-	//
-	// 	var merr multierror.Error
-	// 	var anySucceed bool
-	// 	ids, err := s.objectStore.HasIDs(req.ObjectIds...)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	for _, id := range ids {
-	// 		var err error
-	// 		if restrErr := s.checkArchivedRestriction(req.IsArchived, ctx.SpaceID(), id); restrErr != nil {
-	// 			err = restrErr
-	// 		} else {
-	// 			if req.IsArchived {
-	// 				err = archive.AddObject(id)
-	// 			} else {
-	// 				err = archive.RemoveObject(id)
-	// 			}
-	// 		}
-	// 		if err != nil {
-	// 			log.Warnf("failed to archive %s: %s", id, err.Error())
-	// 			merr.Errors = append(merr.Errors, err)
-	// 			continue
-	// 		}
-	// 		anySucceed = true
-	// 	}
-	//
-	// 	if err := merr.ErrorOrNil(); err != nil {
-	// 		log.Warnf("failed to archive: %s", err)
-	// 	}
-	// 	if anySucceed {
-	// 		return nil
-	// 	}
-	// 	return merr.ErrorOrNil()
-	// })
+	objectIDsPerSpace, err := s.partitionObjectIDsBySpaceID(req.ObjectIds)
+	if err != nil {
+		return fmt.Errorf("partition object ids by spaces: %w", err)
+	}
+
+	var (
+		multiErr   multierror.Error
+		anySucceed bool
+	)
+	for spaceID, objectIDs := range objectIDsPerSpace {
+		err = s.setIsArchivedForObjects(spaceID, objectIDs, req.IsArchived)
+		if err != nil {
+			log.With("spaceID", spaceID, "objectIDs", objectIDs).Errorf("failed to set isArchived=%t objects in space: %s", req.IsArchived, err)
+			multiErr.Errors = append(multiErr.Errors, err)
+		} else {
+			anySucceed = true
+		}
+	}
+	if anySucceed {
+		return nil
+	}
+	return multiErr.ErrorOrNil()
+}
+
+func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, isArchived bool) error {
+	return Do(s, s.anytype.PredefinedObjects(spaceID).Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(collection.Collection)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		var multiErr multierror.Error
+		var anySucceed bool
+		ids, err := s.objectStore.HasIDs(objectIDs...)
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			var err error
+			if restrErr := s.checkArchivedRestriction(isArchived, spaceID, id); restrErr != nil {
+				err = restrErr
+			} else {
+				if isArchived {
+					err = archive.AddObject(id)
+				} else {
+					err = archive.RemoveObject(id)
+				}
+			}
+			if err != nil {
+				log.With("objectID", id).Errorf("failed to set isArchived=%t for object: %s", isArchived, err)
+				multiErr.Errors = append(multiErr.Errors, err)
+				continue
+			}
+			anySucceed = true
+		}
+
+		if err := multiErr.ErrorOrNil(); err != nil {
+			log.Warnf("failed to archive: %s", err)
+		}
+		if anySucceed {
+			return nil
+		}
+		return multiErr.ErrorOrNil()
+	})
+}
+
+func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
+	res := map[string][]string{}
+	for _, objectID := range objectIDs {
+		spaceID, err := s.objectStore.ResolveSpaceID(objectID)
+		if err != nil {
+			return nil, fmt.Errorf("resolve spaceID: %w", err)
+		}
+		res[spaceID] = append(res[spaceID], objectID)
+	}
+	return res, nil
 }
 
 // SetPagesIsFavorite is deprecated
@@ -827,6 +916,17 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
+	if spaceID == "" {
+		// todo: feels dirty
+		if opts, ok := ctx.Value(optsKey).(cacheOpts); ok {
+			if opts.spaceId != "" {
+				spaceID = opts.spaceId
+				s.objectStore.StoreSpaceID(objectID, opts.spaceId)
+			}
+		}
+
+	}
+
 	return s.getSmartblock(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,

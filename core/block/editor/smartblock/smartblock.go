@@ -10,6 +10,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -31,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -161,7 +162,7 @@ type DocInfo struct {
 type InitContext struct {
 	IsNewObject    bool
 	Source         source.Source
-	ObjectTypeUrls []string
+	ObjectTypeKeys []string
 	RelationKeys   []string
 	State          *state.State
 	Relations      []*model.Relation
@@ -191,16 +192,15 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	spaceID             string
-	depIds              []string // slice must be sorted
-	sessions            map[string]session.Context
-	undo                undo.History
-	source              source.Source
-	lastDepDetails      map[string]*pb.EventObjectDetailsSet
-	restrictionsUpdater func()
-	restrictions        restriction.Restrictions
-	isDeleted           bool
-	disableLayouts      bool
+	spaceID        string
+	depIds         []string // slice must be sorted
+	sessions       map[string]session.Context
+	undo           undo.History
+	source         source.Source
+	lastDepDetails map[string]*pb.EventObjectDetailsSet
+	restrictions   restriction.Restrictions
+	isDeleted      bool
+	disableLayouts bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -256,6 +256,10 @@ func (sb *smartBlock) Id() string {
 func (sb *smartBlock) SpaceID() string {
 	return sb.spaceID
 }
+func (sb *smartBlock) UniqueKey() uniquekey.UniqueKey {
+	uk, _ := uniquekey.New(sb.Type(), sb.Doc.UniqueKeyInternal())
+	return uk
+}
 
 func (s *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	keys2 := s.source.GetFileKeysSnapshot()
@@ -290,10 +294,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
-	sb.restrictionsUpdater = func() {
-		restrictions := sb.restrictionService.GetRestrictions(sb)
-		sb.SetRestrictions(restrictions)
-	}
 	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
@@ -328,14 +328,14 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
+	sb.injectDerivedDetails(ctx.State, sb.spaceID, sb.Type())
 	return
 }
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	if sb.restrictionsUpdater != nil {
-		sb.restrictionsUpdater()
-	}
+	restrictions := sb.restrictionService.GetRestrictions(sb)
+	sb.SetRestrictions(restrictions)
 }
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
@@ -372,14 +372,11 @@ func (sb *smartBlock) Restrictions() restriction.Restrictions {
 }
 
 func (sb *smartBlock) Show() (*model.ObjectView, error) {
-	details, objectTypes, err := sb.fetchMeta()
+	sb.updateRestrictions()
+
+	details, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
-	}
-	// omit relations
-	// todo: switch to other pb type
-	for _, ot := range objectTypes {
-		ot.RelationLinks = nil
 	}
 
 	undo, redo := sb.History().Counters()
@@ -400,7 +397,7 @@ func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	}, nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, objectTypes []*model.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err error) {
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -420,17 +417,6 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		return
 	}
 
-	var uniqueObjTypes []string
-
-	var addObjectTypesByDetails = func(det *types.Struct) {
-		for _, key := range []string{bundle.RelationKeyType.String(), bundle.RelationKeyTargetObjectType.String()} {
-			ot := pbtypes.GetString(det, key)
-			if ot != "" && slice.FindPos(uniqueObjTypes, ot) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, ot)
-			}
-		}
-	}
-
 	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
 
 	// add self details
@@ -438,20 +424,12 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
-	addObjectTypesByDetails(sb.CombinedDetails())
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})
-		addObjectTypesByDetails(rec.Details)
-	}
-
-	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
-	if err != nil {
-		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
-		err = nil
 	}
 	go sb.metaListener(recordsCh)
 	return
@@ -564,7 +542,12 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
+			relId, err := sb.relationService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
+			if err != nil {
+				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
+				continue
+			}
+			ids = append(ids, relId)
 		}
 		if !includeDetails {
 			continue
@@ -684,6 +667,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
+
 	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
@@ -799,7 +783,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	s.InjectDerivedDetails()
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -877,7 +861,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.relationService.FetchKeys(relationKeys...)
+	relations, err := sb.relationService.FetchRelationByKeys(s.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -897,10 +881,6 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()) == "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(sb.spaceID))
-	}
-
 	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
 		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.SpaceID(), sb.Id())
 		if wsId != "" {
@@ -910,9 +890,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		}
 	}
 
-	if sb.objectStore == nil {
-		return nil
-	}
 	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
 	if err != nil {
 		return err
@@ -984,7 +961,7 @@ func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
+	st.SetObjectTypes([]string{sb.Anytype().PredefinedObjects(sb.spaceID).SystemTypes[bundle.TypeKeyTemplate], st.ObjectType()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)
@@ -1008,7 +985,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
-	s.InjectDerivedDetails()
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -1036,7 +1013,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	d.(*state.State).InjectDerivedDetails()
+	sb.injectDerivedDetails(d.(*state.State), sb.spaceID, sb.Type())
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1239,7 +1216,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.RelationService().FetchLinks(links)
+	rels, _ := sb.RelationService().FetchRelationByLinks(sb.spaceID, links)
 	return rels
 }
 
@@ -1285,7 +1262,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
-		State:      st.Copy(),
+		State:      st, // Don't copy state because we don't change it later
 	}
 }
 
@@ -1375,4 +1352,50 @@ func SkipIfHeadsNotChanged(o *IndexOptions) {
 
 func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 	o.SkipFullTextIfHeadsNotChanged = true
+}
+
+// injectDerivedDetails injects the local deta
+func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt model.SmartBlockType) {
+	id := s.RootId()
+	if id != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
+	}
+
+	if spaceId != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceId))
+	} else {
+		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", id)
+	}
+	if ot := s.ObjectType(); ot != "" {
+		// todo: we need to move this code out of the state,
+		// it shouldn't depend on some external service
+
+		typeID, err := sb.relationService.GetTypeIdByKey(context.Background(), s.SpaceID(), bundle.TypeKey(ot))
+		if err != nil {
+			log.Errorf("failed to get type id for %s: %v", ot, err)
+		}
+
+		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(typeID))
+	}
+
+	if uki := s.UniqueKeyInternal(); uki != "" {
+		// todo: remove this hack after spaceService refactored to include marketplace virtual space
+		if sbt == model.SmartBlockType_BundledObjectType {
+			sbt = model.SmartBlockType_STType
+		} else if sbt == model.SmartBlockType_BundledRelation {
+			sbt = model.SmartBlockType_STRelation
+		}
+
+		uk, err := uniquekey.New(sbt, uki)
+		if err != nil {
+			log.Errorf("failed to get unique key for %s: %v", uki, err)
+		} else {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
+		}
+	}
+
+	snippet := s.Snippet()
+	if snippet != "" || s.LocalDetails() != nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
+	}
 }

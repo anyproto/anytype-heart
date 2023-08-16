@@ -3,6 +3,7 @@ package csv
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 
@@ -65,8 +66,7 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
-	if (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
-		(cErr.IsNoObjectToImportError(len(params.Path))) {
+	if c.needToReturnError(req, cErr, params.Path) {
 		return nil, cErr
 	}
 	rootCollection := converter.NewRootCollection(c.collectionService)
@@ -86,6 +86,12 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 
 	return &converter.Response{Snapshots: result.snapshots}, cErr
+}
+
+func (c *CSV) needToReturnError(req *pb.RpcObjectImportRequest, cErr *converter.ConvertError, params []string) bool {
+	return (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
+		(cErr.IsNoObjectToImportError(len(params))) ||
+		errors.Is(cErr.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded)
 }
 
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
@@ -152,9 +158,12 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params.UseFirstRowForRelations, progress)
+		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params, progress)
 		if err != nil {
 			cErr.Add(err)
+			if errors.Is(err, converter.ErrLimitExceeded) {
+				return nil
+			}
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil
 			}

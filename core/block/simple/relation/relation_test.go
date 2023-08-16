@@ -1,6 +1,7 @@
 package relation
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -48,7 +49,11 @@ func TestRelation_Diff(t *testing.T) {
 		diff, err := b1.Diff(b2)
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetRelation).BlockSetRelation
-		assert.NotNil(t, change.Key)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetRelation{
+			BlockSetRelation: &pb.EventBlockSetRelation{
+				Id:  b1.Id,
+				Key: &pb.EventBlockSetRelationKey{Value: "42"},
+			},
+		}), diff)
 	})
 }

@@ -14,10 +14,10 @@ ifndef $(GOROOT)
 endif
 
 export PATH:=$(shell pwd)/deps:$(GOPATH)/bin:$(PATH)
+$(shell git config core.hooksPath .githooks)
 
 all:
 	@set -e;
-	@git config core.hooksPath .githooks;
 .PHONY :
 
 setup: setup-go
@@ -70,14 +70,14 @@ test-race:
 
 test-deps:
 	@echo 'Generating test mocks...'
-	@go build -o deps github.com/golang/mock/mockgen
+	@go build -o deps go.uber.org/mock/mockgen
 	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
 	@mockery --all
 
 clear-test-deps:
 	@echo 'Removing test mocks...'
-	@find util/testMock -name "*_mock.go" | xargs -r rm -v
+	@find . -name "*_mock.go" | xargs -r rm -v
 
 build-lib:
 	@echo 'Building library...'
@@ -261,9 +261,9 @@ endif
 
 	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
 	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
-	@mkdir -p ../anytype-ts/dist/lib/json/
-	@cp pkg/lib/bundle/system*.json ../anytype-ts/dist/lib/json/
-	@cp pkg/lib/bundle/internal*.json ../anytype-ts/dist/lib/json/
+	@mkdir -p ../anytype-ts/dist/lib/json/generated
+	@cp pkg/lib/bundle/system*.json ../anytype-ts/dist/lib/json/generated
+	@cp pkg/lib/bundle/internal*.json ../anytype-ts/dist/lib/json/generated
 
 build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build&install into ../anytype-ts"

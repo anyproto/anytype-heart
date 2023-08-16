@@ -22,12 +22,6 @@ import (
 func Test_handlePagePropertiesSelect(t *testing.T) {
 	details := make(map[string]*types.Value, 0)
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	p := property.SelectItem{
 		Object: "",
 		ID:     "id",
@@ -39,11 +33,21 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"Select": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 2) // 1 relation + 1 option
 	assert.Len(t, req.RelationsIdsToOptions, 1)
@@ -65,7 +69,7 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 			Color: api.Pink,
 		},
 	}
-	snapshots, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	snapshots, _ = ps.handlePageProperties(do, details)
 
 	assert.NotEmpty(t, req)
 	assert.Len(t, snapshots, 1) // 1 option
@@ -84,12 +88,6 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 
 func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.LastEditedTimeItem{
@@ -98,16 +96,25 @@ func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 		LastEditedTime: "2022-10-24T22:56:00.000Z",
 	}
 	pr := property.Properties{"LastEditedTime": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
-
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 	assert.Len(t, snapshots, 1) // 1 relation
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, req.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 }
 
@@ -118,37 +125,36 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 
 	c := client.NewClient()
 	c.BasePath = s.URL
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.RichTextItem{ID: "id", Type: string(property.PropertyConfigTypeRichText)}
 	pr := property.Properties{"RichText": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		ctx:       context.Background(),
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 1) // 1 relation
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, req.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 }
 
 func Test_handlePagePropertiesStatus(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.StatusItem{
@@ -161,16 +167,26 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"Status": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 2) // 1 relation + 1 option
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, req.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 
 	assert.Len(t, req.RelationsIdsToOptions, 1)
@@ -191,7 +207,7 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 			Color: api.Gray,
 		},
 	}
-	snapshots, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	snapshots, _ = ps.handlePageProperties(do, details)
 
 	assert.NotEmpty(t, req)
 	assert.Len(t, snapshots, 1) // 1 option
@@ -210,12 +226,6 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 
 func Test_handlePagePropertiesNumber(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	num := float64(12)
@@ -225,27 +235,31 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 		Number: &num,
 	}
 	pr := property.Properties{"Number": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 1) // 1 relation
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, req.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 }
 
 func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.MultiSelectItem{
@@ -260,16 +274,26 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 		},
 	}
 	pr := property.Properties{"MultiSelect": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 2) // 1 relation + 1 option
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, req.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 
 	assert.Len(t, req.RelationsIdsToOptions, 1)
@@ -292,7 +316,7 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 			},
 		},
 	}
-	snapshots, _ = ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	snapshots, _ = ps.handlePageProperties(do, details)
 
 	assert.NotEmpty(t, req)
 	assert.Len(t, snapshots, 1) // 1 option
@@ -311,12 +335,6 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 
 func Test_handlePagePropertiesCheckbox(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.CheckboxItem{
@@ -325,27 +343,31 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 		Checkbox: true,
 	}
 	pr := property.Properties{"Checkbox": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 1) // 1 relation
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, req.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 }
 
 func Test_handlePagePropertiesEmail(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	email := "a@mail.com"
@@ -355,16 +377,26 @@ func Test_handlePagePropertiesEmail(t *testing.T) {
 		Email: &email,
 	}
 	pr := property.Properties{"Email": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	req := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: req,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 1) // 1 relation
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, req.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 }
 
@@ -375,11 +407,6 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 
 	c := client.NewClient()
 	c.BasePath = s.URL
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
 
 	details := make(map[string]*types.Value, 0)
 
@@ -390,15 +417,28 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 	req := &block.NotionImportContext{
 		NotionPageIdsToAnytype:     notionPageIdsToAnytype,
 		NotionDatabaseIdsToAnytype: notionDatabaseIdsToAnytype,
-		RelationsIdsToAnytypeID:    map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:      map[string][]*model.SmartBlockSnapshotBase{},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
+	}
+	store := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		ctx:       context.Background(),
+		request:   req,
+		relations: store,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 1) // 1 relation
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, store.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(store.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key].GetListValue())
 	assert.Len(t, details[key].GetListValue().Values, 1)
 	assert.Equal(t, pbtypes.GetStringListValue(details[key])[0], "anytypeID")
@@ -410,12 +450,6 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 	}))
 	c := client.NewClient()
 	c.BasePath = s.URL
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.PeopleItem{
@@ -424,19 +458,30 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 		Type:   string(property.PropertyConfigTypePeople),
 	}
 	pr := property.Properties{"People": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	store := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: store,
+		ctx:       context.Background(),
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 3) // 1 relation + 1 option
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, store.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(store.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 
-	for _, options := range req.RelationsIdsToOptions {
+	for _, options := range store.RelationsIdsToOptions {
 		assert.Len(t, options, 2)
 		assert.NotNil(t, options[0].Details)
 		assert.Equal(t, options[0].Details.Fields[bundle.RelationKeyName.String()], pbtypes.String("Example"))
@@ -448,12 +493,6 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 
 func Test_handlePagePropertiesFormula(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.FormulaItem{
@@ -462,27 +501,31 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 		Formula: map[string]interface{}{"type": property.NumberFormula, "number": float64(1)},
 	}
 	pr := property.Properties{"Formula": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	store := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: store,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 1) // 1 relation
-	assert.Len(t, req.RelationsIdsToAnytypeID, 1)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, store.PropertyIdsToSnapshots, 1)
+	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id"])
+	key := pbtypes.GetString(store.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
 	assert.NotEmpty(t, details[key])
 }
 
 func Test_handlePagePropertiesTitle(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p := property.TitleItem{
@@ -491,22 +534,26 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 		Title: []*api.RichText{{PlainText: "Title"}},
 	}
 	pr := property.Properties{"Title": &p}
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	store := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: store,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 	assert.Len(t, snapshots, 0) // not create snapshot for existing anytype relation name
 }
 
 func Test_handleRollupProperties(t *testing.T) {
 	c := client.NewClient()
-	ps := Task{
-		propertyService:        property.New(c),
-		relationOptCreateMutex: &sync.Mutex{},
-		relationCreateMutex:    &sync.Mutex{},
-	}
-
 	details := make(map[string]*types.Value, 0)
 
 	p1 := property.RollupItem{
@@ -542,25 +589,329 @@ func Test_handleRollupProperties(t *testing.T) {
 
 	pr := property.Properties{"Rollup1": &p1, "Rollup2": &p2, "Rollup3": &p3}
 
-	req := &block.NotionImportContext{
-		RelationsIdsToAnytypeID: map[string]*model.SmartBlockSnapshotBase{},
-		RelationsIdsToOptions:   map[string][]*model.SmartBlockSnapshotBase{},
+	ps := Task{
+		propertyService:        property.New(c),
+		relationOptCreateMutex: &sync.Mutex{},
+		relationCreateMutex:    &sync.Mutex{},
+		p:                      Page{Properties: pr},
 	}
-	snapshots, _ := ps.handlePageProperties(context.TODO(), "key", "id", pr, details, req)
+	store := &property.PropertiesStore{
+		PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+	}
+	do := &DataObject{
+		request:   &block.NotionImportContext{},
+		relations: store,
+	}
+	snapshots, _ := ps.handlePageProperties(do, details)
 
 	assert.Len(t, snapshots, 3) // 3 relations
-	assert.Len(t, req.RelationsIdsToAnytypeID, 3)
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id1"])
-	key := pbtypes.GetString(req.RelationsIdsToAnytypeID["id1"].Details, bundle.RelationKeyRelationKey.String())
+	assert.Len(t, store.PropertyIdsToSnapshots, 3)
+	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id1"])
+	key := pbtypes.GetString(store.PropertyIdsToSnapshots["id1"].Details, bundle.RelationKeyRelationKey.String())
 	assert.Equal(t, details[key].GetNumberValue(), float64(2))
 
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id2"])
-	key = pbtypes.GetString(req.RelationsIdsToAnytypeID["id2"].Details, bundle.RelationKeyRelationKey.String())
+	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id2"])
+	key = pbtypes.GetString(store.PropertyIdsToSnapshots["id2"].Details, bundle.RelationKeyRelationKey.String())
 	assert.Equal(t, details[key].GetStringValue(), "12-12-2022")
 
-	assert.NotEmpty(t, req.RelationsIdsToAnytypeID["id3"])
-	key = pbtypes.GetString(req.RelationsIdsToAnytypeID["id3"].Details, bundle.RelationKeyRelationKey.String())
+	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id3"])
+	key = pbtypes.GetString(store.PropertyIdsToSnapshots["id3"].Details, bundle.RelationKeyRelationKey.String())
 	assert.Len(t, pbtypes.GetStringListValue(details[key]), 1)
 	rollup := pbtypes.GetStringListValue(details[key])
 	assert.Equal(t, rollup[0], "Title")
+}
+
+func Test_handlePagePropertiesUniqueID(t *testing.T) {
+	t.Run("create relation from unique property - empty prefix", func(t *testing.T) {
+		// given
+		c := client.NewClient()
+		details := make(map[string]*types.Value, 0)
+
+		p := property.UniqueIDItem{
+			ID:   "id",
+			Type: "unique_id",
+			UniqueID: property.UniqueID{
+				Number: 1,
+			},
+		}
+		pr := property.Properties{"ID": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		store := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: store,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 1)
+
+		assert.Len(t, store.PropertyIdsToSnapshots, 1)
+		assert.NotEmpty(t, store.PropertyIdsToSnapshots["id"])
+		key := pbtypes.GetString(store.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
+		assert.Equal(t, details[key].GetStringValue(), "1")
+	})
+
+	t.Run("create relation from unique property - not empty prefix", func(t *testing.T) {
+		// given
+		c := client.NewClient()
+		details := make(map[string]*types.Value, 0)
+
+		p := property.UniqueIDItem{
+			ID:   "id",
+			Type: "unique_id",
+			UniqueID: property.UniqueID{
+				Number: 1,
+				Prefix: "PR",
+			},
+		}
+		pr := property.Properties{"ID": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		store := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: store,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 1)
+
+		assert.Len(t, store.PropertyIdsToSnapshots, 1)
+		assert.NotEmpty(t, store.PropertyIdsToSnapshots["id"])
+		key := pbtypes.GetString(store.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
+		assert.Equal(t, details[key].GetStringValue(), "PR-1")
+	})
+}
+
+func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
+	t.Run("Page has Select property with Tag name", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+		c := client.NewClient()
+		p := property.SelectItem{
+			Object: "",
+			ID:     "id",
+			Type:   string(property.PropertyConfigTypeSelect),
+			Select: property.SelectOption{
+				ID:    "id",
+				Name:  "Name",
+				Color: api.Blue,
+			},
+		}
+		pr := property.Properties{"Tag": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 2) // 1 relation + 1 option
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[p.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+	})
+
+	t.Run("Page has Select property with Tags name", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+		c := client.NewClient()
+		p := property.SelectItem{
+			Object: "",
+			ID:     "id",
+			Type:   string(property.PropertyConfigTypeSelect),
+			Select: property.SelectOption{
+				ID:    "id",
+				Name:  "Name",
+				Color: api.Blue,
+			},
+		}
+		pr := property.Properties{"Tags": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 2) // 1 relation + 1 option
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[p.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+	})
+
+	t.Run("Page has MultiSelect property with Tags name", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+		c := client.NewClient()
+		p := property.MultiSelectItem{
+			Object: "",
+			ID:     "id",
+			Type:   string(property.PropertyConfigTypeSelect),
+			MultiSelect: []*property.SelectOption{{
+				ID:    "id",
+				Name:  "Name",
+				Color: api.Blue,
+			},
+			},
+		}
+		pr := property.Properties{"Tags": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 2) // 1 relation + 1 option
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[p.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+	})
+
+	t.Run("Page has MultiSelect property with Tag name", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+		c := client.NewClient()
+		p := property.MultiSelectItem{
+			Object: "",
+			ID:     "id",
+			Type:   string(property.PropertyConfigTypeSelect),
+			MultiSelect: []*property.SelectOption{{
+				ID:    "id",
+				Name:  "Name",
+				Color: api.Blue,
+			},
+			},
+		}
+		pr := property.Properties{"Tags": &p}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 2) // 1 relation + 1 option
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[p.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+	})
+
+	t.Run("Page has MultiSelect property with Tag name and Select property with Tags name - MultiSelect is mapped to Tag relation", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+		c := client.NewClient()
+		p := property.MultiSelectItem{
+			Object: "",
+			ID:     "id",
+			Type:   string(property.PropertyConfigTypeSelect),
+			MultiSelect: []*property.SelectOption{{
+				ID:    "id",
+				Name:  "Name",
+				Color: api.Blue,
+			},
+			},
+		}
+		prs := property.SelectItem{
+			Object: "",
+			ID:     "id1",
+			Type:   string(property.PropertyConfigTypeSelect),
+			Select: property.SelectOption{
+				ID:    "id1",
+				Name:  "Name",
+				Color: api.Blue,
+			},
+		}
+		pr := property.Properties{"Tag": &p, "Tags": &prs}
+		ps := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: pr},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &block.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := ps.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 4) // 2 relation + 2 option
+		assert.Len(t, req.PropertyIdsToSnapshots, 2)
+		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[p.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[prs.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+	})
 }

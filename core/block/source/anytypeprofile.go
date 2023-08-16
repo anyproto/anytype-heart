@@ -58,17 +58,14 @@ func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, e
 	d := v.getDetails()
 
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyProfile.URL())
+
+	// todo: add object type
+	// s.SetObjectType(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
 	return s, nil
 }
 
-func (v *anytypeProfile) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	s := &state.State{}
-	d := v.getDetails()
-
-	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyProfile.URL())
-	return s, nil
+func (v *anytypeProfile) ReadMeta(ctx context.Context, r ChangeReceiver) (doc state.Doc, err error) {
+	return v.ReadDoc(ctx, r, false)
 }
 
 func (v *anytypeProfile) Close() (err error) {

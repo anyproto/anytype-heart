@@ -5,30 +5,26 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
-	"github.com/mb0/diff"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/mb0/diff"
 )
 
 type snapshotOptions struct {
-	doNotMigrateTypes bool
 	changeId          string
+	migrateUniqueKeys model.SmartBlockType // set >0 to migrate unique keys
 }
 
 type SnapshotOption func(*snapshotOptions)
-
-func DoNotMigrateTypes(o *snapshotOptions) {
-	o.doNotMigrateTypes = true
-}
 
 func WithChangeId(changeId string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
@@ -37,24 +33,20 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 	}
 }
 
+func WithUniqueKeyMigration(sbType model.SmartBlockType) func(*snapshotOptions) {
+	return func(o *snapshotOptions) {
+		o.migrateUniqueKeys = sbType
+		return
+	}
+}
+
 func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) Doc {
-	var typesToMigrate []string
 	sOpts := snapshotOptions{}
 	for _, opt := range opts {
 		opt(&sOpts)
 	}
 	blocks := make(map[string]simple.Block)
 	for _, b := range snapshot.Data.Blocks {
-		// migrate old dataview blocks with relations
-		if dvBlock := b.GetDataview(); dvBlock != nil {
-			if len(dvBlock.RelationLinks) == 0 {
-				dvBlock.RelationLinks = relationutils.MigrateRelationModels(dvBlock.Relations)
-			}
-			if !sOpts.doNotMigrateTypes {
-				dvBlock.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dvBlock.Source)
-			}
-			dvBlock.Source = relationutils.MigrateRelationIds(dvBlock.Source) // can also contain relation ids
-		}
 		blocks[b.Id] = simple.New(b)
 	}
 	fileKeys := make([]pb.ChangeFileKeys, 0, len(snapshot.FileKeys))
@@ -62,9 +54,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		fileKeys = append(fileKeys, *fk)
 	}
 
-	if len(snapshot.Data.RelationLinks) == 0 && len(snapshot.Data.ExtraRelations) > 0 {
-		snapshot.Data.RelationLinks = relationutils.MigrateRelationModels(snapshot.Data.ExtraRelations)
-	}
 	// clear nil values
 	pbtypes.StructDeleteEmptyFields(snapshot.Data.Details)
 
@@ -81,16 +70,21 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		pbtypes.NormalizeStruct(detailsToSave)
 	}
 
+	if sOpts.migrateUniqueKeys > 0 {
+		migrateAddMissingUniqueKey(sOpts.migrateUniqueKeys, snapshot)
+	}
+
 	s := &State{
-		changeId:        sOpts.changeId,
-		rootId:          rootId,
-		blocks:          blocks,
-		details:         detailsToSave,
-		relationLinks:   snapshot.Data.RelationLinks,
-		objectTypes:     snapshot.Data.ObjectTypes,
-		fileKeys:        fileKeys,
-		store:           snapshot.Data.Collections,
-		storeKeyRemoved: removedCollectionKeysMap,
+		changeId:          sOpts.changeId,
+		rootId:            rootId,
+		blocks:            blocks,
+		details:           detailsToSave,
+		relationLinks:     snapshot.Data.RelationLinks,
+		objectTypes:       migrateObjectTypeIdsToKeys(snapshot.Data.ObjectTypes),
+		fileKeys:          fileKeys,
+		store:             snapshot.Data.Collections,
+		storeKeyRemoved:   removedCollectionKeysMap,
+		uniqueKeyInternal: snapshot.Data.Key,
 	}
 	if s.store != nil {
 		for collName, coll := range s.store.Fields {
@@ -102,11 +96,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		}
 	}
 
-	if !sOpts.doNotMigrateTypes {
-		s.objectTypes, s.objectTypesToMigrate = relationutils.MigrateObjectTypeIds(s.objectTypes)
-		s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
-	}
-	s.InjectDerivedDetails()
 	return s
 }
 
@@ -203,24 +192,8 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeRelationRemove(ch.GetRelationRemove()); err != nil {
 			return
 		}
-	case ch.GetOldRelationAdd() != nil:
-		if err = s.changeOldRelationAdd(ch.GetOldRelationAdd()); err != nil {
-			return
-		}
-	case ch.GetOldRelationRemove() != nil:
-		if err = s.changeOldRelationRemove(ch.GetOldRelationRemove()); err != nil {
-			return
-		}
-	case ch.GetOldRelationUpdate() != nil:
-		if err = s.changeOldRelationUpdate(ch.GetOldRelationUpdate()); err != nil {
-			return
-		}
 	case ch.GetObjectTypeAdd() != nil:
 		if err = s.changeObjectTypeAdd(ch.GetObjectTypeAdd()); err != nil {
-			return
-		}
-	case ch.GetObjectTypeRemove() != nil:
-		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
 			return
 		}
 	case ch.GetObjectTypeRemove() != nil:
@@ -292,111 +265,31 @@ func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
 	return nil
 }
 
-func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
-	// MIGRATION: add old relation as new relationLinks
-	err := s.changeRelationAdd(&pb.ChangeRelationAdd{RelationLinks: []*model.RelationLink{{Key: add.Relation.Key, Format: add.Relation.Format}}})
-	if err != nil {
-		return err
-	}
-
-	for _, rel := range s.OldExtraRelations() {
-		if rel.Key == add.Relation.Key {
-			// todo: update?
-			log.Warnf("changeOldRelationAdd, relation already exists")
-			return nil
-		}
-	}
-
-	rel := add.Relation
-	if rel.Format == model.RelationFormat_file && rel.ObjectTypes == nil {
-		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
-	}
-
-	s.extraRelations = pbtypes.CopyRelations(append(s.OldExtraRelations(), rel))
-	return nil
-}
-
-func (s *State) changeOldRelationRemove(remove *pb.Change_RelationRemove) error {
-	rels := pbtypes.CopyRelations(s.OldExtraRelations())
-	for i, rel := range rels {
-		if rel.Key == remove.Key {
-			s.extraRelations = append(rels[:i], rels[i+1:]...)
-			return nil
-		}
-	}
-
-	err := s.changeRelationRemove(&pb.ChangeRelationRemove{RelationKey: []string{remove.Key}})
-	if err != nil {
-		return err
-	}
-
-	log.Warnf("changeOldRelationRemove: relation to remove not found")
-	return nil
-}
-
-func (s *State) changeOldRelationUpdate(update *pb.Change_RelationUpdate) error {
-	rels := pbtypes.CopyRelations(s.OldExtraRelations())
-	for _, rel := range rels {
-		if rel.Key != update.Key {
-			continue
-		}
-
-		switch val := update.Value.(type) {
-		case *pb.Change_RelationUpdateValueOfFormat:
-			rel.Format = val.Format
-		case *pb.Change_RelationUpdateValueOfName:
-			rel.Name = val.Name
-		case *pb.Change_RelationUpdateValueOfDefaultValue:
-			rel.DefaultValue = val.DefaultValue
-		case *pb.Change_RelationUpdateValueOfSelectDict:
-			rel.SelectDict = val.SelectDict.Dict
-		}
-		s.extraRelations = rels
-
-		return nil
-	}
-
-	return fmt.Errorf("relation not found")
-}
-
 func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
+	if add.Url != "" {
+		// migration of the old type changes
+		// before we were storing the change ID instead of Key
+		// but it's pretty easy to convert it
+		add.Key = strings.TrimPrefix(add.Url, addr.ObjectTypeKeyToIdPrefix)
+	}
+
 	for _, ot := range s.ObjectTypes() {
-		if ot == add.Url {
+		if ot == add.Key {
 			return nil
 		}
 	}
-	// in-place migration for bundled object types moved into workspace
-	url, migrated := relationutils.MigrateObjectTypeId(add.Url)
-	if migrated {
-		s.SetObjectTypesToMigrate(append(s.ObjectTypesToMigrate(), url))
-		add.Url = url
-	}
-	objectTypes := append(s.ObjectTypes(), add.Url)
+	objectTypes := append(s.ObjectTypes(), add.Key)
 	s.SetObjectTypes(objectTypes)
-	// Set only the first(0) object type to the detail
-	s.SetLocalDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
-
 	return nil
 }
 
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
 	var found bool
-	// in-place migration for bundled object types moved into workspace
-	url, migrated := relationutils.MigrateObjectTypeId(remove.Url)
-	if migrated {
-		// todo: should we also migrate all the object types from the history of object?
-		s.objectTypesToMigrate = slice.Filter(s.ObjectTypesToMigrate(), func(s string) bool {
-			if s == remove.Url {
-				found = true
-				return false
-			}
-			return true
-		})
-		remove.Url = url
+	if remove.Url != "" {
+		remove.Key = strings.TrimPrefix(remove.Url, addr.ObjectTypeKeyToIdPrefix)
 	}
-
 	s.objectTypes = slice.Filter(s.ObjectTypes(), func(s string) bool {
-		if s == remove.Url {
+		if s == remove.Key {
 			found = true
 			return false
 		}
@@ -428,10 +321,6 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 			if len(dv.RelationLinks) == 0 {
 				dv.RelationLinks = relationutils.MigrateRelationModels(dv.Relations)
 			}
-			var typesToMigrate []string
-			dv.Source, typesToMigrate = relationutils.MigrateObjectTypeIds(dv.Source)
-			s.objectTypesToMigrate = append(s.objectTypesToMigrate, typesToMigrate...)
-			dv.Source = relationutils.MigrateRelationIds(dv.Source) // can also contain relation ids
 		}
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
@@ -881,4 +770,35 @@ func (cb *changeBuilder) Flush() {
 func (cb *changeBuilder) Build() []*pb.ChangeContent {
 	cb.Flush()
 	return cb.changes
+}
+
+func migrateObjectTypeIdToKeys(ot string) string {
+	if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) {
+		return strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
+	}
+	return ot
+}
+
+func migrateObjectTypeIdsToKeys(ots []string) []string {
+	for i := range ots {
+		if strings.HasPrefix(ots[i], addr.ObjectTypeKeyToIdPrefix) {
+			ots[i] = strings.TrimPrefix(ots[i], addr.ObjectTypeKeyToIdPrefix)
+		}
+	}
+	return ots
+}
+
+func migrateAddMissingUniqueKey(sbType model.SmartBlockType, snapshot *pb.ChangeSnapshot) {
+	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
+	uk, err := uniquekey.UnmarshalFromString(id)
+	if err != nil {
+		// means that sbtype is not supported
+		return
+	}
+	if uk.SmartblockType() != sbType {
+		log.Errorf("missingKeyMigration: wrong sbtype %s != %s", uk.SmartblockType(), sbType)
+		return
+	}
+
+	snapshot.Data.Key = uk.InternalKey()
 }

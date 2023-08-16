@@ -159,9 +159,8 @@ func (s *testSession) accountCreate(t *testing.T) string {
 	cctx, events := s.openClientSession(t, mnemonic)
 
 	acc := call(cctx, s.AccountCreate, &pb.RpcAccountCreateRequest{
-		Name:            "John Doe",
-		AlphaInviteCode: "elbrus",
-		StorePath:       rootPath,
+		Name:      "John Doe",
+		StorePath: rootPath,
 	})
 
 	require.NotNil(t, acc.Account)

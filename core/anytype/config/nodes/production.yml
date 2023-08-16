@@ -2,106 +2,127 @@ networkId: N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU
 nodes:
   - peerId: 12D3KooWCywWYgfDZmamJxvWKAvMT5AYDdRG8MMhCpYLHjW8aX7K
     addresses:
-      - ec2-16-62-144-106.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node1.toolpad.org:443
+      - prod-any-sync-node1.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWKtaDnWNAb6DHHZBCEyB3tEQjLTcRFUSpRsjeSRq34Sgp
     addresses:
-      - ec2-16-62-182-24.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node2.toolpad.org:443
+      - prod-any-sync-node2.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWHBN58eZ9RAt3qhoSECtScJtwwugtQhumPC2KqfuuHFx2
     addresses:
-      - ec2-16-62-198-160.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node3.toolpad.org:443
+      - prod-any-sync-node3.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWAxCweKe8aZV6UGXYYXo9Q6W1gF7h7zhpD4FVpEqYXxts
     addresses:
-      - ec2-16-62-224-231.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node4.toolpad.org:443
+      - prod-any-sync-node4.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWSrpbLQcX9teCjc29FEZByFVgMufY3UetwEfLLGyZk9ta
     addresses:
-      - ec2-16-62-235-168.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node5.toolpad.org:443
+      - prod-any-sync-node5.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWMs2Vom8ukyAU7NBMm49UVXQnA7oVwo9kUFhgqdCdwSYe
     addresses:
-      - ec2-16-62-238-63.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node6.toolpad.org:443
+      - prod-any-sync-node6.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWNgyZ4yDBZfpoiT7ijbSQfsYHBVq3cZ6hKC1na4Ybq7QE
     addresses:
-      - ec2-16-62-6-95.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node7.toolpad.org:443
+      - prod-any-sync-node7.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWQi2Avyc8NmZJBJXK62Ux9ZeTyXy86nxF5S25jfXfmfEo
     addresses:
-      - ec2-16-62-83-243.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node8.toolpad.org:443
+      - prod-any-sync-node8.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWLNJbA9gUwccuhxyWvn2uyrNUt7AHYCaQV5FWTq6Ss7AR
     addresses:
-      - ec2-16-62-87-173.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node9.toolpad.org:443
+      - prod-any-sync-node9.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWMdKkq7SjrBMAqHXprtrbg86JudGUyf1Nk9WQQzKsWonJ
     addresses:
-      - ec2-16-62-89-14.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node10.toolpad.org:443
+      - prod-any-sync-node10.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWMRghjHoSh3biVythJuChAQ6PddYvXjd1dR2H46jUXMtU
     addresses:
-      - ec2-16-62-91-33.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node11.toolpad.org:443
+      - prod-any-sync-node11.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWC69WV4sU31YesYLuFovP92PS8LZkqLbJAmxCEb28UyCo
     addresses:
-      - ec2-16-62-95-65.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node12.toolpad.org:443
+      - prod-any-sync-node12.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWG7R2VEmeUoyh8vtHUNp6cmKdih7K31a6vDT8BHezgQ1b
     addresses:
-      - ec2-16-63-25-28.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node13.toolpad.org:443
+      - prod-any-sync-node13.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWD27VZCngpb5QeGyHJFUCDoQpgePTbvnmEsZYZxknmrpK
     addresses:
-      - ec2-16-63-28-16.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node14.toolpad.org:443
+      - prod-any-sync-node14.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWEGtP8w6CtqGFi597i5HToSm8XFTBiK51NJrjLAUAfdZx
     addresses:
-      - ec2-16-63-31-226.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-node15.toolpad.org:443
+      - prod-any-sync-node15.toolpad.org:1443
     types:
       - tree
   - peerId: 12D3KooWBk6PrHAVFLV4zbWFVUjX9MGomVhvcQdGg3UFWz24pBPY
     addresses:
-      - ec2-16-62-113-124.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-filenode1.toolpad.org:443
+      - prod-any-sync-filenode1.toolpad.org:1443
     types:
       - file
   - peerId: 12D3KooWLfWd1B7XmEGThYVMtBi3Vcy1Qsa6YckAivbdHSiwnV6b
     addresses:
-      - ec2-16-62-129-100.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-filenode2.toolpad.org:443
+      - prod-any-sync-filenode2.toolpad.org:1443
     types:
       - file
   - peerId: 12D3KooW9wrLnc3SeBt33LZDKsPeWRy82a5VqM23LxLqtrc4so45
     addresses:
-      - ec2-16-62-247-180.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-filenode3.toolpad.org:443
+      - prod-any-sync-filenode3.toolpad.org:1443
     types:
       - file
   - peerId: 12D3KooWKStBu7tNGumsNp2AnRWsm1XmcnWjZpcc6pKVrhG17sGc
     addresses:
-      - ec2-16-62-49-130.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-coordinator1.toolpad.org:443
+      - prod-any-sync-coordinator1.toolpad.org:1443
     types:
       - coordinator
   - peerId: 12D3KooWDWktnygiEzZHqWhjQXoaKqR2KVqJJwrn6AfXHy2BHJqd
     addresses:
-      - ec2-16-62-58-51.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-coordinator2.toolpad.org:443
+      - prod-any-sync-coordinator2.toolpad.org:1443
     types:
       - coordinator
   - peerId: 12D3KooWK6YnMBfMCQ442pTsW5WvFJDaEv4AzF2UTFWWUNEbENfL
     addresses:
-      - ec2-16-63-31-8.eu-central-2.compute.amazonaws.com:443
+      - prod-any-sync-coordinator3.toolpad.org:443
+      - prod-any-sync-coordinator3.toolpad.org:1443
     types:
       - coordinator

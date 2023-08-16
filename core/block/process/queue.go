@@ -208,7 +208,7 @@ func (p *queue) Stop(err error) {
 	close(p.cancel)
 	// flush queue
 	p.msgs.Pause()
-	if err = p.msgs.Close(); err != nil {
+	if closeErr := p.msgs.Close(); closeErr != nil {
 		p.m.Unlock()
 		return
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
@@ -58,10 +59,8 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) ObjectStore {
-	return &dsObjectStore{
-		sbtProvider: sbtProvider,
-	}
+func New() ObjectStore {
+	return &dsObjectStore{}
 }
 
 type SourceDetailsFromID interface {
@@ -69,6 +68,7 @@ type SourceDetailsFromID interface {
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	src := a.Component("source")
 	if src != nil {
 		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
@@ -122,7 +122,7 @@ type ObjectStore interface {
 
 	SubscribeForAll(callback func(rec database.Record))
 
-	Query(schema database.Schema, q database.Query) (records []database.Record, total int, err error)
+	Query(q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
@@ -149,11 +149,17 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
+	// deprecated, use relationService
 	GetRelationByID(id string) (relation *model.Relation, err error)
+	// deprecated, use relatinoService
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
+	// deprecated, use relatinoService
 	GetObjectType(url string) (*model.ObjectType, error)
+	HasObjectType(id string) (bool, error)
+	// deprecated, use relatinoService
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
+	GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error)
 
 	ResolveSpaceID(objectID string) (spaceID string, err error)
 	StoreSpaceID(objectID, spaceID string) error
@@ -239,7 +245,7 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 // GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
 func (s *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*model.RelationOption, err error) {
 	// todo: add workspace
-	records, _, err := s.Query(nil, database.Query{
+	records, _, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -248,8 +254,9 @@ func (s *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Float64(float64(model.ObjectType_relationOption)),
+				// todo: revert check by objectType
 			},
 		},
 	})
@@ -297,7 +304,7 @@ func (s *dsObjectStore) GetRelationByID(id string) (*model.Relation, error) {
 		return nil, err
 	}
 
-	if pbtypes.GetString(det.GetDetails(), bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.URL() {
+	if pbtypes.GetString(det.GetDetails(), bundle.RelationKeyRelationKey.String()) == "" {
 		return nil, fmt.Errorf("object %s is not a relation", id)
 	}
 
@@ -315,15 +322,10 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Value:       pbtypes.String(key),
 			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
-			},
 		},
 	}
 
-	records, _, err := s.Query(nil, q)
+	records, _, err := s.Query(q)
 	if err != nil {
 		return nil, err
 	}
@@ -661,12 +663,34 @@ func extractIDFromKey(key string) (id string) {
 	return key[i+1:]
 }
 
-func (s *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
-	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
-		return bundle.GetTypeByUrl(url)
+func (s *dsObjectStore) HasObjectType(id string) (bool, error) {
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return bundle.HasObjectTypeID(id), nil
 	}
 
-	details, err := s.GetDetails(url)
+	details, err := s.GetDetails(id)
+	if err != nil {
+		return false, err
+	}
+
+	if pbtypes.IsStructEmpty(details.GetDetails()) {
+		return false, nil
+	}
+	if pbtypes.GetBool(details.GetDetails(), bundle.RelationKeyIsDeleted.String()) {
+		return false, nil
+	}
+	if pbtypes.GetString(details.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return bundle.GetTypeByUrl(id)
+	}
+
+	details, err := s.GetDetails(id)
 	if err != nil {
 		return nil, err
 	}
@@ -679,16 +703,55 @@ func (s *dsObjectStore) GetObjectType(url string) (*model.ObjectType, error) {
 		return nil, fmt.Errorf("type was removed")
 	}
 
-	if pbtypes.GetString(details.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyObjectType.URL() {
-		return nil, fmt.Errorf("object %s is not an object type", url)
+	uk, err := uniquekey.UnmarshalFromString(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse unique key %s: %w", pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()), err)
 	}
 
-	return s.extractObjectTypeFromDetails(details.Details, url), nil
+	if uk.SmartblockType() != model.SmartBlockType_STType {
+		return nil, fmt.Errorf("object %s is not an object type", id)
+	}
+
+	ot := s.extractObjectTypeFromDetails(details.Details, id)
+	ot.Key = uk.InternalKey()
+	return ot, nil
+}
+
+func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error) {
+	records, _, err := s.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Value:       pbtypes.String(uniqueKey),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+		Limit: 2,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, ErrObjectNotFound
+	}
+
+	if len(records) > 1 {
+		// should never happen
+		return nil, fmt.Errorf("multiple objects with unique key %s", uniqueKey)
+	}
+
+	return &model.ObjectDetails{Details: records[0].Details}, nil
 }
 
 func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {
 	objectType := &model.ObjectType{}
-	s.fillObjectTypeWithRecommendedRelations(details, objectType)
+	// s.fillObjectTypeWithRecommendedRelations(details, objectType)
 	objectType.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
 	objectType.Layout = model.ObjectTypeLayout(int(pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())))
 	objectType.IconEmoji = pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String())
@@ -703,7 +766,8 @@ func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url 
 func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.Struct, objectType *model.ObjectType) {
 	// relationKeys := objectInfos[0].RelationKeys
 	for _, relationID := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
-		relationKey, err := pbtypes.RelationIdToKey(relationID)
+		// todo: fix or remove
+		relationKey, err := pbtypes.BundledRelationIdToKey(relationID)
 		if err == nil {
 			//nolint:govet
 			relation, err := s.GetRelationByKey(relationKey)
@@ -721,10 +785,10 @@ func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.St
 	}
 }
 
-func (s *dsObjectStore) GetObjectTypes(urls []string) (ots []*model.ObjectType, err error) {
-	ots = make([]*model.ObjectType, 0, len(urls))
-	for _, url := range urls {
-		ot, e := s.GetObjectType(url)
+func (s *dsObjectStore) GetObjectTypes(ids []string) (ots []*model.ObjectType, err error) {
+	ots = make([]*model.ObjectType, 0, len(ids))
+	for _, id := range ids {
+		ot, e := s.GetObjectType(id)
 		if e != nil {
 			err = e
 		} else {

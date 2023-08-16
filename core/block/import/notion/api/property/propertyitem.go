@@ -54,6 +54,7 @@ const (
 	PropertyConfigLastEditedBy    ConfigType = "last_edited_by"
 	PropertyConfigStatus          ConfigType = "status"
 	PropertyConfigVerification    ConfigType = "verification"
+	PropertyConfigUniqueID        ConfigType = "unique_id"
 )
 
 type DetailSetter interface {
@@ -646,9 +647,8 @@ func (r *RollupItem) handleArrayType(key string, details map[string]*types.Value
 	result := make([]string, 0)
 	for _, pr := range r.Rollup.Array {
 		tempDetails := make(map[string]*types.Value, 0)
-		object, err := getPropertyObject(pr)
-		if err != nil {
-			logger.With(zap.String("method", "RollupItem.SetDetail")).Error(err)
+		object := getPropertyObject(pr)
+		if object == nil {
 			continue
 		}
 		if ds, ok := object.(DetailSetter); ok {
@@ -713,4 +713,35 @@ func (v VerificationItem) GetID() string {
 
 func (v VerificationItem) GetFormat() model.RelationFormat {
 	return model.RelationFormat_date
+}
+
+type UniqueIDItem struct {
+	ID       string   `json:"id"`
+	Type     string   `json:"type"`
+	UniqueID UniqueID `json:"unique_id"`
+}
+
+type UniqueID struct {
+	Number int64  `json:"number"`
+	Prefix string `json:"prefix"`
+}
+
+func (u UniqueIDItem) SetDetail(key string, details map[string]*types.Value) {
+	id := strconv.FormatInt(u.UniqueID.Number, 10)
+	if u.UniqueID.Prefix != "" {
+		id = u.UniqueID.Prefix + "-" + id
+	}
+	details[key] = pbtypes.String(id)
+}
+
+func (u UniqueIDItem) GetPropertyType() ConfigType {
+	return PropertyConfigUniqueID
+}
+
+func (u UniqueIDItem) GetID() string {
+	return u.ID
+}
+
+func (u UniqueIDItem) GetFormat() model.RelationFormat {
+	return model.RelationFormat_longtext
 }

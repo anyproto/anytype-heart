@@ -10,13 +10,15 @@ import (
 
 const (
 	SubObjectCollectionIdSeparator = "-"
-	RelationKeyToIdPrefix          = "rel-" //
-	ObjectTypeKeyToIdPrefix        = "ot-"  //
+	// deprecated
+	RelationKeyToIdPrefix = "rel-" //
+	// deprecated
+	ObjectTypeKeyToIdPrefix = "ot-" //
 
-	BundledRelationURLPrefix    = "_br"
-	OldIndexedRelationURLPrefix = "_ir"
+	BundledRelationURLPrefix = "_br"
 
 	BundledObjectTypeURLPrefix = "_ot"
+	BundledTemplatesURLPrefix  = "_bt"
 
 	AnytypeProfileId            = "_anytype_profile"
 	AnytypeMarketplaceWorkspace = "_anytype_marketplace"
@@ -25,6 +27,16 @@ const (
 
 	MissingObject = "_missing_object"
 )
+
+func IsBundledId(id string) bool {
+	return strings.HasPrefix(id, BundledRelationURLPrefix) ||
+		strings.HasPrefix(id, BundledObjectTypeURLPrefix) ||
+		strings.HasPrefix(id, BundledTemplatesURLPrefix) ||
+		strings.HasPrefix(id, DatePrefix) ||
+		id == AnytypeMarketplaceWorkspace ||
+		id == MissingObject ||
+		id == AnytypeProfileId
+}
 
 func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 	if !strings.HasPrefix(id, VirtualPrefix) {
@@ -43,16 +55,6 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 		return model.SmartBlockType(v), nil
 	}
 	return 0, fmt.Errorf("sb type '%s' not found", sbTypeName)
-}
-
-func ConvertBundledObjectIdToInstalledId(bundledId string) (string, error) {
-	if strings.HasPrefix(bundledId, BundledRelationURLPrefix) {
-		return RelationKeyToIdPrefix + strings.TrimPrefix(bundledId, BundledRelationURLPrefix), nil
-	} else if strings.HasPrefix(bundledId, BundledObjectTypeURLPrefix) {
-		return ObjectTypeKeyToIdPrefix + strings.TrimPrefix(bundledId, BundledObjectTypeURLPrefix), nil
-	}
-
-	return "", fmt.Errorf("unknown bundled id")
 }
 
 func TimeToID(t time.Time) string {
