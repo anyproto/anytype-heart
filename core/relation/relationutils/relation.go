@@ -46,20 +46,23 @@ func (r *Relation) RelationLink() *model.RelationLink {
 func (r *Relation) ToStruct() *types.Struct {
 	return &types.Struct{
 		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():                        pbtypes.String(r.Id),
-			bundle.RelationKeyRelationKey.String():               pbtypes.String(r.GetKey()),
-			bundle.RelationKeyRelationFormat.String():            pbtypes.Float64(float64(r.GetFormat())),
-			bundle.RelationKeyName.String():                      pbtypes.String(r.GetName()),
-			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
-			bundle.RelationKeyLayout.String():                    pbtypes.Int64(int64(model.ObjectType_relation)),
-			bundle.RelationKeyRelationDefaultValue.String():      pbtypes.NilToNullWrapper(r.GetDefaultValue()),
-			bundle.RelationKeyIsHidden.String():                  pbtypes.Bool(r.GetHidden()),
-			bundle.RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(r.GetReadOnly()),
-			bundle.RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(r.GetObjectTypes()),
-			bundle.RelationKeyRelationMaxCount.String():          pbtypes.Float64(float64(r.GetMaxCount())),
-			bundle.RelationKeyDescription.String():               pbtypes.String(r.GetDescription()),
-			bundle.RelationKeyScope.String():                     pbtypes.Float64(float64(r.GetScope())),
 			bundle.RelationKeyCreator.String():                   pbtypes.String(r.GetCreator()),
+			bundle.RelationKeyDescription.String():               pbtypes.String(r.GetDescription()),
+			bundle.RelationKeyId.String():                        pbtypes.String(r.Id),
+			bundle.RelationKeyIsHidden.String():                  pbtypes.Bool(r.GetHidden()),
+			bundle.RelationKeyIsReadonly.String():                pbtypes.Bool(r.GetReadOnlyRelation()),
+			bundle.RelationKeyLayout.String():                    pbtypes.Int64(int64(model.ObjectType_relation)),
+			bundle.RelationKeyName.String():                      pbtypes.String(r.GetName()),
+			bundle.RelationKeyRelationDefaultValue.String():      pbtypes.NilToNullWrapper(r.GetDefaultValue()),
+			bundle.RelationKeyRelationFormat.String():            pbtypes.Float64(float64(r.GetFormat())),
+			bundle.RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(r.GetObjectTypes()),
+			bundle.RelationKeyRelationKey.String():               pbtypes.String(r.GetKey()),
+			bundle.RelationKeyRelationMaxCount.String():          pbtypes.Float64(float64(r.GetMaxCount())),
+			bundle.RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(r.GetReadOnly()),
+			bundle.RelationKeyScope.String():                     pbtypes.Float64(float64(r.GetScope())),
+			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
+			// TODO Is it ok?
+			bundle.RelationKeyUniqueKey.String(): pbtypes.String(r.GetKey()),
 		},
 	}
 }
