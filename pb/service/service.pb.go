@@ -6,10 +6,12 @@ package service
 import (
 	context "context"
 	fmt "fmt"
-	pb "github.com/anyproto/anytype-heart/pb"
+	math "math"
+
 	proto "github.com/gogo/protobuf/proto"
 	grpc "google.golang.org/grpc"
-	math "math"
+
+	pb "github.com/anyproto/anytype-heart/pb"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
