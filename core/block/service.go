@@ -413,6 +413,11 @@ func (s *Service) AddBundledObjectToSpace(
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       pbtypes.StringList(sourceObjectIds),
 			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceID),
+			},
 		},
 	})
 	var existingObjectMap = make(map[string]struct{})

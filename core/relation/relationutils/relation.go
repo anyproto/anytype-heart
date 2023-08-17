@@ -62,7 +62,7 @@ func (r *Relation) ToStruct() *types.Struct {
 			bundle.RelationKeyScope.String():                     pbtypes.Float64(float64(r.GetScope())),
 			bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.BundledURL()),
 			// TODO Is it ok?
-			bundle.RelationKeyUniqueKey.String(): pbtypes.String(r.GetKey()),
+			bundle.RelationKeyUniqueKey.String(): pbtypes.String(bundle.RelationKey(r.GetKey()).URL()),
 		},
 	}
 }

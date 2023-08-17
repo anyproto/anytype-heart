@@ -144,6 +144,11 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return nil
 	})
 
+	err = s.indexer.ReindexSpace(spc.Id())
+	if err != nil {
+		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
+	}
+
 	err = Do(s, predefinedObjectIDs.Account, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
@@ -156,11 +161,6 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	})
 	if err != nil {
 		return "", fmt.Errorf("set details for space %s: %w", spc.Id(), err)
-	}
-
-	err = s.indexer.ReindexSpace(spc.Id())
-	if err != nil {
-		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
 	}
 
 	_, err = s.builtinObjectService.CreateObjectsForUseCase(ctx, spc.Id(), req.UseCase)
