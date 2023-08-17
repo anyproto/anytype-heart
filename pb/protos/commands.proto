@@ -1321,6 +1321,7 @@ message Rpc {
 
         message GroupsSubscribe {
             message Request {
+                string spaceId = 6;
                 string subId = 1;
                 string relationKey = 2;
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 3;
