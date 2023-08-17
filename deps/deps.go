@@ -1,7 +1,6 @@
 package deps
 
 import (
-	_ "github.com/golang/mock/sample"
 	_ "github.com/pseudomuto/protoc-gen-doc/extensions/google_api_http"
 	_ "github.com/vektra/mockery/v2/cmd"
 	// _ "github.com/ahmetb/govvv"  // import govvv so it can be installed with make setup-go

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/testMock"
+	"go.uber.org/mock/gomock"
 )
 
 type collectionServiceMock struct {
@@ -29,13 +30,27 @@ func (c *collectionServiceMock) SubscribeForCollection(collectionID string, subs
 func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
 }
 
+type fixture struct {
+	Service
+	a      *app.App
+	ctrl   *gomock.Controller
+	store  *testMock.MockObjectStore
+	sender *mock_event.MockSender
+	events []*pb.Event
+}
+
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	a := new(app.App)
 	testMock.RegisterMockObjectStore(ctrl, a)
 	testMock.RegisterMockKanban(ctrl, a)
+	a.Register(&collectionServiceMock{})
+	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
+	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
+	a.Register(sbtProvider)
 	fx := &fixture{
-		Service: New(&collectionServiceMock{}, nil),
+		Service: New(),
 		a:       a,
 		ctrl:    ctrl,
 		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
@@ -55,13 +70,13 @@ func newFixture(t *testing.T) *fixture {
 	return fx
 }
 
-type fixture struct {
+type fixtureRealStore struct {
 	Service
 	a      *app.App
 	ctrl   *gomock.Controller
-	store  *testMock.MockObjectStore
+	store  *objectstore.StoreFixture
 	sender *mock_event.MockSender
-	events []*pb.Event
+	events []pb.IsEventMessageValue
 }
 
 func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
@@ -70,8 +85,13 @@ func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
 	store := objectstore.NewStoreFixture(t)
 	a.Register(store)
 	testMock.RegisterMockKanban(ctrl, a)
+	a.Register(&collectionServiceMock{})
+	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
+	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
+	a.Register(sbtProvider)
 	fx := &fixtureRealStore{
-		Service: New(&collectionServiceMock{}, nil),
+		Service: New(),
 		a:       a,
 		ctrl:    ctrl,
 		store:   store,
@@ -90,15 +110,6 @@ func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
 
 	require.NoError(t, a.Start(context.Background()))
 	return fx
-}
-
-type fixtureRealStore struct {
-	Service
-	a      *app.App
-	ctrl   *gomock.Controller
-	store  *objectstore.StoreFixture
-	sender *mock_event.MockSender
-	events []pb.IsEventMessageValue
 }
 
 func (fx *fixtureRealStore) waitEvents(t *testing.T, ev ...pb.IsEventMessageValue) {

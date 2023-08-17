@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
+	"go.uber.org/mock/gomock"
 )
 
 func TestSubscription_Add(t *testing.T) {
