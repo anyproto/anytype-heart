@@ -8,8 +8,9 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	kanban "github.com/anyproto/anytype-heart/core/kanban"
 	gomock "go.uber.org/mock/gomock"
+
+	kanban "github.com/anyproto/anytype-heart/core/kanban"
 )
 
 // MockService is a mock of Service interface.
@@ -36,18 +37,18 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // Grouper mocks base method.
-func (m *MockService) Grouper(arg0 string) (kanban.Grouper, error) {
+func (m *MockService) Grouper(arg0, arg1 string) (kanban.Grouper, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Grouper", arg0)
+	ret := m.ctrl.Call(m, "Grouper", arg0, arg1)
 	ret0, _ := ret[0].(kanban.Grouper)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Grouper indicates an expected call of Grouper.
-func (mr *MockServiceMockRecorder) Grouper(arg0 interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) Grouper(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Grouper", reflect.TypeOf((*MockService)(nil).Grouper), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Grouper", reflect.TypeOf((*MockService)(nil).Grouper), arg0, arg1)
 }
 
 // Init mocks base method.

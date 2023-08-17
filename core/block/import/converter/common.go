@@ -255,12 +255,13 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 	return objectsIDs
 }
 
-func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
-	objectType := st.ObjectTypeKey()
-	if newType, ok := oldIDtoNew[objectType]; ok {
-		st.SetObjectType(newType)
-	}
-}
+// TODO Fix this
+// func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
+// 	objectType := st.ObjectTypeKey()
+// 	if newType, ok := oldIDtoNew[objectType]; ok {
+// 		st.SetObjectType(newType)
+// 	}
+// }
 
 func replaceChunks(s string, oldToNew map[string]string) []string {
 	var result []string

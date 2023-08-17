@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -26,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -113,7 +113,8 @@ func (oc *ObjectCreator) Create(
 		return nil, newID, nil
 	}
 
-	converter.UpdateObjectType(oldIDtoNew, st)
+	// TODO Fix this
+	// converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
 		if link.Format == model.RelationFormat_file {
 			filesToDelete = oc.relationSyncer.Sync(st, link.Key)
@@ -121,7 +122,8 @@ func (oc *ObjectCreator) Create(
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
 	var respDetails *types.Struct
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys(), oldIDtoNew)
+	// TODO Fix
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), nil)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err.Error())
 	}
@@ -158,7 +160,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	spaceID string,
 	links pbtypes.RelationLinks,
 	types []string,
-	oldIDtoNew map[string]string) error {
+) error {
 
 	var idsToCheck = make([]string, 0, len(links)+len(types))
 	for _, link := range links {
