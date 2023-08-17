@@ -915,57 +915,6 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[prs.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 	})
 
-	t.Run("Page has MultiSelect property with tags name and Select property with Tags name - MultiSelect is mapped to Tag relation, Tags is a new relation", func(t *testing.T) {
-		// given
-		details := make(map[string]*types.Value, 0)
-		c := client.NewClient()
-		p := property.MultiSelectItem{
-			Object: "",
-			ID:     "id",
-			Type:   string(property.PropertyConfigTypeSelect),
-			MultiSelect: []*property.SelectOption{{
-				ID:    "id",
-				Name:  "Name",
-				Color: api.Blue,
-			},
-			},
-		}
-		prs := property.SelectItem{
-			Object: "",
-			ID:     "id1",
-			Type:   string(property.PropertyConfigTypeSelect),
-			Select: property.SelectOption{
-				ID:    "id1",
-				Name:  "Name",
-				Color: api.Blue,
-			},
-		}
-		pr := property.Properties{"tags": &p, "Tags": &prs}
-		ps := Task{
-			propertyService:        property.New(c),
-			relationOptCreateMutex: &sync.Mutex{},
-			relationCreateMutex:    &sync.Mutex{},
-			p:                      Page{Properties: pr},
-		}
-		req := &property.PropertiesStore{
-			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
-			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
-		}
-		do := &DataObject{
-			request:   &block.NotionImportContext{},
-			relations: req,
-		}
-
-		// when
-		snapshots, _ := ps.handlePageProperties(do, details)
-
-		// then
-		assert.Len(t, snapshots, 4) // 2 relation + 2 option
-		assert.Len(t, req.PropertyIdsToSnapshots, 2)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[p.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[prs.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
-	})
-
 	t.Run("Page has MultiSelect property with tags name and Select property with Tag name - Tag property is mapped to Tag relation, tags is a new relation", func(t *testing.T) {
 		// given
 		details := make(map[string]*types.Value, 0)
