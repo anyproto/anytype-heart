@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	. "github.com/anyproto/anytype-heart/tests/blockbuilder"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 func makeStoreWithTwoKeysAndValue(first, second, value string) *types.Struct {

@@ -297,7 +297,7 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 	// given
 	stateWithLinks := state.NewDoc("root", nil).(*state.State)
-	stateWithLinks.SetObjectType(bundle.TypeKeyPage.String())
+	stateWithLinks.SetObjectType(bundle.TypeKeyPage)
 	converter := newTestConverter(t)
 
 	t.Run("all options are turned off", func(t *testing.T) {
