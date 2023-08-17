@@ -243,7 +243,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:        params.State.BlocksToSave(),
 				Details:       params.State.Details(),
-				ObjectTypes:   params.State.ObjectTypeKeys(),
+				ObjectTypes:   slice.UnwrapStrings(params.State.ObjectTypeKeys()),
 				Collections:   params.State.Store(),
 				RelationLinks: params.State.PickRelationLinks(),
 				Key:           params.State.UniqueKeyInternal(),

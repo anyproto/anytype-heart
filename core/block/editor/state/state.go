@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -935,17 +934,16 @@ func (s *State) StoreChangeIdForPath(path string) string {
 	return m[path]
 }
 
+type ObjectTypePair struct {
+	ID  string
+	Key bundle.TypeKey
+}
+
 func (s *State) SetObjectType(objectTypeKey bundle.TypeKey) *State {
 	return s.SetObjectTypes([]bundle.TypeKey{objectTypeKey})
 }
 
 func (s *State) SetObjectTypes(objectTypeKeys []bundle.TypeKey) *State {
-	// TODO remove this check because we straighten typing
-	for _, ot := range objectTypeKeys {
-		if strings.HasPrefix(string(ot), addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(string(ot), addr.BundledObjectTypeURLPrefix) {
-			panic(fmt.Sprintf("SetObjectTypes used to set IDs instead of keys: %v", objectTypeKeys))
-		}
-	}
 	s.objectTypeKeys = objectTypeKeys
 	// we don't set it in the localDetails here
 	return s
@@ -992,7 +990,7 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-// ObjectTypes returns the object types keys of the object
+// ObjectTypeKeys returns the object types keys of the object
 // in order to get object type id you need to derive it for the space
 func (s *State) ObjectTypeKeys() []bundle.TypeKey {
 	if s.objectTypeKeys == nil && s.parent != nil {
@@ -1001,7 +999,7 @@ func (s *State) ObjectTypeKeys() []bundle.TypeKey {
 	return s.objectTypeKeys
 }
 
-// ObjectType returns only the first objectType key and produce warning in case the state has more than 1 object type
+// ObjectTypeKey returns only the first objectType key and produce warning in case the state has more than 1 object type
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
 func (s *State) ObjectTypeKey() bundle.TypeKey {
 	objTypes := s.ObjectTypeKeys()

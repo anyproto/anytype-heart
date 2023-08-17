@@ -165,8 +165,8 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypes []string) (err 
 	return
 }
 
-func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (err error) {
-	if len(objectTypes) == 0 {
+func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeIDs []string) (err error) {
+	if len(objectTypeIDs) == 0 {
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
 
@@ -174,40 +174,30 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
 	}
 
-	otypes, err := bs.objectStore.GetObjectTypes(objectTypes)
+	prevTypeID := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
+	// nolint:errcheck
+	prevType, _ := bs.objectStore.GetObjectType(prevTypeID)
+
+	newObjectTypes, err := bs.objectStore.GetObjectTypes(objectTypeIDs)
 	if err != nil {
-		return
+		return fmt.Errorf("get object types: %w", err)
 	}
-	if len(otypes) == 0 {
+	if len(newObjectTypes) == 0 {
 		return fmt.Errorf("object types not found")
 	}
-
-	// nolint:errcheck
-	prevType, _ := bs.objectStore.GetObjectType(s.ObjectTypeKey())
-	ots, err := bs.objectStore.GetObjectTypes(objectTypes)
-	if err != nil {
-		return err
-	}
-	var objectTypeKeys = make([]string, 0, len(ots))
-	if len(ots) > 1 {
+	if len(newObjectTypes) > 1 {
 		//nolint:govet
 		log.With("objectID", s.RootId()).Warnf("set object types: more than one object type, setting layout to the first one")
 	}
-	if len(ots) == 0 {
-		return fmt.Errorf("object types not found")
-	}
-	toLayout := ots[0].Layout
-	for _, ot := range ots {
-		objectTypeKeys = append(objectTypeKeys, ot.Key)
-	}
 
-	if err = bs.SetLayoutInState(s, toLayout); err != nil {
-		return fmt.Errorf("convert layout: %w", err)
+	objectTypeKeys := make([]bundle.TypeKey, 0, len(newObjectTypes))
+	for _, ot := range newObjectTypes {
+		objectTypeKeys = append(objectTypeKeys, bundle.TypeKey(ot.Key))
 	}
 
 	s.SetObjectTypes(objectTypeKeys)
 
-	// todo: clean up this mess
+	toLayout := newObjectTypes[0].Layout
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
 		prevType == nil || // if we have no type set for some reason or it is missing
 		float64(prevType.Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object

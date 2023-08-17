@@ -90,8 +90,8 @@ func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	}
 
 	s.SetDetails(d)
-
-	s.SetObjectTypes(pbtypes.GetStringList(d, bundle.RelationKeyType.String()))
+	// TODO Decide what to do with this
+	// s.SetObjectType(bundle.TypeKeyFile)
 	return s, nil
 }
 

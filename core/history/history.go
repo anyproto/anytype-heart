@@ -77,19 +77,18 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	// nolint:errcheck
 	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
-	var uniqueObjTypes []string
 
 	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
-	uniqueObjTypes = s.ObjectTypeKeys()
+	uniqueObjTypes := s.ObjectTypeKeys()
 	for _, m := range metaD {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
 		})
 
-		if ot := pbtypes.GetString(m.Details, bundle.RelationKeyType.String()); ot != "" {
-			if slice.FindPos(uniqueObjTypes, ot) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, ot)
+		if typeKey := bundle.TypeKey(pbtypes.GetString(m.Details, bundle.RelationKeyType.String())); typeKey != "" {
+			if slice.FindPos(uniqueObjTypes, typeKey) == -1 {
+				uniqueObjTypes = append(uniqueObjTypes, typeKey)
 			}
 		}
 	}

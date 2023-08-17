@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"fmt"
 )
 
 type Template struct {
@@ -70,17 +71,24 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 	return migration.Compose(parent, migration.Migration{
 		Version: 1,
 		Proc: func(s *state.State) {
+			// TODO What is fixOt???
 			var fixOt bool
 			for _, ot := range t.ObjectTypeKeys() {
-				if strings.HasPrefix(ot, "&") {
+				if strings.HasPrefix(string(ot), "&") {
 					fixOt = true
 					break
 				}
 			}
+
 			if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypeKeys()) != 2 || fixOt) {
-				if targetType := pbtypes.Get(s.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue(); targetType != "" {
-					// todo: return
-					// s.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
+				targetObjectTypeID := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
+				if targetObjectTypeID != "" {
+					targetObjectType, err := t.objectStore.GetObjectType(targetObjectTypeID)
+					if err != nil {
+						log.Errorf("template createion state: failed to get target object type %s: %s", targetObjectTypeID, err)
+						return
+					}
+					s.SetObjectTypes([]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(targetObjectType.Key)})
 				}
 			}
 		},
@@ -91,7 +99,11 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 // it has not localDetails set
 func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
-	st.SetObjectType(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+	objectType, err := t.objectStore.GetObjectType(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
+	if err != nil {
+		return nil, fmt.Errorf("get target object type: %w", err)
+	}
+	st.SetObjectType(bundle.TypeKey(objectType.Key))
 	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
 	// clean-up local details from the template state
 	st.SetLocalDetails(nil)

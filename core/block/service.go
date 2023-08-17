@@ -445,9 +445,9 @@ func (s *Service) AddBundledObjectToSpace(
 			state.SetDetails(d)
 
 			if uk.SmartblockType() == model.SmartBlockType_STRelation {
-				state.SetObjectType(bundle.TypeKeyRelation.String())
+				state.SetObjectType(bundle.TypeKeyRelation)
 			} else if uk.SmartblockType() == model.SmartBlockType_STType {
-				state.SetObjectType(bundle.TypeKeyObjectType.String())
+				state.SetObjectType(bundle.TypeKeyObjectType)
 			} else {
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}

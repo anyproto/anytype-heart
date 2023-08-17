@@ -140,19 +140,7 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(d)
-	s.SetObjectType(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
-	return s, nil
-}
-
-func (v *date) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	if err = v.parseId(); err != nil {
-		return
-	}
-	s := &state.State{}
-	d := v.getDetails()
-
-	s.SetDetails(d)
-	s.SetObjectType(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
+	s.SetObjectType(bundle.TypeKeyDate)
 	return s, nil
 }
 

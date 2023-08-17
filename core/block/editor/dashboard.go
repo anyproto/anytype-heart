@@ -63,7 +63,7 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 		Version: 1,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
-				template.WithObjectTypesAndLayout([]string{p.anytype.PredefinedObjects(p.SpaceID()).SystemTypes[bundle.TypeKeyDashboard]}, model.ObjectType_dashboard),
+				template.WithObjectTypesAndLayout([]bundle.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),

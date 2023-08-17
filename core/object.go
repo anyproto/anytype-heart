@@ -247,8 +247,9 @@ func makeSuggestedDateRecord(t time.Time, workspaceId string) database.Record {
 	id := deriveDateId(t)
 
 	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():          pbtypes.String(id),
-		bundle.RelationKeyName.String():        pbtypes.String(t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyId.String():   pbtypes.String(id),
+		bundle.RelationKeyName.String(): pbtypes.String(t.Format("Mon Jan  2 2006")),
+		// TODO FIX IT
 		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
 		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
 		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(workspaceId),

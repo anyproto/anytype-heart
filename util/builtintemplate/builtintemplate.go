@@ -122,7 +122,8 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		// todo: remove this hack after fixing bundled templates
 		targetObjectType = strings.TrimPrefix(targetObjectType, addr.BundledObjectTypeURLPrefix)
 	}
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.String(), targetObjectType})
+	// TODO Check. RelationKeyTargetObjectType is objectTypeID
+	st.SetObjectTypes([]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(targetObjectType)})
 
 	// fix divergence between extra relations and simple block relations
 	st.Iterate(func(b simple.Block) (isContinue bool) {
@@ -145,13 +146,14 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 
 func (b *builtinTemplate) validate(st *state.State) (err error) {
 	cd := st.CombinedDetails()
-	if st.ObjectTypeKey() != bundle.TypeKeyTemplate.String() {
+	if st.ObjectTypeKey() != bundle.TypeKeyTemplate {
 		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectTypeKey())
 	}
 	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
-	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectTypeKey() {
+	// TODO Check. RelationKeyTargetObjectType is objectTypeID
+	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || bundle.TypeKey(tt) == st.ObjectTypeKey() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), tt)
 	}
 	// todo: update templates and return the validation

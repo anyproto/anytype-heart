@@ -211,7 +211,7 @@ func (s *Service) ObjectToCollection(id string) error {
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
-		st.SetObjectType(bundle.TypeKeyCollection.String())
+		st.SetObjectType(bundle.TypeKeyCollection)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)
