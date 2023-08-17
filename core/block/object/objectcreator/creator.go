@@ -512,7 +512,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	createState := state.NewDoc("", nil).(*state.State)
 	createState.SetObjectType(bundle.TypeKeyObjectType.String())
 	createState.SetDetails(object)
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, nil, createState)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, nil, createState)
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {
