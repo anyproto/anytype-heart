@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	//nolint: gosec
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,7 +15,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/util/debug"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -30,11 +27,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/debug"
+
+	//nolint: gosec
+	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -246,7 +246,9 @@ func main() {
 	for {
 		sig := <-signalChan
 		if shouldSaveStack(sig) {
-			saveStack(mw)
+			if err = mw.SaveGoroutinesStack(""); err != nil {
+				log.Errorf("failed to save stack of goroutines: %s", err.Error())
+			}
 			continue
 		}
 		server.Stop()
@@ -291,20 +293,4 @@ func onNotLoggedInError(resp interface{}, rerr error) interface{} {
 		},
 	}
 	return resp
-}
-
-func saveStack(mw *core.Middleware) {
-	a := mw.GetApp()
-	if a == nil {
-		log.Errorf("failed to save stacktrace: need to start app first")
-		return
-	}
-	wl := a.Component(wallet.CName)
-	if wl == nil {
-		log.Errorf("failed to save stacktrace: need to start wallet first")
-		return
-	}
-	if err := debug.SaveStackToRepo(wl.(wallet.Wallet).RepoPath(), true); err != nil {
-		log.Errorf(err.Error())
-	}
 }
