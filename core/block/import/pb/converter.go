@@ -293,7 +293,7 @@ func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
 	if s == nil {
 		return nil, fmt.Errorf("failed to identify source")
 	}
-	readers, err := s.GetFileReaders(importPath, []string{".pb", ".json", ""})
+	readers, err := s.GetFileReaders(importPath, []string{".pb", ".json"}, []string{constant.ProfileFile, configFile})
 	if err != nil {
 		return nil, err
 	}
