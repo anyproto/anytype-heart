@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -20,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"fmt"
 )
 
 type Template struct {
@@ -99,11 +99,14 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 // it has not localDetails set
 func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
-	objectType, err := t.objectStore.GetObjectType(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
-	if err != nil {
-		return nil, fmt.Errorf("get target object type: %w", err)
+	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+	if objectTypeID != "" {
+		objectType, err := t.objectStore.GetObjectType(objectTypeID)
+		if err != nil {
+			return nil, fmt.Errorf("get target object type: %w", err)
+		}
+		st.SetObjectType(bundle.TypeKey(objectType.Key))
 	}
-	st.SetObjectType(bundle.TypeKey(objectType.Key))
 	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
 	// clean-up local details from the template state
 	st.SetLocalDetails(nil)
