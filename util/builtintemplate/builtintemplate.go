@@ -145,13 +145,13 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 
 func (b *builtinTemplate) validate(st *state.State) (err error) {
 	cd := st.CombinedDetails()
-	if st.ObjectType() != bundle.TypeKeyTemplate.String() {
-		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectType())
+	if st.ObjectTypeKey() != bundle.TypeKeyTemplate.String() {
+		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectTypeKey())
 	}
 	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
-	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectType() {
+	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectTypeKey() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), tt)
 	}
 	// todo: update templates and return the validation

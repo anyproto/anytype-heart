@@ -31,7 +31,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:        st.BlocksToSave(),
 			Details:       st.CombinedDetails(),
-			ObjectTypes:   st.ObjectTypes(),
+			ObjectTypes:   st.ObjectTypeKeys(),
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
 		},

@@ -1100,7 +1100,7 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		}
 
 		ts.BlocksInit(ts)
-		objType := ts.ObjectType()
+		objType := ts.ObjectTypeKey()
 		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectType(objType)
 

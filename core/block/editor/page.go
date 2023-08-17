@@ -99,7 +99,7 @@ func NewPage(
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypes()) == 0) && ctx.IsNewObject {
+	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
 		ctx.ObjectTypeKeys = []string{bundle.TypeKeyPage.String()}
 	}
 
@@ -129,14 +129,14 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					}
 				}
 			}
-			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypes()) == 0 {
+			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
 				ctx.State.SetObjectTypes(ctx.ObjectTypeKeys)
 			}
 			// TODO Templates must be dumb here, no migration logic
 
 			templates := []template.StateTransformer{
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout(ctx.State.ObjectTypes(), layout),
+				template.WithObjectTypesAndLayout(ctx.State.ObjectTypeKeys(), layout),
 				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,

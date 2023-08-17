@@ -75,7 +75,7 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyObjectType.String())
+	s.SetObjectType(bundle.TypeKeyObjectType)
 
 	return s, nil
 }

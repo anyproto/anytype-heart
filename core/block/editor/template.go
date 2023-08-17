@@ -71,16 +71,16 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 		Version: 1,
 		Proc: func(s *state.State) {
 			var fixOt bool
-			for _, ot := range t.ObjectTypes() {
+			for _, ot := range t.ObjectTypeKeys() {
 				if strings.HasPrefix(ot, "&") {
 					fixOt = true
 					break
 				}
 			}
-			if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypes()) != 2 || fixOt) {
+			if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypeKeys()) != 2 || fixOt) {
 				if targetType := pbtypes.Get(s.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue(); targetType != "" {
 					// todo: return
-					//s.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
+					// s.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), targetType})
 				}
 			}
 		},

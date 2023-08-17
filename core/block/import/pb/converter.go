@@ -353,7 +353,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
 	snapshot.Snapshot.Data.Details = pbtypes.StructMerge(snapshot.Snapshot.Data.Details, st.CombinedDetails(), false)
 	snapshot.Snapshot.Data.Blocks = st.Blocks()
-	snapshot.Snapshot.Data.ObjectTypes = st.ObjectTypes()
+	snapshot.Snapshot.Data.ObjectTypes = st.ObjectTypeKeys()
 	snapshot.Snapshot.Data.Collections = st.Store()
 }
 

@@ -183,7 +183,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypes []string) (er
 	}
 
 	// nolint:errcheck
-	prevType, _ := bs.objectStore.GetObjectType(s.ObjectType())
+	prevType, _ := bs.objectStore.GetObjectType(s.ObjectTypeKey())
 	ots, err := bs.objectStore.GetObjectTypes(objectTypes)
 	if err != nil {
 		return err

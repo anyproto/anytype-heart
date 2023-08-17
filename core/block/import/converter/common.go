@@ -256,7 +256,7 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 }
 
 func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
-	objectType := st.ObjectType()
+	objectType := st.ObjectTypeKey()
 	if newType, ok := oldIDtoNew[objectType]; ok {
 		st.SetObjectType(newType)
 	}

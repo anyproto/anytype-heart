@@ -368,7 +368,7 @@ func TestState_SetParent(t *testing.T) {
 	newState := NewDoc("root", nil).(*State)
 	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
-	newState.SetObjectTypes([]string{"newOT1", "newOT2"})
+	newState.SetObjectTypes([]bundle.TypeKey{"newOT1", "newOT2"})
 	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newOne"})
 	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newTwo"})
 
@@ -641,7 +641,7 @@ func TestState_ChangeDataviewRemoveMove(t *testing.T) {
 func Test_ApplyChange(t *testing.T) {
 	t.Run("object types remove", func(t *testing.T) {
 		root := NewDoc("root", nil)
-		root.(*State).SetObjectTypes([]string{"one", "two"})
+		root.(*State).SetObjectTypes([]bundle.TypeKey{"one", "two"})
 		s := root.NewState()
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfObjectTypeRemove{
@@ -650,7 +650,7 @@ func Test_ApplyChange(t *testing.T) {
 				},
 			},
 		}))
-		assert.Equal(t, []string{"two"}, s.ObjectTypes())
+		assert.Equal(t, []bundle.TypeKey{"two"}, s.ObjectTypeKeys())
 
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfObjectTypeRemove{
@@ -659,7 +659,7 @@ func Test_ApplyChange(t *testing.T) {
 				},
 			},
 		}))
-		assert.Len(t, s.ObjectTypes(), 0)
+		assert.Len(t, s.ObjectTypeKeys(), 0)
 	})
 
 	t.Run("collection set/unset uniqueKeyInternal", func(t *testing.T) {

@@ -114,7 +114,7 @@ func (d *dot) Add(st *state.State) error {
 		n.Set("description", desc)
 	}
 
-	n.Set("type", st.ObjectType())
+	n.Set("type", st.ObjectTypeKey())
 	layout := pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())
 	n.Set("layout", fmt.Sprintf("%d", layout))
 

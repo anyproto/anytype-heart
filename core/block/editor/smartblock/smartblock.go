@@ -961,8 +961,8 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
-	st.SetObjectTypes([]string{sb.Anytype().PredefinedObjects(sb.spaceID).SystemTypes[bundle.TypeKeyTemplate], st.ObjectType()})
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectTypeKey()))
+	st.SetObjectTypes([]string{sb.Anytype().PredefinedObjects(sb.spaceID).SystemTypes[bundle.TypeKeyTemplate], st.ObjectTypeKey()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)
@@ -1367,7 +1367,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt m
 	} else {
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", id)
 	}
-	if ot := s.ObjectType(); ot != "" {
+	if ot := s.ObjectTypeKey(); ot != "" {
 		// todo: we need to move this code out of the state,
 		// it shouldn't depend on some external service
 

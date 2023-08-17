@@ -80,7 +80,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	var uniqueObjTypes []string
 
 	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
-	uniqueObjTypes = s.ObjectTypes()
+	uniqueObjTypes = s.ObjectTypeKeys()
 	for _, m := range metaD {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),

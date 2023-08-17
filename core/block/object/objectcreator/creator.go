@@ -129,7 +129,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	objectTypeIds := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	objectTypeKeys := make([]string, 0, len(objectTypeIds))
 	if objectTypeIds == nil {
-		objectTypeKeys = createState.ObjectTypes()
+		objectTypeKeys = createState.ObjectTypeKeys()
 		if objectTypeKeys == nil {
 			objectTypeIds = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
 		} else {

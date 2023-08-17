@@ -41,7 +41,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 	}
 
 	if objTypes {
-		for _, objectTypeKey := range s.ObjectTypes() {
+		for _, objectTypeKey := range s.ObjectTypeKeys() {
 			if objectTypeKey == "" { // TODO is it possible?
 				log.Errorf("sb %s has empty ot", s.RootId())
 				continue

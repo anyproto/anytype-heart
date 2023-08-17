@@ -6,8 +6,10 @@ import (
 	"sort"
 	"strings"
 
+	"cmp"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 )
 
 func Union(a, b []string) []string {
@@ -140,31 +142,23 @@ func hash(s string) uint64 {
 	return h.Sum64()
 }
 
-func SortedEquals(s1, s2 []string) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	for i := range s1 {
-		if s1[i] != s2[i] {
-			return false
-		}
-	}
-	return true
+func SortedEquals[T cmp.Ordered](s1, s2 []T) bool {
+	return slices.Equal(s1, s2)
 }
 
-func UnsortedEquals(s1, s2 []string) bool {
+func UnsortedEqual[T cmp.Ordered](s1, s2 []T) bool {
 	if len(s1) != len(s2) {
 		return false
 	}
 
-	s1Sorted := make([]string, len(s1))
-	s2Sorted := make([]string, len(s2))
+	s1Sorted := make([]T, len(s1))
+	s2Sorted := make([]T, len(s2))
 	copy(s1Sorted, s1)
 	copy(s2Sorted, s2)
-	sort.Strings(s1Sorted)
-	sort.Strings(s2Sorted)
+	slices.Sort(s1Sorted)
+	slices.Sort(s2Sorted)
 
-	return SortedEquals(s1Sorted, s2Sorted)
+	return slices.Equal(s1Sorted, s2Sorted)
 }
 
 func HasPrefix(value, prefix []string) bool {

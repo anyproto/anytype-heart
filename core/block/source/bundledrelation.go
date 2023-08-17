@@ -76,7 +76,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	for k, v := range d.Fields {
 		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
-	s.SetObjectType(bundle.TypeKeyRelation.String())
+	s.SetObjectType(bundle.TypeKeyRelation)
 	return s, nil
 }
 
