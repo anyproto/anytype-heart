@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 )
 
 func NewBundledRelation(id string) (s Source) {
@@ -50,7 +51,8 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 		return nil, err
 	}
 	rel.Creator = addr.AnytypeProfileId
-	details := bundle.GetDetailsForBundledRelation(rel)
+	wrapperRelation := relationutils.Relation{Relation: rel}
+	details := wrapperRelation.ToStruct() // bundle.GetDetailsForBundledRelation(rel)
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)

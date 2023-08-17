@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	types2 "github.com/gogo/protobuf/types"
-
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -221,25 +219,6 @@ func ListTypesKeys() []TypeKey {
 	}
 
 	return keys
-}
-
-func GetDetailsForBundledRelation(rel *model.Relation) *types2.Struct {
-	return &types2.Struct{Fields: map[string]*types2.Value{
-		RelationKeyName.String():        pbtypes.String(rel.Name),
-		RelationKeyDescription.String(): pbtypes.String(rel.Description),
-		RelationKeyId.String():          pbtypes.String(addr.BundledRelationURLPrefix + rel.Key),
-		RelationKeyRelationKey.String(): pbtypes.String(rel.Key),
-		RelationKeyUniqueKey.String():   pbtypes.String(rel.Key),
-
-		RelationKeyType.String():                      pbtypes.String(TypeKeyRelation.BundledURL()),
-		RelationKeyCreator.String():                   pbtypes.String(rel.Creator),
-		RelationKeyLayout.String():                    pbtypes.Float64(float64(model.ObjectType_relation)),
-		RelationKeyRelationFormat.String():            pbtypes.Float64(float64(rel.Format)),
-		RelationKeyIsHidden.String():                  pbtypes.Bool(rel.Hidden),
-		RelationKeyIsReadonly.String():                pbtypes.Bool(rel.ReadOnlyRelation),
-		RelationKeyRelationReadonlyValue.String():     pbtypes.Bool(rel.ReadOnly),
-		RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(rel.ObjectTypes),
-	}}
 }
 
 func HasRelationKey(rels []RelationKey, rel RelationKey) bool {

@@ -92,6 +92,11 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Bool(true),
 			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(p.SpaceID()),
+			},
 		},
 	})
 	if err != nil {

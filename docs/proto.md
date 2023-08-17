@@ -10777,6 +10777,7 @@ DEPRECATED |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  |  |
 | relationKey | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |

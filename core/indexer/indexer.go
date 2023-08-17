@@ -370,6 +370,7 @@ func (i *indexer) reindexIfNeeded() error {
 	return i.reindex(flags)
 }
 
+// TODO Rename to EnsurePreinstalledObjects or something else
 func (i *indexer) ReindexSpace(spaceID string) error {
 	return i.ensurePreinstalledObjects(spaceID)
 }

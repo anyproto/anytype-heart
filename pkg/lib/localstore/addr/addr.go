@@ -10,10 +10,8 @@ import (
 
 const (
 	SubObjectCollectionIdSeparator = "-"
-	// deprecated
-	RelationKeyToIdPrefix = "rel-" //
-	// deprecated
-	ObjectTypeKeyToIdPrefix = "ot-" //
+	RelationKeyToIdPrefix          = "rel-" //
+	ObjectTypeKeyToIdPrefix        = "ot-"  //
 
 	BundledRelationURLPrefix = "_br"
 

@@ -20,12 +20,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/core/relation"
 )
 
 const (
@@ -70,11 +70,12 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	service        *block.Service
-	coreService    core.Service
-	importer       importer.Importer
-	store          objectstore.ObjectStore
-	tempDirService core.TempDirProvider
+	service         *block.Service
+	coreService     core.Service
+	importer        importer.Importer
+	store           objectstore.ObjectStore
+	tempDirService  core.TempDirProvider
+	relationService relation.Service
 }
 
 func New() BuiltinObjects {
@@ -87,6 +88,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
+	b.relationService = app.MustComponent[relation.Service](a)
 	return
 }
 
@@ -282,10 +284,10 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, s
 		log.Errorf("Failed to get id of second widget block: %s", err.Error())
 		return
 	}
-	for _, setOf := range []string{bundle.TypeKeyNote.String(), bundle.TypeKeyTask.String()} {
-		id, err := b.getObjectIdBySetOfValue(setOf)
+	for _, objectTypeKey := range []bundle.TypeKey{bundle.TypeKeyNote, bundle.TypeKeyTask} {
+		id, err := b.getSetIDByObjectTypeKey(spaceID, objectTypeKey)
 		if err != nil {
-			log.Errorf("Failed to get id of set by '%s' to create widget object: %s", setOf, err.Error())
+			log.Errorf("Failed to get id of set by '%s' to create widget object: %s", objectTypeKey, err.Error())
 			continue
 		}
 		if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
@@ -307,18 +309,22 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, s
 				},
 			},
 		}); err != nil {
-			log.Errorf("Failed to make Widget block for set by '%s': %s", setOf, err.Error())
+			log.Errorf("Failed to make Widget block for set by '%s': %s", objectTypeKey, err.Error())
 		}
 	}
 }
 
-func (b *builtinObjects) getObjectIdBySetOfValue(setOfValue string) (string, error) {
+func (b *builtinObjects) getSetIDByObjectTypeKey(spaceID string, objectTypeKey bundle.TypeKey) (string, error) {
+	objectTypeID, err := b.relationService.GetTypeIdByKey(context.Background(), spaceID, objectTypeKey)
+	if err != nil {
+		return "", fmt.Errorf("get type id by key '%s': %s", objectTypeKey, err)
+	}
 	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySetOf.String(),
-				Value:       pbtypes.StringList([]string{addr.ObjectTypeKeyToIdPrefix + setOfValue}),
+				Value:       pbtypes.StringList([]string{objectTypeID}),
 			},
 		},
 	}, nil)
