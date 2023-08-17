@@ -6,12 +6,11 @@ import (
 
 const (
 	TagNameProperty               = "Tag"
-	TagNamePropertyLower          = "tag"
 	TagNamePropertyToReplace      = "Tags"
 	TagNamePropertyToReplaceLower = "tags"
 )
 
 func IsPropertyMatchTagRelation(tags string, hasTag bool) bool {
 	return ((tags == TagNamePropertyToReplace || strings.TrimSpace(tags) == TagNamePropertyToReplaceLower) && !hasTag) ||
-		(strings.TrimSpace(tags) == TagNameProperty || strings.TrimSpace(tags) == TagNamePropertyLower)
+		(strings.TrimSpace(tags) == TagNameProperty)
 }
