@@ -7,14 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
-	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -24,6 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 	textutil "github.com/anyproto/anytype-heart/util/text"
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 )
 
 var log = logging.Logger("anytype-mw-state")
@@ -942,6 +939,7 @@ func (s *State) SetObjectType(objectType string) *State {
 	return s.SetObjectTypes([]string{objectType})
 }
 
+// TODO What objectTypes means here? ID? Key?
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	for _, ot := range objectTypes {
 		if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(ot, addr.BundledObjectTypeURLPrefix) {
@@ -1132,106 +1130,6 @@ func (s *State) CheckRestrictions() (err error) {
 func (s *State) SetParent(parent *State) {
 	s.rootId = parent.rootId
 	s.parent = parent
-}
-
-func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
-	if blocks {
-		err := s.Iterate(func(b simple.Block) (isContinue bool) {
-			if ls, ok := b.(linkSource); ok {
-				ids = ls.FillSmartIds(ids)
-			}
-			return true
-		})
-		if err != nil {
-			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
-		}
-	}
-
-	if objTypes {
-		for _, ot := range pbtypes.GetStringList(s.LocalDetails(), bundle.RelationKeyType.String()) {
-			if ot == "" { // TODO is it possible?
-				log.Errorf("sb %s has empty ot", s.RootId())
-				continue
-			}
-			ids = append(ids, ot)
-		}
-	}
-
-	var det *types.Struct
-	if details {
-		det = s.CombinedDetails()
-	}
-
-	for _, rel := range s.GetRelationLinks() {
-		// do not index local dates such as lastOpened/lastModified
-		if relations {
-			// todo: add the relation ids somewhere else
-			// ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
-		}
-
-		if !details {
-			continue
-		}
-
-		// handle corner cases first for specific formats
-		if rel.Format == model.RelationFormat_date &&
-			!slices.Contains(bundle.LocalRelationsKeys, rel.Key) &&
-			!slices.Contains(bundle.DerivedRelationsKeys, rel.Key) {
-			relInt := pbtypes.GetInt64(det, rel.Key)
-			if relInt > 0 {
-				t := time.Unix(relInt, 0)
-				t = t.In(time.UTC)
-				ids = append(ids, addr.TimeToID(t))
-			}
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyCreator.String() ||
-			rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
-			rel.Key == bundle.RelationKeyWorkspaceId.String() {
-			if creatorModifierWorkspace {
-				v := pbtypes.GetString(det, rel.Key)
-				ids = append(ids, v)
-			}
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyId.String() ||
-			rel.Key == bundle.RelationKeyLinks.String() ||
-			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
-			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, rel.Key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
-				continue
-			}
-			ids = append(ids, v)
-		}
-
-		if rel.Format != model.RelationFormat_object &&
-			rel.Format != model.RelationFormat_file &&
-			rel.Format != model.RelationFormat_status &&
-			rel.Format != model.RelationFormat_tag {
-			continue
-		}
-
-		// add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
-			if targetID == "" {
-				continue
-			}
-
-			ids = append(ids, targetID)
-		}
-	}
-
-	ids = lo.Uniq(ids)
-	return
 }
 
 func (s *State) Validate() (err error) {
@@ -1864,9 +1762,4 @@ func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
 
 func (s *State) UniqueKeyInternal() string {
 	return s.uniqueKeyInternal
-}
-
-type linkSource interface {
-	FillSmartIds(ids []string) []string
-	HasSmartIds() bool
 }

@@ -5,15 +5,16 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 )
 
 type testPicker struct {
@@ -38,8 +39,13 @@ func newFixture(t *testing.T) *fixture {
 	a := &app.App{}
 	objectStore := mock_objectstore.NewMockObjectStore(t)
 	objectStore.EXPECT().Name().Return("objectStore")
+
+	relationService := mock_relation.NewMockService(t)
+	relationService.EXPECT().Name().Return("relationService")
+
 	a.Register(picker)
 	a.Register(objectStore)
+	a.Register(relationService)
 	s := New()
 
 	err := s.Init(a)

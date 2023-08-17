@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -844,7 +846,7 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 func Test_PasteText(t *testing.T) {
 
 	t.Run("paste", func(t *testing.T) {
-		//given
+		// given
 		sb := smarttest.New("text")
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
 		s := sb.NewState()
@@ -870,20 +872,20 @@ func Test_PasteText(t *testing.T) {
 		s.InsertTo("", model.Block_Inner, b2.Model().Id)
 		require.NoError(t, sb.Apply(s))
 
-		//when
+		// when
 		cb := NewClipboard(sb, nil, nil, nil, nil)
 		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 			SelectedBlockIds: []string{"1", "2"},
 			TextSlot:         "One string",
 		}, "")
 
-		//then
+		// then
 		require.NoError(t, err)
 		assert.Equal(t, "One string", sb.NewState().Snippet())
 	})
 
 	t.Run("paste - when asterisks", func(t *testing.T) {
-		//given
+		// given
 		sb := smarttest.New("text")
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
 		s := sb.NewState()
@@ -899,7 +901,7 @@ func Test_PasteText(t *testing.T) {
 		s.InsertTo("", model.Block_Inner, b1.Model().Id)
 		require.NoError(t, sb.Apply(s))
 
-		//when
+		// when
 		cb := NewClipboard(sb, nil, nil, nil, nil)
 		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 			SelectedBlockIds: []string{"1"},
@@ -907,7 +909,7 @@ func Test_PasteText(t *testing.T) {
 			HtmlSlot:         "<meta charset='utf-8'><p data-pm-slice=\"1 1 []\">a *<em> b</em> * c</p>",
 		}, "")
 
-		//then
+		// then
 		require.NoError(t, err)
 		assert.Equal(t, "a * b * c", sb.NewState().Snippet())
 	})

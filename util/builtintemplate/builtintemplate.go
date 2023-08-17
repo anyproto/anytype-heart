@@ -48,8 +48,8 @@ type builtinTemplate struct {
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
-	b.source = a.MustComponent(source.CName).(source.Service)
-	b.relationService = a.MustComponent(relation2.CName).(relation2.Service)
+	b.source = app.MustComponent[source.Service](a)
+	b.relationService = app.MustComponent[relation2.Service](a)
 
 	b.makeGenHash(4)
 	return

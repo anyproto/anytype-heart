@@ -13,30 +13,15 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func NewMultiConverter(format graphviz.Format, sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
-	g := graphviz.New()
-	graph, err := g.Graph()
-	if err != nil {
-		return nil
-	}
-
-	return &dot{
-		graph:        graph,
-		graphviz:     g,
-		exportFormat: format,
-		linksByNode:  map[string][]linkInfo{},
-		nodes:        map[string]*cgraph.Node{},
-		sbtProvider:  sbtProvider,
-	}
-}
 
 const (
 	ExportFormatDOT = graphviz.XDOT
@@ -58,15 +43,38 @@ type linkInfo struct {
 }
 
 type dot struct {
-	graph        *cgraph.Graph
-	graphviz     *graphviz.Graphviz
-	knownDocs    map[string]*types.Struct
-	fileHashes   []string
-	imageHashes  []string
-	exportFormat graphviz.Format
-	nodes        map[string]*cgraph.Node
-	linksByNode  map[string][]linkInfo
-	sbtProvider  typeprovider.SmartBlockTypeProvider
+	graph           *cgraph.Graph
+	graphviz        *graphviz.Graphviz
+	knownDocs       map[string]*types.Struct
+	fileHashes      []string
+	imageHashes     []string
+	exportFormat    graphviz.Format
+	nodes           map[string]*cgraph.Node
+	linksByNode     map[string][]linkInfo
+	sbtProvider     typeprovider.SmartBlockTypeProvider
+	relationService relation.Service
+}
+
+func NewMultiConverter(
+	format graphviz.Format,
+	sbtProvider typeprovider.SmartBlockTypeProvider,
+	relationService relation.Service,
+) converter.MultiConverter {
+	g := graphviz.New()
+	graph, err := g.Graph()
+	if err != nil {
+		return nil
+	}
+
+	return &dot{
+		graph:           graph,
+		graphviz:        g,
+		exportFormat:    format,
+		linksByNode:     map[string][]linkInfo{},
+		nodes:           map[string]*cgraph.Node{},
+		sbtProvider:     sbtProvider,
+		relationService: relationService,
+	}
 }
 
 func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
@@ -112,7 +120,8 @@ func (d *dot) Add(st *state.State) error {
 
 	// TODO: add relations
 
-	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, d.relationService, true, true, false, false, false)
+	for _, depID := range dependentObjectIDs {
 		t, err := d.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
 			continue

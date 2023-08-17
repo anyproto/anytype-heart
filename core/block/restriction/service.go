@@ -93,7 +93,7 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 			log.Errorf("failed to parse unique key %s: %v", u, err)
 		}
 	}
-	obj := newRestrictionHolder(id, sbType, layout, uk, ot)
+	obj := newRestrictionHolder(sbType, layout, uk, ot)
 	if err != nil {
 		return Restrictions{}, err
 	}

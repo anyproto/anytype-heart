@@ -97,8 +97,8 @@ func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bu
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.core = a.MustComponent(core.CName).(core.Service)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.core = app.MustComponent[core.Service](a)
 	return
 }
 

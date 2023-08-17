@@ -13,6 +13,7 @@ import (
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -72,8 +73,9 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
+	dependentObjectIDs := objectlink.DependentObjectIDs(s, h.relationService, true, true, false, true, false)
 	// nolint:errcheck
-	metaD, _ := h.objectStore.QueryByID(s.DepSmartIds(true, true, false, true, false))
+	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
 	var uniqueObjTypes []string
 

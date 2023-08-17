@@ -6,21 +6,15 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func NewMultiConverter(sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
-	return &graphjson{
-		linksByNode: map[string][]*Edge{},
-		nodes:       map[string]*Node{},
-		sbtProvider: sbtProvider,
-	}
-}
 
 type edgeType int
 
@@ -57,7 +51,21 @@ type graphjson struct {
 	imageHashes []string
 	nodes       map[string]*Node
 	linksByNode map[string][]*Edge
-	sbtProvider typeprovider.SmartBlockTypeProvider
+
+	sbtProvider     typeprovider.SmartBlockTypeProvider
+	relationService relation.Service
+}
+
+func NewMultiConverter(
+	sbtProvider typeprovider.SmartBlockTypeProvider,
+	relationService relation.Service,
+) converter.MultiConverter {
+	return &graphjson{
+		linksByNode:     map[string][]*Edge{},
+		nodes:           map[string]*Node{},
+		sbtProvider:     sbtProvider,
+		relationService: relationService,
+	}
 }
 
 func (g *graphjson) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
@@ -87,7 +95,8 @@ func (g *graphjson) Add(st *state.State) error {
 	g.nodes[st.RootId()] = &n
 	// TODO: add relations
 
-	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, g.relationService, true, true, false, false, false)
+	for _, depID := range dependentObjectIDs {
 		t, err := g.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
 			continue
