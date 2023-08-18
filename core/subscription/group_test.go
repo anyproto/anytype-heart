@@ -1,9 +1,10 @@
 package subscription
 
 import (
+	"testing"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"

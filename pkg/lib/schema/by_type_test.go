@@ -1,10 +1,12 @@
 package schema
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func givenSchemaByType() Schema {

@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
@@ -18,8 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 	textutil "github.com/anyproto/anytype-heart/util/text"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
 )
 
 var log = logging.Logger("anytype-mw-state")

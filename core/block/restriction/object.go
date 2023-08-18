@@ -1,15 +1,16 @@
 package restriction
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
 )
 
 var (

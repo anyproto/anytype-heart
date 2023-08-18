@@ -6,12 +6,12 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_registerBuiltin(t *testing.T) {
