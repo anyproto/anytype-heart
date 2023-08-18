@@ -3,7 +3,11 @@ package application
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -14,8 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"os"
-	"path/filepath"
 )
 
 func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {

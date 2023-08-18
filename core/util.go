@@ -1,10 +1,10 @@
 package core
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 
-	"errors"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )

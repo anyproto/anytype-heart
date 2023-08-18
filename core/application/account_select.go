@@ -3,10 +3,15 @@ package application
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
+
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -16,9 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 // we cannot check the constant error from badger because they hardcoded it there

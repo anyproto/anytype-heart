@@ -2,6 +2,7 @@ package application
 
 import (
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 )
 

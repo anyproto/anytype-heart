@@ -1,9 +1,10 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"errors"
+
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (s *Service) AccountConfigUpdate(req *pb.RpcAccountConfigUpdateRequest) error {

@@ -7,11 +7,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {

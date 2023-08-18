@@ -1,13 +1,14 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"errors"
+	"os"
+	"path/filepath"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
-	"path/filepath"
-	"os"
-	"errors"
+	"github.com/anyproto/anytype-heart/pb"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 var (

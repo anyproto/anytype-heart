@@ -1,9 +1,10 @@
 package core
 
 import (
-	"testing"
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,10 +1,11 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"errors"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"errors"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (s *Service) AccountRecover() error {

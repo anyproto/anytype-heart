@@ -1,10 +1,11 @@
 package application
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"errors"
 )
 
 func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token string, err error) {

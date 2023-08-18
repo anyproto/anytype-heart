@@ -3,11 +3,13 @@ package application
 import (
 	"context"
 	"errors"
+	"sync"
+
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"sync"
 )
 
 var log = logging.Logger("anytype-core-account")

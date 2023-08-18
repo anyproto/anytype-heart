@@ -1,12 +1,13 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"context"
-	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"errors"
+
+	"github.com/anyproto/anytype-heart/core/configfetcher"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 var (

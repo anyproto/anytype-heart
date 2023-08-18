@@ -10,13 +10,13 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"

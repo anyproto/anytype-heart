@@ -2,11 +2,12 @@ package application
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
+	"os"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"os"
-	"errors"
 )
 
 const wordCount int = 12

@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	//nolint: gosec
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -35,6 +33,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
 
+	//nolint: gosec
+	_ "net/http/pprof"
 	//nolint: gosec
 	_ "net/http/pprof"
 )

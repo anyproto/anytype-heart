@@ -1,11 +1,13 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	"fmt"
 	"encoding/base64"
-	"github.com/anyproto/any-sync/util/crypto"
 	"errors"
+	"fmt"
+
+	"github.com/anyproto/any-sync/util/crypto"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 // WalletConvert converts mnemonic to base64 representation of mnemonic's entropy and vice versa.

@@ -1,15 +1,17 @@
 package application
 
 import (
-	"path/filepath"
+	"errors"
 	"os"
-	"github.com/anyproto/anytype-heart/pb"
-	oserror "github.com/anyproto/anytype-heart/util/os"
+	"path/filepath"
+	"strings"
+
+	cp "github.com/otiai10/copy"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/filestorage"
-	"strings"
-	cp "github.com/otiai10/copy"
-	"errors"
+	"github.com/anyproto/anytype-heart/pb"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 var (

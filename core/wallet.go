@@ -2,8 +2,9 @@ package core
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/pb"
+
 	"github.com/anyproto/anytype-heart/core/application"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {

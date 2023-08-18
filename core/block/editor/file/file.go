@@ -9,7 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -27,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )

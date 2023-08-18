@@ -1,10 +1,11 @@
 package application
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	"os"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"errors"
+	"os"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
 func (s *Service) WalletRecover(req *pb.RpcWalletRecoverRequest) error {

@@ -6,8 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
+
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -20,9 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"io"
-	"os"
-	"path/filepath"
 )
 
 var (
