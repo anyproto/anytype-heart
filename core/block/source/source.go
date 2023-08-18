@@ -1,7 +1,6 @@
 package source
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -62,7 +61,7 @@ func MarshallChange(c *pb.Change) (res []byte, dataType string, err error) {
 			len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
 		dataType = defaultDataType
 	} else {
-		res = bytes.Clone(data)
+		res = data
 	}
 
 	return

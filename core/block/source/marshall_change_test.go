@@ -149,6 +149,10 @@ func BenchmarkMarshallChange_BlockUpdate(b *testing.B) {
 	benchmarkMarshallChange(changeWithBlockUpdate(), b)
 }
 
+func BenchmarkMarshallChange_SmallTextUpdate(b *testing.B) {
+	benchmarkMarshallChange(changeWithSmallTextUpdate(), b)
+}
+
 func BenchmarkUnmarshallChange_CreateBigBlock(b *testing.B) {
 	data, dt, _ := MarshallChange(changeWithCreateBigBlock())
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
@@ -171,6 +175,11 @@ func BenchmarkUnmarshallChange_BigSnapshot(b *testing.B) {
 
 func BenchmarkUnmarshallChange_BlockUpdate(b *testing.B) {
 	data, dt, _ := MarshallChange(changeWithBlockUpdate())
+	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
+}
+
+func BenchmarkUnmarshallChange_SmallTextUpdate(b *testing.B) {
+	data, dt, _ := MarshallChange(changeWithSmallTextUpdate())
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
 }
 
