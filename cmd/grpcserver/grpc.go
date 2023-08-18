@@ -35,6 +35,8 @@ import (
 
 	//nolint: gosec
 	_ "net/http/pprof"
+	//nolint: gosec
+	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -86,7 +88,7 @@ func main() {
 	signal.Notify(signalChan, signals...)
 
 	var mw = core.New()
-	mw.EventSender = event.NewGrpcSender()
+	mw.SetEventSender(event.NewGrpcSender())
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -204,7 +206,7 @@ func main() {
 	service.RegisterClientCommandsServer(server, mw)
 	if metrics.Enabled {
 		grpc_prometheus.EnableHandlingTimeHistogram()
-		//grpc_prometheus.Register(server)
+		// grpc_prometheus.Register(server)
 	}
 
 	webrpc := grpcweb.WrapServer(

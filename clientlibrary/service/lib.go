@@ -34,7 +34,7 @@ func init() {
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
-	mw.EventSender = event.NewCallbackSender(eh)
+	mw.SetEventSender(event.NewCallbackSender(eh))
 }
 
 func SetEnv(key, value string) {

@@ -140,7 +140,7 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 		err  error
 	)
 	err = mw.doBlockService(func(s *block.Service) error {
-		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
+		dbg := mw.applicationService.GetApp().MustComponent(debug.CName).(debug.Debug)
 		path, err = dbg.DumpLocalstore(req.SpaceId, req.DocIds, req.Path)
 		return err
 	})

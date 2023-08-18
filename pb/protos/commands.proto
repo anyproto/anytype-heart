@@ -318,7 +318,7 @@ message Rpc {
                         NO_ACCOUNTS_FOUND = 101;
                         NEED_TO_RECOVER_WALLET_FIRST = 102;
                         FAILED_TO_CREATE_LOCAL_REPO = 103;
-                        LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104;
+                        LOCAL_REPO_EXISTS_BUT_CORRUPTED = 104; // Unused
                         FAILED_TO_RUN_NODE = 105;
                         WALLET_RECOVER_NOT_PERFORMED = 106;
                         FAILED_TO_STOP_RUNNING_NODE = 107;

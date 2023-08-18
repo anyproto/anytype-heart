@@ -53,8 +53,6 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 	response := func(filesOffloaded uint64, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
 		m := &pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: code}, BytesOffloaded: bytesOffloaded, FilesOffloaded: int32(filesOffloaded)}
 		if err != nil {
@@ -64,11 +62,11 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 		return m
 	}
 
-	if mw.app == nil {
+	if mw.applicationService.GetApp() == nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileService := app.MustComponent[files.Service](mw.app)
+	fileService := app.MustComponent[files.Service](mw.applicationService.GetApp())
 	totalBytesOffloaded, totalFilesOffloaded, err := fileService.FileListOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
@@ -78,8 +76,6 @@ func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListO
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 	response := func(bytesOffloaded uint64, code pb.RpcFileOffloadResponseErrorCode, err error) *pb.RpcFileOffloadResponse {
 		m := &pb.RpcFileOffloadResponse{BytesOffloaded: bytesOffloaded, Error: &pb.RpcFileOffloadResponseError{Code: code}}
 		if err != nil {
@@ -89,11 +85,11 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 		return m
 	}
 
-	if mw.app == nil {
+	if mw.applicationService.GetApp() == nil {
 		return response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	fileService := app.MustComponent[files.Service](mw.app)
+	fileService := app.MustComponent[files.Service](mw.applicationService.GetApp())
 
 	bytesRemoved, err := fileService.FileOffload(cctx, req.Id, req.IncludeNotPinned)
 	if err != nil {
