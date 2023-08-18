@@ -897,7 +897,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
-	sb.injectBackLinks(details)
+	sb.updateBackLinks(details)
 	hasPendingLocalDetails := sb.updatePendingDetails(details)
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
@@ -941,10 +941,7 @@ func (sb *smartBlock) injectWorkspaceID(s *state.State) {
 	}
 }
 
-func (sb *smartBlock) injectBackLinks(details *types.Struct) {
-	if pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()) != nil {
-		return
-	}
+func (sb *smartBlock) updateBackLinks(details *types.Struct) {
 	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.Id())
 	if err != nil {
 		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err.Error())

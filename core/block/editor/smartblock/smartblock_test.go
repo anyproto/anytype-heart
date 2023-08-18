@@ -291,21 +291,22 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 	backLinks := []string{"1", "2", "3"}
 	id := "id"
 
-	t.Run("back links are already set", func(t *testing.T) {
+	t.Run("update back links", func(t *testing.T) {
 		//given
+		newBackLinks := []string{"4", "5"}
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.source.EXPECT().Id().Times(0)
-		fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).Times(0)
+		fx.source.EXPECT().Id().Return(id)
+		fx.store.EXPECT().GetInboundLinksByID(id).Return(newBackLinks, nil)
 		details := &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyBacklinks.String(): pbtypes.StringList(backLinks),
 		}}
 
 		//when
-		fx.sb.injectBackLinks(details)
+		fx.sb.updateBackLinks(details)
 
 		//then
-		assert.Equal(t, backLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
+		assert.Equal(t, newBackLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 	})
 
 	t.Run("back links were found in object store", func(t *testing.T) {
@@ -317,7 +318,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
 		//when
-		fx.sb.injectBackLinks(details)
+		fx.sb.updateBackLinks(details)
 
 		//then
 		assert.Equal(t, backLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
@@ -332,7 +333,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
 		//when
-		fx.sb.injectBackLinks(details)
+		fx.sb.updateBackLinks(details)
 
 		//then
 		assert.Zero(t, len(details.Fields))
@@ -347,7 +348,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
 		//when
-		fx.sb.injectBackLinks(details)
+		fx.sb.updateBackLinks(details)
 
 		//then
 		assert.Zero(t, len(details.Fields))
