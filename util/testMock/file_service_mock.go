@@ -10,13 +10,15 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
+
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	files "github.com/anyproto/anytype-heart/core/files"
 	pb "github.com/anyproto/anytype-heart/pb"
+	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockFileService is a mock of Service interface.
@@ -355,12 +357,13 @@ func (m *MockFile) EXPECT() *MockFileMockRecorder {
 }
 
 // Details mocks base method.
-func (m *MockFile) Details(arg0 context.Context) (*types.Struct, error) {
+func (m *MockFile) Details(arg0 context.Context) (*types.Struct, bundle.TypeKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Details", arg0)
 	ret0, _ := ret[0].(*types.Struct)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bundle.TypeKey)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Details indicates an expected call of Details.

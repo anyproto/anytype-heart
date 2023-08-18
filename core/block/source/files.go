@@ -51,28 +51,28 @@ func (f *file) Type() model.SmartBlockType {
 	return model.SmartBlockType_File
 }
 
-func (f *file) getDetailsForFileOrImage(ctx context.Context) (p *types.Struct, isImage bool, err error) {
+func (f *file) getDetailsForFileOrImage(ctx context.Context) (*types.Struct, bundle.TypeKey, error) {
 	file, err := f.fileService.FileByHash(ctx, f.id)
 	if err != nil {
-		return nil, false, err
+		return nil, "", err
 	}
 	if strings.HasPrefix(file.Info().Media, "image") {
 		image, err := f.fileService.ImageByHash(ctx, f.id)
 		if err != nil {
-			return nil, false, err
+			return nil, "", err
 		}
 		details, err := image.Details(ctx)
 		if err != nil {
-			return nil, false, err
+			return nil, "", err
 		}
-		return details, true, nil
+		return details, bundle.TypeKeyImage, nil
 	}
 
-	d, err := file.Details(ctx)
+	d, typeKey, err := file.Details(ctx)
 	if err != nil {
-		return nil, false, err
+		return nil, "", err
 	}
-	return d, false, nil
+	return d, typeKey, nil
 }
 
 func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
@@ -81,7 +81,7 @@ func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	ctx, cancel := context.WithTimeout(ctx, getFileTimeout)
 	defer cancel()
 
-	d, _, err := f.getDetailsForFileOrImage(ctx)
+	d, typeKey, err := f.getDetailsForFileOrImage(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +90,7 @@ func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	}
 
 	s.SetDetails(d)
-	// TODO Decide what to do with this
-	// s.SetObjectType(bundle.TypeKeyFile)
+	s.SetObjectType(typeKey)
 	return s, nil
 }
 

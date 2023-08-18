@@ -10,8 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
-
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -24,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -968,7 +967,11 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(string(st.ObjectTypeKey()))) // TODO Check
+	targetObjectTypeID, err := sb.relationService.GetTypeIdByKey(context.Background(), st.SpaceID(), st.ObjectTypeKey())
+	if err != nil {
+		return nil, fmt.Errorf("get type id by key: %s", err)
+	}
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
 	st.SetObjectTypes([]bundle.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
