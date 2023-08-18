@@ -100,16 +100,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 
 	s := cb.blocksToState(req.Blocks)
 
-	var texts []string
-	for _, b := range req.Blocks {
-		if text := b.GetText(); text != nil {
-			texts = append(texts, text.Text)
-		}
-	}
-
-	if len(texts) > 0 {
-		textSlot = strings.Join(texts, "\n")
-	}
+	textSlot = renderText(s)
 
 	var firstTextBlock, lastTextBlock *model.Block
 	for _, b := range req.Blocks {
@@ -214,16 +205,14 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 	}
 
 	// scenario: cutBlocks
+	state := cb.blocksToState(req.Blocks)
 	var ids []string
 	for _, b := range req.Blocks {
-		if text := b.GetText(); text != nil {
-			textSlot += text.Text + "\n"
-		}
-
 		ids = append(ids, b.Id)
 	}
+	textSlot = renderText(state)
 
-	htmlSlot = html.NewHTMLConverter(cb.fileService, cb.blocksToState(req.Blocks)).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.fileService, state).Convert()
 	anySlot = req.Blocks
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
@@ -571,4 +560,36 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 
 	d.RelationLinks = links
 	return
+}
+
+func renderText(s *state.State) string {
+	texts := make([]string, 0)
+	childrenIds := s.Pick(s.RootId()).Model().ChildrenIds
+	for _, id := range childrenIds {
+		texts = renderChildren(s, texts, id, 0)
+	}
+
+	if len(texts) > 0 {
+		return strings.Join(texts, "\n")
+	}
+
+	return ""
+}
+
+func renderChildren(s *state.State, texts []string, id string, level int) []string {
+	block := s.Pick(id).Model()
+	if text := block.GetText(); text != nil {
+		if level > 0 {
+			texts = append(texts, strings.Repeat("\t", level)+text.Text)
+		} else {
+			texts = append(texts, text.Text)
+		}
+	}
+
+	childrenIds := s.Pick(id).Model().ChildrenIds
+	for _, childID := range childrenIds {
+		texts = renderChildren(s, texts, childID, level+1)
+	}
+
+	return texts
 }
