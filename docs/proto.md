@@ -18480,8 +18480,9 @@ sent when the view have been changed or added
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
-| pageLimit | [int32](#int32) |  |  |
+| pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
+| defaultObjectType | [string](#string) |  | Default object type that is chosen for new object created within the view |
 
 
 
@@ -21600,8 +21601,9 @@ Bookmark is to keep a web-link and to preview a content.
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
-| pageLimit | [int32](#int32) |  |  |
-| defaultTemplateId | [string](#string) |  |  |
+| pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
+| defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
+| defaultObjectType | [string](#string) |  | Default object type that is chosen for new object created within the view |
 
 
 
