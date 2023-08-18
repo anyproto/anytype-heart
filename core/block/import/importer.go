@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -53,6 +54,7 @@ type Import struct {
 	objectIDGetter  IDGetter
 	tempDirProvider core.TempDirProvider
 	sbtProvider     typeprovider.SmartBlockTypeProvider
+	sync.Mutex
 }
 
 func New() Importer {
@@ -92,6 +94,8 @@ func (i *Import) Init(a *app.App) (err error) {
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
+	i.Lock()
+	defer i.Unlock()
 	progress := i.setupProgressBar(req)
 	var returnedErr error
 	defer func() {
