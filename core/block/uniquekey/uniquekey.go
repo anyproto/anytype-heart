@@ -20,9 +20,14 @@ var smartBlockTypeToKey = map[model.SmartBlockType]string{
 	model.SmartBlockType_Widget:      "widget",
 }
 
+// UniqueKey is unique key composed of two parts: smartblock type and internal key.
+// It may not have a second component. This means that unique key represents unique object in a space, i.e. Workspace object.
 type UniqueKey interface {
 	SmartblockType() model.SmartBlockType
-	InternalKey() string // underlying key, e.g. for "ot-page" it's "page"
+	// InternalKey is underlying key, that unique within smartblock type.
+	// For example: in unique key "ot-page", "page" is internal key.
+	InternalKey() string
+	// Marshal returns string representation of unique key. For example: "ot-page"
 	Marshal() string
 }
 

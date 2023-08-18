@@ -256,6 +256,8 @@ func (sb *smartBlock) Id() string {
 func (sb *smartBlock) SpaceID() string {
 	return sb.spaceID
 }
+
+// UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
 func (sb *smartBlock) UniqueKey() uniquekey.UniqueKey {
 	uk, _ := uniquekey.New(sb.Type(), sb.Doc.UniqueKeyInternal())
 	return uk
