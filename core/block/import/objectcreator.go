@@ -172,7 +172,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	}
 
 	for _, typeKey := range objectTypeKeys {
-		if !bundle.HasObjectType(string(typeKey)) {
+		if !bundle.HasObjectTypeByKey(typeKey) {
 			continue
 		}
 		// TODO: check if we have them in oldIDtoNew

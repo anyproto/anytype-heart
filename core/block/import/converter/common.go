@@ -166,7 +166,7 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func isBundledObjects(targetObjectID string) bool {
 	ot, err := bundle.TypeKeyFromUrl(targetObjectID)
-	if err == nil && bundle.HasObjectType(ot.String()) {
+	if err == nil && bundle.HasObjectTypeByKey(ot) {
 		return true
 	}
 	rel, err := pbtypes.RelationIdToKey(targetObjectID)

@@ -188,9 +188,8 @@ func HasRelation(key string) bool {
 	return exists
 }
 
-// TODO TypeKey param
-func HasObjectType(key string) bool {
-	_, exists := types[TypeKey(key)]
+func HasObjectTypeByKey(key TypeKey) bool {
+	_, exists := types[key]
 
 	return exists
 }
