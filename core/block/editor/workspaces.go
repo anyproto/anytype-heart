@@ -125,7 +125,6 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
 	}
 
-	spaceId := ctx.State.SpaceID()
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
@@ -134,7 +133,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
-		template.WithForcedObjectTypes([]string{p.anytype.PredefinedObjects(spaceId).SystemTypes[bundle.TypeKeySpace]}),
+		template.WithForcedObjectTypes([]bundle.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedObjects(p.SpaceID()).Profile)),
 		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),

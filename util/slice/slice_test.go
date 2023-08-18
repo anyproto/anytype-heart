@@ -86,3 +86,11 @@ func TestChangeElement(t *testing.T) {
 	})
 	assert.Equal(t, []string{"apple", "carrot", "banana"}, resultFood)
 }
+
+func TestUnsortedEquals(t *testing.T) {
+	assert.True(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b", "c"}))
+	assert.True(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"c", "a", "b"}))
+	assert.False(t, UnsortedEqual([]int{1, 2, 3}, []int{2, 2, 3}))
+	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b"}))
+	assert.False(t, UnsortedEqual([]string{"a", "b", "c"}, []string{"a", "b", "c", "d"}))
+}

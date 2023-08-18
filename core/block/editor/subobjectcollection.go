@@ -206,11 +206,11 @@ func structToState(id string, data *types.Struct) *state.State {
 	subState.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
 	switch pbtypes.GetInt64(data, bundle.RelationKeyLayout.String()) {
 	case int64(model.ObjectType_relationOption):
-		subState.SetObjectType(bundle.TypeKeyRelationOption.String())
+		subState.SetObjectTypeKey(bundle.TypeKeyRelationOption)
 	case int64(model.ObjectType_relation):
-		subState.SetObjectType(bundle.TypeKeyRelation.String())
+		subState.SetObjectTypeKey(bundle.TypeKeyRelation)
 	case int64(model.ObjectType_objectType):
-		subState.SetObjectType(bundle.TypeKeyObjectType.String())
+		subState.SetObjectTypeKey(bundle.TypeKeyObjectType)
 	}
 
 	return subState

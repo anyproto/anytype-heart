@@ -46,12 +46,12 @@ var WithEmpty = StateTransformer(func(s *state.State) {
 
 })
 
-var WithForcedObjectTypes = func(otypes []string) StateTransformer {
+var WithForcedObjectTypes = func(otypes []bundle.TypeKey) StateTransformer {
 	return func(s *state.State) {
-		if slice.SortedEquals(s.ObjectTypes(), otypes) {
+		if slice.SortedEquals(s.ObjectTypeKeys(), otypes) {
 			return
 		}
-		s.SetObjectTypes(otypes)
+		s.SetObjectTypeKeys(otypes)
 	}
 }
 
@@ -110,12 +110,12 @@ var WithRequiredRelations = func() StateTransformer {
 	return WithRelations(bundle.RequiredInternalRelations)
 }
 
-var WithObjectTypesAndLayout = func(otypes []string, layout model.ObjectTypeLayout) StateTransformer {
+var WithObjectTypesAndLayout = func(otypes []bundle.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
-		if len(s.ObjectTypes()) == 0 {
-			s.SetObjectTypes(otypes)
+		if len(s.ObjectTypeKeys()) == 0 {
+			s.SetObjectTypeKeys(otypes)
 		} else {
-			otypes = s.ObjectTypes()
+			otypes = s.ObjectTypeKeys()
 		}
 
 		if !pbtypes.HasField(s.Details(), bundle.RelationKeyLayout.String()) {
@@ -704,14 +704,14 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 				return true
 			} else {
 				if len(dvBlock.Model().GetDataview().Relations) == 0 ||
-					!slice.UnsortedEquals(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source) ||
+					!slice.UnsortedEqual(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source) ||
 					len(dvBlock.Model().GetDataview().Views) == 0 ||
 					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) ||
 					forceViews && !pbtypes.DataviewViewsEqualSorted(dvBlock.Model().GetDataview().Views, dataview.Dataview.Views) {
 
 					/* log.With("object" s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",
 					len(dvBlock.Model().GetDataview().Relations) == 0,
-					!slice.UnsortedEquals(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source),
+					!slice.UnsortedEqual(dvBlock.Model().GetDataview().Source, dataview.Dataview.Source),
 					len(dvBlock.Model().GetDataview().Views) == 0,
 					forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
 						forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations)) */

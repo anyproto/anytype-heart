@@ -158,8 +158,6 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: commonDetails,
 	}
-	typeID := i.service.coreService.PredefinedObjects(i.spaceID).SystemTypes[bundle.TypeKeyImage]
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()

@@ -60,7 +60,7 @@ func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, e
 	s.SetDetails(d)
 
 	// todo: add object type
-	// s.SetObjectType(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
+	// s.SetObjectTypeKey(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
 	return s, nil
 }
 

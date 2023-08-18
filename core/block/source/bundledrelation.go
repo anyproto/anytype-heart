@@ -9,12 +9,12 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 )
 
 func NewBundledRelation(id string) (s Source) {
@@ -78,7 +78,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	for k, v := range d.Fields {
 		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
-	s.SetObjectType(bundle.TypeKeyRelation.String())
+	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil
 }
 

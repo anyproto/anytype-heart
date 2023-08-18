@@ -10,8 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
-
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -24,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -163,7 +162,7 @@ type DocInfo struct {
 type InitContext struct {
 	IsNewObject    bool
 	Source         source.Source
-	ObjectTypeKeys []string
+	ObjectTypeKeys []bundle.TypeKey
 	RelationKeys   []string
 	State          *state.State
 	Relations      []*model.Relation
@@ -282,6 +281,10 @@ func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
 
 func (sb *smartBlock) Type() model.SmartBlockType {
 	return sb.source.Type()
+}
+
+func (sb *smartBlock) ObjectTypeID() string {
+	return pbtypes.GetString(sb.Doc.Details(), bundle.RelationKeyType.String())
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
@@ -657,6 +660,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 	}
+	// Inject derived details to make sure we have consistent state.
+	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
 	beforeApplyStateTime := time.Now()
 
 	migrationVersionUpdated := true
@@ -961,8 +967,12 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
-	st.SetObjectTypes([]string{sb.Anytype().PredefinedObjects(sb.spaceID).SystemTypes[bundle.TypeKeyTemplate], st.ObjectType()})
+	targetObjectTypeID, err := sb.relationService.GetTypeIdByKey(context.Background(), st.SpaceID(), st.ObjectTypeKey())
+	if err != nil {
+		return nil, fmt.Errorf("get type id by key: %s", err)
+	}
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
+	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)
@@ -1367,10 +1377,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt m
 	} else {
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", id)
 	}
-	if ot := s.ObjectType(); ot != "" {
-		// todo: we need to move this code out of the state,
-		// it shouldn't depend on some external service
-
+	if ot := s.ObjectTypeKey(); ot != "" {
 		typeID, err := sb.relationService.GetTypeIdByKey(context.Background(), s.SpaceID(), bundle.TypeKey(ot))
 		if err != nil {
 			log.Errorf("failed to get type id for %s: %v", ot, err)

@@ -96,7 +96,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	if e != nil && blockId != template.DataviewBlockId {
 		return e
 	}
-	if block != nil && slice.UnsortedEquals(block.GetSource(), source) {
+	if block != nil && slice.UnsortedEqual(block.GetSource(), source) {
 		return
 	}
 

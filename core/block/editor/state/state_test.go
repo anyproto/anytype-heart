@@ -2,17 +2,19 @@ package state
 
 import (
 	"errors"
-	"github.com/anyproto/anytype-heart/pb"
+	"math/rand"
+	"testing"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"math/rand"
-	"testing"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -2177,7 +2179,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, "page", st.ObjectType())
+		assert.Equal(t, bundle.TypeKey("page"), st.ObjectTypeKey())
 	})
 
 	t.Run("apply ObjectTypeAdd change: add another object type", func(t *testing.T) {
@@ -2192,7 +2194,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// apply
-		assert.Equal(t, []string{"page", "note"}, st.ObjectTypes())
+		assert.Equal(t, []bundle.TypeKey{"page", "note"}, st.ObjectTypeKeys())
 	})
 
 	t.Run("apply ObjectTypeAdd change: add existing object type - no changes", func(t *testing.T) {
@@ -2207,7 +2209,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, []string{"page", "note"}, st.ObjectTypes())
+		assert.Equal(t, []bundle.TypeKey{"page", "note"}, st.ObjectTypeKeys())
 	})
 }
 
@@ -2217,7 +2219,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
 			Id: "root",
 		}),
 	}).(*State)
-	st.objectTypes = append(st.objectTypes, "page")
+	st.objectTypeKeys = append(st.objectTypeKeys, "page")
 
 	t.Run("apply ObjectTypeRemove change: remove existing object type", func(t *testing.T) {
 		// given
@@ -2231,7 +2233,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Empty(t, st.ObjectTypes())
+		assert.Empty(t, st.ObjectTypeKeys())
 	})
 
 	t.Run("apply ObjectTypeRemove change: remove non existing object type", func(t *testing.T) {
@@ -2246,7 +2248,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Empty(t, st.ObjectTypes())
+		assert.Empty(t, st.ObjectTypeKeys())
 	})
 }
 
