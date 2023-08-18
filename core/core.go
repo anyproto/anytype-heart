@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anyproto/any-sync/app"
 	"os"
 	"runtime/debug"
+
+	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
