@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -125,7 +126,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = enrichWithDateSuggestion(records, req, ds)
+		records, err = mw.enrichWithDateSuggestion(records, req, ds)
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
@@ -139,7 +140,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
 }
 
-func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
+func (mw *Middleware) enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
 	dt := suggestDateForSearch(time.Now(), req.FullText)
 	if dt.IsZero() {
 		return records, nil
@@ -166,14 +167,14 @@ func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearch
 	}
 
 	var rec database.Record
-	var workspaceId string
+	var spaceID string
 	for _, f := range req.Filters {
-		if f.RelationKey == bundle.RelationKeyWorkspaceId.String() && f.Condition == model.BlockContentDataviewFilter_Equal {
-			workspaceId = f.Value.GetStringValue()
+		if f.RelationKey == bundle.RelationKeySpaceId.String() && f.Condition == model.BlockContentDataviewFilter_Equal {
+			spaceID = f.Value.GetStringValue()
 			break
 		}
 	}
-	rec = makeSuggestedDateRecord(dt, workspaceId)
+	rec = mw.makeSuggestedDateRecord(spaceID, dt)
 	f, _ := filter.MakeAndFilter(req.Filters, store) //nolint:errcheck
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
@@ -240,15 +241,17 @@ func deriveDateId(t time.Time) string {
 	return "_date_" + t.Format("2006-01-02")
 }
 
-func makeSuggestedDateRecord(t time.Time, workspaceId string) database.Record {
+func (mw *Middleware) makeSuggestedDateRecord(spaceID string, t time.Time) database.Record {
 	id := deriveDateId(t)
 
+	typeID := getService[core.Service](mw).PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyDate]
 	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyId.String():          pbtypes.String(id),
-		bundle.RelationKeyName.String():        pbtypes.String(t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
-		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
-		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(workspaceId),
+		bundle.RelationKeyId.String():        pbtypes.String(id),
+		bundle.RelationKeyName.String():      pbtypes.String(t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
+		bundle.RelationKeyType.String():      pbtypes.String(typeID),
+		bundle.RelationKeyIconEmoji.String(): pbtypes.String("📅"),
+		bundle.RelationKeySpaceId.String():   pbtypes.String(spaceID),
 	}}
 
 	return database.Record{

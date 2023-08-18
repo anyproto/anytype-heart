@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -154,7 +153,7 @@ func TestTextImpl_Split(t *testing.T) {
 		assert.Equal(t, "two", r.Pick(newId).Model().GetText().Text)
 	})
 	t.Run("split - when code block", func(t *testing.T) {
-		//given
+		// given
 		sb := smarttest.New("test")
 		sb.AddBlock(
 			simple.New(
@@ -164,9 +163,10 @@ func TestTextImpl_Split(t *testing.T) {
 				},
 			),
 		).AddBlock(newCodeBlock("1", "onetwo"))
-		tb := NewText(sb, nil)
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
 
-		//when
+		// when
 		newId, err := tb.Split(nil, pb.RpcBlockSplitRequest{
 			BlockId: "1",
 			Range:   &model.Range{From: 3, To: 3},
@@ -174,7 +174,7 @@ func TestTextImpl_Split(t *testing.T) {
 			Mode:    pb.RpcBlockSplitRequest_BOTTOM,
 		})
 
-		//then
+		// then
 		require.NoError(t, err)
 		require.NotEmpty(t, newId)
 		r := sb.NewState()

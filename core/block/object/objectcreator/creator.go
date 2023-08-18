@@ -127,9 +127,9 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	// 3. createState details
 	// 4. default object type by smartblock type
 	objectTypeIds := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-	objectTypeKeys := make([]string, 0, len(objectTypeIds))
+	objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeIds))
 	if objectTypeIds == nil {
-		objectTypeKeys = createState.ObjectTypes()
+		objectTypeKeys = createState.ObjectTypeKeys()
 		if objectTypeKeys == nil {
 			objectTypeIds = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
 		} else {
@@ -144,9 +144,9 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	}
 	if len(objectTypeIds) == 0 {
 		if ot, exists := bundle.DefaultObjectTypePerSmartblockType[sbType]; exists {
-			objectTypeKeys = []string{ot.String()}
+			objectTypeKeys = []bundle.TypeKey{ot}
 		} else {
-			objectTypeKeys = []string{bundle.TypeKeyPage.String()}
+			objectTypeKeys = []bundle.TypeKey{bundle.TypeKeyPage}
 		}
 	}
 
@@ -159,7 +159,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			return "", nil, fmt.Errorf("can't find all object types")
 		}
 		for _, ot := range ots {
-			objectTypeKeys = append(objectTypeKeys, ot.Key)
+			objectTypeKeys = append(objectTypeKeys, bundle.TypeKey(ot.Key))
 		}
 	}
 
@@ -510,9 +510,9 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 
 	// we need to create it here directly, because we need to set the object type
 	createState := state.NewDoc("", nil).(*state.State)
-	createState.SetObjectType(bundle.TypeKeyObjectType.String())
+	createState.SetObjectTypeKey(bundle.TypeKeyObjectType)
 	createState.SetDetails(object)
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, nil, createState)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, nil, createState)
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {

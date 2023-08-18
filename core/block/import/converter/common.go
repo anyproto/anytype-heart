@@ -166,7 +166,7 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func isBundledObjects(targetObjectID string) bool {
 	ot, err := bundle.TypeKeyFromUrl(targetObjectID)
-	if err == nil && bundle.HasObjectType(ot.String()) {
+	if err == nil && bundle.HasObjectTypeByKey(ot) {
 		return true
 	}
 	rel, err := pbtypes.RelationIdToKey(targetObjectID)
@@ -255,12 +255,13 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 	return objectsIDs
 }
 
-func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
-	objectType := st.ObjectType()
-	if newType, ok := oldIDtoNew[objectType]; ok {
-		st.SetObjectType(newType)
-	}
-}
+// TODO Fix this
+// func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
+// 	objectType := st.ObjectTypeKey()
+// 	if newType, ok := oldIDtoNew[objectType]; ok {
+// 		st.SetObjectTypeKey(newType)
+// 	}
+// }
 
 func replaceChunks(s string, oldToNew map[string]string) []string {
 	var result []string

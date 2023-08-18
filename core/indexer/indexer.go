@@ -180,7 +180,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		sbType = smartblock.SmartBlockTypePage
 	}
 	if info.SpaceID == "" || pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeySpaceId.String()) == "" {
-		log.Warnf("index spaceID is empty for object %s %v", info.Id, info.State.ObjectTypes())
+		log.Warnf("index spaceID is empty for object %s %v", info.Id, info.State.ObjectTypeKeys())
 	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
@@ -370,6 +370,7 @@ func (i *indexer) reindexIfNeeded() error {
 	return i.reindex(flags)
 }
 
+// TODO Rename to EnsurePreinstalledObjects or something else
 func (i *indexer) ReindexSpace(spaceID string) error {
 	return i.ensurePreinstalledObjects(spaceID)
 }

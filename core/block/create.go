@@ -54,8 +54,8 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
-		t := st.ObjectTypes()
-		st.SetObjectTypes(t)
+		t := st.ObjectTypeKeys()
+		st.SetObjectTypeKeys(t)
 		return nil
 	}); err != nil {
 		return
@@ -95,21 +95,21 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	return
 }
 
-func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, otID string) (templateID string, err error) {
-	spaceID, err := s.ResolveSpaceID(otID)
+func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, objectTypeID string) (templateID string, err error) {
+	spaceID, err := s.ResolveSpaceID(objectTypeID)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
-	if err = Do(s, otID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
+	if err = Do(s, objectTypeID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
 		return "", fmt.Errorf("can't open objectType: %v", err)
 	}
-	var st = state.NewDoc("", nil).(*state.State)
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otID))
-	templateTypeID, err := s.relationService.GetSystemTypeId(spaceID, bundle.TypeKeyTemplate)
+	objectType, err := s.objectStore.GetObjectType(objectTypeID)
 	if err != nil {
-		return "", fmt.Errorf("get template type id: %w", err)
+		return "", fmt.Errorf("get object type: %w", err)
 	}
-	st.SetObjectTypes([]string{templateTypeID, otID})
+	st := state.NewDoc("", nil).(*state.State)
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(objectTypeID))
+	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(objectType.Key)})
 	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
@@ -144,6 +144,11 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return nil
 	})
 
+	err = s.indexer.ReindexSpace(spc.Id())
+	if err != nil {
+		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
+	}
+
 	err = Do(s, predefinedObjectIDs.Account, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
@@ -156,11 +161,6 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	})
 	if err != nil {
 		return "", fmt.Errorf("set details for space %s: %w", spc.Id(), err)
-	}
-
-	err = s.indexer.ReindexSpace(spc.Id())
-	if err != nil {
-		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
 	}
 
 	_, err = s.builtinObjectService.CreateObjectsForUseCase(ctx, spc.Id(), req.UseCase)
@@ -229,7 +229,7 @@ func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) e
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
-		st.SetObjectType(bundle.TypeKeySet.String())
+		st.SetObjectTypeKey(bundle.TypeKeySet)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

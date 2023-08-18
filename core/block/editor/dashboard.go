@@ -63,7 +63,7 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 		Version: 1,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
-				template.WithObjectTypesAndLayout([]string{p.anytype.PredefinedObjects(p.SpaceID()).SystemTypes[bundle.TypeKeyDashboard]}, model.ObjectType_dashboard),
+				template.WithObjectTypesAndLayout([]bundle.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),
@@ -91,6 +91,11 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 				RelationKey: bundle.RelationKeyIsFavorite.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Bool(true),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(p.SpaceID()),
 			},
 		},
 	})

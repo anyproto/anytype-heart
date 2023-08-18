@@ -12,9 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -30,10 +31,17 @@ func Test_GrouperTags(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	a := new(app.App)
-	defer a.Close(context.Background())
 	tp := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	tp.EXPECT().Name().Return("typeprovider")
 	tp.EXPECT().Init(a).Return(nil)
+
+	relationService := mock_relation.NewMockService(t)
+	relationService.EXPECT().Name().Return("relation")
+	relationService.EXPECT().Init(a).Return(nil)
+
+	relationWithFormatTag := &relationutils.Relation{&model.Relation{Format: model.RelationFormat_tag}}
+	relationService.EXPECT().FetchRelationByKey("", "tag").Return(relationWithFormatTag, nil)
+
 	ds := objectstore.New()
 	kanbanSrv := New()
 	err := a.Register(&config.DefaultConfig).
@@ -43,16 +51,17 @@ func Test_GrouperTags(t *testing.T) {
 		Register(ds).
 		Register(kanbanSrv).
 		Register(tp).
+		Register(relationService).
 		Start(context.Background())
 	require.NoError(t, err)
 
-	tp.EXPECT().Type("", "rel-tag").Return(smartblock.SmartBlockTypeSubObject, nil)
 	require.NoError(t, ds.UpdateObjectDetails("rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":             pbtypes.String("rel-tag"),
 			"relationKey":    pbtypes.String("tag"),
 			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
 			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
+			"layout":         pbtypes.Int64(int64(model.ObjectType_relation)),
 		},
 	}))
 
@@ -65,6 +74,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag1),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 
@@ -73,6 +83,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag2),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 	require.NoError(t, ds.UpdateObjectDetails(idTag3, &types.Struct{
@@ -80,6 +91,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag3),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 
@@ -111,7 +123,7 @@ func Test_GrouperTags(t *testing.T) {
 	}}))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s4"))
 
-	grouper, err := kanbanSrv.Grouper("tag")
+	grouper, err := kanbanSrv.Grouper("", "tag")
 	require.NoError(t, err)
 	err = grouper.InitGroups(nil)
 	require.NoError(t, err)

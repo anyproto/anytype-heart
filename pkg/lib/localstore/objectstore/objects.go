@@ -256,7 +256,7 @@ func (s *dsObjectStore) GetAggregatedOptions(relationKey string) (options []*mod
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyLayout.String(),
-				Value:       pbtypes.Float64(float64(model.ObjectType_relationOption)),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 				// todo: revert check by objectType
 			},
 		},
@@ -322,6 +322,11 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyRelationKey.String(),
 				Value:       pbtypes.String(key),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 		},
 	}
@@ -713,8 +718,7 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 		return nil, fmt.Errorf("object %s is not an object type", id)
 	}
 
-	ot := s.extractObjectTypeFromDetails(details.Details, id)
-	ot.Key = uk.InternalKey()
+	ot := s.extractObjectTypeFromDetails(details.Details, id, uk.InternalKey())
 	return ot, nil
 }
 
@@ -750,40 +754,33 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (
 	return &model.ObjectDetails{Details: records[0].Details}, nil
 }
 
-func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string) *model.ObjectType {
-	objectType := &model.ObjectType{}
-	// s.fillObjectTypeWithRecommendedRelations(details, objectType)
-	objectType.Name = pbtypes.GetString(details, bundle.RelationKeyName.String())
-	objectType.Layout = model.ObjectTypeLayout(int(pbtypes.GetFloat64(details, bundle.RelationKeyRecommendedLayout.String())))
-	objectType.IconEmoji = pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String())
-	objectType.Url = url
-	objectType.IsArchived = pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
-
-	// we use Page for all custom object types
-	objectType.Types = []model.SmartBlockType{model.SmartBlockType_Page}
-	return objectType
+func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string, objectTypeKey string) *model.ObjectType {
+	return &model.ObjectType{
+		Url:        url,
+		Key:        objectTypeKey,
+		Name:       pbtypes.GetString(details, bundle.RelationKeyName.String()),
+		Layout:     model.ObjectTypeLayout(int(pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String()))),
+		IconEmoji:  pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String()),
+		IsArchived: pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String()),
+		// we use Page for all custom object types
+		Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+		RelationLinks: s.getRelationLinksForRecommendedRelations(details),
+	}
 }
 
-func (s *dsObjectStore) fillObjectTypeWithRecommendedRelations(details *types.Struct, objectType *model.ObjectType) {
-	// relationKeys := objectInfos[0].RelationKeys
-	for _, relationID := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
-		// todo: fix or remove
-		relationKey, err := pbtypes.BundledRelationIdToKey(relationID)
-		if err == nil {
-			//nolint:govet
-			relation, err := s.GetRelationByKey(relationKey)
-			if err == nil {
-				objectType.RelationLinks = append(
-					objectType.RelationLinks,
-					(&relationutils.Relation{Relation: relation}).RelationLink(),
-				)
-			} else {
-				log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relationID)
-			}
+func (s *dsObjectStore) getRelationLinksForRecommendedRelations(details *types.Struct) []*model.RelationLink {
+	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
+	relationLinks := make([]*model.RelationLink, 0, len(recommendedRelationIDs))
+	for _, relationID := range recommendedRelationIDs {
+		relation, err := s.GetRelationByID(relationID)
+		if err != nil {
+			log.Errorf("failed to get relation %s: %s", relationID, err)
 		} else {
-			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relationID)
+			relationModel := &relationutils.Relation{Relation: relation}
+			relationLinks = append(relationLinks, relationModel.RelationLink())
 		}
 	}
+	return relationLinks
 }
 
 func (s *dsObjectStore) GetObjectTypes(ids []string) (ots []*model.ObjectType, err error) {

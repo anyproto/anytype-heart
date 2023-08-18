@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 )
@@ -29,7 +30,7 @@ type RelationLinks struct {
 }
 
 type ObjectType struct {
-	Before, After []string
+	Before, After []bundle.TypeKey
 }
 
 type Action struct {

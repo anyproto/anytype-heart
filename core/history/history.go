@@ -13,6 +13,7 @@ import (
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	history2 "github.com/anyproto/anytype-heart/core/block/history"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -72,22 +73,22 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
+	dependentObjectIDs := objectlink.DependentObjectIDs(s, h.relationService, true, true, false, true, false)
 	// nolint:errcheck
-	metaD, _ := h.objectStore.QueryByID(s.DepSmartIds(true, true, false, true, false))
+	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
-	var uniqueObjTypes []string
 
 	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
-	uniqueObjTypes = s.ObjectTypes()
+	uniqueObjTypes := s.ObjectTypeKeys()
 	for _, m := range metaD {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
 		})
 
-		if ot := pbtypes.GetString(m.Details, bundle.RelationKeyType.String()); ot != "" {
-			if slice.FindPos(uniqueObjTypes, ot) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, ot)
+		if typeKey := bundle.TypeKey(pbtypes.GetString(m.Details, bundle.RelationKeyType.String())); typeKey != "" {
+			if slice.FindPos(uniqueObjTypes, typeKey) == -1 {
+				uniqueObjTypes = append(uniqueObjTypes, typeKey)
 			}
 		}
 	}

@@ -57,7 +57,7 @@ func (gs *groupSub) onChange(ctx *opCtx) {
 			if !checkGroups && cacheEntry != nil {
 				oldList := pbtypes.GetStringList(cacheEntry.data, gs.relKey)
 				newList := pbtypes.GetStringList(ctxEntry.data, gs.relKey)
-				checkGroups = !slice.UnsortedEquals(oldList, newList)
+				checkGroups = !slice.UnsortedEqual(oldList, newList)
 			}
 			if !inFilter {
 				gs.cache.RemoveSubId(ctxEntry.id, gs.id)

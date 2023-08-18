@@ -306,11 +306,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	}
 
 	if len(req.Source) > 0 {
-		spaceId, err := spaceIdFromFilters(req.Filters)
-		if err != nil {
-			return nil, fmt.Errorf("source set but can't get spaceId from filters: %w", err)
-		}
-		sourceFilter, err := s.filtersFromSource(spaceId, req.Source)
+		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
@@ -333,7 +329,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		}
 	}
 
-	grouper, err := s.kanban.Grouper(req.RelationKey)
+	grouper, err := s.kanban.Grouper(req.SpaceId, req.RelationKey)
 	if err != nil {
 		return nil, err
 	}
