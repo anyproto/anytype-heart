@@ -140,7 +140,7 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyDate)
+	s.SetObjectTypeKey(bundle.TypeKeyDate)
 	return s, nil
 }
 

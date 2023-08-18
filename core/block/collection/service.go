@@ -2,7 +2,6 @@ package collection
 
 import (
 	"fmt"
-	"sync"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -20,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/gogo/protobuf/types"
+	"sync"
 )
 
 var log = logging.Logger("collection-service")
@@ -211,7 +211,7 @@ func (s *Service) ObjectToCollection(id string) error {
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
-		st.SetObjectType(bundle.TypeKeyCollection)
+		st.SetObjectTypeKey(bundle.TypeKeyCollection)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

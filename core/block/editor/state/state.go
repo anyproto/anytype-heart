@@ -939,11 +939,13 @@ type ObjectTypePair struct {
 	Key bundle.TypeKey
 }
 
-func (s *State) SetObjectType(objectTypeKey bundle.TypeKey) *State {
-	return s.SetObjectTypes([]bundle.TypeKey{objectTypeKey})
+// SetObjectTypeKey sets the object type key. Smartblocks derive Type relation from it.
+func (s *State) SetObjectTypeKey(objectTypeKey bundle.TypeKey) *State {
+	return s.SetObjectTypeKeys([]bundle.TypeKey{objectTypeKey})
 }
 
-func (s *State) SetObjectTypes(objectTypeKeys []bundle.TypeKey) *State {
+// SetObjectTypeKeys sets the object type keys. Smartblocks derive Type relation from it.
+func (s *State) SetObjectTypeKeys(objectTypeKeys []bundle.TypeKey) *State {
 	s.objectTypeKeys = objectTypeKeys
 	// we don't set it in the localDetails here
 	return s

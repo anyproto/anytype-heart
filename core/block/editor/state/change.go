@@ -279,7 +279,7 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 		}
 	}
 	objectTypes := append(s.ObjectTypeKeys(), bundle.TypeKey(add.Key))
-	s.SetObjectTypes(objectTypes)
+	s.SetObjectTypeKeys(objectTypes)
 	return nil
 }
 
@@ -298,7 +298,7 @@ func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error 
 	if !found {
 		log.Warnf("changeObjectTypeRemove: type to remove not found: '%s'", remove.Url)
 	} else {
-		s.SetObjectTypes(s.objectTypeKeys)
+		s.SetObjectTypeKeys(s.objectTypeKeys)
 	}
 	return nil
 }

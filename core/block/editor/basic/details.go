@@ -195,7 +195,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeIDs []string) (
 		objectTypeKeys = append(objectTypeKeys, bundle.TypeKey(ot.Key))
 	}
 
-	s.SetObjectTypes(objectTypeKeys)
+	s.SetObjectTypeKeys(objectTypeKeys)
 
 	toLayout := newObjectTypes[0].Layout
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet

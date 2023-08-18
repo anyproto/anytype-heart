@@ -445,9 +445,9 @@ func (s *Service) AddBundledObjectToSpace(
 			state.SetDetails(d)
 
 			if uk.SmartblockType() == model.SmartBlockType_STRelation {
-				state.SetObjectType(bundle.TypeKeyRelation)
+				state.SetObjectTypeKey(bundle.TypeKeyRelation)
 			} else if uk.SmartblockType() == model.SmartBlockType_STType {
-				state.SetObjectType(bundle.TypeKeyObjectType)
+				state.SetObjectTypeKey(bundle.TypeKeyObjectType)
 			} else {
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
@@ -1107,7 +1107,7 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.BlocksInit(ts)
 		objType := ts.ObjectTypeKey()
 		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
-		ts.SetObjectType(objType)
+		ts.SetObjectTypeKey(objType)
 
 		flags := internalflag.NewFromState(ts)
 		flags.Remove(model.InternalFlag_editorSelectType)

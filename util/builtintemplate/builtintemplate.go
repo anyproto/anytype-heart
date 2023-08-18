@@ -154,7 +154,7 @@ func (b *builtinTemplate) setObjectTypes(st *state.State) error {
 		}
 		targetObjectTypeKey = bundle.TypeKey(targetObjectType.Key)
 	}
-	st.SetObjectTypes([]bundle.TypeKey{bundle.TypeKeyTemplate, targetObjectTypeKey})
+	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, targetObjectTypeKey})
 	return nil
 }
 

@@ -972,7 +972,7 @@ func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 		return nil, fmt.Errorf("get type id by key: %s", err)
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
-	st.SetObjectTypes([]bundle.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
+	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)

@@ -90,7 +90,7 @@ func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	}
 
 	s.SetDetails(d)
-	s.SetObjectType(typeKey)
+	s.SetObjectTypeKey(typeKey)
 	return s, nil
 }
 

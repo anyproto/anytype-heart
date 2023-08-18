@@ -51,7 +51,7 @@ var WithForcedObjectTypes = func(otypes []bundle.TypeKey) StateTransformer {
 		if slice.SortedEquals(s.ObjectTypeKeys(), otypes) {
 			return
 		}
-		s.SetObjectTypes(otypes)
+		s.SetObjectTypeKeys(otypes)
 	}
 }
 
@@ -113,7 +113,7 @@ var WithRequiredRelations = func() StateTransformer {
 var WithObjectTypesAndLayout = func(otypes []bundle.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypeKeys()) == 0 {
-			s.SetObjectTypes(otypes)
+			s.SetObjectTypeKeys(otypes)
 		} else {
 			otypes = s.ObjectTypeKeys()
 		}

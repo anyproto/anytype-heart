@@ -510,7 +510,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 
 	// we need to create it here directly, because we need to set the object type
 	createState := state.NewDoc("", nil).(*state.State)
-	createState.SetObjectType(bundle.TypeKeyObjectType)
+	createState.SetObjectTypeKey(bundle.TypeKeyObjectType)
 	createState.SetDetails(object)
 	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, nil, createState)
 }

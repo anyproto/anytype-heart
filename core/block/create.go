@@ -55,7 +55,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		st.SetLocalDetails(nil)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
 		t := st.ObjectTypeKeys()
-		st.SetObjectTypes(t)
+		st.SetObjectTypeKeys(t)
 		return nil
 	}); err != nil {
 		return
@@ -109,7 +109,7 @@ func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, obje
 	}
 	st := state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(objectTypeID))
-	st.SetObjectTypes([]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(objectType.Key)})
+	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(objectType.Key)})
 	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeTemplate, nil, st)
 	if err != nil {
 		return
@@ -229,7 +229,7 @@ func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) e
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
-		st.SetObjectType(bundle.TypeKeySet)
+		st.SetObjectTypeKey(bundle.TypeKeySet)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)

@@ -130,7 +130,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				}
 			}
 			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
-				ctx.State.SetObjectTypes(ctx.ObjectTypeKeys)
+				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
 			}
 			// TODO Templates must be dumb here, no migration logic
 
