@@ -116,12 +116,9 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 	files, err := p.readFile(path)
 	if err != nil {
 		allErrors.Add(err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING || errors.Is(err, converter.ErrNoObjectsToImport) {
 			return nil, nil
 		}
-	}
-	if len(files) == 0 {
-		return nil, nil
 	}
 	var (
 		needToImportWidgets bool
