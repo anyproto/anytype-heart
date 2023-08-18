@@ -1006,27 +1006,6 @@ func (mw *Middleware) BlockFileCreateAndUpload(cctx context.Context, req *pb.Rpc
 	return response(pb.RpcBlockFileCreateAndUploadResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectSetObjectTypeResponse {
-		m := &pb.RpcObjectSetObjectTypeResponse{Error: &pb.RpcObjectSetObjectTypeResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-
-	if err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUrl})
-	}); err != nil {
-		return response(pb.RpcObjectSetObjectTypeResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectSetObjectTypeResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockRelationSetKey(cctx context.Context, req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockRelationSetKeyResponseErrorCode, err error) *pb.RpcBlockRelationSetKeyResponse {

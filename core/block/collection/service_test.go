@@ -8,9 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 )
 
 type testPicker struct {
@@ -21,12 +23,35 @@ func (t *testPicker) PickBlock(ctx context.Context, id string) (sb smartblock.Sm
 	return t.sb, nil
 }
 
+func (t *testPicker) Init(a *app.App) error { return nil }
+
+func (t *testPicker) Name() string { return "" }
+
+type fixture struct {
+	picker *testPicker
+	*Service
+}
+
+func newFixture(t *testing.T) *fixture {
+	picker := &testPicker{}
+	a := &app.App{}
+	objectStore := mock_objectstore.NewMockObjectStore(t)
+	objectStore.EXPECT().Name().Return("objectStore")
+	a.Register(picker)
+	a.Register(objectStore)
+	s := New()
+
+	err := s.Init(a)
+	require.NoError(t, err)
+	return &fixture{picker: picker, Service: s}
+}
+
 func TestBroadcast(t *testing.T) {
 	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
 
-	picker := &testPicker{sb: sb}
-	s := New(picker, nil, nil, nil)
+	s := newFixture(t)
+	s.picker.sb = sb
 
 	_, subCh1, err := s.SubscribeForCollection(collectionID, "sub1")
 	require.NoError(t, err)

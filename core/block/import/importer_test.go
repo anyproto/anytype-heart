@@ -4,18 +4,22 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/golang/mock/gomock"
+	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_ImportSuccess(t *testing.T) {
@@ -571,4 +575,107 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
+}
+
+func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
+	i := Import{}
+	ctrl := gomock.NewController(t)
+	converter := cv.NewMockConverter(ctrl)
+	e := cv.NewFromError(cv.ErrLimitExceeded)
+	converter.EXPECT().GetSnapshots(gomock.Any(), gomock.Any()).Return(&cv.Response{Snapshots: []*cv.Snapshot{{
+		Snapshot: &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{&model.Block{
+					Id: "1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{
+							Text:  "test",
+							Style: model.BlockContentText_Numbered,
+						},
+					},
+				},
+				},
+			},
+		},
+		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
+	i.converters = make(map[string]cv.Converter, 0)
+	i.converters["Notion"] = converter
+	res := i.Import(session.NewContext(), &pb.RpcObjectImportRequest{
+		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	})
+
+	assert.NotNil(t, res)
+	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
+}
+
+func TestImport_replaceRelationKeyWithNew(t *testing.T) {
+	t.Run("no matching relation id in oldIDToNew map", func(t *testing.T) {
+		// given
+		i := Import{}
+		option := &cv.Snapshot{
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String("key"),
+						},
+					},
+				},
+			},
+			SbType: smartblock.SmartBlockTypeSubObject,
+		}
+		oldIDToNew := make(map[string]string, 0)
+
+		//when
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
+
+		// then
+		assert.Equal(t, "key", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+	})
+	t.Run("oldIDToNew map have relation id", func(t *testing.T) {
+		// given
+		i := Import{}
+		option := &cv.Snapshot{
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String("key"),
+						},
+					},
+				},
+			},
+			SbType: smartblock.SmartBlockTypeSubObject,
+		}
+		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
+
+		//when
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
+
+		// then
+		assert.Equal(t, "newkey", pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+	})
+
+	t.Run("no details", func(t *testing.T) {
+		// given
+		i := Import{}
+		option := &cv.Snapshot{
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: nil,
+				},
+			},
+			SbType: smartblock.SmartBlockTypeSubObject,
+		}
+		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
+
+		//when
+		i.replaceRelationKeyWithNew(option, oldIDToNew)
+
+		// then
+		assert.Nil(t, option.Snapshot.Data.Details)
+	})
 }

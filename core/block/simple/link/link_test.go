@@ -1,6 +1,7 @@
 package link
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/simple/test"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -42,18 +43,53 @@ func TestLink_Diff(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, d, 1)
 	})
-	t.Run("content diff", func(t *testing.T) {
+	t.Run("content changed", func(t *testing.T) {
+		// given
 		b1 := testBlock()
 		b2 := testBlock()
+
+		// when
 		b2.content.Style = model.BlockContentLink_Dataview
 		b2.content.TargetBlockId = "42"
+		b2.content.CardStyle = model.BlockContentLink_Card
+		b2.content.IconSize = model.BlockContentLink_SizeMedium
+		b2.content.Description = model.BlockContentLink_Content
 
 		diff, err := b1.Diff(b2)
+
+		// then
 		require.NoError(t, err)
 		require.Len(t, diff, 1)
-		change := diff[0].Msg.Value.(*pb.EventMessageValueOfBlockSetLink).BlockSetLink
-		assert.NotNil(t, change.TargetBlockId)
-		assert.NotNil(t, change.Style)
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLink{
+			BlockSetLink: &pb.EventBlockSetLink{
+				Id:            b1.Id,
+				TargetBlockId: &pb.EventBlockSetLinkTargetBlockId{Value: "42"},
+				Style:         &pb.EventBlockSetLinkStyle{Value: model.BlockContentLink_Dataview},
+				IconSize:      &pb.EventBlockSetLinkIconSize{Value: model.BlockContentLink_SizeMedium},
+				CardStyle:     &pb.EventBlockSetLinkCardStyle{Value: model.BlockContentLink_Card},
+				Description:   &pb.EventBlockSetLinkDescription{Value: model.BlockContentLink_Content},
+			},
+		}), diff)
+	})
+	t.Run("relations changed", func(t *testing.T) {
+		// given
+		b1 := testBlock()
+		b2 := testBlock()
+
+		// when
+		b2.content.Relations = append(b2.content.Relations, "cover")
+		diff, err := b1.Diff(b2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+
+		assert.Equal(t, test.MakeEvent(&pb.EventMessageValueOfBlockSetLink{
+			BlockSetLink: &pb.EventBlockSetLink{
+				Id:        b1.Id,
+				Relations: &pb.EventBlockSetLinkRelations{Value: []string{"cover"}},
+			},
+		}), diff)
 	})
 }
 

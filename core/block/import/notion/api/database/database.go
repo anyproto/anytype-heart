@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -67,26 +68,27 @@ func (p *Database) GetObjectType() string {
 }
 
 // GetDatabase makes snapshots from notion Database objects
-func (ds *Service) GetDatabase(ctx context.Context,
+func (ds *Service) GetDatabase(_ context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *block.NotionImportContext) (*converter.Response, *converter.ConvertError) {
+	req *block.NotionImportContext) (*converter.Response, *property.PropertiesStore, *converter.ConvertError) {
 	var (
-		allSnapshots         = make([]*converter.Snapshot, 0)
-		notionIdsToAnytype   = make(map[string]string, 0)
-		databaseNameToID     = make(map[string]string, 0)
-		parentPageToChildIDs = make(map[string][]string, 0)
-		convertError         = converter.NewError()
+		allSnapshots = make([]*converter.Snapshot, 0)
+		convertError = converter.NewError()
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
+	relations := &property.PropertiesStore{
+		PropertyIdsToSnapshots: make(map[string]*model.SmartBlockSnapshotBase, 0),
+		RelationsIdsToOptions:  make(map[string][]*model.SmartBlockSnapshotBase, 0),
+	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, converter.NewCancelError(err)
+			return nil, nil, converter.NewCancelError(err)
 		}
-		snapshot, err := ds.makeDatabaseSnapshot(d, req, notionIdsToAnytype, databaseNameToID, parentPageToChildIDs)
+		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
 		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, converter.NewFromError(err)
+			return nil, nil, converter.NewFromError(err)
 		}
 		if err != nil {
 			convertError.Add(err)
@@ -94,16 +96,15 @@ func (ds *Service) GetDatabase(ctx context.Context,
 		}
 		allSnapshots = append(allSnapshots, snapshot...)
 	}
-	req.NotionDatabaseIdsToAnytype = notionIdsToAnytype
-	req.DatabaseNameToID = databaseNameToID
-	req.ParentPageToChildIDs = parentPageToChildIDs
 	if convertError.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, nil
+		return &converter.Response{Snapshots: allSnapshots}, relations, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, convertError
+	return &converter.Response{Snapshots: allSnapshots}, relations, convertError
 }
 
-func (ds *Service) makeDatabaseSnapshot(d Database, request *block.NotionImportContext, notionIdsToAnytype, databaseNameToID map[string]string, parentPageToChildIDs map[string][]string) ([]*converter.Snapshot, error) {
+func (ds *Service) makeDatabaseSnapshot(d Database,
+	importContext *block.NotionImportContext,
+	relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
 
 	detailsStruct := &types.Struct{Fields: details}
@@ -112,31 +113,63 @@ func (ds *Service) makeDatabaseSnapshot(d Database, request *block.NotionImportC
 		return nil, err
 	}
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
+	snapshots := ds.makeRelationsSnapshots(d, st, relations)
+	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, detailsStruct)
+	ds.fillImportContext(d, importContext, id, databaseSnapshot)
+	snapshots = append(snapshots, databaseSnapshot)
+	return snapshots, nil
+}
+
+func (ds *Service) fillImportContext(d Database, req *block.NotionImportContext, id string, databaseSnapshot *converter.Snapshot) {
+	req.NotionDatabaseIdsToAnytype[d.ID] = id
+	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
+	if d.Parent.DatabaseID != "" {
+		req.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
+	}
+	if d.Parent.PageID != "" {
+		req.ParentPageToChildIDs[d.Parent.PageID] = append(req.ParentPageToChildIDs[d.Parent.PageID], d.ID)
+	}
+	if d.Parent.BlockID != "" {
+		req.ParentPageToChildIDs[d.Parent.BlockID] = append(req.ParentPageToChildIDs[d.Parent.BlockID], d.ID)
+	}
+}
+
+func (ds *Service) makeRelationsSnapshots(d Database, st *state.State, relations *property.PropertiesStore) []*converter.Snapshot {
 	snapshots := make([]*converter.Snapshot, 0)
 	for _, databaseProperty := range d.Properties {
 		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
 			ds.handleNameProperty(databaseProperty, st)
 		}
 	}
-	for key, databaseProperty := range d.Properties {
+	hasTag := isDbContainsTagProperty(d.Properties)
+	var tagAlreadyExist bool
+	for name, databaseProperty := range d.Properties {
 		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
 			continue
 		}
-		if snapshot := ds.createRelationFromDatabaseProperty(request, databaseProperty, key, st); snapshot != nil {
+		relationKey := bson.NewObjectId().Hex()
+		if tagName, tagRelationKey := ds.getNameAndRelationKeyForTagProperty(databaseProperty, hasTag); tagName != "" && tagRelationKey != "" && !tagAlreadyExist {
+			name = tagName
+			relationKey = tagRelationKey
+			tagAlreadyExist = true
+		}
+		if snapshot := ds.makeRelationSnapshotFromDatabaseProperty(relations, databaseProperty, name, relationKey, st); snapshot != nil {
 			snapshots = append(snapshots, snapshot)
 		}
 	}
-	id, converterSnapshot := ds.provideSnapshot(d, st, detailsStruct)
-	notionIdsToAnytype[d.ID] = id
-	databaseNameToID[d.ID] = pbtypes.GetString(converterSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
-	if d.Parent.DatabaseID != "" {
-		parentPageToChildIDs[d.Parent.DatabaseID] = append(parentPageToChildIDs[d.Parent.DatabaseID], d.ID)
+	return snapshots
+}
+
+func (ds *Service) getNameAndRelationKeyForTagProperty(databaseProperty property.DatabasePropertyHandler, hasTag bool) (string, string) {
+	var name, relationKey string
+	if tags, ok := databaseProperty.(*property.DatabaseMultiSelect); ok && property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
+		name = bundle.RelationKeyTag.String()
+		relationKey = bundle.RelationKeyTag.String()
+	} else if tags, ok := databaseProperty.(*property.DatabaseSelect); ok && property.IsPropertyMatchTagRelation(tags.Name, hasTag) {
+		name = bundle.RelationKeyTag.String()
+		relationKey = bundle.RelationKeyTag.String()
 	}
-	if d.Parent.PageID != "" {
-		parentPageToChildIDs[d.Parent.PageID] = append(parentPageToChildIDs[d.Parent.PageID], d.ID)
-	}
-	snapshots = append(snapshots, converterSnapshot)
-	return snapshots, nil
+	return name, relationKey
 }
 
 func (ds *Service) handleNameProperty(databaseProperty property.DatabasePropertyHandler, st *state.State) *converter.Snapshot {
@@ -145,31 +178,37 @@ func (ds *Service) handleNameProperty(databaseProperty property.DatabaseProperty
 		Key:    bundle.RelationKeyName.String(),
 		Format: model.RelationFormat_shorttext,
 	}
-	st.AddRelationLinks(relationLinks)
-	err := converter.AddRelationsToDataView(st, relationLinks)
+	err := converter.ReplaceRelationsInDataView(st, relationLinks)
 	if err != nil {
 		logger.Errorf("failed to add relation to notion database, %s", err.Error())
 	}
 	return nil
 }
 
-func (ds *Service) createRelationFromDatabaseProperty(req *block.NotionImportContext,
+func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.PropertiesStore,
 	databaseProperty property.DatabasePropertyHandler,
-	key string,
+	name, relationKey string,
 	st *state.State) *converter.Snapshot {
 	var (
 		rel *model.SmartBlockSnapshotBase
 		sn  *converter.Snapshot
 	)
-	if rel = req.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
-		rel, sn = ds.getRelationSnapshot(databaseProperty, key)
-		req.WriteToRelationsMap(databaseProperty.GetID(), rel)
+	if rel = relations.ReadRelationsMap(databaseProperty.GetID()); rel == nil {
+		rel, sn = ds.getRelationSnapshot(relationKey, databaseProperty, name)
+		relations.WriteToRelationsMap(databaseProperty.GetID(), rel)
 	}
 	relKey := pbtypes.GetString(rel.GetDetails(), bundle.RelationKeyRelationKey.String())
 	databaseProperty.SetDetail(relKey, st.Details().GetFields())
 	relationLinks := &model.RelationLink{
 		Key:    relKey,
 		Format: databaseProperty.GetFormat(),
+	}
+	if relationKey == bundle.RelationKeyTag.String() {
+		err := converter.ReplaceRelationsInDataView(st, relationLinks)
+		if err != nil {
+			logger.Errorf("failed to make tag relation not hidden in notion database, %s", err.Error())
+		}
+		return sn
 	}
 	st.AddRelationLinks(relationLinks)
 	err := converter.AddRelationsToDataView(st, relationLinks)
@@ -179,8 +218,7 @@ func (ds *Service) createRelationFromDatabaseProperty(req *block.NotionImportCon
 	return sn
 }
 
-func (ds *Service) getRelationSnapshot(databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {
-	relationKey := bson.NewObjectId().Hex()
+func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty property.DatabasePropertyHandler, name string) (*model.SmartBlockSnapshotBase, *converter.Snapshot) {
 	relationDetails := ds.getRelationDetails(databaseProperty, name, relationKey)
 	relationSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     relationDetails,
@@ -194,14 +232,15 @@ func (ds *Service) getRelationSnapshot(databaseProperty property.DatabasePropert
 	return relationSnapshot, snapshot
 }
 
-func (ds *Service) getRelationDetails(propertyFormat property.DatabasePropertyHandler, name, key string) *types.Struct {
+func (ds *Service) getRelationDetails(databaseProperty property.DatabasePropertyHandler, name, key string) *types.Struct {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
-	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propertyFormat.GetFormat()))
+	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(databaseProperty.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(databaseProperty.GetID())
 	return details
 }
 
@@ -239,7 +278,7 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 	return details
 }
 
-func (ds *Service) provideSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *converter.Snapshot) {
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, detailsStruct *types.Struct) (string, *converter.Snapshot) {
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       detailsStruct,
@@ -249,13 +288,13 @@ func (ds *Service) provideSnapshot(d Database, st *state.State, detailsStruct *t
 	}
 
 	id := uuid.New().String()
-	converterSnapshot := &converter.Snapshot{
+	databaseSnapshot := &converter.Snapshot{
 		Id:       id,
 		FileName: d.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
 		SbType:   sb.SmartBlockTypePage,
 	}
-	return id, converterSnapshot
+	return id, databaseSnapshot
 }
 
 func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot, pages []page.Page, databases []Database, notionPageIdsToAnytype, notionDatabaseIdsToAnytype map[string]string) {
@@ -281,32 +320,89 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot
 	}
 }
 
-func (ds *Service) AddObjectsToNotionCollection(databaseSnapshots []*converter.Snapshot, pagesSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
-	allObjects := make([]string, 0, len(databaseSnapshots)+len(pagesSnapshots))
-
-	for _, snapshot := range databaseSnapshots {
-		if snapshot.SbType == sb.SmartBlockTypeSubObject {
-			continue
-		}
-		allObjects = append(allObjects, snapshot.Id)
-	}
-
-	for _, snapshot := range pagesSnapshots {
-		if snapshot.SbType == sb.SmartBlockTypeSubObject {
-			continue
-		}
-		allObjects = append(allObjects, snapshot.Id)
-	}
+func (ds *Service) AddObjectsToNotionCollection(notionContext *block.NotionImportContext,
+	notionDB []Database,
+	notionPages []page.Page) (*converter.Snapshot, error) {
+	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
 	rootCollection := converter.NewRootCollection(ds.collectionService)
 	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects)
 	if err != nil {
 		return nil, err
 	}
+	return rootCol, nil
+}
 
-	databaseSnapshots = append(databaseSnapshots, rootCol)
+func (ds *Service) filterObjects(notionContext *block.NotionImportContext,
+	notionDB []Database,
+	notionPages []page.Page) []string {
+	allWorkspaceObjects := make([]string, 0)
+	for _, database := range notionDB {
+		if anytypeID := ds.getAnytypeIDForRootCollection(notionContext, notionContext.NotionDatabaseIdsToAnytype, database.Parent, database.ID); anytypeID != "" {
+			allWorkspaceObjects = append(allWorkspaceObjects, anytypeID)
+		}
+	}
+	for _, page := range notionPages {
+		if anytypeID := ds.getAnytypeIDForRootCollection(notionContext, notionContext.NotionPageIdsToAnytype, page.Parent, page.ID); anytypeID != "" {
+			allWorkspaceObjects = append(allWorkspaceObjects, anytypeID)
+		}
+	}
+	return allWorkspaceObjects
+}
 
-	return databaseSnapshots, nil
+func (ds *Service) getAnytypeIDForRootCollection(notionContext *block.NotionImportContext,
+	notionIDToAnytypeID map[string]string,
+	parent api.Parent,
+	notionObjectID string) string {
+	if parent.Workspace {
+		if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
+			return anytypeID
+		}
+	}
+
+	// if object is in database, but database wasn't added in integration, then we add object in root collection
+	if parent.DatabaseID != "" {
+		if _, ok := notionContext.NotionDatabaseIdsToAnytype[parent.DatabaseID]; !ok {
+			if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
+				return anytypeID
+			}
+		}
+	}
+
+	// if object is a child in Page, but page wasn't added in integration, then we add object in root collection
+	if parent.PageID != "" {
+		if _, ok := notionContext.NotionPageIdsToAnytype[parent.PageID]; !ok {
+			if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
+				return anytypeID
+			}
+		}
+	}
+
+	// If page with parent block is absent, we add child page to root collection
+	if parent.BlockID != "" {
+		if _, ok := notionContext.ParentBlockToPage[parent.BlockID]; !ok {
+			if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
+				return anytypeID
+			}
+		}
+	}
+	return ""
+}
+
+func isDbContainsTagProperty(databaseProperties property.DatabaseProperties) bool {
+	for key, databaseProperty := range databaseProperties {
+		if _, ok := databaseProperty.(*property.DatabaseMultiSelect); ok {
+			if strings.TrimSpace(key) == property.TagNameProperty {
+				return true
+			}
+		}
+		if _, ok := databaseProperty.(*property.DatabaseSelect); ok {
+			if strings.TrimSpace(key) == property.TagNameProperty {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func makeSnapshotMapFromArray(snapshots []*converter.Snapshot) map[string]*converter.Snapshot {

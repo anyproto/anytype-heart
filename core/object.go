@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/go-naturaldate/v2"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
@@ -490,6 +491,61 @@ func (mw *Middleware) ObjectRelationListAvailable(cctx context.Context, req *pb.
 	return response(pb.RpcObjectRelationListAvailableResponseError_NULL, rels, nil)
 }
 
+func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectSetObjectTypeResponse {
+		m := &pb.RpcObjectSetObjectTypeResponse{Error: &pb.RpcObjectSetObjectTypeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUrl})
+	}); err != nil {
+		return response(pb.RpcObjectSetObjectTypeResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectSetObjectTypeResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcObjectListSetObjectTypeRequest) *pb.RpcObjectListSetObjectTypeResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcObjectListSetObjectTypeResponseErrorCode, err error) *pb.RpcObjectListSetObjectTypeResponse {
+		m := &pb.RpcObjectListSetObjectTypeResponse{Error: &pb.RpcObjectListSetObjectTypeResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs *block.Service) (err error) {
+		var (
+			mErr       multierror.Error
+			anySucceed bool
+		)
+		for _, objID := range req.ObjectIds {
+			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
+				log.With("objectID", objID).Errorf("failed to set object type to object '%s': %v", objID, err)
+				mErr.Errors = append(mErr.Errors, err)
+			} else {
+				anySucceed = true
+			}
+		}
+		if anySucceed {
+			return nil
+		}
+		return mErr.ErrorOrNil()
+	}); err != nil {
+		return response(pb.RpcObjectListSetObjectTypeResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcObjectListSetObjectTypeResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
@@ -765,15 +821,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
-	if mw.app == nil {
-		return response(pb.RpcObjectImportResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("user didn't log in"))
-	}
-
-	importer := mw.app.MustComponent(importer.CName).(importer.Importer)
-	err := importer.Import(ctx, req)
+	err := getService[importer.Importer](mw).Import(ctx, req)
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, nil)

@@ -242,7 +242,7 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 
 	linkPath, err := url.PathUnescape(string(destination))
 	if err != nil {
-		log.Errorf("failed to unescape destination %s: %s", string(destination), err.Error())
+		log.Errorf("failed to unescape destination %s", err.Error())
 		linkPath = string(destination)
 	}
 
@@ -329,7 +329,7 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 
 		linkPath, err := url.PathUnescape(string(destination))
 		if err != nil {
-			log.Errorf("failed to unescape destination %s: %s", string(destination), err.Error())
+			log.Errorf("failed to unescape destination %s", err.Error())
 			linkPath = string(destination)
 		}
 

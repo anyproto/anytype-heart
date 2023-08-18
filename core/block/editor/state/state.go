@@ -369,14 +369,16 @@ func (s *State) InState(id string) (ok bool) {
 	return
 }
 
-func (s *State) SearchText() (text string) {
+func (s *State) SearchText() string {
+	var builder strings.Builder
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if tb := b.Model().GetText(); tb != nil {
-			text += tb.Text + "\n"
+			builder.WriteString(tb.Text)
+			builder.WriteRune('\n')
 		}
 		return true
 	})
-	return
+	return builder.String()
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
@@ -1182,7 +1184,7 @@ func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifie
 
 	if objTypes {
 		for _, ot := range s.ObjectTypes() {
-			if ot == "" {
+			if ot == "" { // TODO is it possible?
 				log.Errorf("sb %s has empty ot", s.RootId())
 				continue
 			}
@@ -1560,28 +1562,10 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 		if store.Fields == nil {
 			store.Fields = map[string]*types.Value{}
 		}
-		_, ok := store.Fields[key]
-		// TODO: refactor this with pbtypes
-		if !ok {
-			store.Fields[key] = &types.Value{
-				Kind: &types.Value_StructValue{
-					StructValue: &types.Struct{
-						Fields: map[string]*types.Value{},
-					},
-				},
-			}
+		if nestedStore := pbtypes.GetStruct(store, key); nestedStore == nil {
+			store.Fields[key] = pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{}})
 		}
-		_, ok = store.Fields[key].Kind.(*types.Value_StructValue)
-		if !ok {
-			store.Fields[key] = &types.Value{
-				Kind: &types.Value_StructValue{
-					StructValue: &types.Struct{
-						Fields: map[string]*types.Value{},
-					},
-				},
-			}
-		}
-		store = store.Fields[key].Kind.(*types.Value_StructValue).StructValue
+		store = pbtypes.GetStruct(store, key)
 		storeStack = append(storeStack, store)
 	}
 	if store.Fields == nil {
@@ -1624,19 +1608,11 @@ func (s *State) ContainsInStore(path []string) bool {
 	}
 	nested := path[:len(path)-1]
 	for _, key := range nested {
-		if store.Fields == nil {
+		nestedStore := pbtypes.GetStruct(store, key)
+		if nestedStore == nil {
 			return false
 		}
-		// TODO: refactor this with pbtypes
-		_, ok := store.Fields[key]
-		if !ok {
-			return false
-		}
-		_, ok = store.Fields[key].Kind.(*types.Value_StructValue)
-		if !ok {
-			return false
-		}
-		store = store.Fields[key].Kind.(*types.Value_StructValue).StructValue
+		store = nestedStore
 	}
 	if store.Fields == nil {
 		return false

@@ -13,7 +13,7 @@ import (
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	pb "github.com/anyproto/anytype-heart/pb"
 	smartblock0 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockObjectTreeCreator is a mock of ObjectTreeCreator interface.

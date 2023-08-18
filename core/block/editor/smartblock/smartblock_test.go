@@ -4,12 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -20,9 +19,12 @@ import (
 	"github.com/anyproto/anytype-heart/util/testMock/mockRelation"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
 
+	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestSmartBlock_Init(t *testing.T) {
@@ -113,13 +115,15 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
 	objectStore.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
+	objectStore.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
 
 	objectStore.EXPECT().Name().Return(objectstore.CName).AnyTimes()
 
 	indexer := NewMockIndexer(ctrl)
 	indexer.EXPECT().Name().Return("indexer").AnyTimes()
 
-	restrictionService := restriction.New(nil, nil)
+	restrictionService := mock_restriction.NewMockService(t)
+	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 	relationService := mockRelation.NewMockService(ctrl)
 
 	fileService := testMock.NewMockFileService(ctrl)

@@ -14,11 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -42,7 +40,6 @@ type Bookmark interface {
 	Fetch(ctx *session.Context, id string, url string, isSync bool) (err error)
 	CreateAndFetch(ctx *session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
-	MigrateBlock(bm bookmark.Block) (err error)
 }
 
 type BookmarkService interface {
@@ -158,59 +155,6 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 
 	block.UpdateContent(func(content *model.BlockContentBookmark) {
 		content.TargetObjectId = pageId
-	})
-	return nil
-}
-
-func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
-	content := bm.GetContent()
-
-	// Fix broken empty bookmarks
-	// we had a bug that migrated empty bookmarks blocks into bookmark objects. Now we need to reset them
-	// todo: remove this after we stop to populate bookmark block fields
-	if content.Url == "" && content.State == model.BlockContentBookmark_Done && content.Title == "" && content.FaviconHash == "" && content.TargetObjectId != "" {
-		// nolint:errcheck
-		det, _ := b.objectStore.GetDetails(content.TargetObjectId)
-		if det != nil && pbtypes.GetString(det.Details, bundle.RelationKeyUrl.String()) == "" && pbtypes.GetString(det.Details, bundle.RelationKeySource.String()) == "" {
-			bm.UpdateContent(func(content *model.BlockContentBookmark) {
-				content.State = model.BlockContentBookmark_Empty
-				content.TargetObjectId = ""
-			})
-		}
-		return nil
-	}
-
-	if content.State == model.BlockContentBookmark_Error {
-		bm.UpdateContent(func(content *model.BlockContentBookmark) {
-			content.State = model.BlockContentBookmark_Empty
-			content.TargetObjectId = ""
-		})
-		return nil
-	}
-
-	if content.TargetObjectId != "" {
-		if content.State != model.BlockContentBookmark_Done {
-			bm.UpdateContent(func(content *model.BlockContentBookmark) {
-				content.State = model.BlockContentBookmark_Done
-			})
-		}
-		return nil
-	}
-
-	if content.Url == "" {
-		return nil
-	}
-
-	pageId, _, err := b.bookmarkSvc.CreateBookmarkObject(bm.ToDetails(), func() *model.BlockContentBookmark {
-		return content
-	})
-	if err != nil {
-		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
-	}
-
-	bm.UpdateContent(func(content *model.BlockContentBookmark) {
-		content.TargetObjectId = pageId
-		content.State = model.BlockContentBookmark_Done
 	})
 	return nil
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
+
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
@@ -20,8 +22,6 @@ import (
 const (
 	name                      = "Notion"
 	pageSize                  = 100
-	retryDelay                = time.Second
-	retryAmount               = 5
 	numberOfStepsForPages     = 4 // 3 cycles to get snapshots and 1 cycle to create objects
 	numberOfStepsForDatabases = 2 // 1 cycles to get snapshots and 1 cycle to create objects
 	stepForSearch             = 1
@@ -69,7 +69,8 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 	logger.With("pages", len(pages)).With("dbs", len(db)).Warnf("import from notion started")
-	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases+len(pages)*numberOfStepsForPages) + stepForSearch)
+	allProperties := n.getUniqueProperties(db, pages)
+	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases+len(pages)*numberOfStepsForPages+len(allProperties)) + stepForSearch)
 
 	if err = progress.TryStep(1); err != nil {
 		return nil, converter.NewFromError(converter.ErrCancel)
@@ -79,7 +80,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	}
 
 	notionImportContext := block.NewNotionImportContext()
-	dbSnapshots, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
+	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if dbErr != nil {
 		logger.With("err", dbErr.Error()).Warnf("import from notion db failed")
 	}
@@ -91,7 +92,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, ce
 	}
 
-	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, progress)
+	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, relations, progress)
 	if pgErr != nil {
 		logger.With("err", pgErr.Error()).Warnf("import from notion pages failed")
 	}
@@ -115,14 +116,16 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 
 	n.dbService.AddPagesToCollections(dbs, pages, db, notionImportContext.NotionPageIdsToAnytype, notionImportContext.NotionDatabaseIdsToAnytype)
 
-	dbs, err = n.dbService.AddObjectsToNotionCollection(dbs, pgs)
+	rootCollectionSnapshot, err := n.dbService.AddObjectsToNotionCollection(notionImportContext, db, pages)
 	if err != nil {
 		ce.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, ce
 		}
 	}
-
+	if rootCollectionSnapshot != nil {
+		dbs = append(dbs, rootCollectionSnapshot)
+	}
 	allSnapshots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
@@ -139,6 +142,22 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	}
 
 	return &converter.Response{Snapshots: allSnapshots}, nil
+}
+
+func (n *Notion) getUniqueProperties(db []database.Database, pages []page.Page) []string {
+	var allProperties []string
+	for _, d := range db {
+		keys := lo.MapToSlice(d.Properties, func(key string, value property.DatabasePropertyHandler) string { return key })
+		uniqueKeys := lo.Filter(keys, func(item string, index int) bool { return !lo.Contains(allProperties, item) })
+		allProperties = append(allProperties, uniqueKeys...)
+	}
+
+	for _, pg := range pages {
+		keys := lo.MapToSlice(pg.Properties, func(key string, value property.Object) string { return key })
+		uniqueKeys := lo.Filter(keys, func(item string, index int) bool { return !lo.Contains(allProperties, item) })
+		allProperties = append(allProperties, uniqueKeys...)
+	}
+	return allProperties
 }
 
 func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {

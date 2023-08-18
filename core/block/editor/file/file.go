@@ -69,10 +69,10 @@ type File interface {
 
 type FileSource struct {
 	Path    string
-	Url     string
+	Url     string // nolint:revive
 	Bytes   []byte
 	Name    string
-	GroupId string
+	GroupID string
 }
 
 type sfile struct {
@@ -83,10 +83,10 @@ type sfile struct {
 }
 
 func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSync bool) (err error) {
-	if source.GroupId == "" {
-		source.GroupId = bson.NewObjectId().Hex()
+	if source.GroupID == "" {
+		source.GroupID = bson.NewObjectId().Hex()
 	}
-	s := sf.NewStateCtx(ctx).SetGroupId(source.GroupId)
+	s := sf.NewStateCtx(ctx).SetGroupId(source.GroupID)
 	if res := sf.upload(s, id, source, isSync); res.Err != nil {
 		return
 	}
@@ -162,6 +162,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 			SetName(source.Name).
 			SetLastModifiedDate()
 	}
+
 	if isSync {
 		return upl.Upload(context.TODO())
 	} else {
@@ -203,10 +204,10 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 }
 
 func (sf *sfile) UploadFileWithHash(blockId string, source FileSource) (UploadResult, error) {
-	if source.GroupId == "" {
-		source.GroupId = bson.NewObjectId().Hex()
+	if source.GroupID == "" {
+		source.GroupID = bson.NewObjectId().Hex()
 	}
-	s := sf.NewState().SetGroupId(source.GroupId)
+	s := sf.NewState().SetGroupId(source.GroupID)
 	return sf.upload(s, blockId, source, true), sf.Apply(s)
 }
 

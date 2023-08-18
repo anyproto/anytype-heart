@@ -53,24 +53,23 @@ type Export interface {
 }
 
 type export struct {
-	bs          *block.Service
-	objectStore objectstore.ObjectStore
-	a           core.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-	fileService files.Service
+	blockService *block.Service
+	objectStore  objectstore.ObjectStore
+	coreService  core.Service
+	sbtProvider  typeprovider.SmartBlockTypeProvider
+	fileService  files.Service
 }
 
-func New(sbtProvider typeprovider.SmartBlockTypeProvider) Export {
-	return &export{
-		sbtProvider: sbtProvider,
-	}
+func New() Export {
+	return &export{}
 }
 
 func (e *export) Init(a *app.App) (err error) {
-	e.bs = a.MustComponent(block.CName).(*block.Service)
-	e.a = a.MustComponent(core.CName).(core.Service)
+	e.blockService = a.MustComponent(block.CName).(*block.Service)
+	e.coreService = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
+	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	return
 }
 
@@ -79,7 +78,7 @@ func (e *export) Name() (name string) {
 }
 
 func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
-	queue := e.bs.Process().NewQueue(pb.ModelProcess{
+	queue := e.blockService.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
 		State: 0,
@@ -118,14 +117,14 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		mc := dot.NewMultiConverter(format, e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter(e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
@@ -274,12 +273,24 @@ func (e *export) getExistedObjects(includeArchived bool, isProtobuf bool) (map[s
 	return objectDetails, nil
 }
 
-func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
+func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue, includeFiles bool) (succeed int, err error) {
 	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
-			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
-				return mw.Add(b.NewState().Copy())
+			werr := e.blockService.Do(did, func(b sb.SmartBlock) error {
+				if err = mw.Add(b.NewState().Copy()); err != nil {
+					return err
+				}
+				if !includeFiles {
+					return nil
+				}
+				fileHashes := b.GetAndUnsetFileKeys()
+				for _, fh := range fileHashes {
+					if saveFileErr := e.saveFile(wr, fh.Hash); saveFileErr != nil {
+						log.With("hash", fh.Hash).Warnf("can't save file: %v", saveFileErr)
+					}
+				}
+				return nil
 			})
 			if err != nil {
 				log.With("objectID", did).Warnf("can't export doc: %v", werr)
@@ -295,41 +306,19 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0))); err != nil {
 		return 0, err
 	}
-
-	for _, fh := range mw.FileHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveFile(wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
-			}
-		}); err != nil {
-			return
-		}
-	}
-	for _, fh := range mw.ImageHashes() {
-		fileHash := fh
-		if err = queue.Add(func() {
-			if werr := e.saveImage(wr, fileHash); werr != nil {
-				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-			}
-		}); err != nil {
-			return
-		}
-	}
-
 	err = nil
 	return
 }
 
 func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docID string, exportFiles, isJSON bool) (err error) {
-	return e.bs.Do(docID, func(b sb.SmartBlock) error {
+	return e.blockService.Do(docID, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
 		var conv converter.Converter
 		switch format {
 		case pb.RpcObjectListExport_Markdown:
-			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
+			conv = md.NewMDConverter(e.coreService, b.NewState(), wr.Namer())
 		case pb.RpcObjectListExport_Protobuf:
 			conv = pbc.NewConverter(b, isJSON)
 		case pb.RpcObjectListExport_JSON:
@@ -346,7 +335,7 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 			}
 			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docID == e.a.PredefinedBlocks().Home {
+		if docID == e.coreService.PredefinedBlocks().Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -355,34 +344,39 @@ func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInf
 		if !exportFiles {
 			return nil
 		}
-		for _, fh := range conv.FileHashes() {
-			fileHash := fh
-			if err = queue.Add(func() {
-				if werr := e.saveFile(wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save file: %v", werr)
-				}
-			}); err != nil {
-				return err
-			}
-		}
-		for _, fh := range conv.ImageHashes() {
-			fileHash := fh
-			if err = queue.Add(func() {
-				if werr := e.saveImage(wr, fileHash); werr != nil {
-					log.With("hash", fileHash).Warnf("can't save image: %v", werr)
-				}
-			}); err != nil {
-				return err
-			}
-		}
+		e.saveFiles(b, queue, wr, docID)
 		return nil
 	})
+}
+
+func (e *export) saveFiles(b sb.SmartBlock, queue process.Queue, wr writer, docID string) {
+	fileHashes := b.GetAndUnsetFileKeys()
+	for _, fh := range fileHashes {
+		fh := fh
+		if err := queue.Add(func() {
+			if werr := e.saveFile(wr, fh.Hash); werr != nil {
+				log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
+			}
+		}); err != nil {
+			log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
+		}
+	}
 }
 
 func (e *export) saveFile(wr writer, hash string) (err error) {
 	file, err := e.fileService.FileByHash(context.TODO(), hash)
 	if err != nil {
 		return
+	}
+	if strings.HasPrefix(file.Info().Media, "image") {
+		image, err := e.fileService.ImageByHash(context.TODO(), hash)
+		if err != nil {
+			return err
+		}
+		file, err = image.GetOriginalFile(context.TODO())
+		if err != nil {
+			return err
+		}
 	}
 	origName := file.Meta().Name
 	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
@@ -393,38 +387,20 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 	return wr.WriteFile(filename, rd)
 }
 
-func (e *export) saveImage(wr writer, hash string) (err error) {
-	file, err := e.fileService.ImageByHash(context.TODO(), hash)
-	if err != nil {
-		return
-	}
-	orig, err := file.GetOriginalFile(context.TODO())
-	if err != nil {
-		return
-	}
-	origName := orig.Meta().Name
-	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
-	rd, err := orig.Reader(context.TODO())
-	if err != nil {
-		return
-	}
-	return wr.WriteFile(filename, rd)
-}
-
 func (e *export) createProfileFile(wr writer) error {
 	var spaceDashBoardID string
-	pr, err := e.a.LocalProfile()
+	pr, err := e.coreService.LocalProfile()
 	if err != nil {
 		return err
 	}
-	err = e.bs.Do(e.a.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
+	err = e.blockService.Do(e.coreService.PredefinedBlocks().Account, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	profileID := e.a.ProfileID()
+	profileID := e.coreService.ProfileID()
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,

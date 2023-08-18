@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -50,6 +52,7 @@ type KeyOrder struct {
 	IncludeTime    bool
 	Store          OptionsGetter
 	Options        map[string]string
+	comparator     *collate.Collator
 }
 
 func (ko *KeyOrder) Compare(a, b Getter) int {
@@ -82,7 +85,8 @@ func (ko *KeyOrder) tryCompareStrings(av *types.Value, bv *types.Value) int {
 		}
 	}
 	if aString && bString && comp == 0 {
-		comp = strings.Compare(strings.ToLower(av.GetStringValue()), strings.ToLower(bv.GetStringValue()))
+		ko.ensureComparator()
+		comp = ko.comparator.CompareString(av.GetStringValue(), bv.GetStringValue())
 	}
 	return comp
 }
@@ -147,6 +151,12 @@ func (ko *KeyOrder) String() (s string) {
 		s += " DESC"
 	}
 	return
+}
+
+func (ko *KeyOrder) ensureComparator() {
+	if ko.comparator == nil {
+		ko.comparator = collate.New(language.Und, collate.IgnoreCase)
+	}
 }
 
 func NewCustomOrder(key string, needOrder []*types.Value, keyOrd KeyOrder) CustomOrder {

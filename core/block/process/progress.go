@@ -17,7 +17,7 @@ type Progress interface {
 	AddDone(delta int64)
 	SetProgressMessage(msg string)
 	Canceled() chan struct{}
-	Finish()
+	Finish(err error)
 	TryStep(delta int64) error
 }
 
@@ -39,8 +39,9 @@ type progress struct {
 	pMessage string
 	m        sync.Mutex
 
-	isCancelled bool
-	isDone      bool
+	isCancelled         bool
+	isDone              bool
+	isFinishedWithError bool
 }
 
 func (p *progress) SetTotal(total int64) {
@@ -65,11 +66,14 @@ func (p *progress) Canceled() chan struct{} {
 	return p.cancel
 }
 
-func (p *progress) Finish() {
+func (p *progress) Finish(err error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 	if p.isDone {
 		return
+	}
+	if err != nil {
+		p.isFinishedWithError = true
 	}
 	close(p.done)
 	p.isDone = true
@@ -96,6 +100,9 @@ func (p *progress) Info() pb.ModelProcess {
 	select {
 	case <-p.done:
 		state = pb.ModelProcess_Done
+		if p.isFinishedWithError {
+			state = pb.ModelProcess_Error
+		}
 	default:
 	}
 	select {

@@ -35,11 +35,8 @@ var log = logging.Logger("anytype-mw-subscription")
 
 var batchTime = 50 * time.Millisecond
 
-func New(collectionService CollectionService, sbtProvider typeprovider.SmartBlockTypeProvider) Service {
-	return &service{
-		collectionService: collectionService,
-		sbtProvider:       sbtProvider,
-	}
+func New() Service {
+	return &service{}
 }
 
 type Service interface {
@@ -92,6 +89,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.collectionService = app.MustComponent[CollectionService](a)
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }

@@ -188,15 +188,14 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	depIds              []string // slice must be sorted
-	sendEvent           func(e *pb.Event)
-	undo                undo.History
-	source              source.Source
-	lastDepDetails      map[string]*pb.EventObjectDetailsSet
-	restrictionsUpdater func()
-	restrictions        restriction.Restrictions
-	isDeleted           bool
-	disableLayouts      bool
+	depIds         []string // slice must be sorted
+	sendEvent      func(e *pb.Event)
+	undo           undo.History
+	source         source.Source
+	lastDepDetails map[string]*pb.EventObjectDetailsSet
+	restrictions   restriction.Restrictions
+	isDeleted      bool
+	disableLayouts bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -284,10 +283,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
-	sb.restrictionsUpdater = func() {
-		restrictions := sb.restrictionService.GetRestrictions(sb)
-		sb.SetRestrictions(restrictions)
-	}
 	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
@@ -327,9 +322,8 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	if sb.restrictionsUpdater != nil {
-		sb.restrictionsUpdater()
-	}
+	restrictions := sb.restrictionService.GetRestrictions(sb)
+	sb.SetRestrictions(restrictions)
 }
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
@@ -366,14 +360,11 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 		return nil, nil
 	}
 
-	details, objectTypes, err := sb.fetchMeta()
+	sb.updateRestrictions()
+
+	details, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
-	}
-	// omit relations
-	// todo: switch to other pb type
-	for _, ot := range objectTypes {
-		ot.RelationLinks = nil
 	}
 
 	undo, redo := sb.History().Counters()
@@ -394,7 +385,7 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 	}, nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, objectTypes []*model.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err error) {
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -414,17 +405,6 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		return
 	}
 
-	var uniqueObjTypes []string
-
-	var addObjectTypesByDetails = func(det *types.Struct) {
-		for _, key := range []string{bundle.RelationKeyType.String(), bundle.RelationKeyTargetObjectType.String()} {
-			ot := pbtypes.GetString(det, key)
-			if ot != "" && slice.FindPos(uniqueObjTypes, ot) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, ot)
-			}
-		}
-	}
-
 	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
 
 	// add self details
@@ -432,20 +412,12 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
-	addObjectTypesByDetails(sb.CombinedDetails())
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})
-		addObjectTypesByDetails(rec.Details)
-	}
-
-	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
-	if err != nil {
-		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
-		err = nil
 	}
 	go sb.metaListener(recordsCh)
 	return
@@ -1266,7 +1238,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
-		State:      st.Copy(),
+		State:      st, // Don't copy state because we don't change it later
 	}
 }
 

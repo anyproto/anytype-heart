@@ -3,6 +3,7 @@ package restriction
 import (
 	"fmt"
 	"strings"
+	"errors"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -82,10 +83,18 @@ var (
 		},
 		model.ObjectType_image: objRestrictAll,
 		model.ObjectType_note:  {},
-		model.ObjectType_space: {},
+		model.ObjectType_space: {
+			model.Restrictions_Template,
+		},
 
 		model.ObjectType_bookmark:       {},
 		model.ObjectType_relationOption: objRestrictEdit,
+		model.ObjectType_relationOptionsList: {
+			model.Restrictions_Template,
+		},
+		model.ObjectType_database: {
+			model.Restrictions_Template,
+		},
 	}
 
 	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
@@ -125,7 +134,9 @@ var (
 		},
 		model.SmartBlockType_BundledObjectType: objRestrictAll,
 		model.SmartBlockType_BundledTemplate:   objRestrictAll,
-		model.SmartBlockType_Template:          {},
+		model.SmartBlockType_Template: {
+			model.Restrictions_Template,
+		},
 		model.SmartBlockType_Widget: {
 			model.Restrictions_Relations,
 			model.Restrictions_Details,
@@ -137,6 +148,9 @@ var (
 		},
 		model.SmartBlockType_MissingObject: objRestrictAll,
 		model.SmartBlockType_Date:          objRestrictAll,
+		model.SmartBlockType_AccountOld: {
+			model.Restrictions_Template,
+		},
 	}
 )
 
@@ -196,12 +210,18 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	}
 
 	if l, has := rh.Layout(); has {
-		if r, ok = objectRestrictionsByLayout[l]; ok {
-			return
+		if r, ok = objectRestrictionsByLayout[l]; !ok {
+			r = ObjectRestrictions{}
 		}
 	}
 
-	return ObjectRestrictions{}
+	if !errors.Is(r.Check(model.Restrictions_Template), ErrRestricted) {
+		if ok, err := s.objectStore.HasObjectType(rh.ObjectType()); err != nil || !ok {
+			r = append(r, model.Restrictions_Template)
+		}
+	}
+
+	return
 }
 
 func GetRestrictionsForSubobject(id string) (r ObjectRestrictions) {

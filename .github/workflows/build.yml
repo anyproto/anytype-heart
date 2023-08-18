@@ -18,7 +18,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.19.8
+          go-version: 1.21
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -147,7 +147,7 @@ jobs:
       - name: Compile ios lib
         run: |
           go install github.com/vektra/mockery/v2@v2.32.0
-          go install github.com/golang/mock/mockgen@latest
+          go install go.uber.org/mock/mockgen@latest
           make test-deps
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           sudo /usr/sbin/purge
@@ -195,7 +195,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.19.8
+          go-version: 1.21
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV

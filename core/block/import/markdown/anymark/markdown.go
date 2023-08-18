@@ -2,6 +2,7 @@ package anymark
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -192,11 +193,11 @@ func getCustomHTMLRules() []html2md.Rule {
 			}
 
 			title, _ = selec.Attr("alt")
-
-			if title != "" {
-				return html2md.String("![" + title + "]" + "(" + src + ")")
+			if title == "" {
+				title = "image"
 			}
-			return html2md.String(src)
+			// if we simply return link, BlockPaste command will not recognize it as image
+			return html2md.String(fmt.Sprintf("![%s](%s)", title, src))
 		},
 	}
 
