@@ -122,8 +122,7 @@ func (oc *ObjectCreator) Create(
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
 	var respDetails *types.Struct
-	// TODO Fix
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), nil)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err.Error())
 	}
@@ -159,10 +158,10 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	ctx context.Context,
 	spaceID string,
 	links pbtypes.RelationLinks,
-	types []string,
+	objectTypeKeys []bundle.TypeKey,
 ) error {
 
-	var idsToCheck = make([]string, 0, len(links)+len(types))
+	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
 	for _, link := range links {
 		// TODO: check if we have them in oldIDtoNew
 		if !bundle.HasRelation(link.Key) {
@@ -172,12 +171,12 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 		idsToCheck = append(idsToCheck, addr.BundledRelationURLPrefix+link.Key)
 	}
 
-	for _, t := range types {
-		if !bundle.HasObjectType(t) {
+	for _, typeKey := range objectTypeKeys {
+		if !bundle.HasObjectType(string(typeKey)) {
 			continue
 		}
 		// TODO: check if we have them in oldIDtoNew
-		idsToCheck = append(idsToCheck, addr.BundledObjectTypeURLPrefix+t)
+		idsToCheck = append(idsToCheck, addr.BundledObjectTypeURLPrefix+string(typeKey))
 	}
 
 	_, _, err := oc.service.AddBundledObjectToSpace(ctx, spaceID, idsToCheck)
