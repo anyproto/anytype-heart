@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor"
@@ -32,8 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/uri"
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("object-service")
@@ -472,7 +473,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(w.coreService.PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyTemplate]),
+				Value:       pbtypes.String(w.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyTemplate)),
 			},
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
@@ -523,7 +524,7 @@ func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct)
 	return uniquekey.UnmarshalFromString(uniqueKey)
 }
 
-func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
+func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedSystemType bundle.TypeKey) (id string, details *types.Struct, err error) {
 	details = req.GetDetails()
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
@@ -531,20 +532,17 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 
 	objectTypeId := pbtypes.GetString(details, bundle.RelationKeyType.String())
 	var objectTypeKey bundle.TypeKey
-	if forcedType != "" {
-		objectTypeId, err = c.relationService.GetSystemTypeId(spaceID, forcedType)
+	if forcedSystemType != "" {
+		objectTypeId = c.coreService.GetSystemTypeID(spaceID, forcedSystemType)
 		if err != nil {
 			return "", nil, err
 		}
-		objectTypeKey = forcedType
+		objectTypeKey = forcedSystemType
 	} else if objectTypeId == "" {
 		// here we can't rely on DefaultObjectTypePerSmartblockType, because we don't know the smartblock type yet
 		// it's actually opposite. We assume that client provides the object type, so we can determine the smartblock type
 		// todo: client has the default objectType setting, so probably we should assume that it is up for a client and just return error if it's not provided
-		objectTypeId, err = c.relationService.GetSystemTypeId(spaceID, bundle.TypeKeyPage)
-		if err != nil {
-			return "", nil, err
-		}
+		objectTypeId = c.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyPage)
 		objectTypeKey = bundle.TypeKeyPage
 	} else {
 		ot, err := c.objectStore.GetObjectType(objectTypeId)

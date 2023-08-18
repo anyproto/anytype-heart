@@ -247,7 +247,7 @@ func deriveDateId(t time.Time) string {
 func (mw *Middleware) makeSuggestedDateRecord(spaceID string, t time.Time) database.Record {
 	id := deriveDateId(t)
 
-	typeID := getService[core.Service](mw).PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyDate]
+	typeID := getService[core.Service](mw).GetSystemTypeID(spaceID, bundle.TypeKeyDate)
 	d := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():        pbtypes.String(id),
 		bundle.RelationKeyName.String():      pbtypes.String(t.Format("Mon Jan  2 2006")),

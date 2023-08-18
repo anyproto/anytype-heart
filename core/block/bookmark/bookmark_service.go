@@ -93,7 +93,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 		return "", nil, fmt.Errorf("empty details")
 	}
 
-	typeID := s.coreService.PredefinedObjects(spaceID).SystemTypes[bundle.TypeKeyBookmark]
+	typeID := s.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyBookmark)
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
 	records, _, err := s.store.Query(database.Query{

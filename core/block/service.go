@@ -13,8 +13,6 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -32,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -44,6 +43,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -368,12 +368,13 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	// newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(installedID)
 	newDetails.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
-	predefinedObjects := s.anytype.PredefinedObjects(spaceID)
 	switch pbtypes.GetString(newDetails, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.BundledURL():
-		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyObjectType])
+		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyObjectType)
+		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	case bundle.TypeKeyRelation.BundledURL():
-		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyRelation])
+		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyRelation)
+		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	default:
 		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(newDetails, bundle.RelationKeyType.String()))
 	}
