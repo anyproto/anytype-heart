@@ -30,9 +30,9 @@ import (
 )
 
 const (
-	defaultDataType = "1/s"
-	poolSize        = 4096
-	snappyLowLimit  = 1024
+	defaultDataType  = "1/s"
+	poolSize         = 4096
+	snappyLowerLimit = 64
 )
 
 var (
@@ -54,12 +54,12 @@ func MarshallChange(c *pb.Change) (res []byte, dataType string, err error) {
 		return
 	}
 	data = data[:n]
-	if n > snappyLowLimit {
+
+	if n > snappyLowerLimit {
 		res = snappy.Encode(nil, data)
 		log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
 			len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
-		//dataType = defaultDataType
-		dataType = fmt.Sprintf("%.2f%%", 100*(1-float32(len(res))/float32(len(data))))
+		dataType = defaultDataType
 	} else {
 		res = data
 	}
@@ -67,17 +67,24 @@ func MarshallChange(c *pb.Change) (res []byte, dataType string, err error) {
 	return
 }
 
-func UnmarshallChange(c *objecttree.Change, decrypted []byte) (res any, err error) {
+func UnmarshallChange(c *objecttree.Change, data []byte) (res any, err error) {
 	ch := &pb.Change{}
 	switch c.DataType {
-	case "":
-		err = proto.Unmarshal(decrypted, ch)
 	case defaultDataType:
+		buf := bytesPool.Get().([]byte)[:0]
+		defer bytesPool.Put(buf)
+
+		n, dErr := snappy.DecodedLen(data)
+		buf = slices.Grow(buf, n)
 		var decoded []byte
-		decoded, err = snappy.Decode(nil, decrypted)
-		err = proto.Unmarshal(decoded, ch)
+		decoded, err = snappy.Decode(buf, data)
+		if err == nil && dErr == nil {
+			data = decoded
+		}
 	}
-	res = ch
+	if err = proto.Unmarshal(data, ch); err == nil {
+		res = ch
+	}
 	return
 }
 
