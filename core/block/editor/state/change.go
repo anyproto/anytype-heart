@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/mb0/diff"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
@@ -14,9 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
-	"github.com/mb0/diff"
 )
 
 type snapshotOptions struct {

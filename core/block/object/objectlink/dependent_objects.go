@@ -2,6 +2,12 @@ package objectlink
 
 import (
 	"context"
+	"time"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -9,10 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-cid"
-	"github.com/samber/lo"
-	"time"
 )
 
 var log = logging.Logger("objectlink")

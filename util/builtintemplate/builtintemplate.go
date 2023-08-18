@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
@@ -24,6 +24,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+
+	_ "embed"
 )
 
 const CName = "builtintemplate"

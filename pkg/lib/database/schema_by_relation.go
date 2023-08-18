@@ -2,10 +2,12 @@ package database
 
 import (
 	"fmt"
+
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/samber/lo"
 )
 
 type schemaByRelations struct {
