@@ -21,9 +21,9 @@ var smartBlockTypeToKey = map[model.SmartBlockType]string{
 }
 
 type UniqueKey interface {
-	Marshal() string
 	SmartblockType() model.SmartBlockType
 	InternalKey() string // underlying key, e.g. for "ot-page" it's "page"
+	Marshal() string
 }
 
 type uniqueKey struct {
