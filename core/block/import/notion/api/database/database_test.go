@@ -480,21 +480,21 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 				Name: "Tags",
 			},
 		}
-		pr := property.DatabaseProperties{"Tag": &multiSelectProperty, "Tags": &selectProperty}
+		properties := property.DatabaseProperties{"Tag": &multiSelectProperty, "Tags": &selectProperty}
 		dbService := New(nil)
-		properties := &property.PropertiesStore{
+		req := &property.PropertiesStore{
 			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
-		db := Database{Properties: pr}
+		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), properties)
+		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), req)
 
 		// then
-		assert.Len(t, properties.PropertyIdsToSnapshots, 2)
-		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(properties.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
-		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(properties.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.Len(t, req.PropertyIdsToSnapshots, 2)
+		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 	})
 
 	t.Run("Page has MultiSelect property with Tag name and Select property with tags name - MultiSelect is mapped to Tag relation", func(t *testing.T) {
