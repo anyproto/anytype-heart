@@ -1,6 +1,7 @@
 package source
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"os"
@@ -63,7 +64,11 @@ func Test_snapshotChance2(t *testing.T) {
 
 func benchmarkMarshallChange(c *pb.Change, b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		_, _ = MarshallChange(c)
+		res, dt, _ := MarshallChange(c)
+		if n == 3 {
+			fmt.Println(dt)
+			fmt.Println(base64.StdEncoding.EncodeToString(res))
+		}
 	}
 }
 

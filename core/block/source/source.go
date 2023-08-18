@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	dataType = "1/s"
-	poolSize = 4096
+	defaultDataType = "1/s"
+	poolSize        = 4096
+	snappyLowLimit  = 1024
 )
 
 var (
@@ -43,7 +44,7 @@ var (
 	ErrReadOnly       = errors.New("object is read only")
 )
 
-func MarshallChange(c *pb.Change) (res []byte, err error) {
+func MarshallChange(c *pb.Change) (res []byte, dataType string, err error) {
 	data := bytesPool.Get().([]byte)[:0]
 	defer bytesPool.Put(data)
 
@@ -53,16 +54,25 @@ func MarshallChange(c *pb.Change) (res []byte, err error) {
 		return
 	}
 	data = data[:n]
-	res = snappy.Encode(nil, data)
-	log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
-		len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
+	if n > snappyLowLimit {
+		res = snappy.Encode(nil, data)
+		log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
+			len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
+		//dataType = defaultDataType
+		dataType = fmt.Sprintf("%.2f%%", 100*(1-float32(len(res))/float32(len(data))))
+	} else {
+		res = data
+	}
+
 	return
 }
 
-func UnmarshallChange(decrypted []byte) (res any, err error) {
+func UnmarshallChange(c *objecttree.Change, decrypted []byte) (res any, err error) {
 	ch := &pb.Change{}
-	err = proto.Unmarshal(decrypted, ch)
-	if err != nil {
+	switch c.DataType {
+	case "":
+		err = proto.Unmarshal(decrypted, ch)
+	case defaultDataType:
 		var decoded []byte
 		decoded, err = snappy.Decode(nil, decrypted)
 		err = proto.Unmarshal(decoded, ch)
@@ -267,18 +277,23 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 
 	c := s.buildChange(params)
-	data, err := MarshallChange(c)
+	data, dataType, err := MarshallChange(c)
 	if err != nil {
 		return
 	}
 
-	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
+	content := objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountService.Account().SignKey,
 		IsSnapshot:  c.Snapshot != nil,
 		IsEncrypted: true,
-		DataType:    dataType,
-	})
+	}
+
+	if dataType != "" {
+		content.DataType = dataType
+	}
+
+	addResult, err := s.ObjectTree.AddContent(context.Background(), content)
 	if err != nil {
 		return
 	}
