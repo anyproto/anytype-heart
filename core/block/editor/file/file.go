@@ -38,7 +38,7 @@ const (
 var log = logging.Logger("anytype-mw-smartfile")
 
 type PredefinedObjectsGetter interface {
-	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
+	GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string
 }
 
 func NewFile(
@@ -50,11 +50,12 @@ func NewFile(
 	picker getblock.Picker,
 ) File {
 	return &sfile{
-		SmartBlock:      sb,
-		fileSource:      fileSource,
-		tempDirProvider: tempDirProvider,
-		fileService:     fileService,
-		picker:          picker,
+		SmartBlock:        sb,
+		fileSource:        fileSource,
+		tempDirProvider:   tempDirProvider,
+		fileService:       fileService,
+		picker:            picker,
+		predefinedObjects: idGetter,
 	}
 }
 
@@ -225,7 +226,7 @@ func (sf *sfile) UploadFileWithHash(blockId string, source FileSource) (UploadRe
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
 	s := sf.NewState().SetGroupId(groupId)
-	pageTypeId := sf.predefinedObjects.PredefinedObjects(sf.SpaceID()).SystemTypes[bundle.TypeKeyPage]
+	pageTypeId := sf.predefinedObjects.GetSystemTypeID(sf.SpaceID(), bundle.TypeKeyPage)
 	for _, entry := range entries {
 		var blockId, pageId string
 		if entry.isDir {

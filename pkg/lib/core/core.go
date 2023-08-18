@@ -45,6 +45,8 @@ type Service interface {
 	EnsurePredefinedBlocks(ctx context.Context, spaceID string) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
+	GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string
+	GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(spaceID string, objectID string) (string, error)
@@ -147,6 +149,18 @@ func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 	return a.predefinedObjectsPerSpace[spaceID]
+}
+
+func (a *Anytype) GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.predefinedObjectsPerSpace[spaceID].SystemTypes[typeKey]
+}
+
+func (a *Anytype) GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.predefinedObjectsPerSpace[spaceID].SystemRelations[relationKey]
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {

@@ -41,9 +41,6 @@ type Service interface {
 	FetchRelationByKey(spaceId string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
 	ListAllRelations(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error)
 	GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error)
-	// GetSystemTypeId is the optimized version of GetTypeId,
-	// cause all system types are precalculated
-	GetSystemTypeId(spaceId string, key bundle.TypeKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
 
 	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
@@ -68,18 +65,6 @@ func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle
 	}
 
 	return s.core.DeriveObjectId(ctx, spaceId, uk)
-}
-
-func (s *service) GetSystemTypeId(spaceId string, key bundle.TypeKey) (id string, err error) {
-	predefined := s.core.PredefinedObjects(spaceId)
-	if len(predefined.SystemTypes) == 0 {
-		return "", fmt.Errorf("predefined not found for the space")
-	}
-	if v, ok := predefined.SystemTypes[key]; !ok {
-		return "", fmt.Errorf("system type not found")
-	} else {
-		return v, nil
-	}
 }
 
 func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {

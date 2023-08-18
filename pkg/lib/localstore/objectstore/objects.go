@@ -155,7 +155,6 @@ type ObjectStore interface {
 	// deprecated, use relatinoService
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
-	// deprecated, use relatinoService
 	GetObjectType(url string) (*model.ObjectType, error)
 	HasObjectType(id string) (bool, error)
 	// deprecated, use relatinoService

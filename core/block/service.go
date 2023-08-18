@@ -368,12 +368,13 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	// newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(installedID)
 	newDetails.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
-	predefinedObjects := s.anytype.PredefinedObjects(spaceID)
 	switch pbtypes.GetString(newDetails, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.BundledURL():
-		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyObjectType])
+		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyObjectType)
+		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	case bundle.TypeKeyRelation.BundledURL():
-		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(predefinedObjects.SystemTypes[bundle.TypeKeyRelation])
+		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyRelation)
+		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	default:
 		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(newDetails, bundle.RelationKeyType.String()))
 	}
