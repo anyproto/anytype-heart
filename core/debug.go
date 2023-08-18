@@ -101,6 +101,24 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 	return response(nil, spaceSummary)
 }
 
+func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
+	response := func(err error) (res *pb.RpcDebugStackGoroutinesResponse) {
+		res = &pb.RpcDebugStackGoroutinesResponse{
+			Error: &pb.RpcDebugStackGoroutinesResponseError{
+				Code: pb.RpcDebugStackGoroutinesResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcDebugStackGoroutinesResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+		}
+		return res
+	}
+
+	err := mw.SaveGoroutinesStack(req.Path)
+	return response(err)
+}
+
 func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
 	response := func(path string, err error) (res *pb.RpcDebugExportLocalstoreResponse) {
 		res = &pb.RpcDebugExportLocalstoreResponse{
@@ -122,7 +140,7 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 		err  error
 	)
 	err = mw.doBlockService(func(s *block.Service) error {
-		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
+		dbg := mw.applicationService.GetApp().MustComponent(debug.CName).(debug.Debug)
 		path, err = dbg.DumpLocalstore(req.SpaceId, req.DocIds, req.Path)
 		return err
 	})

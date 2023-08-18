@@ -32,7 +32,7 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	store := app.MustComponent[objectstore.ObjectStore](mw.app)
+	store := app.MustComponent[objectstore.ObjectStore](mw.applicationService.GetApp())
 	objType, err := store.GetObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {

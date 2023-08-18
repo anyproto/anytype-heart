@@ -9,8 +9,7 @@ import (
 type RestrictionHolder interface {
 	Type() model.SmartBlockType
 	Layout() (model.ObjectTypeLayout, bool)
-	// ObjectType is id of object type
-	ObjectType() string
+	ObjectTypeID() string
 	UniqueKey() uniquekey.UniqueKey
 }
 
@@ -38,7 +37,7 @@ func (rh *restrictionHolder) Layout() (model.ObjectTypeLayout, bool) {
 	return rh.layout, rh.layout != noLayout
 }
 
-func (rh *restrictionHolder) ObjectType() string {
+func (rh *restrictionHolder) ObjectTypeID() string {
 	return rh.objectTypeID
 }
 

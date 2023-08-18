@@ -80,7 +80,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		blocks:            blocks,
 		details:           detailsToSave,
 		relationLinks:     snapshot.Data.RelationLinks,
-		objectTypes:       migrateObjectTypeIdsToKeys(snapshot.Data.ObjectTypes),
+		objectTypeKeys:    migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
 		fileKeys:          fileKeys,
 		store:             snapshot.Data.Collections,
 		storeKeyRemoved:   removedCollectionKeysMap,
@@ -273,13 +273,13 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 		add.Key = strings.TrimPrefix(add.Url, addr.ObjectTypeKeyToIdPrefix)
 	}
 
-	for _, ot := range s.ObjectTypes() {
-		if ot == add.Key {
+	for _, ot := range s.ObjectTypeKeys() {
+		if ot == bundle.TypeKey(add.Key) {
 			return nil
 		}
 	}
-	objectTypes := append(s.ObjectTypes(), add.Key)
-	s.SetObjectTypes(objectTypes)
+	objectTypes := append(s.ObjectTypeKeys(), bundle.TypeKey(add.Key))
+	s.SetObjectTypeKeys(objectTypes)
 	return nil
 }
 
@@ -288,8 +288,8 @@ func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error 
 	if remove.Url != "" {
 		remove.Key = strings.TrimPrefix(remove.Url, addr.ObjectTypeKeyToIdPrefix)
 	}
-	s.objectTypes = slice.Filter(s.ObjectTypes(), func(s string) bool {
-		if s == remove.Key {
+	s.objectTypeKeys = slice.Filter(s.ObjectTypeKeys(), func(key bundle.TypeKey) bool {
+		if key == bundle.TypeKey(remove.Key) {
 			found = true
 			return false
 		}
@@ -298,7 +298,7 @@ func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error 
 	if !found {
 		log.Warnf("changeObjectTypeRemove: type to remove not found: '%s'", remove.Url)
 	} else {
-		s.SetObjectTypes(s.objectTypes)
+		s.SetObjectTypeKeys(s.objectTypeKeys)
 	}
 	return nil
 }
@@ -660,24 +660,24 @@ func (s *State) collapseSameKeyStoreChanges() {
 }
 
 func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
-	if s.objectTypes == nil {
+	if s.objectTypeKeys == nil {
 		return nil
 	}
-	var prev []string
+	var prev []bundle.TypeKey
 	if s.parent != nil {
-		prev = s.parent.ObjectTypes()
+		prev = s.parent.ObjectTypeKeys()
 	}
 
-	var prevMap = make(map[string]struct{}, len(prev))
-	var curMap = make(map[string]struct{}, len(s.objectTypes))
+	var prevMap = make(map[bundle.TypeKey]struct{}, len(prev))
+	var curMap = make(map[bundle.TypeKey]struct{}, len(s.objectTypeKeys))
 
-	for _, v := range s.objectTypes {
+	for _, v := range s.objectTypeKeys {
 		curMap[v] = struct{}{}
 		_, ok := prevMap[v]
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeAdd{
-					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v},
+					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: string(v)},
 				},
 			})
 		}
@@ -687,7 +687,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeRemove{
-					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v},
+					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: string(v)},
 				},
 			})
 		}
@@ -772,20 +772,18 @@ func (cb *changeBuilder) Build() []*pb.ChangeContent {
 	return cb.changes
 }
 
-func migrateObjectTypeIdToKeys(ot string) string {
-	if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) {
-		return strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
-	}
-	return ot
-}
-
-func migrateObjectTypeIdsToKeys(ots []string) []string {
-	for i := range ots {
-		if strings.HasPrefix(ots[i], addr.ObjectTypeKeyToIdPrefix) {
-			ots[i] = strings.TrimPrefix(ots[i], addr.ObjectTypeKeyToIdPrefix)
+func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []bundle.TypeKey {
+	objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeIDs))
+	for _, id := range objectTypeIDs {
+		var key bundle.TypeKey
+		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
+			key = bundle.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))
+		} else {
+			key = bundle.TypeKey(id)
 		}
+		objectTypeKeys = append(objectTypeKeys, key)
 	}
-	return ots
+	return objectTypeKeys
 }
 
 func migrateAddMissingUniqueKey(sbType model.SmartBlockType, snapshot *pb.ChangeSnapshot) {

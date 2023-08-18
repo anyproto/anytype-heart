@@ -95,7 +95,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	if e != nil && blockId != template.DataviewBlockId {
 		return e
 	}
-	if block != nil && slice.UnsortedEquals(block.GetSource(), source) {
+	if block != nil && slice.UnsortedEqual(block.GetSource(), source) {
 		return
 	}
 
@@ -432,15 +432,15 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	if !dvChanged {
 		return
 	}
-	systemtypes := d.anytype.PredefinedObjects(d.SpaceID()).SystemTypes
-	var restrictedSources = []string{
-		systemtypes[bundle.TypeKeyFile],
-		systemtypes[bundle.TypeKeyImage],
-		systemtypes[bundle.TypeKeyVideo],
-		systemtypes[bundle.TypeKeyAudio],
-		systemtypes[bundle.TypeKeyObjectType],
-		systemtypes[bundle.TypeKeySet],
-		systemtypes[bundle.TypeKeyRelation],
+	systemTypeIDs := d.anytype.PredefinedObjects(d.SpaceID()).SystemTypes
+	restrictedSources := []string{
+		systemTypeIDs[bundle.TypeKeyFile],
+		systemTypeIDs[bundle.TypeKeyImage],
+		systemTypeIDs[bundle.TypeKeyVideo],
+		systemTypeIDs[bundle.TypeKeyAudio],
+		systemTypeIDs[bundle.TypeKeyObjectType],
+		systemTypeIDs[bundle.TypeKeySet],
+		systemTypeIDs[bundle.TypeKeyRelation],
 	}
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]

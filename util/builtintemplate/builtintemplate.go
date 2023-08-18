@@ -14,8 +14,6 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
-	relation2 "github.com/anyproto/anytype-heart/core/relation"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
@@ -23,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -42,14 +41,14 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	source          source.Service
-	relationService relation2.Service
-	generatedHash   string
+	source        source.Service
+	objectStore   objectstore.ObjectStore
+	generatedHash string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = app.MustComponent[source.Service](a)
-	b.relationService = app.MustComponent[relation2.Service](a)
+	b.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 
 	b.makeGenHash(4)
 	return
@@ -117,12 +116,11 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
 	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
-	targetObjectType := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
-	if strings.HasPrefix(targetObjectType, addr.BundledObjectTypeURLPrefix) {
-		// todo: remove this hack after fixing bundled templates
-		targetObjectType = strings.TrimPrefix(targetObjectType, addr.BundledObjectTypeURLPrefix)
+
+	err = b.setObjectTypes(st)
+	if err != nil {
+		return fmt.Errorf("set object types: %w", err)
 	}
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.String(), targetObjectType})
 
 	// fix divergence between extra relations and simple block relations
 	st.Iterate(func(b simple.Block) (isContinue bool) {
@@ -143,16 +141,34 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	return
 }
 
+func (b *builtinTemplate) setObjectTypes(st *state.State) error {
+	targetObjectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+	var targetObjectTypeKey bundle.TypeKey
+	if strings.HasPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix) {
+		// todo: remove this hack after fixing bundled templates
+		targetObjectTypeKey = bundle.TypeKey(strings.TrimPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix))
+	} else {
+		targetObjectType, err := b.objectStore.GetObjectType(targetObjectTypeID)
+		if err != nil {
+			return fmt.Errorf("get object type %s: %w", targetObjectTypeID, err)
+		}
+		targetObjectTypeKey = bundle.TypeKey(targetObjectType.Key)
+	}
+	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, targetObjectTypeKey})
+	return nil
+}
+
 func (b *builtinTemplate) validate(st *state.State) (err error) {
 	cd := st.CombinedDetails()
-	if st.ObjectType() != bundle.TypeKeyTemplate.String() {
-		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectType())
+	if st.ObjectTypeKey() != bundle.TypeKeyTemplate {
+		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectTypeKey())
 	}
 	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
-	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectType() {
-		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), tt)
+	targetObjectTypeID := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String())
+	if targetObjectTypeID == "" || bundle.TypeKey(targetObjectTypeID) == st.ObjectTypeKey() {
+		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), targetObjectTypeID)
 	}
 	// todo: update templates and return the validation
 	return nil

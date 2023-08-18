@@ -99,8 +99,8 @@ func NewPage(
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypes()) == 0) && ctx.IsNewObject {
-		ctx.ObjectTypeKeys = []string{bundle.TypeKeyPage.String()}
+	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
+		ctx.ObjectTypeKeys = []bundle.TypeKey{bundle.TypeKeyPage}
 	}
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
@@ -117,7 +117,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			if !ok {
 				// nolint:errcheck
 				lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
-				uk, err := uniquekey.New(model.SmartBlockType_STType, lastTypeKey)
+				uk, err := uniquekey.New(model.SmartBlockType_STType, string(lastTypeKey))
 				if err != nil {
 					log.Errorf("failed to create unique key: %v", err)
 				} else {
@@ -129,14 +129,14 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					}
 				}
 			}
-			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypes()) == 0 {
-				ctx.State.SetObjectTypes(ctx.ObjectTypeKeys)
+			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
+				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
 			}
 			// TODO Templates must be dumb here, no migration logic
 
 			templates := []template.StateTransformer{
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout(ctx.State.ObjectTypes(), layout),
+				template.WithObjectTypesAndLayout(ctx.State.ObjectTypeKeys(), layout),
 				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,

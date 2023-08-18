@@ -24,13 +24,13 @@ const (
 )
 
 type Node struct {
-	Id          string `json:"id,omitempty"`
-	Type        string `json:"type,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Layout      int    `json:"layout,omitempty"`
-	Description string `json:"description,omitempty"`
-	IconImage   string `json:"iconImage,omitempty"`
-	IconEmoji   string `json:"iconEmoji,omitempty"`
+	Id          string         `json:"id,omitempty"`
+	Type        bundle.TypeKey `json:"type,omitempty"`
+	Name        string         `json:"name,omitempty"`
+	Layout      int            `json:"layout,omitempty"`
+	Description string         `json:"description,omitempty"`
+	IconImage   string         `json:"iconImage,omitempty"`
+	IconEmoji   string         `json:"iconEmoji,omitempty"`
 }
 
 type Edge struct {
@@ -88,7 +88,7 @@ func (g *graphjson) Add(st *state.State) error {
 		IconImage:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconImage.String()),
 		IconEmoji:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String()),
 		Description: pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String()),
-		Type:        st.ObjectType(),
+		Type:        st.ObjectTypeKey(),
 		Layout:      int(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())),
 	}
 

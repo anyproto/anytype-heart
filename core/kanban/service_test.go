@@ -12,9 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -22,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/stretchr/testify/mock"
 )
 
 func Test_GrouperTags(t *testing.T) {
@@ -34,6 +34,13 @@ func Test_GrouperTags(t *testing.T) {
 	tp.EXPECT().Name().Return("typeprovider")
 	tp.EXPECT().Init(a).Return(nil)
 
+	relationService := mock_relation.NewMockService(t)
+	relationService.EXPECT().Name().Return("relation")
+	relationService.EXPECT().Init(a).Return(nil)
+
+	relationWithFormatTag := &relationutils.Relation{&model.Relation{Format: model.RelationFormat_tag}}
+	relationService.EXPECT().FetchRelationByKey("", "tag").Return(relationWithFormatTag, nil)
+
 	ds := objectstore.New()
 	kanbanSrv := New()
 	err := a.Register(&config.DefaultConfig).
@@ -43,11 +50,9 @@ func Test_GrouperTags(t *testing.T) {
 		Register(ds).
 		Register(kanbanSrv).
 		Register(tp).
+		Register(relationService).
 		Start(context.Background())
 	require.NoError(t, err)
-
-	// Just catch-all
-	tp.EXPECT().Type("", mock.Anything).Return(smartblock.SmartBlockTypePage, nil)
 
 	require.NoError(t, ds.UpdateObjectDetails("rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{
@@ -117,7 +122,7 @@ func Test_GrouperTags(t *testing.T) {
 	}}))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s4"))
 
-	grouper, err := kanbanSrv.Grouper("tag")
+	grouper, err := kanbanSrv.Grouper("", "tag")
 	require.NoError(t, err)
 	err = grouper.InitGroups(nil)
 	require.NoError(t, err)

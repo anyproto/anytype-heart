@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -58,8 +57,8 @@ type Doc interface {
 
 	GetRelationLinks() pbtypes.RelationLinks
 
-	ObjectTypes() []string
-	ObjectType() string
+	ObjectTypeKeys() []bundle.TypeKey
+	ObjectTypeKey() bundle.TypeKey
 	Layout() (model.ObjectTypeLayout, bool)
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
@@ -116,7 +115,7 @@ type State struct {
 	storeKeyRemoved         map[string]struct{}
 	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
-	objectTypes []string // here we store object type keys, not IDs
+	objectTypeKeys []bundle.TypeKey // here we store object type keys, not IDs
 
 	changesStructureIgnoreIds []string
 
@@ -605,11 +604,11 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
-	if s.parent != nil && s.objectTypes != nil {
-		prev := s.parent.ObjectTypes()
-		if !slice.UnsortedEquals(prev, s.objectTypes) {
-			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypes()}
-			s.parent.objectTypes = s.objectTypes
+	if s.parent != nil && s.objectTypeKeys != nil {
+		prev := s.parent.ObjectTypeKeys()
+		if !slice.UnsortedEqual(prev, s.objectTypeKeys) {
+			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypeKeys()}
+			s.parent.objectTypeKeys = s.objectTypeKeys
 		}
 	}
 
@@ -680,8 +679,8 @@ func (s *State) intermediateApply() {
 		s.parent.relationLinks = s.relationLinks
 	}
 
-	if s.objectTypes != nil {
-		s.parent.objectTypes = s.objectTypes
+	if s.objectTypeKeys != nil {
+		s.parent.objectTypeKeys = s.objectTypeKeys
 	}
 
 	if s.store != nil {
@@ -778,7 +777,7 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 func (s *State) StringDebug() string {
 	buf := bytes.NewBuffer(nil)
 	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
-	fmt.Fprintf(buf, "ObjectTypes: %v\n", s.ObjectTypes())
+	fmt.Fprintf(buf, "ObjectTypeKeys: %v\n", s.ObjectTypeKeys())
 	fmt.Fprintf(buf, "Relations:\n")
 	for _, rel := range s.relationLinks {
 		fmt.Fprintf(buf, "\t%v\n", rel)
@@ -935,18 +934,19 @@ func (s *State) StoreChangeIdForPath(path string) string {
 	return m[path]
 }
 
-func (s *State) SetObjectType(objectType string) *State {
-	return s.SetObjectTypes([]string{objectType})
+type ObjectTypePair struct {
+	ID  string
+	Key bundle.TypeKey
 }
 
-// TODO What objectTypes means here? ID? Key?
-func (s *State) SetObjectTypes(objectTypes []string) *State {
-	for _, ot := range objectTypes {
-		if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(ot, addr.BundledObjectTypeURLPrefix) {
-			panic(fmt.Sprintf("SetObjectTypes used to set IDs instead of keys: %v", objectTypes))
-		}
-	}
-	s.objectTypes = objectTypes
+// SetObjectTypeKey sets the object type key. Smartblocks derive Type relation from it.
+func (s *State) SetObjectTypeKey(objectTypeKey bundle.TypeKey) *State {
+	return s.SetObjectTypeKeys([]bundle.TypeKey{objectTypeKey})
+}
+
+// SetObjectTypeKeys sets the object type keys. Smartblocks derive Type relation from it.
+func (s *State) SetObjectTypeKeys(objectTypeKeys []bundle.TypeKey) *State {
+	s.objectTypeKeys = objectTypeKeys
 	// we don't set it in the localDetails here
 	return s
 }
@@ -992,19 +992,19 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-// ObjectTypes returns the object types keys of the object
+// ObjectTypeKeys returns the object types keys of the object
 // in order to get object type id you need to derive it for the space
-func (s *State) ObjectTypes() []string {
-	if s.objectTypes == nil && s.parent != nil {
-		return s.parent.ObjectTypes()
+func (s *State) ObjectTypeKeys() []bundle.TypeKey {
+	if s.objectTypeKeys == nil && s.parent != nil {
+		return s.parent.ObjectTypeKeys()
 	}
-	return s.objectTypes
+	return s.objectTypeKeys
 }
 
-// ObjectType returns only the first objectType key and produce warning in case the state has more than 1 object type
+// ObjectTypeKey returns only the first objectType key and produce warning in case the state has more than 1 object type
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
-func (s *State) ObjectType() string {
-	objTypes := s.ObjectTypes()
+func (s *State) ObjectTypeKey() bundle.TypeKey {
+	objTypes := s.ObjectTypeKeys()
 	if len(objTypes) == 0 && !s.noObjectType {
 		log.Debugf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
 	}
@@ -1206,8 +1206,8 @@ func (s *State) Copy() *State {
 		blocks[b.Model().Id] = b.Copy()
 		return true
 	})
-	objTypes := make([]string, len(s.ObjectTypes()))
-	copy(objTypes, s.ObjectTypes())
+	objTypes := make([]bundle.TypeKey, len(s.ObjectTypeKeys()))
+	copy(objTypes, s.ObjectTypeKeys())
 
 	storeKeyRemoved := s.StoreKeysRemoved()
 	storeKeyRemovedCopy := make(map[string]struct{}, len(storeKeyRemoved))
@@ -1221,7 +1221,7 @@ func (s *State) Copy() *State {
 		details:                 pbtypes.CopyStruct(s.Details()),
 		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
 		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
-		objectTypes:             objTypes,
+		objectTypeKeys:          objTypes,
 		noObjectType:            s.noObjectType,
 		migrationVersion:        s.migrationVersion,
 		store:                   pbtypes.CopyStruct(s.Store()),

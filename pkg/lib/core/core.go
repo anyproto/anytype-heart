@@ -10,14 +10,14 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -45,6 +45,8 @@ type Service interface {
 	EnsurePredefinedBlocks(ctx context.Context, spaceID string) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
+	GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string
+	GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string
 
 	GetAllWorkspaces() ([]string, error)
 	GetWorkspaceIdForObject(spaceID string, objectID string) (string, error)
@@ -147,6 +149,18 @@ func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 	return a.predefinedObjectsPerSpace[spaceID]
+}
+
+func (a *Anytype) GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.predefinedObjectsPerSpace[spaceID].SystemTypes[typeKey]
+}
+
+func (a *Anytype) GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.predefinedObjectsPerSpace[spaceID].SystemRelations[relationKey]
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {

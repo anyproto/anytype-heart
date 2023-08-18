@@ -10,13 +10,13 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -154,7 +154,6 @@ type ObjectStore interface {
 	// deprecated, use relatinoService
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
-	// deprecated, use relatinoService
 	GetObjectType(url string) (*model.ObjectType, error)
 	HasObjectType(id string) (bool, error)
 	// deprecated, use relatinoService

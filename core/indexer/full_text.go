@@ -90,7 +90,7 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 	}
 
 	title := pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String())
-	if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
+	if info.State.ObjectTypeKey() == bundle.TypeKeyNote || title == "" {
 		title = info.State.Snippet()
 	}
 

@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/anyproto/any-sync/util/slice"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -26,10 +24,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
@@ -344,7 +344,8 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 			continue
 		}
 		converter.UpdateObjectIDsInRelations(st.(*state.State), newIDToOld, fileIDs)
-		converter.UpdateObjectType(newIDToOld, st.(*state.State))
+		// TODO Fix
+		// converter.UpdateObjectType(newIDToOld, st.(*state.State))
 		p.updateObjectsIDsInCollection(st.(*state.State), newIDToOld)
 		p.updateSnapshot(snapshot, st.(*state.State))
 	}
@@ -353,7 +354,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
 	snapshot.Snapshot.Data.Details = pbtypes.StructMerge(snapshot.Snapshot.Data.Details, st.CombinedDetails(), false)
 	snapshot.Snapshot.Data.Blocks = st.Blocks()
-	snapshot.Snapshot.Data.ObjectTypes = st.ObjectTypes()
+	snapshot.Snapshot.Data.ObjectTypes = slice.UnwrapStrings(st.ObjectTypeKeys())
 	snapshot.Snapshot.Data.Collections = st.Store()
 }
 

@@ -7,11 +7,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -32,7 +33,7 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	}
 	tok := v[0]
 
-	err = mw.sessions.ValidateToken(mw.sessionKey, tok)
+	err = mw.applicationService.ValidateSessionToken(tok)
 	if err != nil {
 		return
 	}

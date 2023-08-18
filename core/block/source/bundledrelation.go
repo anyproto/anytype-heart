@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -50,7 +51,8 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 		return nil, err
 	}
 	rel.Creator = addr.AnytypeProfileId
-	details := bundle.GetDetailsForBundledRelation(rel)
+	wrapperRelation := relationutils.Relation{Relation: rel}
+	details := wrapperRelation.ToStruct() // bundle.GetDetailsForBundledRelation(rel)
 	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
@@ -76,7 +78,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	for k, v := range d.Fields {
 		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
 	}
-	s.SetObjectType(bundle.TypeKeyRelation.String())
+	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil
 }
 

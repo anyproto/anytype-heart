@@ -3,21 +3,23 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"runtime/debug"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 
 var log = logging.Logger("anytype-mw-api")
@@ -27,33 +29,18 @@ var (
 )
 
 type Middleware struct {
-	rootPath string
-	pin      string
-	mnemonic string
-	// memoized private key derived from mnemonic
-	sessionKey          []byte
-	accountSearchCancel context.CancelFunc
-	EventSender         event.Sender
-
-	sessions          session.Service
-	clientWithVersion string
-	app               *app.App
-
-	m sync.RWMutex
+	applicationService *application.Service
 }
 
 func New() *Middleware {
 	mw := &Middleware{
-		accountSearchCancel: func() {},
-		sessions:            session.New(),
+		applicationService: application.New(),
 	}
 	return mw
 }
 
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
-	mw.m.Lock()
-	defer mw.m.Unlock()
-	mw.stop()
+	mw.applicationService.Stop()
 	return &pb.RpcAppShutdownResponse{
 		Error: &pb.RpcAppShutdownResponseError{
 			Code: pb.RpcAppShutdownResponseError_NULL,
@@ -62,7 +49,7 @@ func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdo
 }
 
 func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
-	mw.app.SetDeviceState(int(req.DeviceState))
+	mw.applicationService.GetApp().SetDeviceState(int(req.DeviceState))
 
 	return &pb.RpcAppSetDeviceStateResponse{
 		Error: &pb.RpcAppSetDeviceStateResponseError{
@@ -72,28 +59,22 @@ func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetD
 }
 
 func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.app != nil {
-		return mw.app.MustComponent(block.CName).(*block.Service), nil
+	if a := mw.applicationService.GetApp(); a != nil {
+		return a.MustComponent(block.CName).(*block.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
 
 func (mw *Middleware) getRelationService() (rs relation.Service, err error) {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.app != nil {
-		return mw.app.MustComponent(relation.CName).(relation.Service), nil
+	if a := mw.applicationService.GetApp(); a != nil {
+		return a.MustComponent(relation.CName).(relation.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
 
 func (mw *Middleware) getAccountService() (a space.Service, err error) {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.app != nil {
-		return mw.app.MustComponent(space.CName).(space.Service), nil
+	if a := mw.applicationService.GetApp(); a != nil {
+		return a.MustComponent(space.CName).(space.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -107,9 +88,7 @@ func (mw *Middleware) doBlockService(f func(bs *block.Service) error) (err error
 }
 
 func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) (err error) {
-	mw.m.RLock()
-	a := mw.app
-	mw.m.RUnlock()
+	a := mw.applicationService.GetApp()
 	if a == nil {
 		return ErrNotLoggedIn
 	}
@@ -117,9 +96,7 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 }
 
 func getService[T any](mw *Middleware) T {
-	mw.m.RLock()
-	a := mw.app
-	mw.m.RUnlock()
+	a := mw.applicationService.GetApp()
 	requireApp(a)
 	return app.MustComponent[T](a)
 }
@@ -146,33 +123,15 @@ func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error
 	return f(bs)
 }
 
-// Stop stops the anytype node and HTTP gateway
-func (mw *Middleware) stop() error {
-	if mw != nil && mw.app != nil {
-		err := mw.app.Close(context.Background())
-		if err != nil {
-			log.Warnf("error while stop anytype: %v", err)
-		}
-
-		mw.app = nil
-		mw.accountSearchCancel()
-	}
-	return nil
-}
-
 func (mw *Middleware) GetAnytype() core.Service {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	if mw.app != nil {
-		return mw.app.MustComponent("anytype").(core.Service)
+	if a := mw.applicationService.GetApp(); a != nil {
+		return a.MustComponent("anytype").(core.Service)
 	}
 	return nil
 }
 
 func (mw *Middleware) GetApp() *app.App {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	return mw.app
+	return mw.applicationService.GetApp()
 }
 
 func (mw *Middleware) OnPanic(v interface{}) {
@@ -181,8 +140,21 @@ func (mw *Middleware) OnPanic(v interface{}) {
 	log.With("stack", stack).Errorf("panic recovered: %v", v)
 }
 
-func (mw *Middleware) requireClientWithVersion() {
-	if mw.clientWithVersion == "" {
-		panic(errors.New("client platform with the version must be set using the MetricsSetParameters method"))
+func (mw *Middleware) SetEventSender(sender event.Sender) {
+	mw.applicationService.SetEventSender(sender)
+}
+
+func (mw *Middleware) SaveGoroutinesStack(path string) (err error) {
+	if path == "" {
+		a := mw.GetApp()
+		if a == nil {
+			return fmt.Errorf("failed to save stacktrace: need to start app first")
+		}
+		wl := a.Component(wallet.CName)
+		if wl == nil {
+			return fmt.Errorf("failed to save stacktrace: need to start wallet first")
+		}
+		path = wl.(wallet.Wallet).RepoPath()
 	}
+	return utildebug.SaveStackToRepo(path, true)
 }

@@ -59,7 +59,7 @@ func (d *Dataview) diffTargetObjectIDs(other *Dataview, msgs []simple.EventMessa
 }
 
 func (d *Dataview) diffSources(other *Dataview, msgs []simple.EventMessage) []simple.EventMessage {
-	if !slice.UnsortedEquals(other.content.Source, d.content.Source) {
+	if !slice.UnsortedEqual(other.content.Source, d.content.Source) {
 		msgs = append(msgs,
 			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewSourceSet{
 				&pb.EventBlockDataviewSourceSet{

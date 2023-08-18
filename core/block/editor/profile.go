@@ -97,12 +97,11 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
-	profileType := p.anytype.PredefinedObjects(p.SpaceID()).SystemTypes[bundle.TypeKeyProfile]
 	return migration.Migration{
 		Version: 1,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
-				template.WithObjectTypesAndLayout([]string{profileType}, model.ObjectType_profile),
+				template.WithObjectTypesAndLayout([]bundle.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 				template.WithTitle,
 				template.WithFeaturedRelations,

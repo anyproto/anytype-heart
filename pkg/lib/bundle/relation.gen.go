@@ -5,7 +5,7 @@ source: pkg/lib/bundle/relations.json
 package bundle
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	addr "github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -16,7 +16,9 @@ type RelationKey string
 func (rk RelationKey) String() string {
 	return string(rk)
 }
-
+func (rk RelationKey) URL() string {
+	return string(addr.RelationKeyToIdPrefix + rk)
+}
 func (rk RelationKey) BundledURL() string {
 	return string(addr.BundledRelationURLPrefix + rk)
 }

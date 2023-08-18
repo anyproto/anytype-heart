@@ -11,14 +11,17 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/relation"
 )
 
 const (
 	CName = "kanban"
 )
 
-func New() Service {
-	return &service{groupColumns: make(map[model.RelationFormat]func(key string) Grouper)}
+type Service interface {
+	Grouper(spaceID string, key string) (Grouper, error)
+
+	app.Component
 }
 
 type Grouper interface {
@@ -27,19 +30,19 @@ type Grouper interface {
 	MakeDataViewGroups() ([]*model.BlockContentDataviewGroup, error)
 }
 
-type Service interface {
-	Grouper(key string) (Grouper, error)
-
-	app.Component
+type service struct {
+	objectStore     objectstore.ObjectStore
+	groupColumns    map[model.RelationFormat]func(string) Grouper
+	relationService relation.Service
 }
 
-type service struct {
-	objectStore  objectstore.ObjectStore
-	groupColumns map[model.RelationFormat]func(string) Grouper
+func New() Service {
+	return &service{groupColumns: make(map[model.RelationFormat]func(key string) Grouper)}
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	s.relationService = app.MustComponent[relation.Service](a)
 
 	s.groupColumns[model.RelationFormat_status] = func(key string) Grouper {
 		return &GroupStatus{key: key, store: s.objectStore}
@@ -58,10 +61,9 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Grouper(key string) (Grouper, error) {
-	rel, err := s.objectStore.GetRelationByKey(key)
+func (s *service) Grouper(spaceID string, key string) (Grouper, error) {
+	rel, err := s.relationService.FetchRelationByKey(spaceID, key)
 	if err != nil {
-
 		return nil, fmt.Errorf("can't get relation %s: %v", key, err)
 	}
 
