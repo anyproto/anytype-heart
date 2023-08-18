@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"runtime/debug"
 	"sync"
@@ -14,10 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
+	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 
 var log = logging.Logger("anytype-mw-api")
@@ -185,4 +188,19 @@ func (mw *Middleware) requireClientWithVersion() {
 	if mw.clientWithVersion == "" {
 		panic(errors.New("client platform with the version must be set using the MetricsSetParameters method"))
 	}
+}
+
+func (mw *Middleware) SaveGoroutinesStack(path string) (err error) {
+	if path == "" {
+		a := mw.GetApp()
+		if a == nil {
+			return fmt.Errorf("failed to save stacktrace: need to start app first")
+		}
+		wl := a.Component(wallet.CName)
+		if wl == nil {
+			return fmt.Errorf("failed to save stacktrace: need to start wallet first")
+		}
+		path = wl.(wallet.Wallet).RepoPath()
+	}
+	return utildebug.SaveStackToRepo(path, true)
 }
