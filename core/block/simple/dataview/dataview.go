@@ -179,7 +179,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.GroupBackgroundColors = view.GroupBackgroundColors
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
-	v.DefaultObjectType = view.DefaultObjectType
+	v.DefaultObjectTypeId = view.DefaultObjectTypeId
 
 	return nil
 }
@@ -201,7 +201,7 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	v.GroupBackgroundColors = view.GroupBackgroundColors
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
-	v.DefaultObjectType = view.DefaultObjectType
+	v.DefaultObjectTypeId = view.DefaultObjectTypeId
 
 	return nil
 }
