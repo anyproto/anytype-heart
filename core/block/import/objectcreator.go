@@ -121,6 +121,7 @@ func (oc *ObjectCreator) Create(
 		}
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
+	oc.setFileAsImported(st)
 	var respDetails *types.Struct
 	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
 	if err != nil {
@@ -391,12 +392,9 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 
 func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 	tasks := make([]func() error, 0)
-	var fileHashes []string
-
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := getblock.Do(oc.picker, newID, func(b sb.SmartBlock) error {
 		st := b.NewState()
-		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
 			s := oc.syncFactory.GetSyncer(bl)
 			if s != nil {
@@ -405,10 +403,6 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 					err := s.Sync(newID, bl)
 					if err != nil {
 						return err
-					}
-					// fill hashes after sync only
-					if fh, ok := b.(simple.FileHashes); ok {
-						fileHashes = fh.FillFileHashes(fileHashes)
 					}
 					return nil
 				})
@@ -422,13 +416,6 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 	for _, task := range tasks {
 		if err := task(); err != nil {
 			log.With(zap.String("objectID", newID)).Errorf("syncer: %s", err)
-		}
-	}
-
-	for _, hash := range fileHashes {
-		err = oc.fileStore.SetIsFileImported(hash, true)
-		if err != nil {
-			return fmt.Errorf("failed to set isFileImported for file %s: %s", hash, err)
 		}
 	}
 	return nil
@@ -458,4 +445,24 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 	}
 	result := lo.Union(existedObjects, objectsInCollections)
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
+}
+
+func (oc *ObjectCreator) setFileAsImported(st *state.State) {
+	var fileHashes []string
+	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if fh, ok := bl.(simple.FileHashes); ok {
+			fileHashes = fh.FillFileHashes(fileHashes)
+		}
+		return true
+	})
+	if err != nil {
+		log.Errorf("failed to collect file hashes in state, %s", err)
+	}
+
+	for _, hash := range fileHashes {
+		err = oc.fileStore.SetIsFileImported(hash, true)
+		if err != nil {
+			log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
+		}
+	}
 }
