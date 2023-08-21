@@ -218,7 +218,7 @@ func Test_findObjectsWithoutAnyLinks(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, findObjectsWithoutOutboundLinks(tt.given.objectsLinks, tt.given.objects))
+			assert.Equal(t, tt.want, findObjectsWithoutInboundLinks(tt.given.objectsLinks, tt.given.objects))
 		})
 	}
 }

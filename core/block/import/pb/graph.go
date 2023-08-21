@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 )
 
-// findBidirectionalLinks tries to find in objects LinksGraph such pairs object1 -> object2, object2 -> object1 and exclude them from given
+// findBidirectionalLinks tries to find in LinksGraph such pairs object1 -> object2, object2 -> object1 and exclude them from Graph
 func findBidirectionalLinks(graph converter.LinksGraph) (map[string][]string, converter.LinksGraph) {
 	bidirectionalLinksPairs := make(map[string][]string, 0)
 	graphWithoutBidirectionalLinks := make(converter.LinksGraph, 0)
@@ -51,9 +51,9 @@ func findBidirectionalLinksWithoutInboundLinks(graphWithoutBidirectionalLinks co
 			bfs(bidirectionalLinks, objectID, visited, excludedLinks)
 		}
 	}
-	excludedBackLinksSlice := lo.MapToSlice(excludedLinks, func(key string, value bool) string { return key })
+	excludedLinksSlice := lo.MapToSlice(excludedLinks, func(key string, value bool) string { return key })
 	for objectID := range bidirectionalLinks {
-		if !lo.Contains(excludedBackLinksSlice, objectID) {
+		if !lo.Contains(excludedLinksSlice, objectID) {
 			bidirectionalLinksWithoutInboundLinks = append(bidirectionalLinksWithoutInboundLinks, objectID)
 		}
 	}
@@ -85,7 +85,7 @@ func bfs(graph map[string][]string, startNode string, visited map[string]bool, e
 	}
 }
 
-func findObjectsWithoutOutboundLinks(objectsLinks converter.LinksGraph, objects []string) []string {
+func findObjectsWithoutInboundLinks(objectsLinks converter.LinksGraph, objects []string) []string {
 	objectInLink := make(map[string]struct{}, 0)
 	var rootObjects []string
 	for _, links := range objectsLinks {

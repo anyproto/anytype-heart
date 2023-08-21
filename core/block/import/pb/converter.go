@@ -101,7 +101,7 @@ func (p *Pb) shouldReturnError(req *pb.RpcObjectImportRequest, allErrors *conver
 func filterObjects(objects []string, graph converter.LinksGraph) []string {
 	bidirectionalLinks, graphWithoutBidirectionalLinks := findBidirectionalLinks(graph)
 	rootObjects := findBidirectionalLinksWithoutInboundLinks(graphWithoutBidirectionalLinks, bidirectionalLinks)
-	rootObjects = append(rootObjects, findObjectsWithoutOutboundLinks(graph, objects)...)
+	rootObjects = append(rootObjects, findObjectsWithoutInboundLinks(graph, objects)...)
 	return rootObjects
 }
 
