@@ -23,12 +23,9 @@ func (i *indexer) ftLoop() {
 	ticker := time.NewTicker(ftIndexInterval)
 	i.runFullTextIndexer()
 	var lastForceIndex time.Time
-	i.mu.Lock()
-	quit := i.quit
-	i.mu.Unlock()
 	for {
 		select {
-		case <-quit:
+		case <-i.quit:
 			return
 		case <-ticker.C:
 			i.runFullTextIndexer()

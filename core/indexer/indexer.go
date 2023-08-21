@@ -108,7 +108,6 @@ type indexer struct {
 	fileService   files.Service
 
 	quit       chan struct{}
-	mu         sync.Mutex
 	btHash     Hasher
 	newAccount bool
 	forceFt    chan struct{}
@@ -156,15 +155,7 @@ func (i *indexer) Run(context.Context) (err error) {
 }
 
 func (i *indexer) Close(ctx context.Context) (err error) {
-	i.mu.Lock()
-	quit := i.quit
-	i.mu.Unlock()
-	if quit != nil {
-		close(quit)
-		i.mu.Lock()
-		i.quit = nil
-		i.mu.Unlock()
-	}
+	close(i.quit)
 	return nil
 }
 
