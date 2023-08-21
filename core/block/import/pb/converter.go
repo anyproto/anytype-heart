@@ -62,13 +62,13 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		return nil, allErrors
 	}
-	objectsInLink := p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
+	linksGraph := p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
 	p.updateDetails(allSnapshots)
 	if p.shouldReturnError(req, allErrors, params) {
 		return nil, allErrors
 	}
 	if !params.GetNoCollection() {
-		rootCol, colErr := p.provideRootCollectionSnapshot(targetObjects, objectsInLink)
+		rootCol, colErr := p.provideRootCollectionSnapshot(targetObjects, linksGraph)
 		if colErr != nil {
 			allErrors.Add(colErr)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -86,8 +86,8 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	return &converter.Response{Snapshots: allSnapshots}, allErrors
 }
 
-func (p *Pb) provideRootCollectionSnapshot(targetObjects []string, objectsInLink converter.Graph) (*converter.Snapshot, error) {
-	targetObjects = filterObjects(targetObjects, objectsInLink)
+func (p *Pb) provideRootCollectionSnapshot(targetObjects []string, graph converter.LinksGraph) (*converter.Snapshot, error) {
+	targetObjects = filterObjects(targetObjects, graph)
 	rootCollection := converter.NewRootCollection(p.service)
 	rootCol, colErr := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	return rootCol, colErr
@@ -98,15 +98,10 @@ func (p *Pb) shouldReturnError(req *pb.RpcObjectImportRequest, allErrors *conver
 		allErrors.IsNoObjectToImportError(len(params.GetPath()))
 }
 
-func filterObjects(objects []string, objectsLinks converter.Graph) []string {
-	backlinks, graphWithoutBacklinks := findBackLinks(objectsLinks)
-	rootObjects := findBacklinksWithoutInboundLinks(graphWithoutBacklinks, backlinks)
-	objectInLink := findObjectsInLinks(objectsLinks)
-	for _, object := range objects {
-		if _, ok := objectInLink[object]; !ok {
-			rootObjects = append(rootObjects, object)
-		}
-	}
+func filterObjects(objects []string, graph converter.LinksGraph) []string {
+	bidirectionalLinks, graphWithoutBidirectionalLinks := findBidirectionalLinks(graph)
+	rootObjects := findBidirectionalLinksWithoutInboundLinks(graphWithoutBidirectionalLinks, bidirectionalLinks)
+	rootObjects = append(rootObjects, findObjectsWithoutOutboundLinks(graph, objects)...)
 	return rootObjects
 }
 
@@ -322,11 +317,11 @@ func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
 	return readers, nil
 }
 
-func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *converter.ConvertError, mode pb.RpcObjectImportRequestMode) converter.Graph {
+func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *converter.ConvertError, mode pb.RpcObjectImportRequestMode) converter.LinksGraph {
 	var (
 		newIDToOld    = make(map[string]string, len(snapshots))
 		fileIDs       = make([]string, 0)
-		objectsInLink = make(converter.Graph, 0)
+		objectsInLink = make(converter.LinksGraph, 0)
 	)
 	for _, snapshot := range snapshots {
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
@@ -336,7 +331,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 		})...)
 	}
 	for _, snapshot := range snapshots {
-		st := state.NewDocFromSnapshot(snapshot.Id, snapshot.Snapshot)
+		st := state.NewDocFromSnapshot("", snapshot.Snapshot)
 		result, err := converter.UpdateLinksToObjects(st.(*state.State), newIDToOld, fileIDs)
 		archived := pbtypes.GetBool(snapshot.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String())
 		if !archived {
@@ -420,13 +415,13 @@ func (p *Pb) needToImportWidgets(address string, accountID string) bool {
 	return address == accountID
 }
 
-func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string, objectsInLink converter.Graph, archived bool) {
+func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[string]string, graph converter.LinksGraph, archived bool) {
 	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
 	for i, id := range objectsInCollections {
 		if newID, ok := newToOldIDs[id]; ok {
 			objectsInCollections[i] = newID
 			if !archived {
-				converter.AppendNewLinkToGrapth(objectsInLink, st.RootId(), newID)
+				graph.AddNeighborToGraphNode(st.RootId(), newID)
 			}
 		}
 	}
@@ -462,8 +457,8 @@ func (p *Pb) cleanupEmptyBlock(snapshot *pb.SnapshotWithType) {
 	}
 }
 
-func mergeMaps(map1, map2 converter.Graph) converter.Graph {
-	mergedMap := make(converter.Graph)
+func mergeMaps(map1, map2 converter.LinksGraph) converter.LinksGraph {
+	mergedMap := make(converter.LinksGraph)
 
 	for key, value := range map1 {
 		mergedMap[key] = value

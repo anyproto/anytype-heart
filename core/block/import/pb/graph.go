@@ -6,54 +6,61 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 )
 
-// findBackLinks tries to find in objects Graph such pairs object1 -> object2, object2 -> object1 and exclude them from graph
-func findBackLinks(objectsLinks converter.Graph) (map[string][]string, converter.Graph) {
-	backlinksPairs := make(map[string][]string, 0)
-	graphWithoutBacklinks := make(converter.Graph, 0)
-	for objectID, links := range objectsLinks {
+// findBidirectionalLinks tries to find in objects LinksGraph such pairs object1 -> object2, object2 -> object1 and exclude them from given
+func findBidirectionalLinks(graph converter.LinksGraph) (map[string][]string, converter.LinksGraph) {
+	bidirectionalLinksPairs := make(map[string][]string, 0)
+	graphWithoutBidirectionalLinks := make(converter.LinksGraph, 0)
+	for objectID, links := range graph {
 		var foundBacklink bool
 		for link := range links {
-			outboundLinks := objectsLinks[link]
+			outboundLinks := graph[link]
 			if _, ok := outboundLinks[objectID]; ok {
-				backlinksPairs[link] = append(backlinksPairs[link], objectID)
-				backlinksPairs[objectID] = append(backlinksPairs[objectID], link)
+				addBidirectionalPair(bidirectionalLinksPairs, link, objectID)
 				foundBacklink = true
 			}
 		}
 		if !foundBacklink {
-			graphWithoutBacklinks[objectID] = links
+			graphWithoutBidirectionalLinks[objectID] = links
 		}
 	}
-	return backlinksPairs, graphWithoutBacklinks
+	return bidirectionalLinksPairs, graphWithoutBidirectionalLinks
 }
 
-// findBacklinksWithoutInboundLinks tries to find pairs like object1 -> object2, object2 -> object1
-// with condition, that object1 and object2 doesn't have other inbound links
-func findBacklinksWithoutInboundLinks(graphWithoutBacklinks converter.Graph, backlinks map[string][]string) []string {
-	excludedBackLinks := make(map[string]bool, 0)
-	var rootObjects []string
+func addBidirectionalPair(bidirectionalLinksPairs map[string][]string, link string, objectID string) {
+	if _, ok := bidirectionalLinksPairs[link]; !ok || !lo.Contains(bidirectionalLinksPairs[link], objectID) {
+		bidirectionalLinksPairs[link] = append(bidirectionalLinksPairs[link], objectID)
+	}
+	if _, ok := bidirectionalLinksPairs[objectID]; !ok || !lo.Contains(bidirectionalLinksPairs[objectID], link) {
+		bidirectionalLinksPairs[objectID] = append(bidirectionalLinksPairs[objectID], link)
+	}
+}
+
+// findBidirectionalLinksWithoutInboundLinks tries to find pairs like object1 -> object2, object2 -> object1
+// with condition, that object1 and object2 doesn't have other inbound links. We assume, that these objects can be added to root collection
+func findBidirectionalLinksWithoutInboundLinks(graphWithoutBidirectionalLinks converter.LinksGraph, bidirectionalLinks map[string][]string) []string {
+	excludedLinks := make(map[string]bool, 0)
+	var bidirectionalLinksWithoutInboundLinks []string
 	visited := make(map[string]bool, 0)
-	for _, objectLinks := range graphWithoutBacklinks {
+	for _, objectLinks := range graphWithoutBidirectionalLinks {
 		for objectID := range objectLinks {
-			excludedBackLinks[objectID] = true
+			excludedLinks[objectID] = true
 		}
 	}
-
-	for objectID := range backlinks {
+	for objectID := range bidirectionalLinks {
 		if !visited[objectID] {
-			bfs(backlinks, objectID, visited, excludedBackLinks)
+			bfs(bidirectionalLinks, objectID, visited, excludedLinks)
 		}
 	}
-	excludedBackLinksSlice := lo.MapToSlice(excludedBackLinks, func(key string, value bool) string { return key })
-	for objectID := range backlinks {
+	excludedBackLinksSlice := lo.MapToSlice(excludedLinks, func(key string, value bool) string { return key })
+	for objectID := range bidirectionalLinks {
 		if !lo.Contains(excludedBackLinksSlice, objectID) {
-			rootObjects = append(rootObjects, objectID)
+			bidirectionalLinksWithoutInboundLinks = append(bidirectionalLinksWithoutInboundLinks, objectID)
 		}
 	}
-	return rootObjects
+	return bidirectionalLinksWithoutInboundLinks
 }
 
-func bfs(graph map[string][]string, startNode string, visited map[string]bool, excludedBackLinks map[string]bool) {
+func bfs(graph map[string][]string, startNode string, visited map[string]bool, excludedLinks map[string]bool) {
 	queue := []string{startNode}
 
 	for len(queue) > 0 {
@@ -64,31 +71,23 @@ func bfs(graph map[string][]string, startNode string, visited map[string]bool, e
 			continue
 		}
 		visited[node] = true
-		if excludedBackLinks[node] {
-			for _, neighborNode := range graph[node] {
-				excludedBackLinks[neighborNode] = true
-				if !visited[neighborNode] {
-					queue = append(queue, neighborNode)
-				}
+		for _, neighborNode := range graph[node] {
+			if excludedLinks[node] {
+				excludedLinks[neighborNode] = true
 			}
-		} else {
-			for _, neighborNode := range graph[node] {
-				if excludedBackLinks[node] {
-					excludedBackLinks[neighborNode] = true
-				}
-				if excludedBackLinks[neighborNode] {
-					excludedBackLinks[node] = true
-				}
-				if !visited[neighborNode] {
-					queue = append(queue, neighborNode)
-				}
+			if excludedLinks[neighborNode] {
+				excludedLinks[node] = true
+			}
+			if !visited[neighborNode] {
+				queue = append(queue, neighborNode)
 			}
 		}
 	}
 }
 
-func findObjectsInLinks(objectsLinks converter.Graph) map[string]struct{} {
+func findObjectsWithoutOutboundLinks(objectsLinks converter.LinksGraph, objects []string) []string {
 	objectInLink := make(map[string]struct{}, 0)
+	var rootObjects []string
 	for _, links := range objectsLinks {
 		for link := range links {
 			if _, ok := objectInLink[link]; !ok {
@@ -96,5 +95,10 @@ func findObjectsInLinks(objectsLinks converter.Graph) map[string]struct{} {
 			}
 		}
 	}
-	return objectInLink
+	for _, object := range objects {
+		if _, ok := objectInLink[object]; !ok {
+			rootObjects = append(rootObjects, object)
+		}
+	}
+	return rootObjects
 }
