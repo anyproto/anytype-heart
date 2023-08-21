@@ -554,7 +554,7 @@ func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[strin
 	if len(file.ParsedBlocks) > 0 {
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
-	details[fileName] = converter.GetCommonDetails(fileName, title, emoji)
+	details[fileName] = converter.GetCommonDetails(fileName, title, emoji, model.ObjectType_basic)
 	file.Title = pbtypes.GetString(details[fileName], bundle.RelationKeyName.String())
 }
 

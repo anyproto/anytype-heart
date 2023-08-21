@@ -5,6 +5,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -32,6 +33,10 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	// remove invalid children
 	for _, b := range s.blocks {
 		s.normalizeChildren(b)
+	}
+
+	if !pbtypes.HasField(s.Details(), bundle.RelationKeyLayout.String()) {
+		s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(model.ObjectType_basic)))
 	}
 
 	for _, b := range s.blocks {
