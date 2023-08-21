@@ -893,7 +893,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	sb.injectWorkspaceID(s)
 
 	details, err := sb.getDetailsFromStore()
-	if err != nil || details == nil {
+	if err != nil {
 		return err
 	}
 

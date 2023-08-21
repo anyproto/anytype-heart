@@ -37,7 +37,11 @@ func TestSmartBlock_Init(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.tearDown()
 	fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
-	fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes()
+	fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
+		Details: &types.Struct{Fields: map[string]*types.Value{}},
+	}, nil)
+	fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
+	fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 	fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
 	//when
@@ -51,11 +55,15 @@ func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		//given
 		fx := newFixture(t)
+		defer fx.tearDown()
 		fx.at.EXPECT().PredefinedBlocks()
 		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
-		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes()
+		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
+			Details: &types.Struct{Fields: map[string]*types.Value{}},
+		}, nil)
+		fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
+		fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 		fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
-		defer fx.tearDown()
 
 		fx.init([]*model.Block{{Id: "1"}})
 		s := fx.sb.NewState()
@@ -87,7 +95,11 @@ func TestBasic_SetAlign(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
-		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes()
+		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
+			Details: &types.Struct{Fields: map[string]*types.Value{}},
+		}, nil)
+		fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
+		fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 		fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init([]*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
@@ -109,7 +121,11 @@ func TestBasic_SetAlign(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
-		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes()
+		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
+			Details: &types.Struct{Fields: map[string]*types.Value{}},
+		}, nil)
+		fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
+		fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 		fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init([]*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
