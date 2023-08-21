@@ -75,7 +75,7 @@ func New() Indexer {
 type Indexer interface {
 	ForceFTIndex()
 	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
-	ReindexSpace(spaceID string) error
+	EnsurePreinstalledObjects(spaceID string) error
 	app.ComponentRunnable
 }
 
@@ -361,11 +361,6 @@ func (i *indexer) reindexIfNeeded() error {
 	return i.reindex(flags)
 }
 
-// TODO Rename to EnsurePreinstalledObjects or something else
-func (i *indexer) ReindexSpace(spaceID string) error {
-	return i.ensurePreinstalledObjects(spaceID)
-}
-
 func (i *indexer) reindex(flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
@@ -530,7 +525,7 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 		}
 	}
 
-	err = i.ensurePreinstalledObjects(spaceID)
+	err = i.EnsurePreinstalledObjects(spaceID)
 	if err != nil {
 		return fmt.Errorf("ensure preinstalled objects: %w", err)
 	}
@@ -576,7 +571,7 @@ func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexTyp
 }
 
 // todo: remove this and create objects within derivePredefinedObjects
-func (i *indexer) ensurePreinstalledObjects(spaceID string) error {
+func (i *indexer) EnsurePreinstalledObjects(spaceID string) error {
 	start := time.Now()
 	var ids []string
 	for _, ot := range bundle.SystemTypes {
