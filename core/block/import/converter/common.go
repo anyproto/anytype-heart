@@ -55,8 +55,8 @@ func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
 	return &types.Struct{Fields: fields}
 }
 
-func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) (map[string]bool, error) {
-	objectsInLink := make(map[string]bool, 0)
+func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) (Graph, error) {
+	objectsInLink := make(Graph, 0)
 	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch block := bl.(type) {
 		case link.Block:
@@ -73,7 +73,7 @@ func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesID
 	return objectsInLink, err
 }
 
-func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State, objectsInLink map[string]bool) {
+func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State, objectsInLink Graph) {
 	dataView := block.Model().GetDataview()
 	target := dataView.TargetObjectId
 	if target != "" {
@@ -83,7 +83,7 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 		}
 		dataView.TargetObjectId = newTarget
 		st.Set(simple.New(block.Model()))
-		objectsInLink[newTarget] = true
+		AppendNewLinkToGrapth(objectsInLink, st.RootId(), newTarget)
 	}
 
 	for _, view := range dataView.GetViews() {
@@ -113,6 +113,15 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 				group.ObjectIds[i] = newId
 			}
 		}
+	}
+}
+
+func AppendNewLinkToGrapth(objectsInLink Graph, objectID string, newTarget string) {
+	if _, ok := objectsInLink[objectID]; !ok {
+		objectsInLink[objectID] = make(map[string]struct{}, 0)
+	}
+	if _, ok := objectsInLink[objectID][newTarget]; !ok {
+		objectsInLink[objectID][newTarget] = struct{}{}
 	}
 }
 
@@ -161,7 +170,7 @@ func updateObjectIDsInFilter(filter *model.BlockContentDataviewFilter, oldIDtoNe
 	}
 }
 
-func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, objectsInLink map[string]bool) {
+func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, objectsInLink Graph) {
 	newTarget := oldIDtoNew[block.Model().GetBookmark().TargetObjectId]
 	if newTarget == "" {
 		log.Errorf("failed to find bookmark object")
@@ -170,10 +179,11 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *s
 
 	block.Model().GetBookmark().TargetObjectId = newTarget
 	st.Set(simple.New(block.Model()))
-	objectsInLink[newTarget] = true
+	AppendNewLinkToGrapth(objectsInLink, st.RootId(), newTarget)
+	objectsInLink[st.RootId()][newTarget] = struct{}{}
 }
 
-func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string, objectsInLink map[string]bool) {
+func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string, objectsInLink Graph) {
 	targetBlockID := block.Model().GetLink().TargetBlockId
 	if lo.Contains(filesIDs, targetBlockID) {
 		return
@@ -191,7 +201,8 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 	block.Model().GetLink().TargetBlockId = newTarget
 	st.Set(simple.New(block.Model()))
-	objectsInLink[newTarget] = true
+	AppendNewLinkToGrapth(objectsInLink, st.RootId(), newTarget)
+	objectsInLink[st.RootId()][newTarget] = struct{}{}
 }
 
 func isBundledObjects(targetObjectID string) bool {
@@ -210,7 +221,7 @@ func isBundledObjects(targetObjectID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string, objectsInLink map[string]bool) {
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string, objectsInLink Graph) {
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
@@ -228,7 +239,7 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 		}
 
 		marks[i].Param = newTarget
-		objectsInLink[newTarget] = true
+		AppendNewLinkToGrapth(objectsInLink, st.RootId(), newTarget)
 	}
 	st.Set(simple.New(block.Model()))
 }
