@@ -12,7 +12,7 @@ func NewDirectory() *Directory {
 	return &Directory{}
 }
 
-func (d *Directory) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
+func (d *Directory) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
 	files := make(map[string]io.ReadCloser)
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -22,7 +22,7 @@ func (d *Directory) GetFileReaders(importPath string, expectedExt []string) (map
 					log.Errorf("failed to get relative path %s", err)
 					return nil
 				}
-				if !isSupportedExtension(filepath.Ext(path), expectedExt) {
+				if !isFileAllowedToImport(shortPath, filepath.Ext(path), expectedExt, includeFiles) {
 					log.Errorf("not supported extensions")
 					return nil
 				}

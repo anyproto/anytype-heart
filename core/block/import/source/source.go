@@ -15,7 +15,7 @@ var log = logging.Logger("import-source")
 var extensions = []string{".md", ".csv", ".txt", ".pb", ".json", ".html"}
 
 type Source interface {
-	GetFileReaders(importPath string, ext []string) (map[string]io.ReadCloser, error)
+	GetFileReaders(importPath string, ext []string, includeFiles []string) (map[string]io.ReadCloser, error)
 }
 
 func GetSource(importPath string) Source {
@@ -32,4 +32,8 @@ func GetSource(importPath string) Source {
 
 func isSupportedExtension(ext string, expectedExt []string) bool {
 	return lo.Contains(expectedExt, ext)
+}
+
+func isFileAllowedToImport(fileName, ext string, expectedExt, includeFiles []string) bool {
+	return isSupportedExtension(ext, expectedExt) || lo.Contains(includeFiles, filepath.Base(fileName))
 }

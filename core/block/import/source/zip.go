@@ -15,7 +15,7 @@ func NewZip() *Zip {
 	return &Zip{}
 }
 
-func (d *Zip) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
+func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
 	r, err := zip.OpenReader(importPath)
 	if err != nil {
 		return nil, err
@@ -28,15 +28,14 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string) (map[strin
 		}
 		if f.FileInfo() != nil && f.FileInfo().IsDir() {
 			dir := NewDirectory()
-			fr, e := dir.GetFileReaders(f.Name, expectedExt)
+			fr, e := dir.GetFileReaders(f.Name, expectedExt, nil)
 			if e != nil {
 				log.Errorf("failed to get files from directory, %s", e)
 			}
 			files = lo.Assign(files, fr)
 			continue
 		}
-		ext := filepath.Ext(f.Name)
-		if !isSupportedExtension(ext, expectedExt) {
+		if !isFileAllowedToImport(f.Name, filepath.Ext(f.Name), expectedExt, includeFiles) {
 			log.Errorf("not expected extension")
 			continue
 		}
