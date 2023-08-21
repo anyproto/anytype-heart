@@ -321,6 +321,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.sb.updateBackLinks(details)
 
 		//then
+		assert.NotNil(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 		assert.Equal(t, backLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 	})
 
@@ -336,7 +337,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		fx.sb.updateBackLinks(details)
 
 		//then
-		assert.Zero(t, len(details.Fields))
+		assert.Len(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()), 0)
 	})
 
 	t.Run("failure on retrieving back links from the store", func(t *testing.T) {

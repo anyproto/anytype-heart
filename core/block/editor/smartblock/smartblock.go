@@ -947,9 +947,7 @@ func (sb *smartBlock) updateBackLinks(details *types.Struct) {
 		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err.Error())
 		return
 	}
-	if backLinks != nil {
-		details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
-	}
+	details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
 }
 
 func (sb *smartBlock) updatePendingDetails(details *types.Struct) (hasPendingLocalDetails bool) {
