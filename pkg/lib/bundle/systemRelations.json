@@ -59,5 +59,6 @@
   "sizeInBytes",
   "sourceFilePath",
   "fileSyncStatus",
-  "defaultTemplateId"
+  "defaultTemplateId",
+  "backlinks"
 ]
