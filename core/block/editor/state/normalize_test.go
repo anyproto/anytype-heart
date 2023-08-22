@@ -458,7 +458,7 @@ func TestShortenValueOnN(t *testing.T) {
 		value, left := shortenValueOnN(value, 15)
 
 		//then
-		expected := pbtypes.StringList([]string{"", "É", "Fraternité"})
+		expected := pbtypes.StringList([]string{"", "Égal", "Liberté"})
 
 		assert.Equal(t, 0, left)
 		assert.Equal(t, expected, value)
@@ -485,6 +485,7 @@ func TestShortenValueOnN(t *testing.T) {
 		assert.Equal(t, bornDied, value.GetStructValue().Fields["bornDied"])
 		assert.Equal(t, isNovelist, value.GetStructValue().Fields["isNovelist"])
 		assert.Equal(t, n-32, countStringsLength(value))
+		assert.Equal(t, value.GetStructValue().Fields["books"].GetListValue().Values[2].GetStringValue(), "Anna Kar")
 	})
 
 	t.Run("cut off all strings", func(t *testing.T) {
@@ -503,6 +504,17 @@ func TestShortenValueOnN(t *testing.T) {
 		assert.Equal(t, 100-(18+9*4), left)
 		assert.Equal(t, 0, countStringsLength(value))
 	})
+}
+
+func BenchmarkShorten(b *testing.B) {
+	value := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
+		"name":    pbtypes.String(strings.Repeat("Leo", 50)),
+		"surname": pbtypes.String(strings.Repeat("Tolstoy", 50)),
+		"books":   pbtypes.StringList([]string{strings.Repeat("War And Peace", 50), "Anna Karenina", strings.Repeat("Youth", 100), "After the Ball"}),
+	}})
+	for i := 0; i < b.N; i++ {
+		_, _ = shortenValueOnN(value, 600)
+	}
 }
 
 func countStringsLength(value *types.Value) (n int) {

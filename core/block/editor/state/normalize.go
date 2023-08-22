@@ -2,9 +2,10 @@ package state
 
 import (
 	"fmt"
-
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
+	"sort"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -321,11 +322,11 @@ func (s *State) normalizeSmartBlock(b simple.Block) {
 	}
 }
 
-func (s *State) shortenDetailsToLimit(details map[string]*types.Value) {
+func shortenDetailsToLimit(objectID string, details map[string]*types.Value) {
 	for key, value := range details {
 		size := value.Size()
 		if size > detailSizeLimit {
-			log.With("objectID", s.rootId).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
+			log.With("objectID", objectID).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
 				key, size, detailSizeLimit)
 			value, _ = shortenValueOnN(value, size-detailSizeLimit)
 		}
@@ -342,7 +343,11 @@ func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) 
 		return pbtypes.String(""), n - len(str)
 	case *types.Value_ListValue:
 		var newValue *types.Value
-		for i, v := range value.GetListValue().Values {
+		values := value.GetListValue().Values
+		sort.Slice(values, func(i, j int) bool {
+			return values[i].Size() > values[j].Size()
+		})
+		for i, v := range values {
 			newValue, n = shortenValueOnN(v, n)
 			value.GetListValue().Values[i] = newValue
 			if n == 0 {
@@ -352,9 +357,14 @@ func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) 
 		return value, n
 	case *types.Value_StructValue:
 		var newValue *types.Value
-		for key, v := range value.GetStructValue().GetFields() {
-			newValue, n = shortenValueOnN(v, n)
-			value.GetStructValue().Fields[key] = newValue
+		fields := value.GetStructValue().GetFields()
+		keys := lo.Keys(fields)
+		sort.SliceStable(keys, func(i, j int) bool {
+			return fields[keys[i]].Size() > fields[keys[j]].Size()
+		})
+		for _, key := range keys {
+			newValue, n = shortenValueOnN(fields[key], n)
+			fields[key] = newValue
 			if n == 0 {
 				return value, 0
 			}
