@@ -204,9 +204,9 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 }
 
 func (l *Dataview) FillSmartIds(ids []string) []string {
-	//for _ := range l.content.RelationLinks {
+	// for _ := range l.content.RelationLinks {
 	// todo: add relationIds from relationLinks
-	//}
+	// }
 
 	if l.content.TargetObjectId != "" {
 		ids = append(ids, l.content.TargetObjectId)

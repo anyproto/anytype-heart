@@ -26,6 +26,8 @@ type WidgetObject struct {
 	basic.Unlinkable
 	basic.Updatable
 	widget.Widget
+
+	relationService relation.Service
 }
 
 func NewWidgetObject(
@@ -36,11 +38,12 @@ func NewWidgetObject(
 ) *WidgetObject {
 	bs := basic.NewBasic(sb, objectStore, relationService, layoutConverter)
 	return &WidgetObject{
-		SmartBlock: sb,
-		Movable:    bs,
-		Updatable:  bs,
-		IHistory:   basic.NewHistory(sb),
-		Widget:     widget.NewWidget(sb),
+		SmartBlock:      sb,
+		Movable:         bs,
+		Updatable:       bs,
+		IHistory:        basic.NewHistory(sb),
+		Widget:          widget.NewWidget(sb),
+		relationService: relationService,
 	}
 }
 
@@ -59,7 +62,7 @@ func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migra
 			template.InitTemplate(st,
 				template.WithEmpty,
 				// todo: return
-				//template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_dashboard),
+				// template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_dashboard),
 				template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 				w.withDefaultWidgets,
 			)
@@ -97,7 +100,14 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 }
 
 func (w *WidgetObject) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc: func(s *state.State) {
+				migrateSourcesInDataview(w, s, w.relationService)
+			},
+		},
+	})
 }
 
 func (w *WidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {

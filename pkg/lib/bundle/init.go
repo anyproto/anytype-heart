@@ -243,6 +243,18 @@ func TypeKeyFromUrl(url string) (TypeKey, error) {
 	return "", fmt.Errorf("invalid type url: no prefix found")
 }
 
+func RelationKeyFromID(id string) (RelationKey, error) {
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		return RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)), nil
+	}
+
+	if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+		return RelationKey(strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)), nil
+	}
+
+	return "", fmt.Errorf("invalid type url: no prefix found")
+}
+
 func FilterRelationKeys(keys []RelationKey, cond func(RelationKey) bool) []RelationKey {
 	var res = make([]RelationKey, 0, len(keys))
 	for _, key := range keys {

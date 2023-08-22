@@ -38,7 +38,8 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore objectstore.ObjectStore
+	objectStore     objectstore.ObjectStore
+	relationService relation.Service
 }
 
 func NewPage(
@@ -93,8 +94,9 @@ func NewPage(
 			relationService,
 			sbtProvider,
 		),
-		TableEditor: table.NewEditor(sb),
-		objectStore: objectStore,
+		TableEditor:     table.NewEditor(sb),
+		objectStore:     objectStore,
+		relationService: relationService,
 	}
 }
 
@@ -190,7 +192,14 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc: func(s *state.State) {
+				migrateSourcesInDataview(p, s, p.relationService)
+			},
+		},
+	})
 }
 
 func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
