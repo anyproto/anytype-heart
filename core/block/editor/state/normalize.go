@@ -2,10 +2,11 @@ package state
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
-	"sort"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -334,16 +335,16 @@ func shortenDetailsToLimit(objectID string, details map[string]*types.Value) {
 }
 
 func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) {
-	switch value.Kind.(type) {
+	switch v := value.Kind.(type) {
 	case *types.Value_StringValue:
-		str := value.GetStringValue()
+		str := v.StringValue
 		if len(str) > n {
 			return pbtypes.String(str[:len(str)-n]), 0
 		}
 		return pbtypes.String(""), n - len(str)
 	case *types.Value_ListValue:
 		var newValue *types.Value
-		values := value.GetListValue().Values
+		values := v.ListValue.Values
 		sort.Slice(values, func(i, j int) bool {
 			return values[i].Size() > values[j].Size()
 		})
@@ -357,7 +358,7 @@ func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) 
 		return value, n
 	case *types.Value_StructValue:
 		var newValue *types.Value
-		fields := value.GetStructValue().GetFields()
+		fields := v.StructValue.GetFields()
 		keys := lo.Keys(fields)
 		sort.SliceStable(keys, func(i, j int) bool {
 			return fields[keys[i]].Size() > fields[keys[j]].Size()

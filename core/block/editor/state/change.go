@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
@@ -14,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -79,10 +79,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	if err := pbtypes.ValidateStruct(detailsToSave); err != nil {
 		log.Errorf("NewDocFromSnapshot details validation error: %v; details normalized", err)
 		pbtypes.NormalizeStruct(detailsToSave)
-	}
-
-	if detailsToSave != nil && detailsToSave.Fields != nil {
-		shortenDetailsToLimit(rootId, detailsToSave.Fields)
 	}
 
 	s := &State{
@@ -255,7 +251,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 			Fields: make(map[string]*types.Value),
 		}
 	}
-	shortenDetailsToLimit(s.rootId, det.Fields)
+	shortenDetailsToLimit(s.rootId, map[string]*types.Value{set.Key: set.Value})
 	s.details = pbtypes.CopyStruct(det)
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
