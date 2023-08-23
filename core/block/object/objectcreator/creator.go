@@ -261,8 +261,8 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 	newState := state.NewDoc("", nil).NewState()
 
 	if len(source) > 0 {
-		// todo: decide the behaviour in case of empty source
-		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, source); err != nil {
+		// todo: decide the behavior in case of empty source
+		if dvContent, dvSchema, err = dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, source); err != nil {
 			return
 		}
 
@@ -401,8 +401,10 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	}
 	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
 	key := uk.(internalKeyGetter).InternalKey()
-	var recommendedRelationKeys []string
-	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+	// TODO Is it ok? Do recommendedRElation contain IDs or keys?
+	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
+	recommendedRelationKeys := make([]string, 0, len(recommendedRelationIDs))
+	for _, relId := range recommendedRelationIDs {
 		relKey, err2 := pbtypes.BundledRelationIdToKey(relId)
 		if err2 != nil {
 			log.Errorf("create object type: invalid recommended relation id: %s", relId)

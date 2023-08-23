@@ -48,7 +48,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 				log.Errorf("sb %s has empty ot", s.RootId())
 				continue
 			}
-			id, err := converter.GetTypeIdByKey(context.Background(), s.SpaceID(), bundle.TypeKey(objectTypeKey))
+			id, err := converter.GetTypeIdByKey(context.Background(), s.SpaceID(), objectTypeKey)
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to get object type id by key %s: %s", objectTypeKey, err)
 				continue

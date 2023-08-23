@@ -28,15 +28,6 @@ func NewContext(opts ...ContextOption) Context {
 	return ctx
 }
 
-func (ctx *sessionContext) shallowCopy() *sessionContext {
-	return &sessionContext{
-		smartBlockId: ctx.smartBlockId,
-		traceId:      ctx.traceId,
-		messages:     ctx.messages,
-		sessionToken: ctx.sessionToken,
-	}
-}
-
 // NewChildContext creates a new child context. The child context has empty messages
 func NewChildContext(parent Context) Context {
 	child := &sessionContext{

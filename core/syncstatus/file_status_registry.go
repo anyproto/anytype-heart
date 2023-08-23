@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -34,7 +33,6 @@ type fileStatusRegistry struct {
 	fileSyncService filesync.FileSync
 	fileStore       filestore.FileStore
 	picker          getblock.Picker
-	eventSender     event.Sender
 
 	sync.Mutex
 

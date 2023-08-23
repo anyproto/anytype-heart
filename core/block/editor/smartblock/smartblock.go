@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -263,8 +264,8 @@ func (sb *smartBlock) UniqueKey() uniquekey.UniqueKey {
 	return uk
 }
 
-func (s *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
-	keys2 := s.source.GetFileKeysSnapshot()
+func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
+	keys2 := sb.source.GetFileKeysSnapshot()
 	for _, key := range keys2 {
 		if key == nil {
 			continue
@@ -921,7 +922,8 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
-	keys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)
+	keys := slices.Clone(bundle.LocalRelationsKeys) // Use Clone to avoid side effects on the bundle.LocalRelationsKeys slice
+	keys = append(keys, bundle.DerivedRelationsKeys...)
 	storedLocalScopeDetails := pbtypes.StructFilterKeys(details, keys)
 	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
 	if pbtypes.StructEqualIgnore(sbLocalScopeDetails, storedLocalScopeDetails, nil) {
@@ -1380,7 +1382,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt m
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", id)
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
-		typeID, err := sb.relationService.GetTypeIdByKey(context.Background(), s.SpaceID(), bundle.TypeKey(ot))
+		typeID, err := sb.relationService.GetTypeIdByKey(context.Background(), s.SpaceID(), ot)
 		if err != nil {
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}

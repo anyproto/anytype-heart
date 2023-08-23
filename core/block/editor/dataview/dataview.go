@@ -106,7 +106,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := DataviewBlockBySource(s.SpaceID(), d.sbtProvider, d.objectStore, source)
+	dvContent, _, err := BlockBySource(s.SpaceID(), d.sbtProvider, d.objectStore, source)
 	if err != nil {
 		return
 	}
@@ -551,7 +551,7 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
+func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
 	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store); err != nil {
 		return
 	}
