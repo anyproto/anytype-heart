@@ -123,7 +123,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				if err != nil {
 					log.Errorf("failed to create unique key: %v", err)
 				} else {
-					otype, err := p.objectStore.GetObjectByUniqueKey(s.SpaceID(), uk.Marshal())
+					otype, err := p.objectStore.GetObjectByUniqueKey(s.SpaceID(), uk)
 					if err != nil {
 						log.Errorf("failed to get object by unique key: %v", err)
 					} else {

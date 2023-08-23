@@ -53,6 +53,16 @@ type service struct {
 	core        core.Service
 }
 
+func (s *service) Init(a *app.App) (err error) {
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.core = app.MustComponent[core.Service](a)
+	return
+}
+
+func (s *service) Name() (name string) {
+	return CName
+}
+
 func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
 	uk, err := uniquekey.New(model.SmartBlockType_STType, key.String())
 	if err != nil {
@@ -79,16 +89,6 @@ func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bu
 	}
 
 	return s.core.DeriveObjectId(ctx, spaceId, uk)
-}
-
-func (s *service) Init(a *app.App) (err error) {
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.core = app.MustComponent[core.Service](a)
-	return
-}
-
-func (s *service) Name() (name string) {
-	return CName
 }
 
 func (s *service) FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {

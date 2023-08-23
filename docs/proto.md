@@ -6540,6 +6540,7 @@ set the current active view (persisted only within a session)
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | spaceId | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
@@ -10275,6 +10276,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | templateId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -11521,7 +11523,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectIds | [string](#string) | repeated |  |
-| objectTypeId | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -12311,7 +12313,7 @@ DEPRECATED |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| objectTypeUrl | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -15245,7 +15247,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_ACCOUNTS_FOUND | 101 |  |
 | NEED_TO_RECOVER_WALLET_FIRST | 102 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 103 |  |
-| LOCAL_REPO_EXISTS_BUT_CORRUPTED | 104 |  |
+| LOCAL_REPO_EXISTS_BUT_CORRUPTED | 104 | Unused |
 | FAILED_TO_RUN_NODE | 105 |  |
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 107 |  |

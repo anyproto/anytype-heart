@@ -159,7 +159,7 @@ type ObjectStore interface {
 	HasObjectType(id string) (bool, error)
 	// deprecated, use relatinoService
 	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
-	GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error)
+	GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error)
 
 	ResolveSpaceID(objectID string) (spaceID string, err error)
 	StoreSpaceID(objectID, spaceID string) error
@@ -721,13 +721,13 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 	return ot, nil
 }
 
-func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey string) (*model.ObjectDetails, error) {
+func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error) {
 	records, _, err := s.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Value:       pbtypes.String(uniqueKey),
+				Value:       pbtypes.String(uniqueKey.Marshal()),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

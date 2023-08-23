@@ -53,8 +53,8 @@ type CommonOperations interface {
 	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
-	SetObjectTypes(ctx session.Context, objectTypes []string) (err error)
-	SetObjectTypesInState(s *state.State, objectTypes []string) (err error)
+	SetObjectTypes(ctx session.Context, objectTypeKeys []bundle.TypeKey) (err error)
+	SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.TypeKey) (err error)
 	SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error)

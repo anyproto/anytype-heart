@@ -23,8 +23,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -666,9 +668,17 @@ func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relati
 	})
 }
 
-func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTypes []string) (err error) {
+func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTypeUniqueKeys []string) (err error) {
 	return Do(s, objectId, func(b basic.CommonOperations) error {
-		return b.SetObjectTypes(ctx, objectTypes)
+		objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeUniqueKeys))
+		for _, rawUniqueKey := range objectTypeUniqueKeys {
+			uk, err := uniquekey.UnmarshalFromString(rawUniqueKey)
+			if err != nil {
+				return fmt.Errorf("unmarshal unique key %s: %w", rawUniqueKey, err)
+			}
+			objectTypeKeys = append(objectTypeKeys, bundle.TypeKey(uk.InternalKey()))
+		}
+		return b.SetObjectTypes(ctx, objectTypeKeys)
 	})
 }
 

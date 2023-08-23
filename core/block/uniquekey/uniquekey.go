@@ -1,3 +1,4 @@
+// TODO move to another package?
 package uniquekey
 
 import (
