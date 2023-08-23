@@ -709,11 +709,11 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 	}
 
 	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
-	typeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
+	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 	if err != nil {
 		return nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
-	ot := s.extractObjectTypeFromDetails(details.Details, id, typeKey)
+	ot := s.extractObjectTypeFromDetails(details.Details, id, objectTypeKey)
 	return ot, nil
 }
 

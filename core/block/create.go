@@ -201,8 +201,13 @@ func (s *Service) CreateLinkToTheNewObject(
 		return
 	}
 
+	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+	if err != nil {
+		return "", "", fmt.Errorf("get type key from raw unique key: %w", err)
+	}
+
 	s.objectCreator.InjectWorkspaceID(req.Details, req.SpaceId, req.ContextId)
-	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, "")
+	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, objectTypeKey)
 	if err != nil {
 		return
 	}
@@ -263,9 +268,9 @@ func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsG
 }
 
 func (s *Service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, req DetailsGetter, objectUniqueTypeKey string) (id string, details *types.Struct, err error) {
-	typeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
+	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
 	if err != nil {
 		return "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
-	return s.objectCreator.CreateObject(ctx, spaceID, req, typeKey)
+	return s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
 }

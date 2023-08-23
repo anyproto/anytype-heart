@@ -200,8 +200,8 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.T
 	return
 }
 
-func (bs *basic) getLayoutForType(typeKey bundle.TypeKey) (model.ObjectTypeLayout, error) {
-	uk, err := uniquekey.New(model.SmartBlockType_STType, typeKey.String())
+func (bs *basic) getLayoutForType(objectTypeKey bundle.TypeKey) (model.ObjectTypeLayout, error) {
+	uk, err := uniquekey.New(model.SmartBlockType_STType, objectTypeKey.String())
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}
