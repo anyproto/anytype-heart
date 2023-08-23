@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -143,6 +142,9 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		st.SetInStore([]string{"spaces"}, spaces)
 		return nil
 	})
+	if err != nil {
+		return "", fmt.Errorf("add space to account space: %w", err)
+	}
 
 	err = s.indexer.EnsurePreinstalledObjects(spc.Id())
 	if err != nil {
@@ -180,11 +182,6 @@ func (s *Service) CreateLinkToTheNewObject(
 		err = fmt.Errorf("unable to create link to template from this template")
 		return
 	}
-
-	fmt.Printf("%+v", s.anytype.PredefinedObjects(req.SpaceId))
-	uk, err := uniquekey.New(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
-	sss, _ := s.anytype.DeriveObjectId(ctx, req.SpaceId, uk)
-	fmt.Printf("%+v", sss)
 
 	s.objectCreator.InjectWorkspaceID(req.Details, req.SpaceId, req.ContextId)
 	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, "")

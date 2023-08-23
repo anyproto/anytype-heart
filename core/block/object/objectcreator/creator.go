@@ -467,6 +467,9 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 			},
 		},
 	})
+	if err != nil {
+		return "", nil, fmt.Errorf("query bundled templates: %w", err)
+	}
 
 	alreadyInstalledTemplates, _, err := w.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{

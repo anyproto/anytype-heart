@@ -236,7 +236,7 @@ func GetRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r ObjectRestrictions) 
 }
 
 func GetDataviewRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r DataviewRestrictions) {
-	r, _ = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
+	r = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
 	switch uk.SmartblockType() {
 	case model.SmartBlockType_STType:
 		key := uk.InternalKey()

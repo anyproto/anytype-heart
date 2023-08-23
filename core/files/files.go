@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/gogo/protobuf/proto"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
@@ -29,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
@@ -638,9 +638,12 @@ func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.Fi
 	}
 
 	err = helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
+	if err != nil {
+		return fmt.Errorf("add meta link: %w", err)
+	}
 	err = helpers.AddLinkToDirectory(ctx, dagService, pair, ContentLinkName, file.Hash)
 	if err != nil {
-		return err
+		return fmt.Errorf("add content link: %w", err)
 	}
 
 	node, err := pair.GetNode()

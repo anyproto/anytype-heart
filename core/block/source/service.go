@@ -11,11 +11,11 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -102,6 +102,9 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		return NewMissingObject(), nil
 	}
 	st, err := s.sbtProvider.Type(spaceID, id)
+	if err != nil {
+		return nil, fmt.Errorf("get smartblock type: %w", err)
+	}
 	switch st {
 	case smartblock.SmartBlockTypeFile:
 		return NewFile(s.coreService, s.fileStore, s.fileService, spaceID, id), nil

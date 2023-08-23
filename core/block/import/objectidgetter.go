@@ -2,15 +2,16 @@ package importer
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -91,12 +92,16 @@ func (ou *ObjectIDGetter) Get(
 			return "", treestorage.TreeStorageCreatePayload{}, err
 		}
 		payload, err = ou.service.DeriveTreeCreatePayload(context.Background(), spaceID, uk)
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
+		}
 	} else {
 		payload, err = ou.service.CreateTreePayload(context.Background(), spaceID, sbType, createdTime)
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create tree payload: %w", err)
+		}
 	}
-	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
-	}
+
 	return payload.RootRawChange.Id, payload, nil
 }
 
