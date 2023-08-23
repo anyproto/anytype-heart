@@ -42,7 +42,7 @@ require (
 	github.com/hbagdi/go-unsplash v0.0.0-20230414214043-474fc02c9119
 	github.com/huandu/skiplist v1.2.0
 	github.com/improbable-eng/grpc-web v0.15.0
-	github.com/ipfs/boxo v0.11.0
+	github.com/ipfs/boxo v0.12.0
 	github.com/ipfs/go-block-format v0.1.2
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/go-datastore v0.6.0
@@ -175,7 +175,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
-	github.com/ipld/go-ipld-prime v0.20.0 // indirect
+	github.com/ipld/go-ipld-prime v0.21.0 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
