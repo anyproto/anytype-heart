@@ -73,8 +73,11 @@ func (ou *ObjectIDGetter) Get(
 	}
 
 	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get object by old anytype id: %w", err)
+	}
 	if id != "" {
-		return id, treestorage.TreeStorageCreatePayload{}, err
+		return id, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
 	if getExisting || sbType == sb.SmartBlockTypeProfilePage {
