@@ -672,11 +672,11 @@ func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTyp
 	return Do(s, objectId, func(b basic.CommonOperations) error {
 		objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeUniqueKeys))
 		for _, rawUniqueKey := range objectTypeUniqueKeys {
-			uk, err := uniquekey.UnmarshalFromString(rawUniqueKey)
+			objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 			if err != nil {
-				return fmt.Errorf("unmarshal unique key %s: %w", rawUniqueKey, err)
+				return fmt.Errorf("get type key from raw unique key: %w", err)
 			}
-			objectTypeKeys = append(objectTypeKeys, bundle.TypeKey(uk.InternalKey()))
+			objectTypeKeys = append(objectTypeKeys, objectTypeKey)
 		}
 		return b.SetObjectTypes(ctx, objectTypeKeys)
 	})

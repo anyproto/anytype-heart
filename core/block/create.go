@@ -263,13 +263,9 @@ func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsG
 }
 
 func (s *Service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, req DetailsGetter, objectUniqueTypeKey string) (id string, details *types.Struct, err error) {
-	uk, err := uniquekey.UnmarshalFromString(objectUniqueTypeKey)
+	typeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
 	if err != nil {
-		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
+		return "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
-	if uk.SmartblockType() != model.SmartBlockType_STType {
-		return "", nil, fmt.Errorf("wrong type of unique key %s", uk.SmartblockType().String())
-	}
-
-	return s.objectCreator.CreateObject(ctx, spaceID, req, bundle.TypeKey(uk.InternalKey()))
+	return s.objectCreator.CreateObject(ctx, spaceID, req, typeKey)
 }

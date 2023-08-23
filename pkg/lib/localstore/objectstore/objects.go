@@ -708,16 +708,12 @@ func (s *dsObjectStore) GetObjectType(id string) (*model.ObjectType, error) {
 		return nil, fmt.Errorf("type was removed")
 	}
 
-	uk, err := uniquekey.UnmarshalFromString(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
+	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
+	typeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse unique key %s: %w", pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()), err)
+		return nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
-
-	if uk.SmartblockType() != model.SmartBlockType_STType {
-		return nil, fmt.Errorf("object %s is not an object type", id)
-	}
-
-	ot := s.extractObjectTypeFromDetails(details.Details, id, uk.InternalKey())
+	ot := s.extractObjectTypeFromDetails(details.Details, id, typeKey)
 	return ot, nil
 }
 
@@ -753,10 +749,10 @@ func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey
 	return &model.ObjectDetails{Details: records[0].Details}, nil
 }
 
-func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string, objectTypeKey string) *model.ObjectType {
+func (s *dsObjectStore) extractObjectTypeFromDetails(details *types.Struct, url string, objectTypeKey bundle.TypeKey) *model.ObjectType {
 	return &model.ObjectType{
 		Url:        url,
-		Key:        objectTypeKey,
+		Key:        string(objectTypeKey),
 		Name:       pbtypes.GetString(details, bundle.RelationKeyName.String()),
 		Layout:     model.ObjectTypeLayout(int(pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String()))),
 		IconEmoji:  pbtypes.GetString(details, bundle.RelationKeyIconEmoji.String()),

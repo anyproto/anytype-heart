@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -75,6 +76,17 @@ func UnmarshalFromString(raw string) (UniqueKey, error) {
 		}
 	}
 	return nil, fmt.Errorf("smartblocktype %s not supported", parts[0])
+}
+
+func GetTypeKeyFromRawUniqueKey(raw string) (bundle.TypeKey, error) {
+	uk, err := UnmarshalFromString(raw)
+	if err != nil {
+		return "", err
+	}
+	if uk.SmartblockType() != model.SmartBlockType_STType {
+		return "", fmt.Errorf("wrong type of unique key %s", uk.SmartblockType().String())
+	}
+	return bundle.TypeKey(uk.InternalKey()), nil
 }
 
 func (uk *uniqueKey) Marshal() string {
