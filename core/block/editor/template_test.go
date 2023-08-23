@@ -3,6 +3,7 @@ package editor
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string) (*Template, error) {
@@ -36,7 +36,7 @@ func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string)
 	uniqueKey, err := uniquekey.New(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
 	require.NoError(t, err)
 
-	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), uniqueKey.Marshal()).Return(&model.ObjectDetails{
+	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), uniqueKey).Return(&model.ObjectDetails{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_basic)),

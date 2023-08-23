@@ -107,7 +107,7 @@ type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 
-	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error)
 }
 
 type DetailsGetter interface {

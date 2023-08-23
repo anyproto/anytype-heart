@@ -10,6 +10,7 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	uniquekey "github.com/anyproto/anytype-heart/core/block/uniquekey"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -246,7 +247,7 @@ func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0 interface{})
 }
 
 // GetObjectByUniqueKey mocks base method.
-func (m *MockObjectStore) GetObjectByUniqueKey(arg0, arg1 string) (*model.ObjectDetails, error) {
+func (m *MockObjectStore) GetObjectByUniqueKey(arg0 string, arg1 uniquekey.UniqueKey) (*model.ObjectDetails, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetObjectByUniqueKey", arg0, arg1)
 	ret0, _ := ret[0].(*model.ObjectDetails)

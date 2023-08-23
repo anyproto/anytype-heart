@@ -84,7 +84,7 @@ type Hasher interface {
 }
 
 type objectCreator interface {
-	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error)
 	AddBundledObjectToSpace(
 		ctx context.Context,
 		spaceID string,

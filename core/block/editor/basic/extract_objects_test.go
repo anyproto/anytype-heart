@@ -14,11 +14,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
@@ -31,7 +33,7 @@ func (t testExtractObjects) Add(object *smarttest.SmartTest) {
 	t.objects[object.Id()] = object
 }
 
-func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, _ []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	id = bson.NewObjectId().Hex()
 	object := smarttest.New(id)
 	t.objects[id] = object
@@ -186,9 +188,9 @@ func TestExtractObjects(t *testing.T) {
 			ts.Add(sb)
 
 			req := pb.RpcBlockListConvertToObjectsRequest{
-				ContextId:  "test",
-				BlockIds:   tc.blockIds,
-				ObjectType: bundle.TypeKeyNote.URL(),
+				ContextId:           "test",
+				BlockIds:            tc.blockIds,
+				ObjectTypeUniqueKey: uniquekey.MustUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
@@ -233,10 +235,15 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().
-		GetObjectType(gomock.Any()).
-		AnyTimes().
-		Return(&model.ObjectType{Layout: model.ObjectType_basic}, nil)
+
+	objectTypeDetails := &model.ObjectDetails{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyLayout.String(): pbtypes.String(model.ObjectType_basic.String()),
+			},
+		},
+	}
+	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).AnyTimes().Return(objectTypeDetails, nil)
 
 	return &fixture{
 		t:     t,

@@ -8,9 +8,8 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	gomock "go.uber.org/mock/gomock"
-
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockSmartBlockTypeProvider is a mock of SmartBlockTypeProvider interface.
