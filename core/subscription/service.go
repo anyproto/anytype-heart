@@ -183,8 +183,8 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 			nestedCount++
 			f, ok := nestedFilter.(*database.FilterNestedIn)
 			if ok {
-				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []string{"id"}, f.Filter, nil, 0, 0)
-				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.Filter}, childSub)
+				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []string{"id"}, f.FilterForNestedObjects, nil, 0, 0)
+				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.FilterForNestedObjects}, childSub)
 				if err != nil {
 					return fmt.Errorf("init nested sub %s entries: %w", childSub.id, err)
 				}
