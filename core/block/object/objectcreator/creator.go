@@ -44,8 +44,8 @@ type eventKey int
 const eventCreate eventKey = 0
 
 type Service interface {
-	CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error)
 	app.Component
 }
@@ -103,7 +103,7 @@ type BlockService interface {
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
-func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
 		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -112,12 +112,12 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID stri
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return c.CreateSmartBlockFromState(ctx, spaceID, sbType, details, createState)
+	return c.CreateSmartBlockFromState(ctx, spaceID, sbType, objectTypeKeys, details, createState)
 }
 
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
-func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -127,40 +127,11 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	// 2. createState
 	// 3. createState details
 	// 4. default object type by smartblock type
-	objectTypeIds := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-	objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeIds))
-	if objectTypeIds == nil {
-		objectTypeKeys = createState.ObjectTypeKeys()
-		if objectTypeKeys == nil {
-			objectTypeIds = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
-		} else {
-			for _, objectTypeKey := range objectTypeKeys {
-				typeId, err := c.relationService.GetTypeIdByKey(ctx, spaceID, bundle.TypeKey(objectTypeKey))
-				if err != nil {
-					return "", nil, err
-				}
-				objectTypeIds = append(objectTypeIds, typeId)
-			}
-		}
-	}
-	if len(objectTypeIds) == 0 {
+	if len(objectTypeKeys) == 0 {
 		if ot, exists := bundle.DefaultObjectTypePerSmartblockType[sbType]; exists {
 			objectTypeKeys = []bundle.TypeKey{ot}
 		} else {
 			objectTypeKeys = []bundle.TypeKey{bundle.TypeKeyPage}
-		}
-	}
-
-	if len(objectTypeIds) > 0 && len(objectTypeKeys) == 0 {
-		ots, err := c.objectStore.GetObjectTypes(objectTypeIds)
-		if err != nil {
-			return "", nil, err
-		}
-		if len(ots) != len(objectTypeIds) {
-			return "", nil, fmt.Errorf("can't find all object types")
-		}
-		for _, ot := range ots {
-			objectTypeKeys = append(objectTypeKeys, bundle.TypeKey(ot.Key))
 		}
 	}
 
@@ -291,8 +262,7 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 
 	template.InitTemplate(newState, tmpls...)
 
-	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	return c.CreateSmartBlockFromState(ctx, req.SpaceId, coresb.SmartBlockTypePage, req.Details, newState)
+	return c.CreateSmartBlockFromState(ctx, req.SpaceId, coresb.SmartBlockTypePage, []bundle.TypeKey{bundle.TypeKeySet}, req.Details, newState)
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
@@ -355,7 +325,7 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 	// todo: check the objectTypes
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, object, nil)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []bundle.TypeKey{bundle.TypeKeyRelation}, object, nil)
 }
 
 func (w *Creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
@@ -382,7 +352,7 @@ func (w *Creator) createRelationOption(ctx context.Context, spaceID string, deta
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
 
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, object, nil)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []bundle.TypeKey{bundle.TypeKeyRelationOption}, object, nil)
 }
 
 type internalKeyGetter interface {
@@ -516,9 +486,8 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 
 	// we need to create it here directly, because we need to set the object type
 	createState := state.NewDoc("", nil).(*state.State)
-	createState.SetObjectTypeKey(bundle.TypeKeyObjectType)
 	createState.SetDetails(object)
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, nil, createState)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, []bundle.TypeKey{bundle.TypeKeyObjectType}, nil, createState)
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (uniquekey.UniqueKey, error) {
@@ -529,35 +498,11 @@ func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct)
 	return uniquekey.UnmarshalFromString(uniqueKey)
 }
 
-func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedSystemType bundle.TypeKey) (id string, details *types.Struct, err error) {
+func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error) {
 	details = req.GetDetails()
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-
-	objectTypeId := pbtypes.GetString(details, bundle.RelationKeyType.String())
-	var objectTypeKey bundle.TypeKey
-	if forcedSystemType != "" {
-		objectTypeId = c.coreService.GetSystemTypeID(spaceID, forcedSystemType)
-		if err != nil {
-			return "", nil, err
-		}
-		objectTypeKey = forcedSystemType
-	} else if objectTypeId == "" {
-		// here we can't rely on DefaultObjectTypePerSmartblockType, because we don't know the smartblock type yet
-		// it's actually opposite. We assume that client provides the object type, so we can determine the smartblock type
-		// todo: client has the default objectType setting, so probably we should assume that it is up for a client and just return error if it's not provided
-		objectTypeId = c.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyPage)
-		objectTypeKey = bundle.TypeKeyPage
-	} else {
-		ot, err := c.objectStore.GetObjectType(objectTypeId)
-		if err != nil {
-			return "", nil, err
-		}
-
-		objectTypeKey = bundle.TypeKey(ot.Key)
-	}
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectTypeId)
 
 	var internalFlags []*model.InternalFlag
 	if v, ok := req.(block.InternalFlagsGetter); ok {
@@ -570,8 +515,7 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		templateID = v.GetTemplateId()
 	}
 
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objectTypeId)
-	var sbType = coresb.SmartBlockTypePage
+	sbType := coresb.SmartBlockTypePage
 
 	switch objectTypeKey {
 	case bundle.TypeKeyBookmark:
@@ -594,7 +538,7 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		if err != nil {
 			return "", nil, err
 		}
-		return c.CreateSmartBlockFromState(ctx, spaceID, sbType, details, st)
+		return c.CreateSmartBlockFromState(ctx, spaceID, sbType, []bundle.TypeKey{bundle.TypeKeyCollection}, details, st)
 	case bundle.TypeKeyObjectType:
 		return c.createObjectType(ctx, spaceID, details)
 	case bundle.TypeKeyRelation:
@@ -605,5 +549,5 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		sbType = coresb.SmartBlockTypeTemplate
 	}
 
-	return c.CreateSmartBlockFromTemplate(ctx, spaceID, sbType, details, templateID)
+	return c.CreateSmartBlockFromTemplate(ctx, spaceID, sbType, []bundle.TypeKey{objectTypeKey}, details, templateID)
 }

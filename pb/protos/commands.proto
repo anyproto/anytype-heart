@@ -2726,8 +2726,7 @@ message Rpc {
         }
         message CreateFromObjectType {
             message Request {
-                // id of desired object type
-                string objectType = 1;
+                string objectTypeUniqueKey = 1;
             }
 
             message Response {
@@ -3381,7 +3380,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 repeated string blockIds = 2;
-                string objectType = 3;
+                string objectTypeUniqueKey = 3;
             }
 
             message Response {

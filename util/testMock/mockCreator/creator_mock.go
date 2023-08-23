@@ -9,11 +9,13 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	state "github.com/anyproto/anytype-heart/core/block/editor/state"
-	pb "github.com/anyproto/anytype-heart/pb"
-	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
+
+	state "github.com/anyproto/anytype-heart/core/block/editor/state"
+	pb "github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 // MockService is a mock of Service interface.
@@ -56,7 +58,7 @@ func (mr *MockServiceMockRecorder) CreateSet(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // CreateSmartBlockFromState mocks base method.
-func (m *MockService) CreateSmartBlockFromState(arg0 context.Context, arg1 string, arg2 smartblock.SmartBlockType, arg3 *types.Struct, arg4 *state.State) (string, *types.Struct, error) {
+func (m *MockService) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType smartblock.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (string, *types.Struct, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSmartBlockFromState", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(string)
@@ -72,7 +74,7 @@ func (mr *MockServiceMockRecorder) CreateSmartBlockFromState(arg0, arg1, arg2, a
 }
 
 // CreateSmartBlockFromTemplate mocks base method.
-func (m *MockService) CreateSmartBlockFromTemplate(arg0 context.Context, arg1 string, arg2 smartblock.SmartBlockType, arg3 *types.Struct, arg4 string) (string, *types.Struct, error) {
+func (m *MockService) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType smartblock.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, templateID string) (string, *types.Struct, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSmartBlockFromTemplate", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(string)

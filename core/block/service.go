@@ -104,7 +104,7 @@ func New() *Service {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 
 	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
@@ -442,18 +442,26 @@ func (s *Service) AddBundledObjectToSpace(
 			}
 
 			// create via the state directly, because we have cyclic dependencies and we want to avoid typeId resolving from the details
-			state := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
-			state.SetDetails(d)
+			st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
+			st.SetDetails(d)
 
+			var objectTypeKey bundle.TypeKey
 			if uk.SmartblockType() == model.SmartBlockType_STRelation {
-				state.SetObjectTypeKey(bundle.TypeKeyRelation)
+				objectTypeKey = bundle.TypeKeyRelation
 			} else if uk.SmartblockType() == model.SmartBlockType_STType {
-				state.SetObjectTypeKey(bundle.TypeKeyObjectType)
+				objectTypeKey = bundle.TypeKeyObjectType
 			} else {
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
-			id, object, err := s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockType(uk.SmartblockType()), nil, state)
+			id, object, err := s.objectCreator.CreateSmartBlockFromState(
+				ctx,
+				spaceID,
+				coresb.SmartBlockType(uk.SmartblockType()),
+				[]bundle.TypeKey{objectTypeKey},
+				nil,
+				st,
+			)
 			if err != nil {
 				// todo: check alreadyexists error
 				// we don't want to stop adding other objects

@@ -6,10 +6,9 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"go.uber.org/mock/gomock"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -213,13 +212,13 @@ func TestExtractObjects(t *testing.T) {
 	}
 
 	t.Run("do not add relation name - when creating note", func(t *testing.T) {
-		fields := createTargetObjectDetails("whatever type", "whatever name", model.ObjectType_note).Fields
+		fields := createTargetObjectDetails("whatever name", model.ObjectType_note).Fields
 
 		assert.NotContains(t, fields, bundle.RelationKeyName.String())
 	})
 
 	t.Run("add relation name - when creating not note", func(t *testing.T) {
-		fields := createTargetObjectDetails("whatever type", "whatever name", model.ObjectType_basic).Fields
+		fields := createTargetObjectDetails("whatever name", model.ObjectType_basic).Fields
 
 		assert.Contains(t, fields, bundle.RelationKeyName.String())
 	})

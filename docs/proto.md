@@ -3254,7 +3254,7 @@ common simple block command
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
-| objectType | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -13904,7 +13904,7 @@ Available undo/redo operations
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectType | [string](#string) |  | id of desired object type |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 

@@ -86,7 +86,7 @@ func (mw *Middleware) TemplateCreateFromObjectType(cctx context.Context, req *pb
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateCreateFromObjectByObjectType(cctx, req.ObjectType)
+		// templateId, err = bs.TemplateCreateFromObjectByObjectType(cctx, req.ObjectType)
 		return
 	})
 	return response(templateId, err)
