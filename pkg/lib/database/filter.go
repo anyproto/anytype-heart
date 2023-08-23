@@ -198,15 +198,7 @@ func (a FiltersAnd) String() string {
 }
 
 func (a FiltersAnd) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
-	for _, f := range a {
-		if withNested, ok := f.(WithNestedFilter); ok {
-			err := withNested.IterateNestedFilters(fn)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return iterateNestedFilters(a, fn)
 }
 
 type FiltersOr []Filter
@@ -234,7 +226,11 @@ func (fo FiltersOr) String() string {
 }
 
 func (fo FiltersOr) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
-	for _, f := range fo {
+	return iterateNestedFilters(fo, fn)
+}
+
+func iterateNestedFilters[F ~[]Filter](composedFilter F, fn func(nestedFilter Filter) error) error {
+	for _, f := range composedFilter {
 		if withNested, ok := f.(WithNestedFilter); ok {
 			err := withNested.IterateNestedFilters(fn)
 			if err != nil {
