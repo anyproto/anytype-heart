@@ -45,32 +45,32 @@ var (
 	ErrReadOnly       = errors.New("object is read only")
 )
 
-func MarshallChange(c *pb.Change) (res []byte, dataType string, err error) {
+func MarshallChange(change *pb.Change) (result []byte, dataType string, err error) {
 	data := bytesPool.Get().([]byte)[:0]
 	defer bytesPool.Put(data)
 
-	data = slices.Grow(data, c.Size())
-	n, err := c.MarshalTo(data)
+	data = slices.Grow(data, change.Size())
+	n, err := change.MarshalTo(data)
 	if err != nil {
 		return
 	}
 	data = data[:n]
 
 	if n > snappyLowerLimit {
-		res = snappy.Encode(nil, data)
+		result = snappy.Encode(nil, data)
 		log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
-			len(data), len(res), 100*(1-float32(len(res))/float32(len(data))))
+			len(data), len(result), 100*(1-float32(len(result))/float32(len(data))))
 		dataType = defaultDataType
 	} else {
-		res = bytes.Clone(data)
+		result = bytes.Clone(data)
 	}
 
 	return
 }
 
-func UnmarshallChange(c *objecttree.Change, data []byte) (res any, err error) {
-	ch := &pb.Change{}
-	if c.DataType == defaultDataType {
+func UnmarshallChange(treeChange *objecttree.Change, data []byte) (result any, err error) {
+	change := &pb.Change{}
+	if treeChange.DataType == defaultDataType {
 		buf := bytesPool.Get().([]byte)[:0]
 		defer bytesPool.Put(buf)
 
@@ -82,8 +82,8 @@ func UnmarshallChange(c *objecttree.Change, data []byte) (res any, err error) {
 			data = decoded
 		}
 	}
-	if err = proto.Unmarshal(data, ch); err == nil {
-		res = ch
+	if err = proto.Unmarshal(data, change); err == nil {
+		result = change
 	}
 	return
 }
