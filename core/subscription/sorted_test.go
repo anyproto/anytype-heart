@@ -70,7 +70,7 @@ func TestSubscription_Remove(t *testing.T) {
 			limit:   3,
 			afterId: "id3",
 			ds:      newDependencyService(&s),
-			filter: database.Not{database.Eq{
+			filter: database.FilterNot{database.FilterEq{
 				Key:   "order",
 				Cond:  model.BlockContentDataviewFilter_Equal,
 				Value: pbtypes.Int64(100),

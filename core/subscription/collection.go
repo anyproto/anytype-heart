@@ -169,7 +169,7 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 	if flt == nil {
 		flt = obs
 	} else {
-		flt = database.AndFilters{obs, flt}
+		flt = database.FiltersAnd{obs, flt}
 	}
 
 	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)

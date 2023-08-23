@@ -18,13 +18,13 @@ var (
 	ErrValueMustBeListSupporting = errors.New("value must be list supporting")
 )
 
-func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (AndFilters, error) {
+func MakeFiltersAnd(protoFilters []*model.BlockContentDataviewFilter, store ObjectStore) (FiltersAnd, error) {
 	if store == nil {
-		return AndFilters{}, fmt.Errorf("objectStore dependency is nil")
+		return FiltersAnd{}, fmt.Errorf("objectStore dependency is nil")
 	}
 	protoFilters = TransformQuickOption(protoFilters, nil)
 
-	var and AndFilters
+	var and FiltersAnd
 	for _, pf := range protoFilters {
 		if pf.Condition != model.BlockContentDataviewFilter_None {
 			f, err := MakeFilter(pf, store)
@@ -39,7 +39,7 @@ func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter, store Objec
 
 func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
 	if store == nil {
-		return AndFilters{}, fmt.Errorf("objectStore dependency is nil")
+		return FiltersAnd{}, fmt.Errorf("objectStore dependency is nil")
 	}
 	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
 	if len(parts) == 2 {
@@ -58,7 +58,7 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		for _, rec := range records {
 			ids = append(ids, pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()))
 		}
-		return &NestedIn{
+		return &FilterNestedIn{
 			Key:    parts[0],
 			Filter: nestedFilter,
 			IDs:    ids,
@@ -89,24 +89,24 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		model.BlockContentDataviewFilter_Less,
 		model.BlockContentDataviewFilter_GreaterOrEqual,
 		model.BlockContentDataviewFilter_LessOrEqual:
-		return Eq{
+		return FilterEq{
 			Key:   rawFilter.RelationKey,
 			Cond:  rawFilter.Condition,
 			Value: rawFilter.Value,
 		}, nil
 	case model.BlockContentDataviewFilter_NotEqual:
-		return Not{Eq{
+		return FilterNot{FilterEq{
 			Key:   rawFilter.RelationKey,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: rawFilter.Value,
 		}}, nil
 	case model.BlockContentDataviewFilter_Like:
-		return Like{
+		return FilterLike{
 			Key:   rawFilter.RelationKey,
 			Value: rawFilter.Value,
 		}, nil
 	case model.BlockContentDataviewFilter_NotLike:
-		return Not{Like{
+		return FilterNot{FilterLike{
 			Key:   rawFilter.RelationKey,
 			Value: rawFilter.Value,
 		}}, nil
@@ -115,7 +115,7 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return In{
+		return FilterIn{
 			Key:   rawFilter.RelationKey,
 			Value: list,
 		}, nil
@@ -124,16 +124,16 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return Not{In{
+		return FilterNot{FilterIn{
 			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_Empty:
-		return Empty{
+		return FilterEmpty{
 			Key: rawFilter.RelationKey,
 		}, nil
 	case model.BlockContentDataviewFilter_NotEmpty:
-		return Not{Empty{
+		return FilterNot{FilterEmpty{
 			Key: rawFilter.RelationKey,
 		}}, nil
 	case model.BlockContentDataviewFilter_AllIn:
@@ -141,7 +141,7 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return AllIn{
+		return FilterAllIn{
 			Key:   rawFilter.RelationKey,
 			Value: list,
 		}, nil
@@ -150,7 +150,7 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return Not{AllIn{
+		return FilterNot{FilterAllIn{
 			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
@@ -159,7 +159,7 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return ExactIn{
+		return FilterExactIn{
 			Key:     rawFilter.RelationKey,
 			Value:   list,
 			Options: optionsToMap(rawFilter.RelationKey, store),
@@ -169,12 +169,12 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return Not{ExactIn{
+		return FilterNot{FilterExactIn{
 			Key:   rawFilter.RelationKey,
 			Value: list,
 		}}, nil
 	case model.BlockContentDataviewFilter_Exists:
-		return Exists{
+		return FilterExists{
 			Key: rawFilter.RelationKey,
 		}, nil
 	default:
@@ -195,11 +195,11 @@ type Filter interface {
 	String() string
 }
 
-type AndFilters []Filter
+type FiltersAnd []Filter
 
-var _ WithNestedFilter = AndFilters{}
+var _ WithNestedFilter = FiltersAnd{}
 
-func (a AndFilters) FilterObject(g Getter) bool {
+func (a FiltersAnd) FilterObject(g Getter) bool {
 	for _, f := range a {
 		if !f.FilterObject(g) {
 			return false
@@ -208,7 +208,7 @@ func (a AndFilters) FilterObject(g Getter) bool {
 	return true
 }
 
-func (a AndFilters) String() string {
+func (a FiltersAnd) String() string {
 	var andS []string
 	for _, f := range a {
 		andS = append(andS, f.String())
@@ -216,7 +216,7 @@ func (a AndFilters) String() string {
 	return fmt.Sprintf("(%s)", strings.Join(andS, " AND "))
 }
 
-func (a AndFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
+func (a FiltersAnd) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
 	for _, f := range a {
 		if withNested, ok := f.(WithNestedFilter); ok {
 			err := withNested.IterateNestedFilters(fn)
@@ -228,15 +228,15 @@ func (a AndFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) err
 	return nil
 }
 
-type OrFilters []Filter
+type FiltersOr []Filter
 
-var _ WithNestedFilter = OrFilters{}
+var _ WithNestedFilter = FiltersOr{}
 
-func (a OrFilters) FilterObject(g Getter) bool {
-	if len(a) == 0 {
+func (fo FiltersOr) FilterObject(g Getter) bool {
+	if len(fo) == 0 {
 		return true
 	}
-	for _, f := range a {
+	for _, f := range fo {
 		if f.FilterObject(g) {
 			return true
 		}
@@ -244,16 +244,16 @@ func (a OrFilters) FilterObject(g Getter) bool {
 	return false
 }
 
-func (a OrFilters) String() string {
+func (fo FiltersOr) String() string {
 	var orS []string
-	for _, f := range a {
+	for _, f := range fo {
 		orS = append(orS, f.String())
 	}
 	return fmt.Sprintf("(%s)", strings.Join(orS, " OR "))
 }
 
-func (a OrFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
-	for _, f := range a {
+func (fo FiltersOr) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
+	for _, f := range fo {
 		if withNested, ok := f.(WithNestedFilter); ok {
 			err := withNested.IterateNestedFilters(fn)
 			if err != nil {
@@ -264,32 +264,32 @@ func (a OrFilters) IterateNestedFilters(fn func(nestedFilter Filter) error) erro
 	return nil
 }
 
-type Not struct {
+type FilterNot struct {
 	Filter
 }
 
-func (n Not) FilterObject(g Getter) bool {
+func (n FilterNot) FilterObject(g Getter) bool {
 	if n.Filter == nil {
 		return false
 	}
 	return !n.Filter.FilterObject(g)
 }
 
-func (n Not) String() string {
+func (n FilterNot) String() string {
 	return fmt.Sprintf("NOT(%s)", n.Filter.String())
 }
 
-type Eq struct {
+type FilterEq struct {
 	Key   string
 	Cond  model.BlockContentDataviewFilterCondition
 	Value *types.Value
 }
 
-func (e Eq) FilterObject(g Getter) bool {
+func (e FilterEq) FilterObject(g Getter) bool {
 	return e.filterObject(g.Get(e.Key))
 }
 
-func (e Eq) filterObject(v *types.Value) bool {
+func (e FilterEq) filterObject(v *types.Value) bool {
 	if list := v.GetListValue(); list != nil && e.Value.GetListValue() == nil {
 		for _, lv := range list.Values {
 			if e.filterObject(lv) {
@@ -314,7 +314,7 @@ func (e Eq) filterObject(v *types.Value) bool {
 	return false
 }
 
-func (e Eq) String() string {
+func (e FilterEq) String() string {
 	var eq string
 	switch e.Cond {
 	case model.BlockContentDataviewFilter_Equal:
@@ -331,15 +331,15 @@ func (e Eq) String() string {
 	return fmt.Sprintf("%s %s '%s'", e.Key, eq, pbtypes.Sprint(e.Value))
 }
 
-type In struct {
+type FilterIn struct {
 	Key   string
 	Value *types.ListValue
 }
 
-func (i In) FilterObject(g Getter) bool {
+func (i FilterIn) FilterObject(g Getter) bool {
 	val := g.Get(i.Key)
 	for _, v := range i.Value.Values {
-		eq := Eq{Value: v, Cond: model.BlockContentDataviewFilter_Equal}
+		eq := FilterEq{Value: v, Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return true
 		}
@@ -347,16 +347,16 @@ func (i In) FilterObject(g Getter) bool {
 	return false
 }
 
-func (i In) String() string {
+func (i FilterIn) String() string {
 	return fmt.Sprintf("%v IN(%v)", i.Key, pbtypes.Sprint(i.Value))
 }
 
-type Like struct {
+type FilterLike struct {
 	Key   string
 	Value *types.Value
 }
 
-func (l Like) FilterObject(g Getter) bool {
+func (l FilterLike) FilterObject(g Getter) bool {
 	val := g.Get(l.Key)
 	if val == nil {
 		return false
@@ -368,15 +368,15 @@ func (l Like) FilterObject(g Getter) bool {
 	return strings.Contains(strings.ToLower(valStr), strings.ToLower(l.Value.GetStringValue()))
 }
 
-func (l Like) String() string {
+func (l FilterLike) String() string {
 	return fmt.Sprintf("%v LIKE '%s'", l.Key, pbtypes.Sprint(l.Value))
 }
 
-type Exists struct {
+type FilterExists struct {
 	Key string
 }
 
-func (e Exists) FilterObject(g Getter) bool {
+func (e FilterExists) FilterObject(g Getter) bool {
 	val := g.Get(e.Key)
 	if val == nil {
 		return false
@@ -385,15 +385,15 @@ func (e Exists) FilterObject(g Getter) bool {
 	return true
 }
 
-func (e Exists) String() string {
+func (e FilterExists) String() string {
 	return fmt.Sprintf("%v EXISTS", e.Key)
 }
 
-type Empty struct {
+type FilterEmpty struct {
 	Key string
 }
 
-func (e Empty) FilterObject(g Getter) bool {
+func (e FilterEmpty) FilterObject(g Getter) bool {
 	val := g.Get(e.Key)
 	if val == nil {
 		return true
@@ -418,16 +418,16 @@ func (e Empty) FilterObject(g Getter) bool {
 	return false
 }
 
-func (e Empty) String() string {
+func (e FilterEmpty) String() string {
 	return fmt.Sprintf("%v IS EMPTY", e.Key)
 }
 
-type AllIn struct {
+type FilterAllIn struct {
 	Key   string
 	Value *types.ListValue
 }
 
-func (l AllIn) FilterObject(g Getter) bool {
+func (l FilterAllIn) FilterObject(g Getter) bool {
 	val := g.Get(l.Key)
 	if val == nil {
 		return false
@@ -456,17 +456,17 @@ func (l AllIn) FilterObject(g Getter) bool {
 	return true
 }
 
-func (l AllIn) String() string {
+func (l FilterAllIn) String() string {
 	return fmt.Sprintf("%s ALLIN(%v)", l.Key, l.Value)
 }
 
-type ExactIn struct {
+type FilterExactIn struct {
 	Key     string
 	Value   *types.ListValue
 	Options map[string]string
 }
 
-func (exIn ExactIn) FilterObject(g Getter) bool {
+func (exIn FilterExactIn) FilterObject(g Getter) bool {
 	val := g.Get(exIn.Key)
 	if val == nil {
 		return false
@@ -505,7 +505,7 @@ func (exIn ExactIn) FilterObject(g Getter) bool {
 	return true
 }
 
-func (exIn ExactIn) String() string {
+func (exIn FilterExactIn) String() string {
 	return fmt.Sprintf("%s EXACTINN(%v)", exIn.Key, exIn.Value)
 }
 
@@ -523,19 +523,19 @@ func optionsToMap(key string, store ObjectStore) map[string]string {
 	return result
 }
 
-type NestedIn struct {
+type FilterNestedIn struct {
 	Key    string
 	Filter Filter
 
 	IDs []string
 }
 
-var _ WithNestedFilter = &NestedIn{}
+var _ WithNestedFilter = &FilterNestedIn{}
 
-func (i *NestedIn) FilterObject(g Getter) bool {
+func (i *FilterNestedIn) FilterObject(g Getter) bool {
 	val := g.Get(i.Key)
 	for _, id := range i.IDs {
-		eq := Eq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
+		eq := FilterEq{Value: pbtypes.String(id), Cond: model.BlockContentDataviewFilter_Equal}
 		if eq.filterObject(val) {
 			return true
 		}
@@ -543,10 +543,10 @@ func (i *NestedIn) FilterObject(g Getter) bool {
 	return false
 }
 
-func (i *NestedIn) String() string {
+func (i *FilterNestedIn) String() string {
 	return fmt.Sprintf("%v IN(%v)", i.Key, i.IDs)
 }
 
-func (i *NestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
+func (i *FilterNestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
 	return fn(i)
 }

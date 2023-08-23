@@ -20,21 +20,21 @@ type GroupTag struct {
 }
 
 func (t *GroupTag) InitGroups(f *database.Filters) error {
-	filterTag := database.Not{Filter: database.Empty{Key: t.Key}}
+	filterTag := database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}}
 	if f == nil {
 		f = &database.Filters{FilterObj: filterTag}
 	} else {
-		f.FilterObj = database.AndFilters{f.FilterObj, filterTag}
+		f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}
 	}
 
 	// todo: use type
-	f.FilterObj = database.OrFilters{f.FilterObj, database.AndFilters{
-		database.Eq{
+	f.FilterObj = database.FiltersOr{f.FilterObj, database.FiltersAnd{
+		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(t.Key),
 		},
-		database.Eq{
+		database.FilterEq{
 			Key:   bundle.RelationKeyLayout.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),

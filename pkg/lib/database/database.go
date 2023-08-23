@@ -87,9 +87,9 @@ func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
 func compose(
 	filters []*model.BlockContentDataviewFilter,
 	store ObjectStore,
-) (AndFilters, error) {
-	var filterObj AndFilters
-	qryFilter, err := MakeAndFilter(filters, store)
+) (FiltersAnd, error) {
+	var filterObj FiltersAnd
+	qryFilter, err := MakeFiltersAnd(filters, store)
 	if err != nil {
 		return nil, err
 	}

@@ -174,7 +174,7 @@ func (mw *Middleware) enrichWithDateSuggestion(records []database.Record, req *p
 		}
 	}
 	rec = mw.makeSuggestedDateRecord(spaceID, dt)
-	f, _ := database.MakeAndFilter(req.Filters, store) //nolint:errcheck
+	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
 	}

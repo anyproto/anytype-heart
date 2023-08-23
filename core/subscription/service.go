@@ -145,7 +145,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
-		f.FilterObj = database.AndFilters{f.FilterObj, sourceFilter}
+		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
 	}
 
 	s.m.Lock()
@@ -181,7 +181,7 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 		var nestedCount int
 		err := withNested.IterateNestedFilters(func(nestedFilter database.Filter) error {
 			nestedCount++
-			f, ok := nestedFilter.(*database.NestedIn)
+			f, ok := nestedFilter.(*database.FilterNestedIn)
 			if ok {
 				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []string{"id"}, f.Filter, nil, 0, 0)
 				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.Filter}, childSub)
@@ -348,7 +348,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
-		flt.FilterObj = database.AndFilters{flt.FilterObj, sourceFilter}
+		flt.FilterObj = database.FiltersAnd{flt.FilterObj, sourceFilter}
 	}
 
 	var colObserver *collectionObserver
@@ -363,7 +363,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		if flt.FilterObj == nil {
 			flt.FilterObj = colObserver
 		} else {
-			flt.FilterObj = database.AndFilters{colObserver, flt.FilterObj}
+			flt.FilterObj = database.FiltersAnd{colObserver, flt.FilterObj}
 		}
 	}
 
@@ -521,9 +521,9 @@ func (s *service) filtersFromSource(spaceID string, sources []string) (database.
 	if err != nil {
 		return nil, err
 	}
-	var relTypeFilter database.OrFilters
+	var relTypeFilter database.FiltersOr
 	if len(idsByType[smartblock.SmartBlockTypeObjectType]) > 0 {
-		relTypeFilter = append(relTypeFilter, database.In{
+		relTypeFilter = append(relTypeFilter, database.FilterIn{
 			Key:   bundle.RelationKeyType.String(),
 			Value: pbtypes.StringList(idsByType[smartblock.SmartBlockTypeObjectType]).GetListValue(),
 		})
@@ -534,7 +534,7 @@ func (s *service) filtersFromSource(spaceID string, sources []string) (database.
 		if err != nil {
 			return nil, fmt.Errorf("get relation %s details: %w", relationDetails, err)
 		}
-		relTypeFilter = append(relTypeFilter, database.Exists{
+		relTypeFilter = append(relTypeFilter, database.FilterExists{
 			Key: pbtypes.GetString(relationDetails.Details, bundle.RelationKeyRelationKey.String()),
 		})
 	}

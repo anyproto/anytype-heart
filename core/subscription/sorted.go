@@ -62,7 +62,7 @@ type sortedSub struct {
 	objectStore objectstore.ObjectStore
 	// parent is used to run onChange callback when any child subscriptions receive changes
 	parent       *sortedSub
-	parentFilter *database.NestedIn
+	parentFilter *database.FilterNestedIn
 	// nested is used to close child subscriptions when parent is closed
 	nested []*sortedSub
 }

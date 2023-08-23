@@ -63,15 +63,15 @@ func TestGroupTag(t *testing.T) {
 
 	f, err := database.NewFilters(q, database.NewMockObjectStore(t))
 	require.NoError(t, err)
-	filterTag := database.Not{Filter: database.Empty{Key: kanbanKey}}
-	f.FilterObj = database.AndFilters{f.FilterObj, filterTag}
-	f.FilterObj = database.OrFilters{f.FilterObj, database.AndFilters{
-		database.Eq{
+	filterTag := database.FilterNot{Filter: database.FilterEmpty{Key: kanbanKey}}
+	f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}
+	f.FilterObj = database.FiltersOr{f.FilterObj, database.FiltersAnd{
+		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(kanbanKey),
 		},
-		database.Eq{
+		database.FilterEq{
 			Key:   bundle.RelationKeyType.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),

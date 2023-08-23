@@ -22,90 +22,90 @@ func (m testGetter) Get(key string) *types.Value {
 func TestEq_FilterObject(t *testing.T) {
 	t.Run("eq", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
+			eq := FilterEq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
 			g := testGetter{"k": pbtypes.String("equal test")}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("list ok", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
+			eq := FilterEq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
 			g := testGetter{"k": pbtypes.StringList([]string{"11", "equal test", "other"})}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("not ok", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
+			eq := FilterEq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
 			g := testGetter{"k": pbtypes.String("not equal test")}
 			assert.False(t, eq.FilterObject(g))
 		})
 		t.Run("not ok list", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
+			eq := FilterEq{Key: "k", Value: pbtypes.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
 			g := testGetter{"k": pbtypes.StringList([]string{"11", "not equal test", "other"})}
 			assert.False(t, eq.FilterObject(g))
 		})
 	})
 	t.Run("gt", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_Greater}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_Greater}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("not ok eq", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Greater}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Greater}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.False(t, eq.FilterObject(g))
 		})
 		t.Run("not ok less", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Greater}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Greater}
 			g := testGetter{"k": pbtypes.Float64(1)}
 			assert.False(t, eq.FilterObject(g))
 		})
 	})
 	t.Run("gte", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_GreaterOrEqual}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_GreaterOrEqual}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("ok eq", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_GreaterOrEqual}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_GreaterOrEqual}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("not ok less", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_GreaterOrEqual}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_GreaterOrEqual}
 			g := testGetter{"k": pbtypes.Float64(1)}
 			assert.False(t, eq.FilterObject(g))
 		})
 	})
 	t.Run("lt", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Less}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Less}
 			g := testGetter{"k": pbtypes.Float64(1)}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("not ok eq", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Less}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_Less}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.False(t, eq.FilterObject(g))
 		})
 		t.Run("not ok less", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_Less}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_Less}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.False(t, eq.FilterObject(g))
 		})
 	})
 	t.Run("lte", func(t *testing.T) {
 		t.Run("ok", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_LessOrEqual}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_LessOrEqual}
 			g := testGetter{"k": pbtypes.Float64(1)}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("ok eq", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_LessOrEqual}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(2), Cond: model.BlockContentDataviewFilter_LessOrEqual}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.True(t, eq.FilterObject(g))
 		})
 		t.Run("not ok less", func(t *testing.T) {
-			eq := Eq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_LessOrEqual}
+			eq := FilterEq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_LessOrEqual}
 			g := testGetter{"k": pbtypes.Float64(2)}
 			assert.False(t, eq.FilterObject(g))
 		})
@@ -113,14 +113,14 @@ func TestEq_FilterObject(t *testing.T) {
 }
 
 func TestNot_FilterObject(t *testing.T) {
-	eq := Eq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_Equal}
+	eq := FilterEq{Key: "k", Value: pbtypes.Float64(1), Cond: model.BlockContentDataviewFilter_Equal}
 	g := testGetter{"k": pbtypes.Float64(1)}
 	assert.True(t, eq.FilterObject(g))
-	assert.False(t, Not{eq}.FilterObject(g))
+	assert.False(t, FilterNot{eq}.FilterObject(g))
 }
 
 func TestIn_FilterObject(t *testing.T) {
-	in := In{Key: "k", Value: pbtypes.StringList([]string{"1", "2", "3"}).GetListValue()}
+	in := FilterIn{Key: "k", Value: pbtypes.StringList([]string{"1", "2", "3"}).GetListValue()}
 	t.Run("ok list -> str", func(t *testing.T) {
 		for _, v := range []string{"1", "2", "3"} {
 			g := testGetter{"k": pbtypes.String(v)}
@@ -142,7 +142,7 @@ func TestIn_FilterObject(t *testing.T) {
 }
 
 func TestLike_FilterObject(t *testing.T) {
-	like := Like{Key: "k", Value: pbtypes.String("sub")}
+	like := FilterLike{Key: "k", Value: pbtypes.String("sub")}
 	t.Run("ok", func(t *testing.T) {
 		g := testGetter{"k": pbtypes.String("with suBstr")}
 		assert.True(t, like.FilterObject(g))
@@ -154,7 +154,7 @@ func TestLike_FilterObject(t *testing.T) {
 }
 
 func TestEmpty_FilterObject(t *testing.T) {
-	empty := Empty{Key: "k"}
+	empty := FilterEmpty{Key: "k"}
 	var emptyVals = []*types.Value{
 		pbtypes.String(""),
 		pbtypes.Bool(false),
@@ -183,9 +183,9 @@ func TestEmpty_FilterObject(t *testing.T) {
 }
 
 func TestAndFilters_FilterObject(t *testing.T) {
-	and := AndFilters{
-		Eq{Key: "k1", Value: pbtypes.String("v1"), Cond: model.BlockContentDataviewFilter_Equal},
-		Eq{Key: "k2", Value: pbtypes.String("v2"), Cond: model.BlockContentDataviewFilter_Equal},
+	and := FiltersAnd{
+		FilterEq{Key: "k1", Value: pbtypes.String("v1"), Cond: model.BlockContentDataviewFilter_Equal},
+		FilterEq{Key: "k2", Value: pbtypes.String("v2"), Cond: model.BlockContentDataviewFilter_Equal},
 	}
 	t.Run("ok", func(t *testing.T) {
 		g := testGetter{"k1": pbtypes.String("v1"), "k2": pbtypes.String("v2")}
@@ -202,9 +202,9 @@ func TestAndFilters_FilterObject(t *testing.T) {
 }
 
 func TestOrFilters_FilterObject(t *testing.T) {
-	or := OrFilters{
-		Eq{Key: "k1", Value: pbtypes.String("v1"), Cond: model.BlockContentDataviewFilter_Equal},
-		Eq{Key: "k2", Value: pbtypes.String("v2"), Cond: model.BlockContentDataviewFilter_Equal},
+	or := FiltersOr{
+		FilterEq{Key: "k1", Value: pbtypes.String("v1"), Cond: model.BlockContentDataviewFilter_Equal},
+		FilterEq{Key: "k2", Value: pbtypes.String("v2"), Cond: model.BlockContentDataviewFilter_Equal},
 	}
 	t.Run("ok all", func(t *testing.T) {
 		g := testGetter{"k1": pbtypes.String("v1"), "k2": pbtypes.String("v2")}
@@ -221,7 +221,7 @@ func TestOrFilters_FilterObject(t *testing.T) {
 }
 
 func TestAllIn_FilterObject(t *testing.T) {
-	allIn := AllIn{Key: "k", Value: pbtypes.StringList([]string{"1", "2", "3"}).GetListValue()}
+	allIn := FilterAllIn{Key: "k", Value: pbtypes.StringList([]string{"1", "2", "3"}).GetListValue()}
 	t.Run("ok", func(t *testing.T) {
 		g := testGetter{"k": pbtypes.StringList([]string{"2", "1", "3", "4"})}
 		assert.True(t, allIn.FilterObject(g))
@@ -232,7 +232,7 @@ func TestAllIn_FilterObject(t *testing.T) {
 	})
 
 	t.Run("ok string in Object", func(t *testing.T) {
-		allIn := AllIn{Key: "k", Value: pbtypes.StringList([]string{"1"}).GetListValue()}
+		allIn := FilterAllIn{Key: "k", Value: pbtypes.StringList([]string{"1"}).GetListValue()}
 		g := testGetter{"k": pbtypes.String("1")}
 		assert.True(t, allIn.FilterObject(g))
 	})
@@ -241,7 +241,7 @@ func TestAllIn_FilterObject(t *testing.T) {
 		v, err := pbtypes.ValueListWrapper(pbtypes.String("1"))
 		assert.NoError(t, err)
 
-		allIn := AllIn{Key: "k", Value: v}
+		allIn := FilterAllIn{Key: "k", Value: v}
 
 		g := testGetter{"k": pbtypes.StringList([]string{"1", "2", "3"})}
 		assert.True(t, allIn.FilterObject(g))
@@ -321,7 +321,7 @@ func TestMakeAndFilter(t *testing.T) {
 				Value:       pbtypes.StringList([]string{"14"}),
 			},
 		}
-		andFilter, err := MakeAndFilter(filters, store)
+		andFilter, err := MakeFiltersAnd(filters, store)
 		require.NoError(t, err)
 		assert.Len(t, andFilter, 14)
 	})
@@ -332,7 +332,7 @@ func TestMakeAndFilter(t *testing.T) {
 			model.BlockContentDataviewFilter_AllIn,
 			model.BlockContentDataviewFilter_NotAllIn,
 		} {
-			_, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
+			_, err := MakeFiltersAnd([]*model.BlockContentDataviewFilter{
 				{Condition: cond, Value: pbtypes.Null()},
 			}, store)
 			assert.Equal(t, ErrValueMustBeListSupporting, err)
@@ -340,13 +340,13 @@ func TestMakeAndFilter(t *testing.T) {
 
 	})
 	t.Run("unexpected condition", func(t *testing.T) {
-		_, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
+		_, err := MakeFiltersAnd([]*model.BlockContentDataviewFilter{
 			{Condition: 10000},
 		}, store)
 		assert.Error(t, err)
 	})
 	t.Run("replace 'value == false' to 'value != true'", func(t *testing.T) {
-		f, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
+		f, err := MakeFiltersAnd([]*model.BlockContentDataviewFilter{
 			{
 				RelationKey: "b",
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -365,7 +365,7 @@ func TestMakeAndFilter(t *testing.T) {
 		assert.False(t, f.FilterObject(g))
 	})
 	t.Run("replace 'value != false' to 'value == true'", func(t *testing.T) {
-		f, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
+		f, err := MakeFiltersAnd([]*model.BlockContentDataviewFilter{
 			{
 				RelationKey: "b",
 				Condition:   model.BlockContentDataviewFilter_NotEqual,

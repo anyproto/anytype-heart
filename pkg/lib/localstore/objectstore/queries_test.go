@@ -678,17 +678,17 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 func TestGetSpaceIDFromFilters(t *testing.T) {
 	t.Run("spaceID provided", func(t *testing.T) {
 		spaceID := "myspace"
-		f := database.AndFilters{
-			database.Eq{
+		f := database.FiltersAnd{
+			database.FilterEq{
 				Key:   bundle.RelationKeyCreator.String(),
 				Value: pbtypes.String("anytype"),
 			},
-			database.Eq{
+			database.FilterEq{
 				Key:   bundle.RelationKeySpaceId.String(),
 				Value: pbtypes.String(spaceID),
 			},
-			database.Not{
-				Filter: database.Eq{
+			database.FilterNot{
+				Filter: database.FilterEq{
 					Key:   bundle.RelationKeyName.String(),
 					Value: pbtypes.String("hidden obj"),
 				},
@@ -698,29 +698,29 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 	})
 
 	t.Run("no spaceID provided", func(t *testing.T) {
-		f := database.AndFilters{
-			database.Eq{
+		f := database.FiltersAnd{
+			database.FilterEq{
 				Key:   bundle.RelationKeyId.String(),
 				Value: pbtypes.String("some id"),
 			},
-			database.Empty{
+			database.FilterEmpty{
 				Key: bundle.RelationKeyType.String(),
 			},
 		}
 		assert.Equal(t, "", getSpaceIDFromFilter(f))
 	})
 
-	t.Run("filters is filter.Eq with spaceID", func(t *testing.T) {
+	t.Run("filters is filter.FilterEq with spaceID", func(t *testing.T) {
 		spaceID := "open space"
-		f := database.Eq{
+		f := database.FilterEq{
 			Key:   bundle.RelationKeySpaceId.String(),
 			Value: pbtypes.String(spaceID),
 		}
 		assert.Equal(t, spaceID, getSpaceIDFromFilter(f))
 	})
 
-	t.Run("filters is filter.Eq without spaceID", func(t *testing.T) {
-		f := database.Eq{
+	t.Run("filters is filter.FilterEq without spaceID", func(t *testing.T) {
+		f := database.FilterEq{
 			Key:   bundle.RelationKeySetOf.String(),
 			Value: pbtypes.String("ot-note"),
 		}
@@ -729,14 +729,14 @@ func TestGetSpaceIDFromFilters(t *testing.T) {
 
 	t.Run("spaceID is nested in and filters", func(t *testing.T) {
 		spaceID := "secret_space"
-		f := database.AndFilters{
-			database.AndFilters{
-				database.Empty{Key: "somekey"},
-				database.Eq{Key: "key", Value: pbtypes.String("value")},
-				database.AndFilters{
-					database.Eq{Key: "amount", Value: pbtypes.Float64(15)},
-					database.Eq{Key: "type", Value: pbtypes.String("ot-note")},
-					database.Eq{
+		f := database.FiltersAnd{
+			database.FiltersAnd{
+				database.FilterEmpty{Key: "somekey"},
+				database.FilterEq{Key: "key", Value: pbtypes.String("value")},
+				database.FiltersAnd{
+					database.FilterEq{Key: "amount", Value: pbtypes.Float64(15)},
+					database.FilterEq{Key: "type", Value: pbtypes.String("ot-note")},
+					database.FilterEq{
 						Key:   bundle.RelationKeySpaceId.String(),
 						Value: pbtypes.String(spaceID),
 					},

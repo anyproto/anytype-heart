@@ -130,7 +130,7 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, groups, 6)
 
-	f := &database.Filters{FilterObj: database.Eq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
+	f := &database.Filters{FilterObj: database.FilterEq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
 	err = grouper.InitGroups(f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
