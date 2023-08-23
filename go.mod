@@ -79,7 +79,7 @@ require (
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/vektra/mockery/v2 v2.32.4
-	github.com/yuin/goldmark v1.5.5
+	github.com/yuin/goldmark v1.5.6
 	go.uber.org/mock v0.2.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.25.0
@@ -156,6 +156,7 @@ require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect

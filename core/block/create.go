@@ -144,7 +144,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return nil
 	})
 
-	err = s.indexer.ReindexSpace(spc.Id())
+	err = s.indexer.EnsurePreinstalledObjects(spc.Id())
 	if err != nil {
 		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
 	}

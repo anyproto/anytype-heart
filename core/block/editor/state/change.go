@@ -787,11 +787,12 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []bundle.TypeKey {
 	return objectTypeKeys
 }
 
+// Adds missing unique key for supported smartblock types
 func migrateAddMissingUniqueKey(sbType model.SmartBlockType, snapshot *pb.ChangeSnapshot) {
 	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
 	uk, err := uniquekey.UnmarshalFromString(id)
 	if err != nil {
-		// means that sbtype is not supported
+		// Means that smartblock type is not supported
 		return
 	}
 	if uk.SmartblockType() != sbType {

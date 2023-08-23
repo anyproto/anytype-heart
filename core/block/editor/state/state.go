@@ -97,11 +97,13 @@ func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key uniq
 }
 
 type State struct {
-	ctx               session.Context
-	parent            *State
-	blocks            map[string]simple.Block
-	rootId            string
-	uniqueKeyInternal string // Used together with smartblockType for the ID derivation which will be unique and reproducable within the same space
+	ctx    session.Context
+	parent *State
+	blocks map[string]simple.Block
+	rootId string
+	// uniqueKeyInternal is used together with smartblock type for the ID derivation
+	// which will be unique and reproducible within the same space
+	uniqueKeyInternal string
 	newIds            []string
 	changeId          string
 	changes           []*pb.ChangeContent
@@ -1761,6 +1763,8 @@ func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
 	s.AddRelationLinks(links...)
 }
 
+// UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation
+// which will be unique and reproducible within the same space
 func (s *State) UniqueKeyInternal() string {
 	return s.uniqueKeyInternal
 }

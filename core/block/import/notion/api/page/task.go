@@ -132,31 +132,35 @@ func (pt *Task) handlePageProperties(object *DataObject, details map[string]*typ
 	relationsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
 	relationsLinks := make([]*model.RelationLink, 0)
 	hasTag := isPageContainsTagProperty(pt.p.Properties)
-	for k, v := range pt.p.Properties {
-		relation, relationLink, err := pt.retrieveRelation(object, k, v, details, hasTag)
+	var tagExist bool
+	for name, prop := range pt.p.Properties {
+		relation, relationLink, err := pt.retrieveRelation(object, name, prop, details, hasTag, tagExist)
 		if err != nil {
 			logger.With("method", "handlePageProperties").Error(err)
 			continue
 		}
 		relationsSnapshots = append(relationsSnapshots, relation...)
 		relationsLinks = append(relationsLinks, relationLink)
+		if shouldApplyTagPropertyToTagRelation(name, prop, hasTag, tagExist) {
+			tagExist = true
+		}
 	}
 	return relationsSnapshots, relationsLinks
 }
 
-func (pt *Task) retrieveRelation(object *DataObject, key string, propObject property.Object, details map[string]*types.Value, hasTag bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+func (pt *Task) retrieveRelation(object *DataObject, key string, propObject property.Object, details map[string]*types.Value, hasTag bool, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	if err := pt.handlePagination(object.ctx, object.apiKey, propObject); err != nil {
 		return nil, nil, err
 	}
 	pt.handleLinkRelationsIDWithAnytypeID(propObject, object.request)
-	return pt.makeRelationFromProperty(object.relations, propObject, details, key, hasTag)
+	return pt.makeRelationFromProperty(object.relations, propObject, details, key, hasTag, tagExist)
 }
 
 func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	propObject property.Object,
 	details map[string]*types.Value,
 	name string,
-	hasTag bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+	hasTag, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	pt.relationCreateMutex.Lock()
 	defer pt.relationCreateMutex.Unlock()
 	var (
@@ -165,7 +169,7 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 		subObjectsSnapshots []*model.SmartBlockSnapshotBase
 	)
 	if snapshot = relation.ReadRelationsMap(propObject.GetID()); snapshot == nil {
-		snapshot, key = pt.getRelationSnapshot(name, propObject, hasTag)
+		snapshot, key = pt.getRelationSnapshot(name, propObject, hasTag, tagExist)
 		if snapshot != nil {
 			relation.WriteToRelationsMap(propObject.GetID(), snapshot)
 			subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
@@ -185,15 +189,12 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	return subObjectsSnapshots, relationLink, nil
 }
 
-func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag bool) (*model.SmartBlockSnapshotBase, string) {
+func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag bool, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
 	key := bson.NewObjectId().Hex()
 	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
 		return nil, bundle.RelationKeyName.String()
 	}
-	if propObject.GetPropertyType() == property.PropertyConfigTypeMultiSelect && property.IsPropertyMatchTagRelation(name, hasTag) {
-		key = bundle.RelationKeyTag.String()
-	}
-	if propObject.GetPropertyType() == property.PropertyConfigTypeSelect && property.IsPropertyMatchTagRelation(name, hasTag) {
+	if shouldApplyTagPropertyToTagRelation(name, propObject, hasTag, tagExist) {
 		key = bundle.RelationKeyTag.String()
 	}
 	details := pt.getRelationDetails(key, name, propObject)
@@ -476,4 +477,9 @@ func isPageContainsTagProperty(properties property.Properties) bool {
 		}
 	}
 	return false
+}
+
+func shouldApplyTagPropertyToTagRelation(name string, prop property.Object, hasTag, tagExist bool) bool {
+	return (prop.GetPropertyType() == property.PropertyConfigTypeMultiSelect || prop.GetPropertyType() == property.PropertyConfigTypeSelect) &&
+		property.IsPropertyMatchTagRelation(name, hasTag) && !tagExist
 }

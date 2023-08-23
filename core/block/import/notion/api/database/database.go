@@ -141,14 +141,16 @@ func (ds *Service) makeRelationsSnapshots(d Database, st *state.State, relations
 		}
 	}
 	hasTag := isDbContainsTagProperty(d.Properties)
+	var tagAlreadyExist bool
 	for name, databaseProperty := range d.Properties {
 		if _, ok := databaseProperty.(*property.DatabaseTitle); ok {
 			continue
 		}
 		relationKey := bson.NewObjectId().Hex()
-		if tagName, tagRelationKey := ds.getNameAndRelationKeyForTagProperty(databaseProperty, hasTag); tagName != "" && tagRelationKey != "" {
+		if tagName, tagRelationKey := ds.getNameAndRelationKeyForTagProperty(databaseProperty, hasTag); tagName != "" && tagRelationKey != "" && !tagAlreadyExist {
 			name = tagName
 			relationKey = tagRelationKey
+			tagAlreadyExist = true
 		}
 		if snapshot := ds.makeRelationSnapshotFromDatabaseProperty(relations, databaseProperty, name, relationKey, st); snapshot != nil {
 			snapshots = append(snapshots, snapshot)

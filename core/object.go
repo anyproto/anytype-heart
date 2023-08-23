@@ -802,12 +802,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	if mw.applicationService.GetApp() == nil {
-		return response(pb.RpcObjectImportResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("user didn't log in"))
-	}
-
-	importer := mw.applicationService.GetApp().MustComponent(importer.CName).(importer.Importer)
-	err := importer.Import(cctx, req)
+	err := getService[importer.Importer](mw).Import(cctx, req)
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, nil)

@@ -219,6 +219,7 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 			// featured relations have incorrect IDs
 			continue
 		}
+		// For example, RelationKeySetOf is handled here
 		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
 	}
 }

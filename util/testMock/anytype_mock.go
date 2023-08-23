@@ -9,10 +9,12 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	gomock "go.uber.org/mock/gomock"
+
 	uniquekey "github.com/anyproto/anytype-heart/core/block/uniquekey"
+	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.
@@ -124,6 +126,34 @@ func (m *MockService) GetAllWorkspaces() ([]string, error) {
 func (mr *MockServiceMockRecorder) GetAllWorkspaces() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllWorkspaces", reflect.TypeOf((*MockService)(nil).GetAllWorkspaces))
+}
+
+// GetSystemRelationID mocks base method.
+func (m *MockService) GetSystemRelationID(arg0 string, arg1 bundle.RelationKey) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSystemRelationID", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSystemRelationID indicates an expected call of GetSystemRelationID.
+func (mr *MockServiceMockRecorder) GetSystemRelationID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemRelationID", reflect.TypeOf((*MockService)(nil).GetSystemRelationID), arg0, arg1)
+}
+
+// GetSystemTypeID mocks base method.
+func (m *MockService) GetSystemTypeID(arg0 string, arg1 bundle.TypeKey) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSystemTypeID", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSystemTypeID indicates an expected call of GetSystemTypeID.
+func (mr *MockServiceMockRecorder) GetSystemTypeID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemTypeID", reflect.TypeOf((*MockService)(nil).GetSystemTypeID), arg0, arg1)
 }
 
 // GetWorkspaceIdForObject mocks base method.

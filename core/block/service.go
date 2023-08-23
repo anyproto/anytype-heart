@@ -121,7 +121,7 @@ type TemplateIDGetter interface {
 }
 
 type indexer interface {
-	ReindexSpace(spaceID string) error
+	EnsurePreinstalledObjects(spaceID string) error
 }
 
 type builtinObjects interface {
