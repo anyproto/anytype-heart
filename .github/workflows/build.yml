@@ -43,7 +43,9 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+      - name: Run alpha check action
+        uses: ./.github/actions/check_alpha
       - uses: actions/cache@v3
         with:
           path: |
@@ -238,7 +240,9 @@ jobs:
           tar xzf x86_64-linux-musl-native.tgz -C $HOME
           npm i -g node-gyp
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+      - name: Run alpha check action
+        uses: ./.github/actions/check_alpha
       - uses: actions/cache@v3
         with:
           path: |

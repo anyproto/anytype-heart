@@ -2,6 +2,7 @@ package kanban
 
 import (
 	"context"
+	"github.com/anyproto/any-sync/net/peerservice"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -25,6 +26,18 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+type quicSetter struct{}
+
+func (q quicSetter) Init(a *app.App) (err error) {
+	return
+}
+
+func (q quicSetter) Name() (name string) {
+	return peerservice.CName
+}
+
+func (q quicSetter) PreferQuic(_ bool) {}
+
 func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
@@ -43,7 +56,8 @@ func Test_GrouperTags(t *testing.T) {
 
 	ds := objectstore.New()
 	kanbanSrv := New()
-	err := a.Register(&config.DefaultConfig).
+	err := a.Register(quicSetter{}).
+		Register(&config.DefaultConfig).
 		Register(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
 		Register(clientds.New()).
 		Register(ftsearch.New()).

@@ -119,7 +119,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		}
 		return vers
 	}
-	convert := func(decrypted []byte) (any, error) {
+	convert := func(_ *objecttree.Change, decrypted []byte) (any, error) {
 		ch := &pb.Change{}
 		err = proto.Unmarshal(decrypted, ch)
 		if err != nil {
