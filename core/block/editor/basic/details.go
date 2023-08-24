@@ -3,6 +3,7 @@ package basic
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gogo/protobuf/types"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -17,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 var log = logging.Logger("anytype-mw-editor-basic")
@@ -84,7 +87,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 		if err := bs.addRelationLink(detail.Key, st); err != nil {
 			return nil, err
 		}
-		if err := bs.relationService.ValidateFormat(st.SpaceID(), detail.Key, detail.Value); err != nil {
+		if err := bs.validateDetailFormat(st.SpaceID(), detail.Key, detail.Value); err != nil {
 			return nil, fmt.Errorf("failed to validate relation: %w", err)
 		}
 	}
@@ -92,6 +95,138 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 		key:   detail.Key,
 		value: detail.Value,
 	}, nil
+}
+
+func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value) error {
+	r, err := bs.relationService.FetchRelationByKey(spaceID, key)
+	if err != nil {
+		return err
+	}
+	if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
+		// allow null value for any field
+		return nil
+	}
+
+	switch r.Format {
+	case model.RelationFormat_longtext, model.RelationFormat_shorttext:
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
+		}
+		return nil
+	case model.RelationFormat_number:
+		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
+		}
+		return nil
+	case model.RelationFormat_status:
+		if _, ok := v.Kind.(*types.Value_StringValue); ok {
+
+		} else if _, ok := v.Kind.(*types.Value_ListValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
+		}
+
+		vals := pbtypes.GetStringListValue(v)
+		if len(vals) > 1 {
+			return fmt.Errorf("status should not contain more than one value")
+		}
+		return bs.validateOptions(r, vals)
+
+	case model.RelationFormat_tag:
+		if _, ok := v.Kind.(*types.Value_ListValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
+		}
+
+		vals := pbtypes.GetStringListValue(v)
+		if r.MaxCount > 0 && len(vals) > int(r.MaxCount) {
+			return fmt.Errorf("maxCount exceeded")
+		}
+
+		return bs.validateOptions(r, vals)
+	case model.RelationFormat_date:
+		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
+		}
+
+		return nil
+	case model.RelationFormat_file, model.RelationFormat_object:
+		switch s := v.Kind.(type) {
+		case *types.Value_StringValue:
+			return nil
+		case *types.Value_ListValue:
+			if r.MaxCount > 0 && len(s.ListValue.Values) > int(r.MaxCount) {
+				return fmt.Errorf("relation %s(%s) has maxCount exceeded", r.Key, r.Format.String())
+			}
+
+			for i, lv := range s.ListValue.Values {
+				if optId, ok := lv.Kind.(*types.Value_StringValue); !ok {
+					return fmt.Errorf("incorrect list item value at index %d: %T instead of string", i, lv.Kind)
+				} else if optId.StringValue == "" {
+					return fmt.Errorf("empty option at index %d", i)
+				}
+			}
+			return nil
+		default:
+			return fmt.Errorf("incorrect type: %T instead of list/string", v.Kind)
+		}
+	case model.RelationFormat_checkbox:
+		if _, ok := v.Kind.(*types.Value_BoolValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of bool", v.Kind)
+		}
+
+		return nil
+	case model.RelationFormat_url:
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
+		}
+
+		s := strings.TrimSpace(v.GetStringValue())
+		if s != "" {
+			err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
+			if err != nil {
+				return fmt.Errorf("failed to parse URL: %s", err.Error())
+			}
+		}
+		// todo: should we allow schemas other than http/https?
+		// if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
+		//	return fmt.Errorf("url scheme %s not supported", u.Scheme)
+		// }
+		return nil
+	case model.RelationFormat_email:
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
+		}
+		// todo: revise regexp and reimplement
+		/*valid := uri.ValidateEmail(v.GetStringValue())
+		if !valid {
+			return fmt.Errorf("failed to validate email")
+		}*/
+		return nil
+	case model.RelationFormat_phone:
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
+		}
+
+		// todo: revise regexp and reimplement
+		/*valid := uri.ValidatePhone(v.GetStringValue())
+		if !valid {
+			return fmt.Errorf("failed to validate phone")
+		}*/
+		return nil
+	case model.RelationFormat_emoji:
+		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
+		}
+
+		// check if the symbol is emoji
+		return nil
+	default:
+		return fmt.Errorf("unsupported rel format: %s", r.Format.String())
+	}
+}
+
+func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error {
+	// TODO:
+	return nil
 }
 
 func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetDetailsDetail) error {
