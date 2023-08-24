@@ -1,11 +1,13 @@
 package restriction
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestService_DataviewRestrictions(t *testing.T) {
@@ -37,7 +39,7 @@ func TestService_DataviewRestrictions(t *testing.T) {
 
 	t.Run("ordinary objects don't have restrictions", func(t *testing.T) {
 		objectTypeID := "derivedFrom(page)"
-		s.objectStoreMock.EXPECT().HasObjectType(objectTypeID).Return(true, nil)
+		s.relationServiceMock.EXPECT().HasObjectType(objectTypeID).Return(true, nil)
 		restrictions := s.GetRestrictions(
 			newRestrictionHolder(
 				smartblock.SmartBlockTypePage,

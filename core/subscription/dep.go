@@ -1,6 +1,8 @@
 package subscription
 
 import (
+	"strings"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -104,6 +106,10 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 }
 
 func (ds *dependencyService) isRelationObject(key string) bool {
+	if strings.ContainsRune(key, '.') {
+		// skip nested keys like "assignee.type"
+		return false
+	}
 	if isObj, ok := ds.isRelationObjMap[key]; ok {
 		return isObj
 	}

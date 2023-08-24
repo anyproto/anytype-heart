@@ -6,11 +6,12 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-	types "github.com/gogo/protobuf/types"
 	mock "github.com/stretchr/testify/mock"
 
+	uniquekey "github.com/anyproto/anytype-heart/core/block/uniquekey"
 	relationutils "github.com/anyproto/anytype-heart/core/relation/relationutils"
 	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -206,6 +207,277 @@ func (_c *MockService_FetchRelationByLinks_Call) RunAndReturn(run func(string, p
 	return _c
 }
 
+// GetObjectByUniqueKey provides a mock function with given fields: spaceId, uniqueKey
+func (_m *MockService) GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error) {
+	ret := _m.Called(spaceId, uniqueKey)
+
+	var r0 *model.ObjectDetails
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, uniquekey.UniqueKey) (*model.ObjectDetails, error)); ok {
+		return rf(spaceId, uniqueKey)
+	}
+	if rf, ok := ret.Get(0).(func(string, uniquekey.UniqueKey) *model.ObjectDetails); ok {
+		r0 = rf(spaceId, uniqueKey)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ObjectDetails)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, uniquekey.UniqueKey) error); ok {
+		r1 = rf(spaceId, uniqueKey)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetObjectByUniqueKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectByUniqueKey'
+type MockService_GetObjectByUniqueKey_Call struct {
+	*mock.Call
+}
+
+// GetObjectByUniqueKey is a helper method to define mock.On call
+//   - spaceId string
+//   - uniqueKey uniquekey.UniqueKey
+func (_e *MockService_Expecter) GetObjectByUniqueKey(spaceId interface{}, uniqueKey interface{}) *MockService_GetObjectByUniqueKey_Call {
+	return &MockService_GetObjectByUniqueKey_Call{Call: _e.mock.On("GetObjectByUniqueKey", spaceId, uniqueKey)}
+}
+
+func (_c *MockService_GetObjectByUniqueKey_Call) Run(run func(spaceId string, uniqueKey uniquekey.UniqueKey)) *MockService_GetObjectByUniqueKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(uniquekey.UniqueKey))
+	})
+	return _c
+}
+
+func (_c *MockService_GetObjectByUniqueKey_Call) Return(_a0 *model.ObjectDetails, _a1 error) *MockService_GetObjectByUniqueKey_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetObjectByUniqueKey_Call) RunAndReturn(run func(string, uniquekey.UniqueKey) (*model.ObjectDetails, error)) *MockService_GetObjectByUniqueKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetObjectType provides a mock function with given fields: url
+func (_m *MockService) GetObjectType(url string) (*model.ObjectType, error) {
+	ret := _m.Called(url)
+
+	var r0 *model.ObjectType
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*model.ObjectType, error)); ok {
+		return rf(url)
+	}
+	if rf, ok := ret.Get(0).(func(string) *model.ObjectType); ok {
+		r0 = rf(url)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ObjectType)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(url)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetObjectType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectType'
+type MockService_GetObjectType_Call struct {
+	*mock.Call
+}
+
+// GetObjectType is a helper method to define mock.On call
+//   - url string
+func (_e *MockService_Expecter) GetObjectType(url interface{}) *MockService_GetObjectType_Call {
+	return &MockService_GetObjectType_Call{Call: _e.mock.On("GetObjectType", url)}
+}
+
+func (_c *MockService_GetObjectType_Call) Run(run func(url string)) *MockService_GetObjectType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetObjectType_Call) Return(_a0 *model.ObjectType, _a1 error) *MockService_GetObjectType_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetObjectType_Call) RunAndReturn(run func(string) (*model.ObjectType, error)) *MockService_GetObjectType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetObjectTypes provides a mock function with given fields: urls
+func (_m *MockService) GetObjectTypes(urls []string) ([]*model.ObjectType, error) {
+	ret := _m.Called(urls)
+
+	var r0 []*model.ObjectType
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]string) ([]*model.ObjectType, error)); ok {
+		return rf(urls)
+	}
+	if rf, ok := ret.Get(0).(func([]string) []*model.ObjectType); ok {
+		r0 = rf(urls)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.ObjectType)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func([]string) error); ok {
+		r1 = rf(urls)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetObjectTypes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectTypes'
+type MockService_GetObjectTypes_Call struct {
+	*mock.Call
+}
+
+// GetObjectTypes is a helper method to define mock.On call
+//   - urls []string
+func (_e *MockService_Expecter) GetObjectTypes(urls interface{}) *MockService_GetObjectTypes_Call {
+	return &MockService_GetObjectTypes_Call{Call: _e.mock.On("GetObjectTypes", urls)}
+}
+
+func (_c *MockService_GetObjectTypes_Call) Run(run func(urls []string)) *MockService_GetObjectTypes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetObjectTypes_Call) Return(ots []*model.ObjectType, err error) *MockService_GetObjectTypes_Call {
+	_c.Call.Return(ots, err)
+	return _c
+}
+
+func (_c *MockService_GetObjectTypes_Call) RunAndReturn(run func([]string) ([]*model.ObjectType, error)) *MockService_GetObjectTypes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRelationByID provides a mock function with given fields: id
+func (_m *MockService) GetRelationByID(id string) (*model.Relation, error) {
+	ret := _m.Called(id)
+
+	var r0 *model.Relation
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*model.Relation, error)); ok {
+		return rf(id)
+	}
+	if rf, ok := ret.Get(0).(func(string) *model.Relation); ok {
+		r0 = rf(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Relation)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetRelationByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationByID'
+type MockService_GetRelationByID_Call struct {
+	*mock.Call
+}
+
+// GetRelationByID is a helper method to define mock.On call
+//   - id string
+func (_e *MockService_Expecter) GetRelationByID(id interface{}) *MockService_GetRelationByID_Call {
+	return &MockService_GetRelationByID_Call{Call: _e.mock.On("GetRelationByID", id)}
+}
+
+func (_c *MockService_GetRelationByID_Call) Run(run func(id string)) *MockService_GetRelationByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetRelationByID_Call) Return(_a0 *model.Relation, err error) *MockService_GetRelationByID_Call {
+	_c.Call.Return(_a0, err)
+	return _c
+}
+
+func (_c *MockService_GetRelationByID_Call) RunAndReturn(run func(string) (*model.Relation, error)) *MockService_GetRelationByID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRelationByKey provides a mock function with given fields: key
+func (_m *MockService) GetRelationByKey(key string) (*model.Relation, error) {
+	ret := _m.Called(key)
+
+	var r0 *model.Relation
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (*model.Relation, error)); ok {
+		return rf(key)
+	}
+	if rf, ok := ret.Get(0).(func(string) *model.Relation); ok {
+		r0 = rf(key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Relation)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetRelationByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationByKey'
+type MockService_GetRelationByKey_Call struct {
+	*mock.Call
+}
+
+// GetRelationByKey is a helper method to define mock.On call
+//   - key string
+func (_e *MockService_Expecter) GetRelationByKey(key interface{}) *MockService_GetRelationByKey_Call {
+	return &MockService_GetRelationByKey_Call{Call: _e.mock.On("GetRelationByKey", key)}
+}
+
+func (_c *MockService_GetRelationByKey_Call) Run(run func(key string)) *MockService_GetRelationByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetRelationByKey_Call) Return(_a0 *model.Relation, err error) *MockService_GetRelationByKey_Call {
+	_c.Call.Return(_a0, err)
+	return _c
+}
+
+func (_c *MockService_GetRelationByKey_Call) RunAndReturn(run func(string) (*model.Relation, error)) *MockService_GetRelationByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRelationIdByKey provides a mock function with given fields: ctx, spaceId, key
 func (_m *MockService) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (string, error) {
 	ret := _m.Called(ctx, spaceId, key)
@@ -310,6 +582,58 @@ func (_c *MockService_GetTypeIdByKey_Call) Return(id string, err error) *MockSer
 }
 
 func (_c *MockService_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, string, bundle.TypeKey) (string, error)) *MockService_GetTypeIdByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HasObjectType provides a mock function with given fields: id
+func (_m *MockService) HasObjectType(id string) (bool, error) {
+	ret := _m.Called(id)
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
+		return rf(id)
+	}
+	if rf, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = rf(id)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_HasObjectType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasObjectType'
+type MockService_HasObjectType_Call struct {
+	*mock.Call
+}
+
+// HasObjectType is a helper method to define mock.On call
+//   - id string
+func (_e *MockService_Expecter) HasObjectType(id interface{}) *MockService_HasObjectType_Call {
+	return &MockService_HasObjectType_Call{Call: _e.mock.On("HasObjectType", id)}
+}
+
+func (_c *MockService_HasObjectType_Call) Run(run func(id string)) *MockService_HasObjectType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_HasObjectType_Call) Return(_a0 bool, _a1 error) *MockService_HasObjectType_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_HasObjectType_Call) RunAndReturn(run func(string) (bool, error)) *MockService_HasObjectType_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -447,50 +771,6 @@ func (_c *MockService_Name_Call) Return(name string) *MockService_Name_Call {
 }
 
 func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Name_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ValidateFormat provides a mock function with given fields: spaceId, key, v
-func (_m *MockService) ValidateFormat(spaceId string, key string, v *types.Value) error {
-	ret := _m.Called(spaceId, key, v)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, *types.Value) error); ok {
-		r0 = rf(spaceId, key, v)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_ValidateFormat_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ValidateFormat'
-type MockService_ValidateFormat_Call struct {
-	*mock.Call
-}
-
-// ValidateFormat is a helper method to define mock.On call
-//   - spaceId string
-//   - key string
-//   - v *types.Value
-func (_e *MockService_Expecter) ValidateFormat(spaceId interface{}, key interface{}, v interface{}) *MockService_ValidateFormat_Call {
-	return &MockService_ValidateFormat_Call{Call: _e.mock.On("ValidateFormat", spaceId, key, v)}
-}
-
-func (_c *MockService_ValidateFormat_Call) Run(run func(spaceId string, key string, v *types.Value)) *MockService_ValidateFormat_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(*types.Value))
-	})
-	return _c
-}
-
-func (_c *MockService_ValidateFormat_Call) Return(_a0 error) *MockService_ValidateFormat_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockService_ValidateFormat_Call) RunAndReturn(run func(string, string, *types.Value) error) *MockService_ValidateFormat_Call {
 	_c.Call.Return(run)
 	return _c
 }

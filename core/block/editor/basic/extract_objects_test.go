@@ -7,6 +7,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -193,7 +195,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectTypeUniqueKey: uniquekey.MustUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, fixture.relationService, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string
@@ -227,9 +229,10 @@ func TestExtractObjects(t *testing.T) {
 }
 
 type fixture struct {
-	t     *testing.T
-	ctrl  *gomock.Controller
-	store *testMock.MockObjectStore
+	t               *testing.T
+	ctrl            *gomock.Controller
+	store           *testMock.MockObjectStore
+	relationService *mock_relation.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -243,12 +246,15 @@ func newFixture(t *testing.T) *fixture {
 			},
 		},
 	}
-	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).AnyTimes().Return(objectTypeDetails, nil)
+
+	relationService := mock_relation.NewMockService(t)
+	relationService.EXPECT().GetObjectByUniqueKey(mock.Anything, mock.Anything).Return(objectTypeDetails, nil).Maybe()
 
 	return &fixture{
-		t:     t,
-		ctrl:  ctrl,
-		store: objectStore,
+		t:               t,
+		ctrl:            ctrl,
+		store:           objectStore,
+		relationService: relationService,
 	}
 }
 

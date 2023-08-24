@@ -13,7 +13,6 @@ import (
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
 
-	uniquekey "github.com/anyproto/anytype-heart/core/block/uniquekey"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -142,21 +141,6 @@ func (mr *MockObjectStoreMockRecorder) GetAccountStatus() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountStatus", reflect.TypeOf((*MockObjectStore)(nil).GetAccountStatus))
 }
 
-// GetAggregatedOptions mocks base method.
-func (m *MockObjectStore) GetAggregatedOptions(arg0 string) ([]*model.RelationOption, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAggregatedOptions", arg0)
-	ret0, _ := ret[0].([]*model.RelationOption)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetAggregatedOptions indicates an expected call of GetAggregatedOptions.
-func (mr *MockObjectStoreMockRecorder) GetAggregatedOptions(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAggregatedOptions", reflect.TypeOf((*MockObjectStore)(nil).GetAggregatedOptions), arg0)
-}
-
 // GetByIDs mocks base method.
 func (m *MockObjectStore) GetByIDs(arg0 string, arg1 []string) ([]*model.ObjectInfo, error) {
 	m.ctrl.T.Helper()
@@ -247,51 +231,6 @@ func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).GetLastIndexedHeadsHash), arg0)
 }
 
-// GetObjectByUniqueKey mocks base method.
-func (m *MockObjectStore) GetObjectByUniqueKey(arg0 string, arg1 uniquekey.UniqueKey) (*model.ObjectDetails, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetObjectByUniqueKey", arg0, arg1)
-	ret0, _ := ret[0].(*model.ObjectDetails)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetObjectByUniqueKey indicates an expected call of GetObjectByUniqueKey.
-func (mr *MockObjectStoreMockRecorder) GetObjectByUniqueKey(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectByUniqueKey", reflect.TypeOf((*MockObjectStore)(nil).GetObjectByUniqueKey), arg0, arg1)
-}
-
-// GetObjectType mocks base method.
-func (m *MockObjectStore) GetObjectType(arg0 string) (*model.ObjectType, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetObjectType", arg0)
-	ret0, _ := ret[0].(*model.ObjectType)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetObjectType indicates an expected call of GetObjectType.
-func (mr *MockObjectStoreMockRecorder) GetObjectType(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectType", reflect.TypeOf((*MockObjectStore)(nil).GetObjectType), arg0)
-}
-
-// GetObjectTypes mocks base method.
-func (m *MockObjectStore) GetObjectTypes(arg0 []string) ([]*model.ObjectType, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetObjectTypes", arg0)
-	ret0, _ := ret[0].([]*model.ObjectType)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetObjectTypes indicates an expected call of GetObjectTypes.
-func (mr *MockObjectStoreMockRecorder) GetObjectTypes(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectTypes", reflect.TypeOf((*MockObjectStore)(nil).GetObjectTypes), arg0)
-}
-
 // GetOutboundLinksByID mocks base method.
 func (m *MockObjectStore) GetOutboundLinksByID(arg0 string) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -305,36 +244,6 @@ func (m *MockObjectStore) GetOutboundLinksByID(arg0 string) ([]string, error) {
 func (mr *MockObjectStoreMockRecorder) GetOutboundLinksByID(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOutboundLinksByID", reflect.TypeOf((*MockObjectStore)(nil).GetOutboundLinksByID), arg0)
-}
-
-// GetRelationByID mocks base method.
-func (m *MockObjectStore) GetRelationByID(arg0 string) (*model.Relation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRelationByID", arg0)
-	ret0, _ := ret[0].(*model.Relation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRelationByID indicates an expected call of GetRelationByID.
-func (mr *MockObjectStoreMockRecorder) GetRelationByID(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationByID", reflect.TypeOf((*MockObjectStore)(nil).GetRelationByID), arg0)
-}
-
-// GetRelationByKey mocks base method.
-func (m *MockObjectStore) GetRelationByKey(arg0 string) (*model.Relation, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRelationByKey", arg0)
-	ret0, _ := ret[0].(*model.Relation)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRelationByKey indicates an expected call of GetRelationByKey.
-func (mr *MockObjectStoreMockRecorder) GetRelationByKey(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationByKey", reflect.TypeOf((*MockObjectStore)(nil).GetRelationByKey), arg0)
 }
 
 // GetWithLinksInfoByID mocks base method.
@@ -369,21 +278,6 @@ func (m *MockObjectStore) HasIDs(arg0 ...string) ([]string, error) {
 func (mr *MockObjectStoreMockRecorder) HasIDs(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasIDs", reflect.TypeOf((*MockObjectStore)(nil).HasIDs), arg0...)
-}
-
-// HasObjectType mocks base method.
-func (m *MockObjectStore) HasObjectType(arg0 string) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HasObjectType", arg0)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// HasObjectType indicates an expected call of HasObjectType.
-func (mr *MockObjectStoreMockRecorder) HasObjectType(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasObjectType", reflect.TypeOf((*MockObjectStore)(nil).HasObjectType), arg0)
 }
 
 // Init mocks base method.

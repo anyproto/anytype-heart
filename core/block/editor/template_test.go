@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,18 +27,22 @@ func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string)
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(templateName),
 	}}, false)
+
 	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetObjectTypes(gomock.Any()).AnyTimes()
+
+	relationService := mock_relation.NewMockService(t)
+	relationService.EXPECT().GetObjectTypes(mock.Anything).Return(nil, nil).Maybe()
 	templ := &Template{
 		Page: &Page{
-			SmartBlock:  sb,
-			objectStore: objectStore,
+			SmartBlock:      sb,
+			objectStore:     objectStore,
+			relationService: relationService,
 		},
 	}
 	uniqueKey, err := uniquekey.New(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
 	require.NoError(t, err)
 
-	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), uniqueKey).Return(&model.ObjectDetails{
+	relationService.EXPECT().GetObjectByUniqueKey(mock.Anything, uniqueKey).Return(&model.ObjectDetails{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_basic)),
