@@ -5,7 +5,7 @@ on:
 name: Build
 jobs:
   build:
-    runs-on: macos-11
+    runs-on: macos-13
     steps:
       - name: fix android ndk bundle
         run: |
