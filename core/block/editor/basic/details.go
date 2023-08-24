@@ -344,7 +344,7 @@ func (bs *basic) getLayoutForType(objectTypeKey bundle.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}
-	rawLayout := pbtypes.GetInt64(typeDetails.GetDetails(), bundle.RelationKeyLayout.String())
+	rawLayout := pbtypes.GetInt64(typeDetails.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
 	return model.ObjectTypeLayout(rawLayout), nil
 }
 
