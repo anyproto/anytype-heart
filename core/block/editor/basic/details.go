@@ -317,7 +317,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.T
 
 	prevTypeID := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
 	// nolint:errcheck
-	prevType, _ := bs.objectStore.GetObjectType(prevTypeID)
+	prevType, _ := bs.relationService.GetObjectType(prevTypeID)
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 
@@ -340,7 +340,7 @@ func (bs *basic) getLayoutForType(objectTypeKey bundle.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}
-	typeDetails, err := bs.objectStore.GetObjectByUniqueKey(bs.SpaceID(), uk)
+	typeDetails, err := bs.relationService.GetObjectByUniqueKey(bs.SpaceID(), uk)
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}

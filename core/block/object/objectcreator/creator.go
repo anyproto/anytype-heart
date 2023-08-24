@@ -232,7 +232,7 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 
 	if len(source) > 0 {
 		// todo: decide the behavior in case of empty source
-		if dvContent, dvSchema, err = dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, source); err != nil {
+		if dvContent, dvSchema, err = dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.relationService, source); err != nil {
 			return
 		}
 

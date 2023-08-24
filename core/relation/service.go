@@ -3,6 +3,7 @@ package relation
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -37,6 +38,16 @@ type Service interface {
 	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
 
 	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
+
+	GetObjectType(url string) (*model.ObjectType, error)
+	HasObjectType(id string) (bool, error)
+	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
+
+	GetRelationByID(id string) (relation *model.Relation, err error)
+	GetRelationByKey(key string) (relation *model.Relation, err error)
+
+	GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error)
+
 	app.Component
 }
 
@@ -185,4 +196,36 @@ func (s *service) FetchRelationByKey(spaceID string, key string) (relation *rela
 		return relationutils.RelationFromStruct(rec.Details), nil
 	}
 	return nil, ErrNotFound
+}
+
+func (s *service) GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error) {
+	records, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Value:       pbtypes.String(uniqueKey.Marshal()),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+		Limit: 2,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, objectstore.ErrObjectNotFound
+	}
+
+	if len(records) > 1 {
+		// should never happen
+		return nil, fmt.Errorf("multiple objects with unique key %s", uniqueKey)
+	}
+
+	return &model.ObjectDetails{Details: records[0].Details}, nil
 }

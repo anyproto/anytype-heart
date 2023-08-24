@@ -488,7 +488,7 @@ func (exIn FilterExactIn) String() string {
 
 func optionsToMap(key string, store ObjectStore) map[string]string {
 	result := make(map[string]string)
-	options, err := store.GetAggregatedOptions(key)
+	options, err := GetAggregatedOptions(store, key)
 	if err != nil {
 		log.Warn("nil objectStore for getting options")
 		return result
