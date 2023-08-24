@@ -240,9 +240,8 @@ func dateOnly(v *types.Value) *types.Value {
 	return &types.Value{Kind: &types.Value_NullValue{}}
 }
 
-// TODO Rename
-// GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
-func GetAggregatedOptions(store ObjectStore, relationKey string) (options []*model.RelationOption, err error) {
+// ListRelationOptions returns options for specific relation
+func ListRelationOptions(store ObjectStore, relationKey string) (options []*model.RelationOption, err error) {
 	// todo: add workspace
 	records, _, err := store.Query(Query{
 		Filters: []*model.BlockContentDataviewFilter{

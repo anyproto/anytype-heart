@@ -15,7 +15,7 @@ type GroupStatus struct {
 }
 
 func (gs *GroupStatus) InitGroups(f *database.Filters) error {
-	options, err := database.GetAggregatedOptions(gs.store, gs.key)
+	options, err := database.ListRelationOptions(gs.store, gs.key)
 	if err != nil {
 		return err
 	}
