@@ -2,12 +2,12 @@ package kanban
 
 import (
 	"context"
-	"github.com/anyproto/any-sync/net/peerservice"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
