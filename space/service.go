@@ -3,6 +3,9 @@ package space
 import (
 	"context"
 	"errors"
+	"github.com/anyproto/any-sync/accountservice"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/nodeconf"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -11,7 +14,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -69,6 +71,8 @@ type Service interface {
 type service struct {
 	conf                 commonconfig.Config
 	spaceCache           ocache.OCache
+	accountKeys          *accountdata.AccountKeys
+	nodeConf             nodeconf.Service
 	commonSpace          commonspace.SpaceService
 	client               coordinatorclient.CoordinatorClient
 	wallet               wallet.Wallet
@@ -86,6 +90,8 @@ func (s *service) Init(a *app.App) (err error) {
 	conf := a.MustComponent(config.CName).(*config.Config)
 	s.conf = conf.GetSpace()
 	s.newAccount = conf.NewAccount
+	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
+	s.nodeConf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
@@ -200,21 +206,18 @@ func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload Statu
 }
 
 func (s *service) DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error) {
-	space, err := s.GetSpace(ctx, spaceID)
-	if err != nil {
-		return
-	}
 	var (
-		raw    *treechangeproto.RawTreeChangeWithId
-		status *coordinatorproto.SpaceStatusPayload
+		delConf *coordinatorproto.DeletionConfirmPayloadWithSignature
+		status  *coordinatorproto.SpaceStatusPayload
 	)
 	if !revert {
-		raw, err = space.SpaceDeleteRawChange(ctx)
+		networkID := s.nodeConf.Configuration().NetworkId
+		delConf, err = coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceID, s.accountKeys.PeerId, networkID)
 		if err != nil {
 			return
 		}
 	}
-	status, err = s.client.ChangeStatus(ctx, spaceID, raw)
+	status, err = s.client.ChangeStatus(ctx, spaceID, delConf)
 	if err != nil {
 		err = coordError(err)
 		return

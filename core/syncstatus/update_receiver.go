@@ -102,10 +102,10 @@ func (r *updateReceiver) isNodeConnected() bool {
 	return r.nodeConnected
 }
 
-func (r *updateReceiver) UpdateNodeConnection(online bool) {
+func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = online
+	r.nodeConnected = status == syncstatus.Online
 }
 
 func (r *updateReceiver) notify(

@@ -112,7 +112,7 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 		Id: t.objectTree.Id(),
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(func(decrypted []byte) (any, error) {
+	err = t.objectTree.IterateRoot(func(_ *objecttree.Change, decrypted []byte) (any, error) {
 		ch := &pb.Change{}
 		err := proto.Unmarshal(decrypted, ch)
 		if err != nil {
@@ -142,7 +142,7 @@ func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
 		return
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(func(decrypted []byte) (any, error) {
+	err = t.objectTree.IterateRoot(func(_ *objecttree.Change, decrypted []byte) (any, error) {
 		ch := &pb.Change{}
 		err := proto.Unmarshal(decrypted, ch)
 		if err != nil {
