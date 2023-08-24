@@ -15,6 +15,7 @@ runs:
           echo "Tag does not contain '-alpha'"
           echo "tag_alpha_found=false" >> "$GITHUB_OUTPUT"
         fi
+      shell: bash
 
     - name: Check go.mod for alpha any-sync
       id: check_go_mod
@@ -26,6 +27,7 @@ runs:
           echo "Required line not found in go.mod"
           echo "anysync_alpha_found=false" >> "$GITHUB_OUTPUT"
         fi
+      shell: bash
 
     - name: Assert either alpha or not
       run: |
@@ -38,3 +40,4 @@ runs:
         else
           echo "All good"
         fi
+      shell: bash
