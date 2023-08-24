@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
+	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
-	"github.com/anyproto/any-sync/net/transport/quic"
-	//nolint:misspell
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/rpc"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
+	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/kelseyhightower/envconfig"
