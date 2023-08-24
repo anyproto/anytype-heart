@@ -72,7 +72,7 @@ func (ou *ObjectIDGetter) Get(
 		return widgetID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
-	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
+	id, err := ou.getObjectByOldAnytypeID(spaceID, sn, sbType)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get object by old anytype id: %w", err)
 	}
@@ -81,7 +81,7 @@ func (ou *ObjectIDGetter) Get(
 	}
 
 	if getExisting || sbType == sb.SmartBlockTypeProfilePage {
-		id = ou.getExistingObject(sn)
+		id = ou.getExistingObject(spaceID, sn)
 		if id != "" {
 			return id, treestorage.TreeStorageCreatePayload{}, nil
 		}
@@ -108,7 +108,7 @@ func (ou *ObjectIDGetter) Get(
 	return payload.RootRawChange.Id, payload, nil
 }
 
-func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
+func (ou *ObjectIDGetter) getObjectByOldAnytypeID(spaceID string, sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
 	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -116,6 +116,11 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
 				Value:       pbtypes.String(oldAnytypeID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	}, []sb.SmartBlockType{sbType})
@@ -135,7 +140,7 @@ func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
 	return ""
 }
 
-func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
+func (ou *ObjectIDGetter) getExistingObject(spaceID string, sn *converter.Snapshot) string {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -143,6 +148,11 @@ func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySourceFilePath.String(),
 				Value:       pbtypes.String(source),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	}, []sb.SmartBlockType{sn.SbType})
@@ -152,6 +162,8 @@ func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
 			return id
 		}
 	}
+	err = nil
+
 	id := sn.Id
 	records, _, err := ou.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{

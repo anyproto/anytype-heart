@@ -92,10 +92,6 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 	}
 
 	spaceID := pbtypes.GetString(info.State.Details(), bundle.RelationKeySpaceId.String())
-	if spaceID == "" {
-		spaceID = i.spaceService.AccountId()
-	}
-
 	ftDoc = ftsearch.SearchDoc{
 		Id:      id,
 		SpaceID: spaceID,
