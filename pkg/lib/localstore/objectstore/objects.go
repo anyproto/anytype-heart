@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -539,7 +538,7 @@ func detailsKeyToID(key []byte) string {
 }
 
 type order struct {
-	filter.Order
+	database.Order
 }
 
 func (o order) Compare(lhs, rhs interface{}) (comp int) {

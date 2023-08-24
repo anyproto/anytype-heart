@@ -7,25 +7,18 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 func TestService_Search(t *testing.T) {
-	ctx := session.NewContext()
 	var newSub = func(fx *fixture, subId string) {
 		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{
@@ -53,7 +46,7 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: subId,
 			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
 		})
@@ -160,7 +153,7 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		var resp, err = fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "subId",
 			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
 			Filters: []*model.BlockContentDataviewFilter{
@@ -204,7 +197,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
 			Sorts: []*model.BlockContentDataviewSort{
 				{
@@ -271,7 +264,7 @@ func TestService_Search(t *testing.T) {
 			Format: model.RelationFormat_shorttext,
 		}, nil).AnyTimes()
 
-		resp, err := fx.Search(ctx, pb.RpcObjectSearchSubscribeRequest{
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
 			Sorts: []*model.BlockContentDataviewSort{
 				{
@@ -307,15 +300,56 @@ func TestService_Search(t *testing.T) {
 	})
 }
 
-type collectionServiceMock struct {
-	updateCh chan []string
-}
+func TestNestedSubscription(t *testing.T) {
+	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
+		fx := testCreateSubscriptionWithNestedFilter(t)
 
-func (c *collectionServiceMock) SubscribeForCollection(ctx session.Context, collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
-	return nil, c.updateCh, nil
-}
+		err := fx.store.UpdateObjectDetails("assignee1", &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":   pbtypes.String("assignee1"),
+				"name": pbtypes.String("John Doe"),
+			},
+		})
+		require.NoError(t, err)
 
-func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: "test-nested-1",
+					Id:    "assignee1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: "test",
+					Id:    "task1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test-nested-1",
+					Total: 0,
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test",
+					Total: 0,
+				},
+			})
+	})
+
+	t.Run("update parent object relation so no nested objects satisfy filter anymore", func(t *testing.T) {
+		fx := testCreateSubscriptionWithNestedFilter(t)
+
+		err := fx.store.UpdateObjectDetails("task1", &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":       pbtypes.String("task1"),
+				"assignee": pbtypes.String("assignee2"),
+			},
+		})
+		require.NoError(t, err)
+	})
 }
 
 func (c *collectionServiceMock) Name() string {
@@ -324,44 +358,91 @@ func (c *collectionServiceMock) Name() string {
 
 func (c *collectionServiceMock) Init(a *app.App) error { return nil }
 
-func newFixture(t *testing.T) *fixture {
-	ctrl := gomock.NewController(t)
-	a := new(app.App)
-	testMock.RegisterMockObjectStore(ctrl, a)
-	testMock.RegisterMockKanban(ctrl, a)
-	fx := &fixture{
-		Service: New(),
-		a:       a,
-		ctrl:    ctrl,
-		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
-	}
-	sender := mock_event.NewMockSender(t)
-	sender.EXPECT().Init(mock.Anything).Return(nil)
-	sender.EXPECT().Name().Return(event.CName)
-	sender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
-		fx.events = append(fx.events, e)
-	}).Maybe()
-	fx.sender = sender
-	a.Register(fx.Service)
-	a.Register(fx.sender)
-	a.Register(&collectionServiceMock{updateCh: make(chan []string, 1)})
+func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
+	fx := newFixtureWithRealObjectStore(t)
+	resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		SubId: "test",
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: "assignee.name",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("Joe Doe"),
+			},
+		},
+		Keys: []string{"id", "name"},
+	})
 
-	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	sbtProvider.EXPECT().Name().Return("sbtProvider")
-	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
+	require.NoError(t, err)
+	require.Empty(t, resp.Records)
 
-	a.Register(sbtProvider)
+	t.Run("add nested object", func(t *testing.T) {
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				"id":   pbtypes.String("assignee1"),
+				"name": pbtypes.String("Joe Doe"),
+			},
+		})
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id: "assignee1",
+					SubIds: []string{
+						"test-nested-1",
+					},
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							"id": pbtypes.String("assignee1"),
+						},
+					},
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionAdd{
+				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+					SubId: "test-nested-1",
+					Id:    "assignee1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test-nested-1",
+					Total: 1,
+				},
+			})
+	})
 
-	fx.store.EXPECT().SubscribeForAll(gomock.Any())
-	require.NoError(t, a.Start(context.Background()))
+	t.Run("add object satisfying nested filter", func(t *testing.T) {
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				"id":       pbtypes.String("task1"),
+				"assignee": pbtypes.String("assignee1"),
+			},
+		})
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id: "task1",
+					SubIds: []string{
+						"test",
+					},
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							"id": pbtypes.String("task1"),
+						},
+					},
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionAdd{
+				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+					SubId: "test",
+					Id:    "task1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test",
+					Total: 1,
+				},
+			})
+	})
 	return fx
-}
-
-type fixture struct {
-	Service
-	a      *app.App
-	ctrl   *gomock.Controller
-	store  *testMock.MockObjectStore
-	sender *mock_event.MockSender
-	events []*pb.Event
 }

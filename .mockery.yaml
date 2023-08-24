@@ -22,6 +22,13 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/converter:
     interfaces:
       Converter:
+  github.com/anyproto/anytype-heart/pkg/lib/database:
+    interfaces:
+      ObjectStore:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
     interfaces:
       ObjectStore:

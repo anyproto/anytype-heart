@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -131,7 +130,7 @@ func Test_GrouperTags(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, groups, 6)
 
-	f := &database.Filters{FilterObj: filter.Eq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
+	f := &database.Filters{FilterObj: database.FilterEq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
 	err = grouper.InitGroups(f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()

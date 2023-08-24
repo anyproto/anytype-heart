@@ -7,10 +7,8 @@ import (
 	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -33,8 +31,8 @@ type collectionObserver struct {
 	recBatch          *mb.MB
 }
 
-func (s *service) newCollectionObserver(ctx session.Context, collectionID string, subID string) (*collectionObserver, error) {
-	initialObjectIDs, objectsCh, err := s.collectionService.SubscribeForCollection(ctx, collectionID, subID)
+func (s *service) newCollectionObserver(collectionID string, subID string) (*collectionObserver, error) {
+	initialObjectIDs, objectsCh, err := s.collectionService.SubscribeForCollection(collectionID, subID)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe for collection: %w", err)
 	}
@@ -117,7 +115,7 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	}
 }
 
-func (c *collectionObserver) FilterObject(g filter.Getter) bool {
+func (c *collectionObserver) FilterObject(g database.Getter) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	id := g.Get(bundle.RelationKeyId.String()).GetStringValue()
@@ -163,15 +161,15 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
-func (s *service) newCollectionSub(ctx session.Context, id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
-	obs, err := s.newCollectionObserver(ctx, collectionID, id)
+func (s *service) newCollectionSub(id string, collectionID string, keys []string, flt database.Filter, order database.Order, limit, offset int) (*collectionSub, error) {
+	obs, err := s.newCollectionObserver(collectionID, id)
 	if err != nil {
 		return nil, err
 	}
 	if flt == nil {
 		flt = obs
 	} else {
-		flt = filter.AndFilters{obs, flt}
+		flt = database.FiltersAnd{obs, flt}
 	}
 
 	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)

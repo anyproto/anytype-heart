@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 )
 
@@ -56,14 +55,13 @@ func newFixture(t *testing.T) *fixture {
 func TestBroadcast(t *testing.T) {
 	const collectionID = "collectionID"
 	sb := smarttest.New(collectionID)
-	ctx := session.NewContext()
 
 	s := newFixture(t)
 	s.picker.sb = sb
 
-	_, subCh1, err := s.SubscribeForCollection(ctx, collectionID, "sub1")
+	_, subCh1, err := s.SubscribeForCollection(collectionID, "sub1")
 	require.NoError(t, err)
-	_, subCh2, err := s.SubscribeForCollection(ctx, collectionID, "sub2")
+	_, subCh2, err := s.SubscribeForCollection(collectionID, "sub2")
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup

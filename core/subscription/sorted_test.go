@@ -9,7 +9,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
@@ -71,7 +70,7 @@ func TestSubscription_Remove(t *testing.T) {
 			limit:   3,
 			afterId: "id3",
 			ds:      newDependencyService(&s),
-			filter: filter.Not{filter.Eq{
+			filter: database.FilterNot{database.FilterEq{
 				Key:   "order",
 				Cond:  model.BlockContentDataviewFilter_Equal,
 				Value: pbtypes.Int64(100),

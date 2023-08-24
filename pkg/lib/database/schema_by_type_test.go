@@ -1,4 +1,4 @@
-package schema
+package database
 
 import (
 	"testing"

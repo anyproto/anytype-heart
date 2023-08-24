@@ -10,7 +10,7 @@ import (
 )
 
 func TestDsObjectStore_IndexQueue(t *testing.T) {
-	s := newStoreFixture(t)
+	s := NewStoreFixture(t)
 
 	t.Run("add to queue", func(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue("one"))
@@ -34,14 +34,14 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 
 func TestIndexerChecksums(t *testing.T) {
 	t.Run("previous checksums are not found", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		_, err := s.GetChecksums()
 		require.Error(t, err)
 	})
 
 	t.Run("save and load checksums", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		want := &model.ObjectStoreChecksums{
 			BundledObjectTypes:               "hash1",
@@ -66,7 +66,7 @@ func TestIndexerChecksums(t *testing.T) {
 
 func TestHeadsHash(t *testing.T) {
 	t.Run("previous hash is not found", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		got, err := s.GetLastIndexedHeadsHash("id1")
 		require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestHeadsHash(t *testing.T) {
 	})
 
 	t.Run("save and load hash", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		want := "hash1"
 

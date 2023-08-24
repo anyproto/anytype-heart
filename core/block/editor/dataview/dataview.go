@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -369,7 +368,7 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore) (schema.Schema, error) {
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore) (database.Schema, error) {
 	var relationFound, typeFound bool
 
 	for _, source := range sources {
@@ -400,7 +399,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		if err != nil {
 			return nil, err
 		}
-		sch := schema.NewByType(objectType)
+		sch := database.NewByType(objectType)
 		return sch, nil
 	}
 
@@ -414,7 +413,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 
 			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
 		}
-		sch := schema.NewByRelations(relations)
+		sch := database.NewByRelations(relations)
 		return sch, nil
 	}
 
@@ -551,7 +550,7 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
+func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
 	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store); err != nil {
 		return
 	}

@@ -1,4 +1,4 @@
-package filter
+package database
 
 import (
 	"time"

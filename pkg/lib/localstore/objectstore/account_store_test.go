@@ -11,14 +11,14 @@ import (
 
 func TestWorkspace(t *testing.T) {
 	t.Run("no saved workspace", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		_, err := s.GetCurrentWorkspaceID()
 		require.Error(t, err)
 	})
 
 	t.Run("save and load", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		want := "workspace1"
 		err := s.SetCurrentWorkspaceID(want)
@@ -30,7 +30,7 @@ func TestWorkspace(t *testing.T) {
 	})
 
 	t.Run("remove and load", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		err := s.SetCurrentWorkspaceID("workspace1")
 		require.NoError(t, err)
 
@@ -44,14 +44,14 @@ func TestWorkspace(t *testing.T) {
 
 func TestAccountStatus(t *testing.T) {
 	t.Run("no saved account status", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		_, err := s.GetAccountStatus()
 		require.Error(t, err)
 	})
 
 	t.Run("save and load", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		want := &coordinatorproto.SpaceStatusPayload{
 			Status:            coordinatorproto.SpaceStatus_SpaceStatusDeleted,
