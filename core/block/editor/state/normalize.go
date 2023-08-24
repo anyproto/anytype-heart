@@ -325,16 +325,20 @@ func (s *State) normalizeSmartBlock(b simple.Block) {
 
 func shortenDetailsToLimit(objectID string, details map[string]*types.Value) {
 	for key, value := range details {
-		size := value.Size()
-		if size > detailSizeLimit {
-			log.With("objectID", objectID).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
-				key, size, detailSizeLimit)
-			value, _ = shortenValueOnN(value, size-detailSizeLimit)
-		}
+		shortenValueToLimit(objectID, key, value)
 	}
 }
 
-func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) {
+func shortenValueToLimit(objectID, key string, value *types.Value) {
+	size := value.Size()
+	if size > detailSizeLimit {
+		log.With("objectID", objectID).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
+			key, size, detailSizeLimit)
+		value, _ = shortenValueByN(value, size-detailSizeLimit)
+	}
+}
+
+func shortenValueByN(value *types.Value, n int) (result *types.Value, left int) {
 	switch v := value.Kind.(type) {
 	case *types.Value_StringValue:
 		str := v.StringValue
@@ -348,8 +352,8 @@ func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) 
 		sort.Slice(values, func(i, j int) bool {
 			return values[i].Size() > values[j].Size()
 		})
-		for i, v := range values {
-			newValue, n = shortenValueOnN(v, n)
+		for i, valueItem := range values {
+			newValue, n = shortenValueByN(valueItem, n)
 			value.GetListValue().Values[i] = newValue
 			if n == 0 {
 				return value, 0
@@ -364,7 +368,7 @@ func shortenValueOnN(value *types.Value, n int) (result *types.Value, left int) 
 			return fields[keys[i]].Size() > fields[keys[j]].Size()
 		})
 		for _, key := range keys {
-			newValue, n = shortenValueOnN(fields[key], n)
+			newValue, n = shortenValueByN(fields[key], n)
 			fields[key] = newValue
 			if n == 0 {
 				return value, 0

@@ -443,7 +443,7 @@ func TestShortenValueOnN(t *testing.T) {
 		value := pbtypes.String("abrakadabra")
 
 		//when
-		value, left := shortenValueOnN(value, 7)
+		value, left := shortenValueByN(value, 7)
 
 		//then
 		assert.Equal(t, 0, left)
@@ -455,7 +455,7 @@ func TestShortenValueOnN(t *testing.T) {
 		value := pbtypes.StringList([]string{"Liberté", "Égalité", "Fraternité"})
 
 		//when
-		value, left := shortenValueOnN(value, 15)
+		value, left := shortenValueByN(value, 15)
 
 		//then
 		expected := pbtypes.StringList([]string{"", "Égal", "Liberté"})
@@ -478,7 +478,7 @@ func TestShortenValueOnN(t *testing.T) {
 		n := len("Leo" + "Tolstoy" + "War And Peace" + "Anna Karenina" + "Youth" + "After the Ball")
 
 		//when
-		value, left := shortenValueOnN(value, 32)
+		value, left := shortenValueByN(value, 32)
 
 		//then
 		assert.Equal(t, 0, left)
@@ -498,7 +498,7 @@ func TestShortenValueOnN(t *testing.T) {
 		}})
 
 		//when
-		value, left := shortenValueOnN(value, 100)
+		value, left := shortenValueByN(value, 100)
 
 		//then
 		assert.Equal(t, 100-(18+9*4), left)
@@ -513,7 +513,7 @@ func BenchmarkShorten(b *testing.B) {
 		"books":   pbtypes.StringList([]string{strings.Repeat("War And Peace", 50), "Anna Karenina", strings.Repeat("Youth", 100), "After the Ball"}),
 	}})
 	for i := 0; i < b.N; i++ {
-		_, _ = shortenValueOnN(value, 600)
+		_, _ = shortenValueByN(value, 600)
 	}
 }
 

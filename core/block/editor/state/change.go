@@ -251,7 +251,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 			Fields: make(map[string]*types.Value),
 		}
 	}
-	shortenDetailsToLimit(s.rootId, map[string]*types.Value{set.Key: set.Value})
+	shortenValueToLimit(s.rootId, set.Key, set.Value)
 	s.details = pbtypes.CopyStruct(det)
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
