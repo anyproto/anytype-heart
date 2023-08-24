@@ -3,18 +3,16 @@ package space
 import (
 	"context"
 	"errors"
-	"github.com/anyproto/any-sync/accountservice"
-	"github.com/anyproto/any-sync/commonspace/object/accountdata"
-	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/anyproto/anytype-heart/space/clientserver"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -25,12 +23,14 @@ import (
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peerstore"
@@ -285,8 +285,8 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdi
 	s.peerStore.UpdateLocalPeer(peer.PeerId, resp.SpaceIds)
 }
 
-func (s *service) addSchema(addrs []string) []string {
-	var res []string
+func (s *service) addSchema(addrs []string) (res []string) {
+	res = make([]string, 0, len(addrs))
 	for _, addr := range addrs {
 		res = append(res, clientserver.PreferredSchema+"://"+addr)
 	}

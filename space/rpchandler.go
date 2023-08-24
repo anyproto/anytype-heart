@@ -16,10 +16,12 @@ type rpcHandler struct {
 	s *service
 }
 
+// nolint:revive
 func (r *rpcHandler) AclAddRecord(ctx context.Context, request *spacesyncproto.AclAddRecordRequest) (*spacesyncproto.AclAddRecordResponse, error) {
 	return nil, fmt.Errorf("nt implemented")
 }
 
+// nolint:revive
 func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.AclGetRecordsRequest) (*spacesyncproto.AclGetRecordsResponse, error) {
 	return nil, fmt.Errorf("nt implemented")
 }

@@ -3,14 +3,14 @@ package clientserver
 import (
 	"context"
 	"errors"
-	"github.com/anyproto/any-sync/net/transport"
-	"github.com/anyproto/any-sync/net/transport/quic"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/net/transport"
+	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 
