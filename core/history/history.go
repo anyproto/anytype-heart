@@ -221,6 +221,9 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	}
 
 	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedObjects(id.SpaceID).Profile)
+	if err != nil {
+		return
+	}
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}

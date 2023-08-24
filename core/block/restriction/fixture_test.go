@@ -8,16 +8,19 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
 	Service
-	objectStoreMock *mock_objectstore.MockObjectStore
+	objectStoreMock     *mock_objectstore.MockObjectStore
+	relationServiceMock *mock_relation.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -27,15 +30,19 @@ func newFixture(t *testing.T) *fixture {
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("sbtProvider")
 
+	relationService := mock_relation.NewMockService(t)
+
 	a := &app.App{}
 	a.Register(objectStore)
 	a.Register(sbtProvider)
+	a.Register(testutil.PrepareMock(a, relationService))
 	s := New()
 	err := s.Init(a)
 	require.NoError(t, err)
 	return &fixture{
-		Service:         s,
-		objectStoreMock: objectStore,
+		Service:             s,
+		objectStoreMock:     objectStore,
+		relationServiceMock: relationService,
 	}
 }
 

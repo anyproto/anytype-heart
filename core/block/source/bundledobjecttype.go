@@ -18,14 +18,14 @@ import (
 
 func NewBundledObjectType(id string) (s Source) {
 	return &bundledObjectType{
-		id:      id,
-		typeKey: bundle.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),
+		id:            id,
+		objectTypeKey: bundle.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),
 	}
 }
 
 type bundledObjectType struct {
-	id      string
-	typeKey bundle.TypeKey
+	id            string
+	objectTypeKey bundle.TypeKey
 }
 
 func (v *bundledObjectType) ReadOnly() bool {
@@ -61,7 +61,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	// we use STType instead of BundledObjectType for a reason we want to have the same prefix
 	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
-	uk, err := uniquekey.New(model.SmartBlockType_STType, v.typeKey.String())
+	uk, err := uniquekey.New(model.SmartBlockType_STType, v.objectTypeKey.String())
 	if err != nil {
 		return nil, err
 	}

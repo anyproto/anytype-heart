@@ -638,9 +638,12 @@ func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.Fi
 	}
 
 	err = helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
+	if err != nil {
+		return fmt.Errorf("add meta link: %w", err)
+	}
 	err = helpers.AddLinkToDirectory(ctx, dagService, pair, ContentLinkName, file.Hash)
 	if err != nil {
-		return err
+		return fmt.Errorf("add content link: %w", err)
 	}
 
 	node, err := pair.GetNode()

@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -72,8 +73,11 @@ func (ou *ObjectIDGetter) Get(
 	}
 
 	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get object by old anytype id: %w", err)
+	}
 	if id != "" {
-		return id, treestorage.TreeStorageCreatePayload{}, err
+		return id, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
 	if getExisting || sbType == sb.SmartBlockTypeProfilePage {
@@ -91,12 +95,16 @@ func (ou *ObjectIDGetter) Get(
 			return "", treestorage.TreeStorageCreatePayload{}, err
 		}
 		payload, err = ou.service.DeriveTreeCreatePayload(context.Background(), spaceID, uk)
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
+		}
 	} else {
 		payload, err = ou.service.CreateTreePayload(context.Background(), spaceID, sbType, createdTime)
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create tree payload: %w", err)
+		}
 	}
-	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
-	}
+
 	return payload.RootRawChange.Id, payload, nil
 }
 

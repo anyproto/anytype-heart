@@ -10,10 +10,10 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -32,8 +32,8 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	store := app.MustComponent[objectstore.ObjectStore](mw.applicationService.GetApp())
-	objType, err := store.GetObjectType(req.ObjectTypeUrl)
+	relationService := app.MustComponent[relation.Service](mw.applicationService.GetApp())
+	objType, err := relationService.GetObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)

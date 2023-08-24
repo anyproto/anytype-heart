@@ -37,7 +37,6 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 func WithUniqueKeyMigration(sbType model.SmartBlockType) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.migrateUniqueKeys = sbType
-		return
 	}
 }
 

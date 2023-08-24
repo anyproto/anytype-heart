@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -19,13 +20,19 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
 func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+	typeUniqueKey, err := uniquekey.UnmarshalFromString(req.ObjectTypeUniqueKey)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal unique key: %w", err)
+	}
+	typeKey := bundle.TypeKey(typeUniqueKey.InternalKey())
+
 	newState := bs.NewStateCtx(ctx)
 	rootIds := newState.SelectRoots(req.BlockIds)
 
@@ -34,7 +41,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 
 		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
 
-		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), req, rootBlock, objectCreator)
+		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), req, typeUniqueKey, rootBlock, objectCreator)
 		if err != nil {
 			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}
@@ -43,6 +50,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 			context.Background(),
 			bs.SpaceID(),
 			coresb.SmartBlockTypePage,
+			[]bundle.TypeKey{typeKey},
 			details,
 			objState,
 		)
@@ -64,15 +72,16 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 func (bs *basic) prepareTargetObjectDetails(
 	spaceID string,
 	req pb.RpcBlockListConvertToObjectsRequest,
+	typeUniqueKey uniquekey.UniqueKey,
 	rootBlock simple.Block,
 	objectCreator ObjectCreator,
 ) (*types.Struct, error) {
-	objType, err := bs.objectStore.GetObjectType(req.ObjectType)
+	objType, err := bs.relationService.GetObjectByUniqueKey(spaceID, typeUniqueKey)
 	if err != nil {
 		return nil, err
 	}
-
-	details := createTargetObjectDetails(req.ObjectType, rootBlock.Model().GetText().GetText(), objType.Layout)
+	rawLayout := pbtypes.GetInt64(objType.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
+	details := createTargetObjectDetails(rootBlock.Model().GetText().GetText(), model.ObjectTypeLayout(rawLayout))
 	objectCreator.InjectWorkspaceID(details, spaceID, req.ContextId)
 	return details, nil
 }
@@ -141,16 +150,12 @@ func removeBlocks(state *state.State, descendants []simple.Block) {
 	}
 }
 
-func createTargetObjectDetails(objectType string, nameText string, layout model.ObjectTypeLayout) *types.Struct {
+func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *types.Struct {
 	fields := map[string]*types.Value{}
 
 	// Without this check title will be duplicated in template.WithNameToFirstBlock
 	if layout != model.ObjectType_note {
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(nameText)
-	}
-
-	if objectType != "" {
-		fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
 	}
 
 	details := &types.Struct{Fields: fields}

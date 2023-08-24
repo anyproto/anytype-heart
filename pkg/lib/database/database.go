@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -239,11 +240,27 @@ func dateOnly(v *types.Value) *types.Value {
 	return &types.Value{Kind: &types.Value_NullValue{}}
 }
 
-func getRelationByKey(relations []*model.BlockContentDataviewRelation, key string) *model.BlockContentDataviewRelation {
-	for _, relation := range relations {
-		if relation.Key == key {
-			return relation
-		}
+// ListRelationOptions returns options for specific relation
+func ListRelationOptions(store ObjectStore, relationKey string) (options []*model.RelationOption, err error) {
+	// todo: add workspace
+	records, _, err := store.Query(Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Value:       pbtypes.String(relationKey),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyLayout.String(),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				// todo: revert check by objectType
+			},
+		},
+	})
+
+	for _, rec := range records {
+		options = append(options, relationutils.OptionFromStruct(rec.Details).RelationOption)
 	}
-	return nil
+	return
 }

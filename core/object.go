@@ -489,7 +489,7 @@ func (mw *Middleware) ObjectSetObjectType(cctx context.Context, req *pb.RpcObjec
 	}
 
 	if err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUrl})
+		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUniqueKey})
 	}); err != nil {
 		return response(pb.RpcObjectSetObjectTypeResponseError_UNKNOWN_ERROR, err)
 	}
@@ -513,7 +513,7 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 			anySucceed bool
 		)
 		for _, objID := range req.ObjectIds {
-			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeId}); err != nil {
+			if err = bs.SetObjectTypes(ctx, objID, []string{req.ObjectTypeUniqueKey}); err != nil {
 				log.With("objectID", objID).Errorf("failed to set object type to object '%s': %v", objID, err)
 				mErr.Errors = append(mErr.Errors, err)
 			} else {

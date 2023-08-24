@@ -102,6 +102,9 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		return NewMissingObject(), nil
 	}
 	st, err := s.sbtProvider.Type(spaceID, id)
+	if err != nil {
+		return nil, fmt.Errorf("get smartblock type: %w", err)
+	}
 	switch st {
 	case smartblock.SmartBlockTypeFile:
 		return NewFile(s.coreService, s.fileStore, s.fileService, spaceID, id), nil

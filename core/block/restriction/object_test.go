@@ -13,7 +13,7 @@ import (
 // TODO Use constructors instead for initializing restrictionHolder structures by hand. See givenObjectType and givenRelation
 func TestService_ObjectRestrictionsById(t *testing.T) {
 	rest := newFixture(t)
-	rest.objectStoreMock.EXPECT().HasObjectType(mock.Anything).Return(false, nil)
+	rest.relationServiceMock.EXPECT().HasObjectType(mock.Anything).Return(false, nil)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		tp:           model.SmartBlockType_AnytypeProfile,
@@ -92,8 +92,8 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 // TODO Use constructors instead for initializing restrictionHolder structures by hand. See givenObjectType and givenRelation
 func TestTemplateRestriction(t *testing.T) {
 	rs := newFixture(t)
-	rs.objectStoreMock.EXPECT().HasObjectType(bundle.TypeKeyPage.URL()).Return(false, nil)
-	rs.objectStoreMock.EXPECT().HasObjectType(bundle.TypeKeyContact.URL()).Return(true, nil)
+	rs.relationServiceMock.EXPECT().HasObjectType(bundle.TypeKeyPage.URL()).Return(false, nil)
+	rs.relationServiceMock.EXPECT().HasObjectType(bundle.TypeKeyContact.URL()).Return(true, nil)
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		// id:         "cannot make template from Template smartblock type",

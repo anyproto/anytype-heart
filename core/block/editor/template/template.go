@@ -1,7 +1,6 @@
 package template
 
 import (
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
@@ -79,19 +78,6 @@ var WithNoDuplicateLinks = func() StateTransformer {
 	}
 }
 
-var WithObjectTypeLayoutMigration = func() StateTransformer {
-	return func(s *state.State) {
-		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())
-
-		if layout == float64(model.ObjectType_objectType) {
-			return
-		}
-
-		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, pbtypes.Float64(layout))
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType)))
-	}
-}
-
 var WithRelations = func(rels []bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var links []*model.RelationLink
@@ -132,14 +118,6 @@ var WithDetailName = func(name string) StateTransformer {
 	return WithDetail(bundle.RelationKeyName, pbtypes.String(name))
 }
 
-var WithCondition = func(condition bool, f StateTransformer) StateTransformer {
-	if condition {
-		return f
-	} else {
-		return func(s *state.State) {}
-	}
-}
-
 var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil {
@@ -152,24 +130,6 @@ var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTra
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil || !s.Details().Fields[key.String()].Equal(value) {
 			s.SetDetailAndBundledRelation(key, value)
-		}
-	}
-}
-
-// MigrateRelationValue moves a relation value from the old key to the new key.
-// In case new key already exists, it does nothing
-// In case old key does not exist, it does nothing
-var MigrateRelationValue = func(from bundle.RelationKey, to bundle.RelationKey) StateTransformer {
-	return func(s *state.State) {
-		if s.Details().GetFields() == nil {
-			return
-		}
-		if s.Details().GetFields()[to.String()] == nil {
-			if val := s.Details().GetFields()[from.String()]; val != nil {
-				s.SetDetailAndBundledRelation(to, val)
-				s.RemoveDetail(from.String())
-				s.RemoveRelation(from.String())
-			}
 		}
 	}
 }
@@ -477,28 +437,6 @@ var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
 	})
 })
 
-var WithRootBlockEditRestricted = func(s *state.State) {
-	WithBlockEditRestricted(s.RootId())
-}
-
-var WithBlockEditRestricted = func(id string) StateTransformer {
-	return StateTransformer(func(s *state.State) {
-		s.Iterate(func(b simple.Block) (isContinue bool) {
-			if b.Model().Id != id {
-				return true
-			}
-			b.Model().Restrictions = &model.BlockRestrictions{
-				Read:   false,
-				Edit:   true,
-				Remove: true,
-				Drag:   true,
-				DropOn: true,
-			}
-			return false
-		})
-	})
-}
-
 var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 	return func(s *state.State) {
 		WithEmpty(s)
@@ -511,184 +449,6 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 			err := s.InsertTo(s.RootId(), model.Block_Inner, block.Id)
 			if err != nil {
 				log.Errorf("template WithDataview failed to insert: %w", err)
-			}
-		}
-	}
-}
-var WithDataviewRelationMigrationRelation = func(id string, source string, from bundle.RelationKey, to bundle.RelationKey) StateTransformer {
-	return func(s *state.State) {
-		rel := bundle.MustGetRelation(to)
-		b := s.Get(id)
-		if b == nil {
-			return
-		}
-		var blockNeedToUpdate bool
-		if dvBlock, ok := b.(simpleDataview.Block); !ok {
-			log.Errorf("WithDataviewRequiredRelation got not dataview block")
-			return
-		} else {
-			dv := dvBlock.Model().GetDataview()
-			if dv == nil {
-				return
-			}
-			if len(dv.Source) != 1 || dv.Source[0] != source {
-				return
-			}
-			var alreadyExists bool
-			for _, r := range dv.Relations {
-				if r.Key == to.String() {
-					alreadyExists = true
-				}
-			}
-
-			if !alreadyExists {
-				for i, r := range dv.Relations {
-					if r.Key == from.String() {
-						blockNeedToUpdate = true
-						dv.Relations[i] = rel
-						break
-					}
-				}
-			}
-
-			for _, view := range dv.Views {
-				if view.Relations == nil {
-					continue
-				}
-
-				var alreadyExists bool
-				for _, r := range view.Relations {
-					if r.Key == to.String() {
-						alreadyExists = true
-					}
-				}
-				if !alreadyExists {
-					for i, er := range view.Relations {
-						if er.Key == from.String() {
-							blockNeedToUpdate = true
-							view.Relations[i] = &model.BlockContentDataviewRelation{
-								Key:             rel.Key,
-								IsVisible:       true,
-								Width:           er.Width,
-								DateIncludeTime: er.DateIncludeTime,
-								TimeFormat:      er.TimeFormat,
-								DateFormat:      er.DateFormat,
-							}
-							break
-						}
-					}
-				}
-
-				for i, f := range view.Filters {
-					if f.RelationKey == from.String() {
-						blockNeedToUpdate = true
-						view.Filters[i].RelationKey = rel.Key
-						break
-					}
-				}
-			}
-			if blockNeedToUpdate {
-				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
-			}
-		}
-	}
-}
-
-var WithDataviewAddIDsToFilters = func(id string) StateTransformer {
-	return func(s *state.State) {
-		b := s.Get(id)
-		if b == nil {
-			return
-		}
-		dv := b.Model().GetDataview()
-		if dv == nil {
-			return
-		}
-
-		for _, view := range dv.Views {
-			for _, f := range view.Filters {
-				if f.Id == "" {
-					f.Id = bson.NewObjectId().Hex()
-				}
-			}
-		}
-	}
-}
-
-var WithDataviewAddIDsToSorts = func(id string) StateTransformer {
-	return func(s *state.State) {
-		b := s.Get(id)
-		if b == nil {
-			return
-		}
-		dv := b.Model().GetDataview()
-		if dv == nil {
-			return
-		}
-
-		for _, view := range dv.Views {
-			for _, s := range view.Sorts {
-				if s.Id == "" {
-					s.Id = bson.NewObjectId().Hex()
-				}
-			}
-		}
-	}
-}
-
-var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) StateTransformer {
-	return func(s *state.State) {
-		found := false
-		for _, r := range bundle.SystemRelations {
-			if r.String() == key.String() {
-				found = true
-				break
-			}
-		}
-		rel := bundle.MustGetRelation(key)
-		if rel == nil {
-			return
-		}
-		if !found {
-			log.Errorf("WithDataviewRequiredRelation got not system relation %s; ignore", key)
-			return
-		}
-		b := s.Get(id)
-		if b == nil {
-			return
-		}
-		var blockNeedToUpdate bool
-		if dvBlock, ok := b.(simpleDataview.Block); !ok {
-			log.Errorf("WithDataviewRequiredRelation got not dataview block")
-			return
-		} else {
-			dv := dvBlock.Model().GetDataview()
-			if dv == nil {
-				return
-			}
-			if slice.FindPos(pbtypes.GetRelationListKeys(dv.RelationLinks), key.String()) == -1 {
-				dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{Key: key.String(), Format: rel.Format})
-				blockNeedToUpdate = true
-			}
-
-			for i, view := range dv.Views {
-				if view.Relations == nil {
-					continue
-				}
-				var found bool
-				for _, rel := range view.Relations {
-					if rel.Key == bundle.RelationKeyDone.String() {
-						found = true
-						break
-					}
-				}
-				if !found {
-					blockNeedToUpdate = true
-					dv.Views[i].Relations = append(dv.Views[i].Relations, &model.BlockContentDataviewRelation{Key: key.String(), IsVisible: false})
-				}
-			}
-			if blockNeedToUpdate {
-				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
 			}
 		}
 	}
@@ -737,54 +497,6 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 
 var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return WithDataviewID(DataviewBlockId, dataview, forceViews)
-}
-
-var WithChildrenSorter = func(blockId string, sort func(blockIds []string)) StateTransformer {
-	return func(s *state.State) {
-		b := s.Get(blockId)
-		sort(b.Model().ChildrenIds)
-
-		s.Set(b)
-		return
-	}
-}
-
-var WithRootLink = func(targetBlockId string, style model.BlockContentLinkStyle) StateTransformer {
-	return func(s *state.State) {
-		var exists bool
-		s.Iterate(func(b simple.Block) (isContinue bool) {
-			if b, ok := b.(*link.Link); !ok {
-				return true
-			} else {
-				if b.Model().GetLink().TargetBlockId == targetBlockId {
-					exists = true
-					return false
-				}
-
-				return true
-			}
-		})
-
-		if exists {
-			return
-		}
-
-		linkBlock := simple.New(&model.Block{
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: targetBlockId,
-					Style:         style,
-				},
-			},
-		})
-
-		s.Add(linkBlock)
-		if err := s.InsertTo(s.RootId(), model.Block_Inner, linkBlock.Model().Id); err != nil {
-			log.Errorf("can't insert link in template: %w", err)
-		}
-
-		return
-	}
 }
 
 var WithNoRootLink = func(targetBlockId string) StateTransformer {
@@ -950,37 +662,4 @@ var WithBookmarkBlocks = func(s *state.State) {
 		log.Errorf("insert relation blocks: %w", err)
 		return
 	}
-}
-
-var WithRelationOptionDataview = func(s *state.State) {
-	relKey := pbtypes.GetString(s.Details(), bundle.RelationKeyRelationKey.String())
-	dataview := model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			Source: []string{relKey},
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:   "1",
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
-					Relations: []*model.BlockContentDataviewRelation{},
-					Filters: []*model.BlockContentDataviewFilter{{
-						RelationKey: relKey,
-						Condition:   model.BlockContentDataviewFilter_In,
-						Value:       pbtypes.String(s.RootId()),
-					}},
-				},
-			},
-		},
-	}
-
-	WithDefaultFeaturedRelations(s)
-	WithTitle(s)
-	WithDataview(dataview, true)(s)
-	WithAllBlocksEditsRestricted(s)
 }

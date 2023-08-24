@@ -84,7 +84,7 @@ type Hasher interface {
 }
 
 type objectCreator interface {
-	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error)
+	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error)
 	AddBundledObjectToSpace(
 		ctx context.Context,
 		spaceID string,
@@ -573,16 +573,18 @@ func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexTyp
 // todo: remove this and create objects within derivePredefinedObjects
 func (i *indexer) EnsurePreinstalledObjects(spaceID string) error {
 	start := time.Now()
-	var ids []string
+	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
 	for _, ot := range bundle.SystemTypes {
-
 		ids = append(ids, ot.BundledURL())
 	}
 
 	for _, rk := range bundle.SystemRelations {
 		ids = append(ids, rk.BundledURL())
 	}
-	i.objectCreator.AddBundledObjectToSpace(context.Background(), spaceID, ids)
+	_, _, err := i.objectCreator.AddBundledObjectToSpace(context.Background(), spaceID, ids)
+	if err != nil {
+		return err
+	}
 
 	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
 

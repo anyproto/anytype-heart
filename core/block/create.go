@@ -21,11 +21,16 @@ import (
 )
 
 func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (templateID string, err error) {
-	var st *state.State
+	var (
+		st             *state.State
+		objectTypeKeys []bundle.TypeKey
+	)
+
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_Page {
 			return fmt.Errorf("can't make template from this obect type")
 		}
+		objectTypeKeys = b.ObjectTypeKeys()
 		st, err = b.TemplateCreateFromObjectState()
 		return err
 	}); err != nil {
@@ -37,7 +42,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
 
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeTemplate, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeTemplate, objectTypeKeys, nil, st)
 	if err != nil {
 		return
 	}
@@ -45,22 +50,24 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 }
 
 func (s *Service) TemplateClone(spaceID string, id string) (templateID string, err error) {
-	var st *state.State
+	var (
+		st             *state.State
+		objectTypeKeys []bundle.TypeKey
+	)
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != model.SmartBlockType_BundledTemplate {
 			return fmt.Errorf("can clone bundled templates only")
 		}
+		objectTypeKeys = b.ObjectTypeKeys()
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
-		t := st.ObjectTypeKeys()
-		st.SetObjectTypeKeys(t)
 		return nil
 	}); err != nil {
 		return
 	}
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), spaceID, coresb.SmartBlockTypeTemplate, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), spaceID, coresb.SmartBlockTypeTemplate, objectTypeKeys, nil, st)
 	if err != nil {
 		return
 	}
@@ -69,10 +76,12 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
 	var (
-		st  *state.State
-		sbt coresb.SmartBlockType
+		st             *state.State
+		sbt            coresb.SmartBlockType
+		objectTypeKeys []bundle.TypeKey
 	)
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
+		objectTypeKeys = b.ObjectTypeKeys()
 		sbt = coresb.SmartBlockType(b.Type())
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
@@ -88,33 +97,41 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
-	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, sbt, nil, st)
+	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, sbt, objectTypeKeys, nil, st)
 	if err != nil {
 		return
 	}
 	return
 }
 
+// TODO Seems like it unused by clients
 func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, objectTypeID string) (templateID string, err error) {
-	spaceID, err := s.ResolveSpaceID(objectTypeID)
-	if err != nil {
-		return "", fmt.Errorf("resolve spaceID: %w", err)
-	}
-	if err = Do(s, objectTypeID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
-		return "", fmt.Errorf("can't open objectType: %v", err)
-	}
-	objectType, err := s.objectStore.GetObjectType(objectTypeID)
-	if err != nil {
-		return "", fmt.Errorf("get object type: %w", err)
-	}
-	st := state.NewDoc("", nil).(*state.State)
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(objectTypeID))
-	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(objectType.Key)})
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeTemplate, nil, st)
-	if err != nil {
-		return
-	}
 	return
+	// spaceID, err := s.ResolveSpaceID(objectTypeID)
+	// if err != nil {
+	// 	return "", fmt.Errorf("resolve spaceID: %w", err)
+	// }
+	// if err = Do(s, objectTypeID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
+	// 	return "", fmt.Errorf("can't open objectType: %v", err)
+	// }
+	// objectType, err := s.objectStore.GetObjectType(objectTypeID)
+	// if err != nil {
+	// 	return "", fmt.Errorf("get object type: %w", err)
+	// }
+	// st := state.NewDoc("", nil).(*state.State)
+	// st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(objectTypeID))
+	// templateID, _, err = s.objectCreator.CreateSmartBlockFromState(
+	// 	ctx,
+	// 	spaceID,
+	// 	coresb.SmartBlockTypeTemplate,
+	// 	[]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(objectType.Key)},
+	// 	nil,
+	// 	st,
+	// )
+	// if err != nil {
+	// 	return
+	// }
+	// return
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {
@@ -143,6 +160,9 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		st.SetInStore([]string{"spaces"}, spaces)
 		return nil
 	})
+	if err != nil {
+		return "", fmt.Errorf("add space to account space: %w", err)
+	}
 
 	err = s.indexer.EnsurePreinstalledObjects(spc.Id())
 	if err != nil {
@@ -181,13 +201,13 @@ func (s *Service) CreateLinkToTheNewObject(
 		return
 	}
 
-	fmt.Printf("%+v", s.anytype.PredefinedObjects(req.SpaceId))
-	uk, err := uniquekey.New(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
-	sss, _ := s.anytype.DeriveObjectId(ctx, req.SpaceId, uk)
-	fmt.Printf("%+v", sss)
+	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+	if err != nil {
+		return "", "", fmt.Errorf("get type key from raw unique key: %w", err)
+	}
 
 	s.objectCreator.InjectWorkspaceID(req.Details, req.SpaceId, req.ContextId)
-	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, "")
+	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, objectTypeKey)
 	if err != nil {
 		return
 	}
@@ -243,6 +263,14 @@ func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) e
 	return nil
 }
 
-func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsGetter, forcedType bundle.TypeKey) (id string, details *types.Struct, err error) {
-	return s.objectCreator.CreateObject(ctx, spaceID, req, forcedType)
+func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error) {
+	return s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
+}
+
+func (s *Service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, req DetailsGetter, objectUniqueTypeKey string) (id string, details *types.Struct, err error) {
+	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
+	if err != nil {
+		return "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
+	}
+	return s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
 }

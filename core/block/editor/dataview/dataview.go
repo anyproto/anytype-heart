@@ -105,7 +105,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := DataviewBlockBySource(s.SpaceID(), d.sbtProvider, d.objectStore, source)
+	dvContent, _, err := BlockBySource(s.SpaceID(), d.sbtProvider, d.relationService, source)
 	if err != nil {
 		return
 	}
@@ -368,7 +368,7 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore) (database.Schema, error) {
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, relationService relation.Service) (database.Schema, error) {
 	var relationFound, typeFound bool
 
 	for _, source := range sources {
@@ -395,7 +395,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		}
 	}
 	if typeFound {
-		objectType, err := store.GetObjectType(sources[0])
+		objectType, err := relationService.GetObjectType(sources[0])
 		if err != nil {
 			return nil, err
 		}
@@ -406,7 +406,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 	if relationFound {
 		var relations []*model.RelationLink
 		for _, relId := range sources {
-			rel, err := store.GetRelationByID(relId)
+			rel, err := relationService.GetRelationByID(relId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get relation %s: %s", relId, err.Error())
 			}
@@ -550,8 +550,8 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func DataviewBlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
-	if schema, err = SchemaBySources(spaceID, sbtProvider, source, store); err != nil {
+func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, relationService relation.Service, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
+	if schema, err = SchemaBySources(spaceID, sbtProvider, source, relationService); err != nil {
 		return
 	}
 

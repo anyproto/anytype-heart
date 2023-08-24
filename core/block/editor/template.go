@@ -83,7 +83,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 			if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypeKeys()) != 2 || fixOt) {
 				targetObjectTypeID := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
 				if targetObjectTypeID != "" {
-					targetObjectType, err := t.objectStore.GetObjectType(targetObjectTypeID)
+					targetObjectType, err := t.relationService.GetObjectType(targetObjectTypeID)
 					if err != nil {
 						log.Errorf("template createion state: failed to get target object type %s: %s", targetObjectTypeID, err)
 						return
@@ -101,7 +101,7 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
 	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeID != "" {
-		objectType, err := t.objectStore.GetObjectType(objectTypeID)
+		objectType, err := t.relationService.GetObjectType(objectTypeID)
 		if err != nil {
 			return nil, fmt.Errorf("get target object type: %w", err)
 		}

@@ -87,7 +87,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, "")
+		id, newDetails, err = bs.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req, req.ObjectTypeUniqueKey)
 		return err
 	})
 	if err != nil {

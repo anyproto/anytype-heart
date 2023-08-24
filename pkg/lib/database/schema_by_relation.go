@@ -19,11 +19,11 @@ func NewByRelations(commonRelations []*model.RelationLink) Schema {
 }
 
 func (sch *schemaByRelations) RequiredRelations() []*model.RelationLink {
-	alwaysRequired := []*model.RelationLink{
+	required := []*model.RelationLink{
 		bundle.MustGetRelationLink(bundle.RelationKeyName),
 		bundle.MustGetRelationLink(bundle.RelationKeyType),
 	}
-	required := append(alwaysRequired, sch.CommonRelations...)
+	required = append(required, sch.CommonRelations...)
 	return lo.UniqBy(required, func(rel *model.RelationLink) string {
 		return rel.Key
 	})

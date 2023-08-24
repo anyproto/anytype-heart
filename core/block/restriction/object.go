@@ -211,7 +211,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	}
 
 	if !errors.Is(r.Check(model.Restrictions_Template), ErrRestricted) {
-		if ok, err := s.objectStore.HasObjectType(rh.ObjectTypeID()); err != nil || !ok {
+		if ok, err := s.relationService.HasObjectType(rh.ObjectTypeID()); err != nil || !ok {
 			r = append(r, model.Restrictions_Template)
 		}
 	}
@@ -236,7 +236,7 @@ func GetRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r ObjectRestrictions) 
 }
 
 func GetDataviewRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r DataviewRestrictions) {
-	r, _ = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
+	r = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
 	switch uk.SmartblockType() {
 	case model.SmartBlockType_STType:
 		key := uk.InternalKey()

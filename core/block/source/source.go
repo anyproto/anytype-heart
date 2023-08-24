@@ -178,10 +178,10 @@ func (s *source) Type() model.SmartBlockType {
 }
 
 func (s *source) ReadDoc(_ context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
-	return s.readDoc(receiver, allowEmpty)
+	return s.readDoc(receiver)
 }
 
-func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 	s.receiver = receiver
 	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
 	if !ok {
