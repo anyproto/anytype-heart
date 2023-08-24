@@ -10,7 +10,6 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -71,7 +70,7 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
-func NewFilters(qry Query, store filter.OptionsGetter) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
@@ -87,10 +86,10 @@ func NewFilters(qry Query, store filter.OptionsGetter) (filters *Filters, err er
 
 func compose(
 	filters []*model.BlockContentDataviewFilter,
-	store filter.OptionsGetter,
-) (filter.AndFilters, error) {
-	var filterObj filter.AndFilters
-	qryFilter, err := filter.MakeAndFilter(filters, store)
+	store ObjectStore,
+) (FiltersAnd, error) {
+	var filterObj FiltersAnd
+	qryFilter, err := MakeFiltersAnd(filters, store)
 	if err != nil {
 		return nil, err
 	}
@@ -101,12 +100,12 @@ func compose(
 	return filterObj, nil
 }
 
-func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsGetter) filter.SetOrder {
+func extractOrder(sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
 	if len(sorts) > 0 {
-		order := filter.SetOrder{}
+		order := SetOrder{}
 		for _, sort := range sorts {
 
-			keyOrder := &filter.KeyOrder{
+			keyOrder := &KeyOrder{
 				Key:            sort.RelationKey,
 				Type:           sort.Type,
 				EmptyLast:      sort.RelationKey == bundle.RelationKeyName.String(),
@@ -122,9 +121,9 @@ func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsG
 	return nil
 }
 
-func appendCustomOrder(sort *model.BlockContentDataviewSort, order filter.SetOrder, keyOrder *filter.KeyOrder) filter.SetOrder {
+func appendCustomOrder(sort *model.BlockContentDataviewSort, order SetOrder, keyOrder *KeyOrder) SetOrder {
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
-		order = append(order, filter.NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
+		order = append(order, NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
 	} else {
 		order = append(order, keyOrder)
 	}
@@ -165,8 +164,8 @@ func (f sortGetter) Get(key string) *types.Value {
 }
 
 type Filters struct {
-	FilterObj filter.Filter
-	Order     filter.Order
+	FilterObj Filter
+	Order     Order
 	dateKeys  []string
 }
 
@@ -194,11 +193,11 @@ func (f *Filters) Compare(a, b query.Entry) int {
 	return f.Order.Compare(ag, bg)
 }
 
-func (f *Filters) unmarshalFilter(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalFilter(e query.Entry) Getter {
 	return filterGetter{dateKeys: f.dateKeys, curEl: f.unmarshal(e)}
 }
 
-func (f *Filters) unmarshalSort(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalSort(e query.Entry) Getter {
 	return sortGetter{curEl: f.unmarshal(e)}
 }
 

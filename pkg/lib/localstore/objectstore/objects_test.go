@@ -22,7 +22,7 @@ import (
 )
 
 func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
-	s := newStoreFixture(t)
+	s := NewStoreFixture(t)
 	id := bson.NewObjectId()
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err := s.UpdateObjectDetails(id.String(), &types.Struct{
@@ -48,7 +48,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 }
 
 func Test_removeByPrefix(t *testing.T) {
-	s := newStoreFixture(t)
+	s := NewStoreFixture(t)
 	var key = make([]byte, 32)
 	for i := 0; i < 10; i++ {
 
@@ -74,7 +74,7 @@ func Test_removeByPrefix(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	s := newStoreFixture(t)
+	s := NewStoreFixture(t)
 	typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	s.sbtProvider = typeProvider
 
@@ -90,7 +90,7 @@ func TestList(t *testing.T) {
 	obj3[bundle.RelationKeyIsDeleted] = pbtypes.Bool(true)
 	typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypePage, nil)
 
-	s.addObjects(t, []testObject{obj1, obj2, obj3})
+	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 	got, err := s.List("space1")
 	require.NoError(t, err)
@@ -115,15 +115,15 @@ func TestList(t *testing.T) {
 
 func TestListIds(t *testing.T) {
 	t.Run("with empty store", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		got, err := s.ListIds()
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
 	t.Run("with not empty store", func(t *testing.T) {
-		s := newStoreFixture(t)
-		s.addObjects(t, []testObject{
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
 			makeObjectWithName("id1", "name1"),
 			makeObjectWithName("id2", "name2"),
 		})
@@ -135,8 +135,8 @@ func TestListIds(t *testing.T) {
 }
 
 func TestHasIDs(t *testing.T) {
-	s := newStoreFixture(t)
-	s.addObjects(t, []testObject{
+	s := NewStoreFixture(t)
+	s.AddObjects(t, []TestObject{
 		makeObjectWithName("id1", "name1"),
 		makeObjectWithName("id2", "name2"),
 		makeObjectWithName("id3", "name3"),
@@ -166,7 +166,7 @@ func TestHasIDs(t *testing.T) {
 
 func TestGetObjectType(t *testing.T) {
 	t.Run("get bundled type", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		id := bundle.TypeKeyTask.BundledURL()
 		got, err := s.GetObjectType(bundle.TypeKeyTask.BundledURL())
@@ -180,14 +180,14 @@ func TestGetObjectType(t *testing.T) {
 	})
 
 	t.Run("with object is not type expect error", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		id := "id1"
-		obj := testObject{
+		obj := TestObject{
 			bundle.RelationKeyId:   pbtypes.String(id),
 			bundle.RelationKeyType: pbtypes.String(bundle.TypeKeyNote.URL()),
 		}
-		s.addObjects(t, []testObject{obj})
+		s.AddObjects(t, []TestObject{obj})
 
 		_, err := s.GetObjectType(id)
 		require.Error(t, err)
@@ -198,13 +198,13 @@ func TestGetObjectType(t *testing.T) {
 
 	t.Run("with object is type", func(t *testing.T) {
 		// Given
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		id := "id1"
 		relationID := "derivedFrom(assignee)"
 		uniqueKey, err := uniquekey.New(model.SmartBlockType_STType, "note")
 		require.NoError(t, err)
-		obj := testObject{
+		obj := TestObject{
 			bundle.RelationKeyId:                   pbtypes.String(id),
 			bundle.RelationKeyType:                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
 			bundle.RelationKeyName:                 pbtypes.String("my note"),
@@ -214,12 +214,12 @@ func TestGetObjectType(t *testing.T) {
 			bundle.RelationKeyIsArchived:           pbtypes.Bool(true),
 			bundle.RelationKeyUniqueKey:            pbtypes.String(uniqueKey.Marshal()),
 		}
-		relObj := testObject{
+		relObj := TestObject{
 			bundle.RelationKeyId:          pbtypes.String(relationID),
 			bundle.RelationKeyRelationKey: pbtypes.String(bundle.RelationKeyAssignee.String()),
 			bundle.RelationKeyType:        pbtypes.String(bundle.TypeKeyRelation.URL()),
 		}
-		s.addObjects(t, []testObject{obj, relObj})
+		s.AddObjects(t, []TestObject{obj, relObj})
 
 		// When
 		got, err := s.GetObjectType(id)
@@ -251,7 +251,7 @@ func TestGetObjectType(t *testing.T) {
 
 func TestGetAggregatedOptions(t *testing.T) {
 	t.Run("with no options", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		got, err := s.GetAggregatedOptions(bundle.RelationKeyTag.String())
 		require.NoError(t, err)
@@ -259,11 +259,11 @@ func TestGetAggregatedOptions(t *testing.T) {
 	})
 
 	t.Run("with options", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		opt1 := makeRelationOptionObject("id1", "name1", "color1", bundle.RelationKeyTag.String())
 		opt2 := makeRelationOptionObject("id2", "name2", "color2", bundle.RelationKeyStatus.String())
 		opt3 := makeRelationOptionObject("id3", "name3", "color3", bundle.RelationKeyTag.String())
-		s.addObjects(t, []testObject{opt1, opt2, opt3})
+		s.AddObjects(t, []TestObject{opt1, opt2, opt3})
 
 		got, err := s.GetAggregatedOptions(bundle.RelationKeyTag.String())
 		require.NoError(t, err)
@@ -285,8 +285,8 @@ func TestGetAggregatedOptions(t *testing.T) {
 	})
 }
 
-func makeRelationOptionObject(id, name, color, relationKey string) testObject {
-	return testObject{
+func makeRelationOptionObject(id, name, color, relationKey string) TestObject {
+	return TestObject{
 		bundle.RelationKeyId:                  pbtypes.String(id),
 		bundle.RelationKeyType:                pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 		bundle.RelationKeyName:                pbtypes.String(name),
@@ -298,23 +298,23 @@ func makeRelationOptionObject(id, name, color, relationKey string) testObject {
 
 func TestGetRelationById(t *testing.T) {
 	t.Run("relation is not found", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		_, err := s.GetRelationByID("relationID")
 		require.Error(t, err)
 	})
 
 	t.Run("requested object is not relation", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
-		s.addObjects(t, []testObject{makeObjectWithName("id1", "name1")})
+		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "name1")})
 
 		_, err := s.GetRelationByID("id1")
 		require.Error(t, err)
 	})
 
 	t.Run("relation is found", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		relation := &relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyName)}
 		relationID := "derivedFrom(name)"
@@ -330,11 +330,11 @@ func TestGetRelationById(t *testing.T) {
 }
 
 func TestGetWithLinksInfoByID(t *testing.T) {
-	s := newStoreFixture(t)
+	s := NewStoreFixture(t)
 	obj1 := makeObjectWithName("id1", "name1")
 	obj2 := makeObjectWithName("id2", "name2")
 	obj3 := makeObjectWithName("id3", "name3")
-	s.addObjects(t, []testObject{obj1, obj2, obj3})
+	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 	err := s.UpdateObjectLinks("id1", []string{"id2", "id3"})
 	require.NoError(t, err)
@@ -370,7 +370,7 @@ func TestGetWithLinksInfoByID(t *testing.T) {
 
 func TestDeleteObject(t *testing.T) {
 	t.Run("object is not found", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		err := s.DeleteObject("id1")
 		require.NoError(t, err)
@@ -378,7 +378,7 @@ func TestDeleteObject(t *testing.T) {
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
 		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(testObject{
+			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
@@ -386,7 +386,7 @@ func TestDeleteObject(t *testing.T) {
 	})
 
 	t.Run("object is already deleted", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		err := s.DeleteObject("id1")
 		require.NoError(t, err)
 
@@ -396,7 +396,7 @@ func TestDeleteObject(t *testing.T) {
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
 		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(testObject{
+			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
@@ -405,9 +405,9 @@ func TestDeleteObject(t *testing.T) {
 
 	t.Run("delete object", func(t *testing.T) {
 		// Arrange
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		obj := makeObjectWithName("id1", "name1")
-		s.addObjects(t, []testObject{obj})
+		s.AddObjects(t, []TestObject{obj})
 
 		err := s.UpdateObjectSnippet("id1", "snippet1")
 		require.NoError(t, err)
@@ -429,7 +429,7 @@ func TestDeleteObject(t *testing.T) {
 		got, err := s.GetDetails("id1")
 		require.NoError(t, err)
 		assert.Equal(t, &model.ObjectDetails{
-			Details: makeDetails(testObject{
+			Details: makeDetails(TestObject{
 				bundle.RelationKeyId:        pbtypes.String("id1"),
 				bundle.RelationKeyIsDeleted: pbtypes.Bool(true),
 			}),
@@ -458,8 +458,8 @@ func TestDeleteObject(t *testing.T) {
 }
 
 func TestDeleteDetails(t *testing.T) {
-	s := newStoreFixture(t)
-	s.addObjects(t, []testObject{makeObjectWithName("id1", "name1")})
+	s := NewStoreFixture(t)
+	s.AddObjects(t, []TestObject{makeObjectWithName("id1", "name1")})
 
 	err := s.DeleteDetails("id1")
 	require.NoError(t, err)

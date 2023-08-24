@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
@@ -175,7 +174,7 @@ func (mw *Middleware) enrichWithDateSuggestion(records []database.Record, req *p
 		}
 	}
 	rec = mw.makeSuggestedDateRecord(spaceID, dt)
-	f, _ := filter.MakeAndFilter(req.Filters, store) //nolint:errcheck
+	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
 	}
@@ -260,7 +259,6 @@ func (mw *Middleware) makeSuggestedDateRecord(spaceID string, t time.Time) datab
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
-	ctx := mw.newContext(cctx)
 	errResponse := func(err error) *pb.RpcObjectSearchSubscribeResponse {
 		r := &pb.RpcObjectSearchSubscribeResponse{
 			Error: &pb.RpcObjectSearchSubscribeResponseError{
@@ -279,7 +277,7 @@ func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObj
 
 	subService := mw.applicationService.GetApp().MustComponent(subscription.CName).(subscription.Service)
 
-	resp, err := subService.Search(ctx, *req)
+	resp, err := subService.Search(*req)
 	if err != nil {
 		return errResponse(err)
 	}

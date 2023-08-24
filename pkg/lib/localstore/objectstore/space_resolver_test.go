@@ -8,7 +8,7 @@ import (
 )
 
 func TestDsObjectStore_ResolveSpaceID(t *testing.T) {
-	s := newStoreFixture(t)
+	s := NewStoreFixture(t)
 
 	err := s.StoreSpaceID("object1", "space1")
 	require.NoError(t, err)

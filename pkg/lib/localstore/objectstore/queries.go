@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -77,7 +76,7 @@ func (s *dsObjectStore) buildQuery(q database.Query) (*database.Filters, error) 
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
 	})
-	filters.FilterObj = filter.AndFilters{filters.FilterObj, discardSystemObjects}
+	filters.FilterObj = database.FiltersAnd{filters.FilterObj, discardSystemObjects}
 
 	if q.FullText != "" {
 		filters, err = s.makeFTSQuery(q.FullText, filters)
@@ -97,24 +96,24 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 		return filters, err
 	}
 	idsQuery := newIdsFilter(ids)
-	filters.FilterObj = filter.AndFilters{filters.FilterObj, idsQuery}
-	filters.Order = filter.SetOrder(append([]filter.Order{idsQuery}, filters.Order))
+	filters.FilterObj = database.FiltersAnd{filters.FilterObj, idsQuery}
+	filters.Order = database.SetOrder(append([]database.Order{idsQuery}, filters.Order))
 	return filters, nil
 }
 
-func getSpaceIDFromFilter(fltr filter.Filter) (spaceID string) {
+func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
 	switch f := fltr.(type) {
-	case filter.Eq:
+	case database.FilterEq:
 		if f.Key == bundle.RelationKeySpaceId.String() {
 			return f.Value.GetStringValue()
 		}
-	case filter.AndFilters:
+	case database.FiltersAnd:
 		spaceID = iterateOverAndFilters(f)
 	}
 	return spaceID
 }
 
-func iterateOverAndFilters(fs []filter.Filter) (spaceID string) {
+func iterateOverAndFilters(fs []database.Filter) (spaceID string) {
 	for _, f := range fs {
 		if spaceID = getSpaceIDFromFilter(f); spaceID != "" {
 			return spaceID
@@ -130,7 +129,7 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smart
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
 	if len(smartBlockTypes) > 0 {
-		filters.FilterObj = filter.AndFilters{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes), filters.FilterObj}
+		filters.FilterObj = database.FiltersAnd{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes), filters.FilterObj}
 	}
 	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
 	if err != nil {
