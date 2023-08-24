@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/anytype-heart/space/clientserver"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -255,7 +256,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
-	s.peerService.SetPeerAddrs(peer.PeerId, peer.Addrs)
+	s.peerService.SetPeerAddrs(peer.PeerId, s.addSchema(peer.Addrs))
 	ctx := context.Background()
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
 	if err != nil {
@@ -282,6 +283,14 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdi
 	}
 	log.Debug("got peer ids from peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", resp.SpaceIds))
 	s.peerStore.UpdateLocalPeer(peer.PeerId, resp.SpaceIds)
+}
+
+func (s *service) addSchema(addrs []string) []string {
+	var res []string
+	for _, addr := range addrs {
+		res = append(res, clientserver.PreferredSchema+"://"+addr)
+	}
+	return res
 }
 
 func (s *service) checkOldSpace() (err error) {

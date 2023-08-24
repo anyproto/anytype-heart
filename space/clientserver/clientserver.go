@@ -3,6 +3,7 @@ package clientserver
 import (
 	"context"
 	"errors"
+	"github.com/anyproto/any-sync/net/transport"
 	"github.com/anyproto/any-sync/net/transport/quic"
 	"net"
 	"strconv"
@@ -16,7 +17,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 )
 
-const CName = "client.space.clientserver"
+const (
+	CName           = "client.space.clientserver"
+	PreferredSchema = transport.Quic
+)
 
 var log = logger.NewNamed(CName)
 
