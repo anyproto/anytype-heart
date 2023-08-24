@@ -1,0 +1,38 @@
+name: Check Alpha
+
+jobs:
+  check_alpha:
+    steps:
+      - name: Check if tag contains "-alpha"
+        id: check_tag
+        run: |
+          if [[ "$GITHUB_REF" == *"-alpha" ]]; then
+            echo "Tag contains '-alpha'"
+            echo "::set-output name=tag_alpha_found::true"
+          else
+            echo "Tag does not contain '-alpha'"
+            echo "::set-output name=tag_alpha_found::false"
+          fi
+
+      - name: Check go.mod for alpha any-sync
+        id: check_go_mod
+        run: |
+          if grep -qE "github.com/anyproto/any-sync .*-alpha" go.mod; then
+            echo "Required line found in go.mod"
+            echo "::set-output name=anysync_alpha_found::true"
+          else
+            echo "Required line not found in go.mod"
+            echo "::set-output name=anysync_alpha_found::false"
+          fi
+
+      - name: Assert either alpha or not
+        run: |
+          if [[ ${{ steps.check_tag.outputs.tag_alpha_found }} == "true" && ${{ steps.check_go_mod.outputs.anysync_alpha_found }} == "false" ]]; then
+            echo "Tag contains '-alpha' but go.mod does not contain 'any-sync' alpha"
+            exit 1
+          elif [[ ${{ steps.check_tag.outputs.tag_alpha_found }} == "false" && ${{ steps.check_go_mod.outputs.anysync_alpha_found }} == "true" ]]; then
+            echo "Tag does not contain '-alpha' but go.mod contains 'any-sync' alpha"
+            exit 1
+          else
+            echo "All good"
+          fi
