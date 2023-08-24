@@ -113,6 +113,10 @@ func DisableFileConfig(disable bool) func(*Config) {
 	}
 }
 
+type quicPreferenceSetter interface {
+	PreferQuic(bool)
+}
+
 func New(options ...func(*Config)) *Config {
 	cfg := DefaultConfig
 	for _, opt := range options {
@@ -126,7 +130,7 @@ func (c *Config) Init(a *app.App) (err error) {
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
-	a.MustComponent(peerservice.CName).(peerservice.PeerService).PreferQuic(true)
+	a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
 	return
 }
 
