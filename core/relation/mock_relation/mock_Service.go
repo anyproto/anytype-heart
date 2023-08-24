@@ -9,7 +9,6 @@ import (
 	types "github.com/gogo/protobuf/types"
 	mock "github.com/stretchr/testify/mock"
 
-	relation "github.com/anyproto/anytype-heart/core/relation"
 	relationutils "github.com/anyproto/anytype-heart/core/relation/relationutils"
 	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
@@ -28,32 +27,25 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// FetchRelationByKey provides a mock function with given fields: spaceId, key, opts
-func (_m *MockService) FetchRelationByKey(spaceId string, key string, opts ...relation.FetchOption) (*relationutils.Relation, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, spaceId, key)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// FetchRelationByKey provides a mock function with given fields: spaceId, key
+func (_m *MockService) FetchRelationByKey(spaceId string, key string) (*relationutils.Relation, error) {
+	ret := _m.Called(spaceId, key)
 
 	var r0 *relationutils.Relation
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, ...relation.FetchOption) (*relationutils.Relation, error)); ok {
-		return rf(spaceId, key, opts...)
+	if rf, ok := ret.Get(0).(func(string, string) (*relationutils.Relation, error)); ok {
+		return rf(spaceId, key)
 	}
-	if rf, ok := ret.Get(0).(func(string, string, ...relation.FetchOption) *relationutils.Relation); ok {
-		r0 = rf(spaceId, key, opts...)
+	if rf, ok := ret.Get(0).(func(string, string) *relationutils.Relation); ok {
+		r0 = rf(spaceId, key)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*relationutils.Relation)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string, ...relation.FetchOption) error); ok {
-		r1 = rf(spaceId, key, opts...)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, key)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -69,21 +61,13 @@ type MockService_FetchRelationByKey_Call struct {
 // FetchRelationByKey is a helper method to define mock.On call
 //   - spaceId string
 //   - key string
-//   - opts ...relation.FetchOption
-func (_e *MockService_Expecter) FetchRelationByKey(spaceId interface{}, key interface{}, opts ...interface{}) *MockService_FetchRelationByKey_Call {
-	return &MockService_FetchRelationByKey_Call{Call: _e.mock.On("FetchRelationByKey",
-		append([]interface{}{spaceId, key}, opts...)...)}
+func (_e *MockService_Expecter) FetchRelationByKey(spaceId interface{}, key interface{}) *MockService_FetchRelationByKey_Call {
+	return &MockService_FetchRelationByKey_Call{Call: _e.mock.On("FetchRelationByKey", spaceId, key)}
 }
 
-func (_c *MockService_FetchRelationByKey_Call) Run(run func(spaceId string, key string, opts ...relation.FetchOption)) *MockService_FetchRelationByKey_Call {
+func (_c *MockService_FetchRelationByKey_Call) Run(run func(spaceId string, key string)) *MockService_FetchRelationByKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]relation.FetchOption, len(args)-2)
-		for i, a := range args[2:] {
-			if a != nil {
-				variadicArgs[i] = a.(relation.FetchOption)
-			}
-		}
-		run(args[0].(string), args[1].(string), variadicArgs...)
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -93,7 +77,7 @@ func (_c *MockService_FetchRelationByKey_Call) Return(_a0 *relationutils.Relatio
 	return _c
 }
 
-func (_c *MockService_FetchRelationByKey_Call) RunAndReturn(run func(string, string, ...relation.FetchOption) (*relationutils.Relation, error)) *MockService_FetchRelationByKey_Call {
+func (_c *MockService_FetchRelationByKey_Call) RunAndReturn(run func(string, string) (*relationutils.Relation, error)) *MockService_FetchRelationByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -372,32 +356,25 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// ListAllRelations provides a mock function with given fields: spaceId, opts
-func (_m *MockService) ListAllRelations(spaceId string, opts ...relation.FetchOption) (relationutils.Relations, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, spaceId)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// ListAllRelations provides a mock function with given fields: spaceId
+func (_m *MockService) ListAllRelations(spaceId string) (relationutils.Relations, error) {
+	ret := _m.Called(spaceId)
 
 	var r0 relationutils.Relations
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, ...relation.FetchOption) (relationutils.Relations, error)); ok {
-		return rf(spaceId, opts...)
+	if rf, ok := ret.Get(0).(func(string) (relationutils.Relations, error)); ok {
+		return rf(spaceId)
 	}
-	if rf, ok := ret.Get(0).(func(string, ...relation.FetchOption) relationutils.Relations); ok {
-		r0 = rf(spaceId, opts...)
+	if rf, ok := ret.Get(0).(func(string) relationutils.Relations); ok {
+		r0 = rf(spaceId)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(relationutils.Relations)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, ...relation.FetchOption) error); ok {
-		r1 = rf(spaceId, opts...)
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(spaceId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -412,21 +389,13 @@ type MockService_ListAllRelations_Call struct {
 
 // ListAllRelations is a helper method to define mock.On call
 //   - spaceId string
-//   - opts ...relation.FetchOption
-func (_e *MockService_Expecter) ListAllRelations(spaceId interface{}, opts ...interface{}) *MockService_ListAllRelations_Call {
-	return &MockService_ListAllRelations_Call{Call: _e.mock.On("ListAllRelations",
-		append([]interface{}{spaceId}, opts...)...)}
+func (_e *MockService_Expecter) ListAllRelations(spaceId interface{}) *MockService_ListAllRelations_Call {
+	return &MockService_ListAllRelations_Call{Call: _e.mock.On("ListAllRelations", spaceId)}
 }
 
-func (_c *MockService_ListAllRelations_Call) Run(run func(spaceId string, opts ...relation.FetchOption)) *MockService_ListAllRelations_Call {
+func (_c *MockService_ListAllRelations_Call) Run(run func(spaceId string)) *MockService_ListAllRelations_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]relation.FetchOption, len(args)-1)
-		for i, a := range args[1:] {
-			if a != nil {
-				variadicArgs[i] = a.(relation.FetchOption)
-			}
-		}
-		run(args[0].(string), variadicArgs...)
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -436,7 +405,7 @@ func (_c *MockService_ListAllRelations_Call) Return(relations relationutils.Rela
 	return _c
 }
 
-func (_c *MockService_ListAllRelations_Call) RunAndReturn(run func(string, ...relation.FetchOption) (relationutils.Relations, error)) *MockService_ListAllRelations_Call {
+func (_c *MockService_ListAllRelations_Call) RunAndReturn(run func(string) (relationutils.Relations, error)) *MockService_ListAllRelations_Call {
 	_c.Call.Return(run)
 	return _c
 }

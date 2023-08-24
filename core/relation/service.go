@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
@@ -25,8 +24,6 @@ import (
 
 const CName = "relation"
 
-const blockServiceCName = treemanager.CName
-
 var (
 	ErrNotFound = errors.New("relation not found")
 	log         = logging.Logger("anytype-relations")
@@ -38,8 +35,8 @@ func New() Service {
 
 type Service interface {
 	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
-	FetchRelationByKey(spaceId string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error)
-	ListAllRelations(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error)
+	FetchRelationByKey(spaceId string, key string) (relation *relationutils.Relation, err error)
+	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
 	GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
 
@@ -96,14 +93,10 @@ func (s *service) FetchRelationByLinks(spaceId string, links pbtypes.RelationLin
 	for _, l := range links {
 		keys = append(keys, l.Key)
 	}
-	return s.fetchRelationByKeys(spaceId, keys...)
+	return s.FetchRelationByKeys(spaceId, keys...)
 }
 
 func (s *service) FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error) {
-	return s.fetchRelationByKeys(spaceId, keys...)
-}
-
-func (s *service) fetchRelationByKeys(spaceId string, keys ...string) (relations []*relationutils.Relation, err error) {
 	uks := make([]string, 0, len(keys))
 
 	for _, key := range keys {
@@ -137,21 +130,13 @@ func (s *service) fetchRelationByKeys(spaceId string, keys ...string) (relations
 	return
 }
 
-func (s *service) ListAllRelations(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
-	return s.listAllRelations(spaceId, opts...)
-}
-
-func (s *service) listAllRelations(spaceId string, opts ...FetchOption) (relations relationutils.Relations, err error) {
+func (s *service) ListAllRelations(spaceId string) (relations relationutils.Relations, err error) {
 	filters := []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.Float64(float64(model.ObjectType_relation)),
 		},
-	}
-	o := &fetchOptions{}
-	for _, apply := range opts {
-		apply(o)
 	}
 	filters = append(filters, &model.BlockContentDataviewFilter{
 		RelationKey: bundle.RelationKeyWorkspaceId.String(),
@@ -177,15 +162,7 @@ type fetchOptions struct {
 
 type FetchOption func(options *fetchOptions)
 
-func (s *service) FetchRelationByKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
-	return s.fetchRelationKey(spaceID, key, opts...)
-}
-
-func (s *service) fetchRelationKey(spaceID string, key string, opts ...FetchOption) (relation *relationutils.Relation, err error) {
-	o := &fetchOptions{}
-	for _, apply := range opts {
-		apply(o)
-	}
+func (s *service) FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error) {
 	uk, err := uniquekey.New(model.SmartBlockType_STRelation, key)
 	if err != nil {
 		return nil, err
