@@ -3,10 +3,11 @@ package restriction
 import (
 	"testing"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // TODO Use constructors instead for initializing restrictionHolder structures by hand. See givenObjectType and givenRelation

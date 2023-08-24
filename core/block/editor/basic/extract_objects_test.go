@@ -6,10 +6,9 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"go.uber.org/mock/gomock"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"

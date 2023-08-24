@@ -2,15 +2,17 @@ package restriction
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/anyproto/any-sync/app"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type fixture struct {

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )

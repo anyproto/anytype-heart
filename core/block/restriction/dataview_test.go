@@ -1,11 +1,13 @@
 package restriction
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestService_DataviewRestrictions(t *testing.T) {

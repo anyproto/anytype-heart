@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"

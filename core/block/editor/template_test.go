@@ -3,6 +3,7 @@ package editor
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string) (*Template, error) {

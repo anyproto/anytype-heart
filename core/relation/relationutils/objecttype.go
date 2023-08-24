@@ -1,9 +1,9 @@
 package relationutils
 
 import (
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

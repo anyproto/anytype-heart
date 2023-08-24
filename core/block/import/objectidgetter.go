@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
