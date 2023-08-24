@@ -504,6 +504,10 @@
     - [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request)
     - [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response)
     - [Rpc.Debug.SpaceSummary.Response.Error](#anytype-Rpc-Debug-SpaceSummary-Response-Error)
+    - [Rpc.Debug.StackGoroutines](#anytype-Rpc-Debug-StackGoroutines)
+    - [Rpc.Debug.StackGoroutines.Request](#anytype-Rpc-Debug-StackGoroutines-Request)
+    - [Rpc.Debug.StackGoroutines.Response](#anytype-Rpc-Debug-StackGoroutines-Response)
+    - [Rpc.Debug.StackGoroutines.Response.Error](#anytype-Rpc-Debug-StackGoroutines-Response-Error)
     - [Rpc.Debug.Subscriptions](#anytype-Rpc-Debug-Subscriptions)
     - [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request)
     - [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response)
@@ -1038,6 +1042,7 @@
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
+    - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
@@ -1658,6 +1663,7 @@
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
 | DebugTreeHeads | [Rpc.Debug.TreeHeads.Request](#anytype-Rpc-Debug-TreeHeads-Request) | [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response) |  |
 | DebugSpaceSummary | [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request) | [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response) |  |
+| DebugStackGoroutines | [Rpc.Debug.StackGoroutines.Request](#anytype-Rpc-Debug-StackGoroutines-Request) | [Rpc.Debug.StackGoroutines.Response](#anytype-Rpc-Debug-StackGoroutines-Response) |  |
 | DebugExportLocalstore | [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request) | [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response) |  |
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
@@ -8954,6 +8960,62 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-StackGoroutines"></a>
+
+### Rpc.Debug.StackGoroutines
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-StackGoroutines-Request"></a>
+
+### Rpc.Debug.StackGoroutines.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-StackGoroutines-Response"></a>
+
+### Rpc.Debug.StackGoroutines.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.StackGoroutines.Response.Error](#anytype-Rpc-Debug-StackGoroutines-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-StackGoroutines-Response-Error"></a>
+
+### Rpc.Debug.StackGoroutines.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -16563,6 +16625,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-StackGoroutines-Response-Error-Code"></a>
+
+### Rpc.Debug.StackGoroutines.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Debug-Subscriptions-Response-Error-Code"></a>
 
 ### Rpc.Debug.Subscriptions.Response.Error.Code
@@ -18405,8 +18480,9 @@ sent when the view have been changed or added
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
-| pageLimit | [int32](#int32) |  |  |
+| pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
+| defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
 
 
 
@@ -21525,8 +21601,9 @@ Bookmark is to keep a web-link and to preview a content.
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
-| pageLimit | [int32](#int32) |  |  |
-| defaultTemplateId | [string](#string) |  |  |
+| pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
+| defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
+| defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
 
 
 

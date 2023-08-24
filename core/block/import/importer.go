@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -53,6 +54,7 @@ type Import struct {
 	objectIDGetter  IDGetter
 	tempDirProvider core.TempDirProvider
 	sbtProvider     typeprovider.SmartBlockTypeProvider
+	sync.Mutex
 }
 
 func New() Importer {
@@ -65,6 +67,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.s = a.MustComponent(block.CName).(*block.Service)
 	coreService := a.MustComponent(core.CName).(core.Service)
 	col := app.MustComponent[*collection.Service](a)
+	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
@@ -85,13 +88,14 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer, fileStore)
-	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
+	i.Lock()
+	defer i.Unlock()
 	progress := i.setupProgressBar(req)
 	var returnedErr error
 	defer func() {

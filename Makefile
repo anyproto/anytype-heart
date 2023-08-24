@@ -14,10 +14,10 @@ ifndef $(GOROOT)
 endif
 
 export PATH:=$(shell pwd)/deps:$(GOPATH)/bin:$(PATH)
+$(shell git config core.hooksPath .githooks)
 
 all:
 	@set -e;
-	@git config core.hooksPath .githooks;
 .PHONY :
 
 setup: setup-go

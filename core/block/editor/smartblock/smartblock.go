@@ -188,15 +188,14 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	depIds              []string // slice must be sorted
-	sendEvent           func(e *pb.Event)
-	undo                undo.History
-	source              source.Source
-	lastDepDetails      map[string]*pb.EventObjectDetailsSet
-	restrictionsUpdater func()
-	restrictions        restriction.Restrictions
-	isDeleted           bool
-	disableLayouts      bool
+	depIds         []string // slice must be sorted
+	sendEvent      func(e *pb.Event)
+	undo           undo.History
+	source         source.Source
+	lastDepDetails map[string]*pb.EventObjectDetailsSet
+	restrictions   restriction.Restrictions
+	isDeleted      bool
+	disableLayouts bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -248,8 +247,8 @@ func (sb *smartBlock) Id() string {
 	return sb.source.Id()
 }
 
-func (s *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
-	keys2 := s.source.GetFileKeysSnapshot()
+func (sb *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
+	keys2 := sb.source.GetFileKeysSnapshot()
 	for _, key := range keys2 {
 		if key == nil {
 			continue
@@ -284,10 +283,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
-	sb.restrictionsUpdater = func() {
-		restrictions := sb.restrictionService.GetRestrictions(sb)
-		sb.SetRestrictions(restrictions)
-	}
 	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
@@ -327,9 +322,8 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	if sb.restrictionsUpdater != nil {
-		sb.restrictionsUpdater()
-	}
+	restrictions := sb.restrictionService.GetRestrictions(sb)
+	sb.SetRestrictions(restrictions)
 }
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
@@ -368,14 +362,9 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 
 	sb.updateRestrictions()
 
-	details, objectTypes, err := sb.fetchMeta()
+	details, err := sb.fetchMeta()
 	if err != nil {
 		return nil, err
-	}
-	// omit relations
-	// todo: switch to other pb type
-	for _, ot := range objectTypes {
-		ot.RelationLinks = nil
 	}
 
 	undo, redo := sb.History().Counters()
@@ -396,7 +385,7 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 	}, nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, objectTypes []*model.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err error) {
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -416,17 +405,6 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		return
 	}
 
-	var uniqueObjTypes []string
-
-	var addObjectTypesByDetails = func(det *types.Struct) {
-		for _, key := range []string{bundle.RelationKeyType.String(), bundle.RelationKeyTargetObjectType.String()} {
-			ot := pbtypes.GetString(det, key)
-			if ot != "" && slice.FindPos(uniqueObjTypes, ot) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, ot)
-			}
-		}
-	}
-
 	details = make([]*model.ObjectViewDetailsSet, 0, len(records)+1)
 
 	// add self details
@@ -434,20 +412,12 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, object
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
-	addObjectTypesByDetails(sb.CombinedDetails())
 
 	for _, rec := range records {
 		details = append(details, &model.ObjectViewDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})
-		addObjectTypesByDetails(rec.Details)
-	}
-
-	objectTypes, err = sb.objectStore.GetObjectTypes(uniqueObjTypes)
-	if err != nil {
-		log.With("objectID", sb.Id()).Errorf("error while fetching meta: get object types: %s", err)
-		err = nil
 	}
 	go sb.metaListener(recordsCh)
 	return
@@ -890,37 +860,15 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
-		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
-		if wsId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
-		} else if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDeleted.String()) && err != core.ErrObjectDoesNotBelongToWorkspace {
-			log.With("objectID", sb.Id()).Warnf("injectLocalDetails empty workspace: %v", err)
-		}
-	}
+	sb.injectWorkspaceID(s)
 
-	if sb.objectStore == nil {
-		return nil
-	}
-	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
+	details, err := sb.getDetailsFromStore()
 	if err != nil {
 		return err
 	}
-	details := storedDetails.GetDetails()
 
-	var hasPendingLocalDetails bool
-	// Consume pending details
-	err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
-		if len(pending.GetFields()) > 0 {
-			hasPendingLocalDetails = true
-		}
-		details = pbtypes.StructMerge(details, pending, false)
-		return nil, nil
-	})
-	if err != nil {
-		log.With("objectID", sb.Id()).
-			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
-	}
+	sb.updateBackLinks(details)
+	hasPendingLocalDetails := sb.updatePendingDetails(details)
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
@@ -936,24 +884,78 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		// inject for both current and parent state
 		p.InjectLocalDetails(storedLocalScopeDetails)
 	}
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) == "" || pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) == 0 {
-		provider, conforms := sb.source.(source.CreationInfoProvider)
-		if !conforms {
-			return nil
-		}
 
-		creator, createdDate, err := provider.GetCreationInfo()
-		if err != nil {
-			return err
-		}
+	return sb.injectCreationInfo(s)
+}
 
-		if creator != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
-		}
+func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
+	if sb.objectStore == nil {
+		return nil, nil
+	}
+	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
+	if err != nil || storedDetails == nil {
+		return nil, err
+	}
+	return storedDetails.GetDetails(), nil
+}
 
-		if createdDate != 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+func (sb *smartBlock) injectWorkspaceID(s *state.State) {
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) != "" {
+		return
+	}
+	wsID, err := sb.coreService.GetWorkspaceIdForObject(sb.Id())
+	if wsID != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsID))
+	} else if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDeleted.String()) && err != core.ErrObjectDoesNotBelongToWorkspace {
+		log.With("objectID", sb.Id()).Warnf("injectLocalDetails empty workspace: %v", err)
+	}
+}
+
+func (sb *smartBlock) updateBackLinks(details *types.Struct) {
+	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.Id())
+	if err != nil {
+		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err.Error())
+		return
+	}
+	details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
+}
+
+func (sb *smartBlock) updatePendingDetails(details *types.Struct) (hasPendingLocalDetails bool) {
+	// Consume pending details
+	err := sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+		if len(pending.GetFields()) > 0 {
+			hasPendingLocalDetails = true
 		}
+		details = pbtypes.StructMerge(details, pending, false)
+		return nil, nil
+	})
+	if err != nil {
+		log.With("objectID", sb.Id()).
+			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
+	}
+	return hasPendingLocalDetails
+}
+
+func (sb *smartBlock) injectCreationInfo(s *state.State) error {
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
+		return nil
+	}
+	provider, conforms := sb.source.(source.CreationInfoProvider)
+	if !conforms {
+		return nil
+	}
+
+	creator, createdDate, err := provider.GetCreationInfo()
+	if err != nil {
+		return err
+	}
+
+	if creator != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+	}
+
+	if createdDate != 0 {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	}
 
 	return nil
@@ -1268,7 +1270,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
-		State:      st.Copy(),
+		State:      st, // Don't copy state because we don't change it later
 	}
 }
 

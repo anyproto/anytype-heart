@@ -12,9 +12,9 @@ func NewFile() *File {
 	return &File{}
 }
 
-func (f *File) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
+func (f *File) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
 	shortPath := filepath.Clean(importPath)
-	if !isSupportedExtension(filepath.Ext(importPath), expectedExt) {
+	if !isFileAllowedToImport(shortPath, filepath.Ext(importPath), expectedExt, includeFiles) {
 		log.Errorf("not expected extension")
 		return nil, nil
 	}

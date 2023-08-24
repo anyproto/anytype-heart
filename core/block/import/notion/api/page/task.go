@@ -3,6 +3,7 @@ package page
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -131,30 +132,36 @@ func (pt *Task) prepareDetails() map[string]*types.Value {
 func (pt *Task) handlePageProperties(object *DataObject, details map[string]*types.Value) ([]*model.SmartBlockSnapshotBase, []*model.RelationLink) {
 	relationsSnapshots := make([]*model.SmartBlockSnapshotBase, 0)
 	relationsLinks := make([]*model.RelationLink, 0)
-	for k, v := range pt.p.Properties {
-		relation, relationLink, err := pt.retrieveRelation(object, k, v, details)
+	hasTag := isPageContainsTagProperty(pt.p.Properties)
+	var tagExist bool
+	for name, prop := range pt.p.Properties {
+		relation, relationLink, err := pt.retrieveRelation(object, name, prop, details, hasTag, tagExist)
 		if err != nil {
 			logger.With("method", "handlePageProperties").Error(err)
 			continue
 		}
 		relationsSnapshots = append(relationsSnapshots, relation...)
 		relationsLinks = append(relationsLinks, relationLink)
+		if shouldApplyTagPropertyToTagRelation(name, prop, hasTag, tagExist) {
+			tagExist = true
+		}
 	}
 	return relationsSnapshots, relationsLinks
 }
 
-func (pt *Task) retrieveRelation(object *DataObject, key string, propObject property.Object, details map[string]*types.Value) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+func (pt *Task) retrieveRelation(object *DataObject, key string, propObject property.Object, details map[string]*types.Value, hasTag bool, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	if err := pt.handlePagination(object.ctx, object.apiKey, propObject); err != nil {
 		return nil, nil, err
 	}
 	pt.handleLinkRelationsIDWithAnytypeID(propObject, object.request)
-	return pt.makeRelationFromProperty(object.relations, propObject, details, key)
+	return pt.makeRelationFromProperty(object.relations, propObject, details, key, hasTag, tagExist)
 }
 
 func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	propObject property.Object,
 	details map[string]*types.Value,
-	name string) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
+	name string,
+	hasTag, tagExist bool) ([]*model.SmartBlockSnapshotBase, *model.RelationLink, error) {
 	pt.relationCreateMutex.Lock()
 	defer pt.relationCreateMutex.Unlock()
 	var (
@@ -163,7 +170,7 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 		subObjectsSnapshots []*model.SmartBlockSnapshotBase
 	)
 	if snapshot = relation.ReadRelationsMap(propObject.GetID()); snapshot == nil {
-		snapshot, key = pt.getRelationSnapshot(name, propObject)
+		snapshot, key = pt.getRelationSnapshot(name, propObject, hasTag, tagExist)
 		if snapshot != nil {
 			relation.WriteToRelationsMap(propObject.GetID(), snapshot)
 			subObjectsSnapshots = append(subObjectsSnapshots, snapshot)
@@ -183,11 +190,14 @@ func (pt *Task) makeRelationFromProperty(relation *property.PropertiesStore,
 	return subObjectsSnapshots, relationLink, nil
 }
 
-func (pt *Task) getRelationSnapshot(name string, propObject property.Object) (*model.SmartBlockSnapshotBase, string) {
+func (pt *Task) getRelationSnapshot(name string, propObject property.Object, hasTag bool, tagExist bool) (*model.SmartBlockSnapshotBase, string) {
+	key := bson.NewObjectId().Hex()
 	if propObject.GetPropertyType() == property.PropertyConfigTypeTitle {
 		return nil, bundle.RelationKeyName.String()
 	}
-	key := bson.NewObjectId().Hex()
+	if shouldApplyTagPropertyToTagRelation(name, propObject, hasTag, tagExist) {
+		key = bundle.RelationKeyTag.String()
+	}
 	details := pt.getRelationDetails(key, name, propObject)
 	rel := &model.SmartBlockSnapshotBase{
 		Details:     details,
@@ -453,4 +463,25 @@ func getDetailsForRelationOption(name, rel string) *types.Struct {
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(bson.NewObjectId().Hex())
 	return details
+}
+
+func isPageContainsTagProperty(properties property.Properties) bool {
+	for key, pr := range properties {
+		if _, ok := pr.(*property.MultiSelectItem); ok {
+			if strings.TrimSpace(key) == property.TagNameProperty {
+				return true
+			}
+		}
+		if _, ok := pr.(*property.SelectItem); ok {
+			if strings.TrimSpace(key) == property.TagNameProperty {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func shouldApplyTagPropertyToTagRelation(name string, prop property.Object, hasTag, tagExist bool) bool {
+	return (prop.GetPropertyType() == property.PropertyConfigTypeMultiSelect || prop.GetPropertyType() == property.PropertyConfigTypeSelect) &&
+		property.IsPropertyMatchTagRelation(name, hasTag) && !tagExist
 }

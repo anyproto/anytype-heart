@@ -96,7 +96,9 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult) 
 
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
-	a.SetVersionName(appVersion(a, clientWithVersion))
+	complexAppVersion := appVersion(a, clientWithVersion)
+	a.SetVersionName(complexAppVersion)
+	logging.SetVersion(complexAppVersion)
 	Bootstrap(a, components...)
 	metrics.SharedClient.SetAppVersion(a.Version())
 	metrics.SharedClient.Run()
