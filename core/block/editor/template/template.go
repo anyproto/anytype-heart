@@ -79,19 +79,6 @@ var WithNoDuplicateLinks = func() StateTransformer {
 	}
 }
 
-var WithObjectTypeLayoutMigration = func() StateTransformer {
-	return func(s *state.State) {
-		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())
-
-		if layout == float64(model.ObjectType_objectType) {
-			return
-		}
-
-		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, pbtypes.Float64(layout))
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType)))
-	}
-}
-
 var WithRelations = func(rels []bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var links []*model.RelationLink

@@ -80,7 +80,7 @@ func (bs *basic) prepareTargetObjectDetails(
 	if err != nil {
 		return nil, err
 	}
-	rawLayout := pbtypes.GetInt64(objType.GetDetails(), bundle.RelationKeyLayout.String())
+	rawLayout := pbtypes.GetInt64(objType.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
 	details := createTargetObjectDetails(rootBlock.Model().GetText().GetText(), model.ObjectTypeLayout(rawLayout))
 	objectCreator.InjectWorkspaceID(details, spaceID, req.ContextId)
 	return details, nil

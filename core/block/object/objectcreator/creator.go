@@ -392,13 +392,13 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		recommendedRelationKeys = append(recommendedRelationKeys, relKey)
 	}
 	object := pbtypes.CopyStruct(details)
-	rawLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
-	layout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawLayout)))
+	rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
+	recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid layout %d: %w", rawLayout, err)
+		return "", nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
 	}
 
-	for _, rel := range layout.RequiredRelations {
+	for _, rel := range recommendedLayout.RequiredRelations {
 		if slice.FindPos(recommendedRelationKeys, rel.Key) != -1 {
 			continue
 		}
@@ -418,7 +418,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	}
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-	object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Float64(float64(rawLayout))
+	object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(rawRecommendedLayout)
 	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
 
 	if details.GetFields() == nil {
