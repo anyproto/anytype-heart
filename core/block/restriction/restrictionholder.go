@@ -7,30 +7,30 @@ import (
 )
 
 type RestrictionHolder interface {
-	Type() model.SmartBlockType
+	Type() smartblock.SmartBlockType
 	Layout() (model.ObjectTypeLayout, bool)
 	ObjectTypeID() string
 	UniqueKey() domain.UniqueKey
 }
 
 type restrictionHolder struct {
-	tp           model.SmartBlockType
-	uk           domain.UniqueKey
+	sbType       smartblock.SmartBlockType
+	uniqueKey    domain.UniqueKey
 	layout       model.ObjectTypeLayout
 	objectTypeID string
 }
 
 func newRestrictionHolder(sbType smartblock.SmartBlockType, layout model.ObjectTypeLayout, uk domain.UniqueKey, objectTypeID string) RestrictionHolder {
 	return &restrictionHolder{
-		tp:           sbType.ToProto(),
+		sbType:       sbType,
 		layout:       layout,
-		uk:           uk,
+		uniqueKey:    uk,
 		objectTypeID: objectTypeID,
 	}
 }
 
-func (rh *restrictionHolder) Type() model.SmartBlockType {
-	return rh.tp
+func (rh *restrictionHolder) Type() smartblock.SmartBlockType {
+	return rh.sbType
 }
 
 func (rh *restrictionHolder) Layout() (model.ObjectTypeLayout, bool) {
@@ -42,5 +42,5 @@ func (rh *restrictionHolder) ObjectTypeID() string {
 }
 
 func (s *restrictionHolder) UniqueKey() domain.UniqueKey {
-	return s.uk
+	return s.uniqueKey
 }

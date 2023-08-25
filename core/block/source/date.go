@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -44,8 +45,8 @@ func (v *date) Id() string {
 	return v.id
 }
 
-func (v *date) Type() model.SmartBlockType {
-	return model.SmartBlockType_Date
+func (v *date) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeDate
 }
 
 func (v *date) getDetails() (p *types.Struct) {

@@ -98,15 +98,15 @@ var (
 		},
 	}
 
-	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
-		model.SmartBlockType_ProfilePage: {
+	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
+		smartblock.SmartBlockTypeProfilePage: {
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Delete,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_AnytypeProfile: objRestrictAll,
-		model.SmartBlockType_Home: {
+		smartblock.SmartBlockTypeAnytypeProfile: objRestrictAll,
+		smartblock.SmartBlockTypeHome: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,
 			model.Restrictions_Delete,
@@ -115,7 +115,7 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_Workspace: {
+		smartblock.SmartBlockTypeWorkspace: {
 			model.Restrictions_Blocks,
 			model.Restrictions_Relations,
 			model.Restrictions_Delete,
@@ -124,21 +124,21 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_File:            objFileRestrictions,
-		model.SmartBlockType_Archive:         objRestrictAll,
-		model.SmartBlockType_BundledRelation: objRestrictAll,
-		model.SmartBlockType_SubObject: {
+		smartblock.SmartBlockTypeFile:            objFileRestrictions,
+		smartblock.SmartBlockTypeArchive:         objRestrictAll,
+		smartblock.SmartBlockTypeBundledRelation: objRestrictAll,
+		smartblock.SmartBlockTypeSubObject: {
 			model.Restrictions_Blocks,
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 		},
-		model.SmartBlockType_BundledObjectType: objRestrictAll,
-		model.SmartBlockType_BundledTemplate:   objRestrictAll,
-		model.SmartBlockType_Template: {
+		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
+		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
+		smartblock.SmartBlockTypeTemplate: {
 			model.Restrictions_Template,
 		},
-		model.SmartBlockType_Widget: {
+		smartblock.SmartBlockTypeWidget: {
 			model.Restrictions_Relations,
 			model.Restrictions_Details,
 			model.Restrictions_Delete,
@@ -147,9 +147,9 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_MissingObject: objRestrictAll,
-		model.SmartBlockType_Date:          objRestrictAll,
-		model.SmartBlockType_AccountOld: {
+		smartblock.SmartBlockTypeMissingObject: objRestrictAll,
+		smartblock.SmartBlockTypeDate:          objRestrictAll,
+		smartblock.SmartBlockTypeAccountOld: {
 			model.Restrictions_Template,
 		},
 	}
@@ -237,7 +237,8 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 }
 
 func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) (r DataviewRestrictions) {
-	r = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
+	// TODO What is happening here?
+	r = dataviewRestrictionsBySBType[smartblock.SmartBlockTypeSubObject]
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()

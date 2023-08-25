@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -16,7 +17,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	rest.relationServiceMock.EXPECT().HasObjectType(mock.Anything).Return(false, nil)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		tp:           model.SmartBlockType_AnytypeProfile,
+		sbType:       coresb.SmartBlockTypeAnytypeProfile,
 		objectTypeID: "",
 	}).Object.Check(
 		model.Restrictions_Blocks,
@@ -29,7 +30,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		tp:           model.SmartBlockType_Page,
+		sbType:       coresb.SmartBlockTypePage,
 		layout:       model.ObjectType_collection,
 		objectTypeID: bundle.TypeKeyCollection.URL(),
 	}).Object.Check(model.Restrictions_Blocks),
@@ -37,7 +38,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	)
 
 	assert.NoError(t, rest.GetRestrictions(&restrictionHolder{
-		tp:           model.SmartBlockType_Page,
+		sbType:       coresb.SmartBlockTypePage,
 		objectTypeID: bundle.TypeKeyPage.URL(),
 	}).Object.Check(model.Restrictions_Blocks))
 
@@ -56,7 +57,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	})
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		tp:           model.SmartBlockType_BundledObjectType,
+		sbType:       coresb.SmartBlockTypeBundledObjectType,
 		layout:       model.ObjectType_objectType,
 		objectTypeID: bundle.TypeKeyObjectType.URL(),
 	}).Object.Check(
@@ -81,7 +82,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	})
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
-		tp:           model.SmartBlockType_BundledRelation,
+		sbType:       coresb.SmartBlockTypeBundledRelation,
 		layout:       model.ObjectType_relation,
 		objectTypeID: bundle.TypeKeyRelation.URL(),
 	}).Object.Check(
@@ -97,7 +98,7 @@ func TestTemplateRestriction(t *testing.T) {
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		// id:         "cannot make template from Template smartblock type",
-		tp:           model.SmartBlockType_Template,
+		sbType:       coresb.SmartBlockTypeTemplate,
 		layout:       model.ObjectType_basic,
 		objectTypeID: bundle.TypeKeyTemplate.URL(),
 	}).Object.Check(
@@ -106,7 +107,7 @@ func TestTemplateRestriction(t *testing.T) {
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		// id:         "cannot make template from set or collection layout",
-		tp:           model.SmartBlockType_Page,
+		sbType:       coresb.SmartBlockTypePage,
 		layout:       model.ObjectType_collection,
 		objectTypeID: bundle.TypeKeyCollection.URL(),
 	}).Object.Check(
@@ -115,7 +116,7 @@ func TestTemplateRestriction(t *testing.T) {
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		// id:         "cannot make template from space layout",
-		tp:           model.SmartBlockType_Page,
+		sbType:       coresb.SmartBlockTypePage,
 		layout:       model.ObjectType_space,
 		objectTypeID: bundle.TypeKeySpace.URL(),
 	}).Object.Check(
@@ -124,7 +125,7 @@ func TestTemplateRestriction(t *testing.T) {
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		// id:         "cannot make template from object with objectType not added to space",
-		tp:           model.SmartBlockType_Page,
+		sbType:       coresb.SmartBlockTypePage,
 		layout:       model.ObjectType_basic,
 		objectTypeID: bundle.TypeKeyPage.URL(),
 	}).Object.Check(
@@ -133,7 +134,7 @@ func TestTemplateRestriction(t *testing.T) {
 
 	assert.NoError(t, rs.GetRestrictions(&restrictionHolder{
 		// id:         "make template from object with objectType added to space",
-		tp:           model.SmartBlockType_Page,
+		sbType:       coresb.SmartBlockTypePage,
 		layout:       model.ObjectType_basic,
 		objectTypeID: bundle.TypeKeyContact.URL(),
 	}).Object.Check(

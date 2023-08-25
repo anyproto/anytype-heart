@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -38,8 +37,8 @@ func (v *bundledRelation) Id() string {
 	return v.id
 }
 
-func (v *bundledRelation) Type() model.SmartBlockType {
-	return model.SmartBlockType_BundledRelation
+func (v *bundledRelation) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeBundledRelation
 }
 
 func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {

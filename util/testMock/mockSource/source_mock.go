@@ -9,13 +9,13 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
+
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
 	source "github.com/anyproto/anytype-heart/core/block/source"
 	pb "github.com/anyproto/anytype-heart/pb"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.
@@ -115,7 +115,7 @@ func (mr *MockServiceMockRecorder) NewSource(arg0, arg1, arg2, arg3 interface{})
 }
 
 // NewStaticSource mocks base method.
-func (m *MockService) NewStaticSource(arg0 string, arg1 model.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
+func (m *MockService) NewStaticSource(arg0 string, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewStaticSource", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(source.SourceWithType)
@@ -276,10 +276,10 @@ func (mr *MockSourceMockRecorder) ReadOnly() *gomock.Call {
 }
 
 // Type mocks base method.
-func (m *MockSource) Type() model.SmartBlockType {
+func (m *MockSource) Type() smartblock.SmartBlockType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Type")
-	ret0, _ := ret[0].(model.SmartBlockType)
+	ret0, _ := ret[0].(smartblock.SmartBlockType)
 	return ret0
 }
 

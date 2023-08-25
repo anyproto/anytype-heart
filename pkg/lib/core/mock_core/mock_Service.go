@@ -8,7 +8,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	mock "github.com/stretchr/testify/mock"
 
-	uniquekey "github.com/anyproto/anytype-heart/core/domain"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -111,21 +111,21 @@ func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) 
 }
 
 // DeriveObjectId provides a mock function with given fields: ctx, spaceID, key
-func (_m *MockService) DeriveObjectId(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (string, error) {
+func (_m *MockService) DeriveObjectId(ctx context.Context, spaceID string, key domain.UniqueKey) (string, error) {
 	ret := _m.Called(ctx, spaceID, key)
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, uniquekey.UniqueKey) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.UniqueKey) (string, error)); ok {
 		return rf(ctx, spaceID, key)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, uniquekey.UniqueKey) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.UniqueKey) string); ok {
 		r0 = rf(ctx, spaceID, key)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, uniquekey.UniqueKey) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, domain.UniqueKey) error); ok {
 		r1 = rf(ctx, spaceID, key)
 	} else {
 		r1 = ret.Error(1)
@@ -142,14 +142,14 @@ type MockService_DeriveObjectId_Call struct {
 // DeriveObjectId is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceID string
-//   - key uniquekey.UniqueKey
+//   - key domain.UniqueKey
 func (_e *MockService_Expecter) DeriveObjectId(ctx interface{}, spaceID interface{}, key interface{}) *MockService_DeriveObjectId_Call {
 	return &MockService_DeriveObjectId_Call{Call: _e.mock.On("DeriveObjectId", ctx, spaceID, key)}
 }
 
-func (_c *MockService_DeriveObjectId_Call) Run(run func(ctx context.Context, spaceID string, key uniquekey.UniqueKey)) *MockService_DeriveObjectId_Call {
+func (_c *MockService_DeriveObjectId_Call) Run(run func(ctx context.Context, spaceID string, key domain.UniqueKey)) *MockService_DeriveObjectId_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(uniquekey.UniqueKey))
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.UniqueKey))
 	})
 	return _c
 }
@@ -159,7 +159,7 @@ func (_c *MockService_DeriveObjectId_Call) Return(_a0 string, _a1 error) *MockSe
 	return _c
 }
 
-func (_c *MockService_DeriveObjectId_Call) RunAndReturn(run func(context.Context, string, uniquekey.UniqueKey) (string, error)) *MockService_DeriveObjectId_Call {
+func (_c *MockService_DeriveObjectId_Call) RunAndReturn(run func(context.Context, string, domain.UniqueKey) (string, error)) *MockService_DeriveObjectId_Call {
 	_c.Call.Return(run)
 	return _c
 }

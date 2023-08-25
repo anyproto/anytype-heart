@@ -11,7 +11,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	gomock "go.uber.org/mock/gomock"
 
-	uniquekey "github.com/anyproto/anytype-heart/core/domain"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -69,7 +69,7 @@ func (mr *MockServiceMockRecorder) Close(arg0 interface{}) *gomock.Call {
 }
 
 // DeriveObjectId mocks base method.
-func (m *MockService) DeriveObjectId(arg0 context.Context, arg1 string, arg2 uniquekey.UniqueKey) (string, error) {
+func (m *MockService) DeriveObjectId(arg0 context.Context, arg1 string, arg2 domain.UniqueKey) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeriveObjectId", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)

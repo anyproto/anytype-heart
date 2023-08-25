@@ -706,7 +706,7 @@ func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceReques
 
 func (s *Service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
 	err = Do(s, workspaceId, func(ws *editor.Workspaces) error {
-		if ws.Type() != model.SmartBlockType_Workspace {
+		if ws.Type() != coresb.SmartBlockTypeWorkspace {
 			return ErrUnexpectedBlockType
 		}
 		if err = ws.SetDetails(ctx, []*pb.RpcObjectSetDetailsDetail{

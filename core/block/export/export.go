@@ -333,7 +333,7 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
-		result := conv.Convert(b.Type())
+		result := conv.Convert(b.Type().ToProto())
 		filename := docID + conv.Ext()
 		if format == pb.RpcObjectListExport_Markdown {
 			s := b.NewState()

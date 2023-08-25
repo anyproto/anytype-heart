@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -80,7 +80,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 				}
 			}
 
-			if t.Type() == model.SmartBlockType_Template && (len(t.ObjectTypeKeys()) != 2 || fixOt) {
+			if t.Type() == coresb.SmartBlockTypeTemplate && (len(t.ObjectTypeKeys()) != 2 || fixOt) {
 				targetObjectTypeID := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
 				if targetObjectTypeID != "" {
 					targetObjectType, err := t.relationService.GetObjectType(targetObjectTypeID)

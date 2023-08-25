@@ -8,7 +8,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	mock "github.com/stretchr/testify/mock"
 
-	uniquekey "github.com/anyproto/anytype-heart/core/domain"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 	relationutils "github.com/anyproto/anytype-heart/core/relation/relationutils"
 	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -208,15 +208,15 @@ func (_c *MockService_FetchRelationByLinks_Call) RunAndReturn(run func(string, p
 }
 
 // GetObjectByUniqueKey provides a mock function with given fields: spaceId, uniqueKey
-func (_m *MockService) GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error) {
+func (_m *MockService) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
 	ret := _m.Called(spaceId, uniqueKey)
 
 	var r0 *model.ObjectDetails
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, uniquekey.UniqueKey) (*model.ObjectDetails, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, domain.UniqueKey) (*model.ObjectDetails, error)); ok {
 		return rf(spaceId, uniqueKey)
 	}
-	if rf, ok := ret.Get(0).(func(string, uniquekey.UniqueKey) *model.ObjectDetails); ok {
+	if rf, ok := ret.Get(0).(func(string, domain.UniqueKey) *model.ObjectDetails); ok {
 		r0 = rf(spaceId, uniqueKey)
 	} else {
 		if ret.Get(0) != nil {
@@ -224,7 +224,7 @@ func (_m *MockService) GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, uniquekey.UniqueKey) error); ok {
+	if rf, ok := ret.Get(1).(func(string, domain.UniqueKey) error); ok {
 		r1 = rf(spaceId, uniqueKey)
 	} else {
 		r1 = ret.Error(1)
@@ -240,14 +240,14 @@ type MockService_GetObjectByUniqueKey_Call struct {
 
 // GetObjectByUniqueKey is a helper method to define mock.On call
 //   - spaceId string
-//   - uniqueKey uniquekey.UniqueKey
+//   - uniqueKey domain.UniqueKey
 func (_e *MockService_Expecter) GetObjectByUniqueKey(spaceId interface{}, uniqueKey interface{}) *MockService_GetObjectByUniqueKey_Call {
 	return &MockService_GetObjectByUniqueKey_Call{Call: _e.mock.On("GetObjectByUniqueKey", spaceId, uniqueKey)}
 }
 
-func (_c *MockService_GetObjectByUniqueKey_Call) Run(run func(spaceId string, uniqueKey uniquekey.UniqueKey)) *MockService_GetObjectByUniqueKey_Call {
+func (_c *MockService_GetObjectByUniqueKey_Call) Run(run func(spaceId string, uniqueKey domain.UniqueKey)) *MockService_GetObjectByUniqueKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(uniquekey.UniqueKey))
+		run(args[0].(string), args[1].(domain.UniqueKey))
 	})
 	return _c
 }
@@ -257,7 +257,7 @@ func (_c *MockService_GetObjectByUniqueKey_Call) Return(_a0 *model.ObjectDetails
 	return _c
 }
 
-func (_c *MockService_GetObjectByUniqueKey_Call) RunAndReturn(run func(string, uniquekey.UniqueKey) (*model.ObjectDetails, error)) *MockService_GetObjectByUniqueKey_Call {
+func (_c *MockService_GetObjectByUniqueKey_Call) RunAndReturn(run func(string, domain.UniqueKey) (*model.ObjectDetails, error)) *MockService_GetObjectByUniqueKey_Call {
 	_c.Call.Return(run)
 	return _c
 }

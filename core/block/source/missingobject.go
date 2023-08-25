@@ -8,8 +8,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -33,8 +33,8 @@ func (m *missingObject) Id() string {
 	return addr.MissingObject
 }
 
-func (m *missingObject) Type() model.SmartBlockType {
-	return model.SmartBlockType_MissingObject
+func (m *missingObject) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeMissingObject
 }
 
 func (m *missingObject) getDetails() (p *types.Struct) {

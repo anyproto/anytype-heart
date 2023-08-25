@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/testMock"
@@ -202,8 +203,8 @@ func (st *SmartTest) Id() string {
 	return st.id
 }
 
-func (st *SmartTest) Type() model.SmartBlockType {
-	return model.SmartBlockType_Page
+func (st *SmartTest) Type() coresb.SmartBlockType {
+	return coresb.SmartBlockTypePage
 }
 
 func (st *SmartTest) Show() (obj *model.ObjectView, err error) {

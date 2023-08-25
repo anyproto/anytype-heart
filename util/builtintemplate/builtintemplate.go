@@ -21,9 +21,9 @@ import (
 	relation_service "github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	_ "embed"
@@ -142,7 +142,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return
 	}
 
-	b.source.RegisterStaticSource(id, b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil))
+	b.source.RegisterStaticSource(id, b.source.NewStaticSource(id, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
 	return
 }
 

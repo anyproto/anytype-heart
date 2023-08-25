@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -18,9 +19,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
@@ -133,10 +134,15 @@ func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
 	)
 }
 
-func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
+func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock, error) {
 	sb := f.produceSmartblock()
 	switch sbType {
-	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType, model.SmartBlockType_STType, model.SmartBlockType_STRelation:
+	case coresb.SmartBlockTypePage,
+		coresb.SmartBlockTypeDate,
+		coresb.SmartBlockTypeBundledRelation,
+		coresb.SmartBlockTypeBundledObjectType,
+		coresb.SmartBlockTypeObjectType,
+		coresb.SmartBlockTypeRelation:
 		return NewPage(
 			sb,
 			f.objectStore,
@@ -151,13 +157,13 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.fileService,
 			f.eventSender,
 		), nil
-	case model.SmartBlockType_Archive:
+	case coresb.SmartBlockTypeArchive:
 		return NewArchive(
 			sb,
 			f.detailsModifier,
 			f.objectStore,
 		), nil
-	case model.SmartBlockType_Home:
+	case coresb.SmartBlockTypeHome:
 		return NewDashboard(
 			sb,
 			f.detailsModifier,
@@ -166,7 +172,8 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.anytype,
 			f.layoutConverter,
 		), nil
-	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
+	case coresb.SmartBlockTypeProfilePage,
+		coresb.SmartBlockTypeAnytypeProfile:
 		return NewProfile(
 			sb,
 			f.objectStore,
@@ -180,9 +187,10 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.fileService,
 			f.eventSender,
 		), nil
-	case model.SmartBlockType_File:
+	case coresb.SmartBlockTypeFile:
 		return NewFiles(sb), nil
-	case model.SmartBlockType_Template:
+	case coresb.SmartBlockTypeTemplate,
+		coresb.SmartBlockTypeBundledTemplate:
 		return NewTemplate(
 			sb,
 			f.objectStore,
@@ -197,22 +205,7 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.fileService,
 			f.eventSender,
 		), nil
-	case model.SmartBlockType_BundledTemplate:
-		return NewTemplate(
-			sb,
-			f.objectStore,
-			f.anytype,
-			f.fileBlockService,
-			f.picker,
-			f.bookmarkService,
-			f.relationService,
-			f.tempDirProvider,
-			f.sbtProvider,
-			f.layoutConverter,
-			f.fileService,
-			f.eventSender,
-		), nil
-	case model.SmartBlockType_Workspace:
+	case coresb.SmartBlockTypeWorkspace:
 		return NewWorkspace(
 			sb,
 			f.objectStore,
@@ -226,11 +219,11 @@ func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock,
 			f.config,
 			f.eventSender,
 		), nil
-	case model.SmartBlockType_MissingObject:
+	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
-	case model.SmartBlockType_Widget:
+	case coresb.SmartBlockTypeWidget:
 		return NewWidgetObject(sb, f.objectStore, f.relationService, f.layoutConverter), nil
-	case model.SmartBlockType_SubObject:
+	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)

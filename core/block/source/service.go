@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
@@ -35,7 +34,7 @@ func New() Service {
 type Service interface {
 	NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(id string, s Source)
-	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	NewStaticSource(id string, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
@@ -164,7 +163,7 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil, nil), nil
+		return s.NewStaticSource("", smartblock.SmartBlockTypeBundledTemplate, nil, nil), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err

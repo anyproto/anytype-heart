@@ -27,7 +27,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 	)
 
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
-		if b.Type() != model.SmartBlockType_Page {
+		if b.Type() != coresb.SmartBlockTypePage {
 			return fmt.Errorf("can't make template from this obect type")
 		}
 		objectTypeKeys = b.ObjectTypeKeys()
@@ -55,7 +55,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		objectTypeKeys []bundle.TypeKey
 	)
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
-		if b.Type() != model.SmartBlockType_BundledTemplate {
+		if b.Type() != coresb.SmartBlockTypeBundledTemplate {
 			return fmt.Errorf("can clone bundled templates only")
 		}
 		objectTypeKeys = b.ObjectTypeKeys()

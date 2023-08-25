@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -55,7 +56,7 @@ func (p *Files) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetail
 }
 
 func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.Source.Type() != model.SmartBlockType_File {
+	if ctx.Source.Type() != coresb.SmartBlockTypeFile {
 		return fmt.Errorf("source type should be a file")
 	}
 

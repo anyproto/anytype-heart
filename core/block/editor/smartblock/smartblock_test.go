@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -117,7 +118,7 @@ func newFixture(t *testing.T) *fixture {
 	coreService.EXPECT().GetWorkspaceIdForObject(mock.Anything, mock.Anything).Return("workspace1", nil)
 
 	source := mockSource.NewMockSource(ctrl)
-	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
+	source.EXPECT().Type().AnyTimes().Return(smartblock.SmartBlockTypePage)
 
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()

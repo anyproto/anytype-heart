@@ -43,7 +43,7 @@ type ChangeReceiver interface {
 
 type Source interface {
 	Id() string
-	Type() model.SmartBlockType
+	Type() smartblock.SmartBlockType
 	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
@@ -173,8 +173,8 @@ func (s *source) Id() string {
 	return s.id
 }
 
-func (s *source) Type() model.SmartBlockType {
-	return model.SmartBlockType(s.smartblockType)
+func (s *source) Type() smartblock.SmartBlockType {
+	return s.smartblockType
 }
 
 func (s *source) ReadDoc(_ context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {

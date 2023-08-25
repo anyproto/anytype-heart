@@ -13,8 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -47,8 +47,8 @@ func (f *file) Id() string {
 	return f.id.ObjectID
 }
 
-func (f *file) Type() model.SmartBlockType {
-	return model.SmartBlockType_File
+func (f *file) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeFile
 }
 
 func (f *file) getDetailsForFileOrImage(ctx context.Context) (*types.Struct, bundle.TypeKey, error) {

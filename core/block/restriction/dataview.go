@@ -1,6 +1,7 @@
 package restriction
 
 import (
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -24,9 +25,9 @@ var (
 		},
 	}
 
-	dataviewRestrictionsBySBType = map[model.SmartBlockType]DataviewRestrictions{
-		model.SmartBlockType_Page: dvRestrictNo,
-		model.SmartBlockType_Date: dvRestrictAll,
+	dataviewRestrictionsBySBType = map[smartblock.SmartBlockType]DataviewRestrictions{
+		smartblock.SmartBlockTypePage: dvRestrictNo,
+		smartblock.SmartBlockTypeDate: dvRestrictAll,
 	}
 )
 

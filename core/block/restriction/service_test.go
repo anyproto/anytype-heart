@@ -5,11 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 func TestService_GetRestrictions(t *testing.T) {
 	s := New()
-	res := s.GetRestrictions(&restrictionHolder{tp: model.SmartBlockType_BundledObjectType})
+	res := s.GetRestrictions(&restrictionHolder{sbType: coresb.SmartBlockTypeBundledObjectType})
 	assert.NotEmpty(t, res.Object)
 }

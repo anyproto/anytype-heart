@@ -114,7 +114,7 @@ type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
 	SpaceID() string
-	Type() model.SmartBlockType
+	Type() smartblock.SmartBlockType
 	Show() (obj *model.ObjectView, err error)
 	RegisterSession(session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error
@@ -283,8 +283,7 @@ func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
 	return sb.objectStore
 }
 
-// TODO Should return domain type
-func (sb *smartBlock) Type() model.SmartBlockType {
+func (sb *smartBlock) Type() smartblock.SmartBlockType {
 	return sb.source.Type()
 }
 
@@ -394,7 +393,7 @@ func (sb *smartBlock) Show() (*model.ObjectView, error) {
 	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 	return &model.ObjectView{
 		RootId:        sb.RootId(),
-		Type:          sb.Type(),
+		Type:          sb.Type().ToProto(),
 		Blocks:        sb.Blocks(),
 		Details:       details,
 		RelationLinks: sb.GetRelationLinks(),
@@ -838,13 +837,13 @@ func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
 }
 
 func (sb *smartBlock) NewState() *state.State {
-	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == model.SmartBlockType_Archive)
+	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
 
 func (sb *smartBlock) NewStateCtx(ctx session.Context) *state.State {
-	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive)
+	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }

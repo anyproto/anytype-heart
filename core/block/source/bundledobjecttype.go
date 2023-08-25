@@ -37,8 +37,8 @@ func (v *bundledObjectType) Id() string {
 	return v.id
 }
 
-func (v *bundledObjectType) Type() model.SmartBlockType {
-	return model.SmartBlockType_BundledObjectType
+func (v *bundledObjectType) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeBundledObjectType
 }
 
 func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *types.Struct, err error) {

@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -35,8 +36,8 @@ func (v *anytypeProfile) Id() string {
 	return v.id
 }
 
-func (v *anytypeProfile) Type() model.SmartBlockType {
-	return model.SmartBlockType_AnytypeProfile
+func (v *anytypeProfile) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeAnytypeProfile
 }
 
 func (v *anytypeProfile) getDetails() (p *types.Struct) {
