@@ -23,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -672,7 +672,7 @@ func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTyp
 	return Do(s, objectId, func(b basic.CommonOperations) error {
 		objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeUniqueKeys))
 		for _, rawUniqueKey := range objectTypeUniqueKeys {
-			objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
+			objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 			if err != nil {
 				return fmt.Errorf("get type key from raw unique key: %w", err)
 			}

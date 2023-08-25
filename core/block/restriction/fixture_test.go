@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -54,7 +54,7 @@ func givenObjectType(typeKey bundle.TypeKey) RestrictionHolder {
 	return newRestrictionHolder(
 		smartblock.SmartBlockTypeObjectType,
 		model.ObjectType_objectType,
-		uniquekey.MustUniqueKey(model.SmartBlockType_STType, typeKey.String()),
+		domain.MustUniqueKey(model.SmartBlockType_STType, typeKey.String()),
 		fakeDerivedID(typeKey.String()),
 	)
 }
@@ -63,7 +63,7 @@ func givenRelation(relationKey bundle.RelationKey) RestrictionHolder {
 	return newRestrictionHolder(
 		smartblock.SmartBlockTypeRelation,
 		model.ObjectType_relation,
-		uniquekey.MustUniqueKey(model.SmartBlockType_STRelation, relationKey.String()),
+		domain.MustUniqueKey(model.SmartBlockType_STRelation, relationKey.String()),
 		fakeDerivedID(relationKey.String()),
 	)
 }

@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -383,7 +382,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	if len(relations) > 0 {
 		for i, r := range relations {
 			// replace relation url with id
-			uk, err := uniquekey.New(model.SmartBlockType_STRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
+			uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -436,7 +435,7 @@ func (s *Service) AddBundledObjectToSpace(
 				return err
 			}
 
-			uk, err := uniquekey.UnmarshalFromString(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
+			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
 			if err != nil {
 				return err
 			}

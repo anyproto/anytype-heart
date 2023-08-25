@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
@@ -78,7 +78,7 @@ func TestGetObjectType(t *testing.T) {
 
 		id := "id1"
 		relationID := "derivedFrom(assignee)"
-		uniqueKey, err := uniquekey.New(model.SmartBlockType_STType, "note")
+		uniqueKey, err := domain.NewUniqueKey(model.SmartBlockType_STType, "note")
 		require.NoError(t, err)
 		obj := objectstore.TestObject{
 			bundle.RelationKeyId:                   pbtypes.String(id),

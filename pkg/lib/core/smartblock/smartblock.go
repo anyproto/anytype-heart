@@ -34,7 +34,6 @@ const (
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
 
-// Panics in case of incorrect sb type!
 func (sbt SmartBlockType) ToProto() model.SmartBlockType {
 	return model.SmartBlockType(sbt)
 }

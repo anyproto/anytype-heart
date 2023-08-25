@@ -10,7 +10,7 @@ import (
 	"github.com/mb0/diff"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -789,7 +789,7 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []bundle.TypeKey {
 // Adds missing unique key for supported smartblock types
 func migrateAddMissingUniqueKey(sbType model.SmartBlockType, snapshot *pb.ChangeSnapshot) {
 	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
-	uk, err := uniquekey.UnmarshalFromString(id)
+	uk, err := domain.UnmarshalUniqueKey(id)
 	if err != nil {
 		// Means that smartblock type is not supported
 		return

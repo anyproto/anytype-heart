@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -341,7 +340,7 @@ func (s *Service) CreateTreeObject(ctx context.Context, spaceID string, tp cores
 	return s.cacheCreatedObject(ctx, id, initFunc)
 }
 
-func (s *Service) CreateTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key uniquekey.UniqueKey, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+func (s *Service) CreateTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
 	space, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
 		return nil, err
@@ -371,7 +370,7 @@ func (s *Service) CreateTreeObjectWithUniqueKey(ctx context.Context, spaceID str
 func (s *Service) DeriveTreeCreatePayload(
 	ctx context.Context,
 	spaceID string,
-	key uniquekey.UniqueKey,
+	key domain.UniqueKey,
 ) (treestorage.TreeStorageCreatePayload, error) {
 	space, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {

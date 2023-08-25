@@ -3,7 +3,7 @@ package relationutils
 import (
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,7 +28,7 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		sbTypes = append(sbTypes, int(t))
 	}
 
-	uk, err := uniquekey.New(model.SmartBlockType_STType, ot.Key)
+	uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, ot.Key)
 	if err != nil {
 		return nil
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -61,7 +61,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	// we use STType instead of BundledObjectType for a reason we want to have the same prefix
 	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
-	uk, err := uniquekey.New(model.SmartBlockType_STType, v.objectTypeKey.String())
+	uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, v.objectTypeKey.String())
 	if err != nil {
 		return nil, err
 	}

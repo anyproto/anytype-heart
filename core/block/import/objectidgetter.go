@@ -11,7 +11,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -90,7 +90,7 @@ func (ou *ObjectIDGetter) Get(
 	var payload treestorage.TreeStorageCreatePayload
 	if sbType == sb.SmartBlockTypeRelation || sbType == sb.SmartBlockTypeObjectType {
 		id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		uk, err := uniquekey.UnmarshalFromString(id)
+		uk, err := domain.UnmarshalUniqueKey(id)
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, err
 		}

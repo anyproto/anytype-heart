@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -39,7 +39,7 @@ func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string)
 			relationService: relationService,
 		},
 	}
-	uniqueKey, err := uniquekey.New(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
+	uniqueKey, err := domain.NewUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
 	require.NoError(t, err)
 
 	relationService.EXPECT().GetObjectByUniqueKey(mock.Anything, uniqueKey).Return(&model.ObjectDetails{

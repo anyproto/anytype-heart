@@ -6,7 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -76,7 +76,7 @@ func (s *service) GetObjectType(id string) (*model.ObjectType, error) {
 	}
 
 	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
-	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
+	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 	if err != nil {
 		return nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}

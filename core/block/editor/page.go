@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -119,7 +119,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			if !ok {
 				// nolint:errcheck
 				lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
-				uk, err := uniquekey.New(model.SmartBlockType_STType, string(lastTypeKey))
+				uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, string(lastTypeKey))
 				if err != nil {
 					log.Errorf("failed to create unique key: %v", err)
 				} else {

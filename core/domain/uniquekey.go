@@ -1,5 +1,4 @@
-// TODO move to another package?
-package uniquekey
+package domain
 
 import (
 	"errors"
@@ -10,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const separator = "-"
+const uniqueKeySeparator = "-"
 
 var smartBlockTypeToKey = map[model.SmartBlockType]string{
 	model.SmartBlockType_STType:      "ot",
@@ -38,7 +37,7 @@ type uniqueKey struct {
 	key string
 }
 
-func New(sbt model.SmartBlockType, key string) (UniqueKey, error) {
+func NewUniqueKey(sbt model.SmartBlockType, key string) (UniqueKey, error) {
 	if _, exists := smartBlockTypeToKey[sbt]; !exists {
 		return nil, fmt.Errorf("smartblocktype %s not supported", sbt.String())
 	}
@@ -49,15 +48,15 @@ func New(sbt model.SmartBlockType, key string) (UniqueKey, error) {
 }
 
 func MustUniqueKey(sbt model.SmartBlockType, key string) UniqueKey {
-	uk, err := New(sbt, key)
+	uk, err := NewUniqueKey(sbt, key)
 	if err != nil {
 		panic(err)
 	}
 	return uk
 }
 
-func UnmarshalFromString(raw string) (UniqueKey, error) {
-	parts := strings.Split(raw, separator)
+func UnmarshalUniqueKey(raw string) (UniqueKey, error) {
+	parts := strings.Split(raw, uniqueKeySeparator)
 	if raw == "" || len(parts) > 2 {
 		return nil, errors.New("invalid key format")
 	}
@@ -79,7 +78,7 @@ func UnmarshalFromString(raw string) (UniqueKey, error) {
 }
 
 func GetTypeKeyFromRawUniqueKey(raw string) (bundle.TypeKey, error) {
-	uk, err := UnmarshalFromString(raw)
+	uk, err := UnmarshalUniqueKey(raw)
 	if err != nil {
 		return "", err
 	}
@@ -93,7 +92,7 @@ func (uk *uniqueKey) Marshal() string {
 	if uk.key == "" {
 		return smartBlockTypeToKey[uk.sbt]
 	}
-	return smartBlockTypeToKey[uk.sbt] + separator + uk.key
+	return smartBlockTypeToKey[uk.sbt] + uniqueKeySeparator + uk.key
 }
 
 func (uk *uniqueKey) SmartblockType() model.SmartBlockType {

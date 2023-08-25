@@ -1,7 +1,7 @@
 package restriction
 
 import (
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -10,17 +10,17 @@ type RestrictionHolder interface {
 	Type() model.SmartBlockType
 	Layout() (model.ObjectTypeLayout, bool)
 	ObjectTypeID() string
-	UniqueKey() uniquekey.UniqueKey
+	UniqueKey() domain.UniqueKey
 }
 
 type restrictionHolder struct {
 	tp           model.SmartBlockType
-	uk           uniquekey.UniqueKey
+	uk           domain.UniqueKey
 	layout       model.ObjectTypeLayout
 	objectTypeID string
 }
 
-func newRestrictionHolder(sbType smartblock.SmartBlockType, layout model.ObjectTypeLayout, uk uniquekey.UniqueKey, objectTypeID string) RestrictionHolder {
+func newRestrictionHolder(sbType smartblock.SmartBlockType, layout model.ObjectTypeLayout, uk domain.UniqueKey, objectTypeID string) RestrictionHolder {
 	return &restrictionHolder{
 		tp:           sbType.ToProto(),
 		layout:       layout,
@@ -41,6 +41,6 @@ func (rh *restrictionHolder) ObjectTypeID() string {
 	return rh.objectTypeID
 }
 
-func (s *restrictionHolder) UniqueKey() uniquekey.UniqueKey {
+func (s *restrictionHolder) UniqueKey() domain.UniqueKey {
 	return s.uk
 }

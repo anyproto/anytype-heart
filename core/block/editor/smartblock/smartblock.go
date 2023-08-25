@@ -23,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/relation"
@@ -259,8 +259,8 @@ func (sb *smartBlock) SpaceID() string {
 }
 
 // UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
-func (sb *smartBlock) UniqueKey() uniquekey.UniqueKey {
-	uk, _ := uniquekey.New(sb.Type(), sb.Doc.UniqueKeyInternal())
+func (sb *smartBlock) UniqueKey() domain.UniqueKey {
+	uk, _ := domain.NewUniqueKey(sb.Type(), sb.Doc.UniqueKeyInternal())
 	return uk
 }
 
@@ -1398,7 +1398,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt m
 			sbt = model.SmartBlockType_STRelation
 		}
 
-		uk, err := uniquekey.New(sbt, uki)
+		uk, err := domain.NewUniqueKey(sbt, uki)
 		if err != nil {
 			log.Errorf("failed to get unique key for %s: %v", uki, err)
 		} else {

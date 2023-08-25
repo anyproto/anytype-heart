@@ -12,7 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -84,7 +84,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	return s
 }
 
-func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key uniquekey.UniqueKey) Doc {
+func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key domain.UniqueKey) Doc {
 	if blocks == nil {
 		blocks = make(map[string]simple.Block)
 	}

@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -192,7 +192,7 @@ func TestExtractObjects(t *testing.T) {
 			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:           "test",
 				BlockIds:            tc.blockIds,
-				ObjectTypeUniqueKey: uniquekey.MustUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyNote.String()).Marshal(),
+				ObjectTypeUniqueKey: domain.MustUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb, fixture.store, fixture.relationService, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)

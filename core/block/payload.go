@@ -6,7 +6,8 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	spaceservice "github.com/anyproto/anytype-heart/space"
@@ -16,7 +17,7 @@ type internalKeyGetter interface {
 	InternalKey() string
 }
 
-func createChangePayload(sbType coresb.SmartBlockType, key uniquekey.UniqueKey) (data []byte, err error) {
+func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (data []byte, err error) {
 	var keyStr string
 	if key != nil {
 		keyInternalGetter, ok := key.(internalKeyGetter)

@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -335,7 +334,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.T
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey bundle.TypeKey) (model.ObjectTypeLayout, error) {
-	uk, err := uniquekey.New(model.SmartBlockType_STType, objectTypeKey.String())
+	uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, objectTypeKey.String())
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}

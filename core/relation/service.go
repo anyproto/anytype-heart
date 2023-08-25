@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -46,7 +46,7 @@ type Service interface {
 	GetRelationByID(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 
-	GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error)
+	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 
 	app.Component
 }
@@ -67,7 +67,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
-	uk, err := uniquekey.New(model.SmartBlockType_STType, key.String())
+	uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, key.String())
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +81,7 @@ func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle
 }
 
 func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {
-	uk, err := uniquekey.New(model.SmartBlockType_STRelation, key.String())
+	uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, key.String())
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +106,7 @@ func (s *service) FetchRelationByKeys(spaceId string, keys ...string) (relations
 	uks := make([]string, 0, len(keys))
 
 	for _, key := range keys {
-		uk, err := uniquekey.New(model.SmartBlockType_STRelation, key)
+		uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, key)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +169,7 @@ type fetchOptions struct {
 type FetchOption func(options *fetchOptions)
 
 func (s *service) FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error) {
-	uk, err := uniquekey.New(model.SmartBlockType_STRelation, key)
+	uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, key)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func (s *service) FetchRelationByKey(spaceID string, key string) (relation *rela
 	return nil, ErrNotFound
 }
 
-func (s *service) GetObjectByUniqueKey(spaceId string, uniqueKey uniquekey.UniqueKey) (*model.ObjectDetails, error) {
+func (s *service) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{

@@ -8,7 +8,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	mock "github.com/stretchr/testify/mock"
 
-	uniquekey "github.com/anyproto/anytype-heart/core/block/uniquekey"
+	uniquekey "github.com/anyproto/anytype-heart/core/domain"
 	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"

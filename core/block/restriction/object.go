@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -219,7 +219,7 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 	return
 }
 
-func GetRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r ObjectRestrictions) {
+func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	switch uk.SmartblockType() {
 	case model.SmartBlockType_STType:
 		key := uk.InternalKey()
@@ -235,7 +235,7 @@ func GetRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r ObjectRestrictions) 
 	return
 }
 
-func GetDataviewRestrictionsForUniqueKey(uk uniquekey.UniqueKey) (r DataviewRestrictions) {
+func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) (r DataviewRestrictions) {
 	r = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
 	switch uk.SmartblockType() {
 	case model.SmartBlockType_STType:

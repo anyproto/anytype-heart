@@ -6,7 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -89,9 +89,9 @@ func (s *service) getRestrictionsById(spaceID string, id string) (r Restrictions
 		}
 		ot = pbtypes.GetString(d.GetDetails(), bundle.RelationKeyType.String())
 	}
-	var uk uniquekey.UniqueKey
+	var uk domain.UniqueKey
 	if u := pbtypes.GetString(d.GetDetails(), bundle.RelationKeyUniqueKey.String()); u != "" {
-		uk, err = uniquekey.UnmarshalFromString(u)
+		uk, err = domain.UnmarshalUniqueKey(u)
 		if err != nil {
 			log.Errorf("failed to parse unique key %s: %v", u, err)
 		}

@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -201,7 +201,7 @@ func (s *Service) CreateLinkToTheNewObject(
 		return
 	}
 
-	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
 		return "", "", fmt.Errorf("get type key from raw unique key: %w", err)
 	}
@@ -268,7 +268,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsG
 }
 
 func (s *Service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, req DetailsGetter, objectUniqueTypeKey string) (id string, details *types.Struct, err error) {
-	objectTypeKey, err := uniquekey.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
+	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
 	if err != nil {
 		return "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}

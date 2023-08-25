@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -27,7 +27,7 @@ type ObjectCreator interface {
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
 func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
-	typeUniqueKey, err := uniquekey.UnmarshalFromString(req.ObjectTypeUniqueKey)
+	typeUniqueKey, err := domain.UnmarshalUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
@@ -72,7 +72,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 func (bs *basic) prepareTargetObjectDetails(
 	spaceID string,
 	req pb.RpcBlockListConvertToObjectsRequest,
-	typeUniqueKey uniquekey.UniqueKey,
+	typeUniqueKey domain.UniqueKey,
 	rootBlock simple.Block,
 	objectCreator ObjectCreator,
 ) (*types.Struct, error) {

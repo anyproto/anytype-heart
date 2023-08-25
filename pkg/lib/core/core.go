@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -40,7 +40,7 @@ type Service interface {
 
 	DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 
-	DeriveObjectId(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (string, error)
+	DeriveObjectId(ctx context.Context, spaceID string, key domain.UniqueKey) (string, error)
 
 	EnsurePredefinedBlocks(ctx context.Context, spaceID string) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	AccountObjects() threads.DerivedSmartblockIds
@@ -61,7 +61,7 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type ObjectsDeriver interface {
-	DeriveTreeCreatePayload(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (treestorage.TreeStorageCreatePayload, error)
+	DeriveTreeCreatePayload(ctx context.Context, spaceID string, key domain.UniqueKey) (treestorage.TreeStorageCreatePayload, error)
 	DeriveObject(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
 }
 
@@ -178,7 +178,7 @@ func (a *Anytype) start() {
 	a.isStarted = true
 }
 
-func (a *Anytype) DeriveObjectId(ctx context.Context, spaceID string, key uniquekey.UniqueKey) (string, error) {
+func (a *Anytype) DeriveObjectId(ctx context.Context, spaceID string, key domain.UniqueKey) (string, error) {
 	// todo: cache it or use the objectstore
 	payload, err := a.deriver.DeriveTreeCreatePayload(ctx, spaceID, key)
 	if err != nil {
@@ -223,7 +223,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 			continue
 		}
 		// we have only 1 object per sbtype so key is empty (also for the backward compatibility, because before we didn't have a key)
-		uk, err := uniquekey.New(sbt.ToProto(), "")
+		uk, err := domain.NewUniqueKey(sbt.ToProto(), "")
 		if err != nil {
 			return predefinedObjectIDs, err
 		}
@@ -236,7 +236,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 	}
 
 	for _, ot := range bundle.SystemTypes {
-		uk, err := uniquekey.New(coresb.SmartBlockTypeObjectType.ToProto(), ot.String())
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType.ToProto(), ot.String())
 		if err != nil {
 			return predefinedObjectIDs, err
 		}
@@ -248,7 +248,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 	}
 
 	for _, rk := range bundle.SystemRelations {
-		uk, err := uniquekey.New(coresb.SmartBlockTypeRelation.ToProto(), rk.String())
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation.ToProto(), rk.String())
 		if err != nil {
 			return predefinedObjectIDs, err
 		}
