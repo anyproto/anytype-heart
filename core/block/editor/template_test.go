@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
@@ -39,7 +40,7 @@ func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string)
 			relationService: relationService,
 		},
 	}
-	uniqueKey, err := domain.NewUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyPage.String())
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyPage.String())
 	require.NoError(t, err)
 
 	relationService.EXPECT().GetObjectByUniqueKey(mock.Anything, uniqueKey).Return(&model.ObjectDetails{

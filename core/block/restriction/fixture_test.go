@@ -54,7 +54,7 @@ func givenObjectType(typeKey bundle.TypeKey) RestrictionHolder {
 	return newRestrictionHolder(
 		smartblock.SmartBlockTypeObjectType,
 		model.ObjectType_objectType,
-		domain.MustUniqueKey(model.SmartBlockType_STType, typeKey.String()),
+		domain.MustUniqueKey(smartblock.SmartBlockTypeObjectType, typeKey.String()),
 		fakeDerivedID(typeKey.String()),
 	)
 }
@@ -63,7 +63,7 @@ func givenRelation(relationKey bundle.RelationKey) RestrictionHolder {
 	return newRestrictionHolder(
 		smartblock.SmartBlockTypeRelation,
 		model.ObjectType_relation,
-		domain.MustUniqueKey(model.SmartBlockType_STRelation, relationKey.String()),
+		domain.MustUniqueKey(smartblock.SmartBlockTypeRelation, relationKey.String()),
 		fakeDerivedID(relationKey.String()),
 	)
 }

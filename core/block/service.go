@@ -382,7 +382,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	if len(relations) > 0 {
 		for i, r := range relations {
 			// replace relation url with id
-			uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
+			uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -445,9 +445,9 @@ func (s *Service) AddBundledObjectToSpace(
 			st.SetDetails(d)
 
 			var objectTypeKey bundle.TypeKey
-			if uk.SmartblockType() == model.SmartBlockType_STRelation {
+			if uk.SmartblockType() == coresb.SmartBlockTypeRelation {
 				objectTypeKey = bundle.TypeKeyRelation
-			} else if uk.SmartblockType() == model.SmartBlockType_STType {
+			} else if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
 				objectTypeKey = bundle.TypeKeyObjectType
 			} else {
 				return fmt.Errorf("unsupported object type: %s", b.Type())

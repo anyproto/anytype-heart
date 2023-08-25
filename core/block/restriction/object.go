@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -221,12 +222,12 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 
 func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	switch uk.SmartblockType() {
-	case model.SmartBlockType_STType:
+	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(key)) {
 			return sysTypesRestrictions
 		}
-	case model.SmartBlockType_STRelation:
+	case smartblock.SmartBlockTypeRelation:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
 			return sysRelationsRestrictions
@@ -238,7 +239,7 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) (r DataviewRestrictions) {
 	r = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
 	switch uk.SmartblockType() {
-	case model.SmartBlockType_STType:
+	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.InternalTypes, bundle.TypeKey(key)) {
 			return append(r.Copy(), model.RestrictionsDataviewRestrictions{
@@ -246,7 +247,7 @@ func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) (r DataviewRestric
 				Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
 			})
 		}
-	case model.SmartBlockType_STRelation:
+	case smartblock.SmartBlockTypeRelation:
 		// should we handle this?
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -78,7 +79,7 @@ func TestGetObjectType(t *testing.T) {
 
 		id := "id1"
 		relationID := "derivedFrom(assignee)"
-		uniqueKey, err := domain.NewUniqueKey(model.SmartBlockType_STType, "note")
+		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, "note")
 		require.NoError(t, err)
 		obj := objectstore.TestObject{
 			bundle.RelationKeyId:                   pbtypes.String(id),

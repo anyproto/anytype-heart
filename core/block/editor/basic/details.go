@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -334,7 +335,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.T
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey bundle.TypeKey) (model.ObjectTypeLayout, error) {
-	uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, objectTypeKey.String())
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, objectTypeKey.String())
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}

@@ -13,21 +13,13 @@ import (
 	spaceservice "github.com/anyproto/anytype-heart/space"
 )
 
-type internalKeyGetter interface {
-	InternalKey() string
-}
-
 func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (data []byte, err error) {
 	var keyStr string
 	if key != nil {
-		keyInternalGetter, ok := key.(internalKeyGetter)
-		if !ok {
-			return nil, fmt.Errorf("uniquekey format invalid")
-		}
-		if key.SmartblockType() != sbType.ToProto() {
+		if key.SmartblockType() != sbType {
 			return nil, fmt.Errorf("uniquekey smartblocktype mismatch")
 		}
-		keyStr = keyInternalGetter.InternalKey()
+		keyStr = key.InternalKey()
 	}
 
 	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType), Key: keyStr}

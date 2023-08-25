@@ -34,6 +34,10 @@ const (
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
 
+func (sbt SmartBlockType) String() string {
+	return sbt.ToProto().String()
+}
+
 func (sbt SmartBlockType) ToProto() model.SmartBlockType {
 	return model.SmartBlockType(sbt)
 }

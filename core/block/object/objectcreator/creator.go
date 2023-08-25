@@ -182,7 +182,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	var sb smartblock.SmartBlock
 
 	if uKey := createState.UniqueKeyInternal(); uKey != "" {
-		uk, err := domain.NewUniqueKey(sbType.ToProto(), uKey)
+		uk, err := domain.NewUniqueKey(sbType, uKey)
 		if err != nil {
 			return "", nil, err
 		}
@@ -310,7 +310,7 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
 		}
 	}
-	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation.ToProto(), key)
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key)
 	if err != nil {
 		return "", nil, err
 	}
@@ -406,7 +406,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	}
 	var recommendedRelationIds = make([]string, len(recommendedRelationKeys))
 	for _, relKey := range recommendedRelationKeys {
-		uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, relKey)
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to create unique key: %w", err)
 		}
@@ -492,7 +492,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (domain.UniqueKey, error) {
 	uniqueKey := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
 	if uniqueKey == "" {
-		return domain.NewUniqueKey(sbType.ToProto(), bson.NewObjectId().Hex())
+		return domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
 	}
 	return domain.UnmarshalUniqueKey(uniqueKey)
 }

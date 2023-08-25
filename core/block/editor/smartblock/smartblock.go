@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -260,7 +261,7 @@ func (sb *smartBlock) SpaceID() string {
 
 // UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
 func (sb *smartBlock) UniqueKey() domain.UniqueKey {
-	uk, _ := domain.NewUniqueKey(sb.Type(), sb.Doc.UniqueKeyInternal())
+	uk, _ := domain.NewUniqueKey(smartblock.SmartBlockType(sb.Type()), sb.Doc.UniqueKeyInternal())
 	return uk
 }
 
@@ -282,6 +283,7 @@ func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
 	return sb.objectStore
 }
 
+// TODO Should return domain type
 func (sb *smartBlock) Type() model.SmartBlockType {
 	return sb.source.Type()
 }
@@ -335,7 +337,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-	sb.injectDerivedDetails(ctx.State, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(ctx.State, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
 	return
 }
 
@@ -665,7 +667,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
-	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
 	beforeApplyStateTime := time.Now()
 
 	migrationVersionUpdated := true
@@ -793,7 +795,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -1000,7 +1002,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
-	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -1028,7 +1030,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	sb.injectDerivedDetails(d.(*state.State), sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(d.(*state.State), sb.spaceID, smartblock.SmartBlockType(sb.Type()))
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1370,7 +1372,7 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 }
 
 // injectDerivedDetails injects the local deta
-func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt model.SmartBlockType) {
+func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt smartblock.SmartBlockType) {
 	id := s.RootId()
 	if id != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
@@ -1392,10 +1394,10 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt m
 
 	if uki := s.UniqueKeyInternal(); uki != "" {
 		// todo: remove this hack after spaceService refactored to include marketplace virtual space
-		if sbt == model.SmartBlockType_BundledObjectType {
-			sbt = model.SmartBlockType_STType
-		} else if sbt == model.SmartBlockType_BundledRelation {
-			sbt = model.SmartBlockType_STRelation
+		if sbt == smartblock.SmartBlockTypeBundledObjectType {
+			sbt = smartblock.SmartBlockTypeObjectType
+		} else if sbt == smartblock.SmartBlockTypeBundledRelation {
+			sbt = smartblock.SmartBlockTypeRelation
 		}
 
 		uk, err := domain.NewUniqueKey(sbt, uki)

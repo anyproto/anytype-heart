@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -28,7 +29,7 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		sbTypes = append(sbTypes, int(t))
 	}
 
-	uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, ot.Key)
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, ot.Key)
 	if err != nil {
 		return nil
 	}

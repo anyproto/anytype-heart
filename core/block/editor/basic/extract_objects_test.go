@@ -192,7 +192,7 @@ func TestExtractObjects(t *testing.T) {
 			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:           "test",
 				BlockIds:            tc.blockIds,
-				ObjectTypeUniqueKey: domain.MustUniqueKey(model.SmartBlockType_STType, bundle.TypeKeyNote.String()).Marshal(),
+				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
 			linkIds, err := NewBasic(sb, fixture.store, fixture.relationService, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)

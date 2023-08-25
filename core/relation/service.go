@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -67,7 +68,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
-	uk, err := domain.NewUniqueKey(model.SmartBlockType_STType, key.String())
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, key.String())
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +82,7 @@ func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle
 }
 
 func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {
-	uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, key.String())
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key.String())
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +107,7 @@ func (s *service) FetchRelationByKeys(spaceId string, keys ...string) (relations
 	uks := make([]string, 0, len(keys))
 
 	for _, key := range keys {
-		uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, key)
+		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +170,7 @@ type fetchOptions struct {
 type FetchOption func(options *fetchOptions)
 
 func (s *service) FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error) {
-	uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, key)
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
 		return nil, err
 	}

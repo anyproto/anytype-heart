@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -21,8 +22,9 @@ import (
 )
 
 type snapshotOptions struct {
-	changeId          string
-	migrateUniqueKeys model.SmartBlockType // set >0 to migrate unique keys
+	changeId string
+	// TODO Rename!
+	migrateUniqueKeys smartblock.SmartBlockType // set >0 to migrate unique keys
 }
 
 type SnapshotOption func(*snapshotOptions)
@@ -34,7 +36,7 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 	}
 }
 
-func WithUniqueKeyMigration(sbType model.SmartBlockType) func(*snapshotOptions) {
+func WithUniqueKeyMigration(sbType smartblock.SmartBlockType) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.migrateUniqueKeys = sbType
 	}
@@ -787,7 +789,7 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []bundle.TypeKey {
 }
 
 // Adds missing unique key for supported smartblock types
-func migrateAddMissingUniqueKey(sbType model.SmartBlockType, snapshot *pb.ChangeSnapshot) {
+func migrateAddMissingUniqueKey(sbType smartblock.SmartBlockType, snapshot *pb.ChangeSnapshot) {
 	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
 	uk, err := domain.UnmarshalUniqueKey(id)
 	if err != nil {

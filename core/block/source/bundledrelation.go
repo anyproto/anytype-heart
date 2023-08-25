@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -65,7 +66,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	// we use STRelation instead of BundledRelation for a reason we want to have the same prefix
 	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
-	uk, err := domain.NewUniqueKey(model.SmartBlockType_STRelation, v.relKey.String())
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, v.relKey.String())
 	if err != nil {
 		return nil, err
 	}

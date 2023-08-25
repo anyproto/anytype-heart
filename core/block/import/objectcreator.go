@@ -81,7 +81,7 @@ func (oc *ObjectCreator) Create(
 
 	oc.setWorkspaceID(spaceID, newID, snapshot)
 
-	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType.ToProto())).(*state.State)
+	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetRootId(newID)
 	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
