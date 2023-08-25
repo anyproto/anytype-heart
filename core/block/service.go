@@ -504,13 +504,33 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 		},
 	})
 
+	installedTemplatesIDs, err := s.listInstalledTemplatesForType(spaceID, typeKey)
+	if err != nil {
+		return fmt.Errorf("list installed templates: %w", err)
+	}
+
+	for _, record := range bundledTemplates {
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		if _, exists := installedTemplatesIDs[id]; exists {
+			continue
+		}
+
+		_, err := s.TemplateClone(spaceID, id)
+		if err != nil {
+			return fmt.Errorf("clone template: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) listInstalledTemplatesForType(spaceID string, typeKey bundle.TypeKey) (map[string]struct{}, error) {
 	templateTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
 	if err != nil {
-		return fmt.Errorf("get template type id by key: %w", err)
+		return nil, fmt.Errorf("get template type id by key: %w", err)
 	}
 	targetObjectTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, typeKey)
 	if err != nil {
-		return fmt.Errorf("get type id by key: %w", err)
+		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
 	alreadyInstalledTemplates, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -532,9 +552,8 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("list installed templates: %w", err)
+		return nil, fmt.Errorf("query: %w", err)
 	}
-
 	existingTemplatesMap := map[string]struct{}{}
 	for _, rec := range alreadyInstalledTemplates {
 		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
@@ -542,19 +561,7 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 			existingTemplatesMap[sourceObject] = struct{}{}
 		}
 	}
-
-	for _, record := range bundledTemplates {
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-		if _, exists := existingTemplatesMap[id]; exists {
-			continue
-		}
-
-		_, err := s.TemplateClone(spaceID, id)
-		if err != nil {
-			return fmt.Errorf("clone template: %w", err)
-		}
-	}
-	return nil
+	return existingTemplatesMap, nil
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
