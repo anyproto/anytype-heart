@@ -7,6 +7,7 @@ Middleware library for Anytype, distributed as part of the Anytype clients.
 - [Testing instructions](docs/Testing.md)
 - [Debug instructions](docs/Debug.md)
 - [Project architecture](docs/Architecture.md)
+- [Style guide](docs/Codestyle.md)
 
 ## Contribution
 Thank you for your desire to develop Anytype together!
