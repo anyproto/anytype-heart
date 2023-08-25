@@ -504,18 +504,25 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 		},
 	})
 
-	// TODO Fix filters
+	templateTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
+	if err != nil {
+		return fmt.Errorf("get template type id by key: %w", err)
+	}
+	targetObjectTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, typeKey)
+	if err != nil {
+		return fmt.Errorf("get type id by key: %w", err)
+	}
 	alreadyInstalledTemplates, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
+				Value:       pbtypes.String(templateTypeID),
 			},
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(addr.ObjectTypeKeyToIdPrefix + typeKey.String()),
+				Value:       pbtypes.String(targetObjectTypeID),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
@@ -528,7 +535,7 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 		return fmt.Errorf("list installed templates: %w", err)
 	}
 
-	var existingTemplatesMap = map[string]struct{}{}
+	existingTemplatesMap := map[string]struct{}{}
 	for _, rec := range alreadyInstalledTemplates {
 		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
 		if sourceObject != "" {
