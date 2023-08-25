@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/uniquekey"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -230,11 +231,9 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 }
 
 func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetDetailsDetail) error {
-	// TODO Decide if we need this case
-	// if detail.Key == bundle.RelationKeyType.String() {
-	// 	// special case when client sets the type's detail directly instead of using setObjectType command
-	// 	return bs.SetObjectTypesInState(st, pbtypes.GetStringListValue(detail.Value))
-	// }
+	if detail.Key == bundle.RelationKeyType.String() {
+		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
+	}
 	if detail.Key == bundle.RelationKeyLayout.String() {
 		// special case when client sets the layout detail directly instead of using SetLayoutInState command
 		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
