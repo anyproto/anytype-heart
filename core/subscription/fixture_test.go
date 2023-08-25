@@ -3,10 +3,12 @@ package subscription
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -83,6 +85,7 @@ type fixtureRealStore struct {
 	ctrl                *gomock.Controller
 	store               *objectstore.StoreFixture
 	sender              *mock_event.MockSender
+	eventsLock          sync.Mutex
 	events              []pb.IsEventMessageValue
 	relationServiceMock *mock_relation.MockService
 }
@@ -111,6 +114,8 @@ func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
 	sender.EXPECT().Init(mock.Anything).Return(nil)
 	sender.EXPECT().Name().Return(event.CName)
 	sender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
+		fx.eventsLock.Lock()
+		defer fx.eventsLock.Unlock()
 		for _, em := range e.Messages {
 			fx.events = append(fx.events, em.Value)
 		}
@@ -129,13 +134,19 @@ func (fx *fixtureRealStore) waitEvents(t *testing.T, ev ...pb.IsEventMessageValu
 	for {
 		select {
 		case <-timeout.C:
-			require.Equal(t, ev, fx.events)
+			fx.eventsLock.Lock()
+			assert.Equal(t, ev, fx.events)
+			fx.eventsLock.Unlock()
+			return
 		case <-ticker.C:
 		}
 
+		fx.eventsLock.Lock()
 		if reflect.DeepEqual(fx.events, ev) {
 			fx.events = nil
+			fx.eventsLock.Unlock()
 			return
 		}
+		fx.eventsLock.Unlock()
 	}
 }

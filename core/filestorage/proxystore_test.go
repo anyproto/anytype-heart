@@ -14,6 +14,7 @@ import (
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
@@ -298,6 +299,7 @@ func newPSFixture(t *testing.T) *psFixture {
 
 	fx.flatfsDir = t.TempDir()
 	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Broadcast(mock.Anything).Maybe()
 	cache, err := newFlatStore(fx.flatfsDir, sender, time.Second)
 	require.NoError(t, err)
 
