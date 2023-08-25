@@ -148,7 +148,7 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, archive []b
 		}
 	}
 
-	newId, err := b.getNewSpaceDashboardId(oldId)
+	newId, err := b.getNewSpaceDashboardId(spaceID, oldId)
 	if err != nil {
 		log.Errorf("Failed to get new id of space dashboard object: %s", err.Error())
 		return nil
@@ -218,13 +218,18 @@ func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err 
 	return profile.SpaceDashboardId, nil
 }
 
-func (b *builtinObjects) getNewSpaceDashboardId(oldId string) (id string, err error) {
+func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (id string, err error) {
 	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldId),
+				Value:       pbtypes.String(oldID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	}, nil)
