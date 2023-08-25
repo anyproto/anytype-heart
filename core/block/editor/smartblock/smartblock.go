@@ -261,7 +261,7 @@ func (sb *smartBlock) SpaceID() string {
 
 // UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
 func (sb *smartBlock) UniqueKey() domain.UniqueKey {
-	uk, _ := domain.NewUniqueKey(smartblock.SmartBlockType(sb.Type()), sb.Doc.UniqueKeyInternal())
+	uk, _ := domain.NewUniqueKey(sb.Type(), sb.Doc.UniqueKeyInternal())
 	return uk
 }
 
@@ -638,6 +638,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
+	// Inject derived details to make sure we have consistent state.
+	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
+
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
 			return nil
@@ -664,9 +668,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 	}
-	// Inject derived details to make sure we have consistent state.
-	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
-	sb.injectDerivedDetails(s, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
+
 	beforeApplyStateTime := time.Now()
 
 	migrationVersionUpdated := true
@@ -794,7 +796,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	sb.injectDerivedDetails(s, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -1001,7 +1003,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
-	sb.injectDerivedDetails(s, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
+	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -1029,7 +1031,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	sb.injectDerivedDetails(d.(*state.State), sb.spaceID, smartblock.SmartBlockType(sb.Type()))
+	sb.injectDerivedDetails(d.(*state.State), sb.spaceID, sb.Type())
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)

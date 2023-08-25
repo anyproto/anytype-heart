@@ -1009,7 +1009,11 @@ func (s *State) ObjectTypeKeys() []bundle.TypeKey {
 func (s *State) ObjectTypeKey() bundle.TypeKey {
 	objTypes := s.ObjectTypeKeys()
 	if len(objTypes) == 0 && !s.noObjectType {
-		log.Debugf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
+		log.Debugf("object %s (%s) has %d object types instead of 1",
+			s.RootId(),
+			pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()),
+			len(objTypes),
+		)
 	}
 
 	if len(objTypes) > 0 {
