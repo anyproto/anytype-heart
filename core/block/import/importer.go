@@ -327,7 +327,7 @@ func (i *Import) getObjectID(ctx *session.Context,
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(ctx, snapshot, snapshot.SbType, createdTime, updateExisting, oldIDToNew); err == nil {
+	if id, payload, err = i.objectIDGetter.Get(ctx, snapshot, createdTime, updateExisting); err == nil {
 		oldIDToNew[snapshot.Id] = id
 		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 			oldIDToNew[snapshot.Id] = snapshot.Id
