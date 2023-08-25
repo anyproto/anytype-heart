@@ -63,6 +63,17 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		st.SetLocalDetails(nil)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
+
+		targetObjectTypeBundledID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+		targetObjectTypeKey, err := bundle.TypeKeyFromUrl(targetObjectTypeBundledID)
+		if err != nil {
+			return fmt.Errorf("get target object type key: %w", err)
+		}
+		targetObjectTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, targetObjectTypeKey)
+		if err != nil {
+			return fmt.Errorf("get target object type id: %w", err)
+		}
+		st.SetDetailAndBundledRelation(bundle.RelationKeyTargetObjectType, pbtypes.String(targetObjectTypeID))
 		return nil
 	}); err != nil {
 		return

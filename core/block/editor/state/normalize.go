@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"

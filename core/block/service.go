@@ -456,7 +456,7 @@ func (s *Service) AddBundledObjectToSpace(
 			id, object, err := s.objectCreator.CreateSmartBlockFromState(
 				ctx,
 				spaceID,
-				coresb.SmartBlockType(uk.SmartblockType()),
+				uk.SmartblockType(),
 				[]bundle.TypeKey{objectTypeKey},
 				nil,
 				st,
@@ -467,6 +467,15 @@ func (s *Service) AddBundledObjectToSpace(
 				log.Errorf("error while block create: %v", err)
 				return nil
 			}
+
+			if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
+				installingObjectTypeKey := bundle.TypeKey(uk.InternalKey())
+				err = s.installTemplatesForObjectType(spaceID, installingObjectTypeKey)
+				if err != nil {
+					log.With("spaceID", spaceID, "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
+				}
+			}
+
 			ids = append(ids, id)
 			objects = append(objects, object)
 			return nil
@@ -477,6 +486,68 @@ func (s *Service) AddBundledObjectToSpace(
 	}
 
 	return
+}
+
+func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.TypeKey) error {
+	bundledTemplates, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(typeKey.BundledURL()),
+			},
+		},
+	})
+
+	// TODO Fix filters
+	alreadyInstalledTemplates, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetObjectType.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(addr.ObjectTypeKeyToIdPrefix + typeKey.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("list installed templates: %w", err)
+	}
+
+	var existingTemplatesMap = map[string]struct{}{}
+	for _, rec := range alreadyInstalledTemplates {
+		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+		if sourceObject != "" {
+			existingTemplatesMap[sourceObject] = struct{}{}
+		}
+	}
+
+	for _, record := range bundledTemplates {
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		if _, exists := existingTemplatesMap[id]; exists {
+			continue
+		}
+
+		_, err := s.TemplateClone(spaceID, id)
+		if err != nil {
+			return fmt.Errorf("clone template: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {

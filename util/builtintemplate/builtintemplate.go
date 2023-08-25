@@ -110,11 +110,8 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		}
 	}
 
-	id = addr.BundledTemplatesURLPrefix + id
 	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
 	st.SetRootId(id)
-	st = st.NewState()
-	st = st.Copy()
 	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
@@ -138,7 +135,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return true
 	})
 
-	if err = b.validate(st.Copy()); err != nil {
+	if err = b.validate(st); err != nil {
 		return
 	}
 
