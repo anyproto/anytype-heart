@@ -26,9 +26,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -89,7 +89,7 @@ func New(
 	fileService files.Service,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	indexer Indexer,
 	eventSender event.Sender,
 ) SmartBlock {
@@ -99,13 +99,13 @@ func New(
 		Locker:    &sync.Mutex{},
 		sessions:  map[string]session.Context{},
 
-		coreService:        coreService,
-		fileService:        fileService,
-		restrictionService: restrictionService,
-		objectStore:        objectStore,
-		relationService:    relationService,
-		indexer:            indexer,
-		eventSender:        eventSender,
+		coreService:         coreService,
+		fileService:         fileService,
+		restrictionService:  restrictionService,
+		objectStore:         objectStore,
+		systemObjectService: systemObjectService,
+		indexer:             indexer,
+		eventSender:         eventSender,
 	}
 	return s
 }
@@ -213,13 +213,13 @@ type smartBlock struct {
 	closeRecordsSub func()
 
 	// Deps
-	coreService        core.Service
-	fileService        files.Service
-	restrictionService restriction.Service
-	objectStore        objectstore.ObjectStore
-	relationService    relation.Service
-	indexer            Indexer
-	eventSender        event.Sender
+	coreService         core.Service
+	fileService         files.Service
+	restrictionService  restriction.Service
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
+	indexer             Indexer
+	eventSender         event.Sender
 }
 
 type LockerSetter interface {
@@ -504,7 +504,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
-	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.relationService, true, true, includeRelations, includeObjTypes, includeCreatorModifier)
+	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.systemObjectService, true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) navigationalLinks(s *state.State) []string {
@@ -550,7 +550,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			relId, err := sb.relationService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
+			relId, err := sb.systemObjectService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
 				continue
@@ -858,10 +858,6 @@ func (sb *smartBlock) Anytype() core.Service {
 	return sb.coreService
 }
 
-func (sb *smartBlock) RelationService() relation.Service {
-	return sb.relationService
-}
-
 func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
@@ -874,7 +870,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.relationService.FetchRelationByKeys(s.SpaceID(), relationKeys...)
+	relations, err := sb.systemObjectService.FetchRelationByKeys(s.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -974,7 +970,7 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
-	targetObjectTypeID, err := sb.relationService.GetTypeIdByKey(context.Background(), st.SpaceID(), st.ObjectTypeKey())
+	targetObjectTypeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), st.SpaceID(), st.ObjectTypeKey())
 	if err != nil {
 		return nil, fmt.Errorf("get type id by key: %s", err)
 	}
@@ -1234,7 +1230,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.RelationService().FetchRelationByLinks(sb.spaceID, links)
+	rels, _ := sb.systemObjectService.FetchRelationByLinks(sb.spaceID, links)
 	return rels
 }
 
@@ -1385,7 +1381,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt s
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", id)
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
-		typeID, err := sb.relationService.GetTypeIdByKey(context.Background(), s.SpaceID(), ot)
+		typeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), s.SpaceID(), ot)
 		if err != nil {
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}

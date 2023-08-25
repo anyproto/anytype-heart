@@ -12,8 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -27,11 +27,11 @@ import (
 var log = logging.Logger("collection-service")
 
 type Service struct {
-	lock            *sync.RWMutex
-	collections     map[string]map[string]chan []string
-	relationService relation.Service
-	picker          block.Picker
-	objectStore     objectstore.ObjectStore
+	lock                *sync.RWMutex
+	collections         map[string]map[string]chan []string
+	systemObjectService system_object.Service
+	picker              block.Picker
+	objectStore         objectstore.ObjectStore
 }
 
 func New() *Service {
@@ -44,7 +44,7 @@ func New() *Service {
 func (s *Service) Init(a *app.App) (err error) {
 	s.picker = app.MustComponent[block.Picker](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.relationService = app.MustComponent[relation.Service](a)
+	s.systemObjectService = app.MustComponent[system_object.Service](a)
 	return nil
 }
 

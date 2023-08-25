@@ -8,8 +8,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -27,23 +27,23 @@ type WidgetObject struct {
 	basic.Updatable
 	widget.Widget
 
-	relationService relation.Service
+	systemObjectService system_object.Service
 }
 
 func NewWidgetObject(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	layoutConverter converter.LayoutConverter,
 ) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, relationService, layoutConverter)
+	bs := basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter)
 	return &WidgetObject{
-		SmartBlock:      sb,
-		Movable:         bs,
-		Updatable:       bs,
-		IHistory:        basic.NewHistory(sb),
-		Widget:          widget.NewWidget(sb),
-		relationService: relationService,
+		SmartBlock:          sb,
+		Movable:             bs,
+		Updatable:           bs,
+		IHistory:            basic.NewHistory(sb),
+		Widget:              widget.NewWidget(sb),
+		systemObjectService: systemObjectService,
 	}
 }
 
@@ -103,7 +103,7 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 		{
 			Version: 2,
 			Proc: func(s *state.State) {
-				migrateSourcesInDataview(w, s, w.relationService)
+				migrateSourcesInDataview(w, s, w.systemObjectService)
 			},
 		},
 	})

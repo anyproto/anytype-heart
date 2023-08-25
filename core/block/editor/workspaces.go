@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -58,7 +58,7 @@ func NewWorkspace(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	sourceService source.Service,
 	modifier DetailsModifier,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
@@ -73,7 +73,7 @@ func NewWorkspace(
 			collectionKeyRelationOptions,
 			objectStore,
 			anytype,
-			relationService,
+			systemObjectService,
 			sourceService,
 			sbtProvider,
 			layoutConverter,

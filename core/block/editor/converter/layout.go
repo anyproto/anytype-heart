@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -29,9 +29,9 @@ type LayoutConverter interface {
 }
 
 type layoutConverter struct {
-	objectStore     objectstore.ObjectStore
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	relationService relation.Service
+	objectStore         objectstore.ObjectStore
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	systemObjectService system_object.Service
 }
 
 func NewLayoutConverter() LayoutConverter {
@@ -145,7 +145,7 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 		return nil
 	}
 
-	dvBlock, _, err := dataview.BlockBySource(st.SpaceID(), c.sbtProvider, c.relationService, source)
+	dvBlock, _, err := dataview.BlockBySource(st.SpaceID(), c.sbtProvider, c.systemObjectService, source)
 	if err != nil {
 		return err
 	}

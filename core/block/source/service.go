@@ -15,7 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -43,13 +43,13 @@ type Service interface {
 }
 
 type service struct {
-	coreService     core.Service
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	account         accountservice.Service
-	fileStore       filestore.FileStore
-	spaceService    space.Service
-	fileService     files.Service
-	relationService relation.Service
+	coreService         core.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	account             accountservice.Service
+	fileStore           filestore.FileStore
+	spaceService        space.Service
+	fileService         files.Service
+	systemObjectService system_object.Service
 
 	objectStore objectstore.ObjectStore
 
@@ -64,7 +64,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.relationService = app.MustComponent[relation.Service](a)
+	s.systemObjectService = app.MustComponent[system_object.Service](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -138,14 +138,14 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 		return nil, err
 	}
 	deps := sourceDeps{
-		coreService:     s.coreService,
-		accountService:  s.account,
-		sbt:             sbt,
-		ot:              ot,
-		spaceService:    s.spaceService,
-		sbtProvider:     s.sbtProvider,
-		fileService:     s.fileService,
-		relationService: s.relationService,
+		coreService:         s.coreService,
+		accountService:      s.account,
+		sbt:                 sbt,
+		ot:                  ot,
+		spaceService:        s.spaceService,
+		sbtProvider:         s.sbtProvider,
+		fileService:         s.fileService,
+		systemObjectService: s.systemObjectService,
 	}
 	return newTreeSource(spaceID, id, deps)
 }

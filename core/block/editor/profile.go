@@ -15,8 +15,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -42,7 +42,7 @@ type Profile struct {
 func NewProfile(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	fileBlockService file.BlockService,
 	anytype core.Service,
 	picker getblock.Picker,
@@ -62,7 +62,7 @@ func NewProfile(
 	)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -74,7 +74,7 @@ func NewProfile(
 			sb,
 			f,
 			tempDirProvider,
-			relationService,
+			systemObjectService,
 			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(

@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -28,23 +28,23 @@ import (
 var log = logging.Logger("anytype-mw-editor")
 
 type ObjectFactory struct {
-	anytype            core.Service
-	bookmarkService    bookmark.BookmarkService
-	detailsModifier    DetailsModifier
-	fileBlockService   file.BlockService
-	layoutConverter    converter.LayoutConverter
-	objectStore        objectstore.ObjectStore
-	relationService    relation.Service
-	sbtProvider        typeprovider.SmartBlockTypeProvider
-	sourceService      source.Service
-	tempDirProvider    core.TempDirProvider
-	templateCloner     templateCloner
-	fileService        files.Service
-	config             *config.Config
-	picker             getblock.Picker
-	eventSender        event.Sender
-	restrictionService restriction.Service
-	indexer            smartblock.Indexer
+	anytype             core.Service
+	bookmarkService     bookmark.BookmarkService
+	detailsModifier     DetailsModifier
+	fileBlockService    file.BlockService
+	layoutConverter     converter.LayoutConverter
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	sourceService       source.Service
+	tempDirProvider     core.TempDirProvider
+	templateCloner      templateCloner
+	fileService         files.Service
+	config              *config.Config
+	picker              getblock.Picker
+	eventSender         event.Sender
+	restrictionService  restriction.Service
+	indexer             smartblock.Indexer
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -57,7 +57,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	f.relationService = app.MustComponent[relation.Service](a)
+	f.systemObjectService = app.MustComponent[system_object.Service](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.templateCloner = app.MustComponent[templateCloner](a)
@@ -127,7 +127,7 @@ func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
 		f.fileService,
 		f.restrictionService,
 		f.objectStore,
-		f.relationService,
+		f.systemObjectService,
 		f.indexer,
 		f.eventSender,
 	)
@@ -149,7 +149,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.fileBlockService,
 			f.picker,
 			f.bookmarkService,
-			f.relationService,
+			f.systemObjectService,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
@@ -167,7 +167,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			sb,
 			f.detailsModifier,
 			f.objectStore,
-			f.relationService,
+			f.systemObjectService,
 			f.anytype,
 			f.layoutConverter,
 		), nil
@@ -176,7 +176,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		return NewProfile(
 			sb,
 			f.objectStore,
-			f.relationService,
+			f.systemObjectService,
 			f.fileBlockService,
 			f.anytype,
 			f.picker,
@@ -197,7 +197,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.fileBlockService,
 			f.picker,
 			f.bookmarkService,
-			f.relationService,
+			f.systemObjectService,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
@@ -209,7 +209,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			sb,
 			f.objectStore,
 			f.anytype,
-			f.relationService,
+			f.systemObjectService,
 			f.sourceService,
 			f.detailsModifier,
 			f.sbtProvider,
@@ -221,7 +221,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.relationService, f.layoutConverter), nil
+		return NewWidgetObject(sb, f.objectStore, f.systemObjectService, f.layoutConverter), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	default:

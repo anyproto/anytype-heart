@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/core/system_object"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -50,16 +50,16 @@ type Service interface {
 }
 
 type Creator struct {
-	blockService      BlockService
-	blockPicker       block.Picker
-	objectStore       objectstore.ObjectStore
-	collectionService CollectionService
-	relationService   relation.Service
-	bookmark          bookmark.Service
-	objectFactory     *editor.ObjectFactory
-	app               *app.App
-	sbtProvider       typeprovider.SmartBlockTypeProvider
-	creator           Service //nolint:unused
+	blockService        BlockService
+	blockPicker         block.Picker
+	objectStore         objectstore.ObjectStore
+	collectionService   CollectionService
+	systemObjectService system_object.Service
+	bookmark            bookmark.Service
+	objectFactory       *editor.ObjectFactory
+	app                 *app.App
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	creator             Service //nolint:unused
 
 	// TODO: remove it?
 	coreService core.Service
@@ -81,7 +81,7 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.collectionService = app.MustComponent[CollectionService](a)
-	c.relationService = app.MustComponent[relation.Service](a)
+	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	c.coreService = app.MustComponent[core.Service](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.app = a
@@ -232,7 +232,7 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 
 	if len(source) > 0 {
 		// todo: decide the behavior in case of empty source
-		if dvContent, dvSchema, err = dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.relationService, source); err != nil {
+		if dvContent, dvSchema, err = dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.systemObjectService, source); err != nil {
 			return
 		}
 

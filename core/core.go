@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -65,13 +64,6 @@ func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
-func (mw *Middleware) getRelationService() (rs relation.Service, err error) {
-	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent(relation.CName).(relation.Service), nil
-	}
-	return nil, ErrNotLoggedIn
-}
-
 func (mw *Middleware) getAccountService() (a space.Service, err error) {
 	if a := mw.applicationService.GetApp(); a != nil {
 		return a.MustComponent(space.CName).(space.Service), nil
@@ -105,14 +97,6 @@ func requireApp(a *app.App) {
 	if a == nil {
 		panic(ErrNotLoggedIn)
 	}
-}
-
-func (mw *Middleware) doRelationService(f func(rs relation.Service) error) (err error) {
-	rs, err := mw.getRelationService()
-	if err != nil {
-		return
-	}
-	return f(rs)
 }
 
 func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error) {

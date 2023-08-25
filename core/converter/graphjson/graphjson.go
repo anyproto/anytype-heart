@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -52,19 +52,19 @@ type graphjson struct {
 	nodes       map[string]*Node
 	linksByNode map[string][]*Edge
 
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	relationService relation.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	systemObjectService system_object.Service
 }
 
 func NewMultiConverter(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 ) converter.MultiConverter {
 	return &graphjson{
-		linksByNode:     map[string][]*Edge{},
-		nodes:           map[string]*Node{},
-		sbtProvider:     sbtProvider,
-		relationService: relationService,
+		linksByNode:         map[string][]*Edge{},
+		nodes:               map[string]*Node{},
+		sbtProvider:         sbtProvider,
+		systemObjectService: systemObjectService,
 	}
 }
 
@@ -95,7 +95,7 @@ func (g *graphjson) Add(st *state.State) error {
 	g.nodes[st.RootId()] = &n
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, g.relationService, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, g.systemObjectService, true, true, false, false, false)
 	for _, depID := range dependentObjectIDs {
 		t, err := g.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {

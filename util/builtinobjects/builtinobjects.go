@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -71,12 +71,12 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	service         *block.Service
-	coreService     core.Service
-	importer        importer.Importer
-	store           objectstore.ObjectStore
-	tempDirService  core.TempDirProvider
-	relationService relation.Service
+	service             *block.Service
+	coreService         core.Service
+	importer            importer.Importer
+	store               objectstore.ObjectStore
+	tempDirService      core.TempDirProvider
+	systemObjectService system_object.Service
 }
 
 func New() BuiltinObjects {
@@ -89,7 +89,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
-	b.relationService = app.MustComponent[relation.Service](a)
+	b.systemObjectService = app.MustComponent[system_object.Service](a)
 	return
 }
 
@@ -321,7 +321,7 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, s
 }
 
 func (b *builtinObjects) getSetIDByObjectTypeKey(spaceID string, objectTypeKey bundle.TypeKey) (string, error) {
-	objectTypeID, err := b.relationService.GetTypeIdByKey(context.Background(), spaceID, objectTypeKey)
+	objectTypeID, err := b.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, objectTypeKey)
 	if err != nil {
 		return "", fmt.Errorf("get type id by key '%s': %s", objectTypeKey, err)
 	}

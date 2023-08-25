@@ -15,7 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
@@ -36,12 +36,12 @@ func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, s
 
 type fixture struct {
 	Service
-	a               *app.App
-	ctrl            *gomock.Controller
-	store           *testMock.MockObjectStore
-	relationService *mock_relation.MockService
-	sender          *mock_event.MockSender
-	events          []*pb.Event
+	a                   *app.App
+	ctrl                *gomock.Controller
+	store               *testMock.MockObjectStore
+	systemObjectService *mock_system_object.MockService
+	sender              *mock_event.MockSender
+	events              []*pb.Event
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -55,14 +55,14 @@ func newFixture(t *testing.T) *fixture {
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
 
-	relationService := mock_relation.NewMockService(t)
-	a.Register(testutil.PrepareMock(a, relationService))
+	systemObjectService := mock_system_object.NewMockService(t)
+	a.Register(testutil.PrepareMock(a, systemObjectService))
 	fx := &fixture{
-		Service:         New(),
-		a:               a,
-		ctrl:            ctrl,
-		store:           a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
-		relationService: relationService,
+		Service:             New(),
+		a:                   a,
+		ctrl:                ctrl,
+		store:               a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
+		systemObjectService: systemObjectService,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)
@@ -81,13 +81,13 @@ func newFixture(t *testing.T) *fixture {
 
 type fixtureRealStore struct {
 	Service
-	a                   *app.App
-	ctrl                *gomock.Controller
-	store               *objectstore.StoreFixture
-	sender              *mock_event.MockSender
-	eventsLock          sync.Mutex
-	events              []pb.IsEventMessageValue
-	relationServiceMock *mock_relation.MockService
+	a                       *app.App
+	ctrl                    *gomock.Controller
+	store                   *objectstore.StoreFixture
+	sender                  *mock_event.MockSender
+	eventsLock              sync.Mutex
+	events                  []pb.IsEventMessageValue
+	systemObjectServiceMock *mock_system_object.MockService
 }
 
 func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
@@ -101,14 +101,14 @@ func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
-	relationService := mock_relation.NewMockService(t)
-	a.Register(testutil.PrepareMock(a, relationService))
+	systemObjectService := mock_system_object.NewMockService(t)
+	a.Register(testutil.PrepareMock(a, systemObjectService))
 	fx := &fixtureRealStore{
-		Service:             New(),
-		a:                   a,
-		ctrl:                ctrl,
-		store:               store,
-		relationServiceMock: relationService,
+		Service:                 New(),
+		a:                       a,
+		ctrl:                    ctrl,
+		store:                   store,
+		systemObjectServiceMock: systemObjectService,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)

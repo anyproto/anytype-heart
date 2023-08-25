@@ -13,9 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -60,10 +59,6 @@ func (st *SmartTest) EnabledRelationAsDependentObjects() {
 
 func (st *SmartTest) IsLocked() bool {
 	return false
-}
-
-func (st *SmartTest) RelationService() relation.Service {
-	return st.App.Component(relation.CName).(relation.Service)
 }
 
 func (st *SmartTest) Locked() bool {

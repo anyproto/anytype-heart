@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -39,8 +39,8 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore     objectstore.ObjectStore
-	relationService relation.Service
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
 }
 
 func NewPage(
@@ -50,7 +50,7 @@ func NewPage(
 	fileBlockService file.BlockService,
 	picker getblock.Picker,
 	bookmarkService bookmark.BookmarkService,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
@@ -67,7 +67,7 @@ func NewPage(
 	)
 	return &Page{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -79,7 +79,7 @@ func NewPage(
 			sb,
 			f,
 			tempDirProvider,
-			relationService,
+			systemObjectService,
 			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
@@ -92,12 +92,12 @@ func NewPage(
 			sb,
 			anytype,
 			objectStore,
-			relationService,
+			systemObjectService,
 			sbtProvider,
 		),
-		TableEditor:     table.NewEditor(sb),
-		objectStore:     objectStore,
-		relationService: relationService,
+		TableEditor:         table.NewEditor(sb),
+		objectStore:         objectStore,
+		systemObjectService: systemObjectService,
 	}
 }
 
@@ -124,7 +124,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				if err != nil {
 					log.Errorf("failed to create unique key: %v", err)
 				} else {
-					otype, err := p.relationService.GetObjectByUniqueKey(s.SpaceID(), uk)
+					otype, err := p.systemObjectService.GetObjectByUniqueKey(s.SpaceID(), uk)
 					if err != nil {
 						log.Errorf("failed to get object by unique key: %v", err)
 					} else {
@@ -197,7 +197,7 @@ func (p *Page) StateMigrations() migration.Migrations {
 		{
 			Version: 2,
 			Proc: func(s *state.State) {
-				migrateSourcesInDataview(p, s, p.relationService)
+				migrateSourcesInDataview(p, s, p.systemObjectService)
 			},
 		},
 	})

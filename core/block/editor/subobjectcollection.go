@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -66,7 +66,7 @@ func NewSubObjectCollection(
 	defaultCollectionName string,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	sourceService source.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
@@ -74,7 +74,7 @@ func NewSubObjectCollection(
 ) *SubObjectCollection {
 	return &SubObjectCollection{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -85,7 +85,7 @@ func NewSubObjectCollection(
 			sb,
 			anytype,
 			objectStore,
-			relationService,
+			systemObjectService,
 			sbtProvider,
 		),
 

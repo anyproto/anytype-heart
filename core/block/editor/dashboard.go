@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -34,13 +34,13 @@ func NewDashboard(
 	sb smartblock.SmartBlock,
 	detailsModifier DetailsModifier,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	anytype core.Service,
 	layoutConverter converter.LayoutConverter,
 ) *Dashboard {
 	return &Dashboard{
 		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb, objectStore, relationService, layoutConverter),
+		AllOperations:   basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: detailsModifier,
 		objectStore:     objectStore,

@@ -39,7 +39,7 @@ func TestService_DataviewRestrictions(t *testing.T) {
 
 	t.Run("ordinary objects don't have restrictions", func(t *testing.T) {
 		objectTypeID := "derivedFrom(page)"
-		s.relationServiceMock.EXPECT().HasObjectType(objectTypeID).Return(true, nil)
+		s.systemObjectServiceMock.EXPECT().HasObjectType(objectTypeID).Return(true, nil)
 		restrictions := s.GetRestrictions(
 			newRestrictionHolder(
 				smartblock.SmartBlockTypePage,

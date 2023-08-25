@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -34,12 +34,12 @@ func Test_GrouperTags(t *testing.T) {
 	tp.EXPECT().Name().Return("typeprovider")
 	tp.EXPECT().Init(a).Return(nil)
 
-	relationService := mock_relation.NewMockService(t)
-	relationService.EXPECT().Name().Return("relation")
-	relationService.EXPECT().Init(a).Return(nil)
+	systemObjectService := mock_system_object.NewMockService(t)
+	systemObjectService.EXPECT().Name().Return("relation")
+	systemObjectService.EXPECT().Init(a).Return(nil)
 
 	relationWithFormatTag := &relationutils.Relation{&model.Relation{Format: model.RelationFormat_tag}}
-	relationService.EXPECT().FetchRelationByKey("", "tag").Return(relationWithFormatTag, nil)
+	systemObjectService.EXPECT().FetchRelationByKey("", "tag").Return(relationWithFormatTag, nil)
 
 	ds := objectstore.New()
 	kanbanSrv := New()
@@ -50,7 +50,7 @@ func Test_GrouperTags(t *testing.T) {
 		Register(ds).
 		Register(kanbanSrv).
 		Register(tp).
-		Register(relationService).
+		Register(systemObjectService).
 		Start(context.Background())
 	require.NoError(t, err)
 

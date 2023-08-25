@@ -34,9 +34,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -128,20 +128,20 @@ type builtinObjects interface {
 }
 
 type Service struct {
-	anytype         core.Service
-	syncStatus      syncstatus.Service
-	eventSender     event.Sender
-	closed          bool
-	linkPreview     linkpreview.LinkPreview
-	process         process.Service
-	app             *app.App
-	source          source.Service
-	objectStore     objectstore.ObjectStore
-	restriction     restriction.Service
-	bookmark        bookmarksvc.Service
-	relationService relation.Service
-	cache           ocache.OCache
-	indexer         indexer
+	anytype             core.Service
+	syncStatus          syncstatus.Service
+	eventSender         event.Sender
+	closed              bool
+	linkPreview         linkpreview.LinkPreview
+	process             process.Service
+	app                 *app.App
+	source              source.Service
+	objectStore         objectstore.ObjectStore
+	restriction         restriction.Service
+	bookmark            bookmarksvc.Service
+	systemObjectService system_object.Service
+	cache               ocache.OCache
+	indexer             indexer
 
 	objectCreator        objectCreator
 	objectFactory        *editor.ObjectFactory
@@ -184,7 +184,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
-	s.relationService = a.MustComponent(relation.CName).(relation.Service)
+	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
@@ -524,11 +524,11 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 }
 
 func (s *Service) listInstalledTemplatesForType(spaceID string, typeKey bundle.TypeKey) (map[string]struct{}, error) {
-	templateTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
+	templateTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("get template type id by key: %w", err)
 	}
-	targetObjectTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, typeKey)
+	targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, typeKey)
 	if err != nil {
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}

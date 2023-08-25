@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -34,9 +34,9 @@ type Service interface {
 }
 
 type service struct {
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	objectStore     objectstore.ObjectStore
-	relationService relation.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
 }
 
 func New() Service {
@@ -46,7 +46,7 @@ func New() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.relationService = app.MustComponent[relation.Service](a)
+	s.systemObjectService = app.MustComponent[system_object.Service](a)
 	return
 }
 

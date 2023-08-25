@@ -577,11 +577,11 @@ func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSet
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return fmt.Errorf("not implemented")
 		// todo: implement me
-		/*rel, err := s.relationService.FetchRelationByKey(b.req.Key)
+		/*rel, err := s.systemObjectService.FetchRelationByKey(b.req.Key)
 		if err != nil {
 			return err
 		}
-		return b.AddRelationAndSet(ctx, s.relationService, pb.RpcBlockRelationAddRequest{
+		return b.AddRelationAndSet(ctx, s.systemObjectService, pb.RpcBlockRelationAddRequest{
 			RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId,
 		})*/
 	})
@@ -589,7 +589,7 @@ func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSet
 
 func (s *Service) AddRelationBlock(ctx session.Context, req pb.RpcBlockRelationAddRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.AddRelationAndSet(ctx, s.relationService, req)
+		return b.AddRelationAndSet(ctx, s.systemObjectService, req)
 	})
 }
 

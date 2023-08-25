@@ -12,9 +12,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -59,15 +59,15 @@ func NewDataview(
 	sb smartblock.SmartBlock,
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) Dataview {
 	dv := &sdataview{
-		SmartBlock:      sb,
-		anytype:         anytype,
-		objectStore:     objectStore,
-		relationService: relationService,
-		sbtProvider:     sbtProvider,
+		SmartBlock:          sb,
+		anytype:             anytype,
+		objectStore:         objectStore,
+		systemObjectService: systemObjectService,
+		sbtProvider:         sbtProvider,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv
@@ -75,10 +75,10 @@ func NewDataview(
 
 type sdataview struct {
 	smartblock.SmartBlock
-	anytype         core.Service
-	objectStore     objectstore.ObjectStore
-	relationService relation.Service
-	sbtProvider     typeprovider.SmartBlockTypeProvider
+	anytype             core.Service
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
@@ -105,7 +105,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := BlockBySource(s.SpaceID(), d.sbtProvider, d.relationService, source)
+	dvContent, _, err := BlockBySource(s.SpaceID(), d.sbtProvider, d.systemObjectService, source)
 	if err != nil {
 		return
 	}
@@ -130,7 +130,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.relationService.FetchRelationByKey(s.SpaceID(), key)
+		relation, err2 := d.systemObjectService.FetchRelationByKey(s.SpaceID(), key)
 		if err2 != nil {
 			return err2
 		}
@@ -368,7 +368,7 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, relationService relation.Service) (database.Schema, error) {
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, systemObjectService system_object.Service) (database.Schema, error) {
 	var relationFound, typeFound bool
 
 	for _, source := range sources {
@@ -395,7 +395,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		}
 	}
 	if typeFound {
-		objectType, err := relationService.GetObjectType(sources[0])
+		objectType, err := systemObjectService.GetObjectType(sources[0])
 		if err != nil {
 			return nil, err
 		}
@@ -406,7 +406,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 	if relationFound {
 		var relations []*model.RelationLink
 		for _, relId := range sources {
-			rel, err := relationService.GetRelationByID(relId)
+			rel, err := systemObjectService.GetRelationByID(relId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get relation %s: %s", relId, err.Error())
 			}
@@ -550,8 +550,8 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, relationService relation.Service, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
-	if schema, err = SchemaBySources(spaceID, sbtProvider, source, relationService); err != nil {
+func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, systemObjectService system_object.Service, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
+	if schema, err = SchemaBySources(spaceID, sbtProvider, source, systemObjectService); err != nil {
 		return
 	}
 

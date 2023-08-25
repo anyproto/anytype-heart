@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -48,18 +48,18 @@ type History interface {
 }
 
 type history struct {
-	a               core.Service
-	picker          block.Picker
-	objectStore     objectstore.ObjectStore
-	relationService relation.Service
-	spaceService    space.Service
+	a                   core.Service
+	picker              block.Picker
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
+	spaceService        space.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
 	h.a = a.MustComponent(core.CName).(core.Service)
 	h.picker = app.MustComponent[block.Picker](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	h.relationService = a.MustComponent(relation.CName).(relation.Service)
+	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	h.spaceService = a.MustComponent(space.CName).(space.Service)
 	return
 }
@@ -73,7 +73,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 	if err != nil {
 		return
 	}
-	dependentObjectIDs := objectlink.DependentObjectIDs(s, h.relationService, true, true, false, true, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(s, h.systemObjectService, true, true, false, true, false)
 	// nolint:errcheck
 	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
@@ -93,7 +93,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		}
 	}
 
-	rels, _ := h.relationService.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
+	rels, _ := h.systemObjectService.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
 	return &model.ObjectView{
 		RootId:        id.ObjectID,
 		Type:          model.SmartBlockType(sbType),

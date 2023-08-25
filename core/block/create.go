@@ -69,7 +69,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		if err != nil {
 			return fmt.Errorf("get target object type key: %w", err)
 		}
-		targetObjectTypeID, err := s.relationService.GetTypeIdByKey(context.Background(), spaceID, targetObjectTypeKey)
+		targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, targetObjectTypeKey)
 		if err != nil {
 			return fmt.Errorf("get target object type id: %w", err)
 		}

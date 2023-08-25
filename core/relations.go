@@ -10,7 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -32,8 +32,8 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	relationService := app.MustComponent[relation.Service](mw.applicationService.GetApp())
-	objType, err := relationService.GetObjectType(req.ObjectTypeUrl)
+	systemObjectService := app.MustComponent[system_object.Service](mw.applicationService.GetApp())
+	objType, err := systemObjectService.GetObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -55,10 +55,8 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 		return m
 	}
 
-	rs, err := mw.getRelationService()
-	if err != nil {
-		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, err)
-	}
+	systemObjectService := getService[system_object.Service](mw)
+
 	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
@@ -68,7 +66,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
-	err = mw.doBlockService(func(bs *block.Service) (err error) {
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		spaceId, err := bs.ResolveSpaceID(req.ObjectTypeUrl)
 		if err != nil {
 			return err
@@ -78,7 +76,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 
 			for _, relKey := range req.RelationKeys {
-				relId, err := rs.GetRelationIdByKey(cctx, spaceId, bundle.RelationKey(relKey))
+				relId, err := systemObjectService.GetRelationIdByKey(cctx, spaceId, bundle.RelationKey(relKey))
 				if err != nil {
 					return nil, err
 				}

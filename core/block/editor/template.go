@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -34,7 +34,7 @@ func NewTemplate(
 	fileBlockService file.BlockService,
 	picker getblock.Picker,
 	bookmarkService bookmark.BookmarkService,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
@@ -48,7 +48,7 @@ func NewTemplate(
 		fileBlockService,
 		picker,
 		bookmarkService,
-		relationService,
+		systemObjectService,
 		tempDirProvider,
 		sbtProvider,
 		layoutConverter,
@@ -83,7 +83,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 			if t.Type() == coresb.SmartBlockTypeTemplate && (len(t.ObjectTypeKeys()) != 2 || fixOt) {
 				targetObjectTypeID := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
 				if targetObjectTypeID != "" {
-					targetObjectType, err := t.relationService.GetObjectType(targetObjectTypeID)
+					targetObjectType, err := t.systemObjectService.GetObjectType(targetObjectTypeID)
 					if err != nil {
 						log.Errorf("template createion state: failed to get target object type %s: %s", targetObjectTypeID, err)
 						return
@@ -101,7 +101,7 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
 	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeID != "" {
-		objectType, err := t.relationService.GetObjectType(objectTypeID)
+		objectType, err := t.systemObjectService.GetObjectType(objectTypeID)
 		if err != nil {
 			return nil, fmt.Errorf("get target object type: %w", err)
 		}

@@ -9,7 +9,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
@@ -24,7 +24,7 @@ func Test_registerBuiltin(t *testing.T) {
 	sourceService.EXPECT().RegisterStaticSource(gomock.Any(), gomock.Any()).AnyTimes()
 
 	objectStore := mock_objectstore.NewMockObjectStore(t)
-	relationService := mock_relation.NewMockService(t)
+	systemObjectService := mock_system_object.NewMockService(t)
 
 	builtInTemplates := New()
 
@@ -33,7 +33,7 @@ func Test_registerBuiltin(t *testing.T) {
 	a.Register(builtInTemplates)
 	a.Register(config.New())
 	a.Register(testutil.PrepareMock(a, objectStore))
-	a.Register(testutil.PrepareMock(a, relationService))
+	a.Register(testutil.PrepareMock(a, systemObjectService))
 
 	err := builtInTemplates.Init(a)
 	assert.NoError(t, err)

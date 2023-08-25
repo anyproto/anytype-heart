@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -76,27 +76,27 @@ type sourceDeps struct {
 	sbt smartblock.SmartBlockType
 	ot  objecttree.ObjectTree
 
-	coreService     core.Service
-	accountService  accountservice.Service
-	spaceService    space.Service
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	fileService     files.Service
-	relationService relation.Service
+	coreService         core.Service
+	accountService      accountservice.Service
+	spaceService        space.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	fileService         files.Service
+	systemObjectService system_object.Service
 }
 
 func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err error) {
 	return &source{
-		ObjectTree:      deps.ot,
-		id:              id,
-		spaceID:         spaceID,
-		coreService:     deps.coreService,
-		spaceService:    deps.spaceService,
-		openedAt:        time.Now(),
-		smartblockType:  deps.sbt,
-		accountService:  deps.accountService,
-		sbtProvider:     deps.sbtProvider,
-		fileService:     deps.fileService,
-		relationService: deps.relationService,
+		ObjectTree:          deps.ot,
+		id:                  id,
+		spaceID:             spaceID,
+		coreService:         deps.coreService,
+		spaceService:        deps.spaceService,
+		openedAt:            time.Now(),
+		smartblockType:      deps.sbt,
+		accountService:      deps.accountService,
+		sbtProvider:         deps.sbtProvider,
+		fileService:         deps.fileService,
+		systemObjectService: deps.systemObjectService,
 	}, nil
 }
 
@@ -117,12 +117,12 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
-	coreService     core.Service
-	fileService     files.Service
-	accountService  accountservice.Service
-	spaceService    space.Service
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	relationService relation.Service
+	coreService         core.Service
+	fileService         files.Service
+	accountService      accountservice.Service
+	spaceService        space.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	systemObjectService system_object.Service
 }
 
 func (s *source) Tree() objecttree.ObjectTree {

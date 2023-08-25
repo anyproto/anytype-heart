@@ -11,14 +11,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func newTestConverter(t *testing.T) KeyToIDConverter {
-	converter := mock_relation.NewMockService(t)
+	converter := mock_system_object.NewMockService(t)
 	converter.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, spaceId string, key bundle.RelationKey) (string, error) {
 		return fakeDerivedID(key.String()), nil
 	}).Maybe()

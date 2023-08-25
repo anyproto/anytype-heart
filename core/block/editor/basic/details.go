@@ -11,8 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -99,7 +99,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 }
 
 func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value) error {
-	r, err := bs.relationService.FetchRelationByKey(spaceID, key)
+	r, err := bs.systemObjectService.FetchRelationByKey(spaceID, key)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 
 func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
 	// TODO: add relation.WithWorkspaceId(workspaceId) filter
-	rel, err := bs.relationService.FetchRelationByKey(st.SpaceID(), relationKey)
+	rel, err := bs.systemObjectService.FetchRelationByKey(st.SpaceID(), relationKey)
 	if err != nil || rel == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
@@ -316,7 +316,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.T
 
 	prevTypeID := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
 	// nolint:errcheck
-	prevType, _ := bs.relationService.GetObjectType(prevTypeID)
+	prevType, _ := bs.systemObjectService.GetObjectType(prevTypeID)
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 
@@ -339,7 +339,7 @@ func (bs *basic) getLayoutForType(objectTypeKey bundle.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}
-	typeDetails, err := bs.relationService.GetObjectByUniqueKey(bs.SpaceID(), uk)
+	typeDetails, err := bs.systemObjectService.GetObjectByUniqueKey(bs.SpaceID(), uk)
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}

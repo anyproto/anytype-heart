@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 )
 
@@ -39,12 +39,12 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := mock_objectstore.NewMockObjectStore(t)
 	objectStore.EXPECT().Name().Return("objectStore")
 
-	relationService := mock_relation.NewMockService(t)
-	relationService.EXPECT().Name().Return("relationService")
+	systemObjectService := mock_system_object.NewMockService(t)
+	systemObjectService.EXPECT().Name().Return("systemObjectService")
 
 	a.Register(picker)
 	a.Register(objectStore)
-	a.Register(relationService)
+	a.Register(systemObjectService)
 	s := New()
 
 	err := s.Init(a)

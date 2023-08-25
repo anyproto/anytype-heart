@@ -28,7 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -57,13 +57,13 @@ type Export interface {
 }
 
 type export struct {
-	blockService    *block.Service
-	picker          getblock.Picker
-	objectStore     objectstore.ObjectStore
-	coreService     core.Service
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	fileService     files.Service
-	relationService relation.Service
+	blockService        *block.Service
+	picker              getblock.Picker
+	objectStore         objectstore.ObjectStore
+	coreService         core.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	fileService         files.Service
+	systemObjectService system_object.Service
 }
 
 func New() Export {
@@ -77,7 +77,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.fileService = app.MustComponent[files.Service](a)
 	e.picker = app.MustComponent[getblock.Picker](a)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	e.relationService = app.MustComponent[relation.Service](a)
+	e.systemObjectService = app.MustComponent[system_object.Service](a)
 	return
 }
 
@@ -122,14 +122,14 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		if req.Format == pb.RpcObjectListExport_SVG {
 			format = dot.ExportFormatSVG
 		}
-		mc := dot.NewMultiConverter(format, e.sbtProvider, e.relationService)
+		mc := dot.NewMultiConverter(format, e.sbtProvider, e.systemObjectService)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
-		mc := graphjson.NewMultiConverter(e.sbtProvider, e.relationService)
+		mc := graphjson.NewMultiConverter(e.sbtProvider, e.systemObjectService)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -31,9 +31,9 @@ type Grouper interface {
 }
 
 type service struct {
-	objectStore     objectstore.ObjectStore
-	groupColumns    map[model.RelationFormat]func(string) Grouper
-	relationService relation.Service
+	objectStore         objectstore.ObjectStore
+	groupColumns        map[model.RelationFormat]func(string) Grouper
+	systemObjectService system_object.Service
 }
 
 func New() Service {
@@ -42,7 +42,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.relationService = app.MustComponent[relation.Service](a)
+	s.systemObjectService = app.MustComponent[system_object.Service](a)
 
 	s.groupColumns[model.RelationFormat_status] = func(key string) Grouper {
 		return &GroupStatus{key: key, store: s.objectStore}
@@ -62,7 +62,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Grouper(spaceID string, key string) (Grouper, error) {
-	rel, err := s.relationService.FetchRelationByKey(spaceID, key)
+	rel, err := s.systemObjectService.FetchRelationByKey(spaceID, key)
 	if err != nil {
 		return nil, fmt.Errorf("can't get relation %s: %v", key, err)
 	}

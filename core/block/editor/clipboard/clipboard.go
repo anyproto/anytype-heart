@@ -19,8 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -45,24 +45,24 @@ func NewClipboard(
 	sb smartblock.SmartBlock,
 	file file.File,
 	tempDirProvider core.TempDirProvider,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	fileService files.Service,
 ) Clipboard {
 	return &clipboard{
-		SmartBlock:      sb,
-		file:            file,
-		tempDirProvider: tempDirProvider,
-		relationService: relationService,
-		fileService:     fileService,
+		SmartBlock:          sb,
+		file:                file,
+		tempDirProvider:     tempDirProvider,
+		systemObjectService: systemObjectService,
+		fileService:         fileService,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file            file.File
-	tempDirProvider core.TempDirProvider
-	relationService relation.Service
-	fileService     files.Service
+	file                file.File
+	tempDirProvider     core.TempDirProvider
+	systemObjectService system_object.Service
+	fileService         files.Service
 }
 
 func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -560,7 +560,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	for k := range relationKeys {
 		relationKeysList = append(relationKeysList, k)
 	}
-	relations, err := cb.relationService.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
+	relations, err := cb.systemObjectService.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
 	if err != nil {
 		return fmt.Errorf("failed to fetch relation keys of dataview: %v", err)
 	}

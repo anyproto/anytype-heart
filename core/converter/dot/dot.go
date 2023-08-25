@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -43,22 +43,22 @@ type linkInfo struct {
 }
 
 type dot struct {
-	graph           *cgraph.Graph
-	graphviz        *graphviz.Graphviz
-	knownDocs       map[string]*types.Struct
-	fileHashes      []string
-	imageHashes     []string
-	exportFormat    graphviz.Format
-	nodes           map[string]*cgraph.Node
-	linksByNode     map[string][]linkInfo
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	relationService relation.Service
+	graph               *cgraph.Graph
+	graphviz            *graphviz.Graphviz
+	knownDocs           map[string]*types.Struct
+	fileHashes          []string
+	imageHashes         []string
+	exportFormat        graphviz.Format
+	nodes               map[string]*cgraph.Node
+	linksByNode         map[string][]linkInfo
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	systemObjectService system_object.Service
 }
 
 func NewMultiConverter(
 	format graphviz.Format,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 ) converter.MultiConverter {
 	g := graphviz.New()
 	graph, err := g.Graph()
@@ -67,13 +67,13 @@ func NewMultiConverter(
 	}
 
 	return &dot{
-		graph:           graph,
-		graphviz:        g,
-		exportFormat:    format,
-		linksByNode:     map[string][]linkInfo{},
-		nodes:           map[string]*cgraph.Node{},
-		sbtProvider:     sbtProvider,
-		relationService: relationService,
+		graph:               graph,
+		graphviz:            g,
+		exportFormat:        format,
+		linksByNode:         map[string][]linkInfo{},
+		nodes:               map[string]*cgraph.Node{},
+		sbtProvider:         sbtProvider,
+		systemObjectService: systemObjectService,
 	}
 }
 
@@ -120,7 +120,7 @@ func (d *dot) Add(st *state.State) error {
 
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, d.relationService, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, d.systemObjectService, true, true, false, false, false)
 	for _, depID := range dependentObjectIDs {
 		t, err := d.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {

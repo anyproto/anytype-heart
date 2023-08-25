@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/relation/mock_relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
@@ -132,15 +132,15 @@ func newFixture(t *testing.T) *fixture {
 	restrictionService := mock_restriction.NewMockService(t)
 	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
-	relationService := mock_relation.NewMockService(t)
-	relationService.EXPECT().GetObjectType(mock.Anything).Return(&model.ObjectType{}, nil).Maybe()
+	systemObjectService := mock_system_object.NewMockService(t)
+	systemObjectService.EXPECT().GetObjectType(mock.Anything).Return(&model.ObjectType{}, nil).Maybe()
 
 	fileService := testMock.NewMockFileService(ctrl)
 
 	sender := mock_event.NewMockSender(t)
 
 	return &fixture{
-		SmartBlock:  New(coreService, fileService, restrictionService, objectStore, relationService, indexer, sender),
+		SmartBlock:  New(coreService, fileService, restrictionService, objectStore, systemObjectService, indexer, sender),
 		t:           t,
 		at:          coreService,
 		ctrl:        ctrl,
