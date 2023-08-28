@@ -262,8 +262,6 @@ type TextObjectWithChildren struct {
 }
 
 func (t *TextObjectWithChildren) MapChildren(req *api.NotionImportContext, pageId string) *MapResponse {
-	childReq := *req
-	childReq.Blocks = t.Children
-	resp := MapBlocks(&childReq, pageId)
+	resp := MapBlocks(req, t.Children, pageId)
 	return resp
 }

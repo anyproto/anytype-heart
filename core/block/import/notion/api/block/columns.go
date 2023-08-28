@@ -57,8 +57,7 @@ func (c *ColumnListBlock) handleFirstColumn(req *api.NotionImportContext, notion
 }
 
 func (c *ColumnListBlock) addColumnBlocks(prefix string, req *api.NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, pageID string) simple.Block {
-	req.Blocks = []interface{}{notionColumn}
-	resp := MapBlocks(req, pageID)
+	resp := MapBlocks(req, []interface{}{notionColumn}, pageID)
 	childBlocks := c.getChildBlocksForColumn(resp)
 	id := bson.NewObjectId().Hex()
 	column := c.getColumnBlock(id, prefix, childBlocks, resultResponse)
@@ -129,8 +128,7 @@ type ColumnObject struct {
 }
 
 func (c *ColumnBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
-	req.Blocks = c.Column.Children
-	resp := MapBlocks(req, pageID)
+	resp := MapBlocks(req, c.Column.Children, pageID)
 	return resp
 }
 

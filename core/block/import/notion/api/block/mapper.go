@@ -17,9 +17,9 @@ func (m *MapResponse) Merge(mergedResp *MapResponse) {
 	}
 }
 
-func MapBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
+func MapBlocks(req *api.NotionImportContext, blocks []interface{}, pageID string) *MapResponse {
 	resp := &MapResponse{}
-	for _, bl := range req.Blocks {
+	for _, bl := range blocks {
 		if ba, ok := bl.(Getter); ok {
 			textResp := ba.GetBlocks(req, pageID)
 			resp.Merge(textResp)

@@ -4,7 +4,6 @@ import "sync"
 
 // NotionImportContext is a data object with all necessary structures for blocks
 type NotionImportContext struct {
-	Blocks []interface{}
 	// Need all these maps for correct mapping of pages and databases from notion to anytype
 	// for such blocks as mentions or links to objects
 	NotionPageIdsToAnytype     map[string]string

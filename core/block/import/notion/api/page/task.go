@@ -89,8 +89,7 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnap
 			return nil, nil, allErrors
 		}
 	}
-	object.request.Blocks = notionBlocks
-	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, pt.p.ID)
+	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
 	return snapshot, subObjectsSnapshots, nil
 }
