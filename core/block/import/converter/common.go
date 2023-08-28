@@ -55,25 +55,23 @@ func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
 	return &types.Struct{Fields: fields}
 }
 
-func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) (LinksGraph, error) {
-	graph := make(LinksGraph, 0)
-	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+func UpdateLinksToObjects(st *state.State, oldIDtoNew map[string]string, filesIDs []string) error {
+	return st.Iterate(func(bl simple.Block) (isContinue bool) {
 		switch block := bl.(type) {
 		case link.Block:
-			handleLinkBlock(oldIDtoNew, block, st, filesIDs, graph)
+			handleLinkBlock(oldIDtoNew, block, st, filesIDs)
 		case bookmark.Block:
-			handleBookmarkBlock(oldIDtoNew, block, st, graph)
+			handleBookmarkBlock(oldIDtoNew, block, st)
 		case text.Block:
-			handleMarkdownTest(oldIDtoNew, block, st, filesIDs, graph)
+			handleMarkdownTest(oldIDtoNew, block, st, filesIDs)
 		case dataview.Block:
-			handleDataviewBlock(block, oldIDtoNew, st, graph)
+			handleDataviewBlock(block, oldIDtoNew, st)
 		}
 		return true
 	})
-	return graph, err
 }
 
-func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State, graph LinksGraph) {
+func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *state.State) {
 	dataView := block.Model().GetDataview()
 	target := dataView.TargetObjectId
 	if target != "" {
@@ -83,7 +81,6 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 		}
 		dataView.TargetObjectId = newTarget
 		st.Set(simple.New(block.Model()))
-		graph.AddNeighborToGraphNode(oldIDtoNew[st.RootId()], newTarget)
 	}
 
 	for _, view := range dataView.GetViews() {
@@ -161,7 +158,7 @@ func updateObjectIDsInFilter(filter *model.BlockContentDataviewFilter, oldIDtoNe
 	}
 }
 
-func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, graph LinksGraph) {
+func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
 	newTarget := oldIDtoNew[block.Model().GetBookmark().TargetObjectId]
 	if newTarget == "" {
 		log.Errorf("failed to find bookmark object")
@@ -170,10 +167,9 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *s
 
 	block.Model().GetBookmark().TargetObjectId = newTarget
 	st.Set(simple.New(block.Model()))
-	graph.AddNeighborToGraphNode(st.RootId(), newTarget)
 }
 
-func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string, graph LinksGraph) {
+func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	targetBlockID := block.Model().GetLink().TargetBlockId
 	if lo.Contains(filesIDs, targetBlockID) {
 		return
@@ -191,7 +187,6 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 	block.Model().GetLink().TargetBlockId = newTarget
 	st.Set(simple.New(block.Model()))
-	graph.AddNeighborToGraphNode(oldIDtoNew[st.RootId()], newTarget)
 }
 
 func isBundledObjects(targetObjectID string) bool {
@@ -210,7 +205,7 @@ func isBundledObjects(targetObjectID string) bool {
 	return false
 }
 
-func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string, graph LinksGraph) {
+func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *state.State, filesIDs []string) {
 	marks := block.Model().GetText().GetMarks().GetMarks()
 	for i, mark := range marks {
 		if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
@@ -228,7 +223,6 @@ func handleMarkdownTest(oldIDtoNew map[string]string, block simple.Block, st *st
 		}
 
 		marks[i].Param = newTarget
-		graph.AddNeighborToGraphNode(oldIDtoNew[st.RootId()], newTarget)
 	}
 	st.Set(simple.New(block.Model()))
 }
