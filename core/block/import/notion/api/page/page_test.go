@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -44,7 +43,7 @@ func Test_handlePagePropertiesSelect(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -107,7 +106,7 @@ func Test_handlePagePropertiesLastEditedTime(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -141,7 +140,7 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 	}
 	do := &DataObject{
 		ctx:       context.Background(),
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -178,7 +177,7 @@ func Test_handlePagePropertiesStatus(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -246,7 +245,7 @@ func Test_handlePagePropertiesNumber(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -285,7 +284,7 @@ func Test_handlePagePropertiesMultiSelect(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -354,7 +353,7 @@ func Test_handlePagePropertiesCheckbox(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -388,7 +387,7 @@ func Test_handlePagePropertiesEmail(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: req,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -414,7 +413,7 @@ func Test_handlePagePropertiesRelation(t *testing.T) {
 	properties := property.Properties{"Relation": &relationProperty}
 	notionPageIdsToAnytype := map[string]string{"id": "anytypeID"}
 	notionDatabaseIdsToAnytype := map[string]string{"id": "anytypeID"}
-	req := &block.NotionImportContext{
+	req := &api.NotionImportContext{
 		NotionPageIdsToAnytype:     notionPageIdsToAnytype,
 		NotionDatabaseIdsToAnytype: notionDatabaseIdsToAnytype,
 	}
@@ -469,7 +468,7 @@ func Test_handlePagePropertiesPeople(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: store,
 		ctx:       context.Background(),
 	}
@@ -512,7 +511,7 @@ func Test_handlePagePropertiesFormula(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: store,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -545,7 +544,7 @@ func Test_handlePagePropertiesTitle(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: store,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -600,7 +599,7 @@ func Test_handleRollupProperties(t *testing.T) {
 		RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 	}
 	do := &DataObject{
-		request:   &block.NotionImportContext{},
+		request:   &api.NotionImportContext{},
 		relations: store,
 	}
 	snapshots, _ := pageTask.handlePageProperties(do, details)
@@ -647,7 +646,7 @@ func Test_handlePagePropertiesUniqueID(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: store,
 		}
 
@@ -688,7 +687,7 @@ func Test_handlePagePropertiesUniqueID(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: store,
 		}
 
@@ -732,7 +731,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: req,
 		}
 
@@ -771,7 +770,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: req,
 		}
 
@@ -811,7 +810,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: req,
 		}
 
@@ -851,7 +850,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: req,
 		}
 
@@ -901,7 +900,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: req,
 		}
 
@@ -952,7 +951,7 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
 		}
 		do := &DataObject{
-			request:   &block.NotionImportContext{},
+			request:   &api.NotionImportContext{},
 			relations: req,
 		}
 

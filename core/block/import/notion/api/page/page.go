@@ -66,7 +66,7 @@ func (ds *Service) GetPages(ctx context.Context,
 	apiKey string,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
-	notionImportContext *block.NotionImportContext,
+	notionImportContext *api.NotionImportContext,
 	relations *property.PropertiesStore,
 	progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	progress.SetProgressMessage("Start creating pages from notion")
@@ -147,7 +147,7 @@ func (ds *Service) extractTitleFromPages(page Page) string {
 	return ""
 }
 
-func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *block.NotionImportContext) *converter.ConvertError {
+func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *api.NotionImportContext) *converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
 			return converter.NewCancelError(err)

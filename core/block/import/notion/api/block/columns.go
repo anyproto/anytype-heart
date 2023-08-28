@@ -7,6 +7,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -28,7 +29,7 @@ func (c *ColumnListBlock) SetChildren(children []interface{}) {
 	c.ColumnList = children
 }
 
-func (c *ColumnListBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (c *ColumnListBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	columnsList := c.ColumnList.([]interface{})
 	var (
 		resultResponse = &MapResponse{}
@@ -44,18 +45,18 @@ func (c *ColumnListBlock) GetBlocks(req *NotionImportContext, pageID string) *Ma
 	return resultResponse
 }
 
-func (c *ColumnListBlock) handleColumn(req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, rowBlock simple.Block, pageID string) {
+func (c *ColumnListBlock) handleColumn(req *api.NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, rowBlock simple.Block, pageID string) {
 	column := c.addColumnBlocks("ct-", req, notionColumn, resultResponse, pageID)
 	rowBlock.Model().ChildrenIds = append(rowBlock.Model().ChildrenIds, column.Model().Id)
 }
 
-func (c *ColumnListBlock) handleFirstColumn(req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, pageID string) simple.Block {
+func (c *ColumnListBlock) handleFirstColumn(req *api.NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, pageID string) simple.Block {
 	column := c.addColumnBlocks("cd-", req, notionColumn, resultResponse, pageID)
 	rowBlock := c.getRowBlock(strings.TrimPrefix(column.Model().Id, "cd-"), column.Model().Id)
 	return rowBlock
 }
 
-func (c *ColumnListBlock) addColumnBlocks(prefix string, req *NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, pageID string) simple.Block {
+func (c *ColumnListBlock) addColumnBlocks(prefix string, req *api.NotionImportContext, notionColumn interface{}, resultResponse *MapResponse, pageID string) simple.Block {
 	req.Blocks = []interface{}{notionColumn}
 	resp := MapBlocks(req, pageID)
 	childBlocks := c.getChildBlocksForColumn(resp)
@@ -127,7 +128,7 @@ type ColumnObject struct {
 	Children []interface{} `json:"children"`
 }
 
-func (c *ColumnBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (c *ColumnBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	req.Blocks = c.Column.Children
 	resp := MapBlocks(req, pageID)
 	return resp

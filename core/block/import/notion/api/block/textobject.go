@@ -22,7 +22,7 @@ const (
 )
 
 type ChildrenMapper interface {
-	MapChildren(req *NotionImportContext, pageId string) *MapResponse
+	MapChildren(req *api.NotionImportContext, pageId string) *MapResponse
 }
 
 type TextObject struct {
@@ -30,7 +30,7 @@ type TextObject struct {
 	Color    string         `json:"color"`
 }
 
-func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds []string, req *NotionImportContext) *MapResponse {
+func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds []string, req *api.NotionImportContext) *MapResponse {
 	var marks []*model.BlockContentTextMark
 	id := bson.NewObjectId().Hex()
 	allBlocks := make([]*model.Block, 0)
@@ -122,7 +122,7 @@ func (t *TextObject) handleTextType(rt api.RichText,
 
 func (t *TextObject) handleMentionType(rt api.RichText,
 	text *strings.Builder,
-	req *NotionImportContext) []*model.BlockContentTextMark {
+	req *api.NotionImportContext) []*model.BlockContentTextMark {
 	if rt.Mention.Type == api.UserMention {
 		return t.handleUserMention(rt, text)
 	}
@@ -261,7 +261,7 @@ type TextObjectWithChildren struct {
 	Children []interface{} `json:"children"`
 }
 
-func (t *TextObjectWithChildren) MapChildren(req *NotionImportContext, pageId string) *MapResponse {
+func (t *TextObjectWithChildren) MapChildren(req *api.NotionImportContext, pageId string) *MapResponse {
 	childReq := *req
 	childReq.Blocks = t.Children
 	resp := MapBlocks(&childReq, pageId)

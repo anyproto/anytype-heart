@@ -26,7 +26,7 @@ type EmbedBlock struct {
 	Embed LinkToWeb `json:"embed"`
 }
 
-func (b *EmbedBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
+func (b *EmbedBlock) GetBlocks(req *api.NotionImportContext, _ string) *MapResponse {
 	return b.Embed.GetBlocks(req, "")
 }
 
@@ -39,11 +39,11 @@ type LinkPreviewBlock struct {
 	LinkPreview LinkToWeb `json:"link_preview"`
 }
 
-func (b *LinkPreviewBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
+func (b *LinkPreviewBlock) GetBlocks(req *api.NotionImportContext, _ string) *MapResponse {
 	return b.LinkPreview.GetBlocks(req, "")
 }
 
-func (b *LinkToWeb) GetBlocks(*NotionImportContext, string) *MapResponse {
+func (b *LinkToWeb) GetBlocks(*api.NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 
 	to := textUtil.UTF16RuneCountString(b.URL)
@@ -84,7 +84,7 @@ type ChildPage struct {
 	Title string `json:"title"`
 }
 
-func (b *ChildPageBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (b *ChildPageBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	bl := b.ChildPage.GetLinkToObjectBlock(req, pageID, b.Parent.BlockID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
@@ -92,7 +92,7 @@ func (b *ChildPageBlock) GetBlocks(req *NotionImportContext, pageID string) *Map
 	}
 }
 
-func (p ChildPage) GetLinkToObjectBlock(importContext *NotionImportContext, pageID, parentBlockID string) *model.Block {
+func (p ChildPage) GetLinkToObjectBlock(importContext *api.NotionImportContext, pageID, parentBlockID string) *model.Block {
 	targetBlockID, err := getTargetBlock(importContext, importContext.PageNameToID, importContext.NotionPageIdsToAnytype, pageID, p.Title, parentBlockID)
 
 	id := bson.NewObjectId().Hex()
@@ -126,7 +126,7 @@ type ChildDatabaseBlock struct {
 	ChildDatabase ChildDatabase `json:"child_database"`
 }
 
-func (b *ChildDatabaseBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (b *ChildDatabaseBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	bl := b.ChildDatabase.GetBlock(req, pageID, b.Parent.BlockID)
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
@@ -138,7 +138,7 @@ type ChildDatabase struct {
 	Title string `json:"title"`
 }
 
-func (c *ChildDatabase) GetBlock(importContext *NotionImportContext, pageID, parentBlockID string) *model.Block {
+func (c *ChildDatabase) GetBlock(importContext *api.NotionImportContext, pageID, parentBlockID string) *model.Block {
 	targetBlockID, err := getTargetBlock(importContext,
 		importContext.DatabaseNameToID,
 		importContext.NotionDatabaseIdsToAnytype,
@@ -170,7 +170,7 @@ type LinkToPageBlock struct {
 	LinkToPage api.Parent `json:"link_to_page"`
 }
 
-func (l *LinkToPageBlock) GetBlocks(req *NotionImportContext, _ string) *MapResponse {
+func (l *LinkToPageBlock) GetBlocks(req *api.NotionImportContext, _ string) *MapResponse {
 	var anytypeID string
 	if l.LinkToPage.PageID != "" {
 		anytypeID = req.NotionPageIdsToAnytype[l.LinkToPage.PageID]
@@ -198,7 +198,7 @@ type BookmarkBlock struct {
 	Bookmark BookmarkObject `json:"bookmark"`
 }
 
-func (b *BookmarkBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
+func (b *BookmarkBlock) GetBlocks(*api.NotionImportContext, string) *MapResponse {
 	bl, id := b.Bookmark.GetBookmarkBlock()
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},
@@ -239,14 +239,14 @@ func (b BookmarkObject) GetBookmarkBlock() (*model.Block, string) {
 // returned to us by the Notion API. As a result we get Anytype ID of child page and make it targetBlockID
 // But we can end up with 3 links to the same page, and to avoid that,
 // we remove the childID from the parentIDToChildrenID map. So it helps to not create links with the same targetBlockID.
-func getTargetBlock(importContext *NotionImportContext, pageIDToName, notionIDsToAnytype map[string]string, pageID, title, parentBlockID string) (string, error) {
+func getTargetBlock(importContext *api.NotionImportContext, pageIDToName, notionIDsToAnytype map[string]string, pageID, title, parentBlockID string) (string, error) {
 	var (
 		targetBlockID string
 		ok            bool
 	)
 
 	findByPageAndTitle := func(pageID, title string) string {
-		if childIDs, exist := importContext.ParentPageToChildIDs[pageID]; exist {
+		if childIDs, exist := importContext.ReadParentPageToChildIDsMap(pageID); exist {
 			for childIdx, childID := range childIDs {
 				if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
 					if targetBlockID, ok = notionIDsToAnytype[childID]; !ok {
@@ -257,7 +257,7 @@ func getTargetBlock(importContext *NotionImportContext, pageIDToName, notionIDsT
 					break
 				}
 			}
-			importContext.ParentPageToChildIDs[pageID] = childIDs
+			importContext.WriteToParentPageToChildIDsMap(pageID, childIDs)
 		}
 
 		return targetBlockID
@@ -267,7 +267,7 @@ func getTargetBlock(importContext *NotionImportContext, pageIDToName, notionIDsT
 	if parentBlockID != "" {
 		targetBlockID = findByPageAndTitle(parentBlockID, title)
 		if targetBlockID != "" {
-			importContext.ParentBlockToPage[parentBlockID] = pageID
+			importContext.WriteToParentBlockToPageMap(parentBlockID, pageID)
 			return targetBlockID, nil
 		}
 	}

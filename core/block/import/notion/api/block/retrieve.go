@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -77,7 +78,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	return allBlocks, nil
 }
 
-func (s *Service) MapNotionBlocksToAnytype(req *NotionImportContext, pageID string) *MapResponse {
+func (s *Service) MapNotionBlocksToAnytype(req *api.NotionImportContext, pageID string) *MapResponse {
 	return MapBlocks(req, pageID)
 }
 
