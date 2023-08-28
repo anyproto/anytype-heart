@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "aeca910b74b7ed4a2eb5721c0e310c8ec8a1a5cb5853a7bdad303fcad054d5db"
+const RelationChecksum = "6a5d8e4c1369922dc5d8de797033027a0037ccb7a17379aac7c32d947be1652f"
 
 type RelationKey string
 
@@ -295,7 +295,7 @@ var (
 			Id:               "_braudioArtist",
 			Key:              "audioArtist",
 			MaxCount:         1,
-			Name:             "Artist",
+			Name:             "Recording Artist",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

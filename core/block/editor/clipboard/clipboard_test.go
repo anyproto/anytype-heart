@@ -732,7 +732,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			text             = "simple text"
 			firstTextBlockId = "firstTextBlockId"
 			bookmarkId       = "bookmarkId"
-			result           = text + "\n"
+			result           = text
 		)
 		st := withBookmark(t, text, "", url)
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -762,7 +762,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			lastTextBlockId  = "lastTextBlockId"
 			bookmarkId       = "bookmarkId"
 			secondText       = "second text"
-			result           = firstText + "\n" + secondText + "\n"
+			result           = firstText + "\n" + secondText
 		)
 		st := withBookmark(t, firstText, secondText, url)
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -911,5 +911,53 @@ func Test_PasteText(t *testing.T) {
 		//then
 		require.NoError(t, err)
 		assert.Equal(t, "a * b * c", sb.NewState().Snippet())
+	})
+}
+
+func Test_CopyAndCutText(t *testing.T) {
+
+	t.Run("copy - when with children", func(t *testing.T) {
+		//given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		block1 := &model.Block{
+			Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "some text 1",
+				},
+			},
+		}
+		simpleBlock1 := simple.New(block1)
+		s.Add(simpleBlock1)
+		s.InsertTo("", model.Block_Inner, simpleBlock1.Model().Id)
+		block2 := &model.Block{
+			Id: "2",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "some text 2",
+				},
+			},
+		}
+		b2 := simple.New(block2)
+		s.Add(b2)
+		s.InsertTo("1", model.Block_Inner, b2.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		//when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		textSlotCopy, _, _, err := cb.Copy(pb.RpcBlockCopyRequest{
+			Blocks: []*model.Block{block1, block2},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{},
+			Blocks:            []*model.Block{block1, block2},
+		})
+
+		//then
+		require.NoError(t, err)
+		assert.Equal(t, "some text 1\n\tsome text 2", textSlotCopy)
+		assert.Equal(t, "some text 1\n\tsome text 2", textSlotCut)
 	})
 }

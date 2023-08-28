@@ -179,7 +179,7 @@
     "hidden": false,
     "key": "audioArtist",
     "maxCount": 1,
-    "name": "Artist",
+    "name": "Recording Artist",
     "readonly": false,
     "source": "details"
   },
