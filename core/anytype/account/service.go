@@ -85,7 +85,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		ProfileObjectId:        ids.Profile,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		AccountSpaceId:         spaceID,
-		WorkspaceObjectId:      ids.Account,
+		WorkspaceObjectId:      ids.Workspace,
 		WidgetsId:              ids.Widgets,
 		GatewayUrl:             gwAddr,
 		DeviceId:               deviceId,
@@ -100,7 +100,7 @@ func (s *service) getAnalyticsID() (string, error) {
 	if s.config.AnalyticsId != "" {
 		return s.config.AnalyticsId, nil
 	}
-	accountObjectID := s.coreService.AccountObjects().Account
+	accountObjectID := s.coreService.AccountObjects().Workspace
 	sb, err := s.blockService.PickBlock(context.Background(), accountObjectID)
 	if err != nil {
 		return "", err

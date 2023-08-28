@@ -103,8 +103,6 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 // GetAllDocInfoIterator returns all sub objects in the collection
 func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (contin bool)) {
 	st := c.NewState()
-	workspaceID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyWorkspaceId.String())
-
 	for _, coll := range objectTypeToCollection {
 		data := st.GetSubObjectCollection(coll)
 		if data == nil {
@@ -114,7 +112,7 @@ func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (
 		for subId := range data.GetFields() {
 			fullId := c.getId(coll, subId)
 
-			_, err := c.subState(st, coll, fullId, workspaceID)
+			_, err := c.subState(st, coll, fullId)
 			if err != nil {
 				log.Errorf("failed to get sub object %s: %v", subId, err)
 				continue
@@ -162,7 +160,7 @@ func (c *SubObjectCollection) Locked() bool {
 
 // subState returns a details-only state for a subobject
 // make sure to call sbimpl.initState(st) before using it
-func (c *SubObjectCollection) subState(st *state.State, collection string, fullId string, workspaceId string) (*state.State, error) {
+func (c *SubObjectCollection) subState(st *state.State, collection string, fullId string) (*state.State, error) {
 	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
 	data := pbtypes.GetStruct(st.GetSubObjectCollection(collection), subId)
 	if data == nil || data.Fields == nil {
@@ -184,7 +182,6 @@ func (c *SubObjectCollection) subState(st *state.State, collection string, fullI
 
 	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate, bundle.RelationKeyLastModifiedBy)
 	subst.SetDetailAndBundledRelation(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySourceObject.String()}))
-	subst.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
 	subst.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(c.SpaceID()))
 
 	return subst, nil

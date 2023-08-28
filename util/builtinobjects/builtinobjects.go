@@ -241,7 +241,7 @@ func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (i
 
 func (b *builtinObjects) handleSpaceDashboard(ctx context.Context, spaceID string, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: b.coreService.PredefinedObjects(spaceID).Account,
+		ContextId: b.coreService.PredefinedObjects(spaceID).Workspace,
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),

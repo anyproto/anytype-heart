@@ -79,8 +79,6 @@ func (oc *ObjectCreator) Create(
 	newID := oldIDtoNew[sn.Id]
 	oc.setRootBlock(snapshot, newID)
 
-	oc.setWorkspaceID(spaceID, newID, snapshot)
-
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
 	st.SetRootId(newID)
 	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
@@ -255,23 +253,6 @@ func (oc *ObjectCreator) addRootBlock(snapshot *model.SmartBlockSnapshotBase, pa
 	})
 }
 
-func (oc *ObjectCreator) setWorkspaceID(spaceID string, newID string, snapshot *model.SmartBlockSnapshotBase) {
-	if oc.core.PredefinedObjects(spaceID).Account == newID {
-		return
-	}
-	workspaceID, err := oc.core.GetWorkspaceIdForObject(spaceID, newID)
-	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to get workspace id %s: %s", newID, err.Error())
-	}
-	if workspaceID == "" {
-		return
-	}
-
-	if snapshot.Details != nil && snapshot.Details.Fields != nil {
-		snapshot.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
-	}
-}
-
 func (oc *ObjectCreator) onFinish(err error, st *state.State, filesToDelete []string) {
 	if err != nil {
 		for _, bl := range st.Blocks() {
@@ -325,7 +306,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 		})
 	}
 	if len(details) > 0 {
-		err := block.Do(oc.service, oc.core.PredefinedObjects(spaceID).Account, func(ws basic.CommonOperations) error {
+		err := block.Do(oc.service, oc.core.PredefinedObjects(spaceID).Workspace, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}

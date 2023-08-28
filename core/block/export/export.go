@@ -409,7 +409,7 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	if err != nil {
 		return err
 	}
-	err = getblock.Do(e.picker, e.coreService.PredefinedObjects(spaceID).Account, func(b sb.SmartBlock) error {
+	err = getblock.Do(e.picker, e.coreService.PredefinedObjects(spaceID).Workspace, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})

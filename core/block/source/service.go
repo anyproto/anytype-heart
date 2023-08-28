@@ -14,6 +14,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -34,7 +35,7 @@ func New() Service {
 type Service interface {
 	NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(id string, s Source)
-	NewStaticSource(id string, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
+	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
@@ -87,13 +88,13 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 }
 
 func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
-	if spaceID == "" {
-		log.With("id", id).Errorf("NewSource spaceID is empty")
+	if spaceID != "" {
+		err = s.objectStore.StoreSpaceID(id, spaceID)
+		if err != nil {
+			return nil, fmt.Errorf("store spaceID: %w", err)
+		}
 	}
-	err = s.objectStore.StoreSpaceID(id, spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("store spaceID: %w", err)
-	}
+
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
@@ -163,7 +164,7 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource("", smartblock.SmartBlockTypeBundledTemplate, nil, nil), nil
+		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil, nil), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
@@ -195,7 +196,7 @@ func (s *service) RegisterStaticSource(id string, src Source) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[id] = src
-	s.sbtProvider.RegisterStaticType(id, smartblock.SmartBlockType(src.Type()))
+	s.sbtProvider.RegisterStaticType(id, src.Type())
 }
 
 func (s *service) RemoveStaticSource(id string) {

@@ -49,7 +49,6 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
 		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
 		bundle.RelationKeySmartblockTypes.String():      pbtypes.IntList(sbTypes...),
-		bundle.RelationKeyWorkspaceId.String():          pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 		bundle.RelationKeySpaceId.String():              pbtypes.String(addr.AnytypeMarketplaceWorkspace),
 	}}
 }

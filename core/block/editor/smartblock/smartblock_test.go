@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -32,7 +33,6 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/text"
-	"github.com/anyproto/anytype-heart/core/session"
 )
 
 func TestSmartBlock_Init(t *testing.T) {

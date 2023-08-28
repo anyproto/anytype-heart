@@ -21,7 +21,6 @@ import (
 
 type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -82,7 +81,6 @@ func (bs *basic) prepareTargetObjectDetails(
 	}
 	rawLayout := pbtypes.GetInt64(objType.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
 	details := createTargetObjectDetails(rootBlock.Model().GetText().GetText(), model.ObjectTypeLayout(rawLayout))
-	objectCreator.InjectWorkspaceID(details, spaceID, req.ContextId)
 	return details, nil
 }
 

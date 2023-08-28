@@ -269,10 +269,6 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 			Format: model.RelationFormat_object,
 		},
 		{
-			Key:    bundle.RelationKeyWorkspaceId.String(),
-			Format: model.RelationFormat_object,
-		},
-		{
 			Key:    bundle.RelationKeyLastModifiedBy.String(),
 			Format: model.RelationFormat_object,
 		},
@@ -281,18 +277,17 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 	stateWithLinks.SetDetail("relation1", pbtypes.Int64(time.Now().Unix()))
 	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	stateWithLinks.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("creator"))
-	stateWithLinks.SetDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String("workspaceID"))
 	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String("lastModifiedBy"))
 	converter := newTestConverter(t)
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, true, false, false, true)
-		assert.Len(t, objectIDs, 4) // creator + workspaceID + lastModifiedBy + 1 date
+		assert.Len(t, objectIDs, 3) // creator + lastModifiedBy + 1 date
 	})
 
 	t.Run("details and relations options are turned on: get ids from details and relations", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, true, true, false, true)
-		assert.Len(t, objectIDs, 9) // 5 relations + creator + workspaceID + lastModifiedBy + 1 date
+		assert.Len(t, objectIDs, 7) // 4 relations + creator + lastModifiedBy + 1 date
 	})
 }
 

@@ -160,7 +160,7 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 		return err
 	}
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.AccountObjects().Account,
+		ContextId: coreService.AccountObjects().Workspace,
 		Details:   accountDetails,
 	}); err != nil {
 		return err

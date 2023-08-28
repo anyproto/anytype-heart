@@ -5,18 +5,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-func (s *dsObjectStore) GetCurrentWorkspaceID() (string, error) {
-	return getValue(s.db, currentWorkspace.Bytes(), bytesToString)
-}
-
-func (s *dsObjectStore) SetCurrentWorkspaceID(workspaceID string) (err error) {
-	return setValue(s.db, currentWorkspace.Bytes(), workspaceID)
-}
-
-func (s *dsObjectStore) RemoveCurrentWorkspaceID() (err error) {
-	return deleteValue(s.db, currentWorkspace.Bytes())
-}
-
 func (s *dsObjectStore) SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error) {
 	return setValue(s.db, accountStatus.Bytes(), status)
 }

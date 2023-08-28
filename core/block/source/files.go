@@ -47,6 +47,10 @@ func (f *file) Id() string {
 	return f.id.ObjectID
 }
 
+func (f *file) SpaceID() string {
+	return f.id.SpaceID
+}
+
 func (f *file) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeFile
 }
@@ -86,7 +90,7 @@ func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 		return nil, err
 	}
 	if d.GetFields() != nil {
-		d.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(f.a.PredefinedObjects(f.id.SpaceID).Account)
+		d.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(f.id.SpaceID)
 	}
 
 	s.SetDetails(d)

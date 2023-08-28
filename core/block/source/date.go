@@ -45,6 +45,10 @@ func (v *date) Id() string {
 	return v.id
 }
 
+func (v *date) SpaceID() string {
+	return v.spaceID
+}
+
 func (v *date) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeDate
 }

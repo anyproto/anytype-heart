@@ -37,6 +37,10 @@ func (v *bundledRelation) Id() string {
 	return v.id
 }
 
+func (v *bundledRelation) SpaceID() string {
+	return addr.AnytypeMarketplaceWorkspace
+}
+
 func (v *bundledRelation) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeBundledRelation
 }
@@ -53,7 +57,6 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	rel.Creator = addr.AnytypeProfileId
 	wrapperRelation := relationutils.Relation{Relation: rel}
 	details := wrapperRelation.ToStruct() // bundle.GetDetailsForBundledRelation(rel)
-	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())

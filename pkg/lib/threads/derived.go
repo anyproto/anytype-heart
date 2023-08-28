@@ -7,37 +7,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-type threadDerivedIndex uint32
-
-const (
-	// profile page is publicly accessible as service/read keys derived from account public key
-	threadDerivedIndexProfilePage threadDerivedIndex = 0
-	threadDerivedIndexHome        threadDerivedIndex = 1
-	threadDerivedIndexArchive     threadDerivedIndex = 2
-	threadDerivedIndexAccountOld  threadDerivedIndex = 3
-	threadDerivedIndexAccount     threadDerivedIndex = 4
-	threadDerivedIndexWidgets     threadDerivedIndex = 5
-
-	threadDerivedIndexSetPages threadDerivedIndex = 20 // deprecated
-
-	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30 // deprecated
-	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31 // deprecated
-	threadDerivedIndexMarketplaceTemplate threadDerivedIndex = 32 // deprecated
-
-	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
-	// TextileAccountPathFormat is a path format used for Anytype keypair
-	// derivation as described in SEP-00XX. Use with `fmt.Sprintf` and `DeriveForPath`.
-	// m/SLIP-0021/anytype/<predefined_thread_index>/%d/<label>
-	anytypeThreadPathFormat = anytypeThreadSymmetricKeyPathPrefix + `/%d/%s`
-
-	anytypeThreadServiceKeySuffix = `service`
-	anytypeThreadReadKeySuffix    = `read`
-	anytypeThreadIdKeySuffix      = `id`
-)
-
 type DerivedSmartblockIds struct {
 	AccountOld      string
-	Account         string
+	Workspace       string
 	Profile         string
 	Home            string
 	Archive         string
@@ -47,17 +19,17 @@ type DerivedSmartblockIds struct {
 }
 
 func (d DerivedSmartblockIds) IsFilled() bool {
-	return d.Account != "" && d.Profile != "" && d.Home != "" && d.Archive != "" && d.Widgets != ""
+	return d.Workspace != "" && d.Profile != "" && d.Home != "" && d.Archive != "" && d.Widgets != ""
 }
 
 func (d DerivedSmartblockIds) IsAccount(id string) bool {
-	return id == d.Account || id == d.AccountOld
+	return id == d.Workspace || id == d.AccountOld
 }
 
 func (d DerivedSmartblockIds) HasID(sbt smartblock.SmartBlockType) bool {
 	switch sbt {
 	case smartblock.SmartBlockTypeWorkspace:
-		return d.Account != ""
+		return d.Workspace != ""
 	case smartblock.SmartBlockTypeWidget:
 		return d.Widgets != ""
 	case smartblock.SmartBlockTypeHome:
@@ -74,7 +46,7 @@ func (d DerivedSmartblockIds) HasID(sbt smartblock.SmartBlockType) bool {
 func (d *DerivedSmartblockIds) InsertId(sbt smartblock.SmartBlockType, id string) {
 	switch sbt {
 	case smartblock.SmartBlockTypeWorkspace:
-		d.Account = id
+		d.Workspace = id
 	case smartblock.SmartBlockTypeWidget:
 		d.Widgets = id
 	case smartblock.SmartBlockTypeHome:

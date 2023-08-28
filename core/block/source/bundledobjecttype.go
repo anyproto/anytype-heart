@@ -37,6 +37,10 @@ func (v *bundledObjectType) Id() string {
 	return v.id
 }
 
+func (v *bundledObjectType) SpaceID() string {
+	return addr.AnytypeMarketplaceWorkspace
+}
+
 func (v *bundledObjectType) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeBundledObjectType
 }

@@ -104,8 +104,6 @@ func New() *Service {
 
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	InjectWorkspaceID(details *types.Struct, spaceID string, objectID string)
-
 	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error)
 }
 
@@ -306,7 +304,6 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
-		// workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
 		return nil
 	})
 	if err != nil {
@@ -361,7 +358,6 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 		return nil, errors.New("object is not bundled")
 	}
 	newDetails.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
-	newDetails.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(spaceID)
 
 	newDetails.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	// newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(installedID)
@@ -569,15 +565,11 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	workspaceID, err := s.objectStore.GetCurrentWorkspaceID()
-	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
-		return "", nil
-	}
-	return workspaceID, err
+	return "", nil
 }
 
 func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
-	return s.anytype.GetAllWorkspaces()
+	return nil, nil
 }
 
 func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {

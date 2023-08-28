@@ -300,22 +300,6 @@ func (d *sdataview) CreateView(ctx session.Context, id string,
 		// todo: set depends on the view type
 		view.Sorts = defaultLastModifiedDateSort()
 	}
-
-	sbType, err := d.sbtProvider.Type(d.SpaceID(), d.Id())
-	if err != nil {
-		return nil, err
-	}
-	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.anytype.PredefinedObjects(d.SpaceID()).Account {
-		view.Filters = []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeyWorkspaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(d.Id()),
-		}, {
-			RelationKey: bundle.RelationKeyId.String(),
-			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       pbtypes.String(d.Id()),
-		}}
-	}
 	tb.AddView(view)
 	return &view, d.Apply(s)
 }

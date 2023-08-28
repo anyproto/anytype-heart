@@ -135,28 +135,14 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	}
 
 	var relationKeys []string
-	var workspaceID string
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
 			// todo: check if relation exists locally
 			relationKeys = append(relationKeys, k)
 			createState.SetDetail(k, v)
 		}
-
-		detailsWorkspaceID := details.Fields[bundle.RelationKeyWorkspaceId.String()]
-		if detailsWorkspaceID != nil && detailsWorkspaceID.GetStringValue() != "" {
-			workspaceID = detailsWorkspaceID.GetStringValue()
-		}
 	}
 
-	// if we don't have anything in details then check the object store
-	if workspaceID == "" {
-		workspaceID = c.coreService.PredefinedObjects(spaceID).Account
-	}
-
-	if workspaceID != "" {
-		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceID))
-	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.coreService.ProfileID(spaceID)))
 
@@ -203,20 +189,6 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	ev.ObjectId = id
 	metrics.SharedClient.RecordEvent(*ev)
 	return id, sb.CombinedDetails(), nil
-}
-
-func (c *Creator) InjectWorkspaceID(details *types.Struct, spaceID string, objectID string) {
-	workspaceID, err := c.coreService.GetWorkspaceIdForObject(spaceID, objectID)
-	if err != nil {
-		workspaceID = ""
-	}
-	if workspaceID == "" || details == nil {
-		return
-	}
-	if details.Fields == nil {
-		details.Fields = make(map[string]*types.Value)
-	}
-	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceID)
 }
 
 func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {

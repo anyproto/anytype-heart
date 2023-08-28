@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+// TODO Is it used?
 func NewAnytypeProfile(id string) (s Source) {
 	return &anytypeProfile{
 		id: id,
@@ -34,6 +35,10 @@ func (v *anytypeProfile) ReadOnly() bool {
 
 func (v *anytypeProfile) Id() string {
 	return v.id
+}
+
+func (v *anytypeProfile) SpaceID() string {
+	return addr.AnytypeMarketplaceWorkspace
 }
 
 func (v *anytypeProfile) Type() smartblock.SmartBlockType {

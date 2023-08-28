@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-func (s *service) NewStaticSource(id string, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
+func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
 	return &static{
 		id:         id,
 		sbType:     sbType,
@@ -19,7 +20,7 @@ func (s *service) NewStaticSource(id string, sbType smartblock.SmartBlockType, d
 }
 
 type static struct {
-	id         string
+	id         domain.FullID
 	sbType     smartblock.SmartBlockType
 	doc        *state.State
 	pushChange func(p PushChangeParams) (string, error)
@@ -27,7 +28,11 @@ type static struct {
 }
 
 func (s *static) Id() string {
-	return s.id
+	return s.id.ObjectID
+}
+
+func (s *static) SpaceID() string {
+	return s.id.SpaceID
 }
 
 func (s *static) Type() smartblock.SmartBlockType {

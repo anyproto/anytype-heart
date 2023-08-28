@@ -157,16 +157,16 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return "", fmt.Errorf("derive workspace object for space %s: %w", spc.Id(), err)
 	}
 
-	err = DoStateAsync(s, s.anytype.AccountObjects().Account, func(st *state.State, b *editor.Workspaces) error {
+	err = DoStateAsync(s, s.anytype.AccountObjects().Workspace, func(st *state.State, b *editor.Workspaces) error {
 		spaces := pbtypes.CopyVal(st.Store().GetFields()["spaces"])
 		if spaces == nil {
 			spaces = pbtypes.Struct(&types.Struct{
 				Fields: map[string]*types.Value{
-					spc.Id(): pbtypes.String(predefinedObjectIDs.Account),
+					spc.Id(): pbtypes.String(predefinedObjectIDs.Workspace),
 				},
 			})
 		} else {
-			spaces.GetStructValue().Fields[spc.Id()] = pbtypes.String(predefinedObjectIDs.Account)
+			spaces.GetStructValue().Fields[spc.Id()] = pbtypes.String(predefinedObjectIDs.Workspace)
 		}
 		st.SetInStore([]string{"spaces"}, spaces)
 		return nil
@@ -180,7 +180,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
 	}
 
-	err = Do(s, predefinedObjectIDs.Account, func(b basic.DetailsSettable) error {
+	err = Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
 			details = append(details, &pb.RpcObjectSetDetailsDetail{
@@ -217,7 +217,6 @@ func (s *Service) CreateLinkToTheNewObject(
 		return "", "", fmt.Errorf("get type key from raw unique key: %w", err)
 	}
 
-	s.objectCreator.InjectWorkspaceID(req.Details, req.SpaceId, req.ContextId)
 	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, objectTypeKey)
 	if err != nil {
 		return

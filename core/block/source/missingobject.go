@@ -33,6 +33,10 @@ func (m *missingObject) Id() string {
 	return addr.MissingObject
 }
 
+func (m *missingObject) SpaceID() string {
+	return addr.AnytypeMarketplaceWorkspace
+}
+
 func (m *missingObject) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeMissingObject
 }

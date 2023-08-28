@@ -170,7 +170,6 @@ func unallowedRelation(rel *relationutils.Relation) bool {
 	return rel.Hidden ||
 		rel.Key == bundle.RelationKeyId.String() ||
 		rel.Key == bundle.RelationKeyCreator.String() ||
-		rel.Key == bundle.RelationKeyWorkspaceId.String() ||
 		rel.Key == bundle.RelationKeyLastModifiedBy.String()
 }
 

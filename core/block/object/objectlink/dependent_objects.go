@@ -91,8 +91,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 		}
 
 		if rel.Key == bundle.RelationKeyCreator.String() ||
-			rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
-			rel.Key == bundle.RelationKeyWorkspaceId.String() {
+			rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 			if creatorModifierWorkspace {
 				v := pbtypes.GetString(det, rel.Key)
 				ids = append(ids, v)

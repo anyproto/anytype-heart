@@ -43,6 +43,7 @@ type ChangeReceiver interface {
 
 type Source interface {
 	Id() string
+	SpaceID() string
 	Type() smartblock.SmartBlockType
 	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
@@ -171,6 +172,10 @@ func (s *source) ReadOnly() bool {
 
 func (s *source) Id() string {
 	return s.id
+}
+
+func (s *source) SpaceID() string {
+	return s.spaceID
 }
 
 func (s *source) Type() smartblock.SmartBlockType {

@@ -417,7 +417,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 
 	// spaceID => workspaceID
 	spacesToInit := map[string]string{}
-	err = block.Do(i.picker, predefinedObjectIDs.Account, func(sb smartblock2.SmartBlock) error {
+	err = block.Do(i.picker, predefinedObjectIDs.Workspace, func(sb smartblock2.SmartBlock) error {
 		st := sb.NewState()
 		spaces := st.Store().GetFields()["spaces"]
 		for k, v := range spaces.GetStructValue().GetFields() {

@@ -133,7 +133,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	}
 
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.AccountObjects().Account,
+		ContextId: coreService.AccountObjects().Workspace,
 		Details:   commonDetails,
 	}); err != nil {
 		return errors.Join(ErrSetDetails, err)

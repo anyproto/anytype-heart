@@ -62,10 +62,8 @@ func (ou *ObjectIDGetter) Get(
 	oldToNewIDs map[string]string,
 ) (string, treestorage.TreeStorageCreatePayload, error) {
 	if sbType == sb.SmartBlockTypeWorkspace {
-		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(spaceID, sn.Id)
-		if wErr == nil {
-			return workspaceID, treestorage.TreeStorageCreatePayload{}, nil
-		}
+		workspaceID := ou.core.PredefinedObjects(spaceID).Workspace
+		return workspaceID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 	if sbType == sb.SmartBlockTypeWidget {
 		widgetID := ou.core.PredefinedObjects(spaceID).Widgets

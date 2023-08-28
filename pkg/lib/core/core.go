@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -47,9 +45,6 @@ type Service interface {
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 	GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string
 	GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string
-
-	GetAllWorkspaces() ([]string, error)
-	GetWorkspaceIdForObject(spaceID string, objectID string) (string, error)
 
 	ProfileInfo
 
@@ -116,24 +111,6 @@ func (a *Anytype) IsStarted() bool {
 	defer a.lock.Unlock()
 
 	return a.isStarted
-}
-
-func (a *Anytype) GetAllWorkspaces() ([]string, error) {
-	return nil, nil
-}
-
-func (a *Anytype) GetWorkspaceIdForObject(spaceID string, objectID string) (string, error) {
-	if strings.HasPrefix(objectID, "_") {
-		return addr.AnytypeMarketplaceWorkspace, nil
-	}
-	a.lock.RLock()
-	ids := a.predefinedObjectsPerSpace[spaceID]
-	a.lock.RUnlock()
-
-	if ids.IsAccount(objectID) {
-		return "", ErrObjectDoesNotBelongToWorkspace
-	}
-	return ids.Account, nil
 }
 
 // PredefinedBlocks returns default blocks like home and archive

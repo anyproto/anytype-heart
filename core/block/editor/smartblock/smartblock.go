@@ -194,7 +194,6 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	spaceID        string
 	depIds         []string // slice must be sorted
 	sessions       map[string]session.Context
 	undo           undo.History
@@ -256,7 +255,7 @@ func (sb *smartBlock) Id() string {
 }
 
 func (sb *smartBlock) SpaceID() string {
-	return sb.spaceID
+	return sb.source.SpaceID()
 }
 
 // UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
@@ -292,7 +291,6 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	sb.spaceID = ctx.SpaceID
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -336,7 +334,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-	sb.injectDerivedDetails(ctx.State, sb.spaceID, smartblock.SmartBlockType(sb.Type()))
+	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), smartblock.SmartBlockType(sb.Type()))
 	return
 }
 
@@ -640,7 +638,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
-	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
@@ -794,7 +792,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
 		return
 	}
@@ -1015,7 +1013,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
-	sb.injectDerivedDetails(s, sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -1043,7 +1041,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	sb.injectDerivedDetails(d.(*state.State), sb.spaceID, sb.Type())
+	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1246,7 +1244,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.systemObjectService.FetchRelationByLinks(sb.spaceID, links)
+	rels, _ := sb.systemObjectService.FetchRelationByLinks(sb.SpaceID(), links)
 	return rels
 }
 
@@ -1386,19 +1384,19 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 }
 
 // injectDerivedDetails injects the local deta
-func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceId string, sbt smartblock.SmartBlockType) {
+func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt smartblock.SmartBlockType) {
 	id := s.RootId()
 	if id != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
 	}
 
-	if spaceId != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceId))
+	if spaceID != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
 	} else {
-		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided", id)
+		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()))
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
-		typeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), s.SpaceID(), ot)
+		typeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), sb.SpaceID(), ot)
 		if err != nil {
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}

@@ -170,10 +170,6 @@ type IndexerStore interface {
 type AccountStore interface {
 	GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error)
 	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
-
-	GetCurrentWorkspaceID() (string, error)
-	SetCurrentWorkspaceID(workspaceID string) (err error)
-	RemoveCurrentWorkspaceID() (err error)
 }
 
 var ErrNotAnObject = fmt.Errorf("not an object")

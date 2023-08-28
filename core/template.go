@@ -142,55 +142,10 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 
 // WorkspaceExport is unused now, it must be fixed if someone wants to use it
 func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
-	response := func(path string, err error) (res *pb.RpcWorkspaceExportResponse) {
-		res = &pb.RpcWorkspaceExportResponse{
-			Error: &pb.RpcWorkspaceExportResponseError{
-				Code: pb.RpcWorkspaceExportResponseError_NULL,
-			},
-		}
-		if err != nil {
-			res.Error.Code = pb.RpcWorkspaceExportResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
-			return
-		} else {
-			res.Path = path
-		}
-		return res
+	return &pb.RpcWorkspaceExportResponse{
+		Error: &pb.RpcWorkspaceExportResponseError{
+			Code:        pb.RpcWorkspaceExportResponseError_NULL,
+			Description: "Not implemented",
+		},
 	}
-	var (
-		path string
-	)
-	err := mw.doBlockService(func(_ *block.Service) error {
-		es := mw.applicationService.GetApp().MustComponent(export.CName).(export.Export)
-		ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-		docIds, _, err := ds.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-				{
-					RelationKey: bundle.RelationKeyWorkspaceId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(req.WorkspaceId),
-				},
-			},
-		}, []smartblock.SmartBlockType{})
-		if err != nil {
-			return err
-		}
-		if len(docIds) == 0 {
-			return fmt.Errorf("no objects in workspace")
-		}
-		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
-			Path:          req.Path,
-			ObjectIds:     docIds,
-			Format:        pb.RpcObjectListExport_Protobuf,
-			Zip:           true,
-			IncludeNested: false,
-		})
-		return err
-	})
-	return response(path, err)
 }

@@ -146,7 +146,7 @@ func (s *service) ListAllRelations(spaceId string) (relations relationutils.Rela
 		},
 	}
 	filters = append(filters, &model.BlockContentDataviewFilter{
-		RelationKey: bundle.RelationKeyWorkspaceId.String(),
+		RelationKey: bundle.RelationKeySpaceId.String(),
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       pbtypes.String(spaceId),
 	})

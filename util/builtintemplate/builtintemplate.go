@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	_ "embed"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 const CName = "builtintemplate"
@@ -116,7 +117,6 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
-	st.SetLocalDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
 	st.SetLocalDetail(bundle.RelationKeySpaceId.String(), pbtypes.String(addr.AnytypeMarketplaceWorkspace))
 
 	err = b.setObjectTypes(st)
@@ -139,7 +139,8 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return
 	}
 
-	b.source.RegisterStaticSource(id, b.source.NewStaticSource(id, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
+	fullID := domain.FullID{SpaceID: addr.AnytypeMarketplaceWorkspace, ObjectID: id}
+	b.source.RegisterStaticSource(id, b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
 	return
 }
 
