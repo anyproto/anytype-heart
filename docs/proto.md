@@ -17193,6 +17193,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | PERSONAL_PROJECTS | 1 |  |
 | KNOWLEDGE_BASE | 2 |  |
 | NOTES_DIARY | 3 |  |
+| STRATEGIC_WRITING | 4 |  |
 
 
 

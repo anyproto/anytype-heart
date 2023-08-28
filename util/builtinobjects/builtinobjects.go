@@ -51,6 +51,9 @@ var notesDiaryZip []byte
 //go:embed data/migration_dashboard.zip
 var migrationDashboardZip []byte
 
+//go:embed data/strategic_writing.zip
+var strategicWritingZip []byte
+
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
@@ -59,6 +62,7 @@ var (
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
 		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
 		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
+		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
 	}
 )
 
