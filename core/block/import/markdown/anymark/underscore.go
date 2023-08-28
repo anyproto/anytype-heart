@@ -35,10 +35,20 @@ func transformCSSUnderscore(source string) string {
 		}
 
 	}
-	for _, class := range underscoreCSS {
-		underscore := regexp.MustCompile(`<span class=\"` + class + `\"[\s\S]*?>([\s\S]*?)</span>`)
-		source = underscore.ReplaceAllString(source, "<u>"+`$1`+"</u>")
 
+	for _, class := range underscoreCSS {
+		class = escapeRegexSpecialChars(class)
+		expr := `<span class=\"` + class + `\"[\s\S]*?>([\s\S]*?)</span>`
+		underscore := regexp.MustCompile(expr)
+		source = underscore.ReplaceAllString(source, "<u>"+`$1`+"</u>")
 	}
 	return source
+}
+
+func escapeRegexSpecialChars(input string) string {
+	specialChars := []string{`\`, `.`, `+`, `*`, `?`, `|`, `(`, `)`, `[`, `]`, `{`, `}`, `^`, `$`, `-`}
+	for _, char := range specialChars {
+		input = regexp.MustCompile(`\`+char).ReplaceAllString(input, "\\"+char)
+	}
+	return input
 }

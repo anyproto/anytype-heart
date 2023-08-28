@@ -156,11 +156,8 @@ func (ou *ObjectIDGetter) getExistingObject(spaceID string, sn *converter.Snapsh
 			},
 		},
 	}, []sb.SmartBlockType{sn.SbType})
-	if err == nil {
-		if len(ids) > 0 {
-			id := ids[0]
-			return id
-		}
+	if err == nil && len(ids) > 0 {
+		return ids[0]
 	}
 	err = nil
 
@@ -175,11 +172,8 @@ func (ou *ObjectIDGetter) getExistingObject(spaceID string, sn *converter.Snapsh
 		},
 		Limit: 1,
 	})
-	if err == nil {
-		if len(records) > 0 {
-			id := records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-			return id
-		}
+	if err == nil && len(records) > 0 {
+		return records[0].Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	}
 	return ""
 }

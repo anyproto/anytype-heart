@@ -118,7 +118,7 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, p string, cE
 		cErr.Add(fmt.Errorf("failed to identify source: %s", p))
 		return nil
 	}
-	readers, err := s.GetFileReaders(p, []string{".csv"})
+	readers, err := s.GetFileReaders(p, []string{".csv"}, nil)
 	if err != nil {
 		cErr.Add(fmt.Errorf("failed to get readers: %s", err.Error()))
 		if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {

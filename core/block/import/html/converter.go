@@ -111,7 +111,7 @@ func (h *HTML) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([
 		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
 	}
 
-	readers, err := s.GetFileReaders(p, []string{".html"})
+	readers, err := s.GetFileReaders(p, []string{".html"}, nil)
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err

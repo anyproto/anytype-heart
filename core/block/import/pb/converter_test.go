@@ -149,6 +149,45 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 	assert.Len(t, res.Snapshots, 1)
 }
 
+func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
+	path, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(path)
+	wr, err := newZipWriter(path)
+	assert.NoError(t, err)
+
+	f, err := os.Open("testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
+	assert.NoError(t, err)
+	reader := bufio.NewReader(f)
+
+	assert.NoError(t, wr.WriteFile("bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb", reader))
+
+	f, err = os.Open("testdata/test")
+	assert.NoError(t, err)
+	reader = bufio.NewReader(f)
+
+	assert.NoError(t, wr.WriteFile("test", reader))
+	assert.NoError(t, wr.Close())
+	p := &Pb{}
+
+	zipPath := wr.Path()
+	res, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
+			Path: []string{zipPath},
+		}},
+		UpdateExistingObjects: false,
+		Type:                  0,
+		Mode:                  0,
+	}, process.NewProgress(pb.ModelProcess_Import))
+
+	assert.Nil(t, ce)
+	assert.NotNil(t, res.Snapshots)
+	assert.Len(t, res.Snapshots, 2)
+
+	assert.Equal(t, res.Snapshots[0].FileName, "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
+	assert.Equal(t, res.Snapshots[1].FileName, rootCollectionName)
+}
+
 func newZipWriter(path string) (*zipWriter, error) {
 	filename := filepath.Join(path, "Anytype"+strconv.FormatInt(rand.Int63(), 10)+".zip")
 	f, err := os.Create(filename)

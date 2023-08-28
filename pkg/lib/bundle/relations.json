@@ -179,7 +179,7 @@
     "hidden": false,
     "key": "audioArtist",
     "maxCount": 1,
-    "name": "Artist",
+    "name": "Recording Artist",
     "readonly": false,
     "source": "details"
   },
@@ -1421,6 +1421,16 @@
     "hidden": true,
     "name": "Unique object key",
     "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "List of backlinks",
+    "format": "object",
+    "key": "backlinks",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Backlinks",
+    "readonly": false,
     "source": "derived"
   }
 ]

@@ -664,10 +664,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 	sb.onApply(s)
-	if sb.coreService != nil {
-		// this one will be reverted in case we don't have any actual change being made
-		s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
-	}
+	// this one will be reverted in case we don't have any actual change being made
+	s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 
 	beforeApplyStateTime := time.Now()
 
@@ -890,34 +888,13 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()) == "" {
-		wsId, err := sb.coreService.GetWorkspaceIdForObject(sb.SpaceID(), sb.Id())
-		if wsId != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(wsId))
-		} else if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDeleted.String()) && err != core.ErrObjectDoesNotBelongToWorkspace {
-			log.With("objectID", sb.Id()).Warnf("injectLocalDetails empty workspace: %v", err)
-		}
-	}
-
-	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
+	details, err := sb.getDetailsFromStore()
 	if err != nil {
 		return err
 	}
-	details := storedDetails.GetDetails()
 
-	var hasPendingLocalDetails bool
-	// Consume pending details
-	err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
-		if len(pending.GetFields()) > 0 {
-			hasPendingLocalDetails = true
-		}
-		details = pbtypes.StructMerge(details, pending, false)
-		return nil, nil
-	})
-	if err != nil {
-		log.With("objectID", sb.Id()).
-			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
-	}
+	sb.updateBackLinks(details)
+	hasPendingLocalDetails := sb.updatePendingDetails(details)
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
@@ -934,24 +911,63 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		// inject for both current and parent state
 		p.InjectLocalDetails(storedLocalScopeDetails)
 	}
-	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) == "" || pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) == 0 {
-		provider, conforms := sb.source.(source.CreationInfoProvider)
-		if !conforms {
-			return nil
-		}
 
-		creator, createdDate, err := provider.GetCreationInfo()
-		if err != nil {
-			return err
-		}
+	return sb.injectCreationInfo(s)
+}
 
-		if creator != "" {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
-		}
+func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
+	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
+	if err != nil || storedDetails == nil {
+		return nil, err
+	}
+	return storedDetails.GetDetails(), nil
+}
 
-		if createdDate != 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+func (sb *smartBlock) updateBackLinks(details *types.Struct) {
+	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.Id())
+	if err != nil {
+		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err.Error())
+		return
+	}
+	details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
+}
+
+func (sb *smartBlock) updatePendingDetails(details *types.Struct) (hasPendingLocalDetails bool) {
+	// Consume pending details
+	err := sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
+		if len(pending.GetFields()) > 0 {
+			hasPendingLocalDetails = true
 		}
+		details = pbtypes.StructMerge(details, pending, false)
+		return nil, nil
+	})
+	if err != nil {
+		log.With("objectID", sb.Id()).
+			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
+	}
+	return hasPendingLocalDetails
+}
+
+func (sb *smartBlock) injectCreationInfo(s *state.State) error {
+	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
+		return nil
+	}
+	provider, conforms := sb.source.(source.CreationInfoProvider)
+	if !conforms {
+		return nil
+	}
+
+	creator, createdDate, err := provider.GetCreationInfo()
+	if err != nil {
+		return err
+	}
+
+	if creator != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+	}
+
+	if createdDate != 0 {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	}
 
 	return nil
@@ -1276,7 +1292,8 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
-		State:      st, // Don't copy state because we don't change it later
+		// TODO Invent mechanism to avoid copying state
+		State: st.Copy(),
 	}
 }
 

@@ -60,7 +60,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce
 	supportedExtensions = append(supportedExtensions, videoFormats...)
 	supportedExtensions = append(supportedExtensions, imageFormats...)
 	supportedExtensions = append(supportedExtensions, audioFormats...)
-	readers, err := s.GetFileReaders(importPath, supportedExtensions)
+	readers, err := s.GetFileReaders(importPath, supportedExtensions, nil)
 	if err != nil {
 		allErrors.Add(err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {

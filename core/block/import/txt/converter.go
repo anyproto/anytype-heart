@@ -108,7 +108,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
 	}
 
-	readers, err := s.GetFileReaders(p, []string{".txt"})
+	readers, err := s.GetFileReaders(p, []string{".txt"}, nil)
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err

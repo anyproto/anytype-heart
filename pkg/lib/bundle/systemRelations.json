@@ -61,5 +61,6 @@
   "sourceFilePath",
   "fileSyncStatus",
   "defaultTemplateId",
-  "uniqueKey"
+  "uniqueKey",
+  "backlinks"
 ]
