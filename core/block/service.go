@@ -1003,7 +1003,8 @@ func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
 func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
 	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
 	if err != nil {
-		return nil, fmt.Errorf("resolve spaceID: %w", err)
+		// Object not loaded yet
+		return nil, source.ErrObjectNotFound
 	}
 	return s.getSmartblock(ctx, domain.FullID{
 		SpaceID:  spaceID,

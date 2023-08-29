@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 
+	"errors"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -653,7 +654,7 @@ func (s *Service) ModifyLocalDetails(
 		return b.Apply(b.NewState().SetDetails(dets))
 	})
 	// that means that we will apply the change later as soon as the block is loaded by thread queue
-	if err == source.ErrObjectNotFound {
+	if errors.Is(err, source.ErrObjectNotFound) {
 		return nil
 	}
 	return err
