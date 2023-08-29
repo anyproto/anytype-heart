@@ -14,7 +14,7 @@ import (
 )
 
 func (s *service) FileOffload(ctx context.Context, fileID string, includeNotPinned bool) (totalSize uint64, err error) {
-	spaceID, err := s.objectStore.ResolveSpaceID(fileID)
+	spaceID, err := s.spaceService.ResolveSpaceID(fileID)
 	if err != nil {
 		return 0, fmt.Errorf("resolve spaceID for file %s: %w", fileID, err)
 	}
@@ -95,7 +95,7 @@ func (s *service) FileListOffload(ctx context.Context, fileIDs []string, include
 	}
 
 	for _, fileID := range fileIDs {
-		spaceID, err := s.objectStore.ResolveSpaceID(fileID)
+		spaceID, err := s.spaceService.ResolveSpaceID(fileID)
 		if err != nil {
 			return 0, 0, fmt.Errorf("resolve spaceID for file %s: %w", fileID, err)
 		}

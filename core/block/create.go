@@ -104,7 +104,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		return
 	}
 
-	spaceID, err := s.objectStore.ResolveSpaceID(objectID)
+	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}

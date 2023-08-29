@@ -45,6 +45,7 @@ type debug struct {
 	block         *block.Service
 	store         objectstore.ObjectStore
 	clientService space.Service
+	spaceService  space.Service
 
 	server *http.Server
 }
@@ -57,6 +58,7 @@ func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	d.clientService = a.MustComponent(space.CName).(space.Service)
 	d.block = a.MustComponent(block.CName).(*block.Service)
+	d.spaceService = app.MustComponent[space.Service](a)
 
 	if addr, ok := os.LookupEnv("ANYDEBUG"); ok && addr != "" {
 		r := chi.NewRouter()
@@ -185,7 +187,7 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 
 	// 1 - create ZIP file
 	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
-	spaceID, err := d.store.ResolveSpaceID(objectID)
+	spaceID, err := d.spaceService.ResolveSpaceID(objectID)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}

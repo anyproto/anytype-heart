@@ -81,7 +81,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 }
 
 func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files.File, error) {
-	spaceID, err := s.objectStore.ResolveSpaceID(hash)
+	spaceID, err := s.spaceService.ResolveSpaceID(hash)
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}

@@ -252,7 +252,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	parts := strings.Split(fileHashAndPath, "/")
 	fileHash := parts[0]
 
-	spaceID, err := g.objectStore.ResolveSpaceID(fileHash)
+	spaceID, err := g.spaceService.ResolveSpaceID(fileHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -308,7 +308,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	imageHash := urlParts[2]
 	query := r.URL.Query()
 
-	spaceID, err := g.objectStore.ResolveSpaceID(imageHash)
+	spaceID, err := g.spaceService.ResolveSpaceID(imageHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
 	}

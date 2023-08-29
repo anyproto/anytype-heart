@@ -48,9 +48,6 @@ var (
 	accountPrefix = "account"
 	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
 
-	workspacesPrefix = "workspaces"
-	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
-
 	ErrObjectNotFound = errors.New("object not found")
 
 	_ ObjectStore = (*dsObjectStore)(nil)
@@ -95,15 +92,6 @@ func (s *dsObjectStore) initCache() error {
 		return fmt.Errorf("init cache: %w", err)
 	}
 	s.cache = cache
-	spaceResolverCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10_000_000,
-		MaxCost:     100_000_000,
-		BufferItems: 64,
-	})
-	if err != nil {
-		return fmt.Errorf("init cache: %w", err)
-	}
-	s.spaceResolverCache = spaceResolverCache
 	return nil
 }
 
@@ -147,9 +135,6 @@ type ObjectStore interface {
 	GetOutboundLinksByID(id string) ([]string, error)
 
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
-
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-	StoreSpaceID(objectID, spaceID string) error
 }
 
 type IndexerStore interface {
@@ -177,9 +162,8 @@ var ErrNotAnObject = fmt.Errorf("not an object")
 type dsObjectStore struct {
 	sourceService SourceDetailsFromID
 
-	cache              *ristretto.Cache
-	spaceResolverCache *ristretto.Cache
-	db                 *badger.DB
+	cache *ristretto.Cache
+	db    *badger.DB
 
 	fts ftsearch.FTSearch
 

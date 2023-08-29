@@ -26,13 +26,15 @@ import (
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/ristretto"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/space/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peerstore"
@@ -88,9 +90,11 @@ type service struct {
 	poolManager          PoolManager
 	streamHandler        *streamHandler
 
-	objectStore objectstore.ObjectStore
-	accountId   string
-	newAccount  bool
+	accountId  string
+	newAccount bool
+
+	db                 *badger.DB
+	spaceResolverCache *ristretto.Cache
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -104,7 +108,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{s: s}
@@ -120,6 +123,22 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithGCPeriod(time.Minute),
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
+
+	datastoreService := app.MustComponent[datastore.Datastore](a)
+	s.db, err = datastoreService.SpaceStorage()
+	if err != nil {
+		return fmt.Errorf("get badger storage: %w", err)
+	}
+	spaceResolverCache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: 10_000_000,
+		MaxCost:     100_000_000,
+		BufferItems: 64,
+	})
+	if err != nil {
+		return fmt.Errorf("init cache: %w", err)
+	}
+	s.spaceResolverCache = spaceResolverCache
+
 	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 	if err != nil {
 		return

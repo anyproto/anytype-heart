@@ -217,7 +217,7 @@ func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
 }
 
 func (s *Service) DeleteObject(objectID string) (err error) {
-	spaceID, err := s.objectStore.ResolveSpaceID(objectID)
+	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -453,7 +453,7 @@ func (s *Service) getDerivedObject(
 }
 
 func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	err = s.objectStore.StoreSpaceID(id.ObjectID, id.SpaceID)
+	err = s.spaceService.StoreSpaceID(id.ObjectID, id.SpaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store space id: %w", err)
 	}

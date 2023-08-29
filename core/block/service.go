@@ -215,7 +215,7 @@ func (s *Service) OpenBlock(
 	sctx session.Context, id string, includeRelationsAsDependentObjects bool,
 ) (obj *model.ObjectView, err error) {
 	startTime := time.Now()
-	spaceID, err := s.objectStore.ResolveSpaceID(id)
+	spaceID, err := s.spaceService.ResolveSpaceID(id)
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -691,7 +691,7 @@ func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
 	res := map[string][]string{}
 	for _, objectID := range objectIDs {
-		spaceID, err := s.objectStore.ResolveSpaceID(objectID)
+		spaceID, err := s.spaceService.ResolveSpaceID(objectID)
 		if err != nil {
 			return nil, fmt.Errorf("resolve spaceID: %w", err)
 		}
@@ -862,7 +862,7 @@ func (s *Service) ObjectsDuplicate(ctx context.Context, ids []string) (newIds []
 }
 
 func (s *Service) DeleteArchivedObject(id string) (err error) {
-	spaceID, err := s.objectStore.ResolveSpaceID(id)
+	spaceID, err := s.spaceService.ResolveSpaceID(id)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -997,12 +997,12 @@ func (s *Service) Close(ctx context.Context) (err error) {
 }
 
 func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
-	return s.objectStore.ResolveSpaceID(objectID)
+	return s.spaceService.ResolveSpaceID(objectID)
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
 func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.objectStore.ResolveSpaceID(objectID)
+	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -1011,7 +1011,7 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 		if opts, ok := ctx.Value(optsKey).(cacheOpts); ok {
 			if opts.spaceId != "" {
 				spaceID = opts.spaceId
-				s.objectStore.StoreSpaceID(objectID, opts.spaceId)
+				s.spaceService.StoreSpaceID(objectID, opts.spaceId)
 			}
 		}
 
@@ -1210,7 +1210,7 @@ func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	spaceID, err := s.objectStore.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.spaceService.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -1228,7 +1228,7 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 }
 
 func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
-	spaceID, err := s.objectStore.ResolveSpaceID(id)
+	spaceID, err := s.spaceService.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
