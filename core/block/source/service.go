@@ -87,14 +87,19 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	}
 }
 
-func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error) {
-	if spaceID != "" {
-		err = s.objectStore.StoreSpaceID(id, spaceID)
-		if err != nil {
-			return nil, fmt.Errorf("store spaceID: %w", err)
-		}
+func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (Source, error) {
+	src, err := s.newSource(ctx, id, spaceID, buildOptions)
+	if err != nil {
+		return nil, err
 	}
+	err = s.spaceService.StoreSpaceID(src.Id(), src.SpaceID())
+	if err != nil {
+		return nil, fmt.Errorf("store space id for object: %w", err)
+	}
+	return src, nil
+}
 
+func (s *service) newSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (Source, error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
@@ -125,12 +130,12 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 
 	spc, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("get space: %w", err)
 	}
 	var ot objecttree.ObjectTree
 	ot, err = spc.TreeBuilder().BuildTree(ctx, id, buildOptions.BuildTreeOpts())
 	if err != nil {
-		return
+		return nil, fmt.Errorf("build tree: %w", err)
 	}
 
 	// TODO: [MR] get this from objectTree directly
