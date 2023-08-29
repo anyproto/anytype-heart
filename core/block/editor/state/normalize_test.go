@@ -458,50 +458,21 @@ func TestShortenValueOnN(t *testing.T) {
 		value, left := shortenValueByN(value, 15)
 
 		//then
-		expected := pbtypes.StringList([]string{"", "Égal", "Liberté"})
+		expected := pbtypes.StringList([]string{"", "É", "Fraternité"})
 
 		assert.Equal(t, 0, left)
 		assert.Equal(t, expected, value)
 	})
 
-	t.Run("complex struct", func(t *testing.T) {
-		//given
-		bornDied := pbtypes.IntList(1828, 1910)
-		isNovelist := pbtypes.Bool(true)
-		value := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
-			"name":       pbtypes.String("Leo"),
-			"surname":    pbtypes.String("Tolstoy"),
-			"bornDied":   bornDied,
-			"isNovelist": isNovelist,
-			"books":      pbtypes.StringList([]string{"War And Peace", "Anna Karenina", "Youth", "After the Ball"}),
-		}})
-		n := len("Leo" + "Tolstoy" + "War And Peace" + "Anna Karenina" + "Youth" + "After the Ball")
-
-		//when
-		value, left := shortenValueByN(value, 32)
-
-		//then
-		assert.Equal(t, 0, left)
-		assert.Equal(t, bornDied, value.GetStructValue().Fields["bornDied"])
-		assert.Equal(t, isNovelist, value.GetStructValue().Fields["isNovelist"])
-		assert.Equal(t, n-32, countStringsLength(value))
-		assert.Equal(t, value.GetStructValue().Fields["books"].GetListValue().Values[2].GetStringValue(), "Anna Kar")
-	})
-
 	t.Run("cut off all strings", func(t *testing.T) {
 		//given
-		value := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
-			"name":  pbtypes.String("My Favorite emojis"),
-			"happy": pbtypes.StringList([]string{"😂", "😄", "🥰"}),
-			"sad":   pbtypes.StringList([]string{"😔", "😰", "😥"}),
-			"vegs":  pbtypes.StringList([]string{"🥕", "🍅", "🌶"}),
-		}})
+		value := pbtypes.StringList([]string{"😂", "😄", "🥰", "😔", "😰", "😥", "🥕", "🍅", "🌶"})
 
 		//when
 		value, left := shortenValueByN(value, 100)
 
 		//then
-		assert.Equal(t, 100-(18+9*4), left)
+		assert.Equal(t, 100-(9*4), left)
 		assert.Equal(t, 0, countStringsLength(value))
 	})
 }

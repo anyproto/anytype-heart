@@ -2,16 +2,12 @@ package state
 
 import (
 	"fmt"
-	"sort"
-
-	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -348,28 +344,9 @@ func shortenValueByN(value *types.Value, n int) (result *types.Value, left int) 
 		return pbtypes.String(""), n - len(str)
 	case *types.Value_ListValue:
 		var newValue *types.Value
-		values := v.ListValue.Values
-		sort.Slice(values, func(i, j int) bool {
-			return values[i].Size() > values[j].Size()
-		})
-		for i, valueItem := range values {
+		for i, valueItem := range v.ListValue.Values {
 			newValue, n = shortenValueByN(valueItem, n)
 			value.GetListValue().Values[i] = newValue
-			if n == 0 {
-				return value, 0
-			}
-		}
-		return value, n
-	case *types.Value_StructValue:
-		var newValue *types.Value
-		fields := v.StructValue.GetFields()
-		keys := lo.Keys(fields)
-		sort.SliceStable(keys, func(i, j int) bool {
-			return fields[keys[i]].Size() > fields[keys[j]].Size()
-		})
-		for _, key := range keys {
-			newValue, n = shortenValueByN(fields[key], n)
-			fields[key] = newValue
 			if n == 0 {
 				return value, 0
 			}
