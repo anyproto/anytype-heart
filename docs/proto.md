@@ -504,6 +504,10 @@
     - [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request)
     - [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response)
     - [Rpc.Debug.SpaceSummary.Response.Error](#anytype-Rpc-Debug-SpaceSummary-Response-Error)
+    - [Rpc.Debug.StackGoroutines](#anytype-Rpc-Debug-StackGoroutines)
+    - [Rpc.Debug.StackGoroutines.Request](#anytype-Rpc-Debug-StackGoroutines-Request)
+    - [Rpc.Debug.StackGoroutines.Response](#anytype-Rpc-Debug-StackGoroutines-Response)
+    - [Rpc.Debug.StackGoroutines.Response.Error](#anytype-Rpc-Debug-StackGoroutines-Response-Error)
     - [Rpc.Debug.Subscriptions](#anytype-Rpc-Debug-Subscriptions)
     - [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request)
     - [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response)
@@ -1038,6 +1042,7 @@
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
+    - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
@@ -1658,6 +1663,7 @@
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
 | DebugTreeHeads | [Rpc.Debug.TreeHeads.Request](#anytype-Rpc-Debug-TreeHeads-Request) | [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response) |  |
 | DebugSpaceSummary | [Rpc.Debug.SpaceSummary.Request](#anytype-Rpc-Debug-SpaceSummary-Request) | [Rpc.Debug.SpaceSummary.Response](#anytype-Rpc-Debug-SpaceSummary-Response) |  |
+| DebugStackGoroutines | [Rpc.Debug.StackGoroutines.Request](#anytype-Rpc-Debug-StackGoroutines-Request) | [Rpc.Debug.StackGoroutines.Response](#anytype-Rpc-Debug-StackGoroutines-Response) |  |
 | DebugExportLocalstore | [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request) | [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response) |  |
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
@@ -2307,7 +2313,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Create.Response.Error](#anytype-Rpc-Account-Create-Response-Error) |  | Error while trying to create an account |
 | account | [model.Account](#anytype-model-Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
-| config | [Rpc.Account.Config](#anytype-Rpc-Account-Config) |  | deprecated, use account |
+| config | [Rpc.Account.Config](#anytype-Rpc-Account-Config) |  | deprecated, use account, GO-1926 |
 
 
 
@@ -2441,7 +2447,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 <a name="anytype-Rpc-Account-GetConfig"></a>
 
 ### Rpc.Account.GetConfig
-
+TODO: Remove this request if we do not need it, GO-1926
 
 
 
@@ -2673,7 +2679,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Select.Response.Error](#anytype-Rpc-Account-Select-Response-Error) |  | Error while trying to launch/select an account |
 | account | [model.Account](#anytype-model-Account) |  | Selected account |
-| config | [Rpc.Account.Config](#anytype-Rpc-Account-Config) |  | deprecated, use account |
+| config | [Rpc.Account.Config](#anytype-Rpc-Account-Config) |  | deprecated, use account, GO-1926 |
 
 
 
@@ -8961,6 +8967,62 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-StackGoroutines"></a>
+
+### Rpc.Debug.StackGoroutines
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-StackGoroutines-Request"></a>
+
+### Rpc.Debug.StackGoroutines.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-StackGoroutines-Response"></a>
+
+### Rpc.Debug.StackGoroutines.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.StackGoroutines.Response.Error](#anytype-Rpc-Debug-StackGoroutines-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-StackGoroutines-Response-Error"></a>
+
+### Rpc.Debug.StackGoroutines.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-Subscriptions"></a>
 
 ### Rpc.Debug.Subscriptions
@@ -9485,7 +9547,7 @@ Get marks list in the selected range in text block.
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
-| disableEncryption | [bool](#bool) |  | deprecated, has no affect |
+| disableEncryption | [bool](#bool) |  | deprecated, has no affect, GO-1926 |
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 
 
@@ -10224,7 +10286,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | deprecated |
+| contextId | [string](#string) |  | deprecated, GO-1926 |
 | objectId | [string](#string) |  |  |
 
 
@@ -10721,7 +10783,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
-DEPRECATED |
+DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated |  |
 
 
@@ -11636,7 +11698,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | deprecated |
+| contextId | [string](#string) |  | deprecated, GO-1926 |
 | traceId | [string](#string) |  |  |
 
 
@@ -11761,7 +11823,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
 
-DEPRECATED |
+DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 
 
@@ -12483,7 +12545,7 @@ DEPRECATED |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | deprecated |
+| contextId | [string](#string) |  | deprecated, GO-1926 |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
 | includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
@@ -15057,7 +15119,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_NOT_RUNNING | 101 |  |
 | FAILED_TO_WRITE_CONFIG | 102 |  |
-| FAILED_TO_GET_CONFIG | 103 |  |
 
 
 
@@ -15111,14 +15172,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 | Avatar or name is not correct |
 | ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE | 101 |  |
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME | 102 |  |
-| ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
-| BAD_INVITE_CODE | 900 |  |
-| NET_ERROR | 901 | means general network error |
-| NET_CONNECTION_REFUSED | 902 | means we wasn&#39;t able to connect to the cafe server |
-| NET_OFFLINE | 903 | client can additionally support this error code to notify user that device is offline |
 
 
 
@@ -15180,14 +15236,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 | No error; |
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
-| NO_ACCOUNTS_FOUND | 101 |  |
 | NEED_TO_RECOVER_WALLET_FIRST | 102 |  |
-| FAILED_TO_CREATE_LOCAL_REPO | 103 |  |
-| LOCAL_REPO_EXISTS_BUT_CORRUPTED | 104 |  |
-| FAILED_TO_RUN_NODE | 105 |  |
-| WALLET_RECOVER_NOT_PERFORMED | 106 |  |
-| FAILED_TO_STOP_RUNNING_NODE | 107 |  |
-| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 
 
 
@@ -15221,9 +15270,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_FIND_ACCOUNT_INFO | 104 |  |
 | LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET | 105 |  |
 | FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
-| FAILED_TO_RECOVER_PREDEFINED_BLOCKS | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
-| ACCOUNT_IS_DELETED | 109 |  |
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
 
 
@@ -15254,9 +15301,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| VERSION_IS_EMPTY | 3 |  |
-| NOT_FOUND | 101 |  |
-| TIMEOUT | 102 |  |
 
 
 
@@ -15282,7 +15326,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| NODE_NOT_STARTED | 101 |  |
 
 
 
@@ -15296,7 +15339,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| NODE_NOT_STARTED | 101 |  |
 
 
 
@@ -15778,8 +15820,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_A_DATAVIEW_BLOCK | 3 | ... |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -16563,6 +16604,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-StackGoroutines-Response-Error-Code"></a>
+
+### Rpc.Debug.StackGoroutines.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Debug-Subscriptions-Response-Error-Code"></a>
 
 ### Rpc.Debug.Subscriptions.Response.Error.Code
@@ -16612,7 +16666,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| NOT_FOUND | 3 |  |
 
 
 
@@ -16654,7 +16707,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NODE_NOT_STARTED | 103 | ... |
-| FILE_NOT_YET_PINNED | 104 |  |
 
 
 
@@ -16775,8 +16827,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| NOT_FOUND | 101 |  |
-| TIMEOUT | 102 |  |
 
 
 
@@ -16906,8 +16956,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -17010,10 +17059,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
-| INTERNAL_ERROR | 1 |  |
-| UNAUTHORIZED | 2 |  |
-| UNKNOWN_ERROR | 3 |  |
-| BAD_INPUT | 4 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+| UNAUTHORIZED | 4 |  |
 | FORBIDDEN | 5 |  |
 | SERVICE_UNAVAILABLE | 6 |  |
 | ACCOUNT_IS_NOT_RUNNING | 7 |  |
@@ -17069,13 +17118,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
-| INTERNAL_ERROR | 1 |  |
-| UNKNOWN_ERROR | 2 |  |
-| BAD_INPUT | 3 |  |
-| ACCOUNT_IS_NOT_RUNNING | 4 |  |
-| NO_OBJECTS_TO_IMPORT | 5 |  |
-| IMPORT_IS_CANCELED | 6 |  |
-| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+| NO_OBJECTS_TO_IMPORT | 4 |  |
+| IMPORT_IS_CANCELED | 5 |  |
+| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 6 |  |
 
 
 
@@ -17101,9 +17149,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
-| INTERNAL_ERROR | 1 |  |
-| UNKNOWN_ERROR | 2 |  |
-| BAD_INPUT | 3 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
 
 
 
@@ -17225,7 +17273,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
 
 
 
@@ -17346,7 +17393,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
 
 
 
@@ -17399,7 +17445,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
 
 
 
@@ -17637,8 +17682,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
-| READONLY_OBJECT_TYPE | 4 | ... |
+| READONLY_OBJECT_TYPE | 3 | ... |
 
 
 
@@ -17666,8 +17710,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
-| READONLY_OBJECT_TYPE | 4 | ... |
+| READONLY_OBJECT_TYPE | 3 | ... |
 
 
 
@@ -18405,8 +18448,9 @@ sent when the view have been changed or added
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
-| pageLimit | [int32](#int32) |  |  |
+| pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
+| defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
 
 
 
@@ -21525,8 +21569,9 @@ Bookmark is to keep a web-link and to preview a content.
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
-| pageLimit | [int32](#int32) |  |  |
-| defaultTemplateId | [string](#string) |  |  |
+| pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
+| defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
+| defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
 
 
 

@@ -116,12 +116,9 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 	files, err := p.readFile(path)
 	if err != nil {
 		allErrors.Add(err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING || errors.Is(err, converter.ErrNoObjectsToImport) {
 			return nil, nil
 		}
-	}
-	if len(files) == 0 {
-		return nil, nil
 	}
 	var (
 		needToImportWidgets bool
@@ -293,7 +290,7 @@ func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
 	if s == nil {
 		return nil, fmt.Errorf("failed to identify source")
 	}
-	readers, err := s.GetFileReaders(importPath, []string{".pb", ".json", ""})
+	readers, err := s.GetFileReaders(importPath, []string{".pb", ".json"}, []string{constant.ProfileFile, configFile})
 	if err != nil {
 		return nil, err
 	}

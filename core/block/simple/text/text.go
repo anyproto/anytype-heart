@@ -2,18 +2,16 @@ package text
 
 import (
 	"fmt"
-	textutil "github.com/anyproto/anytype-heart/util/text"
 	"sort"
-
-	"github.com/anyproto/anytype-heart/util/uri"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	textutil "github.com/anyproto/anytype-heart/util/text"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 var (
@@ -410,6 +408,10 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 		m.Range.To = m.Range.To - r.From
 	}
 
+	tBackgroundColor := t.BackgroundColor
+	if t.content.Style == model.BlockContentText_Code {
+		tBackgroundColor = ""
+	}
 	if top {
 		newBlock = simple.New(&model.Block{
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
@@ -418,7 +420,7 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 				Marks: oldMarks,
 				Color: t.content.Color,
 			}},
-			BackgroundColor: t.BackgroundColor,
+			BackgroundColor: tBackgroundColor,
 			Align:           t.Align,
 		})
 
@@ -434,7 +436,7 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 				Checked: false,
 				Color:   t.content.Color,
 			}},
-			BackgroundColor: t.BackgroundColor,
+			BackgroundColor: tBackgroundColor,
 			Align:           t.Align,
 		})
 		t.content.Text = textutil.UTF16ToStr(runes[:from])

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -98,6 +99,24 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 		return response(err, debug.SpaceSummary{})
 	}
 	return response(nil, spaceSummary)
+}
+
+func (mw *Middleware) DebugStackGoroutines(_ context.Context, req *pb.RpcDebugStackGoroutinesRequest) *pb.RpcDebugStackGoroutinesResponse {
+	response := func(err error) (res *pb.RpcDebugStackGoroutinesResponse) {
+		res = &pb.RpcDebugStackGoroutinesResponse{
+			Error: &pb.RpcDebugStackGoroutinesResponseError{
+				Code: pb.RpcDebugStackGoroutinesResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcDebugStackGoroutinesResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+		}
+		return res
+	}
+
+	err := mw.SaveGoroutinesStack(req.Path)
+	return response(err)
 }
 
 func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
