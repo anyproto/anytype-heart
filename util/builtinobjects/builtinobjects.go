@@ -254,7 +254,7 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 		return
 	}
 
-	if _, err := b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+	if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
 		ContextId:    b.coreService.PredefinedBlocks().Widgets,
 		TargetId:     targetID,
 		Position:     model.Block_Top,
