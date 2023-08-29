@@ -1992,6 +1992,7 @@ message Rpc {
                     PERSONAL_PROJECTS = 1;
                     KNOWLEDGE_BASE = 2;
                     NOTES_DIARY = 3;
+                    STRATEGIC_WRITING = 4;
                 }
             }
 
