@@ -2722,11 +2722,7 @@ func Test_ShortenDetailsToLimit(t *testing.T) {
 	t.Run("SetDetail", func(t *testing.T) {
 		//given
 		s := &State{rootId: "first"}
-		detail := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
-			"a": pbtypes.String(strings.Repeat("a", detailSizeLimit/2)),
-			"b": pbtypes.String(strings.Repeat("b", detailSizeLimit/2)),
-			"i": pbtypes.Int64(99),
-		}})
+		detail := pbtypes.StringList([]string{"hello", "world", strings.Repeat("a", detailSizeLimit-9)})
 
 		//when
 		s.SetDetail(bundle.RelationKeyType.String(), pbtypes.CopyVal(detail))
