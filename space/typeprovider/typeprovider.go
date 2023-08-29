@@ -188,19 +188,12 @@ func (p *provider) objectTypeFromSpace(spaceID string, id string) (tp smartblock
 	if err != nil {
 		return
 	}
-	root, err := p.unmarshallRoot(rawRoot)
+
+	tp, err = GetTypeFromRoot(rawRoot)
 	if err != nil {
 		return
 	}
-	if root.ChangeType != space.ChangeType {
-		err = ErrUnknownChangeType
-		return
-	}
-	payload, err := p.objectType(root.ChangePayload)
-	if err != nil {
-		return
-	}
-	err = p.setType(id, smartblock.SmartBlockType(payload.SmartBlockType))
+	err = p.setType(id, tp)
 	if err != nil {
 		return
 	}
@@ -220,7 +213,23 @@ func (p *provider) setType(id string, tp smartblock.SmartBlockType) (err error) 
 	return nil
 }
 
-func (p *provider) unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {
+func GetTypeFromRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (smartblock.SmartBlockType, error) {
+	root, err := unmarshallRoot(rawRoot)
+	if err != nil {
+		return 0, fmt.Errorf("unmarshall root: %w", err)
+	}
+	if root.ChangeType != space.ChangeType {
+		err = ErrUnknownChangeType
+		return 0, err
+	}
+	payload, err := objectType(root.ChangePayload)
+	if err != nil {
+		return 0, fmt.Errorf("get object type: %w", err)
+	}
+	return smartblock.SmartBlockType(payload.SmartBlockType), nil
+}
+
+func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {
 	raw := &treechangeproto.RawTreeChange{}
 	err = proto.Unmarshal(rawRoot.GetRawChange(), raw)
 	if err != nil {
@@ -235,7 +244,7 @@ func (p *provider) unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) 
 	return
 }
 
-func (p *provider) objectType(changePayload []byte) (payload *model.ObjectChangePayload, err error) {
+func objectType(changePayload []byte) (payload *model.ObjectChangePayload, err error) {
 	payload = &model.ObjectChangePayload{}
 	err = proto.Unmarshal(changePayload, payload)
 	return

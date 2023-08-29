@@ -457,8 +457,7 @@ func (s *Service) AddBundledObjectToSpace(
 				nil,
 				st,
 			)
-			if err != nil {
-				// todo: check alreadyexists error
+			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				// we don't want to stop adding other objects
 				log.Errorf("error while block create: %v", err)
 				return nil

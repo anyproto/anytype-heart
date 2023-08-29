@@ -48,7 +48,6 @@ func (s *service) ResolveSpaceID(objectID string) (string, error) {
 	})
 	if badgerhelper.IsNotFound(err) {
 		return "", err
-		return "", nil
 	}
 	return spaceID, err
 }
