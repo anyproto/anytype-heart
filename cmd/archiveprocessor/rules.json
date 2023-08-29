@@ -57,6 +57,16 @@
     "detailKey": "sourceObject"
   },
   {
+    "action": "remove",
+    "entity": "detail",
+    "detailKey": "backlinks"
+  },
+  {
+    "action": "remove",
+    "entity": "detail",
+    "detailKey": "sourceFilePath"
+  },
+  {
     "action": "change",
     "entity": "dataViewTarget",
     "objectID": "bafyreihz4ukwxev7ywljtjmv54m4kh7nkptifr3g3xmc3x5yzo6zfe26qy",
