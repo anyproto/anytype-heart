@@ -140,7 +140,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	}
 
 	fullID := domain.FullID{SpaceID: addr.AnytypeMarketplaceWorkspace, ObjectID: id}
-	b.source.RegisterStaticSource(id, b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
+	b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
 	return
 }
 

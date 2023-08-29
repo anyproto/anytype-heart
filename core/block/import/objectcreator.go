@@ -115,10 +115,10 @@ func (oc *ObjectCreator) Create(
 	// converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
 		if link.Format == model.RelationFormat_file {
-			filesToDelete = oc.relationSyncer.Sync(st, link.Key)
+			filesToDelete = oc.relationSyncer.Sync(spaceID, st, link.Key)
 		}
 	}
-	filesToDelete = append(filesToDelete, oc.handleCoverRelation(st)...)
+	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
 	oc.setFileAsImported(st)
 	var respDetails *types.Struct
 	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
@@ -318,11 +318,11 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	}
 }
 
-func (oc *ObjectCreator) handleCoverRelation(st *state.State) []string {
+func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State) []string {
 	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
 		return nil
 	}
-	filesToDelete := oc.relationSyncer.Sync(st, bundle.RelationKeyCoverId.String())
+	filesToDelete := oc.relationSyncer.Sync(spaceID, st, bundle.RelationKeyCoverId.String())
 	return filesToDelete
 }
 

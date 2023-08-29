@@ -1357,58 +1357,6 @@ func (_c *MockObjectStore_RemoveIDsFromFullTextQueue_Call) RunAndReturn(run func
 	return _c
 }
 
-// ResolveSpaceID provides a mock function with given fields: objectID
-func (_m *MockObjectStore) ResolveSpaceID(objectID string) (string, error) {
-	ret := _m.Called(objectID)
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
-		return rf(objectID)
-	}
-	if rf, ok := ret.Get(0).(func(string) string); ok {
-		r0 = rf(objectID)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(objectID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockObjectStore_ResolveSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveSpaceID'
-type MockObjectStore_ResolveSpaceID_Call struct {
-	*mock.Call
-}
-
-// ResolveSpaceID is a helper method to define mock.On call
-//   - objectID string
-func (_e *MockObjectStore_Expecter) ResolveSpaceID(objectID interface{}) *MockObjectStore_ResolveSpaceID_Call {
-	return &MockObjectStore_ResolveSpaceID_Call{Call: _e.mock.On("ResolveSpaceID", objectID)}
-}
-
-func (_c *MockObjectStore_ResolveSpaceID_Call) Run(run func(objectID string)) *MockObjectStore_ResolveSpaceID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_ResolveSpaceID_Call) Return(spaceID string, err error) *MockObjectStore_ResolveSpaceID_Call {
-	_c.Call.Return(spaceID, err)
-	return _c
-}
-
-func (_c *MockObjectStore_ResolveSpaceID_Call) RunAndReturn(run func(string) (string, error)) *MockObjectStore_ResolveSpaceID_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Run provides a mock function with given fields: ctx
 func (_m *MockObjectStore) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -1574,49 +1522,6 @@ func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) Return(err error) *Mock
 }
 
 func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) RunAndReturn(run func(string, string) error) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// StoreSpaceID provides a mock function with given fields: objectID, spaceID
-func (_m *MockObjectStore) StoreSpaceID(objectID string, spaceID string) error {
-	ret := _m.Called(objectID, spaceID)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(objectID, spaceID)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockObjectStore_StoreSpaceID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StoreSpaceID'
-type MockObjectStore_StoreSpaceID_Call struct {
-	*mock.Call
-}
-
-// StoreSpaceID is a helper method to define mock.On call
-//   - objectID string
-//   - spaceID string
-func (_e *MockObjectStore_Expecter) StoreSpaceID(objectID interface{}, spaceID interface{}) *MockObjectStore_StoreSpaceID_Call {
-	return &MockObjectStore_StoreSpaceID_Call{Call: _e.mock.On("StoreSpaceID", objectID, spaceID)}
-}
-
-func (_c *MockObjectStore_StoreSpaceID_Call) Run(run func(objectID string, spaceID string)) *MockObjectStore_StoreSpaceID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_StoreSpaceID_Call) Return(_a0 error) *MockObjectStore_StoreSpaceID_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockObjectStore_StoreSpaceID_Call) RunAndReturn(run func(string, string) error) *MockObjectStore_StoreSpaceID_Call {
 	_c.Call.Return(run)
 	return _c
 }

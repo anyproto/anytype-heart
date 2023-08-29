@@ -184,6 +184,21 @@ func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockService)(nil).Name))
 }
 
+// ResolveSpaceID mocks base method.
+func (m *MockService) ResolveSpaceID(arg0 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveSpaceID", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveSpaceID indicates an expected call of ResolveSpaceID.
+func (mr *MockServiceMockRecorder) ResolveSpaceID(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveSpaceID", reflect.TypeOf((*MockService)(nil).ResolveSpaceID), arg0)
+}
+
 // Run mocks base method.
 func (m *MockService) Run(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -196,6 +211,20 @@ func (m *MockService) Run(arg0 context.Context) error {
 func (mr *MockServiceMockRecorder) Run(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockService)(nil).Run), arg0)
+}
+
+// StoreSpaceID mocks base method.
+func (m *MockService) StoreSpaceID(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StoreSpaceID", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StoreSpaceID indicates an expected call of StoreSpaceID.
+func (mr *MockServiceMockRecorder) StoreSpaceID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreSpaceID", reflect.TypeOf((*MockService)(nil).StoreSpaceID), arg0, arg1)
 }
 
 // StreamPool mocks base method.

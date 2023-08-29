@@ -427,21 +427,6 @@ func (mr *MockObjectStoreMockRecorder) RemoveIDsFromFullTextQueue(arg0 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveIDsFromFullTextQueue", reflect.TypeOf((*MockObjectStore)(nil).RemoveIDsFromFullTextQueue), arg0)
 }
 
-// ResolveSpaceID mocks base method.
-func (m *MockObjectStore) ResolveSpaceID(arg0 string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResolveSpaceID", arg0)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ResolveSpaceID indicates an expected call of ResolveSpaceID.
-func (mr *MockObjectStoreMockRecorder) ResolveSpaceID(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveSpaceID", reflect.TypeOf((*MockObjectStore)(nil).ResolveSpaceID), arg0)
-}
-
 // Run mocks base method.
 func (m *MockObjectStore) Run(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -496,20 +481,6 @@ func (m *MockObjectStore) SaveLastIndexedHeadsHash(arg0, arg1 string) error {
 func (mr *MockObjectStoreMockRecorder) SaveLastIndexedHeadsHash(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).SaveLastIndexedHeadsHash), arg0, arg1)
-}
-
-// StoreSpaceID mocks base method.
-func (m *MockObjectStore) StoreSpaceID(arg0, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StoreSpaceID", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StoreSpaceID indicates an expected call of StoreSpaceID.
-func (mr *MockObjectStoreMockRecorder) StoreSpaceID(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreSpaceID", reflect.TypeOf((*MockObjectStore)(nil).StoreSpaceID), arg0, arg1)
 }
 
 // SubscribeForAll mocks base method.

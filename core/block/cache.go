@@ -453,11 +453,6 @@ func (s *Service) getDerivedObject(
 }
 
 func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	err = s.spaceService.StoreSpaceID(id.ObjectID, id.SpaceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to store space id: %w", err)
-	}
-
 	ctx = context.WithValue(ctx, optsKey, cacheOpts{
 		createOption: &treeCreateCache{
 			initFunc: initFunc,

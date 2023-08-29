@@ -129,15 +129,17 @@ func (mr *MockServiceMockRecorder) NewStaticSource(arg0, arg1, arg2, arg3 interf
 }
 
 // RegisterStaticSource mocks base method.
-func (m *MockService) RegisterStaticSource(arg0 string, arg1 source.Source) {
+func (m *MockService) RegisterStaticSource(arg0 source.Source) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RegisterStaticSource", arg0, arg1)
+	ret := m.ctrl.Call(m, "RegisterStaticSource", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // RegisterStaticSource indicates an expected call of RegisterStaticSource.
-func (mr *MockServiceMockRecorder) RegisterStaticSource(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockServiceMockRecorder) RegisterStaticSource(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterStaticSource", reflect.TypeOf((*MockService)(nil).RegisterStaticSource), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterStaticSource", reflect.TypeOf((*MockService)(nil).RegisterStaticSource), arg0)
 }
 
 // RemoveStaticSource mocks base method.

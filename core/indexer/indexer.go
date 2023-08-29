@@ -254,10 +254,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			}
 		}
 
-		// todo: remove this hack
-		if info.SpaceID != addr.AnytypeMarketplaceWorkspace {
-			i.indexLinkedFiles(block.CacheOptsSetSpaceID(ctx, info.SpaceID), info.FileHashes)
-		}
+		i.indexLinkedFiles(ctx, info.SpaceID, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -283,7 +280,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHashes []string) {
 	if len(fileHashes) == 0 {
 		return
 	}
@@ -297,6 +294,11 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 			// Deduplicate
 			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
 			if ok {
+				return
+			}
+			err = i.spaceService.StoreSpaceID(id, spaceID)
+			if err != nil {
+				log.With("id", id).Errorf("failed to store space id: %v", err)
 				return
 			}
 			// file's hash is id

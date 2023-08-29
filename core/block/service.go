@@ -1006,17 +1006,6 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
-	if spaceID == "" {
-		// todo: feels dirty
-		if opts, ok := ctx.Value(optsKey).(cacheOpts); ok {
-			if opts.spaceId != "" {
-				spaceID = opts.spaceId
-				s.spaceService.StoreSpaceID(objectID, opts.spaceId)
-			}
-		}
-
-	}
-
 	return s.getSmartblock(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,

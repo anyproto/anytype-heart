@@ -17,7 +17,7 @@ import (
 var logger = logging.Logger("import-file-relation-syncer")
 
 type RelationSyncer interface {
-	Sync(state *state.State, relationName string) []string
+	Sync(spaceID string, state *state.State, relationName string) []string
 }
 
 type FileRelationSyncer struct {
@@ -29,7 +29,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	return &FileRelationSyncer{service: service, fileStore: fileStore}
 }
 
-func (fs *FileRelationSyncer) Sync(state *state.State, relationName string) []string {
+func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string) []string {
 	allFiles := fs.getFilesFromRelations(state, relationName)
 	allFilesHashes := make([]string, 0)
 	filesToDelete := make([]string, 0, len(allFiles))
@@ -38,7 +38,7 @@ func (fs *FileRelationSyncer) Sync(state *state.State, relationName string) []st
 			continue
 		}
 		var hash string
-		if hash = fs.uploadFile(f); hash != "" {
+		if hash = fs.uploadFile(spaceID, f); hash != "" {
 			allFilesHashes = append(allFilesHashes, hash)
 			filesToDelete = append(filesToDelete, hash)
 		}
@@ -65,16 +65,11 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 	return allFiles
 }
 
-func (fs *FileRelationSyncer) uploadFile(file string) string {
+func (fs *FileRelationSyncer) uploadFile(spaceID string, file string) string {
 	var (
 		hash string
 		err  error
 	)
-	spaceID, err := fs.service.ResolveSpaceID(file)
-	if err != nil {
-		logger.With("objectID", file).Errorf("resolve spaceID %s", err)
-		return ""
-	}
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
 		req := pb.RpcFileUploadRequest{Url: file}
 		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)

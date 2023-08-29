@@ -34,7 +34,7 @@ func New() Service {
 
 type Service interface {
 	NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
-	RegisterStaticSource(id string, s Source)
+	RegisterStaticSource(s Source) error
 	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
@@ -197,11 +197,16 @@ func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
 	return nil, fmt.Errorf("date source miss the details")
 }
 
-func (s *service) RegisterStaticSource(id string, src Source) {
+func (s *service) RegisterStaticSource(src Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.staticIds[id] = src
-	s.sbtProvider.RegisterStaticType(id, src.Type())
+	s.staticIds[src.Id()] = src
+	err := s.spaceService.StoreSpaceID(src.Id(), src.SpaceID())
+	if err != nil {
+		return fmt.Errorf("store space id for object: %w", err)
+	}
+	s.sbtProvider.RegisterStaticType(src.Id(), src.Type())
+	return nil
 }
 
 func (s *service) RemoveStaticSource(id string) {
