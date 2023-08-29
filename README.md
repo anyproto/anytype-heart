@@ -8,6 +8,7 @@ Middleware library for Anytype, distributed as part of the Anytype clients.
 - [Debug instructions](docs/Debug.md)
 - [Project architecture](docs/Architecture.md)
 - [Style guide](docs/Codestyle.md)
+- [Project workflows](docs/Flow.md)
 
 ## Contribution
 Thank you for your desire to develop Anytype together!

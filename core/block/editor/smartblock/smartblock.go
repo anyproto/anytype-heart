@@ -361,6 +361,7 @@ func (sb *smartBlock) Show(ctx *session.Context) (*model.ObjectView, error) {
 	}
 
 	sb.updateRestrictions()
+	sb.updateBackLinks(sb.LocalDetails())
 
 	details, err := sb.fetchMeta()
 	if err != nil {
