@@ -9,12 +9,11 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	gomock "go.uber.org/mock/gomock"
-
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.
@@ -113,21 +112,6 @@ func (mr *MockServiceMockRecorder) EnsurePredefinedBlocks(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsurePredefinedBlocks", reflect.TypeOf((*MockService)(nil).EnsurePredefinedBlocks), arg0, arg1)
 }
 
-// GetAllWorkspaces mocks base method.
-func (m *MockService) GetAllWorkspaces() ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllWorkspaces")
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetAllWorkspaces indicates an expected call of GetAllWorkspaces.
-func (mr *MockServiceMockRecorder) GetAllWorkspaces() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllWorkspaces", reflect.TypeOf((*MockService)(nil).GetAllWorkspaces))
-}
-
 // GetSystemRelationID mocks base method.
 func (m *MockService) GetSystemRelationID(arg0 string, arg1 bundle.RelationKey) string {
 	m.ctrl.T.Helper()
@@ -154,21 +138,6 @@ func (m *MockService) GetSystemTypeID(arg0 string, arg1 bundle.TypeKey) string {
 func (mr *MockServiceMockRecorder) GetSystemTypeID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemTypeID", reflect.TypeOf((*MockService)(nil).GetSystemTypeID), arg0, arg1)
-}
-
-// GetWorkspaceIdForObject mocks base method.
-func (m *MockService) GetWorkspaceIdForObject(arg0, arg1 string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWorkspaceIdForObject", arg0, arg1)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetWorkspaceIdForObject indicates an expected call of GetWorkspaceIdForObject.
-func (mr *MockServiceMockRecorder) GetWorkspaceIdForObject(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkspaceIdForObject", reflect.TypeOf((*MockService)(nil).GetWorkspaceIdForObject), arg0, arg1)
 }
 
 // Init mocks base method.

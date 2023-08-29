@@ -9,13 +9,13 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
-
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
 	source "github.com/anyproto/anytype-heart/core/block/source"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 	pb "github.com/anyproto/anytype-heart/pb"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.
@@ -115,7 +115,7 @@ func (mr *MockServiceMockRecorder) NewSource(arg0, arg1, arg2, arg3 interface{})
 }
 
 // NewStaticSource mocks base method.
-func (m *MockService) NewStaticSource(arg0 string, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
+func (m *MockService) NewStaticSource(arg0 domain.FullID, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewStaticSource", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(source.SourceWithType)
@@ -273,6 +273,20 @@ func (m *MockSource) ReadOnly() bool {
 func (mr *MockSourceMockRecorder) ReadOnly() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadOnly", reflect.TypeOf((*MockSource)(nil).ReadOnly))
+}
+
+// SpaceID mocks base method.
+func (m *MockSource) SpaceID() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SpaceID")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// SpaceID indicates an expected call of SpaceID.
+func (mr *MockSourceMockRecorder) SpaceID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SpaceID", reflect.TypeOf((*MockSource)(nil).SpaceID))
 }
 
 // Type mocks base method.

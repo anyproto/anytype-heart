@@ -423,6 +423,7 @@ func newFixture(t *testing.T) *fixture {
 
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(smartblock.SmartBlockTypePage)
+	source.EXPECT().SpaceID().Return("space1").AnyTimes()
 
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().Name().Return(objectstore.CName).AnyTimes()
@@ -487,6 +488,7 @@ func (p *creationInfoProvider) GetCreationInfo() (creator string, createdDate in
 }
 
 func (p *creationInfoProvider) Id() string                                { return "" }
+func (p *creationInfoProvider) SpaceID() string                           { return "" }
 func (p *creationInfoProvider) Type() smartblock.SmartBlockType           { return 0 }
 func (p *creationInfoProvider) Heads() []string                           { return nil }
 func (p *creationInfoProvider) GetFileKeysSnapshot() []*pb.ChangeFileKeys { return nil }

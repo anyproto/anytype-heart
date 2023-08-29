@@ -6,11 +6,14 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-	mock "github.com/stretchr/testify/mock"
+	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
+
+	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
-	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	core "github.com/anyproto/anytype-heart/pkg/lib/core"
+
+	mock "github.com/stretchr/testify/mock"
+
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
@@ -271,59 +274,6 @@ func (_c *MockService_EnsurePredefinedBlocks_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// GetAllWorkspaces provides a mock function with given fields:
-func (_m *MockService) GetAllWorkspaces() ([]string, error) {
-	ret := _m.Called()
-
-	var r0 []string
-	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]string, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() []string); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetAllWorkspaces_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllWorkspaces'
-type MockService_GetAllWorkspaces_Call struct {
-	*mock.Call
-}
-
-// GetAllWorkspaces is a helper method to define mock.On call
-func (_e *MockService_Expecter) GetAllWorkspaces() *MockService_GetAllWorkspaces_Call {
-	return &MockService_GetAllWorkspaces_Call{Call: _e.mock.On("GetAllWorkspaces")}
-}
-
-func (_c *MockService_GetAllWorkspaces_Call) Run(run func()) *MockService_GetAllWorkspaces_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockService_GetAllWorkspaces_Call) Return(_a0 []string, _a1 error) *MockService_GetAllWorkspaces_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockService_GetAllWorkspaces_Call) RunAndReturn(run func() ([]string, error)) *MockService_GetAllWorkspaces_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetSystemRelationID provides a mock function with given fields: spaceID, relationKey
 func (_m *MockService) GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string {
 	ret := _m.Called(spaceID, relationKey)
@@ -406,59 +356,6 @@ func (_c *MockService_GetSystemTypeID_Call) Return(_a0 string) *MockService_GetS
 }
 
 func (_c *MockService_GetSystemTypeID_Call) RunAndReturn(run func(string, bundle.TypeKey) string) *MockService_GetSystemTypeID_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetWorkspaceIdForObject provides a mock function with given fields: spaceID, objectID
-func (_m *MockService) GetWorkspaceIdForObject(spaceID string, objectID string) (string, error) {
-	ret := _m.Called(spaceID, objectID)
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string) (string, error)); ok {
-		return rf(spaceID, objectID)
-	}
-	if rf, ok := ret.Get(0).(func(string, string) string); ok {
-		r0 = rf(spaceID, objectID)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(spaceID, objectID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetWorkspaceIdForObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkspaceIdForObject'
-type MockService_GetWorkspaceIdForObject_Call struct {
-	*mock.Call
-}
-
-// GetWorkspaceIdForObject is a helper method to define mock.On call
-//   - spaceID string
-//   - objectID string
-func (_e *MockService_Expecter) GetWorkspaceIdForObject(spaceID interface{}, objectID interface{}) *MockService_GetWorkspaceIdForObject_Call {
-	return &MockService_GetWorkspaceIdForObject_Call{Call: _e.mock.On("GetWorkspaceIdForObject", spaceID, objectID)}
-}
-
-func (_c *MockService_GetWorkspaceIdForObject_Call) Run(run func(spaceID string, objectID string)) *MockService_GetWorkspaceIdForObject_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockService_GetWorkspaceIdForObject_Call) Return(_a0 string, _a1 error) *MockService_GetWorkspaceIdForObject_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockService_GetWorkspaceIdForObject_Call) RunAndReturn(run func(string, string) (string, error)) *MockService_GetWorkspaceIdForObject_Call {
 	_c.Call.Return(run)
 	return _c
 }

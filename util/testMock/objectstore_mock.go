@@ -10,13 +10,12 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
-
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockObjectStore is a mock of ObjectStore interface.
@@ -169,21 +168,6 @@ func (m *MockObjectStore) GetChecksums() (*model.ObjectStoreChecksums, error) {
 func (mr *MockObjectStoreMockRecorder) GetChecksums() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChecksums", reflect.TypeOf((*MockObjectStore)(nil).GetChecksums))
-}
-
-// GetCurrentWorkspaceID mocks base method.
-func (m *MockObjectStore) GetCurrentWorkspaceID() (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCurrentWorkspaceID")
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetCurrentWorkspaceID indicates an expected call of GetCurrentWorkspaceID.
-func (mr *MockObjectStoreMockRecorder) GetCurrentWorkspaceID() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentWorkspaceID", reflect.TypeOf((*MockObjectStore)(nil).GetCurrentWorkspaceID))
 }
 
 // GetDetails mocks base method.
@@ -431,20 +415,6 @@ func (mr *MockObjectStoreMockRecorder) QueryRaw(arg0, arg1, arg2 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRaw", reflect.TypeOf((*MockObjectStore)(nil).QueryRaw), arg0, arg1, arg2)
 }
 
-// RemoveCurrentWorkspaceID mocks base method.
-func (m *MockObjectStore) RemoveCurrentWorkspaceID() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveCurrentWorkspaceID")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RemoveCurrentWorkspaceID indicates an expected call of RemoveCurrentWorkspaceID.
-func (mr *MockObjectStoreMockRecorder) RemoveCurrentWorkspaceID() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveCurrentWorkspaceID", reflect.TypeOf((*MockObjectStore)(nil).RemoveCurrentWorkspaceID))
-}
-
 // RemoveIDsFromFullTextQueue mocks base method.
 func (m *MockObjectStore) RemoveIDsFromFullTextQueue(arg0 []string) {
 	m.ctrl.T.Helper()
@@ -526,20 +496,6 @@ func (m *MockObjectStore) SaveLastIndexedHeadsHash(arg0, arg1 string) error {
 func (mr *MockObjectStoreMockRecorder) SaveLastIndexedHeadsHash(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).SaveLastIndexedHeadsHash), arg0, arg1)
-}
-
-// SetCurrentWorkspaceID mocks base method.
-func (m *MockObjectStore) SetCurrentWorkspaceID(arg0 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetCurrentWorkspaceID", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetCurrentWorkspaceID indicates an expected call of SetCurrentWorkspaceID.
-func (mr *MockObjectStoreMockRecorder) SetCurrentWorkspaceID(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCurrentWorkspaceID", reflect.TypeOf((*MockObjectStore)(nil).SetCurrentWorkspaceID), arg0)
 }
 
 // StoreSpaceID mocks base method.

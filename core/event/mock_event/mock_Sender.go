@@ -4,6 +4,7 @@ package mock_event
 
 import (
 	app "github.com/anyproto/any-sync/app"
+
 	mock "github.com/stretchr/testify/mock"
 
 	pb "github.com/anyproto/anytype-heart/pb"
