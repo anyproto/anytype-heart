@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	DefaultWidgetFavorite = "favorite"
-	DefaultWidgetSet      = "set"
-	DefaultWidgetRecent   = "recent"
-	WidgetCollection      = "collection"
+	DefaultWidgetFavorite   = "favorite"
+	DefaultWidgetSet        = "set"
+	DefaultWidgetRecent     = "recent"
+	DefaultWidgetCollection = "collection"
 )
 
 type Widget interface {
@@ -30,26 +30,30 @@ type ImportWidgetFlags struct {
 	ImportCollection bool
 }
 
+func (w *ImportWidgetFlags) IsEmpty() bool {
+	return !w.ImportCollection && !w.ImportSet
+}
+
+func FillImportFlags(link *model.BlockContentLink, widgetFlags *ImportWidgetFlags) bool {
+	var builtinWidget bool
+	if link.TargetBlockId == DefaultWidgetSet {
+		widgetFlags.ImportSet = true
+		builtinWidget = true
+	}
+	if link.TargetBlockId == DefaultWidgetCollection {
+		widgetFlags.ImportCollection = true
+		builtinWidget = true
+	}
+	return builtinWidget
+}
+
 func IsPredefinedWidgetTargetId(targetID string) bool {
 	switch targetID {
-	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecent, WidgetCollection:
+	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecent, DefaultWidgetCollection:
 		return true
 	default:
 		return false
 	}
-}
-
-func FillImportFlags(link *model.BlockContentLink, objectTypesToImport *ImportWidgetFlags) bool {
-	var builtinWidget bool
-	if link.TargetBlockId == DefaultWidgetSet {
-		objectTypesToImport.ImportSet = true
-		builtinWidget = true
-	}
-	if link.TargetBlockId == WidgetCollection {
-		objectTypesToImport.ImportCollection = true
-		builtinWidget = true
-	}
-	return builtinWidget
 }
 
 func NewWidget(sb smartblock.SmartBlock) Widget {

@@ -438,18 +438,18 @@ func (p *Pb) shouldReturnError(req *pb.RpcObjectImportRequest, allErrors *conver
 func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *converter.Snapshot, oldToNewID map[string]string) (*converter.Snapshot, error) {
 	var (
 		rootObjects         []string
-		objectsTypeToImport widgets.ImportWidgetFlags
+		widgetFlags         widgets.ImportWidgetFlags
 		objectsNotInWidgets []*converter.Snapshot
 	)
 	if widget != nil {
-		objectsTypeToImport, rootObjects = p.getObjectsFromWidgets(widget, oldToNewID)
+		widgetFlags, rootObjects = p.getObjectsFromWidgets(widget, oldToNewID)
 		objectsNotInWidgets = lo.Filter(allObjects, func(item *converter.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
 	}
-	if objectsTypeToImport.ImportCollection || objectsTypeToImport.ImportSet || len(rootObjects) > 0 {
+	if !widgetFlags.IsEmpty() || len(rootObjects) > 0 {
 		// add to root collection only objects from widgets, dashboard and favorites
-		rootObjects = append(rootObjects, p.filterObjects(objectsTypeToImport, objectsNotInWidgets)...)
+		rootObjects = append(rootObjects, p.filterObjects(widgetFlags, objectsNotInWidgets)...)
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
 		rootObjects = lo.FilterMap(allObjects, func(item *converter.Snapshot, index int) (string, bool) {

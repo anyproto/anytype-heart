@@ -3,14 +3,6 @@ package pb
 import (
 	"archive/zip"
 	"bufio"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -20,11 +12,19 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func Test_GetSnapshotsSuccess(t *testing.T) {
@@ -423,7 +423,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 							Id: "widgetID",
 							Content: &model.BlockContentOfLink{
 								Link: &model.BlockContentLink{
-									TargetBlockId: widget.WidgetCollection,
+									TargetBlockId: widget.DefaultWidgetCollection,
 								},
 							},
 						},
