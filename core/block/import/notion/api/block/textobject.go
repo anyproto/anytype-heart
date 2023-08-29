@@ -22,7 +22,7 @@ const (
 )
 
 type ChildrenMapper interface {
-	MapChildren(req *api.NotionImportContext, pageId string) *MapResponse
+	MapChildren(req *api.NotionImportContext, pageID string) *MapResponse
 }
 
 type TextObject struct {
@@ -261,7 +261,7 @@ type TextObjectWithChildren struct {
 	Children []interface{} `json:"children"`
 }
 
-func (t *TextObjectWithChildren) MapChildren(req *api.NotionImportContext, pageId string) *MapResponse {
-	resp := MapBlocks(req, t.Children, pageId)
+func (t *TextObjectWithChildren) MapChildren(req *api.NotionImportContext, pageID string) *MapResponse {
+	resp := MapBlocks(req, t.Children, pageID)
 	return resp
 }

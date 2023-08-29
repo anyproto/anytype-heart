@@ -123,13 +123,13 @@ func (ds *Service) fillImportContext(d Database, req *api.NotionImportContext, i
 	req.NotionDatabaseIdsToAnytype[d.ID] = id
 	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	if d.Parent.DatabaseID != "" {
-		req.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
+		req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
 	}
 	if d.Parent.PageID != "" {
-		req.ParentPageToChildIDs[d.Parent.PageID] = append(req.ParentPageToChildIDs[d.Parent.PageID], d.ID)
+		req.PageTree.ParentPageToChildIDs[d.Parent.PageID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.PageID], d.ID)
 	}
 	if d.Parent.BlockID != "" {
-		req.ParentPageToChildIDs[d.Parent.BlockID] = append(req.ParentPageToChildIDs[d.Parent.BlockID], d.ID)
+		req.PageTree.ParentPageToChildIDs[d.Parent.BlockID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.BlockID], d.ID)
 	}
 }
 
@@ -379,7 +379,7 @@ func (ds *Service) getAnytypeIDForRootCollection(notionContext *api.NotionImport
 
 	// If page with parent block is absent, we add child page to root collection
 	if parent.BlockID != "" {
-		if _, ok := notionContext.ParentBlockToPage[parent.BlockID]; !ok {
+		if _, ok := notionContext.BlockToPage.ParentBlockToPage[parent.BlockID]; !ok {
 			if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
 				return anytypeID
 			}

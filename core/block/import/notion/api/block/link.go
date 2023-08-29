@@ -246,7 +246,7 @@ func getTargetBlock(importContext *api.NotionImportContext, pageIDToName, notion
 	)
 
 	findByPageAndTitle := func(pageID, title string) string {
-		if childIDs, exist := importContext.ReadParentPageToChildIDsMap(pageID); exist {
+		if childIDs, exist := importContext.PageTree.Get(pageID); exist {
 			for childIdx, childID := range childIDs {
 				if pageName, pageExist := pageIDToName[childID]; pageExist && pageName == title {
 					if targetBlockID, ok = notionIDsToAnytype[childID]; !ok {
@@ -257,7 +257,7 @@ func getTargetBlock(importContext *api.NotionImportContext, pageIDToName, notion
 					break
 				}
 			}
-			importContext.WriteToParentPageToChildIDsMap(pageID, childIDs)
+			importContext.PageTree.Set(pageID, childIDs)
 		}
 
 		return targetBlockID
@@ -267,7 +267,7 @@ func getTargetBlock(importContext *api.NotionImportContext, pageIDToName, notion
 	if parentBlockID != "" {
 		targetBlockID = findByPageAndTitle(parentBlockID, title)
 		if targetBlockID != "" {
-			importContext.WriteToParentBlockToPageMap(parentBlockID, pageID)
+			importContext.BlockToPage.Set(parentBlockID, pageID)
 			return targetBlockID, nil
 		}
 	}

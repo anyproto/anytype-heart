@@ -15,11 +15,11 @@ type ParagraphBlock struct {
 	Paragraph TextObjectWithChildren `json:"paragraph"`
 }
 
-func (p *ParagraphBlock) GetBlocks(req *api.NotionImportContext, pageId string) *MapResponse {
+func (p *ParagraphBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if p.HasChildren {
 		mapper := ChildrenMapper(&p.Paragraph)
-		childResp = mapper.MapChildren(req, pageId)
+		childResp = mapper.MapChildren(req, pageID)
 	}
 	childID := getChildID(childResp)
 	resp := p.Paragraph.GetTextBlocks(model.BlockContentText_Paragraph, childID, req)

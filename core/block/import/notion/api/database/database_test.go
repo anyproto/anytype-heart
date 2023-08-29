@@ -299,10 +299,14 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 page was in Notion workspace, 1 page is a child in block, 1 page is in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
+		pt := api.NewPageTree()
+		pt.ParentPageToChildIDs = map[string][]string{"blockID": {"id2"}}
+		bp := api.NewBlockToPage()
+		bp.ParentBlockToPage = map[string]string{"blockID": "id3"}
 		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
-			ParentPageToChildIDs:   map[string][]string{"blockID": {"id2"}},
-			ParentBlockToPage:      map[string]string{"blockID": "id3"},
+			PageTree:               pt,
+			BlockToPage:            bp,
 		}
 		notionPages := []page.Page{
 			{
@@ -336,9 +340,12 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 page was in Notion workspace, 1 page is a child in block, but parent page is absent - 2 pages are in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
+		pt := api.NewPageTree()
+		pt.ParentPageToChildIDs = map[string][]string{"blockID": {"id2"}}
 		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
-			ParentPageToChildIDs:   map[string][]string{"blockID": {"id2"}},
+			PageTree:               pt,
+			BlockToPage:            api.NewBlockToPage(),
 		}
 		notionPages := []page.Page{
 			{
