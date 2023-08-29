@@ -478,11 +478,7 @@ func TestShortenValueOnN(t *testing.T) {
 }
 
 func BenchmarkShorten(b *testing.B) {
-	value := pbtypes.Struct(&types.Struct{Fields: map[string]*types.Value{
-		"name":    pbtypes.String(strings.Repeat("Leo", 50)),
-		"surname": pbtypes.String(strings.Repeat("Tolstoy", 50)),
-		"books":   pbtypes.StringList([]string{strings.Repeat("War And Peace", 50), "Anna Karenina", strings.Repeat("Youth", 100), "After the Ball"}),
-	}})
+	value := pbtypes.StringList([]string{strings.Repeat("War And Peace", 50), "Anna Karenina", strings.Repeat("Youth", 100), "After the Ball"})
 	for i := 0; i < b.N; i++ {
 		_, _ = shortenValueByN(value, 600)
 	}
