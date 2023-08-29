@@ -869,7 +869,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	sb.updateBackLinks(details)
-	hasPendingLocalDetails := sb.updatePendingDetails(details)
+	details, hasPendingLocalDetails := sb.appendPendingDetails(details)
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
@@ -921,7 +921,7 @@ func (sb *smartBlock) updateBackLinks(details *types.Struct) {
 	details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
 }
 
-func (sb *smartBlock) updatePendingDetails(details *types.Struct) (hasPendingLocalDetails bool) {
+func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails *types.Struct, hasPendingLocalDetails bool) {
 	// Consume pending details
 	err := sb.objectStore.UpdatePendingLocalDetails(sb.Id(), func(pending *types.Struct) (*types.Struct, error) {
 		if len(pending.GetFields()) > 0 {
@@ -934,7 +934,7 @@ func (sb *smartBlock) updatePendingDetails(details *types.Struct) (hasPendingLoc
 		log.With("objectID", sb.Id()).
 			With("sbType", sb.Type()).Errorf("failed to update pending details: %v", err)
 	}
-	return hasPendingLocalDetails
+	return details, hasPendingLocalDetails
 }
 
 func (sb *smartBlock) injectCreationInfo(s *state.State) error {
