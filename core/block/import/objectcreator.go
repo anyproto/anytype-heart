@@ -2,7 +2,6 @@ package importer
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"sync"
 
@@ -335,7 +334,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 		}
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
-			return fmt.Errorf("common operations is not allowed for this object")
+			return nil
 		}
 		err = commonOperations.FeaturedRelationAdd(nil, bundle.RelationKeyType.String())
 		if err != nil {

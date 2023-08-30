@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -307,7 +308,7 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 	newFile := filepath.Join(tempDir, baseName)
 	tmpFile, err := os.Create(newFile)
 	if err != nil {
-		log.Errorf("failed to create file: %s", err.Error())
+		log.Errorf("failed to create file: %s", oserror.TransformError(err).Error())
 		return
 	}
 	defer tmpFile.Close()
@@ -315,7 +316,6 @@ func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map
 	shortPath := f.Name
 	targetFile, found := files[shortPath]
 	if !found {
-		log.Errorf("file not found")
 		return
 	}
 	defer targetFile.Close()

@@ -56,11 +56,11 @@ func (ou *ObjectIDGetter) Get(
 	ctx context.Context,
 	spaceID string,
 	sn *converter.Snapshot,
-	sbType sb.SmartBlockType,
 	createdTime time.Time,
 	getExisting bool,
 	oldToNewIDs map[string]string,
 ) (string, treestorage.TreeStorageCreatePayload, error) {
+	sbType := sn.SbType
 	if sbType == sb.SmartBlockTypeWorkspace {
 		workspaceID := ou.core.PredefinedObjects(spaceID).Workspace
 		return workspaceID, treestorage.TreeStorageCreatePayload{}, nil

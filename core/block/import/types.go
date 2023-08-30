@@ -10,12 +10,10 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/pb"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 // Importer incapsulate logic with import
@@ -37,5 +35,5 @@ type Creator interface {
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx context.Context, spaceID string, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool, oldIDToNew map[string]string) (string, treestorage.TreeStorageCreatePayload, error)
+	Get(ctx context.Context, spaceID string, cs *converter.Snapshot, createdTime time.Time, updateExisting bool) (string, treestorage.TreeStorageCreatePayload, error)
 }
