@@ -53,12 +53,10 @@ func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, s
 }
 
 func (ou *ObjectIDGetter) Get(
-	ctx context.Context,
 	spaceID string,
 	sn *converter.Snapshot,
 	createdTime time.Time,
 	getExisting bool,
-	oldToNewIDs map[string]string,
 ) (string, treestorage.TreeStorageCreatePayload, error) {
 	sbType := sn.SbType
 	if sbType == sb.SmartBlockTypeWorkspace {

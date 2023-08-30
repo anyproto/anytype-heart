@@ -328,7 +328,7 @@ func (i *Import) getObjectID(
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(ctx, spaceID, snapshot, createdTime, updateExisting); err == nil {
+	if id, payload, err = i.objectIDGetter.Get(spaceID, snapshot, createdTime, updateExisting); err == nil {
 		oldIDToNew[snapshot.Id] = id
 		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
 			oldIDToNew[snapshot.Id] = snapshot.Id
