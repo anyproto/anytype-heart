@@ -236,21 +236,20 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	return
 }
 
-func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) (r DataviewRestrictions) {
-	// TODO What is happening here?
-	r = dataviewRestrictionsBySBType[smartblock.SmartBlockTypeSubObject]
+func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictions {
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
 		if lo.Contains(bundle.InternalTypes, bundle.TypeKey(key)) {
-			return append(r.Copy(), model.RestrictionsDataviewRestrictions{
-				BlockId:      DataviewBlockId,
-				Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
-			})
+			return DataviewRestrictions{
+				model.RestrictionsDataviewRestrictions{
+					BlockId:      DataviewBlockId,
+					Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
+				},
+			}
 		}
 	case smartblock.SmartBlockTypeRelation:
 		// should we handle this?
 	}
-
-	return
+	return nil
 }

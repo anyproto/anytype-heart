@@ -22,9 +22,12 @@ import (
 )
 
 type snapshotOptions struct {
-	changeId string
-	// TODO Rename!
-	migrateUniqueKeys smartblock.SmartBlockType // set >0 to migrate unique keys
+	changeId           string
+	uniqueKeyMigration *uniqueKeyMigration
+}
+
+type uniqueKeyMigration struct {
+	sbType smartblock.SmartBlockType
 }
 
 type SnapshotOption func(*snapshotOptions)
@@ -36,9 +39,14 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 	}
 }
 
+// WithUniqueKeyMigration tries to extract unique key from id of supported legacy objects.
+// For example, legacy object type has id "ot-page", so unique key will be "ot-page".
+// The full list of supported objects you can see in documentation near domain.UniqueKey
 func WithUniqueKeyMigration(sbType smartblock.SmartBlockType) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
-		o.migrateUniqueKeys = sbType
+		o.uniqueKeyMigration = &uniqueKeyMigration{
+			sbType: sbType,
+		}
 	}
 }
 
@@ -72,8 +80,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		pbtypes.NormalizeStruct(detailsToSave)
 	}
 
-	if sOpts.migrateUniqueKeys > 0 {
-		migrateAddMissingUniqueKey(sOpts.migrateUniqueKeys, snapshot)
+	if sOpts.uniqueKeyMigration != nil {
+		migrateAddMissingUniqueKey(sOpts.uniqueKeyMigration.sbType, snapshot)
 	}
 
 	s := &State{
