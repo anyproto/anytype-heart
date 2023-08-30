@@ -72,5 +72,5 @@ func (p *Converter) getParams(params pb.IsRpcObjectImportRequestParams) (string,
 	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfBookmarksParams); ok {
 		return p.BookmarksParams.GetUrl(), nil
 	}
-	return "", fmt.Errorf("PB: GetParams wrong parameters format")
+	return "", fmt.Errorf("PB: getParams wrong parameters format")
 }
