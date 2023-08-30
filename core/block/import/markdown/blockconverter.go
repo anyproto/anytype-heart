@@ -38,21 +38,17 @@ func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath, mode string) (map[string]*FileInfo, *ce.ConvertError) {
+func (m *mdConverter) markdownToBlocks(importPath, mode string, importSource source.Source) (map[string]*FileInfo, *ce.ConvertError) {
 	allErrors := ce.NewError()
-	files := m.processFiles(importPath, mode, allErrors)
+	files := m.processFiles(importPath, mode, allErrors, importSource)
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
 
 	return files, allErrors
 }
 
-func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce.ConvertError, importSource source.Source) map[string]*FileInfo {
 	fileInfo := make(map[string]*FileInfo, 0)
-	s := source.GetSource(importPath)
-	if s == nil {
-		return nil
-	}
 	supportedExtensions := []string{".md", ".csv"}
 	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 	videoFormats := []string{".mp4", ".m4v"}
@@ -61,14 +57,14 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce
 	supportedExtensions = append(supportedExtensions, videoFormats...)
 	supportedExtensions = append(supportedExtensions, imageFormats...)
 	supportedExtensions = append(supportedExtensions, audioFormats...)
-	readers, err := s.GetFileReaders(importPath, supportedExtensions, nil)
+	readers, err := importSource.GetFileReaders(importPath, supportedExtensions, nil)
 	if err != nil {
 		allErrors.Add(err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
 			return nil
 		}
 	}
-	if len(readers) == 0 {
+	if source.CountFilesWithGivenExtension(readers, ".md") == 0 {
 		allErrors.Add(ce.ErrNoObjectsToImport)
 		return nil
 	}

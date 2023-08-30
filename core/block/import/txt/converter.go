@@ -50,7 +50,7 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	snapshots, targetObjects, cancelError := t.getSnapshotsForImport(req, progress, paths, cErr)
+	snapshots, targetObjects, cancelError := t.getSnapshots(req, progress, paths, cErr)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -77,7 +77,7 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}, cErr
 }
 
-func (t *TXT) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
+func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	paths []string,
 	cErr *converter.ConvertError) ([]*converter.Snapshot, []string, *converter.ConvertError) {
@@ -102,12 +102,13 @@ func (t *TXT) getSnapshotsForImport(req *pb.RpcObjectImportRequest,
 }
 
 func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
-	s := source.GetSource(p)
-	if s == nil {
+	importSource := source.GetSource(p)
+	if importSource == nil {
 		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
 	}
 
-	readers, err := s.GetFileReaders(p, []string{".txt"}, nil)
+	defer importSource.Close()
+	readers, err := importSource.GetFileReaders(p, []string{".txt"}, nil)
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
@@ -119,7 +120,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 	snapshots := make([]*converter.Snapshot, 0, len(readers))
 	targetObjects := make([]string, 0, len(readers))
 	for name, rc := range readers {
-		blocks, err := t.getBlocksForFile(rc)
+		blocks, err := t.getBlocksForSnapshot(rc)
 		if err != nil {
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil, err
@@ -133,7 +134,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 	return snapshots, targetObjects, nil
 }
 
-func (t *TXT) getBlocksForFile(rc io.ReadCloser) ([]*model.Block, error) {
+func (t *TXT) getBlocksForSnapshot(rc io.ReadCloser) ([]*model.Block, error) {
 	defer rc.Close()
 	b, err := io.ReadAll(rc)
 	if err != nil {

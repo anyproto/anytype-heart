@@ -63,12 +63,11 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	snapshots, targetObjects, cancelError := h.getSnapshotsForImport(req, progress, path, cErr)
+	snapshots, targetObjects, cancelError := h.getSnapshots(req, progress, path, cErr)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
-	if (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
-		(cErr.IsNoObjectToImportError(len(path))) {
+	if h.shouldReturnError(req, cErr, path) {
 		return nil, cErr
 	}
 
@@ -94,7 +93,12 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	}, cErr
 }
 
-func (h *HTML) getSnapshotsForImport(req *pb.RpcObjectImportRequest, progress process.Progress, path []string, cErr *converter.ConvertError) ([]*converter.Snapshot, []string, *converter.ConvertError) {
+func (h *HTML) shouldReturnError(req *pb.RpcObjectImportRequest, cErr *converter.ConvertError, path []string) bool {
+	return (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
+		(cErr.IsNoObjectToImportError(len(path)))
+}
+
+func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path []string, cErr *converter.ConvertError) ([]*converter.Snapshot, []string, *converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range path {
@@ -116,10 +120,11 @@ func (h *HTML) getSnapshotsForImport(req *pb.RpcObjectImportRequest, progress pr
 }
 
 func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
-	s := source.GetSource(path)
-	if s == nil {
+	importSource := source.GetSource(path)
+	if importSource == nil {
 		return nil, nil, fmt.Errorf("failed to identify source: %s", path)
 	}
+	defer importSource.Close()
 	supportedExtensions := []string{".html"}
 	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 	videoFormats := []string{".mp4", ".m4v"}
@@ -128,12 +133,14 @@ func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode)
 	supportedExtensions = append(supportedExtensions, videoFormats...)
 	supportedExtensions = append(supportedExtensions, imageFormats...)
 	supportedExtensions = append(supportedExtensions, audioFormats...)
-	readers, err := s.GetFileReaders(path, supportedExtensions, nil)
-	defer closeReaders(readers)
+	readers, err := importSource.GetFileReaders(path, supportedExtensions, nil)
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, err
 		}
+	}
+	if source.CountFilesWithGivenExtension(readers, ".html") == 0 {
+		return nil, nil, converter.ErrNoObjectsToImport
 	}
 	snapshots := make([]*converter.Snapshot, 0, len(readers))
 	targetObjects := make([]string, 0, len(readers))
@@ -141,7 +148,7 @@ func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode)
 		if filepath.Ext(name) != ".html" {
 			continue
 		}
-		blocks, err := h.getBlocksForFile(rc, readers, path)
+		blocks, err := h.getBlocksForSnapshot(rc, readers, path)
 		if err != nil {
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				return nil, nil, err
@@ -152,13 +159,10 @@ func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}
-	if len(snapshots) == 0 {
-		return nil, nil, converter.ErrNoObjectsToImport
-	}
 	return snapshots, targetObjects, nil
 }
 
-func (h *HTML) getBlocksForFile(rc io.ReadCloser, files map[string]io.ReadCloser, path string) ([]*model.Block, error) {
+func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, files map[string]io.ReadCloser, path string) ([]*model.Block, error) {
 	defer rc.Close()
 	b, err := io.ReadAll(rc)
 	if err != nil {
@@ -170,26 +174,29 @@ func (h *HTML) getBlocksForFile(rc io.ReadCloser, files map[string]io.ReadCloser
 			if newFileName, err := h.provideFileName(block.GetFile().GetName(), files, path); err == nil {
 				block.GetFile().Name = newFileName
 			} else {
-				log.Error("failed to update file block with new file name: %v", oserror.TransformError(err))
+				log.Errorf("failed to update file block with new file name: %v", oserror.TransformError(err))
 			}
 		}
 		if block.GetText() != nil {
-			h.checkFilesInLinks(block, files, path)
+			h.updateFilesInLinks(block, files, path)
 		}
 	}
 	return blocks, nil
 }
 
-func (h *HTML) checkFilesInLinks(block *model.Block, files map[string]io.ReadCloser, path string) {
+func (h *HTML) updateFilesInLinks(block *model.Block, files map[string]io.ReadCloser, path string) {
 	marks := block.GetText().GetMarks().GetMarks()
 	for _, mark := range marks {
 		if mark.Type == model.BlockContentTextMark_Link {
-			if newFileName, err := h.provideFileName(mark.Param, files, path); err == nil {
+			var (
+				err         error
+				newFileName string
+			)
+			if newFileName, err = h.provideFileName(mark.Param, files, path); err == nil {
 				mark.Param = newFileName
 				continue
-			} else {
-				log.Error("failed to update link block with new file name: %v", oserror.TransformError(err))
 			}
+			log.Errorf("failed to update link block with new file name: %v", oserror.TransformError(err))
 		}
 	}
 }
@@ -215,19 +222,18 @@ func (h *HTML) provideFileName(fileName string, files map[string]io.ReadCloser, 
 		return fileName, nil
 	}
 	// first try to check if file exist on local machine
-	if _, err := os.Stat(fileName); err == nil {
-		return fileName, nil
+	absolutePath := fileName
+	if !filepath.IsAbs(fileName) {
+		absolutePath = filepath.Join(path, fileName)
 	}
-	// second try to check if file exist in provided directory
-	absolutePath := filepath.Join(path, fileName)
 	if _, err := os.Stat(absolutePath); err == nil {
 		return absolutePath, nil
 	}
-	// third case for archive, when file is inside zip archive
+	// second case for archive, when file is inside zip archive
 	if rc, ok := files[fileName]; ok {
 		return h.extractFileFromArchiveToTempDirectory(fileName, rc)
 	}
-	return fileName, nil
+	return "", nil
 }
 
 func (h *HTML) extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser) (string, error) {
@@ -257,12 +263,4 @@ func (h *HTML) extractFileFromArchiveToTempDirectory(fileName string, rc io.Read
 		return "", err
 	}
 	return pathToTmpFile, nil
-}
-
-func closeReaders(readers map[string]io.ReadCloser) {
-	for name, rc := range readers {
-		if filepath.Ext(name) != ".html" {
-			rc.Close()
-		}
-	}
 }
