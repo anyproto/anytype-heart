@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"strings"
 )
 
 const (
@@ -60,7 +61,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 	if e != nil || params == nil {
 		return nil, converter.NewFromError(fmt.Errorf("wrong parameters"))
 	}
-	allSnapshots, widgetSnapshot, allErrors := p.getSnapshots(req, progress, params.GetPath(), req.IsMigration)
+	allSnapshots, widgetSnapshot, allErrors := p.getSnapshots(req.SpaceId, req, progress, params.GetPath(), req.IsMigration)
 	oldToNewID := p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
 	p.updateDetails(allSnapshots)
 	if p.shouldReturnError(req, allErrors, params) {
@@ -255,7 +256,10 @@ func (p *Pb) makeSnapshot(spaceID string, name, profileID, path string, file io.
 		return nil, nil
 	}
 	id := uuid.New().String()
-	id = p.normalizeSnapshot(snapshot, id, profileID, isMigration)
+	id, err := p.normalizeSnapshot(spaceID, snapshot, id, profileID, isMigration)
+	if err != nil {
+		return nil, fmt.Errorf("normalize snapshot: %w", err)
+	}
 	p.injectImportDetails(name, path, snapshot)
 	return &converter.Snapshot{
 		Id:       id,
@@ -285,7 +289,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 	return snapshot, nil
 }
 
-func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profileID string, isMigration bool) string {
+func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id string, profileID string, isMigration bool) (string, error) {
 	if _, ok := model.SmartBlockType_name[int32(snapshot.SbType)]; !ok {
 		newSbType := model.SmartBlockType_Page
 		if int32(snapshot.SbType) == 96 { // fallback for objectType smartblocktype
@@ -303,7 +307,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profile
 		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relationOption.String() {
 			snapshot.SbType = model.SmartBlockType_Page
 		} else {
-			return nil, fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
+			return "", fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
 		}
 	}
 
@@ -314,7 +318,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profile
 	if snapshot.SbType == model.SmartBlockType_Page {
 		p.cleanupEmptyBlock(snapshot)
 	}
-	return id
+	return id, nil
 }
 
 // getIDForSubObject preserves original id from snapshot for relations and object types
@@ -456,8 +460,37 @@ func (p *Pb) shouldReturnError(req *pb.RpcObjectImportRequest, allErrors *conver
 		allErrors.IsNoObjectToImportError(len(params.GetPath()))
 }
 
-// cleanupEmptyBlockMigration is fixing existing pages, imported from Notion
-func (p *Pb) cleanupEmptyBlock(snapshot *pb.SnapshotWithType) {
+func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *converter.Snapshot, oldToNewID map[string]string) (*converter.Snapshot, error) {
+	var (
+		rootObjects         []string
+		widgetFlags         widgets.ImportWidgetFlags
+		objectsNotInWidgets []*converter.Snapshot
+	)
+	if widget != nil {
+		widgetFlags, rootObjects = p.getObjectsFromWidgets(widget, oldToNewID)
+		objectsNotInWidgets = lo.Filter(allObjects, func(item *converter.Snapshot, index int) bool {
+			return !lo.Contains(rootObjects, item.Id)
+		})
+	}
+	if !widgetFlags.IsEmpty() || len(rootObjects) > 0 {
+		// add to root collection only objects from widgets, dashboard and favorites
+		rootObjects = append(rootObjects, p.filterObjects(widgetFlags, objectsNotInWidgets)...)
+	} else {
+		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
+		rootObjects = lo.FilterMap(allObjects, func(item *converter.Snapshot, index int) (string, bool) {
+			if item.SbType != smartblock.SmartBlockTypeSubObject && item.SbType != smartblock.SmartBlockTypeTemplate {
+				return item.Id, true
+			}
+			return item.Id, false
+		})
+	}
+	rootCollection := converter.NewRootCollection(p.service)
+	rootCol, colErr := rootCollection.MakeRootCollection(rootCollectionName, rootObjects)
+	return rootCol, colErr
+}
+
+func (p *Pb) getObjectsFromWidgets(widgetSnapshot *converter.Snapshot, oldToNewID map[string]string) (widgets.ImportWidgetFlags, []string) {
+	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot).(*state.State)
 	var (
 		objectsInWidget     []string
 		objectTypesToImport widgets.ImportWidgetFlags
