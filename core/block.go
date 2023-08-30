@@ -366,7 +366,7 @@ func (mw *Middleware) ObjectListDelete(cctx context.Context, req *pb.RpcObjectLi
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DeleteArchivedObjects(*req)
+		return bs.DeleteArchivedObjects(req.ObjectIds)
 	})
 	if err != nil {
 		return response(pb.RpcObjectListDeleteResponseError_UNKNOWN_ERROR, err)

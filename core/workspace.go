@@ -2,8 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -203,13 +201,11 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 		return m
 	}
 
-	resp := mw.ObjectListDelete(cctx, &pb.RpcObjectListDeleteRequest{
-		ObjectIds: req.ObjectIds,
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.DeleteArchivedObjects(req.ObjectIds)
 	})
-
-	if resp.Error != nil {
-		return response([]string{}, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to delete objects: %s", resp.Error.Description))
+	if err != nil {
+		return response([]string{}, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, err)
 	}
-
 	return response(req.ObjectIds, 0, nil)
 }

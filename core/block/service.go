@@ -718,9 +718,9 @@ func (s *Service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) e
 		if err != nil {
 			log.Errorf("failed to favorite object %s: %s", id, err)
 			resultError = errors.Join(resultError, err)
-			continue
+		} else {
+			anySucceed = true
 		}
-		anySucceed = true
 	}
 	if resultError != nil {
 		log.Warnf("failed to set objects as favorite: %s", resultError)
@@ -800,15 +800,17 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 	return nil
 }
 
-func (s *Service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) error {
+func (s *Service) DeleteArchivedObjects(objectIDs []string) error {
 	var (
 		resultError error
 		anySucceed  bool
 	)
-	for _, objectID := range req.ObjectIds {
+	for _, objectID := range objectIDs {
 		err := s.DeleteArchivedObject(objectID)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
+		} else {
+			anySucceed = true
 		}
 	}
 	if resultError != nil {
@@ -852,15 +854,16 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
+		err = s.DeleteObject(id)
+		if err != nil {
+			return fmt.Errorf("delete object: %w", err)
+		}
 		if exists, _ := archive.HasObject(id); exists {
-			if err = s.DeleteObject(id); err == nil {
-				err = archive.RemoveObject(id)
-				if err != nil {
-					return err
-				}
+			err = archive.RemoveObject(id)
+			if err != nil {
+				return err
 			}
 		}
-
 		return nil
 	})
 }

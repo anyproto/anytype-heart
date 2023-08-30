@@ -93,7 +93,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	)
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
 		objectTypeKeys = b.ObjectTypeKeys()
-		sbt = coresb.SmartBlockType(b.Type())
+		sbt = b.Type()
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
 		}
