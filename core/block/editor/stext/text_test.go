@@ -1,10 +1,9 @@
 package stext
 
 import (
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/anyproto/anytype-heart/core/session"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -439,6 +439,25 @@ func TestTextImpl_SetText(t *testing.T) {
 			BlockId: "2",
 			Text:    "",
 		}))
+	})
+	t.Run("set text greater than limit", func(t *testing.T) {
+		// given
+		ctx := session.NewContext()
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlock("1", ""))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+			BlockId: "1",
+			Text:    strings.Repeat("a", textSizeLimit+1),
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, strings.Repeat("a", textSizeLimit), sb.NewState().Pick("1").Model().GetText().Text)
 	})
 }
 

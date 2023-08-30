@@ -291,7 +291,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 			Do(func(id string, f func(*types.Struct) (*types.Struct, error)) { hasPendingDetails = false })
 
 		// when
-		result := fx.updatePendingDetails(details)
+		_, result := fx.appendPendingDetails(details)
 
 		// then
 		assert.Equal(t, hasPendingDetails, result)
@@ -304,15 +304,15 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id)
 		details := &types.Struct{Fields: map[string]*types.Value{}}
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).Return(nil).Do(func(id string, f func(*types.Struct) (*types.Struct, error)) {
+		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).Return(nil).Do(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
 			details.Fields[bundle.RelationKeyIsDeleted.String()] = pbtypes.Bool(false)
 		})
 
 		// when
-		_ = fx.updatePendingDetails(details)
+		got, _ := fx.appendPendingDetails(details)
 
 		// then
-		assert.Len(t, details.Fields, 1)
+		assert.Len(t, got.Fields, 1)
 	})
 
 	t.Run("failure on retrieving pending details from the store", func(t *testing.T) {
@@ -324,7 +324,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		details := &types.Struct{}
 
 		// when
-		hasPendingDetails := fx.updatePendingDetails(details)
+		_, hasPendingDetails := fx.appendPendingDetails(details)
 
 		// then
 		assert.False(t, hasPendingDetails)

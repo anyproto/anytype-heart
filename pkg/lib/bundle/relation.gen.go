@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a5e105e9bd88579b2afab6c4f82c8ce19e656deab7d307e11f9e02b78817fa2a"
+const RelationChecksum = "c7541bd1957fc3c8b881288d5fcca1888165bcf46946b1e1522b46e6a93438ac"
 
 type RelationKey string
 
@@ -343,7 +343,7 @@ var (
 		},
 		RelationKeyBacklinks: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_local,
 			Description:      "List of backlinks",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,

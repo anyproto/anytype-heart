@@ -1431,6 +1431,6 @@
     "hidden": true,
     "name": "Backlinks",
     "readonly": false,
-    "source": "derived"
+    "source": "local"
   }
 ]

@@ -23,6 +23,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+const textSizeLimit = 64 * 1024
+
 var setTextApplyInterval = time.Second * 3
 
 type Text interface {
@@ -319,6 +321,12 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 			t.cancelSetTextState()
 		}
 	}()
+
+	if len(req.Text) > textSizeLimit {
+		log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)
+		req.Text = req.Text[:textSizeLimit]
+	}
+
 	// We create new context to avoid sending events to the current session
 	ctx := session.NewChildContext(parentCtx)
 	s := t.newSetTextState(req.BlockId, ctx)
