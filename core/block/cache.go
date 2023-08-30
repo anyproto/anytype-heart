@@ -468,13 +468,6 @@ func CacheOptsWithRemoteLoadDisabled(ctx context.Context) context.Context {
 	})
 }
 
-func CacheOptsSetSpaceID(ctx context.Context, spaceID string) context.Context {
-	return updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
-		opts.spaceId = spaceID
-		return opts
-	})
-}
-
 func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts) context.Context {
 	opts, ok := ctx.Value(optsKey).(cacheOpts)
 	if !ok {

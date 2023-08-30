@@ -218,7 +218,7 @@ func (s *Service) OpenBlock(
 	if err != nil {
 		return nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
-	ob, err := s.getSmartblock(ctx, domain.FullID{
+	ob, err := s.GetObjectWithTimeout(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: id,
 	})
@@ -701,44 +701,34 @@ func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]
 	return res, nil
 }
 
-// SetPagesIsFavorite is deprecated
-func (s *Service) SetPagesIsFavorite(ctx session.Context, req pb.RpcObjectListSetIsFavoriteRequest) error {
-	// TODO Resolve spaceID for each ids
-	return fmt.Errorf("have to be fixed")
-	// return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Home, func(b smartblock.SmartBlock) error {
-	// 	fav, ok := b.(collection.Collection)
-	// 	if !ok {
-	// 		return fmt.Errorf("unexpected home block type: %T", b)
-	// 	}
-	//
-	// 	ids, err := s.objectStore.HasIDs(req.ObjectIds...)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	var merr multierror.Error
-	// 	var anySucceed bool
-	// 	for _, id := range ids {
-	// 		var err error
-	// 		if req.IsFavorite {
-	// 			err = fav.AddObject(id)
-	// 		} else {
-	// 			err = fav.RemoveObject(id)
-	// 		}
-	// 		if err != nil {
-	// 			log.Errorf("failed to favorite object %s: %s", id, err.Error())
-	// 			merr.Errors = append(merr.Errors, err)
-	// 			continue
-	// 		}
-	// 		anySucceed = true
-	// 	}
-	// 	if err := merr.ErrorOrNil(); err != nil {
-	// 		log.Warnf("failed to set objects as favorite: %s", err)
-	// 	}
-	// 	if anySucceed {
-	// 		return nil
-	// 	}
-	// 	return merr.ErrorOrNil()
-	// })
+func (s *Service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error {
+	ids, err := s.objectStore.HasIDs(req.ObjectIds...)
+	if err != nil {
+		return err
+	}
+	var (
+		anySucceed  bool
+		resultError error
+	)
+	for _, id := range ids {
+		err := s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{
+			ContextId:  id,
+			IsFavorite: req.IsFavorite,
+		})
+		if err != nil {
+			log.Errorf("failed to favorite object %s: %s", id, err)
+			resultError = errors.Join(resultError, err)
+			continue
+		}
+		anySucceed = true
+	}
+	if resultError != nil {
+		log.Warnf("failed to set objects as favorite: %s", resultError)
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultError
 }
 
 func (s *Service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
@@ -810,35 +800,24 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 	return nil
 }
 
-func (s *Service) DeleteArchivedObjects(ctx session.Context, req pb.RpcObjectListDeleteRequest) (err error) {
-	// TODO Resolve spaces for each ID
-	return fmt.Errorf("have to be fixed")
-	// return Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Archive, func(b smartblock.SmartBlock) error {
-	// 	archive, ok := b.(collection.Collection)
-	// 	if !ok {
-	// 		return fmt.Errorf("unexpected archive block type: %T", b)
-	// 	}
-	//
-	// 	var merr multierror.Error
-	// 	var anySucceed bool
-	// 	for _, blockId := range req.ObjectIds {
-	// 		if exists, _ := archive.HasObject(blockId); exists {
-	// 			if err = s.DeleteObject(ctx, blockId); err != nil {
-	// 				merr.Errors = append(merr.Errors, err)
-	// 				continue
-	// 			}
-	// 			archive.RemoveObject(blockId)
-	// 			anySucceed = true
-	// 		}
-	// 	}
-	// 	if err := merr.ErrorOrNil(); err != nil {
-	// 		log.Warnf("failed to delete archived objects: %s", err)
-	// 	}
-	// 	if anySucceed {
-	// 		return nil
-	// 	}
-	// 	return merr.ErrorOrNil()
-	// })
+func (s *Service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) error {
+	var (
+		resultError error
+		anySucceed  bool
+	)
+	for _, objectID := range req.ObjectIds {
+		err := s.DeleteArchivedObject(objectID)
+		if err != nil {
+			resultError = errors.Join(resultError, err)
+		}
+	}
+	if resultError != nil {
+		log.Warnf("failed to delete archived objects: %s", resultError)
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultError
 }
 
 func (s *Service) ObjectsDuplicate(ctx context.Context, ids []string) (newIds []string, err error) {
@@ -1008,15 +987,10 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 		// Object not loaded yet
 		return nil, source.ErrObjectNotFound
 	}
-	return s.getSmartblock(ctx, domain.FullID{
+	return s.GetObjectWithTimeout(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,
 	})
-}
-
-// TODO Remove this wrapper
-func (s *Service) getSmartblock(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
-	return s.GetObjectWithTimeout(ctx, id)
 }
 
 func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
