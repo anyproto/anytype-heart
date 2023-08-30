@@ -157,7 +157,6 @@ func (ou *ObjectIDGetter) getExistingObject(spaceID string, sn *converter.Snapsh
 	if err == nil && len(ids) > 0 {
 		return ids[0]
 	}
-	err = nil
 
 	id := sn.Id
 	records, _, err := ou.objectStore.Query(database.Query{

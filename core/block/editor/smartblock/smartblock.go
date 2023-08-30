@@ -334,7 +334,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
-	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), smartblock.SmartBlockType(sb.Type()))
+	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
 	return
 }
 

@@ -129,7 +129,6 @@ type Service struct {
 	anytype             core.Service
 	syncStatus          syncstatus.Service
 	eventSender         event.Sender
-	closed              bool
 	linkPreview         linkpreview.LinkPreview
 	process             process.Service
 	app                 *app.App
@@ -498,6 +497,9 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 			},
 		},
 	})
+	if err != nil {
+		return fmt.Errorf("query bundled templates: %w", err)
+	}
 
 	installedTemplatesIDs, err := s.listInstalledTemplatesForType(spaceID, typeKey)
 	if err != nil {

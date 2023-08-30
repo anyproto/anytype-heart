@@ -376,7 +376,7 @@ func (s *Service) DeriveTreeCreatePayload(
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	changePayload, err := createChangePayload(coresb.SmartBlockType(key.SmartblockType()), key)
+	changePayload, err := createChangePayload(key.SmartblockType(), key)
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
