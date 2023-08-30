@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 type Zip struct{}
@@ -36,7 +38,6 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFil
 			continue
 		}
 		if !isFileAllowedToImport(f.Name, filepath.Ext(f.Name), expectedExt, includeFiles) {
-			log.Errorf("not expected extension")
 			continue
 		}
 		shortPath := filepath.Clean(f.Name)
@@ -44,7 +45,7 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFil
 		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
 		rc, err := f.Open()
 		if err != nil {
-			log.Errorf("failed to read file: %s", err.Error())
+			log.Errorf("failed to read file: %s", oserror.TransformError(err).Error())
 			continue
 		}
 		files[shortPath] = rc
