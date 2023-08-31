@@ -1,5 +1,5 @@
 export GOPRIVATE=github.com/anyproto
-export GOLANGCI_LINT_VERSION=v1.54.0
+export GOLANGCI_LINT_VERSION=v1.54.2
 export custom_network_file=./core/anytype/config/nodes/custom.yml
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
 
