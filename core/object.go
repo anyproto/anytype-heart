@@ -680,7 +680,6 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 }
 
 func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
-	ctx := mw.newContext(cctx)
 	response := func(err error) *pb.RpcObjectToSetResponse {
 		resp := &pb.RpcObjectToSetResponse{
 			Error: &pb.RpcObjectToSetResponseError{
@@ -697,7 +696,7 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		err error
 	)
 	err = mw.doBlockService(func(bs *block.Service) error {
-		if err = bs.ObjectToSet(ctx, req.ContextId, req.Source); err != nil {
+		if err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
 			return err
 		}
 		return nil

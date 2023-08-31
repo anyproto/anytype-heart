@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"golang.org/x/exp/slices"
 
+	"context"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -41,6 +42,7 @@ func NewLayoutConverter() LayoutConverter {
 func (c *layoutConverter) Init(a *app.App) error {
 	c.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	return nil
 }
 
@@ -139,11 +141,14 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 
 func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
-	addFeaturedRelationSetOf(st)
 	if len(source) == 0 {
-		// do not create dataview block if source is empty
-		return nil
+		defaultTypeID, err := c.systemObjectService.GetTypeIdByKey(context.Background(), st.SpaceID(), DefaultSetSource)
+		if err != nil {
+			return fmt.Errorf("get default type id: %w", err)
+		}
+		source = []string{defaultTypeID}
 	}
+	addFeaturedRelationSetOf(st)
 
 	dvBlock, _, err := dataview.BlockBySource(st.SpaceID(), c.sbtProvider, c.systemObjectService, source)
 	if err != nil {

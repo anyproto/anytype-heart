@@ -247,7 +247,7 @@ func (s *Service) CreateLinkToTheNewObject(
 	return
 }
 
-func (s *Service) ObjectToSet(ctx session.Context, id string, source []string) error {
+func (s *Service) ObjectToSet(id string, source []string) error {
 	if err := Do(s, id, func(b smartblock.SmartBlock) error {
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
