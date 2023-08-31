@@ -181,10 +181,15 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) listIDsFromSet(typesFromSet []string) ([]string, error) {
+	filters := generateFilters(typesFromSet)
+	if len(filters) == 0 {
+		return []string{}, nil
+	}
+
 	records, _, err := c.objectStore.Query(
 		nil,
 		database.Query{
-			Filters: generateFilters(typesFromSet),
+			Filters: filters,
 		},
 	)
 	if err != nil {
