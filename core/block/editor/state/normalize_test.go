@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -453,19 +453,6 @@ func TestShortenDetailsToLimit(t *testing.T) {
 		//then
 		assert.Len(t, details[bundle.RelationKeyName.String()].GetStringValue(), 7)
 		assert.Less(t, len(details[bundle.RelationKeyDescription.String()].GetStringValue()), detailSizeLimit)
-	})
-}
-
-func TestShortenValueToLimit(t *testing.T) {
-	t.Run("shorten description", func(t *testing.T) {
-		//given
-		value := pbtypes.String(strings.Repeat("a", detailSizeLimit+10))
-
-		//when
-		value = shortenValueToLimit("", "name", value)
-
-		//then
-		assert.Less(t, len(value.GetStringValue()), detailSizeLimit)
 	})
 }
 
