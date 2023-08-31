@@ -1,12 +1,13 @@
 package filestore
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/gogo/protobuf/proto"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
-	dsCtx "github.com/ipfs/go-datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/gogo/protobuf/proto"
+	dsCtx "github.com/ipfs/go-datastore"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 func (m *dsFileStore) updateTxn(f func(txn *badger.Txn) error) error {

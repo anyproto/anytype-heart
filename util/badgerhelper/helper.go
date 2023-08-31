@@ -1,12 +1,12 @@
 package badgerhelper
 
 import (
+	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
-	"fmt"
 	"github.com/gogo/protobuf/proto"
-	"encoding/binary"
 )
 
 func RetryOnConflict(proc func() error) error {
@@ -27,7 +27,7 @@ func Has(txn *badger.Txn, key []byte) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if err == badger.ErrKeyNotFound {
+	if IsNotFound(err) {
 		return false, nil
 	}
 	return false, err

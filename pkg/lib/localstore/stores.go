@@ -2,16 +2,17 @@ package localstore
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	dsCtx "github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-base32"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
@@ -243,9 +244,10 @@ func GetKeys(txn *badger.Txn, prefix string, limit int) []string {
 	})
 	defer iter.Close()
 
-	var keys []string
-
-	var count int
+	var (
+		keys  []string
+		count int
+	)
 	for iter.Rewind(); iter.Valid(); iter.Next() {
 		count++
 		if limit > 0 && count > limit {
@@ -265,7 +267,7 @@ func EraseIndex(index Index, db *badger.DB, txn *badger.Txn) (*badger.Txn, error
 	for _, key := range keys {
 		key := dsCtx.NewKey(key).Bytes()
 		err := txn.Delete(key)
-		if err == badger.ErrTxnTooBig {
+		if errors.Is(err, badger.ErrTxnTooBig) {
 			err = txn.Commit()
 			if err != nil {
 				return txn, fmt.Errorf("commit big transaction: %w", err)
