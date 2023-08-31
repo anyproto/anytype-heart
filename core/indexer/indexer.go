@@ -85,7 +85,7 @@ type Hasher interface {
 
 type objectCreator interface {
 	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error)
-	AddBundledObjectToSpace(
+	InstallBundledObjects(
 		ctx context.Context,
 		spaceID string,
 		sourceObjectIds []string,
@@ -583,7 +583,7 @@ func (i *indexer) EnsurePreinstalledObjects(spaceID string) error {
 	for _, rk := range bundle.SystemRelations {
 		ids = append(ids, rk.BundledURL())
 	}
-	_, _, err := i.objectCreator.AddBundledObjectToSpace(context.Background(), spaceID, ids)
+	_, _, err := i.objectCreator.InstallBundledObjects(context.Background(), spaceID, ids)
 	if err != nil {
 		return err
 	}

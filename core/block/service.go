@@ -334,12 +334,12 @@ func (s *Service) CloseBlocks() {
 	})
 }
 
-func (s *Service) AddSubObjectToWorkspace(
+func (s *Service) InstallBundledObject(
 	ctx context.Context,
 	spaceID string,
 	sourceObjectId string,
 ) (id string, object *types.Struct, err error) {
-	ids, details, err := s.AddBundledObjectToSpace(ctx, spaceID, []string{sourceObjectId})
+	ids, details, err := s.InstallBundledObjects(ctx, spaceID, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -395,7 +395,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	return newDetails, nil
 }
 
-func (s *Service) AddBundledObjectToSpace(
+func (s *Service) InstallBundledObjects(
 	ctx context.Context,
 	spaceID string,
 	sourceObjectIds []string,
