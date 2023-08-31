@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -435,6 +436,37 @@ func BenchmarkNormalize(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ApplyState(r.NewState(), true)
 	}
+}
+
+func TestShortenDetailsToLimit(t *testing.T) {
+	t.Run("shorten description", func(t *testing.T) {
+		//given
+		details := map[string]*types.Value{
+			bundle.RelationKeyName.String():          pbtypes.String("my page"),
+			bundle.RelationKeyDescription.String():   pbtypes.String(strings.Repeat("a", detailSizeLimit+10)),
+			bundle.RelationKeyWidthInPixels.String(): pbtypes.Int64(20),
+		}
+
+		//when
+		shortenDetailsToLimit("", details)
+
+		//then
+		assert.Len(t, details[bundle.RelationKeyName.String()].GetStringValue(), 7)
+		assert.Less(t, len(details[bundle.RelationKeyDescription.String()].GetStringValue()), detailSizeLimit)
+	})
+}
+
+func TestShortenValueToLimit(t *testing.T) {
+	t.Run("shorten description", func(t *testing.T) {
+		//given
+		value := pbtypes.String(strings.Repeat("a", detailSizeLimit+10))
+
+		//when
+		value = shortenValueToLimit("", "name", value)
+
+		//then
+		assert.Less(t, len(value.GetStringValue()), detailSizeLimit)
+	})
 }
 
 func TestShortenValueOnN(t *testing.T) {
