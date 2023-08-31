@@ -117,7 +117,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		}
 		return vers
 	}
-	convert := func(decrypted []byte) (any, error) {
+	convert := func(_ *objecttree.Change, decrypted []byte) (any, error) {
 		ch := &pb.Change{}
 		err = proto.Unmarshal(decrypted, ch)
 		if err != nil {

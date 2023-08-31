@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
@@ -188,6 +189,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pool.New()).
 		Register(peerservice.New()).
 		Register(yamux.New()).
+		Register(quic.New()).
 		Register(clientserver.New()).
 		Register(streampool.New()).
 		Register(coordinatorclient.New()).

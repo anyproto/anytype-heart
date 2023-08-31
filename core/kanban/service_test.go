@@ -6,15 +6,18 @@ import (
 	"os"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -23,8 +26,19 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/stretchr/testify/mock"
 )
+
+type quicSetter struct{}
+
+func (q quicSetter) Init(a *app.App) (err error) {
+	return
+}
+
+func (q quicSetter) Name() (name string) {
+	return peerservice.CName
+}
+
+func (q quicSetter) PreferQuic(_ bool) {}
 
 func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
@@ -35,10 +49,11 @@ func Test_GrouperTags(t *testing.T) {
 	tp := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	tp.EXPECT().Name().Return("mock_typeprovider")
 	tp.EXPECT().Init(mock.Anything).Return(nil)
-	tp.EXPECT().Type("rel-tag").Return(smartblock2.SmartBlockTypeSubObject, nil)
+	tp.EXPECT().Type("rel-tag").Return(smartblock.SmartBlockTypeSubObject, nil)
 	ds := objectstore.New()
 	kanbanSrv := New()
-	err := app.With(&config.DefaultConfig).
+	err := app.With(quicSetter{}).
+		With(&config.DefaultConfig).
 		With(tp).
 		With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
 		With(clientds.New()).
