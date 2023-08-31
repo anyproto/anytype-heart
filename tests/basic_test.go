@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	. "github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
 
@@ -112,7 +113,7 @@ func pageTemplate(children ...*Block) *Block {
 	return Root(Children(cs...))
 }
 
-func (s *testSuite) testOnNewObject(objectType bundle.TypeKey, fn func(objectID string), wantPage *Block) {
+func (s *testSuite) testOnNewObject(objectType domain.TypeKey, fn func(objectID string), wantPage *Block) {
 	cctx := s.newCallCtx(s.T())
 	resp := call(cctx, s.ObjectCreate, &pb.RpcObjectCreateRequest{
 		Details: &types.Struct{

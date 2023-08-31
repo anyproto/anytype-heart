@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
@@ -61,7 +62,7 @@ func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migra
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout([]bundle.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
+				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
 				template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 				w.withDefaultWidgets,
 			)

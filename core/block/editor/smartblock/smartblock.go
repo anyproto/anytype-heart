@@ -165,7 +165,7 @@ type DocInfo struct {
 type InitContext struct {
 	IsNewObject    bool
 	Source         source.Source
-	ObjectTypeKeys []bundle.TypeKey
+	ObjectTypeKeys []domain.TypeKey
 	RelationKeys   []string
 	State          *state.State
 	Relations      []*model.Relation
@@ -316,10 +316,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	// Add bundled relations
-	var relKeys []bundle.RelationKey
+	var relKeys []domain.RelationKey
 	for k := range ctx.State.Details().GetFields() {
-		if _, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
-			relKeys = append(relKeys, bundle.RelationKey(k))
+		if _, err := bundle.GetRelation(domain.RelationKey(k)); err == nil {
+			relKeys = append(relKeys, domain.RelationKey(k))
 		}
 	}
 	ctx.State.AddBundledRelations(relKeys...)
@@ -542,7 +542,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			relId, err := sb.systemObjectService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), bundle.RelationKey(rel.Key))
+			relId, err := sb.systemObjectService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), domain.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
 				continue
@@ -557,13 +557,13 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 			continue
 		}
 
-		if bundle.RelationKey(rel.Key).IsSystem() {
+		if bundle.IsSystemRelation(domain.RelationKey(rel.Key)) {
 			continue
 		}
 
 		// Do not include hidden relations. Only bundled relations can be hidden, so we don't need
 		// to request relations from object store.
-		if r, err := bundle.GetRelation(bundle.RelationKey(rel.Key)); err == nil && r.Hidden {
+		if r, err := bundle.GetRelation(domain.RelationKey(rel.Key)); err == nil && r.Hidden {
 			continue
 		}
 
@@ -983,7 +983,7 @@ func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 		return nil, fmt.Errorf("get type id by key: %s", err)
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
-	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
+	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
 	for _, rel := range sb.Relations(st) {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)

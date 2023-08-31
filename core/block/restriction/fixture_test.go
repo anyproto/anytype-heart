@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -50,7 +49,7 @@ func fakeDerivedID(key string) string {
 	return fmt.Sprintf("derivedFrom(%s)", key)
 }
 
-func givenObjectType(typeKey bundle.TypeKey) RestrictionHolder {
+func givenObjectType(typeKey domain.TypeKey) RestrictionHolder {
 	return newRestrictionHolder(
 		smartblock.SmartBlockTypeObjectType,
 		model.ObjectType_objectType,
@@ -59,7 +58,7 @@ func givenObjectType(typeKey bundle.TypeKey) RestrictionHolder {
 	)
 }
 
-func givenRelation(relationKey bundle.RelationKey) RestrictionHolder {
+func givenRelation(relationKey domain.RelationKey) RestrictionHolder {
 	return newRestrictionHolder(
 		smartblock.SmartBlockTypeRelation,
 		model.ObjectType_relation,

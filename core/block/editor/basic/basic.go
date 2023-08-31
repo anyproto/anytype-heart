@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
@@ -53,8 +54,8 @@ type CommonOperations interface {
 	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx session.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
-	SetObjectTypes(ctx session.Context, objectTypeKeys []bundle.TypeKey) (err error)
-	SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.TypeKey) (err error)
+	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey) (err error)
+	SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey) (err error)
 	SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInState(s *state.State, layout model.ObjectTypeLayout) (err error)
 	SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error)

@@ -20,13 +20,13 @@ import (
 func NewBundledRelation(id string) (s Source) {
 	return &bundledRelation{
 		id:     id,
-		relKey: bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)),
+		relKey: domain.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)),
 	}
 }
 
 type bundledRelation struct {
 	id     string
-	relKey bundle.RelationKey
+	relKey domain.RelationKey
 }
 
 func (v *bundledRelation) ReadOnly() bool {
@@ -50,7 +50,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 		return nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}
 
-	rel, err := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
+	rel, err := bundle.GetRelation(domain.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 		return nil, err
 	}
 	for k, v := range d.Fields {
-		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
+		s.SetDetailAndBundledRelation(domain.RelationKey(k), v)
 	}
 	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil

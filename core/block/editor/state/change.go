@@ -285,11 +285,11 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 	}
 
 	for _, ot := range s.ObjectTypeKeys() {
-		if ot == bundle.TypeKey(add.Key) {
+		if ot == domain.TypeKey(add.Key) {
 			return nil
 		}
 	}
-	objectTypes := append(s.ObjectTypeKeys(), bundle.TypeKey(add.Key))
+	objectTypes := append(s.ObjectTypeKeys(), domain.TypeKey(add.Key))
 	s.SetObjectTypeKeys(objectTypes)
 	return nil
 }
@@ -299,8 +299,8 @@ func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error 
 	if remove.Url != "" {
 		remove.Key = strings.TrimPrefix(remove.Url, addr.ObjectTypeKeyToIdPrefix)
 	}
-	s.objectTypeKeys = slice.Filter(s.ObjectTypeKeys(), func(key bundle.TypeKey) bool {
-		if key == bundle.TypeKey(remove.Key) {
+	s.objectTypeKeys = slice.Filter(s.ObjectTypeKeys(), func(key domain.TypeKey) bool {
+		if key == domain.TypeKey(remove.Key) {
 			found = true
 			return false
 		}
@@ -674,13 +674,13 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 	if s.objectTypeKeys == nil {
 		return nil
 	}
-	var prev []bundle.TypeKey
+	var prev []domain.TypeKey
 	if s.parent != nil {
 		prev = s.parent.ObjectTypeKeys()
 	}
 
-	var prevMap = make(map[bundle.TypeKey]struct{}, len(prev))
-	var curMap = make(map[bundle.TypeKey]struct{}, len(s.objectTypeKeys))
+	var prevMap = make(map[domain.TypeKey]struct{}, len(prev))
+	var curMap = make(map[domain.TypeKey]struct{}, len(s.objectTypeKeys))
 
 	for _, v := range s.objectTypeKeys {
 		curMap[v] = struct{}{}
@@ -783,14 +783,14 @@ func (cb *changeBuilder) Build() []*pb.ChangeContent {
 	return cb.changes
 }
 
-func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []bundle.TypeKey {
-	objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeIDs))
+func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []domain.TypeKey {
+	objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeIDs))
 	for _, id := range objectTypeIDs {
-		var key bundle.TypeKey
+		var key domain.TypeKey
 		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			key = bundle.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))
+			key = domain.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))
 		} else {
-			key = bundle.TypeKey(id)
+			key = domain.TypeKey(id)
 		}
 		objectTypeKeys = append(objectTypeKeys, key)
 	}

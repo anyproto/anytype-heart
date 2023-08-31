@@ -11,10 +11,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	. "github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
 
@@ -369,7 +369,7 @@ func TestState_SetParent(t *testing.T) {
 	newState := NewDoc("root", nil).(*State)
 	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
-	newState.SetObjectTypeKeys([]bundle.TypeKey{"newOT1", "newOT2"})
+	newState.SetObjectTypeKeys([]domain.TypeKey{"newOT1", "newOT2"})
 	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newOne"})
 	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newTwo"})
 
@@ -642,7 +642,7 @@ func TestState_ChangeDataviewRemoveMove(t *testing.T) {
 func Test_ApplyChange(t *testing.T) {
 	t.Run("object types remove", func(t *testing.T) {
 		root := NewDoc("root", nil)
-		root.(*State).SetObjectTypeKeys([]bundle.TypeKey{"one", "two"})
+		root.(*State).SetObjectTypeKeys([]domain.TypeKey{"one", "two"})
 		s := root.NewState()
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfObjectTypeRemove{
@@ -651,7 +651,7 @@ func Test_ApplyChange(t *testing.T) {
 				},
 			},
 		}))
-		assert.Equal(t, []bundle.TypeKey{"two"}, s.ObjectTypeKeys())
+		assert.Equal(t, []domain.TypeKey{"two"}, s.ObjectTypeKeys())
 
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfObjectTypeRemove{

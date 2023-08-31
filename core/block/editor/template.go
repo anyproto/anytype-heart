@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/system_object"
@@ -88,7 +89,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 						log.Errorf("template createion state: failed to get target object type %s: %s", targetObjectTypeID, err)
 						return
 					}
-					s.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(targetObjectType.Key)})
+					s.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, domain.TypeKey(targetObjectType.Key)})
 				}
 			}
 		},
@@ -105,7 +106,7 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 		if err != nil {
 			return nil, fmt.Errorf("get target object type: %w", err)
 		}
-		st.SetObjectTypeKey(bundle.TypeKey(objectType.Key))
+		st.SetObjectTypeKey(domain.TypeKey(objectType.Key))
 	}
 	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
 	// clean-up local details from the template state

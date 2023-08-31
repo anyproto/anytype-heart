@@ -42,8 +42,8 @@ type Service interface {
 	EnsurePredefinedBlocks(ctx context.Context, spaceID string) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
-	GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string
-	GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string
+	GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string
+	GetSystemRelationID(spaceID string, relationKey domain.RelationKey) string
 
 	ProfileInfo
 
@@ -127,13 +127,13 @@ func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 	return a.predefinedObjectsPerSpace[spaceID]
 }
 
-func (a *Anytype) GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string {
+func (a *Anytype) GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 	return a.predefinedObjectsPerSpace[spaceID].SystemTypes[typeKey]
 }
 
-func (a *Anytype) GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string {
+func (a *Anytype) GetSystemRelationID(spaceID string, relationKey domain.RelationKey) string {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 	return a.predefinedObjectsPerSpace[spaceID].SystemRelations[relationKey]
@@ -187,8 +187,8 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 		coresb.SmartBlockTypeHome,
 	}
 	payloads := make([]treestorage.TreeStorageCreatePayload, len(sbTypes))
-	predefinedObjectIDs.SystemRelations = make(map[bundle.RelationKey]string)
-	predefinedObjectIDs.SystemTypes = make(map[bundle.TypeKey]string)
+	predefinedObjectIDs.SystemRelations = make(map[domain.RelationKey]string)
+	predefinedObjectIDs.SystemTypes = make(map[domain.TypeKey]string)
 
 	for i, sbt := range sbTypes {
 		a.lock.RLock()

@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *service) extractObjectTypeFromDetails(details *types.Struct, url string, objectTypeKey bundle.TypeKey) *model.ObjectType {
+func (s *service) extractObjectTypeFromDetails(details *types.Struct, url string, objectTypeKey domain.TypeKey) *model.ObjectType {
 	return &model.ObjectType{
 		Url:        url,
 		Key:        string(objectTypeKey),

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -118,7 +119,7 @@ func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
-		template.WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
+		template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),
 	)
 	return nil
 }

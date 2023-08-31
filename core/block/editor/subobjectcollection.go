@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -168,7 +169,7 @@ func (c *SubObjectCollection) subState(st *state.State, collection string, fullI
 	}
 	subst := structToState(fullId, data)
 
-	relationsToCopy := []bundle.RelationKey{bundle.RelationKeyCreator}
+	relationsToCopy := []domain.RelationKey{bundle.RelationKeyCreator}
 	for _, rk := range relationsToCopy {
 		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
 	}
@@ -194,9 +195,9 @@ func structToState(id string, data *types.Struct) *state.State {
 	subState := state.NewDoc(id, blocks).(*state.State)
 
 	for k, v := range data.Fields {
-		if rel, err := bundle.GetRelation(bundle.RelationKey(k)); err == nil {
+		if rel, err := bundle.GetRelation(domain.RelationKey(k)); err == nil {
 			if rel.DataSource == model.Relation_details || slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
-				subState.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
+				subState.SetDetailAndBundledRelation(domain.RelationKey(k), v)
 			}
 		}
 	}
