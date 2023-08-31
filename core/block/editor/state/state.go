@@ -869,7 +869,7 @@ func (s *State) SetLocalDetails(d *types.Struct) {
 }
 
 func (s *State) SetDetail(key string, value *types.Value) {
-	shortenValueToLimit(s.rootId, key, value)
+	value = shortenValueToLimit(s.rootId, key, value)
 
 	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
 		s.SetLocalDetail(key, value)
