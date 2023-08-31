@@ -32,7 +32,7 @@ import (
 )
 
 func TestSmartBlock_Init(t *testing.T) {
-	//given
+	// given
 	id := "one"
 	fx := newFixture(t)
 	defer fx.tearDown()
@@ -44,16 +44,16 @@ func TestSmartBlock_Init(t *testing.T) {
 	fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 	fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
-	//when
+	// when
 	fx.init([]*model.Block{{Id: id}})
 
-	//then
+	// then
 	assert.Equal(t, id, fx.sb.RootId())
 }
 
 func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.at.EXPECT().PredefinedBlocks()
@@ -78,10 +78,10 @@ func TestSmartBlock_Apply(t *testing.T) {
 		fx.source.EXPECT().PushChange(gomock.Any()).Return("fake_change_id", nil)
 		fx.indexer.EXPECT().Index(gomock.Any(), gomock.Any())
 
-		//when
+		// when
 		err := fx.sb.Apply(s)
 
-		//then
+		// then
 		require.NoError(t, err)
 		assert.Equal(t, 1, fx.sb.History().Len())
 		assert.NotNil(t, event)
@@ -91,7 +91,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 
 func TestBasic_SetAlign(t *testing.T) {
 	t.Run("with ids", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
@@ -108,16 +108,16 @@ func TestBasic_SetAlign(t *testing.T) {
 		})
 		st := fx.sb.NewState()
 
-		//when
+		// when
 		err := st.SetAlign(model.Block_AlignRight, "2", "3")
 
-		//then
+		// then
 		require.NoError(t, err)
 		assert.Equal(t, model.Block_AlignRight, st.NewState().Get("2").Model().Align)
 	})
 
 	t.Run("without ids", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
@@ -134,10 +134,10 @@ func TestBasic_SetAlign(t *testing.T) {
 		})
 		st := fx.sb.NewState()
 
-		//when
+		// when
 		err := st.SetAlign(model.Block_AlignRight)
 
-		//then
+		// then
 		require.NoError(t, err)
 		assert.Equal(t, model.Block_AlignRight, st.Get("title").Model().Align)
 		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayoutAlign.String()))
@@ -148,7 +148,7 @@ func TestBasic_SetAlign(t *testing.T) {
 func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 	id := "id"
 	t.Run("details are in the store", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		details := &types.Struct{
@@ -161,31 +161,31 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		fx.source.EXPECT().Id().Return(id)
 		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: details}, nil)
 
-		//when
+		// when
 		detailsFromStore, err := fx.sb.getDetailsFromStore()
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, details, detailsFromStore)
 	})
 
 	t.Run("no details in the store", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id)
 		fx.store.EXPECT().GetDetails(id).Return(nil, nil)
 
-		//when
+		// when
 		details, err := fx.sb.getDetailsFromStore()
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Nil(t, details)
 	})
 
 	t.Run("failure on retrieving details from store", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		details := &model.ObjectDetails{Details: &types.Struct{
@@ -197,10 +197,10 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		fx.source.EXPECT().Id().Return(id)
 		fx.store.EXPECT().GetDetails(id).Return(details, someErr)
 
-		//when
+		// when
 		detailsFromStore, err := fx.sb.getDetailsFromStore()
 
-		//then
+		// then
 		assert.True(t, errors.Is(err, someErr))
 		assert.Nil(t, detailsFromStore)
 	})
@@ -211,7 +211,7 @@ func TestSmartBlock_injectWorkspaceID(t *testing.T) {
 	id := "id"
 
 	t.Run("workspaceID is already set", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Times(0)
@@ -221,31 +221,31 @@ func TestSmartBlock_injectWorkspaceID(t *testing.T) {
 			bundle.RelationKeyWorkspaceId.String(): pbtypes.String(wID),
 		}})
 
-		//when
+		// when
 		fx.sb.injectWorkspaceID(s)
 
-		//then
+		// then
 		assert.Equal(t, wID, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()))
 	})
 
 	t.Run("set workspaceID from core service", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id)
 		fx.at.EXPECT().GetWorkspaceIdForObject(id).Return(wID, nil)
 		s := &state.State{}
 
-		//when
+		// when
 		fx.sb.injectWorkspaceID(s)
 
-		//then
+		// then
 		assert.Equal(t, wID, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyWorkspaceId.String()))
 	})
 
 	t.Run("object is deleted, so it does not belong to workspace", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id).Times(1)
@@ -255,10 +255,10 @@ func TestSmartBlock_injectWorkspaceID(t *testing.T) {
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true),
 		}})
 
-		//when
+		// when
 		fx.sb.injectWorkspaceID(s)
 
-		//then
+		// then
 		spaceID, found := s.LocalDetails().Fields[bundle.RelationKeyWorkspaceId.String()]
 		assert.Nil(t, spaceID)
 		assert.False(t, found)
@@ -266,7 +266,7 @@ func TestSmartBlock_injectWorkspaceID(t *testing.T) {
 	})
 
 	t.Run("object is deleted, but core returned other error", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id).Times(2)
@@ -276,10 +276,10 @@ func TestSmartBlock_injectWorkspaceID(t *testing.T) {
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true),
 		}})
 
-		//when
+		// when
 		fx.sb.injectWorkspaceID(s)
 
-		//then
+		// then
 		spaceID, found := s.LocalDetails().Fields[bundle.RelationKeyWorkspaceId.String()]
 		assert.Nil(t, spaceID)
 		assert.False(t, found)
@@ -287,17 +287,17 @@ func TestSmartBlock_injectWorkspaceID(t *testing.T) {
 	})
 
 	t.Run("failure on retrieving workspaceID from core service", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id).Times(1)
 		fx.at.EXPECT().GetWorkspaceIdForObject(id).Return("", errors.New("some error from core"))
 		s := &state.State{}
 
-		//when
+		// when
 		fx.sb.injectWorkspaceID(s)
 
-		//then
+		// then
 		assert.Nil(t, s.LocalDetails())
 		assert.Nil(t, s.GetRelationLinks())
 	})
@@ -308,7 +308,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 	id := "id"
 
 	t.Run("update back links", func(t *testing.T) {
-		//given
+		// given
 		newBackLinks := []string{"4", "5"}
 		fx := newFixture(t)
 		defer fx.tearDown()
@@ -318,56 +318,56 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 			bundle.RelationKeyBacklinks.String(): pbtypes.StringList(backLinks),
 		}}
 
-		//when
+		// when
 		fx.sb.updateBackLinks(details)
 
-		//then
+		// then
 		assert.Equal(t, newBackLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 	})
 
 	t.Run("back links were found in object store", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id)
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(backLinks, nil)
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
-		//when
+		// when
 		fx.sb.updateBackLinks(details)
 
-		//then
+		// then
 		assert.NotNil(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 		assert.Equal(t, backLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
 	})
 
 	t.Run("back links were not found in object store", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id)
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, nil)
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
-		//when
+		// when
 		fx.sb.updateBackLinks(details)
 
-		//then
+		// then
 		assert.Len(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()), 0)
 	})
 
 	t.Run("failure on retrieving back links from the store", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id).Times(2)
 		fx.store.EXPECT().GetInboundLinksByID(id).Return(nil, errors.New("some error from store"))
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
-		//when
+		// when
 		fx.sb.updateBackLinks(details)
 
-		//then
+		// then
 		assert.Zero(t, len(details.Fields))
 	})
 }
@@ -376,7 +376,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 	id := "id"
 
 	t.Run("no pending details", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id)
@@ -385,43 +385,43 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).Return(nil).
 			Do(func(id string, f func(*types.Struct) (*types.Struct, error)) { hasPendingDetails = false })
 
-		//when
-		result := fx.sb.updatePendingDetails(details)
+		// when
+		_, result := fx.sb.appendPendingDetails(details)
 
-		//then
+		// then
 		assert.Equal(t, hasPendingDetails, result)
 		assert.Zero(t, len(details.Fields))
 	})
 
 	t.Run("found pending details", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id)
 		details := &types.Struct{Fields: map[string]*types.Value{}}
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).Return(nil).Do(func(id string, f func(*types.Struct) (*types.Struct, error)) {
+		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).Return(nil).Do(func(id string, f func(details *types.Struct) (*types.Struct, error)) {
 			details.Fields[bundle.RelationKeyIsDeleted.String()] = pbtypes.Bool(false)
 		})
 
-		//when
-		_ = fx.sb.updatePendingDetails(details)
+		// when
+		got, _ := fx.sb.appendPendingDetails(details)
 
-		//then
-		assert.Len(t, details.Fields, 1)
+		// then
+		assert.Len(t, got.Fields, 1)
 	})
 
 	t.Run("failure on retrieving pending details from the store", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		fx.source.EXPECT().Id().Return(id).Times(2)
 		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).Return(errors.New("some error from store"))
 		details := &types.Struct{}
 
-		//when
-		hasPendingDetails := fx.sb.updatePendingDetails(details)
+		// when
+		_, hasPendingDetails := fx.sb.appendPendingDetails(details)
 
-		//then
+		// then
 		assert.False(t, hasPendingDetails)
 	})
 }
@@ -431,7 +431,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 	creationDate := int64(1692127254)
 
 	t.Run("both creator and creation date are already set", func(t *testing.T) {
-		//given
+		// given
 		sb := &smartBlock{}
 		s := &state.State{}
 		s.SetLocalDetails(&types.Struct{Fields: map[string]*types.Value{
@@ -439,31 +439,31 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 			bundle.RelationKeyCreatedDate.String(): pbtypes.Int64(creationDate),
 		}})
 
-		//when
+		// when
 		err := sb.injectCreationInfo(s)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, creator, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()))
 		assert.Equal(t, creationDate, pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()))
 	})
 
 	t.Run("source could not be converted to CreationInfoProvider", func(t *testing.T) {
-		//given
+		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
 		s := &state.State{}
 
-		//when
+		// when
 		err := fx.sb.injectCreationInfo(s)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Nil(t, s.LocalDetails())
 	})
 
 	t.Run("both creator and creation date are found", func(t *testing.T) {
-		//given
+		// given
 		src := &creationInfoProvider{
 			creator:     creator,
 			createdDate: creationDate,
@@ -472,10 +472,10 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		sb := smartBlock{source: src}
 		s := &state.State{}
 
-		//when
+		// when
 		err := sb.injectCreationInfo(s)
 
-		//then
+		// then
 		assert.NoError(t, err)
 		assert.Equal(t, creator, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()))
 		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreator.String()))
@@ -484,16 +484,16 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 	})
 
 	t.Run("failure on retrieving creation info from source", func(t *testing.T) {
-		//given
+		// given
 		srcErr := errors.New("source error")
 		src := &creationInfoProvider{err: srcErr}
 		sb := smartBlock{source: src}
 		s := &state.State{}
 
-		//when
+		// when
 		err := sb.injectCreationInfo(s)
 
-		//then
+		// then
 		assert.True(t, errors.Is(err, srcErr))
 		assert.Nil(t, s.LocalDetails())
 	})
