@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/space"
 )
 
 type linkedFilesSummary struct {
@@ -19,7 +18,6 @@ type linkedFilesSummary struct {
 }
 
 type linkedFilesWatcher struct {
-	spaceService       space.Service
 	fileStatusRegistry *fileStatusRegistry
 
 	sync.Mutex
@@ -28,13 +26,11 @@ type linkedFilesWatcher struct {
 }
 
 func newLinkedFilesWatcher(
-	spaceService space.Service,
 	fileStatusRegistry *fileStatusRegistry,
 ) *linkedFilesWatcher {
 	return &linkedFilesWatcher{
 		linkedFilesSummaries: make(map[string]linkedFilesSummary),
 		linkedFilesCloseCh:   make(map[string]chan struct{}),
-		spaceService:         spaceService,
 		fileStatusRegistry:   fileStatusRegistry,
 	}
 }

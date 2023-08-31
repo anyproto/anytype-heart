@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/peerservice"
@@ -89,12 +88,17 @@ type service struct {
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
 	streamHandler        *streamHandler
+	syncStatusService    syncStatusService
 
 	accountId  string
 	newAccount bool
 
 	db                 *badger.DB
 	spaceResolverCache *ristretto.Cache
+}
+
+type syncStatusService interface {
+	RegisterSpace(space commonspace.Space)
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -108,6 +112,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
+	s.syncStatusService = app.MustComponent[syncStatusService](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{s: s}
@@ -304,7 +309,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return nil, fmt.Errorf("store mapping for space: %w", err)
 	}
-	ns.SyncStatus().(syncstatus.StatusWatcher).SetUpdateReceiver(&statusReceiver{})
+	s.syncStatusService.RegisterSpace(ns)
 	return ns, nil
 }
 

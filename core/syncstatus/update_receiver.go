@@ -18,7 +18,6 @@ type updateReceiver struct {
 	eventSender event.Sender
 
 	linkedFilesWatcher *linkedFilesWatcher
-	subObjectsWatcher  *subObjectsWatcher
 	nodeConfService    nodeconf.Service
 	sync.Mutex
 	nodeConnected bool
@@ -28,7 +27,6 @@ type updateReceiver struct {
 func newUpdateReceiver(
 	coreService core.Service,
 	linkedFilesWatcher *linkedFilesWatcher,
-	subObjectsWatcher *subObjectsWatcher,
 	nodeConfService nodeconf.Service,
 	cfg *config.Config,
 	eventSender event.Sender,
@@ -39,14 +37,13 @@ func newUpdateReceiver(
 	return &updateReceiver{
 		coreService:        coreService,
 		linkedFilesWatcher: linkedFilesWatcher,
-		subObjectsWatcher:  subObjectsWatcher,
 		nodeConfService:    nodeConfService,
 		lastStatus:         make(map[string]pb.EventStatusThreadSyncStatus),
 		eventSender:        eventSender,
 	}
 }
 
-func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) error {
+func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status syncstatus.SyncStatus) error {
 	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
 	objStatus := r.getObjectStatus(status)
 
@@ -55,12 +52,6 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 	}
 	r.notify(objId, objStatus, filesSummary.pinStatus)
 
-	// TODO For each space?
-	if objId == r.coreService.AccountObjects().Workspace {
-		r.subObjectsWatcher.ForEach(func(subObjectID string) {
-			r.notify(subObjectID, objStatus, filesSummary.pinStatus)
-		})
-	}
 	return nil
 }
 

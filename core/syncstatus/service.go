@@ -3,9 +3,12 @@ package syncstatus
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
 	"go.uber.org/zap"
 
@@ -30,34 +33,37 @@ type Service interface {
 	Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error)
 	Unwatch(spaceID string, id string)
 	OnFileUpload(spaceID string, fileID string) error
+	RegisterSpace(space commonspace.Space)
+
 	app.ComponentRunnable
 }
 
 var _ Service = (*service)(nil)
 
 type service struct {
+	updateReceiver *updateReceiver
+
 	typeProvider              typeprovider.SmartBlockTypeProvider
-	spaceService              space.Service
 	fileSyncService           filesync.FileSync
 	fileWatcherUpdateInterval time.Duration
 
 	coreService core.Service
 
 	fileWatcher        *fileWatcher
-	objectWatcher      *objectWatcher
-	subObjectsWatcher  *subObjectsWatcher
 	linkedFilesWatcher *linkedFilesWatcher
-	updateReceiver     *updateReceiver
+
+	objectWatchersLock sync.Mutex
+	objectWatchers     map[string]syncstatus.StatusWatcher
 }
 
 func New(fileWatcherUpdateInterval time.Duration) Service {
 	return &service{
 		fileWatcherUpdateInterval: fileWatcherUpdateInterval,
+		objectWatchers:            map[string]syncstatus.StatusWatcher{},
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.spaceService = app.MustComponent[space.Service](a)
 	s.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.coreService = app.MustComponent[core.Service](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
@@ -72,11 +78,9 @@ func (s *service) Init(a *app.App) (err error) {
 	eventSender := app.MustComponent[event.Sender](a)
 
 	fileStatusRegistry := newFileStatusRegistry(s.fileSyncService, fileStore, picker, s.fileWatcherUpdateInterval)
-	s.linkedFilesWatcher = newLinkedFilesWatcher(spaceService, fileStatusRegistry)
-	s.subObjectsWatcher = newSubObjectsWatcher()
-	s.updateReceiver = newUpdateReceiver(coreService, s.linkedFilesWatcher, s.subObjectsWatcher, nodeConfService, cfg, eventSender)
+	s.linkedFilesWatcher = newLinkedFilesWatcher(fileStatusRegistry)
+	s.updateReceiver = newUpdateReceiver(coreService, s.linkedFilesWatcher, nodeConfService, cfg, eventSender)
 	s.fileWatcher = newFileWatcher(spaceService, dbProvider, fileStatusRegistry, s.updateReceiver, s.fileWatcherUpdateInterval)
-	s.objectWatcher = newObjectWatcher(spaceService, s.updateReceiver)
 
 	s.fileSyncService.OnUpload(s.OnFileUpload)
 	return s.fileWatcher.init()
@@ -88,18 +92,20 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to run file watcher: %w", err)
 	}
-
-	if err = s.objectWatcher.run(ctx); err != nil {
-		return err
-	}
-
-	// TODO Iterate all spaces?
-	_, err = s.watch(s.spaceService.AccountId(), s.coreService.AccountObjects().Workspace, nil)
 	return
 }
 
 func (s *service) Name() string {
 	return CName
+}
+
+func (s *service) RegisterSpace(space commonspace.Space) {
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+
+	watcher := space.SyncStatus().(syncstatus.StatusWatcher)
+	watcher.SetUpdateReceiver(s.updateReceiver)
+	s.objectWatchers[space.Id()] = watcher
 }
 
 func (s *service) Watch(spaceID string, id string, filesGetter func() []string) (new bool, err error) {
@@ -120,13 +126,15 @@ func (s *service) watch(spaceID string, id string, filesGetter func() []string) 
 	case smartblock.SmartBlockTypeFile:
 		err := s.fileWatcher.Watch(spaceID, id)
 		return false, err
-	case smartblock.SmartBlockTypeSubObject:
-		s.subObjectsWatcher.Watch(id)
-		return true, nil
 	default:
 		s.linkedFilesWatcher.WatchLinkedFiles(spaceID, id, filesGetter)
-		if err = s.objectWatcher.Watch(id); err != nil {
-			return false, err
+		s.objectWatchersLock.Lock()
+		defer s.objectWatchersLock.Unlock()
+		objectWatcher := s.objectWatchers[spaceID]
+		if objectWatcher != nil {
+			if err = objectWatcher.Watch(id); err != nil {
+				return false, err
+			}
 		}
 		return true, nil
 	}
@@ -141,11 +149,14 @@ func (s *service) unwatch(spaceID string, id string) {
 	switch sbt {
 	case smartblock.SmartBlockTypeFile:
 		// File watcher unwatches files automatically
-	case smartblock.SmartBlockTypeSubObject:
-		s.subObjectsWatcher.Unwatch(id)
 	default:
 		s.linkedFilesWatcher.UnwatchLinkedFiles(id)
-		s.objectWatcher.Unwatch(id)
+		s.objectWatchersLock.Lock()
+		defer s.objectWatchersLock.Unlock()
+		objectWatcher := s.objectWatchers[spaceID]
+		if objectWatcher != nil {
+			objectWatcher.Unwatch(id)
+		}
 	}
 }
 
@@ -158,8 +169,6 @@ func (s *service) OnFileUpload(spaceID string, fileID string) error {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
-	// TODO Iterate all spaces?
-	s.unwatch(s.spaceService.AccountId(), s.coreService.AccountObjects().Workspace)
 	s.fileWatcher.close()
 	s.linkedFilesWatcher.close()
 
