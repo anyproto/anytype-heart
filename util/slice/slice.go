@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"cmp"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
+	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )
 
@@ -142,23 +142,31 @@ func hash(s string) uint64 {
 	return h.Sum64()
 }
 
-func SortedEquals[T cmp.Ordered](s1, s2 []T) bool {
-	return slices.Equal(s1, s2)
+func SortedEquals[K constraints.Ordered](s1, s2 []K) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+	for i := range s1 {
+		if s1[i] != s2[i] {
+			return false
+		}
+	}
+	return true
 }
 
-func UnsortedEqual[T cmp.Ordered](s1, s2 []T) bool {
+func UnsortedEqual[K constraints.Ordered](s1, s2 []K) bool {
 	if len(s1) != len(s2) {
 		return false
 	}
 
-	s1Sorted := make([]T, len(s1))
-	s2Sorted := make([]T, len(s2))
+	s1Sorted := make([]K, len(s1))
+	s2Sorted := make([]K, len(s2))
 	copy(s1Sorted, s1)
 	copy(s2Sorted, s2)
 	slices.Sort(s1Sorted)
 	slices.Sort(s2Sorted)
 
-	return slices.Equal(s1Sorted, s2Sorted)
+	return SortedEquals(s1Sorted, s2Sorted)
 }
 
 func HasPrefix(value, prefix []string) bool {

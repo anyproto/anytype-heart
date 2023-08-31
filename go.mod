@@ -1,6 +1,6 @@
 module github.com/anyproto/anytype-heart
 
-go 1.21
+go 1.20
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
@@ -31,7 +31,6 @@ require (
 	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	github.com/golang/snappy v0.0.4
 	github.com/google/uuid v1.3.1
 	github.com/gosimple/slug v1.13.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -156,6 +155,7 @@ require (
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
