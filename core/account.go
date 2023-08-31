@@ -335,6 +335,9 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_FIND_ACCOUNT_INFO, err)
 		}
+		if errors.Is(err, spacesyncproto.ErrSpaceIsDeleted) {
+			return response(nil, pb.RpcAccountSelectResponseError_ACCOUNT_IS_DELETED, err)
+		}
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}
