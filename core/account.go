@@ -284,6 +284,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		bs.CloseBlocks()
 		acc := &model.Account{Id: req.Id}
 		acc.Info = mw.getInfo(bs)
+		mw.refreshRemoteAccountState()
 		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 	}
 
