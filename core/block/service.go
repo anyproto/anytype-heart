@@ -390,8 +390,28 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 			relations[i] = id
 		}
 		newDetails.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relations)
-
 	}
+
+	objectTypes := pbtypes.GetStringList(newDetails, bundle.RelationKeyRelationFormatObjectTypes.String())
+
+	if len(objectTypes) > 0 {
+		for i, ot := range objectTypes {
+			// replace object type url with id
+			uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, strings.TrimPrefix(ot, addr.BundledObjectTypeURLPrefix))
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uk)
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			objectTypes[i] = id
+		}
+		newDetails.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
+	}
+
 	return newDetails, nil
 }
 
