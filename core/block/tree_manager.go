@@ -20,6 +20,15 @@ DEPS:
 - s.GetObject
 */
 
+func (s *Service) StartSync() {
+	s.syncerLock.Lock()
+	defer s.syncerLock.Unlock()
+	s.syncStarted = true
+	for _, syncer := range s.syncer {
+		syncer.Run()
+	}
+}
+
 // GetTree should only be called by either space services or debug apis, not the client code
 func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
 	if !s.anytype.IsStarted() {

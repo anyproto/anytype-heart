@@ -868,48 +868,6 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error {
-	var (
-		isFavorite bool
-	)
-
-	err := Do(s, id.ObjectID, func(b smartblock.SmartBlock) error {
-		b.ObjectCloseAllSessions()
-		st := b.NewState()
-		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
-		if isFavorite {
-			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
-		}
-		b.SetIsDeleted()
-		if workspaceRemove != nil {
-			return workspaceRemove()
-		}
-		return nil
-	})
-	if err != nil {
-		log.Error("failed to perform delete operation on object", zap.Error(err))
-	}
-	if err := s.objectStore.DeleteObject(id.ObjectID); err != nil {
-		return fmt.Errorf("delete object from local store: %w", err)
-	}
-
-	return nil
-}
-
-func (s *Service) sendOnRemoveEvent(ids ...string) {
-	s.eventSender.Broadcast(&pb.Event{
-		Messages: []*pb.EventMessage{
-			{
-				Value: &pb.EventMessageValueOfObjectRemove{
-					ObjectRemove: &pb.EventObjectRemove{
-						Ids: ids,
-					},
-				},
-			},
-		},
-	})
-}
-
 func (s *Service) RemoveListOption(ctx session.Context, optIds []string, checkInObjects bool) error {
 	// TODO Resolve spaces for each ID
 	return fmt.Errorf("have to be fixed")
