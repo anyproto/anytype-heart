@@ -111,6 +111,7 @@ func New(
 }
 
 type SmartBlock interface {
+	Tree() objecttree.ObjectTree
 	Init(ctx *InitContext) (err error)
 	Id() string
 	SpaceID() string
@@ -143,11 +144,11 @@ type SmartBlock interface {
 	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
 	FileRelationKeys(s *state.State) []string
-	Inner() SmartBlock
 
 	ocache.Object
 	state.Doc
 	sync.Locker
+	SetLocker(locker Locker)
 }
 
 type DocInfo struct {
@@ -221,20 +222,12 @@ type smartBlock struct {
 	eventSender         event.Sender
 }
 
-type LockerSetter interface {
-	SetLocker(locker Locker)
-}
-
 func (sb *smartBlock) SetLocker(locker Locker) {
 	sb.Locker = locker
 }
 
 func (sb *smartBlock) Tree() objecttree.ObjectTree {
 	return sb.ObjectTree
-}
-
-func (sb *smartBlock) Inner() SmartBlock {
-	return sb
 }
 
 func (sb *smartBlock) FileRelationKeys(s *state.State) (fileKeys []string) {

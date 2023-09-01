@@ -101,13 +101,8 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	}
 
 	if ot != nil {
-		setter, ok := sb.Inner().(smartblock.LockerSetter)
-		if !ok {
-			err = fmt.Errorf("should be able to provide lock from the outside")
-			return
-		}
 		// using lock from object tree
-		setter.SetLocker(ot)
+		sb.SetLocker(ot)
 	}
 
 	// we probably don't need any locks here, because the object is initialized synchronously

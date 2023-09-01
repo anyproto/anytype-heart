@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
 
@@ -90,34 +89,6 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	}
 }
 
-// GetTree should only be called by either space services or debug apis, not the client code
-func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
-	if !s.anytype.IsStarted() {
-		err = errAppIsNotRunning
-		return
-	}
-
-	ctx = context.WithValue(ctx, optsKey, cacheOpts{spaceId: spaceId})
-	v, err := s.cache.Get(ctx, id)
-	if err != nil {
-		return
-	}
-	sb := v.(smartblock.SmartBlock).Inner()
-	return sb.(source.ObjectTreeProvider).Tree(), nil
-}
-
-func (s *Service) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
-	s.syncerLock.Lock()
-	defer s.syncerLock.Unlock()
-	syncer := newTreeSyncer(spaceId, objectLoadTimeout, concurrentTrees, treeManager)
-	s.syncer[spaceId] = syncer
-	if s.syncStarted {
-		log.With("spaceID", spaceId).Warn("creating tree syncer after run")
-		syncer.Run()
-	}
-	return syncer
-}
-
 func (s *Service) StartSync() {
 	s.syncerLock.Lock()
 	defer s.syncerLock.Unlock()
@@ -172,43 +143,6 @@ func (s *Service) GetObjectWithTimeout(ctx context.Context, id domain.FullID) (s
 		defer cancel()
 	}
 	return s.GetObject(ctx, id)
-}
-
-// DeleteTree should only be called by space services
-func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
-	if !s.anytype.IsStarted() {
-		return errAppIsNotRunning
-	}
-
-	obj, err := s.GetObject(ctx, domain.FullID{
-		SpaceID:  spaceId,
-		ObjectID: treeId,
-	})
-	if err != nil {
-		return
-	}
-	s.MarkTreeDeleted(ctx, spaceId, treeId)
-	// this should be done not inside lock
-	// TODO: looks very complicated, I know
-	err = obj.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
-	if err != nil {
-		return
-	}
-
-	s.sendOnRemoveEvent(spaceId, treeId)
-	_, err = s.cache.Remove(ctx, treeId)
-	return
-}
-
-func (s *Service) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
-	err := s.OnDelete(domain.FullID{
-		SpaceID:  spaceId,
-		ObjectID: treeId,
-	}, nil)
-	if err != nil {
-		log.Error("failed to execute on delete for tree", zap.Error(err))
-	}
-	return err
 }
 
 func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
