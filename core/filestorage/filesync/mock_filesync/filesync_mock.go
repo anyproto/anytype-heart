@@ -39,7 +39,7 @@ func (m *MockFileSync) EXPECT() *MockFileSyncMockRecorder {
 }
 
 // AddFile mocks base method.
-func (m *MockFileSync) AddFile(arg0, arg1 string, arg2 bool) error {
+func (m *MockFileSync) AddFile(spaceId, fileId string, uploadedByUser, imported bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddFile", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

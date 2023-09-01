@@ -21,7 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
-func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err error) {
+func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser, imported bool) (err error) {
 	status, err := f.fileStore.GetSyncStatus(fileId)
 	if err != nil && !errors.Is(err, localstore.ErrNotFound) {
 		return fmt.Errorf("get file sync status: %w", err)
@@ -38,7 +38,7 @@ func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err err
 		return nil
 	}
 
-	err = f.queue.QueueUpload(spaceId, fileId, uploadedByUser)
+	err = f.queue.QueueUpload(spaceId, fileId, uploadedByUser, imported)
 	if err == nil {
 		select {
 		case f.uploadPingCh <- struct{}{}:
@@ -98,7 +98,7 @@ func (f *fileSync) tryToUpload() (string, error) {
 	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
 		if isLimitReachedErr(err) {
-			if it.AddedByUser {
+			if it.AddedByUser && !it.Imported {
 				f.sendLimitReachedEvent(spaceId, fileId)
 			}
 			if qerr := f.queue.QueueDiscarded(spaceId, fileId); qerr != nil {
@@ -108,7 +108,7 @@ func (f *fileSync) tryToUpload() (string, error) {
 		}
 
 		// Push to the back of the queue
-		if qerr := f.queue.QueueUpload(spaceId, fileId, it.AddedByUser); qerr != nil {
+		if qerr := f.queue.QueueUpload(spaceId, fileId, it.AddedByUser, it.Imported); qerr != nil {
 			log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
 		}
 		return fileId, err

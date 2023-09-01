@@ -32,7 +32,7 @@ var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
 //go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anyproto/anytype-heart/core/filestorage/filesync FileSync
 type FileSync interface {
-	AddFile(spaceId, fileId string, uploadedByUser bool) (err error)
+	AddFile(spaceId, fileId string, uploadedByUser, imported bool) (err error)
 	OnUpload(func(spaceID, fileID string) error)
 	RemoveFile(spaceId, fileId string) (err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
