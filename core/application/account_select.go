@@ -33,6 +33,7 @@ var (
 
 	ErrAnotherProcessIsRunning = errors.New("another anytype process is running")
 	ErrFailedToFindAccountInfo = errors.New("failed to find account info")
+	ErrAccountIsDeleted        = errors.New("account is deleted")
 )
 
 func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectRequest) (*model.Account, error) {
@@ -105,6 +106,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		comps...,
 	)
 	if err != nil {
+		if errors.Is(err, spacesyncproto.ErrSpaceIsDeleted) {
+			return nil, errors.Join(ErrAccountIsDeleted, err)
+		}
 		if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 			return nil, errors.Join(ErrFailedToFindAccountInfo, err)
 		}

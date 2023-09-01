@@ -23,6 +23,11 @@ import (
 
 var log = logging.Logger("anytype-mw-configfetcher")
 
+const (
+	refreshIntervalSecs = 300
+	timeout             = 10 * time.Second
+)
+
 const CName = "configfetcher"
 
 type WorkspaceGetter interface {
@@ -84,7 +89,7 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	c.eventSender = a.MustComponent(event.CName).(event.Sender)
-	c.periodicSync = periodicsync.NewPeriodicSync(300, time.Second*10, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
+	c.periodicSync = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	c.spaceService = a.MustComponent(space.CName).(space.Service)
 	c.fetched = make(chan struct{})
@@ -136,7 +141,7 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 }
 
 func (c *configFetcher) Refetch() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	err := c.updateStatus(ctx)
 	if err != nil {
@@ -152,11 +157,6 @@ func (c *configFetcher) Close(ctx context.Context) (err error) {
 func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayload) {
 	s := convertToAccountStatusModel(status)
 
-	if c.lastStatus == s.StatusType {
-		// do not send event if status has not changed
-		return
-	}
-	c.lastStatus = s.StatusType
 	ev := &pbMiddle.Event{
 		Messages: []*pbMiddle.EventMessage{
 			{

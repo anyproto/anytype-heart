@@ -733,7 +733,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			text             = "simple text"
 			firstTextBlockId = "firstTextBlockId"
 			bookmarkId       = "bookmarkId"
-			result           = text
+			result           = text + "\n"
 		)
 		st := withBookmark(t, text, "", url)
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -763,7 +763,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			lastTextBlockId  = "lastTextBlockId"
 			bookmarkId       = "bookmarkId"
 			secondText       = "second text"
-			result           = firstText + "\n" + secondText
+			result           = firstText + "\n" + secondText + "\n"
 		)
 		st := withBookmark(t, firstText, secondText, url)
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -917,7 +917,7 @@ func Test_PasteText(t *testing.T) {
 
 func Test_CopyAndCutText(t *testing.T) {
 
-	t.Run("copy - when with children", func(t *testing.T) {
+	t.Run("copy/cut - when with children", func(t *testing.T) {
 		// given
 		sb := smarttest.New("text")
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
@@ -941,9 +941,9 @@ func Test_CopyAndCutText(t *testing.T) {
 				},
 			},
 		}
-		b2 := simple.New(block2)
-		s.Add(b2)
-		s.InsertTo("1", model.Block_Inner, b2.Model().Id)
+		simpleBlock2 := simple.New(block2)
+		s.Add(simpleBlock2)
+		s.InsertTo("1", model.Block_Inner, simpleBlock2.Model().Id)
 		require.NoError(t, sb.Apply(s))
 
 		// when
@@ -958,7 +958,143 @@ func Test_CopyAndCutText(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "some text 1\n\tsome text 2", textSlotCopy)
-		assert.Equal(t, "some text 1\n\tsome text 2", textSlotCut)
+		const expected = "some text 1\n\tsome text 2\n"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
 	})
+
+	t.Run("copy/cut - when numbered with children", func(t *testing.T) {
+		//given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+
+		block1 := givenRow1Level1NumberedBlock(s)
+		block2 := givenRow2Level2NumberedBlockNestedInFirst(s)
+		block3 := givenRow3Level1NumberedBlock(s)
+		block4 := givenRow4Level1TextBlock(s)
+		block5 := givenRow5Level1NumberedBlock(s)
+		block6 := givenRow6Level1NumberedBlock(s)
+		require.NoError(t, sb.Apply(s))
+
+		//when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		textSlotCopy, _, _, err := cb.Copy(pb.RpcBlockCopyRequest{
+			Blocks: []*model.Block{block1, block2, block3, block4, block5, block6},
+		})
+		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{},
+			Blocks:            []*model.Block{block1, block2, block3, block4, block5, block6},
+		})
+
+		//then
+		require.NoError(t, err)
+		const expected = "1. A-1\n\t1. B-1\n2. C-1\nD-1\n1. E-1\n2. F-1\n"
+		assert.Equal(t, expected, textSlotCopy)
+		assert.Equal(t, expected, textSlotCut)
+	})
+}
+
+func givenRow3Level1NumberedBlock(s *state.State) *model.Block {
+	numberedBlock := givenNumberedBlock("3", "C-1")
+	insertBlock(s, numberedBlock, "")
+	return numberedBlock
+}
+
+func givenRow4Level1TextBlock(s *state.State) *model.Block {
+	block := &model.Block{
+		Id: "4",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "D-1",
+			},
+		},
+	}
+	insertBlock(s, block, "")
+	return block
+}
+
+func givenRow5Level1NumberedBlock(s *state.State) *model.Block {
+	numberedBlock := givenNumberedBlock("5", "E-1")
+	insertBlock(s, numberedBlock, "")
+	return numberedBlock
+}
+
+func givenRow6Level1NumberedBlock(s *state.State) *model.Block {
+	numberedBlock := givenNumberedBlock("6", "F-1")
+	insertBlock(s, numberedBlock, "")
+	return numberedBlock
+}
+
+func givenRow2Level2NumberedBlockNestedInFirst(s *state.State) *model.Block {
+	numberedBlock := givenNumberedBlock("2", "B-1")
+	insertBlock(s, numberedBlock, "1")
+	return numberedBlock
+}
+
+func givenRow1Level1NumberedBlock(s *state.State) *model.Block {
+	numberedBlock := givenNumberedBlock("1", "A-1")
+	insertBlock(s, numberedBlock, "")
+	return numberedBlock
+}
+
+func insertBlock(s *state.State, block1 *model.Block, targetID string) {
+	simpleBlock1 := simple.New(block1)
+	s.Add(simpleBlock1)
+	s.InsertTo(targetID, model.Block_Inner, simpleBlock1.Model().Id)
+}
+
+func givenNumberedBlock(id string, text string) *model.Block {
+	return &model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  text,
+				Style: model.BlockContentText_Numbered,
+			},
+		},
+	}
+}
+
+func Test_StyleAndTabExtraction(t *testing.T) {
+	type fixture struct {
+		styleName string
+		style     model.BlockContentTextStyle
+		expected  string
+		emoji     string
+	}
+
+	testData := []*fixture{
+		{"quote", model.BlockContentText_Quote, "\t> some text 1", ""},
+		{"code", model.BlockContentText_Code, "\t```some text 1```", ""},
+		{"checkbox", model.BlockContentText_Checkbox, "\t- [ ] some text 1", ""},
+		{"bulleted", model.BlockContentText_Marked, "\t- some text 1", ""},
+		{"numbered", model.BlockContentText_Numbered, "\t1. some text 1", ""},
+		{"callout", model.BlockContentText_Callout, "\t👍 some text 1", "👍"},
+	}
+
+	for _, testCase := range testData {
+		t.Run("extract - when style is "+testCase.styleName, func(t *testing.T) {
+			//given
+			givenBlock := givenBlockWithStyle(testCase.style, testCase.emoji)
+
+			//when
+			result, _ := extractTextWithStyleAndTabs(givenBlock, []string{}, 1, 0)
+
+			//then
+			assert.Equal(t, []string{testCase.expected}, result)
+		})
+	}
+}
+
+func givenBlockWithStyle(style model.BlockContentTextStyle, emoji string) *model.Block {
+	return &model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:      "some text 1",
+				Style:     style,
+				IconEmoji: emoji,
+			},
+		},
+	}
 }

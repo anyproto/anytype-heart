@@ -33,7 +33,7 @@ const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
 
-	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
+	migrationUseCase       = -1
 	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
 )
 
@@ -114,7 +114,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 			fmt.Errorf("failed to import builtinObjects: invalid Use Case value: %v", useCase)
 	}
 
-	if err = b.inject(ctx, spaceID, archive, false); err != nil {
+	if err = b.inject(ctx, spaceID, useCase, archive); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
 			fmt.Errorf("failed to import builtinObjects for Use Case %s: %s",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err.Error())
@@ -129,10 +129,10 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 }
 
 func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
-	return b.inject(nil, spaceID, migrationDashboardZip, true)
+	return b.inject(context.Background(), spaceID, migrationUseCase, migrationDashboardZip)
 }
 
-func (b *builtinObjects) inject(ctx context.Context, spaceID string, archive []byte, isMigration bool) (err error) {
+func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
@@ -144,7 +144,7 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, archive []b
 
 	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
 	oldId := migrationDashboardName
-	if !isMigration {
+	if useCase != migrationUseCase {
 		oldId, err = b.getOldSpaceDashboardId(archive)
 		if err != nil {
 			log.Errorf("Failed to get old id of space dashboard object: %s", err.Error())
@@ -159,7 +159,10 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, archive []b
 	}
 
 	b.handleSpaceDashboard(ctx, spaceID, newId)
-	b.createNotesAndTaskTrackerWidgets(ctx, spaceID)
+
+	if useCase != pb.RpcObjectImportUseCaseRequest_SKIP {
+		b.createNotesAndTaskTrackerWidgets(ctx, spaceID)
+	}
 	return
 }
 

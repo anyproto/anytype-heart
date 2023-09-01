@@ -17,13 +17,13 @@ type rpcHandler struct {
 }
 
 // nolint:revive
-func (r *rpcHandler) AclAddRecord(_ context.Context, _ *spacesyncproto.AclAddRecordRequest) (*spacesyncproto.AclAddRecordResponse, error) {
-	return nil, fmt.Errorf("should not be called")
+func (r *rpcHandler) AclAddRecord(ctx context.Context, request *spacesyncproto.AclAddRecordRequest) (*spacesyncproto.AclAddRecordResponse, error) {
+	return nil, fmt.Errorf("nt implemented")
 }
 
 // nolint:revive
-func (r *rpcHandler) AclGetRecords(_ context.Context, _ *spacesyncproto.AclGetRecordsRequest) (*spacesyncproto.AclGetRecordsResponse, error) {
-	return nil, fmt.Errorf("should not be called")
+func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.AclGetRecordsRequest) (*spacesyncproto.AclGetRecordsResponse, error) {
+	return nil, fmt.Errorf("nt implemented")
 }
 
 func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {

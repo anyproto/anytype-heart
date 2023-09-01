@@ -236,6 +236,7 @@ func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		view.GroupBackgroundColors = f.GroupBackgroundColors
 		view.PageLimit = f.PageLimit
 		view.DefaultTemplateId = f.DefaultTemplateId
+		view.DefaultObjectTypeId = f.DefaultObjectTypeId
 	}
 
 	{

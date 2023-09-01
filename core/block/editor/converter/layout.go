@@ -1,12 +1,12 @@
 package converter
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"golang.org/x/exp/slices"
 
-	"context"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -187,10 +187,17 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 	return nil
 }
 
-func (c *layoutConverter) listIDsFromSet(spaceId string, typesFromSet []string) ([]string, error) {
-	records, _, err := c.objectStore.Query(database.Query{
-		Filters: generateFilters(spaceId, c.sbtProvider, typesFromSet),
-	})
+func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) ([]string, error) {
+	filters := generateFilters(spaceID, c.sbtProvider, typesFromSet)
+	if len(filters) == 0 {
+		return []string{}, nil
+	}
+
+	records, _, err := c.objectStore.Query(
+		database.Query{
+			Filters: filters,
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("can't get records for collection: %w", err)
 	}

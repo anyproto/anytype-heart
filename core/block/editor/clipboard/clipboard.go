@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/strutil"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -564,32 +565,54 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 
 func renderText(s *state.State) string {
 	texts := make([]string, 0)
-	childrenIds := s.Pick(s.RootId()).Model().ChildrenIds
-	for _, id := range childrenIds {
-		texts = renderChildren(s, texts, id, 0)
-	}
+	texts, _ = renderBlock(s, texts, s.RootId(), -1, 0)
 
 	if len(texts) > 0 {
-		return strings.Join(texts, "\n")
+		return strutil.JoinWithTrailingEnd(texts, "\n")
 	}
 
 	return ""
 }
 
-func renderChildren(s *state.State, texts []string, id string, level int) []string {
+func renderBlock(s *state.State, texts []string, id string, level int, numberedCount int) ([]string, int) {
 	block := s.Pick(id).Model()
-	if text := block.GetText(); text != nil {
-		if level > 0 {
-			texts = append(texts, strings.Repeat("\t", level)+text.Text)
-		} else {
-			texts = append(texts, text.Text)
+	texts, numberedCount = extractTextWithStyleAndTabs(block, texts, level, numberedCount)
+	childrenIds := s.Pick(id).Model().ChildrenIds
+	texts = renderChildren(s, texts, childrenIds, level, 0)
+	return texts, numberedCount
+}
+
+func renderChildren(s *state.State, texts []string, childrenIds []string, level int, numberedCount int) []string {
+	var oldNumberedCount int
+	for _, id := range childrenIds {
+		oldNumberedCount = numberedCount
+		texts, numberedCount = renderBlock(s, texts, id, level+1, numberedCount)
+		if oldNumberedCount == numberedCount {
+			numberedCount = 0
 		}
 	}
-
-	childrenIds := s.Pick(id).Model().ChildrenIds
-	for _, childID := range childrenIds {
-		texts = renderChildren(s, texts, childID, level+1)
-	}
-
 	return texts
+}
+
+func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, numberedCount int) ([]string, int) {
+	if text := block.GetText(); text != nil {
+		switch text.Style {
+		case model.BlockContentText_Quote:
+			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "> ", text.Text))
+		case model.BlockContentText_Code:
+			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), "```", text.Text, "```"))
+		case model.BlockContentText_Checkbox:
+			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- [ ] ", text.Text))
+		case model.BlockContentText_Marked:
+			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- ", text.Text))
+		case model.BlockContentText_Numbered:
+			numberedCount++
+			texts = append(texts, fmt.Sprintf("%s%d%s%s", strings.Repeat("\t", level), numberedCount, ". ", text.Text))
+		case model.BlockContentText_Callout:
+			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), text.IconEmoji, " ", text.Text))
+		default:
+			texts = append(texts, fmt.Sprintf("%s%s", strings.Repeat("\t", level), text.Text))
+		}
+	}
+	return texts, numberedCount
 }

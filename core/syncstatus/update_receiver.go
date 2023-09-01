@@ -101,6 +101,12 @@ func (r *updateReceiver) UpdateNodeConnection(online bool) {
 	r.nodeConnected = online
 }
 
+func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
+	r.Lock()
+	defer r.Unlock()
+	r.nodeConnected = status == syncstatus.Online
+}
+
 func (r *updateReceiver) notify(
 	objId string,
 	objStatus pb.EventStatusThreadSyncStatus,

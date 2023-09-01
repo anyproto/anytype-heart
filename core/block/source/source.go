@@ -347,7 +347,7 @@ func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (s *source) iterate(startId string, iterFunc objecttree.ChangeIterateFunc) (err error) {
-	unmarshall := func(decrypted []byte) (res any, err error) {
+	unmarshall := func(_ *objecttree.Change, decrypted []byte) (res any, err error) {
 		ch := &pb.Change{}
 		err = proto.Unmarshal(decrypted, ch)
 		res = ch
@@ -442,7 +442,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId,
-		func(decrypted []byte) (any, error) {
+		func(_ *objecttree.Change, decrypted []byte) (any, error) {
 			ch := &pb.Change{}
 			err = proto.Unmarshal(decrypted, ch)
 			if err != nil {
@@ -518,7 +518,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId,
-		func(decrypted []byte) (any, error) {
+		func(_ *objecttree.Change, decrypted []byte) (any, error) {
 			ch := &pb.Change{}
 			err = proto.Unmarshal(decrypted, ch)
 			if err != nil {
