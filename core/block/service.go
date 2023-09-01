@@ -375,14 +375,14 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	relations := pbtypes.GetStringList(newDetails, bundle.RelationKeyRecommendedRelations.String())
 
 	if len(relations) > 0 {
-		for i, r := range relations {
+		for i, relation := range relations {
 			// replace relation url with id
-			uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, strings.TrimPrefix(r, addr.BundledRelationURLPrefix))
+			uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, strings.TrimPrefix(relation, addr.BundledRelationURLPrefix))
 			if err != nil {
 				// should never happen
 				return nil, err
 			}
-			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uk)
+			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -390,8 +390,28 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 			relations[i] = id
 		}
 		newDetails.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relations)
-
 	}
+
+	objectTypes := pbtypes.GetStringList(newDetails, bundle.RelationKeyRelationFormatObjectTypes.String())
+
+	if len(objectTypes) > 0 {
+		for i, objectType := range objectTypes {
+			// replace object type url with id
+			uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, strings.TrimPrefix(objectType, addr.BundledObjectTypeURLPrefix))
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uniqueKey)
+			if err != nil {
+				// should never happen
+				return nil, err
+			}
+			objectTypes[i] = id
+		}
+		newDetails.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
+	}
+
 	return newDetails, nil
 }
 
