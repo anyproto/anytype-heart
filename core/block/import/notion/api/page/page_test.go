@@ -966,3 +966,89 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 	})
 }
+
+func TestTask_provideDetails(t *testing.T) {
+	t.Run("Page has icon emoji - details have relation iconEmoji", func(t *testing.T) {
+		c := client.NewClient()
+		emoji := "😘"
+		page := Page{
+			Icon: &api.Icon{Emoji: &emoji},
+		}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.Contains(t, details, bundle.RelationKeyIconEmoji.String())
+		assert.Equal(t, emoji, details[bundle.RelationKeyIconEmoji.String()].GetStringValue())
+	})
+	t.Run("Page has custom external icon - details have relation iconImage", func(t *testing.T) {
+		c := client.NewClient()
+		page := Page{
+			Icon: &api.Icon{
+				Type: api.External,
+				External: &api.FileProperty{
+					URL: "url",
+				}},
+		}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.Contains(t, details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "url", details[bundle.RelationKeyIconImage.String()].GetStringValue())
+	})
+	t.Run("Database has custom file icon - details have relation iconImage", func(t *testing.T) {
+		c := client.NewClient()
+		page := Page{
+			Icon: &api.Icon{
+				Type: api.File,
+				File: &api.FileProperty{
+					URL: "url",
+				}},
+		}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.Contains(t, details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "url", details[bundle.RelationKeyIconImage.String()].GetStringValue())
+	})
+	t.Run("Database doesn't have icon - details don't have neither iconImage nor iconEmoji", func(t *testing.T) {
+		c := client.NewClient()
+		page := Page{}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      page,
+		}
+
+		// when
+		details, _ := pageTask.prepareDetails()
+
+		// then
+		assert.NotContains(t, details, bundle.RelationKeyIconImage.String())
+		assert.NotContains(t, details, bundle.RelationKeyIconEmoji.String())
+	})
+}
