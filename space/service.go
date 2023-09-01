@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -127,10 +128,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	err = s.checkOldSpace()
-	if err != nil {
-		return
-	}
 	payload := commonspace.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
@@ -150,7 +147,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		// pulling space from remote
 		_, err = s.GetSpace(ctx, s.accountId)
 		if err != nil {
-			return
+			return rpcerr.Unwrap(err)
 		}
 	}
 	return
@@ -291,35 +288,6 @@ func (s *service) addSchema(addrs []string) (res []string) {
 		res = append(res, clientserver.PreferredSchema+"://"+addr)
 	}
 	return res
-}
-
-func (s *service) checkOldSpace() (err error) {
-	old, err := s.spaceStorageProvider.AllSpaceIds()
-	if err != nil {
-		return
-	}
-	for _, id := range old {
-		st, err := s.spaceStorageProvider.WaitSpaceStorage(context.Background(), id)
-		if err != nil {
-			return err
-		}
-		header, err := st.SpaceHeader()
-		if err != nil {
-			return err
-		}
-		tp, err := s.getSpaceType(header)
-		if err != nil {
-			return err
-		}
-		if tp == "derived.space" {
-			return ErrUsingOldStorage
-		}
-		err = st.Close(context.Background())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s *service) getSpaceType(header *spacesyncproto.RawSpaceHeaderWithId) (tp string, err error) {
