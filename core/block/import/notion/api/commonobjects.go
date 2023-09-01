@@ -2,15 +2,15 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type RichTextType string
