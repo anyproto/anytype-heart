@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/ocache"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -124,6 +125,19 @@ func (s *Service) GetObjectWithTimeout(ctx context.Context, id domain.FullID) (s
 		defer cancel()
 	}
 	return s.GetObject(ctx, id)
+}
+
+// PickBlock returns opened smartBlock or opens smartBlock in silent mode
+func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
+	if err != nil {
+		// Object not loaded yet
+		return nil, source.ErrObjectNotFound
+	}
+	return s.GetObjectWithTimeout(ctx, domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: objectID,
+	})
 }
 
 func CacheOptsWithRemoteLoadDisabled(ctx context.Context) context.Context {

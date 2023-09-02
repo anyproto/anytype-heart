@@ -961,19 +961,6 @@ func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
 	return s.spaceService.ResolveSpaceID(objectID)
 }
 
-// PickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
-	if err != nil {
-		// Object not loaded yet
-		return nil, source.ErrObjectNotFound
-	}
-	return s.GetObjectWithTimeout(ctx, domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: objectID,
-	})
-}
-
 func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {

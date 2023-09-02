@@ -13,8 +13,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -351,23 +352,21 @@ func (b *builtinObjects) getSetIDByObjectTypeKey(spaceID string, objectTypeKey b
 }
 
 func (b *builtinObjects) getWidgetBlockIdByNumber(spaceID string, index int) (string, error) {
-	w, err := b.service.GetObject(context.Background(), domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: b.coreService.PredefinedObjects(spaceID).Widgets,
+	var widgetBlockID string
+	err := getblock.Do(b.service, b.coreService.PredefinedObjects(spaceID).Widgets, func(sb smartblock.SmartBlock) error {
+		root := sb.Pick(sb.RootId())
+		if root == nil {
+			return fmt.Errorf("failed to pick root block of Widget object")
+		}
+		if len(root.Model().ChildrenIds) < index+1 {
+			return fmt.Errorf("failed to get %d block of Widget object as there olny %d of them", index+1, len(root.Model().ChildrenIds))
+		}
+		target := sb.Pick(root.Model().ChildrenIds[index])
+		if target == nil {
+			return fmt.Errorf("failed to get id of first block of Widget object")
+		}
+		widgetBlockID = target.Model().Id
+		return nil
 	})
-	if err != nil {
-		return "", fmt.Errorf("failed to get Widget object: %s", err.Error())
-	}
-	root := w.Pick(w.RootId())
-	if root == nil {
-		return "", fmt.Errorf("failed to pick root block of Widget object")
-	}
-	if len(root.Model().ChildrenIds) < index+1 {
-		return "", fmt.Errorf("failed to get %d block of Widget object as there olny %d of them", index+1, len(root.Model().ChildrenIds))
-	}
-	target := w.Pick(root.Model().ChildrenIds[index])
-	if target == nil {
-		return "", fmt.Errorf("failed to get id of first block of Widget object: %s", err.Error())
-	}
-	return target.Model().Id, nil
+	return widgetBlockID, err
 }
