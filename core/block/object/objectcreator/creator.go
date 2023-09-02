@@ -98,7 +98,7 @@ func (c *Creator) Name() (name string) {
 type BlockService interface {
 	StateFromTemplate(templateID string, name string) (st *state.State, err error)
 	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
-	CreateTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
@@ -172,7 +172,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 		if err != nil {
 			return "", nil, err
 		}
-		sb, err = c.blockService.CreateTreeObjectWithUniqueKey(ctx, spaceID, uk, initFunc)
+		sb, err = c.blockService.DeriveTreeObjectWithUniqueKey(ctx, spaceID, uk, initFunc)
 		if err != nil {
 			return "", nil, err
 		}

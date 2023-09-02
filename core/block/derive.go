@@ -55,6 +55,31 @@ func (s *Service) DeriveObject(
 	return nil
 }
 
+func (s *Service) DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+	space, err := s.spaceService.GetSpace(ctx, spaceID)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := s.DeriveTreeCreatePayload(ctx, spaceID, key)
+	if err != nil {
+		return nil, err
+	}
+
+	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
+	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+		err = fmt.Errorf("failed to put tree: %w", err)
+		return
+	}
+	if tr != nil {
+		tr.Close()
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: payload.RootRawChange.Id,
+	}
+	return s.cacheCreatedObject(ctx, id, initFunc)
+}
+
 func (s *Service) getDerivedObject(
 	ctx context.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
 ) (sb smartblock.SmartBlock, err error) {
