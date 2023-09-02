@@ -80,7 +80,7 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	}
 }
 
-func (s *Service) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (s *Service) getObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
 		if opts.spaceId == "" {
 			opts.spaceId = id.SpaceID
@@ -118,13 +118,13 @@ func (s *Service) GetObject(ctx context.Context, id domain.FullID) (sb smartbloc
 	return v.(smartblock.SmartBlock), nil
 }
 
-func (s *Service) GetObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (s *Service) getObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, objectLoadTimeout)
 		defer cancel()
 	}
-	return s.GetObject(ctx, id)
+	return s.getObject(ctx, id)
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
@@ -134,7 +134,7 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 		// Object not loaded yet
 		return nil, source.ErrObjectNotFound
 	}
-	return s.GetObjectWithTimeout(ctx, domain.FullID{
+	return s.getObjectWithTimeout(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,
 	})

@@ -17,7 +17,7 @@ DEPS:
 - s.anytype
 - s.syncerLock
 - s.syncer
-- s.GetObject
+- s.getObject
 */
 
 func (s *Service) StartSync() {
@@ -36,7 +36,7 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 		return
 	}
 
-	v, err := s.GetObject(ctx, domain.FullID{
+	v, err := s.getObject(ctx, domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: id,
 	})
@@ -65,7 +65,7 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 		return errAppIsNotRunning
 	}
 
-	obj, err := s.GetObject(ctx, domain.FullID{
+	obj, err := s.getObject(ctx, domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: treeId,
 	})

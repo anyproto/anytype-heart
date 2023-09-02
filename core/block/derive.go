@@ -98,7 +98,7 @@ func (s *Service) getDerivedObject(
 			}
 			s.predefinedObjectWasMissing = false
 			// the object exists locally
-			return s.GetObjectWithTimeout(ctx, id)
+			return s.getObjectWithTimeout(ctx, id)
 		}
 		tr.Close()
 		return s.cacheCreatedObject(ctx, id, initFunc)
@@ -117,7 +117,7 @@ func (s *Service) getDerivedObject(
 	)
 	defer cancel()
 
-	sb, err = s.GetObjectWithTimeout(ctx, id)
+	sb, err = s.getObjectWithTimeout(ctx, id)
 	if err != nil {
 		if errors.Is(err, treechangeproto.ErrGetTree) {
 			err = spacesyncproto.ErrSpaceMissing

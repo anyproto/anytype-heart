@@ -87,5 +87,5 @@ func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, init
 			initFunc: initFunc,
 		},
 	})
-	return s.GetObject(ctx, id)
+	return s.getObject(ctx, id)
 }

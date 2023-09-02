@@ -71,7 +71,7 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, err = bs.OpenBlock(cctx, ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
+		obj, err = bs.OpenBlock(ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
 	if err != nil {

@@ -209,74 +209,68 @@ func (s *Service) Anytype() core.Service {
 	return s.anytype
 }
 
-func (s *Service) OpenBlock(
-	ctx context.Context,
-	sctx session.Context, id string, includeRelationsAsDependentObjects bool,
-) (obj *model.ObjectView, err error) {
-	startTime := time.Now()
+func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	spaceID, err := s.spaceService.ResolveSpaceID(id)
 	if err != nil {
-		return nil, fmt.Errorf("resolve spaceID: %w", err)
+		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
-	ob, err := s.GetObjectWithTimeout(ctx, domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: id,
+	startTime := time.Now()
+	err = Do(s, id, func(ob smartblock.SmartBlock) error {
+		if includeRelationsAsDependentObjects {
+			ob.EnabledRelationAsDependentObjects()
+		}
+		afterSmartBlockTime := time.Now()
+
+		ob.RegisterSession(sctx)
+
+		afterDataviewTime := time.Now()
+		st := ob.NewState()
+
+		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges); err != nil {
+			log.Errorf("failed to update lastOpenedDate: %s", err.Error())
+		}
+		afterApplyTime := time.Now()
+		if obj, err = ob.Show(); err != nil {
+			return fmt.Errorf("show: %w", err)
+		}
+		afterShowTime := time.Now()
+		_, err = s.syncStatus.Watch(spaceID, id, func() []string {
+			ob.Lock()
+			defer ob.Unlock()
+			bs := ob.NewState()
+
+			return lo.Uniq(bs.GetAllFileHashes(ob.FileRelationKeys(bs)))
+		})
+		if err == nil {
+			ob.AddHook(func(_ smartblock.ApplyInfo) error {
+				s.syncStatus.Unwatch(spaceID, id)
+				return nil
+			}, smartblock.HookOnClose)
+		}
+		if err != nil && err != treestorage.ErrUnknownTreeId {
+			log.Errorf("failed to watch status for object %s: %s", id, err.Error())
+		}
+
+		sbType, err := s.sbtProvider.Type(spaceID, id)
+		if err != nil {
+			return fmt.Errorf("failed to get smartblock type: %w", err)
+		}
+		afterHashesTime := time.Now()
+		metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
+			ObjectId:       id,
+			GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
+			DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
+			ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
+			ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
+			FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
+			SmartblockType: int(sbType),
+		})
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	if includeRelationsAsDependentObjects {
-		ob.EnabledRelationAsDependentObjects()
-	}
-	afterSmartBlockTime := time.Now()
-
-	ob.Lock()
-	defer ob.Unlock()
-	ob.RegisterSession(sctx)
-
-	afterDataviewTime := time.Now()
-	st := ob.NewState()
-
-	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-	if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges); err != nil {
-		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
-	}
-	afterApplyTime := time.Now()
-	if obj, err = ob.Show(); err != nil {
-		return
-	}
-	afterShowTime := time.Now()
-	_, err = s.syncStatus.Watch(spaceID, id, func() []string {
-		ob.Lock()
-		defer ob.Unlock()
-		bs := ob.NewState()
-
-		return lo.Uniq(bs.GetAllFileHashes(ob.FileRelationKeys(bs)))
-	})
-	if err == nil {
-		ob.AddHook(func(_ smartblock.ApplyInfo) error {
-			s.syncStatus.Unwatch(spaceID, id)
-			return nil
-		}, smartblock.HookOnClose)
-	}
-	if err != nil && err != treestorage.ErrUnknownTreeId {
-		log.Errorf("failed to watch status for object %s: %s", id, err.Error())
-	}
-
-	sbType, err := s.sbtProvider.Type(spaceID, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get smartblock type: %w", err)
-	}
-	afterHashesTime := time.Now()
-	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
-		ObjectId:       id,
-		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
-		DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
-		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
-		ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
-		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
-		SmartblockType: int(sbType),
-	})
 	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id] = true; return nil })
 	return obj, nil
 }
