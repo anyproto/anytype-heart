@@ -11,14 +11,18 @@ import (
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
-type Zip struct{}
+type Zip struct {
+	archiveReader *zip.ReadCloser
+	fileReaders   map[string]io.ReadCloser
+}
 
 func NewZip() *Zip {
 	return &Zip{}
 }
 
-func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
+func (z *Zip) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
 	r, err := zip.OpenReader(importPath)
+	z.archiveReader = r
 	if err != nil {
 		return nil, err
 	}
@@ -50,5 +54,15 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFil
 		}
 		files[shortPath] = rc
 	}
+	z.fileReaders = files
 	return files, nil
+}
+
+func (z *Zip) Close() {
+	if z.archiveReader != nil {
+		z.archiveReader.Close()
+	}
+	for _, fileReader := range z.fileReaders {
+		fileReader.Close()
+	}
 }

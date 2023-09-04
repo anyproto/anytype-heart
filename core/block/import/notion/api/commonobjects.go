@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type RichTextType string
@@ -280,6 +283,27 @@ type Icon struct {
 	Emoji    *string       `json:"emoji,omitempty"`
 	File     *FileProperty `json:"file,omitempty"`
 	External *FileProperty `json:"external,omitempty"`
+}
+
+func SetIcon(details map[string]*types.Value, icon *Icon) *model.RelationLink {
+	if icon.Emoji != nil {
+		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*icon.Emoji)
+	}
+	var linkToIconImage string
+	if icon.Type == External && icon.External != nil {
+		linkToIconImage = icon.External.URL
+	}
+	if icon.Type == File && icon.File != nil {
+		linkToIconImage = icon.File.URL
+	}
+	if linkToIconImage != "" {
+		details[bundle.RelationKeyIconImage.String()] = pbtypes.String(linkToIconImage)
+		return &model.RelationLink{
+			Key:    bundle.RelationKeyIconImage.String(),
+			Format: model.RelationFormat_file,
+		}
+	}
+	return nil
 }
 
 type userType string

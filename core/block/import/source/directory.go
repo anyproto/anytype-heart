@@ -8,7 +8,9 @@ import (
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
-type Directory struct{}
+type Directory struct {
+	fileReaders map[string]io.ReadCloser
+}
 
 func NewDirectory() *Directory {
 	return &Directory{}
@@ -41,4 +43,10 @@ func (d *Directory) GetFileReaders(importPath string, expectedExt []string, incl
 		return nil, err
 	}
 	return files, nil
+}
+
+func (d *Directory) Close() {
+	for _, fileReader := range d.fileReaders {
+		fileReader.Close()
+	}
 }
