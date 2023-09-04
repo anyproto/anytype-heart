@@ -21,24 +21,24 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
-func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser, imported bool) (err error) {
-	status, err := f.fileStore.GetSyncStatus(fileId)
+func (f *fileSync) AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error) {
+	status, err := f.fileStore.GetSyncStatus(fileID)
 	if err != nil && !errors.Is(err, localstore.ErrNotFound) {
 		return fmt.Errorf("get file sync status: %w", err)
 	}
 	if status == int(syncstatus.StatusSynced) {
 		return nil
 	}
-	ok, storeErr := f.hasFileInStore(fileId)
+	ok, storeErr := f.hasFileInStore(fileID)
 	if storeErr != nil {
 		return fmt.Errorf("check if file is in store: %w", storeErr)
 	}
 	if !ok {
-		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+		log.Warn("file has been deleted from store, skip upload", zap.String("fileID", fileID))
 		return nil
 	}
 
-	err = f.queue.QueueUpload(spaceId, fileId, uploadedByUser, imported)
+	err = f.queue.QueueUpload(spaceID, fileID, uploadedByUser, imported)
 	if err == nil {
 		select {
 		case f.uploadPingCh <- struct{}{}:

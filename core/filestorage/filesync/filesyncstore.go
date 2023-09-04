@@ -147,10 +147,10 @@ func versionFromItem(it *badger.Item) (int, error) {
 	return res, err
 }
 
-func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser bool, imported bool) (err error) {
+func (s *fileSyncStore) QueueUpload(spaceID string, fileID string, addedByUser bool, imported bool) (err error) {
 	return s.updateTxn(func(txn *badger.Txn) error {
-		logger := log.With(zap.String("fileID", fileId), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
-		ok, err := isKeyExists(txn, discardedKey(spaceId, fileId))
+		logger := log.With(zap.String("fileID", fileID), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
+		ok, err := isKeyExists(txn, discardedKey(spaceID, fileID))
 		if err != nil {
 			return fmt.Errorf("check discarded key: %w", err)
 		}
@@ -158,7 +158,7 @@ func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser b
 			logger.Info("add file to upload queue: file is in discarded queue")
 			return nil
 		}
-		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
+		ok, err = isKeyExists(txn, uploadKey(spaceID, fileID))
 		if err != nil {
 			return fmt.Errorf("check upload key: %w", err)
 		}
@@ -171,7 +171,7 @@ func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser b
 		if err != nil {
 			return fmt.Errorf("create queue item: %w", err)
 		}
-		return txn.Set(uploadKey(spaceId, fileId), raw)
+		return txn.Set(uploadKey(spaceID, fileID), raw)
 	})
 }
 

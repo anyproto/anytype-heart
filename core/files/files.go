@@ -363,7 +363,7 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID str
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID string, imported bool) error {
+func (s *service) fileIndexLink(_ context.Context, inode ipld.Node, fileID string, imported bool) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
