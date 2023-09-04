@@ -3,6 +3,7 @@ package objectstore
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"path/filepath"
 	"testing"
 
@@ -62,10 +63,10 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 
 type TestObject map[bundle.RelationKey]*types.Value
 
-func generateSimpleObject(index int) TestObject {
-	id := fmt.Sprintf("%02d", index)
+func generateObjectWithRandomID() TestObject {
+	id := fmt.Sprintf("%d", rand.Int())
 	return TestObject{
-		bundle.RelationKeyId:   pbtypes.String("id" + id),
+		bundle.RelationKeyId:   pbtypes.String(id),
 		bundle.RelationKeyName: pbtypes.String("name" + id),
 	}
 }

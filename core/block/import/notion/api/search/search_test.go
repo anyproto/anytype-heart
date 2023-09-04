@@ -2,13 +2,13 @@ package search
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -32,7 +32,7 @@ func Test_GetDatabaseSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	ds := database.New(nil)
-	databases, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import), block.NewNotionImportContext())
+	databases, _, ce := ds.GetDatabase(context.Background(), pb.RpcObjectImportRequest_ALL_OR_NOTHING, db, process.NewProgress(pb.ModelProcess_Import), api.NewNotionImportContext())
 
 	assert.NotNil(t, databases)
 	assert.Len(t, databases.Snapshots, 16) //1 database + 15 properties (name doesn't count)

@@ -434,31 +434,6 @@ func detailsKeyToID(key []byte) string {
 	return path.Base(string(key))
 }
 
-type order struct {
-	database.Order
-}
-
-func (o order) Compare(lhs, rhs interface{}) (comp int) {
-	le := lhs.(database.Record)
-	re := rhs.(database.Record)
-
-	if o.Order != nil {
-		comp = o.Order.Compare(le, re)
-	}
-	// when order isn't set or equal - sort by id
-	if comp == 0 {
-		if pbtypes.GetString(le.Details, "id") > pbtypes.GetString(re.Details, "id") {
-			return 1
-		}
-		return -1
-	}
-	return comp
-}
-
-func (o order) CalcScore(_ interface{}) float64 {
-	return 0
-}
-
 func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string) (*model.ObjectInfo, error) {
 	sbt, err := s.sbtProvider.Type(spaceID, id)
 	if err != nil {

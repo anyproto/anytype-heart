@@ -2,6 +2,7 @@ package property
 
 import (
 	"encoding/json"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -71,7 +70,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 	mode pb.RpcObjectImportRequestMode,
 	databases []Database,
 	progress process.Progress,
-	req *block.NotionImportContext) (*converter.Response, *property.PropertiesStore, *converter.ConvertError) {
+	req *api.NotionImportContext) (*converter.Response, *property.PropertiesStore, *converter.ConvertError) {
 	var (
 		allSnapshots = make([]*converter.Snapshot, 0)
 		convertError = converter.NewError()
@@ -102,10 +101,9 @@ func (ds *Service) GetDatabase(_ context.Context,
 }
 
 func (ds *Service) makeDatabaseSnapshot(d Database,
-	importContext *block.NotionImportContext,
+	importContext *api.NotionImportContext,
 	relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
-
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
 	if err != nil {
@@ -119,17 +117,17 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	return snapshots, nil
 }
 
-func (ds *Service) fillImportContext(d Database, req *block.NotionImportContext, id string, databaseSnapshot *converter.Snapshot) {
+func (ds *Service) fillImportContext(d Database, req *api.NotionImportContext, id string, databaseSnapshot *converter.Snapshot) {
 	req.NotionDatabaseIdsToAnytype[d.ID] = id
 	req.DatabaseNameToID[d.ID] = pbtypes.GetString(databaseSnapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyName.String())
 	if d.Parent.DatabaseID != "" {
-		req.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
+		req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.DatabaseID], d.ID)
 	}
 	if d.Parent.PageID != "" {
-		req.ParentPageToChildIDs[d.Parent.PageID] = append(req.ParentPageToChildIDs[d.Parent.PageID], d.ID)
+		req.PageTree.ParentPageToChildIDs[d.Parent.PageID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.PageID], d.ID)
 	}
 	if d.Parent.BlockID != "" {
-		req.ParentPageToChildIDs[d.Parent.BlockID] = append(req.ParentPageToChildIDs[d.Parent.BlockID], d.ID)
+		req.PageTree.ParentPageToChildIDs[d.Parent.BlockID] = append(req.PageTree.ParentPageToChildIDs[d.Parent.BlockID], d.ID)
 	}
 }
 
@@ -253,7 +251,6 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 	}
 
 	if d.Cover != nil {
-
 		if d.Cover.Type == api.External {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.External.URL)
 			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
@@ -263,6 +260,9 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.File.URL)
 			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
 		}
+	}
+	if d.Icon != nil {
+		api.SetIcon(details, d.Icon)
 	}
 	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
@@ -318,7 +318,7 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot
 	}
 }
 
-func (ds *Service) AddObjectsToNotionCollection(notionContext *block.NotionImportContext,
+func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportContext,
 	notionDB []Database,
 	notionPages []page.Page) (*converter.Snapshot, error) {
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
@@ -331,7 +331,7 @@ func (ds *Service) AddObjectsToNotionCollection(notionContext *block.NotionImpor
 	return rootCol, nil
 }
 
-func (ds *Service) filterObjects(notionContext *block.NotionImportContext,
+func (ds *Service) filterObjects(notionContext *api.NotionImportContext,
 	notionDB []Database,
 	notionPages []page.Page) []string {
 	allWorkspaceObjects := make([]string, 0)
@@ -348,7 +348,7 @@ func (ds *Service) filterObjects(notionContext *block.NotionImportContext,
 	return allWorkspaceObjects
 }
 
-func (ds *Service) getAnytypeIDForRootCollection(notionContext *block.NotionImportContext,
+func (ds *Service) getAnytypeIDForRootCollection(notionContext *api.NotionImportContext,
 	notionIDToAnytypeID map[string]string,
 	parent api.Parent,
 	notionObjectID string) string {
@@ -378,7 +378,7 @@ func (ds *Service) getAnytypeIDForRootCollection(notionContext *block.NotionImpo
 
 	// If page with parent block is absent, we add child page to root collection
 	if parent.BlockID != "" {
-		if _, ok := notionContext.ParentBlockToPage[parent.BlockID]; !ok {
+		if _, ok := notionContext.BlockToPage.ParentBlockToPage[parent.BlockID]; !ok {
 			if anytypeID, ok := notionIDToAnytypeID[notionObjectID]; ok {
 				return anytypeID
 			}

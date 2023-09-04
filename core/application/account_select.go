@@ -58,6 +58,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		if err != nil {
 			return nil, err
 		}
+		s.refreshRemoteAccountState()
 		return acc, nil
 	}
 
