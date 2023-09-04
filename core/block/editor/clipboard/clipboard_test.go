@@ -595,6 +595,16 @@ func TestClipboard_TitleOps(t *testing.T) {
 		}
 	}
 
+	requiredBlockReq := func(blockId string) *pb.RpcBlockPasteRequest {
+		return &pb.RpcBlockPasteRequest{
+			SelectedBlockIds:  []string{blockId},
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				newTextBlock("whatever").Model(),
+			},
+		}
+	}
+
 	multiBlockReq := &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    template.TitleBlockId,
 		SelectedTextRange: &model.Range{},
@@ -612,7 +622,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "single", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
 	})
-	t.Run("single description to empty description", func(t *testing.T) {
+	t.Run("single description to empty title", func(t *testing.T) {
 		//given
 		state := withTitle(t, "")
 		addDescription(state, "current description")
@@ -632,6 +642,27 @@ func TestClipboard_TitleOps(t *testing.T) {
 		)
 		assert.True(t, true, find)
 	})
+
+	for _, blockIdToPasteTo := range []string{
+		template.TitleBlockId,
+		template.HeaderLayoutId,
+		template.FeaturedRelationsId,
+		template.DescriptionBlockId,
+	} {
+		t.Run("single text to "+blockIdToPasteTo, func(t *testing.T) {
+			//given
+			state := withTitle(t, "")
+			addRelations(state)
+			cb := NewClipboard(state, nil, nil, nil, nil)
+
+			//when
+			_, _, _, _, err := cb.Paste(nil, requiredBlockReq(blockIdToPasteTo), "")
+
+			//then
+			require.NoError(t, err)
+			assert.NotNil(t, state.Doc.Pick(blockIdToPasteTo))
+		})
+	}
 	t.Run("single to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -812,6 +843,14 @@ func addDescription(st *smarttest.SmartTest, description string) {
 	newState := st.Doc.NewState()
 	template.InitTemplate(newState, template.WithForcedDescription)
 	newState.Get(template.DescriptionBlockId).(text.Block).SetText(description, nil)
+	state.ApplyState(newState, false)
+}
+
+func addRelations(st *smarttest.SmartTest) {
+	newState := st.Doc.NewState()
+	template.InitTemplate(newState, template.RequireHeader)
+	template.InitTemplate(newState, template.WithFeaturedRelations)
+	template.InitTemplate(newState, template.WithForcedDescription)
 	state.ApplyState(newState, false)
 }
 
