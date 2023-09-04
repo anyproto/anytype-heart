@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -18,7 +17,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("pages were in Notion workspace", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype: map[string]string{"id1": "anytypeID1", "id2": "anytypeID2"},
 		}
 		notionPages := []page.Page{
@@ -53,7 +52,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("2 pages were in Notion workspace, 1 page is child in Page - 2 pages in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype: map[string]string{"id1": "anytypeID1", "id2": "anytypeID2", "id3": "anytypeID3"},
 		}
 		notionPages := []page.Page{
@@ -96,7 +95,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 pages were in Notion workspace, 1 page is child in Page, but parent page wasn't imported - both pages in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype: map[string]string{"id1": "anytypeID1", "id2": "anytypeID2"},
 		}
 		notionPages := []page.Page{
@@ -132,7 +131,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 page and 1 database were in Notion workspace, 1 page is in database - 1 page and 1 db in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype:     map[string]string{"id1": "anytypeID1", "id2": "anytypeID2"},
 			NotionDatabaseIdsToAnytype: map[string]string{"id3": "anytypeID3"},
 		}
@@ -179,7 +178,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("2 database were in Notion workspace, 1 page is in database, but parent db isn't imported - 1 db is in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype:     map[string]string{"id1": "anytypeID1"},
 			NotionDatabaseIdsToAnytype: map[string]string{"id3": "anytypeID3"},
 		}
@@ -218,7 +217,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 database and 1 page were in Notion workspace, 1 db is a child in page - 1 db and 1 page are in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype:     map[string]string{"id1": "anytypeID1"},
 			NotionDatabaseIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
 		}
@@ -264,7 +263,7 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 database was in Notion workspace, 1 db is a child in page, but page weren't imported - 1 db and 1 page are in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		notionImportContext := &api.NotionImportContext{
 			NotionDatabaseIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
 		}
 		notionDB := []Database{
@@ -300,10 +299,14 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 page was in Notion workspace, 1 page is a child in block, 1 page is in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		pt := api.NewPageTree()
+		pt.ParentPageToChildIDs = map[string][]string{"blockID": {"id2"}}
+		bp := api.NewBlockToPage()
+		bp.ParentBlockToPage = map[string]string{"blockID": "id3"}
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
-			ParentPageToChildIDs:   map[string][]string{"blockID": {"id2"}},
-			ParentBlockToPage:      map[string]string{"blockID": "id3"},
+			PageTree:               pt,
+			BlockToPage:            bp,
 		}
 		notionPages := []page.Page{
 			{
@@ -337,9 +340,12 @@ func TestService_AddObjectsToNotionCollection(t *testing.T) {
 	t.Run("1 page was in Notion workspace, 1 page is a child in block, but parent page is absent - 2 pages are in root collection", func(t *testing.T) {
 		// given
 		service := New(nil)
-		notionImportContext := &block.NotionImportContext{
+		pt := api.NewPageTree()
+		pt.ParentPageToChildIDs = map[string][]string{"blockID": {"id2"}}
+		notionImportContext := &api.NotionImportContext{
 			NotionPageIdsToAnytype: map[string]string{"id3": "anytypeID3", "id2": "anytypeID2"},
-			ParentPageToChildIDs:   map[string][]string{"blockID": {"id2"}},
+			PageTree:               pt,
+			BlockToPage:            api.NewBlockToPage(),
 		}
 		notionPages := []page.Page{
 			{
@@ -390,7 +396,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: pr}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -414,7 +420,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -437,7 +443,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), properties)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), properties)
 
 		// then
 		assert.Len(t, properties.PropertyIdsToSnapshots, 1)
@@ -460,7 +466,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: selectProperty}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 1)
@@ -489,7 +495,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
@@ -519,11 +525,77 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{Properties: properties}
 
 		// when
-		dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), req)
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
 
 		// then
 		assert.Len(t, req.PropertyIdsToSnapshots, 2)
 		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
+	})
+
+	t.Run("Database has icon emoji - details have relation iconEmoji", func(t *testing.T) {
+		dbService := New(nil)
+		emoji := "😘"
+		db := Database{Icon: &api.Icon{
+			Emoji: &emoji,
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconEmoji.String())
+		assert.Equal(t, emoji, icon)
+	})
+	t.Run("Database has custom external icon - details have relation iconImage", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{Icon: &api.Icon{
+			Type: api.External,
+			External: &api.FileProperty{
+				URL: "url",
+			},
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "url", icon)
+	})
+	t.Run("Database has custom file icon - details have relation iconImage", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{Icon: &api.Icon{
+			Type: api.File,
+			File: &api.FileProperty{
+				URL: "url",
+			},
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "url", icon)
+	})
+	t.Run("Database doesn't have icon - details don't have neither iconImage nor iconEmoji", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "", icon)
 	})
 }

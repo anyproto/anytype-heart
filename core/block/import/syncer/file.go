@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -50,6 +49,5 @@ func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	if err != nil {
 		return fmt.Errorf("failed syncing file: %s", err)
 	}
-	os.Remove(b.Model().GetFile().Name)
 	return nil
 }

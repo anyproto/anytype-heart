@@ -3,7 +3,9 @@ package objectstore
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -59,10 +62,10 @@ func newStoreFixture(t *testing.T) *storeFixture {
 
 type testObject map[bundle.RelationKey]*types.Value
 
-func generateSimpleObject(index int) testObject {
-	id := fmt.Sprintf("%02d", index)
+func generateObjectWithRandomID() testObject {
+	id := fmt.Sprintf("%d", rand.Int())
 	return testObject{
-		bundle.RelationKeyId:   pbtypes.String("id" + id),
+		bundle.RelationKeyId:   pbtypes.String(id),
 		bundle.RelationKeyName: pbtypes.String("name" + id),
 	}
 }
@@ -404,14 +407,50 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with limit", func(t *testing.T) {
+	t.Run("with offset", func(t *testing.T) {
+		// Given
 		s := newStoreFixture(t)
 		var objects []testObject
 		for i := 0; i < 100; i++ {
-			objects = append(objects, generateSimpleObject(i))
+			objects = append(objects, generateObjectWithRandomID())
 		}
 		s.addObjects(t, objects)
 
+		// When
+		recs, _, err := s.Query(nil, database.Query{
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Type:        model.BlockContentDataviewSort_Desc,
+				},
+			},
+			Offset: 10,
+		})
+		require.NoError(t, err)
+
+		// Then
+		want := slices.Clone(objects)
+		sort.Slice(want, func(i, j int) bool {
+			a := makeDetails(want[i])
+			b := makeDetails(want[j])
+			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
+			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			// Desc order
+			return idA > idB
+		})
+		assertRecordsEqual(t, want[10:], recs)
+	})
+
+	t.Run("with limit", func(t *testing.T) {
+		// Given
+		s := newStoreFixture(t)
+		var objects []testObject
+		for i := 0; i < 100; i++ {
+			objects = append(objects, generateObjectWithRandomID())
+		}
+		s.addObjects(t, objects)
+
+		// When
 		recs, _, err := s.Query(nil, database.Query{
 			Sorts: []*model.BlockContentDataviewSort{
 				{
@@ -423,17 +462,28 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assertRecordsEqual(t, objects[:15], recs)
+		// Then
+		want := slices.Clone(objects)
+		sort.Slice(want, func(i, j int) bool {
+			a := makeDetails(want[i])
+			b := makeDetails(want[j])
+			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
+			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			return idA < idB
+		})
+		assertRecordsEqual(t, want[:15], recs)
 	})
 
 	t.Run("with limit and offset", func(t *testing.T) {
+		// Given
 		s := newStoreFixture(t)
 		var objects []testObject
 		for i := 0; i < 100; i++ {
-			objects = append(objects, generateSimpleObject(i))
+			objects = append(objects, generateObjectWithRandomID())
 		}
 		s.addObjects(t, objects)
 
+		// When
 		limit := 15
 		offset := 20
 		recs, _, err := s.Query(nil, database.Query{
@@ -448,16 +498,26 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assertRecordsEqual(t, objects[offset:offset+limit], recs)
+		// Then
+		want := slices.Clone(objects)
+		sort.Slice(want, func(i, j int) bool {
+			a := makeDetails(want[i])
+			b := makeDetails(want[j])
+			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
+			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			return idA < idB
+		})
+		assertRecordsEqual(t, want[offset:offset+limit], recs)
 	})
 
 	t.Run("with filter, limit and offset", func(t *testing.T) {
+		// Given
 		s := newStoreFixture(t)
 		var objects []testObject
 		var filteredObjects []testObject
 		for i := 0; i < 100; i++ {
 			if i%2 == 0 {
-				objects = append(objects, generateSimpleObject(i))
+				objects = append(objects, generateObjectWithRandomID())
 			} else {
 				obj := makeObjectWithName(fmt.Sprintf("id%02d", i), "this name")
 				filteredObjects = append(filteredObjects, obj)
@@ -467,6 +527,7 @@ func TestQuery(t *testing.T) {
 		}
 		s.addObjects(t, objects)
 
+		// When
 		limit := 60
 		offset := 20
 		recs, _, err := s.Query(nil, database.Query{
@@ -488,6 +549,7 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		// Then
 		// Limit is much bigger than the number of filtered objects, so we should get all of them, considering offset
 		assertRecordsEqual(t, filteredObjects[offset:], recs)
 	})
@@ -507,6 +569,7 @@ func TestQueryObjectIds(t *testing.T) {
 	})
 
 	t.Run("with smartblock types filter", func(t *testing.T) {
+		// Given
 		s := newStoreFixture(t)
 		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 		s.sbtProvider = typeProvider
@@ -521,28 +584,36 @@ func TestQueryObjectIds(t *testing.T) {
 		typeProvider.EXPECT().Type("id3").Return(smartblock.SmartBlockTypePage, nil)
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
+		// When
 		ids, _, err := s.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
 		require.NoError(t, err)
+
+		// Then
 		assert.Equal(t, []string{"id1", "id3"}, ids)
 
 		t.Run("with limit", func(t *testing.T) {
+			// When
 			ids, _, err := s.QueryObjectIDs(database.Query{
 				Limit: 1,
 			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
 			require.NoError(t, err)
+			// Then
 			assert.Equal(t, []string{"id1"}, ids)
 		})
 		t.Run("with limit and offset", func(t *testing.T) {
+			// When
 			ids, _, err := s.QueryObjectIDs(database.Query{
 				Limit:  1,
 				Offset: 1,
 			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
 			require.NoError(t, err)
+			// Then
 			assert.Equal(t, []string{"id3"}, ids)
 		})
 	})
 
 	t.Run("with basic filter and smartblock types filter", func(t *testing.T) {
+		// Given
 		s := newStoreFixture(t)
 		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 		s.sbtProvider = typeProvider
@@ -558,6 +629,7 @@ func TestQueryObjectIds(t *testing.T) {
 
 		s.addObjects(t, []testObject{obj1, obj2, obj3})
 
+		// When
 		ids, _, err := s.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -568,6 +640,8 @@ func TestQueryObjectIds(t *testing.T) {
 			},
 		}, []smartblock.SmartBlockType{smartblock.SmartBlockTypePage})
 		require.NoError(t, err)
+
+		// Then
 		assert.Equal(t, []string{"id2"}, ids)
 	})
 }

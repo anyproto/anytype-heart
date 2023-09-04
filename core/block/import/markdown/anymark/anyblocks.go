@@ -1,6 +1,7 @@
 package anymark
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -88,5 +89,55 @@ func provideCodeBlock(textArr []string, language string, id string) *model.Block
 				},
 			},
 		},
+	}
+}
+
+func ConvertTextToFile(block *model.Block) {
+	// "svg" excluded
+	if block.GetText().GetMarks().Marks[0].Param == "" {
+		return
+	}
+
+	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
+	videoFormats := []string{"mp4", "m4v"}
+	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
+	pdfFormat := "pdf"
+
+	fileType := model.BlockContentFile_File
+	fileExt := filepath.Ext(block.GetText().GetMarks().Marks[0].Param)
+	if fileExt != "" {
+		fileExt = fileExt[1:]
+		for _, ext := range imageFormats {
+			if strings.EqualFold(fileExt, ext) {
+				fileType = model.BlockContentFile_Image
+				break
+			}
+		}
+
+		for _, ext := range videoFormats {
+			if strings.EqualFold(fileExt, ext) {
+				fileType = model.BlockContentFile_Video
+				break
+			}
+		}
+
+		for _, ext := range audioFormats {
+			if strings.EqualFold(fileExt, ext) {
+				fileType = model.BlockContentFile_Audio
+				break
+			}
+		}
+
+		if strings.EqualFold(fileExt, pdfFormat) {
+			fileType = model.BlockContentFile_PDF
+		}
+
+		block.Content = &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Name:  block.GetText().GetMarks().Marks[0].Param,
+				State: model.BlockContentFile_Empty,
+				Type:  fileType,
+			},
+		}
 	}
 }
