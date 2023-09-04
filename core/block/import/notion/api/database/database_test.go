@@ -541,7 +541,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
 
 		// then
 		assert.Nil(t, err)
@@ -559,7 +559,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
 
 		// then
 		assert.Nil(t, err)
@@ -577,7 +577,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		}}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
 
 		// then
 		assert.Nil(t, err)
@@ -590,7 +590,7 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		db := Database{}
 
 		// when
-		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+		snapshot, err := dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), nil)
 
 		// then
 		assert.Nil(t, err)
