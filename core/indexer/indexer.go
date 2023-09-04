@@ -434,6 +434,14 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
 		}
 	}
+
+	for _, spaceID := range spaceIDs {
+		err = i.EnsurePreinstalledObjects(spaceID)
+		if err != nil {
+			return fmt.Errorf("ensure preinstalled objects: %w", err)
+		}
+	}
+
 	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
 	// due to parallel load which can overload the stream
 	i.syncStarter.StartSync()
@@ -525,11 +533,6 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 		if err != nil {
 			return err
 		}
-	}
-
-	err = i.EnsurePreinstalledObjects(spaceID)
-	if err != nil {
-		return fmt.Errorf("ensure preinstalled objects: %w", err)
 	}
 
 	if flags.fulltext {
