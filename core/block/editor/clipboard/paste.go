@@ -28,7 +28,7 @@ type pasteCtrl struct {
 }
 
 type pasteMode struct {
-	toTitle             bool
+	toHeaderChild       bool
 	removeSelection     bool
 	multiRange          bool
 	singleRange         bool
@@ -116,13 +116,10 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 			return
 		}
 		selText := p.getFirstSelectedText()
-		p.mode.toTitle = selText != nil && p.s.HasParent(selText.Model().Id, template.HeaderLayoutId)
-		p.mode.intoBlockPasteStyle = p.mode.toTitle
+		p.mode.toHeaderChild = selText != nil && p.s.HasParent(selText.Model().Id, template.HeaderLayoutId)
+		p.mode.intoBlockPasteStyle = p.mode.toHeaderChild
 		if selText != nil && textCount == 1 && nonTextCount == 0 && req.IsPartOfBlock {
 			p.mode.intoBlock = true
-			if selText.GetText() == "" {
-				p.mode.intoBlockPasteStyle = true
-			}
 		} else {
 			p.mode.intoBlock = selText != nil && selText.Model().GetText().Style == model.BlockContentText_Code
 		}

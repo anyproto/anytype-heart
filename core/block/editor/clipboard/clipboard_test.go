@@ -4,7 +4,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/anyproto/anytype-heart/tests/blockbuilder"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	textutil "github.com/anyproto/anytype-heart/util/text"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
@@ -622,6 +625,68 @@ func TestClipboard_TitleOps(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "single", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
 	})
+
+	for _, text := range []string{"", "full"} {
+		t.Run("paste - when ("+text+")", func(t *testing.T) {
+			// given
+			sb := smarttest.New("text")
+			require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						text,
+						blockbuilder.ID("1"),
+					),
+					blockbuilder.Text(
+						"toggle",
+						blockbuilder.ID("2"),
+						blockbuilder.TextStyle(model.BlockContentText_Toggle),
+					),
+				)))
+
+			// when
+			cb := NewClipboard(sb, nil, nil, nil, nil)
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
+				AnySlot:           []*model.Block{sb.Pick("2").Model()},
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, model.BlockContentText_Toggle, sb.Doc.Pick("1").Model().GetText().Style)
+		})
+	}
+	t.Run("paste - when insert partially", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"123",
+					blockbuilder.ID("1"),
+				),
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "1",
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+			AnySlot:           []*model.Block{sb.Pick("2").Model()},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentText_Paragraph, sb.Pick("1").Model().GetText().Style)
+	})
 	t.Run("single description to empty title", func(t *testing.T) {
 		//given
 		state := withTitle(t, "")
@@ -954,6 +1019,68 @@ func Test_PasteText(t *testing.T) {
 }
 
 func Test_CopyAndCutText(t *testing.T) {
+
+	t.Run("copy/cut do not preserve style - when full text copied", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, anySlotCopy, err := cb.Copy(pb.RpcBlockCopyRequest{
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+		})
+		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+		})
+
+		// then
+		require.NoError(t, err)
+
+		assert.Equal(t, model.BlockContentText_Paragraph, anySlotCopy[0].GetText().Style)
+		assert.Equal(t, model.BlockContentText_Paragraph, anySlotCut[0].GetText().Style)
+	})
+
+	t.Run("copy/cut preserve style - when full text copied", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, anySlotCopy, err := cb.Copy(pb.RpcBlockCopyRequest{
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("2").Model().GetText().Text))},
+		})
+		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("2").Model().GetText().Text))},
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+		})
+
+		// then
+		require.NoError(t, err)
+
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCopy[0].GetText().Style)
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCut[0].GetText().Style)
+	})
 
 	t.Run("copy/cut - when with children", func(t *testing.T) {
 		//given
