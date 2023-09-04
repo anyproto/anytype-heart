@@ -429,8 +429,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		detailsChanged bool
 	)
 
-	// apply snippet
 	if s.parent != nil {
+		s.parent.uniqueKeyInternal = s.uniqueKeyInternal
+
+		// apply snippet
 		if s.Snippet() != s.parent.Snippet() {
 			s.SetLocalDetail(bundle.RelationKeySnippet.String(), pbtypes.String(s.Snippet()))
 		}
