@@ -48,6 +48,16 @@ func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser, imported bool
 	return
 }
 
+func (f *fileSync) SendImportEvents() {
+	for _, event := range f.importEvents {
+		f.sendEvent(event)
+	}
+}
+
+func (f *fileSync) ClearImportEvents() {
+	f.importEvents = nil
+}
+
 func (f *fileSync) addLoop() {
 	f.addOperation()
 	for {
@@ -100,6 +110,9 @@ func (f *fileSync) tryToUpload() (string, error) {
 		if isLimitReachedErr(err) {
 			if it.AddedByUser && !it.Imported {
 				f.sendLimitReachedEvent(spaceId, fileId)
+			}
+			if it.Imported {
+				f.addImportEvent(spaceId, fileId)
 			}
 			if qerr := f.queue.QueueDiscarded(spaceId, fileId); qerr != nil {
 				log.Warn("can't push upload task to discarded queue", zap.String("fileId", fileId), zap.Error(qerr))
@@ -233,6 +246,21 @@ func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
 
 func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {
 	f.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfFileLimitReached{
+					FileLimitReached: &pb.EventFileLimitReached{
+						SpaceId: spaceID,
+						FileId:  fileID,
+					},
+				},
+			},
+		},
+	})
+}
+
+func (f *fileSync) addImportEvent(spaceID string, fileID string) {
+	f.importEvents = append(f.importEvents, &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileLimitReached{

@@ -43,6 +43,8 @@ type FileSync interface {
 	HasUpload(spaceId, fileId string) (ok bool, err error)
 	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
+	SendImportEvents()
+	ClearImportEvents()
 	app.ComponentRunnable
 }
 
@@ -72,6 +74,7 @@ type fileSync struct {
 
 	spaceStatsLock sync.Mutex
 	spaceStats     map[string]SpaceStat
+	importEvents   []*pb.Event
 }
 
 func New() FileSync {
