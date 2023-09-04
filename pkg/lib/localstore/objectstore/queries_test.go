@@ -321,7 +321,7 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with ascending recordsSorter and filter", func(t *testing.T) {
+	t.Run("with ascending order and filter", func(t *testing.T) {
 		s := newStoreFixture(t)
 		obj1 := makeObjectWithName("id1", "dfg")
 		obj2 := makeObjectWithName("id2", "abc")
@@ -353,7 +353,7 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with descending recordsSorter", func(t *testing.T) {
+	t.Run("with descending order", func(t *testing.T) {
 		s := newStoreFixture(t)
 		obj1 := makeObjectWithName("id1", "dfg")
 		obj2 := makeObjectWithName("id2", "abc")
@@ -706,7 +706,7 @@ func TestQueryById(t *testing.T) {
 		require.NoError(t, err)
 		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
 
-		t.Run("reverse recordsSorter", func(t *testing.T) {
+		t.Run("reverse order", func(t *testing.T) {
 			recs, err := s.QueryByID([]string{"id3", "id1"})
 			require.NoError(t, err)
 			assertRecordsEqual(t, []testObject{obj3, obj1}, recs)
