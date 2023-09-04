@@ -2,9 +2,9 @@ package objectstore
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/huandu/skiplist"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -27,8 +27,8 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
-	skl := skiplist.New(order{filters.Order})
 
+	var records []database.Record
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.Prefix = pagesDetailsBase.Bytes()
@@ -44,14 +44,7 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 
 			rec := database.Record{Details: details.Details}
 			if filters.FilterObj != nil && filters.FilterObj.FilterObject(rec) {
-				if offset > 0 {
-					offset--
-					continue
-				}
-				if limit > 0 && skl.Len() >= limit {
-					break
-				}
-				skl.Set(rec, nil)
+				records = append(records, rec)
 			}
 		}
 		return nil
@@ -60,12 +53,22 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 		return nil, err
 	}
 
-	records := make([]database.Record, 0, skl.Len())
-	for it := skl.Front(); it != nil; it = it.Next() {
-		records = append(records, it.Key().(database.Record))
+	if offset >= len(records) {
+		return nil, nil
 	}
-
-	return records, nil
+	if filters.Order != nil {
+		sort.Slice(records, func(i, j int) bool {
+			return filters.Order.Compare(records[i], records[j]) == -1
+		})
+	}
+	if limit > 0 {
+		upperBound := offset + limit
+		if upperBound > len(records) {
+			upperBound = len(records)
+		}
+		return records[offset:upperBound], nil
+	}
+	return records[offset:], nil
 }
 
 func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (*database.Filters, error) {

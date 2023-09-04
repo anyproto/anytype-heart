@@ -75,7 +75,6 @@ func GetRetryAfterError(h http.Header) *ErrRateLimited {
 // in case retry-after header is available it uses it, otherwise gradually increase the delay
 // can be canceled with the request's timeout
 // 0 maxAttempts means no limit
-//
 func (c *Client) DoWithRetry(loggerInfo string, maxAttempts int, req *http.Request) (*http.Response, error) {
 	var (
 		delay   = time.Second * 5
