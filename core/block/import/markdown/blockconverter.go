@@ -1,8 +1,6 @@
 package markdown
 
 import (
-	"bufio"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"io"
 	"os"
 	"path/filepath"
@@ -170,7 +168,7 @@ func (m *mdConverter) processFileBlock(block *model.Block, files map[string]io.R
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
 		}
-		name, err := m.provideFileName(block.GetFile().Name, files, importPath)
+		name, _, err := ce.ProvideFileName(block.GetFile().Name, files, importPath, m.tempDirProvider)
 		if err != nil {
 			log.Errorf("failed to update file block, %v", err)
 		}
@@ -245,57 +243,9 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		if err != nil {
 			log.Errorf("failed to read blocks: %s", err.Error())
 		}
-		// md file no longer needed
-		m.processBlocks(shortPath, files[shortPath], files)
 	} else {
 		// need to store file reader, so we can use it to create local file and upload it
 		files[shortPath].ReadCloser = f
 	}
 	return nil
-}
-
-func (m *mdConverter) provideFileName(fileName string, files map[string]io.ReadCloser, path string) (string, error) {
-	if strings.HasPrefix(strings.ToLower(fileName), "http://") || strings.HasPrefix(strings.ToLower(fileName), "https://") {
-		return fileName, nil
-	}
-	absolutePath := fileName
-	if !filepath.IsAbs(fileName) {
-		absolutePath = filepath.Join(path, fileName)
-	}
-	if _, err := os.Stat(absolutePath); err == nil {
-		return absolutePath, nil
-	}
-	if rc, ok := files[fileName]; ok {
-		return m.extractFileFromArchiveToTempDirectory(fileName, rc)
-	}
-	return "", nil
-}
-
-func (m *mdConverter) extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser) (string, error) {
-	tempDir := m.tempDirProvider.TempDir()
-	directoryWithFile := filepath.Dir(fileName)
-	if directoryWithFile != "" {
-		directoryWithFile = filepath.Join(tempDir, directoryWithFile)
-		if err := os.Mkdir(directoryWithFile, 0777); err != nil && !os.IsExist(err) {
-			return "", oserror.TransformError(err)
-		}
-	}
-	pathToTmpFile := filepath.Join(tempDir, fileName)
-	tmpFile, err := os.Create(pathToTmpFile)
-	if os.IsExist(err) {
-		return pathToTmpFile, nil
-	}
-	if err != nil {
-		return "", oserror.TransformError(err)
-	}
-	defer tmpFile.Close()
-	w := bufio.NewWriter(tmpFile)
-	_, err = w.ReadFrom(rc)
-	if err != nil {
-		return "", err
-	}
-	if err = w.Flush(); err != nil {
-		return "", err
-	}
-	return pathToTmpFile, nil
 }

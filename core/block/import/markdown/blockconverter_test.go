@@ -1,13 +1,16 @@
 package markdown
 
 import (
-	converter2 "github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/assert"
+
+	converter2 "github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/source"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type MockTempDir struct{}
@@ -26,7 +29,8 @@ func Test_processFiles(t *testing.T) {
 		assert.Nil(t, err)
 		defer os.Remove("./testdata/test.mov")
 
-		files := converter.processFiles("./testdata", pb.RpcObjectImportRequest_IGNORE_ERRORS.String(), converter2.NewError())
+		source := source.GetSource("./testdata")
+		files := converter.processFiles("./testdata", pb.RpcObjectImportRequest_IGNORE_ERRORS.String(), converter2.NewError(), source)
 
 		assert.Len(t, files, 3)
 		assert.Contains(t, files, "test.pdf")
@@ -53,7 +57,8 @@ func Test_processFiles(t *testing.T) {
 	t.Run("imported directory include without mov and pdf files - no file blocks", func(t *testing.T) {
 		converter := newMDConverter(&MockTempDir{})
 
-		files := converter.processFiles("./testdata", pb.RpcObjectImportRequest_IGNORE_ERRORS.String(), converter2.NewError())
+		source := source.GetSource("./testdata")
+		files := converter.processFiles("./testdata", pb.RpcObjectImportRequest_IGNORE_ERRORS.String(), converter2.NewError(), source)
 
 		assert.Len(t, files, 1)
 		assert.NotContains(t, files, "test.pdf")
