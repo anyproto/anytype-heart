@@ -25,12 +25,12 @@ import (
 type DataObject struct {
 	apiKey    string
 	mode      pb.RpcObjectImportRequestMode
-	request   *block.NotionImportContext
+	request   *api.NotionImportContext
 	ctx       context.Context
 	relations *property.PropertiesStore
 }
 
-func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, request *block.NotionImportContext, relations *property.PropertiesStore) *DataObject {
+func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, request *api.NotionImportContext, relations *property.PropertiesStore) *DataObject {
 	return &DataObject{apiKey: apiKey, mode: mode, request: request, ctx: ctx, relations: relations}
 }
 
@@ -89,8 +89,7 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnap
 			return nil, nil, allErrors
 		}
 	}
-	object.request.Blocks = notionBlocks
-	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, pt.p.ID)
+	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
 	return snapshot, subObjectsSnapshots, nil
 }
@@ -234,7 +233,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 // linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
 // In property, we get id from Notion, so we somehow need to map this ID with anytype for correct Relation.
 // We use two maps notionPagesIdsToAnytype, notionDatabaseIdsToAnytype for this
-func (pt *Task) handleLinkRelationsIDWithAnytypeID(propObject property.Object, req *block.NotionImportContext) {
+func (pt *Task) handleLinkRelationsIDWithAnytypeID(propObject property.Object, req *api.NotionImportContext) {
 	if r, ok := propObject.(*property.RelationItem); ok {
 		for _, r := range r.Relation {
 			if anytypeID, ok := req.NotionPageIdsToAnytype[r.ID]; ok {
