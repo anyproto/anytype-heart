@@ -5,12 +5,12 @@ package tests
 import (
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	. "github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
 

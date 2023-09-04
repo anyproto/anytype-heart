@@ -12,10 +12,10 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/util/strutil"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	. "github.com/dave/jennifer/jen"
 )
 
