@@ -3,7 +3,9 @@ package objectstore
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -59,10 +62,10 @@ func newStoreFixture(t *testing.T) *storeFixture {
 
 type testObject map[bundle.RelationKey]*types.Value
 
-func generateSimpleObject(index int) testObject {
-	id := fmt.Sprintf("%02d", index)
+func generateObjectWithRandomID() testObject {
+	id := fmt.Sprintf("%d", rand.Int())
 	return testObject{
-		bundle.RelationKeyId:   pbtypes.String("id" + id),
+		bundle.RelationKeyId:   pbtypes.String(id),
 		bundle.RelationKeyName: pbtypes.String("name" + id),
 	}
 }
@@ -318,7 +321,7 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with ascending order and filter", func(t *testing.T) {
+	t.Run("with ascending recordsSorter and filter", func(t *testing.T) {
 		s := newStoreFixture(t)
 		obj1 := makeObjectWithName("id1", "dfg")
 		obj2 := makeObjectWithName("id2", "abc")
@@ -350,7 +353,7 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
-	t.Run("with descending order", func(t *testing.T) {
+	t.Run("with descending recordsSorter", func(t *testing.T) {
 		s := newStoreFixture(t)
 		obj1 := makeObjectWithName("id1", "dfg")
 		obj2 := makeObjectWithName("id2", "abc")
@@ -404,11 +407,42 @@ func TestQuery(t *testing.T) {
 		}, recs)
 	})
 
+	t.Run("with offset", func(t *testing.T) {
+		s := newStoreFixture(t)
+		var objects []testObject
+		for i := 0; i < 100; i++ {
+			objects = append(objects, generateObjectWithRandomID())
+		}
+		s.addObjects(t, objects)
+
+		recs, _, err := s.Query(nil, database.Query{
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Type:        model.BlockContentDataviewSort_Desc,
+				},
+			},
+			Offset: 10,
+		})
+		require.NoError(t, err)
+
+		want := slices.Clone(objects)
+		sort.Slice(want, func(i, j int) bool {
+			a := makeDetails(want[i])
+			b := makeDetails(want[j])
+			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
+			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			// Desc order
+			return idA > idB
+		})
+		assertRecordsEqual(t, want[10:], recs)
+	})
+
 	t.Run("with limit", func(t *testing.T) {
 		s := newStoreFixture(t)
 		var objects []testObject
 		for i := 0; i < 100; i++ {
-			objects = append(objects, generateSimpleObject(i))
+			objects = append(objects, generateObjectWithRandomID())
 		}
 		s.addObjects(t, objects)
 
@@ -423,14 +457,22 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assertRecordsEqual(t, objects[:15], recs)
+		want := slices.Clone(objects)
+		sort.Slice(want, func(i, j int) bool {
+			a := makeDetails(want[i])
+			b := makeDetails(want[j])
+			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
+			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			return idA < idB
+		})
+		assertRecordsEqual(t, want[:15], recs)
 	})
 
 	t.Run("with limit and offset", func(t *testing.T) {
 		s := newStoreFixture(t)
 		var objects []testObject
 		for i := 0; i < 100; i++ {
-			objects = append(objects, generateSimpleObject(i))
+			objects = append(objects, generateObjectWithRandomID())
 		}
 		s.addObjects(t, objects)
 
@@ -448,7 +490,15 @@ func TestQuery(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assertRecordsEqual(t, objects[offset:offset+limit], recs)
+		want := slices.Clone(objects)
+		sort.Slice(want, func(i, j int) bool {
+			a := makeDetails(want[i])
+			b := makeDetails(want[j])
+			idA := pbtypes.GetString(a, bundle.RelationKeyId.String())
+			idB := pbtypes.GetString(b, bundle.RelationKeyId.String())
+			return idA < idB
+		})
+		assertRecordsEqual(t, want[offset:offset+limit], recs)
 	})
 
 	t.Run("with filter, limit and offset", func(t *testing.T) {
@@ -457,7 +507,7 @@ func TestQuery(t *testing.T) {
 		var filteredObjects []testObject
 		for i := 0; i < 100; i++ {
 			if i%2 == 0 {
-				objects = append(objects, generateSimpleObject(i))
+				objects = append(objects, generateObjectWithRandomID())
 			} else {
 				obj := makeObjectWithName(fmt.Sprintf("id%02d", i), "this name")
 				filteredObjects = append(filteredObjects, obj)
@@ -656,7 +706,7 @@ func TestQueryById(t *testing.T) {
 		require.NoError(t, err)
 		assertRecordsEqual(t, []testObject{obj1, obj3}, recs)
 
-		t.Run("reverse order", func(t *testing.T) {
+		t.Run("reverse recordsSorter", func(t *testing.T) {
 			recs, err := s.QueryByID([]string{"id3", "id1"})
 			require.NoError(t, err)
 			assertRecordsEqual(t, []testObject{obj3, obj1}, recs)
