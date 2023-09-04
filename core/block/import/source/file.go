@@ -8,7 +8,9 @@ import (
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
-type File struct{}
+type File struct {
+	fileReaders map[string]io.ReadCloser
+}
 
 func NewFile() *File {
 	return &File{}
@@ -25,5 +27,12 @@ func (f *File) GetFileReaders(importPath string, expectedExt []string, includeFi
 		return nil, oserror.TransformError(err)
 	}
 	files[shortPath] = file
+	f.fileReaders = files
 	return files, nil
+}
+
+func (f *File) Close() {
+	for _, fileReader := range f.fileReaders {
+		fileReader.Close()
+	}
 }

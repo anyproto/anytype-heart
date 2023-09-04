@@ -98,6 +98,8 @@ func (r *TableRenderer) renderTable(_ util.BufWriter, _ []byte, node ast.Node, e
 	r.blockRenderer.blocks = append(r.blockRenderer.blocks, blocksToAdd...)
 	r.blocksState = nil
 	r.tableState.resetState()
+	r.blockRenderer.textBuffer = ""
+	r.blockRenderer.marksBuffer = nil
 	return ast.WalkContinue, nil
 }
 

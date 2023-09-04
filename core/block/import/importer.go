@@ -72,7 +72,7 @@ func (i *Import) Init(a *app.App) (err error) {
 		notion.New(col),
 		pbc.New(col, i.sbtProvider, coreService),
 		web.NewConverter(),
-		html.New(col),
+		html.New(col, i.tempDirProvider),
 		txt.New(col),
 		csv.New(col),
 	}
