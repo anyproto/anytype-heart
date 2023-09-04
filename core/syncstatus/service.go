@@ -47,8 +47,6 @@ type service struct {
 	fileSyncService           filesync.FileSync
 	fileWatcherUpdateInterval time.Duration
 
-	coreService core.Service
-
 	fileWatcher        *fileWatcher
 	linkedFilesWatcher *linkedFilesWatcher
 
@@ -65,7 +63,6 @@ func New(fileWatcherUpdateInterval time.Duration) Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	s.coreService = app.MustComponent[core.Service](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 
 	dbProvider := app.MustComponent[datastore.Datastore](a)

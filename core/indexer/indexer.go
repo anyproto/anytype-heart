@@ -429,7 +429,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 	})
 	for spaceID, _ := range spacesToInit {
 		spaceIDs = append(spaceIDs, spaceID)
-		_, err := i.anytype.EnsurePredefinedBlocks(context.Background(), spaceID)
+		_, err = i.anytype.EnsurePredefinedBlocks(context.Background(), spaceID)
 		if err != nil {
 			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
 		}

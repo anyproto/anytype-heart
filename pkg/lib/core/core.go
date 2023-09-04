@@ -9,9 +9,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"go.uber.org/zap"
-
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -22,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var log = logging.Logger("anytype-core")
@@ -161,12 +159,12 @@ func (a *Anytype) DeriveObjectId(ctx context.Context, spaceID string, key domain
 	if err != nil {
 		return "", fmt.Errorf("failed to derive tree create payload for space %s and key %s: %w", spaceID, key, err)
 	}
-
 	return payload.RootRawChange.Id, nil
 }
 
 func (a *Anytype) DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
 	a.lock.RLock()
+	// TODO Weak condition
 	ids, ok := a.predefinedObjectsPerSpace[spaceID]
 	a.lock.RUnlock()
 	if ok && ids.IsFilled() {
@@ -206,7 +204,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 		}
 		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, spaceID, uk)
 		if err != nil {
-			log.With(zap.Error(err)).Debug("derived tree object with error")
+			log.With("uniqueKey", uk).Errorf("create payload for derived object: %s", err)
 			return predefinedObjectIDs, fmt.Errorf("derive tree create payload: %w", err)
 		}
 		predefinedObjectIDs.InsertId(sbt, payloads[i].RootRawChange.Id)
@@ -244,7 +242,7 @@ func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, c
 		// todo: move types/relations derivation here
 		err = a.deriver.DeriveObject(ctx, spaceID, payload, createTrees)
 		if err != nil {
-			log.With(zap.Error(err)).Debug("derived object with error")
+			log.With("id", payload.RootRawChange).Errorf("derive object: %s", err)
 			return predefinedObjectIDs, fmt.Errorf("derive object: %w", err)
 		}
 	}
