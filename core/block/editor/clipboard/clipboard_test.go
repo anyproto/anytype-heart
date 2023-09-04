@@ -964,7 +964,7 @@ func Test_CopyAndCutText(t *testing.T) {
 	})
 
 	t.Run("copy/cut - when numbered with children", func(t *testing.T) {
-		//given
+		// given
 		sb := smarttest.New("text")
 		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
 		s := sb.NewState()
@@ -977,9 +977,9 @@ func Test_CopyAndCutText(t *testing.T) {
 		block6 := givenRow6Level1NumberedBlock(s)
 		require.NoError(t, sb.Apply(s))
 
-		//when
+		// when
 		cb := NewClipboard(sb, nil, nil, nil, nil)
-		textSlotCopy, _, _, err := cb.Copy(pb.RpcBlockCopyRequest{
+		textSlotCopy, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks: []*model.Block{block1, block2, block3, block4, block5, block6},
 		})
 		textSlotCut, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
@@ -987,7 +987,7 @@ func Test_CopyAndCutText(t *testing.T) {
 			Blocks:            []*model.Block{block1, block2, block3, block4, block5, block6},
 		})
 
-		//then
+		// then
 		require.NoError(t, err)
 		const expected = "1. A-1\n\t1. B-1\n2. C-1\nD-1\n1. E-1\n2. F-1\n"
 		assert.Equal(t, expected, textSlotCopy)
@@ -1075,13 +1075,13 @@ func Test_StyleAndTabExtraction(t *testing.T) {
 
 	for _, testCase := range testData {
 		t.Run("extract - when style is "+testCase.styleName, func(t *testing.T) {
-			//given
+			// given
 			givenBlock := givenBlockWithStyle(testCase.style, testCase.emoji)
 
-			//when
+			// when
 			result, _ := extractTextWithStyleAndTabs(givenBlock, []string{}, 1, 0)
 
-			//then
+			// then
 			assert.Equal(t, []string{testCase.expected}, result)
 		})
 	}

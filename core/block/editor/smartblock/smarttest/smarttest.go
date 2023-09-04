@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -90,6 +91,12 @@ func (st *SmartTest) SetVerticalAlign(ctx session.Context, align model.BlockVert
 }
 
 func (st *SmartTest) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) error {
+	return nil
+}
+
+func (st *SmartTest) SetLocker(locker smartblock.Locker) {}
+
+func (st *SmartTest) Tree() objecttree.ObjectTree {
 	return nil
 }
 
