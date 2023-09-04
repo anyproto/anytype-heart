@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -32,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"strings"
 )
 
 const (
@@ -117,7 +117,7 @@ func (p *Pb) getSnapshots(
 			continue
 		}
 		importSource.Close()
-		snapshots, widget := p.handlePath(req, path, allErrors, isMigration, importSource)
+		snapshots, widget := p.handlePath(spaceID, req, path, allErrors, isMigration, importSource)
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, allErrors
 		}

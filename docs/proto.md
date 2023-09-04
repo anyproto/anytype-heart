@@ -17124,9 +17124,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | INTERNAL_ERROR | 3 |  |
-| NO_OBJECTS_TO_IMPORT | 4 |  |
-| IMPORT_IS_CANCELED | 5 |  |
-| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 6 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
 
 
 
