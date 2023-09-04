@@ -112,12 +112,13 @@ func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 
 func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, p string, cErr *converter.ConvertError, str Strategy, progress process.Progress) *Result {
 	params := req.GetCsvParams()
-	s := source.GetSource(p)
-	if s == nil {
+	importSource := source.GetSource(p)
+	if importSource == nil {
 		cErr.Add(fmt.Errorf("failed to identify source: %s", p))
 		return nil
 	}
-	readers, err := s.GetFileReaders(p, []string{".csv"}, nil)
+	defer importSource.Close()
+	readers, err := importSource.GetFileReaders(p, []string{".csv"}, nil)
 	if err != nil {
 		cErr.Add(fmt.Errorf("failed to get readers: %s", err.Error()))
 		if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
