@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"bufio"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -55,12 +55,14 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce
 	}
 	supportedExtensions := []string{".md", ".csv"}
 	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
-	videoFormats := []string{".mp4", ".m4v"}
+	videoFormats := []string{".mp4", ".m4v", ".mov"}
 	audioFormats := []string{".mp3", ".ogg", ".wav", ".m4a", ".flac"}
+	pdfFormat := []string{".pdf"}
 
 	supportedExtensions = append(supportedExtensions, videoFormats...)
 	supportedExtensions = append(supportedExtensions, imageFormats...)
 	supportedExtensions = append(supportedExtensions, audioFormats...)
+	supportedExtensions = append(supportedExtensions, pdfFormat...)
 	readers, err := s.GetFileReaders(importPath, supportedExtensions, nil)
 	if err != nil {
 		allErrors.Add(err)
@@ -84,7 +86,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce
 	for name, file := range fileInfo {
 		m.processBlocks(name, file, fileInfo)
 		for _, b := range file.ParsedBlocks {
-			m.processFileBlock(b, fileInfo)
+			m.processFileBlock(b, readers, importPath)
 		}
 	}
 	return fileInfo
@@ -167,12 +169,16 @@ func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*F
 	files[link].HasInboundLinks = true
 }
 
-func (m *mdConverter) processFileBlock(block *model.Block, files map[string]*FileInfo) {
+func (m *mdConverter) processFileBlock(block *model.Block, files map[string]io.ReadCloser, importPath string) {
 	if f := block.GetFile(); f != nil {
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
 		}
-		m.createFile(f, block.Id, files)
+		name, err := m.provideFileName(block.GetFile().Name, files, importPath)
+		if err != nil {
+			log.Errorf("failed to update file block, %v", err)
+		}
+		block.GetFile().Name = name
 	}
 }
 
@@ -236,7 +242,7 @@ func (m *mdConverter) convertTextToFile(block *model.Block) {
 	}
 
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
-	videoFormats := []string{"mp4", "m4v"}
+	videoFormats := []string{"mp4", "m4v", "mov"}
 	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
 	pdfFormat := "pdf"
 
@@ -302,33 +308,48 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 	return nil
 }
 
-func (m *mdConverter) createFile(f *model.BlockContentFile, id string, files map[string]*FileInfo) {
-	baseName := filepath.Base(f.Name) + id
+func (m *mdConverter) provideFileName(fileName string, files map[string]io.ReadCloser, path string) (string, error) {
+	if strings.HasPrefix(strings.ToLower(fileName), "http://") || strings.HasPrefix(strings.ToLower(fileName), "https://") {
+		return fileName, nil
+	}
+	absolutePath := fileName
+	if !filepath.IsAbs(fileName) {
+		absolutePath = filepath.Join(path, fileName)
+	}
+	if _, err := os.Stat(absolutePath); err == nil {
+		return absolutePath, nil
+	}
+	if rc, ok := files[fileName]; ok {
+		return m.extractFileFromArchiveToTempDirectory(fileName, rc)
+	}
+	return "", nil
+}
+
+func (m *mdConverter) extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser) (string, error) {
 	tempDir := m.tempDirProvider.TempDir()
-	newFile := filepath.Join(tempDir, baseName)
-	tmpFile, err := os.Create(newFile)
+	directoryWithFile := filepath.Dir(fileName)
+	if directoryWithFile != "" {
+		directoryWithFile = filepath.Join(tempDir, directoryWithFile)
+		if err := os.Mkdir(directoryWithFile, 0777); err != nil && !os.IsExist(err) {
+			return "", oserror.TransformError(err)
+		}
+	}
+	pathToTmpFile := filepath.Join(tempDir, fileName)
+	tmpFile, err := os.Create(pathToTmpFile)
+	if os.IsExist(err) {
+		return pathToTmpFile, nil
+	}
 	if err != nil {
-		log.Errorf("failed to create file: %s", oserror.TransformError(err).Error())
-		return
+		return "", oserror.TransformError(err)
 	}
 	defer tmpFile.Close()
 	w := bufio.NewWriter(tmpFile)
-	shortPath := f.Name
-	targetFile, found := files[shortPath]
-	if !found {
-		return
-	}
-	defer targetFile.Close()
-	_, err = w.ReadFrom(targetFile.ReadCloser)
+	_, err = w.ReadFrom(rc)
 	if err != nil {
-		log.Errorf("failed to read file: %s", err.Error())
-		return
+		return "", err
 	}
-
-	if err := w.Flush(); err != nil {
-		log.Errorf("failed to flush file: %s", err.Error())
-		return
+	if err = w.Flush(); err != nil {
+		return "", err
 	}
-
-	f.Name = newFile
+	return pathToTmpFile, nil
 }
