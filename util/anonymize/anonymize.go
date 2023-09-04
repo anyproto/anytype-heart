@@ -2,15 +2,16 @@ package anonymize
 
 import (
 	"bytes"
-	"github.com/anyproto/anytype-heart/util/text"
 	"math/rand"
 	"unicode"
+
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
+	"github.com/anyproto/anytype-heart/util/text"
 )
 
 func Change(ch *pb.Change) (res *pb.Change) {

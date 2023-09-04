@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	relation_service "github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -27,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	_ "embed"
-	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 const CName = "builtintemplate"
