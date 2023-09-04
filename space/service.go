@@ -5,13 +5,15 @@ import (
 	"errors"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	// nolint: misspell
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -22,12 +24,14 @@ import (
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peerstore"
@@ -69,6 +73,8 @@ type Service interface {
 type service struct {
 	conf                 commonconfig.Config
 	spaceCache           ocache.OCache
+	accountKeys          *accountdata.AccountKeys
+	nodeConf             nodeconf.Service
 	commonSpace          commonspace.SpaceService
 	client               coordinatorclient.CoordinatorClient
 	wallet               wallet.Wallet
@@ -86,6 +92,8 @@ func (s *service) Init(a *app.App) (err error) {
 	conf := a.MustComponent(config.CName).(*config.Config)
 	s.conf = conf.GetSpace()
 	s.newAccount = conf.NewAccount
+	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
+	s.nodeConf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
@@ -120,10 +128,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	err = s.checkOldSpace()
-	if err != nil {
-		return
-	}
 	payload := commonspace.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
@@ -143,7 +147,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		// pulling space from remote
 		_, err = s.GetSpace(ctx, s.accountId)
 		if err != nil {
-			return
+			return rpcerr.Unwrap(err)
 		}
 	}
 	return
@@ -200,21 +204,18 @@ func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload Statu
 }
 
 func (s *service) DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error) {
-	space, err := s.GetSpace(ctx, spaceID)
-	if err != nil {
-		return
-	}
 	var (
-		raw    *treechangeproto.RawTreeChangeWithId
-		status *coordinatorproto.SpaceStatusPayload
+		delConf *coordinatorproto.DeletionConfirmPayloadWithSignature
+		status  *coordinatorproto.SpaceStatusPayload
 	)
 	if !revert {
-		raw, err = space.SpaceDeleteRawChange(ctx)
+		networkID := s.nodeConf.Configuration().NetworkId
+		delConf, err = coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceID, s.accountKeys.PeerId, networkID)
 		if err != nil {
 			return
 		}
 	}
-	status, err = s.client.ChangeStatus(ctx, spaceID, raw)
+	status, err = s.client.ChangeStatus(ctx, spaceID, delConf)
 	if err != nil {
 		err = coordError(err)
 		return
@@ -252,7 +253,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
-	s.peerService.SetPeerAddrs(peer.PeerId, peer.Addrs)
+	s.peerService.SetPeerAddrs(peer.PeerId, s.addSchema(peer.Addrs))
 	ctx := context.Background()
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
 	if err != nil {
@@ -281,33 +282,12 @@ func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdi
 	s.peerStore.UpdateLocalPeer(peer.PeerId, resp.SpaceIds)
 }
 
-func (s *service) checkOldSpace() (err error) {
-	old, err := s.spaceStorageProvider.AllSpaceIds()
-	if err != nil {
-		return
+func (s *service) addSchema(addrs []string) (res []string) {
+	res = make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		res = append(res, clientserver.PreferredSchema+"://"+addr)
 	}
-	for _, id := range old {
-		st, err := s.spaceStorageProvider.WaitSpaceStorage(context.Background(), id)
-		if err != nil {
-			return err
-		}
-		header, err := st.SpaceHeader()
-		if err != nil {
-			return err
-		}
-		tp, err := s.getSpaceType(header)
-		if err != nil {
-			return err
-		}
-		if tp == "derived.space" {
-			return ErrUsingOldStorage
-		}
-		err = st.Close(context.Background())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return res
 }
 
 func (s *service) getSpaceType(header *spacesyncproto.RawSpaceHeaderWithId) (tp string, err error) {

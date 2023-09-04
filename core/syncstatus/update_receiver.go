@@ -49,16 +49,16 @@ func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status sy
 	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
 	objStatus := r.getObjectStatus(status)
 
-	if !r.isStatusUpdated(objId, objStatus, filesSummary) {
-		return nil
-	}
-	r.notify(objId, objStatus, filesSummary.pinStatus)
-
 	if objId == r.coreService.PredefinedBlocks().Account {
 		r.subObjectsWatcher.ForEach(func(subObjectID string) {
 			r.notify(subObjectID, objStatus, filesSummary.pinStatus)
 		})
 	}
+
+	if !r.isStatusUpdated(objId, objStatus, filesSummary) {
+		return nil
+	}
+	r.notify(objId, objStatus, filesSummary.pinStatus)
 	return nil
 }
 
@@ -102,10 +102,10 @@ func (r *updateReceiver) isNodeConnected() bool {
 	return r.nodeConnected
 }
 
-func (r *updateReceiver) UpdateNodeConnection(online bool) {
+func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
 	r.Lock()
 	defer r.Unlock()
-	r.nodeConnected = online
+	r.nodeConnected = status == syncstatus.Online
 }
 
 func (r *updateReceiver) notify(

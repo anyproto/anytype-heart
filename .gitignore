@@ -17,5 +17,6 @@ grpc-web
 .gradle
 tests/.cache/
 .env
+staging.yml
 build
 /core/anytype/config/nodes/custom.yml

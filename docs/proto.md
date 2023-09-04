@@ -15272,6 +15272,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_STOP_SEARCHER_NODE | 106 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | FAILED_TO_FETCH_REMOTE_NODE_HAS_INCOMPATIBLE_PROTO_VERSION | 110 |  |
+| ACCOUNT_IS_DELETED | 111 |  |
 
 
 
