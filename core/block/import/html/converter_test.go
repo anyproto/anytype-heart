@@ -58,7 +58,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		assert.Nil(t, err)
 
 		// when
-		newFileName, err := h.provideFileName("http://example.com", nil, currentDir)
+		newFileName, _, err := h.provideFileName("http://example.com", nil, currentDir)
 
 		// then
 		assert.Nil(t, err)
@@ -73,7 +73,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		// when
 		absPath, err := filepath.Abs("testdata/test")
 		assert.Nil(t, err)
-		newFileName, err := h.provideFileName(absPath, nil, currentDir)
+		newFileName, _, err := h.provideFileName(absPath, nil, currentDir)
 
 		// then
 		assert.Nil(t, err)
@@ -86,7 +86,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		assert.Nil(t, err)
 
 		// when
-		newFileName, err := h.provideFileName("testdata/test", nil, currentDir)
+		newFileName, _, err := h.provideFileName("testdata/test", nil, currentDir)
 
 		// then
 		assert.Nil(t, err)
@@ -103,7 +103,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		defer filesFromArchive[testFileName].Close()
 
 		// when
-		newFileName, err := h.provideFileName(testFileName, filesFromArchive, archiveName)
+		newFileName, _, err := h.provideFileName(testFileName, filesFromArchive, archiveName)
 		defer os.Remove(newFileName)
 
 		// then
@@ -111,16 +111,16 @@ func TestHTML_provideFileName(t *testing.T) {
 		absoluteFileName := filepath.Join(os.TempDir(), testFileName)
 		assert.Equal(t, absoluteFileName, newFileName)
 	})
-	t.Run("file doesn't exist - return empty path", func(t *testing.T) {
+	t.Run("file doesn't exist - not change original path", func(t *testing.T) {
 		// given
 		h := HTML{}
 
 		// when
-		newFileName, err := h.provideFileName("test", nil, "imported path")
+		newFileName, _, err := h.provideFileName("test", nil, "imported path")
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, "", newFileName)
+		assert.Equal(t, "test", newFileName)
 	})
 }
 

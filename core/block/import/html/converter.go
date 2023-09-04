@@ -171,13 +171,13 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, files map[string]io.ReadCl
 	blocks, _, err := anymark.HTMLToBlocks(b)
 	for _, block := range blocks {
 		if block.GetFile() != nil {
-			if newFileName, err := h.provideFileName(block.GetFile().GetName(), files, path); err == nil {
+			if newFileName, _, err := h.provideFileName(block.GetFile().GetName(), files, path); err == nil {
 				block.GetFile().Name = newFileName
 			} else {
 				log.Errorf("failed to update file block with new file name: %v", oserror.TransformError(err))
 			}
 		}
-		if block.GetText() != nil {
+		if block.GetText() != nil && block.GetText().Marks != nil && len(block.GetText().Marks.Marks) > 0 {
 			h.updateFilesInLinks(block, files, path)
 		}
 	}
@@ -189,11 +189,16 @@ func (h *HTML) updateFilesInLinks(block *model.Block, files map[string]io.ReadCl
 	for _, mark := range marks {
 		if mark.Type == model.BlockContentTextMark_Link {
 			var (
-				err         error
-				newFileName string
+				err             error
+				newFileName     string
+				createFileBlock bool
 			)
-			if newFileName, err = h.provideFileName(mark.Param, files, path); err == nil {
+			if newFileName, createFileBlock, err = h.provideFileName(mark.Param, files, path); err == nil {
 				mark.Param = newFileName
+				if createFileBlock {
+					anymark.ConvertTextToFile(block)
+					break
+				}
 				continue
 			}
 			log.Errorf("failed to update link block with new file name: %v", oserror.TransformError(err))
@@ -217,23 +222,30 @@ func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot
 	return snapshot, snapshot.Id
 }
 
-func (h *HTML) provideFileName(fileName string, files map[string]io.ReadCloser, path string) (string, error) {
+func (h *HTML) provideFileName(fileName string, files map[string]io.ReadCloser, path string) (string, bool, error) {
 	if strings.HasPrefix(strings.ToLower(fileName), "http://") || strings.HasPrefix(strings.ToLower(fileName), "https://") {
-		return fileName, nil
+		return fileName, false, nil
 	}
+	var createFileBlock bool
 	// first try to check if file exist on local machine
 	absolutePath := fileName
 	if !filepath.IsAbs(fileName) {
 		absolutePath = filepath.Join(path, fileName)
 	}
 	if _, err := os.Stat(absolutePath); err == nil {
-		return absolutePath, nil
+		createFileBlock = true
+		return absolutePath, createFileBlock, nil
 	}
 	// second case for archive, when file is inside zip archive
 	if rc, ok := files[fileName]; ok {
-		return h.extractFileFromArchiveToTempDirectory(fileName, rc)
+		tempFile, err := h.extractFileFromArchiveToTempDirectory(fileName, rc)
+		if err != nil {
+			return "", false, err
+		}
+		createFileBlock = true
+		return tempFile, createFileBlock, nil
 	}
-	return "", nil
+	return fileName, createFileBlock, nil
 }
 
 func (h *HTML) extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser) (string, error) {
