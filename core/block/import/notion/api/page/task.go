@@ -96,8 +96,9 @@ func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnap
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
-	details := pt.prepareDetails()
-	relationsSnapshots, relationLinks := pt.handlePageProperties(object, details)
+	details, relationLinks := pt.prepareDetails()
+	relationsSnapshots, notionRelationLinks := pt.handlePageProperties(object, details)
+	relationLinks = append(relationLinks, notionRelationLinks...)
 	addCoverDetail(pt.p, details)
 	return details, relationsSnapshots, relationLinks
 }
@@ -112,11 +113,14 @@ func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]
 	return snapshot
 }
 
-func (pt *Task) prepareDetails() map[string]*types.Value {
+func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink) {
 	details := make(map[string]*types.Value, 0)
+	var relationLinks []*model.RelationLink
 	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(pt.p.URL)
-	if pt.p.Icon != nil && pt.p.Icon.Emoji != nil {
-		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*pt.p.Icon.Emoji)
+	if pt.p.Icon != nil {
+		if iconRelationLink := api.SetIcon(details, pt.p.Icon); iconRelationLink != nil {
+			relationLinks = append(relationLinks, iconRelationLink)
+		}
 	}
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(pt.p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
@@ -124,7 +128,7 @@ func (pt *Task) prepareDetails() map[string]*types.Value {
 	lastEditedTime := converter.ConvertStringToTime(pt.p.LastEditedTime)
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastEditedTime))
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(createdTime))
-	return details
+	return details, relationLinks
 }
 
 // handlePageProperties gets properties values by their ids from notion api

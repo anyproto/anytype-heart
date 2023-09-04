@@ -526,4 +526,70 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 	})
+
+	t.Run("Database has icon emoji - details have relation iconEmoji", func(t *testing.T) {
+		dbService := New(nil)
+		emoji := "😘"
+		db := Database{Icon: &api.Icon{
+			Emoji: &emoji,
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconEmoji.String())
+		assert.Equal(t, emoji, icon)
+	})
+	t.Run("Database has custom external icon - details have relation iconImage", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{Icon: &api.Icon{
+			Type: api.External,
+			External: &api.FileProperty{
+				URL: "url",
+			},
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "url", icon)
+	})
+	t.Run("Database has custom file icon - details have relation iconImage", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{Icon: &api.Icon{
+			Type: api.File,
+			File: &api.FileProperty{
+				URL: "url",
+			},
+		}}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "url", icon)
+	})
+	t.Run("Database doesn't have icon - details don't have neither iconImage nor iconEmoji", func(t *testing.T) {
+		dbService := New(nil)
+		db := Database{}
+
+		// when
+		snapshot, err := dbService.makeDatabaseSnapshot(db, block.NewNotionImportContext(), nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, snapshot, 1)
+		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
+		assert.Equal(t, "", icon)
+	})
 }

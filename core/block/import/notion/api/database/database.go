@@ -106,7 +106,6 @@ func (ds *Service) makeDatabaseSnapshot(d Database,
 	importContext *block.NotionImportContext,
 	relations *property.PropertiesStore) ([]*converter.Snapshot, error) {
 	details := ds.getCollectionDetails(d)
-
 	detailsStruct := &types.Struct{Fields: details}
 	_, _, st, err := ds.collectionService.CreateCollection(detailsStruct, nil)
 	if err != nil {
@@ -255,7 +254,6 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 	}
 
 	if d.Cover != nil {
-
 		if d.Cover.Type == api.External {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.External.URL)
 			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
@@ -265,6 +263,9 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 			details[bundle.RelationKeyCoverId.String()] = pbtypes.String(d.Cover.File.URL)
 			details[bundle.RelationKeyCoverType.String()] = pbtypes.Float64(1)
 		}
+	}
+	if d.Icon != nil {
+		api.SetIcon(details, d.Icon)
 	}
 	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
