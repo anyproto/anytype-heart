@@ -10,7 +10,6 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	relationutils "github.com/anyproto/anytype-heart/core/system_object/relationutils"
-	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -479,21 +478,21 @@ func (_c *MockService_GetRelationByKey_Call) RunAndReturn(run func(string) (*mod
 }
 
 // GetRelationIdByKey provides a mock function with given fields: ctx, spaceId, key
-func (_m *MockService) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (string, error) {
+func (_m *MockService) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
 	ret := _m.Called(ctx, spaceId, key)
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bundle.RelationKey) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) (string, error)); ok {
 		return rf(ctx, spaceId, key)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, bundle.RelationKey) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) string); ok {
 		r0 = rf(ctx, spaceId, key)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, bundle.RelationKey) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, domain.RelationKey) error); ok {
 		r1 = rf(ctx, spaceId, key)
 	} else {
 		r1 = ret.Error(1)
@@ -510,14 +509,14 @@ type MockService_GetRelationIdByKey_Call struct {
 // GetRelationIdByKey is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
-//   - key bundle.RelationKey
+//   - key domain.RelationKey
 func (_e *MockService_Expecter) GetRelationIdByKey(ctx interface{}, spaceId interface{}, key interface{}) *MockService_GetRelationIdByKey_Call {
 	return &MockService_GetRelationIdByKey_Call{Call: _e.mock.On("GetRelationIdByKey", ctx, spaceId, key)}
 }
 
-func (_c *MockService_GetRelationIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key bundle.RelationKey)) *MockService_GetRelationIdByKey_Call {
+func (_c *MockService_GetRelationIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.RelationKey)) *MockService_GetRelationIdByKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bundle.RelationKey))
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.RelationKey))
 	})
 	return _c
 }
@@ -527,27 +526,27 @@ func (_c *MockService_GetRelationIdByKey_Call) Return(id string, err error) *Moc
 	return _c
 }
 
-func (_c *MockService_GetRelationIdByKey_Call) RunAndReturn(run func(context.Context, string, bundle.RelationKey) (string, error)) *MockService_GetRelationIdByKey_Call {
+func (_c *MockService_GetRelationIdByKey_Call) RunAndReturn(run func(context.Context, string, domain.RelationKey) (string, error)) *MockService_GetRelationIdByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetTypeIdByKey provides a mock function with given fields: ctx, spaceId, key
-func (_m *MockService) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (string, error) {
+func (_m *MockService) GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error) {
 	ret := _m.Called(ctx, spaceId, key)
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bundle.TypeKey) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.TypeKey) (string, error)); ok {
 		return rf(ctx, spaceId, key)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, bundle.TypeKey) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.TypeKey) string); ok {
 		r0 = rf(ctx, spaceId, key)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, bundle.TypeKey) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, domain.TypeKey) error); ok {
 		r1 = rf(ctx, spaceId, key)
 	} else {
 		r1 = ret.Error(1)
@@ -564,14 +563,14 @@ type MockService_GetTypeIdByKey_Call struct {
 // GetTypeIdByKey is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
-//   - key bundle.TypeKey
+//   - key domain.TypeKey
 func (_e *MockService_Expecter) GetTypeIdByKey(ctx interface{}, spaceId interface{}, key interface{}) *MockService_GetTypeIdByKey_Call {
 	return &MockService_GetTypeIdByKey_Call{Call: _e.mock.On("GetTypeIdByKey", ctx, spaceId, key)}
 }
 
-func (_c *MockService_GetTypeIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key bundle.TypeKey)) *MockService_GetTypeIdByKey_Call {
+func (_c *MockService_GetTypeIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.TypeKey)) *MockService_GetTypeIdByKey_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bundle.TypeKey))
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.TypeKey))
 	})
 	return _c
 }
@@ -581,7 +580,7 @@ func (_c *MockService_GetTypeIdByKey_Call) Return(id string, err error) *MockSer
 	return _c
 }
 
-func (_c *MockService_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, string, bundle.TypeKey) (string, error)) *MockService_GetTypeIdByKey_Call {
+func (_c *MockService_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, string, domain.TypeKey) (string, error)) *MockService_GetTypeIdByKey_Call {
 	_c.Call.Return(run)
 	return _c
 }

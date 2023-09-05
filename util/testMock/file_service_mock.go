@@ -16,7 +16,6 @@ import (
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	files "github.com/anyproto/anytype-heart/core/files"
 	pb "github.com/anyproto/anytype-heart/pb"
-	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
@@ -357,11 +356,11 @@ func (m *MockFile) EXPECT() *MockFileMockRecorder {
 }
 
 // Details mocks base method.
-func (m *MockFile) Details(arg0 context.Context) (*types.Struct, bundle.TypeKey, error) {
+func (m *MockFile) Details(arg0 context.Context) (*types.Struct, domain.TypeKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Details", arg0)
 	ret0, _ := ret[0].(*types.Struct)
-	ret1, _ := ret[1].(bundle.TypeKey)
+	ret1, _ := ret[1].(domain.TypeKey)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

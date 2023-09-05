@@ -35,8 +35,8 @@ type Service interface {
 	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
 	FetchRelationByKey(spaceId string, key string) (relation *relationutils.Relation, err error)
 	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
-	GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
+	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
 
 	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 
@@ -67,7 +67,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
+func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error) {
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, key.String())
 	if err != nil {
 		return "", err
@@ -81,7 +81,7 @@ func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key bundle
 	return s.core.DeriveObjectId(ctx, spaceId, uk)
 }
 
-func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error) {
+func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error) {
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key.String())
 	if err != nil {
 		return "", err

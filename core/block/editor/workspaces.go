@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -32,7 +33,7 @@ const (
 	collectionKeyObjectTypes     = "ot"
 )
 
-var objectTypeToCollection = map[bundle.TypeKey]string{
+var objectTypeToCollection = map[domain.TypeKey]string{
 	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
 	bundle.TypeKeyRelation:       collectionKeyRelations,
 	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
@@ -125,7 +126,7 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
 		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
-		template.WithForcedObjectTypes([]bundle.TypeKey{bundle.TypeKeySpace}),
+		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedObjects(p.SpaceID()).Profile)),
 	)

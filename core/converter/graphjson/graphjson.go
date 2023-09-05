@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -25,7 +26,7 @@ const (
 
 type Node struct {
 	Id          string         `json:"id,omitempty"`
-	Type        bundle.TypeKey `json:"type,omitempty"`
+	Type        domain.TypeKey `json:"type,omitempty"`
 	Name        string         `json:"name,omitempty"`
 	Layout      int            `json:"layout,omitempty"`
 	Description string         `json:"description,omitempty"`

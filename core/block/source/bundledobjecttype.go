@@ -20,13 +20,13 @@ import (
 func NewBundledObjectType(id string) (s Source) {
 	return &bundledObjectType{
 		id:            id,
-		objectTypeKey: bundle.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),
+		objectTypeKey: domain.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),
 	}
 }
 
 type bundledObjectType struct {
 	id            string
-	objectTypeKey bundle.TypeKey
+	objectTypeKey domain.TypeKey
 }
 
 func (v *bundledObjectType) ReadOnly() bool {
@@ -116,7 +116,7 @@ func (s *bundledObjectType) GetCreationInfo() (creator string, createdDate int64
 type bundledTypeIdGetter struct {
 }
 
-func (b *bundledTypeIdGetter) GetTypeIdByKey(_ context.Context, spaceId string, key bundle.TypeKey) (id string, err error) {
+func (b *bundledTypeIdGetter) GetTypeIdByKey(_ context.Context, spaceId string, key domain.TypeKey) (id string, err error) {
 	if spaceId != addr.AnytypeMarketplaceWorkspace {
 		return "", fmt.Errorf("incorrect space id: should be %s", addr.AnytypeMarketplaceWorkspace)
 	}

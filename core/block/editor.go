@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -671,7 +670,7 @@ func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relati
 
 func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTypeUniqueKeys []string) (err error) {
 	return Do(s, objectId, func(b basic.CommonOperations) error {
-		objectTypeKeys := make([]bundle.TypeKey, 0, len(objectTypeUniqueKeys))
+		objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeUniqueKeys))
 		for _, rawUniqueKey := range objectTypeUniqueKeys {
 			objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 			if err != nil {

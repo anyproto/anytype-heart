@@ -224,12 +224,12 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
-		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(key)) {
+		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
 			return sysTypesRestrictions
 		}
 	case smartblock.SmartBlockTypeRelation:
 		key := uk.InternalKey()
-		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(key)) {
+		if lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
 			return sysRelationsRestrictions
 		}
 	}
@@ -240,7 +240,7 @@ func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictio
 	switch uk.SmartblockType() {
 	case smartblock.SmartBlockTypeObjectType:
 		key := uk.InternalKey()
-		if lo.Contains(bundle.InternalTypes, bundle.TypeKey(key)) {
+		if lo.Contains(bundle.InternalTypes, domain.TypeKey(key)) {
 			return DataviewRestrictions{
 				model.RestrictionsDataviewRestrictions{
 					BlockId:      DataviewBlockId,

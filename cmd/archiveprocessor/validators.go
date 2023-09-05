@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -83,7 +84,7 @@ func validateObjectDetails(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 			rel relationWithFormat
 			err error
 		)
-		rel, err = bundle.GetRelation(bundle.RelationKey(k))
+		rel, err = bundle.GetRelation(domain.RelationKey(k))
 		if err != nil {
 			rel = getRelationLinkByKey(s.Data.RelationLinks, k)
 			if rel == nil {
@@ -100,7 +101,7 @@ func validateObjectDetails(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 		vals := pbtypes.GetStringListValue(v)
 		for _, val := range vals {
 			if bundle.HasRelation(strings.TrimPrefix(val, addr.RelationKeyToIdPrefix)) ||
-				bundle.HasObjectTypeByKey(bundle.TypeKey(strings.TrimPrefix(val, addr.ObjectTypeKeyToIdPrefix))) || val == addr.AnytypeProfileId {
+				bundle.HasObjectTypeByKey(domain.TypeKey(strings.TrimPrefix(val, addr.ObjectTypeKeyToIdPrefix))) || val == addr.AnytypeProfileId {
 				continue
 			}
 			_, found := info.ids[val]
@@ -120,7 +121,7 @@ func validateObjectCustomTypes(s *pb.ChangeSnapshot, info *useCaseInfo) error {
 	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
 	customObjectFound := false
 	for _, ot := range s.Data.ObjectTypes {
-		if !bundle.HasObjectTypeByKey(bundle.TypeKey(strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix))) {
+		if !bundle.HasObjectTypeByKey(domain.TypeKey(strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix))) {
 			customObjectFound = true
 			fmt.Printf("object '%s' contains unknown object type: %s\n", id, ot)
 		}

@@ -1,13 +1,9 @@
 package html
 
 import (
-	"context"
 	"archive/zip"
+	"context"
 	"errors"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-
 	"io"
 	"math/rand"
 	"os"
