@@ -127,12 +127,14 @@ func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode)
 	defer importSource.Close()
 	supportedExtensions := []string{".html"}
 	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
-	videoFormats := []string{".mp4", ".m4v"}
+	videoFormats := []string{".mp4", ".m4v", ".mov"}
 	audioFormats := []string{".mp3", ".ogg", ".wav", ".m4a", ".flac"}
+	pdf := []string{".pdf"}
 
 	supportedExtensions = append(supportedExtensions, videoFormats...)
 	supportedExtensions = append(supportedExtensions, imageFormats...)
 	supportedExtensions = append(supportedExtensions, audioFormats...)
+	supportedExtensions = append(supportedExtensions, pdf...)
 	readers, err := importSource.GetFileReaders(path, supportedExtensions, nil)
 	if err != nil {
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -240,7 +242,7 @@ func (h *HTML) provideFileName(fileName string, files map[string]io.ReadCloser, 
 	if rc, ok := files[fileName]; ok {
 		tempFile, err := h.extractFileFromArchiveToTempDirectory(fileName, rc)
 		if err != nil {
-			return "", false, err
+			return "", false, oserror.TransformError(err)
 		}
 		createFileBlock = true
 		return tempFile, createFileBlock, nil
