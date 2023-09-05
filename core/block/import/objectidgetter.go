@@ -106,12 +106,33 @@ func (ou *ObjectIDGetter) Get(
 
 func (ou *ObjectIDGetter) getObjectByOldAnytypeID(spaceID string, sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
 	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
+
+	// Check for imported objects
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
 				Value:       pbtypes.String(oldAnytypeID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	}, []sb.SmartBlockType{sbType})
+	if err == nil && len(ids) > 0 {
+		return ids[0], nil
+	}
+
+	// Check for derived objects
+	ids, _, err = ou.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Value:       pbtypes.String(oldAnytypeID), // Old id equals to unique key
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

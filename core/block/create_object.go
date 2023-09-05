@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"time"
 )
 
 func (s *Service) CreateTreePayload(ctx context.Context, spaceID string, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
@@ -41,17 +43,20 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID strin
 	if err != nil {
 		return nil, err
 	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: payload.RootRawChange.Id,
+	}
 	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		return s.getObject(ctx, id)
+	}
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
 	if tr != nil {
 		tr.Close()
-	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: payload.RootRawChange.Id,
 	}
 	return s.cacheCreatedObject(ctx, id, initFunc)
 }
