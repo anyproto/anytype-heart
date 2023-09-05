@@ -885,7 +885,6 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
-	sb.updateBackLinks(details)
 	details, hasPendingLocalDetails := sb.appendPendingDetails(details)
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
@@ -893,6 +892,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	keys := slices.Clone(bundle.LocalRelationsKeys) // Use Clone to avoid side effects on the bundle.LocalRelationsKeys slice
 	keys = append(keys, bundle.DerivedRelationsKeys...)
 	storedLocalScopeDetails := pbtypes.StructFilterKeys(details, keys)
+	sb.updateBackLinks(storedLocalScopeDetails)
 	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
 	if pbtypes.StructEqualIgnore(sbLocalScopeDetails, storedLocalScopeDetails, nil) {
 		return nil
