@@ -70,20 +70,7 @@ func (s *Service) CreateTreeObject(ctx context.Context, spaceID string, tp cores
 	if err != nil {
 		return nil, err
 	}
-
-	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-		err = fmt.Errorf("failed to put tree: %w", err)
-		return
-	}
-	if tr != nil {
-		tr.Close()
-	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: payload.RootRawChange.Id,
-	}
-	return s.cacheCreatedObject(ctx, id, initFunc)
+	return s.CreateTreeObjectWithPayload(ctx, spaceID, payload, initFunc)
 }
 
 func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
