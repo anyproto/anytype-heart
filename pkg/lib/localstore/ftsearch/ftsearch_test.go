@@ -8,9 +8,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/blevesearch/bleve/v2"
-	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 )

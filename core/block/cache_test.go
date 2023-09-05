@@ -1,7 +1,9 @@
 package block
 
 import (
-	spaceservice "github.com/anyproto/anytype-heart/space"
+	"testing"
+	"time"
+
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -9,8 +11,8 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
+
+	spaceservice "github.com/anyproto/anytype-heart/space"
 )
 
 func Test_Payloads(t *testing.T) {

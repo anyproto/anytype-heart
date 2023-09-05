@@ -5,8 +5,9 @@ import "C"
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/net/addrs"
 	"net"
+
+	"github.com/anyproto/anytype-heart/net/addrs"
 )
 
 type InterfaceAddr interface {

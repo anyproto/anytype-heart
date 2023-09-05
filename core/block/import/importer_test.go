@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/converter/mock_converter"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
@@ -21,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_ImportSuccess(t *testing.T) {

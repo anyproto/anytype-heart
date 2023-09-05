@@ -9,13 +9,14 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
+
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
 	source "github.com/anyproto/anytype-heart/core/block/source"
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	pb "github.com/anyproto/anytype-heart/pb"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.

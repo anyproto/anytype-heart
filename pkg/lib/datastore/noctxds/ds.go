@@ -2,10 +2,12 @@ package noctxds
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"io"
+
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	"io"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 )
 
 type noCtxRead struct {

@@ -6,9 +6,9 @@ import (
 	"io"
 
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
+	ufsio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	ufsio "github.com/ipfs/boxo/ipld/unixfs/io"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 
 	"github.com/anyproto/anytype-heart/core/files/filehelper"

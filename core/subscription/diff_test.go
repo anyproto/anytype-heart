@@ -2,12 +2,14 @@ package subscription
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func TestListDiffFuzz(t *testing.T) {

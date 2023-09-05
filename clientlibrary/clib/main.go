@@ -6,14 +6,16 @@ package main
 #include "bridge.h"
 */
 import "C"
+
 import (
 	"encoding/json"
 	"fmt"
 	"unsafe"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/anyproto/anytype-heart/clientlibrary/service"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/gogo/protobuf/proto"
 )
 
 //export SetEventHandler

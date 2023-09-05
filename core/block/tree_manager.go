@@ -2,12 +2,14 @@ package block
 
 import (
 	"context"
+
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"go.uber.org/zap"
 )
 
 /* TODO Extract to separate component

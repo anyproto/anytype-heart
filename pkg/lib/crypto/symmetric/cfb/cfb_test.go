@@ -8,8 +8,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 )
 
 var symmetricTestData = struct {

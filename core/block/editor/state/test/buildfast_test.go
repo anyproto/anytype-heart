@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/debug/treearchive"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/debug/treearchive"
 )
 
 func TestBuildFast(t *testing.T) {

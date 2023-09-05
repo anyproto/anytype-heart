@@ -3,10 +3,11 @@ package template
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestWithBookmarkBlocks(t *testing.T) {

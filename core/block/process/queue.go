@@ -5,9 +5,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 var (
