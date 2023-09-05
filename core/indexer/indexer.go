@@ -296,9 +296,9 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			if ok {
 				return
 			}
-			err = i.spaceService.StoreSpaceID(id, spaceID)
-			if err != nil {
-				log.With("id", id).Errorf("failed to store space id: %v", err)
+			storeErr := i.spaceService.StoreSpaceID(id, spaceID)
+			if storeErr != nil {
+				log.With("id", id).Errorf("failed to store space id: %v", storeErr)
 				return
 			}
 			// file's hash is id
