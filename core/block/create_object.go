@@ -43,17 +43,20 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID strin
 	if err != nil {
 		return nil, err
 	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: payload.RootRawChange.Id,
+	}
 	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		return s.getObject(ctx, id)
+	}
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}
 	if tr != nil {
 		tr.Close()
-	}
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: payload.RootRawChange.Id,
 	}
 	return s.cacheCreatedObject(ctx, id, initFunc)
 }
