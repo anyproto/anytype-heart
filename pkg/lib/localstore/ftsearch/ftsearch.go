@@ -179,6 +179,7 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []st
 	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
 	if spaceID != "" {
 		spaceQuery := bleve.NewMatchQuery(spaceID)
+		spaceQuery.SetField("SpaceID")
 		rootQuery = bleve.NewConjunctionQuery(rootQuery, spaceQuery)
 	}
 
@@ -186,7 +187,6 @@ func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []st
 	searchRequest.Size = 100
 	searchRequest.Explain = true
 	searchResult, err := f.index.Search(searchRequest)
-
 	if err != nil {
 		return
 	}

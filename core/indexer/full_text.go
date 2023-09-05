@@ -91,7 +91,7 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 		title = info.State.Snippet()
 	}
 
-	spaceID := pbtypes.GetString(info.State.Details(), bundle.RelationKeySpaceId.String())
+	spaceID := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeySpaceId.String())
 	ftDoc = ftsearch.SearchDoc{
 		Id:      id,
 		SpaceID: spaceID,
