@@ -5,9 +5,7 @@ package mock_wallet
 import (
 	app "github.com/anyproto/any-sync/app"
 	accountdata "github.com/anyproto/any-sync/commonspace/object/accountdata"
-
 	crypto "github.com/anyproto/any-sync/util/crypto"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
