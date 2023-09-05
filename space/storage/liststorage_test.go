@@ -2,10 +2,10 @@ package storage
 
 import (
 	"context"
-	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/require"
 )

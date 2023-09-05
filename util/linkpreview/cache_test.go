@@ -4,9 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestCache_Fetch(t *testing.T) {

@@ -2,15 +2,16 @@ package block
 
 import (
 	"context"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
-	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"sync"
-	"testing"
-	"time"
+	"go.uber.org/mock/gomock"
 )
 
 func TestTreeSyncer(t *testing.T) {

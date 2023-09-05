@@ -9,10 +9,11 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	gomock "go.uber.org/mock/gomock"
+
 	localstore "github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	filestore "github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockFileStore is a mock of FileStore interface.

@@ -10,8 +10,9 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	filesync "github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	gomock "go.uber.org/mock/gomock"
+
+	filesync "github.com/anyproto/anytype-heart/core/filestorage/filesync"
 )
 
 // MockFileSync is a mock of FileSync interface.

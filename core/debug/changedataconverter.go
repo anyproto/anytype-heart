@@ -2,9 +2,11 @@ package debug
 
 import (
 	"fmt"
+
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/anonymize"
-	"github.com/gogo/protobuf/proto"
 )
 
 type changeDataConverter struct {

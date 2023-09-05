@@ -2,10 +2,12 @@ package state
 
 import (
 	"fmt"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/anytype-heart/pb"
 	"strings"
 	"unicode"
+
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 type ChangeParser struct {

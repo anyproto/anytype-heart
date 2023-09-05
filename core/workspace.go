@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"

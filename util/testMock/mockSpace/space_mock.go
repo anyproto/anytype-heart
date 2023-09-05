@@ -11,8 +11,9 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	commonspace "github.com/anyproto/any-sync/commonspace"
 	streampool "github.com/anyproto/any-sync/net/streampool"
-	space "github.com/anyproto/anytype-heart/space"
 	gomock "go.uber.org/mock/gomock"
+
+	space "github.com/anyproto/anytype-heart/space"
 )
 
 // MockService is a mock of Service interface.

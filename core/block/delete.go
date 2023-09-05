@@ -3,7 +3,10 @@ package block
 import (
 	"context"
 	"fmt"
+
 	"github.com/anyproto/any-sync/commonspace"
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -11,7 +14,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"go.uber.org/zap"
 )
 
 func (s *Service) DeleteObject(objectID string) (err error) {

@@ -7,9 +7,10 @@ package mockDetailsModifier
 import (
 	reflect "reflect"
 
-	session "github.com/anyproto/anytype-heart/core/session"
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
+
+	session "github.com/anyproto/anytype-heart/core/session"
 )
 
 // MockDetailsModifier is a mock of DetailsModifier interface.

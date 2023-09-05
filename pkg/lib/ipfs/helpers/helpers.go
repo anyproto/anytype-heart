@@ -6,11 +6,10 @@ import (
 	gopath "path"
 	"time"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/ipfs/boxo/coreiface/path"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipfspath "github.com/ipfs/boxo/path"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	mh "github.com/multiformats/go-multihash"
 

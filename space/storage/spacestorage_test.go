@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"sort"
 	"strconv"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/stretchr/testify/require"
 )
 
