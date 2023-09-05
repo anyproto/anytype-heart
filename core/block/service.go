@@ -103,8 +103,8 @@ func New() *Service {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 }
 
 type DetailsGetter interface {
@@ -453,7 +453,7 @@ func (s *Service) InstallBundledObjects(
 			st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
 			st.SetDetails(d)
 
-			var objectTypeKey bundle.TypeKey
+			var objectTypeKey domain.TypeKey
 			if uk.SmartblockType() == coresb.SmartBlockTypeRelation {
 				objectTypeKey = bundle.TypeKeyRelation
 			} else if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
@@ -466,7 +466,7 @@ func (s *Service) InstallBundledObjects(
 				ctx,
 				spaceID,
 				uk.SmartblockType(),
-				[]bundle.TypeKey{objectTypeKey},
+				[]domain.TypeKey{objectTypeKey},
 				nil,
 				st,
 			)
@@ -477,7 +477,7 @@ func (s *Service) InstallBundledObjects(
 			}
 
 			if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
-				installingObjectTypeKey := bundle.TypeKey(uk.InternalKey())
+				installingObjectTypeKey := domain.TypeKey(uk.InternalKey())
 				err = s.installTemplatesForObjectType(spaceID, installingObjectTypeKey)
 				if err != nil {
 					log.With("spaceID", spaceID, "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
@@ -496,7 +496,7 @@ func (s *Service) InstallBundledObjects(
 	return
 }
 
-func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.TypeKey) error {
+func (s *Service) installTemplatesForObjectType(spaceID string, typeKey domain.TypeKey) error {
 	bundledTemplates, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -534,7 +534,7 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey bundle.T
 	return nil
 }
 
-func (s *Service) listInstalledTemplatesForType(spaceID string, typeKey bundle.TypeKey) (map[string]struct{}, error) {
+func (s *Service) listInstalledTemplatesForType(spaceID string, typeKey domain.TypeKey) (map[string]struct{}, error) {
 	templateTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("get template type id by key: %w", err)

@@ -12,7 +12,6 @@ import (
 	gomock "go.uber.org/mock/gomock"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
-	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
@@ -114,7 +113,7 @@ func (mr *MockServiceMockRecorder) EnsurePredefinedBlocks(arg0, arg1 interface{}
 }
 
 // GetSystemRelationID mocks base method.
-func (m *MockService) GetSystemRelationID(arg0 string, arg1 bundle.RelationKey) string {
+func (m *MockService) GetSystemRelationID(arg0 string, arg1 domain.RelationKey) string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSystemRelationID", arg0, arg1)
 	ret0, _ := ret[0].(string)
@@ -128,7 +127,7 @@ func (mr *MockServiceMockRecorder) GetSystemRelationID(arg0, arg1 interface{}) *
 }
 
 // GetSystemTypeID mocks base method.
-func (m *MockService) GetSystemTypeID(arg0 string, arg1 bundle.TypeKey) string {
+func (m *MockService) GetSystemTypeID(arg0 string, arg1 domain.TypeKey) string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSystemTypeID", arg0, arg1)
 	ret0, _ := ret[0].(string)

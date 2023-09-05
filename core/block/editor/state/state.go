@@ -58,8 +58,8 @@ type Doc interface {
 
 	GetRelationLinks() pbtypes.RelationLinks
 
-	ObjectTypeKeys() []bundle.TypeKey
-	ObjectTypeKey() bundle.TypeKey
+	ObjectTypeKeys() []domain.TypeKey
+	ObjectTypeKey() domain.TypeKey
 	Layout() (model.ObjectTypeLayout, bool)
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
@@ -118,7 +118,7 @@ type State struct {
 	storeKeyRemoved         map[string]struct{}
 	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
-	objectTypeKeys []bundle.TypeKey // here we store object type keys, not IDs
+	objectTypeKeys []domain.TypeKey // here we store object type keys, not IDs
 
 	changesStructureIgnoreIds []string
 
@@ -827,7 +827,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 }
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
-func (s *State) SetDetailAndBundledRelation(key bundle.RelationKey, value *types.Value) {
+func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
 	s.AddBundledRelations(key)
 	s.SetDetail(key.String(), value)
 	return
@@ -946,16 +946,16 @@ func (s *State) StoreChangeIdForPath(path string) string {
 
 type ObjectTypePair struct {
 	ID  string
-	Key bundle.TypeKey
+	Key domain.TypeKey
 }
 
 // SetObjectTypeKey sets the object type key. Smartblocks derive Type relation from it.
-func (s *State) SetObjectTypeKey(objectTypeKey bundle.TypeKey) *State {
-	return s.SetObjectTypeKeys([]bundle.TypeKey{objectTypeKey})
+func (s *State) SetObjectTypeKey(objectTypeKey domain.TypeKey) *State {
+	return s.SetObjectTypeKeys([]domain.TypeKey{objectTypeKey})
 }
 
 // SetObjectTypeKeys sets the object type keys. Smartblocks derive Type relation from it.
-func (s *State) SetObjectTypeKeys(objectTypeKeys []bundle.TypeKey) *State {
+func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
 	s.objectTypeKeys = objectTypeKeys
 	// we don't set it in the localDetails here
 	return s
@@ -969,7 +969,7 @@ func (s *State) InjectLocalDetails(localDetails *types.Struct) {
 		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
 			continue
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKey(key), v)
+		s.SetDetailAndBundledRelation(domain.RelationKey(key), v)
 	}
 }
 
@@ -1004,7 +1004,7 @@ func (s *State) Details() *types.Struct {
 
 // ObjectTypeKeys returns the object types keys of the object
 // in order to get object type id you need to derive it for the space
-func (s *State) ObjectTypeKeys() []bundle.TypeKey {
+func (s *State) ObjectTypeKeys() []domain.TypeKey {
 	if s.objectTypeKeys == nil && s.parent != nil {
 		return s.parent.ObjectTypeKeys()
 	}
@@ -1013,7 +1013,7 @@ func (s *State) ObjectTypeKeys() []bundle.TypeKey {
 
 // ObjectTypeKey returns only the first objectType key and produce warning in case the state has more than 1 object type
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
-func (s *State) ObjectTypeKey() bundle.TypeKey {
+func (s *State) ObjectTypeKey() domain.TypeKey {
 	objTypes := s.ObjectTypeKeys()
 	if len(objTypes) == 0 && !s.noObjectType {
 		log.Debugf("object %s (%s) has %d object types instead of 1",
@@ -1220,7 +1220,7 @@ func (s *State) Copy() *State {
 		blocks[b.Model().Id] = b.Copy()
 		return true
 	})
-	objTypes := make([]bundle.TypeKey, len(s.ObjectTypeKeys()))
+	objTypes := make([]domain.TypeKey, len(s.ObjectTypeKeys()))
 	copy(objTypes, s.ObjectTypeKeys())
 
 	storeKeyRemoved := s.StoreKeysRemoved()
@@ -1765,7 +1765,7 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
+func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 	links := make([]*model.RelationLink, 0, len(keys))
 	for _, key := range keys {
 		rel := bundle.MustGetRelation(key)

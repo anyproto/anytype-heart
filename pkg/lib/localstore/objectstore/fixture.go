@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -61,7 +62,7 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 	return nil
 }
 
-type TestObject map[bundle.RelationKey]*types.Value
+type TestObject map[domain.RelationKey]*types.Value
 
 func generateObjectWithRandomID() TestObject {
 	id := fmt.Sprintf("%d", rand.Int())

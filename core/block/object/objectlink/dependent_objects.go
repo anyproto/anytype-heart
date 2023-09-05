@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -20,8 +21,8 @@ import (
 var log = logging.Logger("objectlink")
 
 type KeyToIDConverter interface {
-	GetRelationIdByKey(ctx context.Context, spaceId string, key bundle.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, spaceId string, key bundle.TypeKey) (id string, err error)
+	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
 }
 
 type linkSource interface {
@@ -65,7 +66,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 	for _, rel := range s.GetRelationLinks() {
 		// do not index local dates such as lastOpened/lastModified
 		if relations {
-			id, err := converter.GetRelationIdByKey(context.Background(), s.SpaceID(), bundle.RelationKey(rel.Key))
+			id, err := converter.GetRelationIdByKey(context.Background(), s.SpaceID(), domain.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", rel.Key, err)
 				continue

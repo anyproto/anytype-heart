@@ -28,7 +28,7 @@ type CreateSubObjectRequest struct {
 }
 
 func (c CreateSubObjectRequest) GetDetails() *types.Struct {
-	sbt := bundle.TypeKey(c.subObjectType).String()
+	sbt := domain.TypeKey(c.subObjectType).String()
 	detailsType := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyType.String(): pbtypes.String(sbt),

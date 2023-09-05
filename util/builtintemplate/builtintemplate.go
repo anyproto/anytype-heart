@@ -129,7 +129,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		if _, ok := b.(relation.Block); ok {
 			relKey := b.Model().GetRelation().Key
 			if !st.HasRelation(relKey) {
-				st.AddBundledRelations(bundle.RelationKey(relKey))
+				st.AddBundledRelations(domain.RelationKey(relKey))
 			}
 		}
 		return true
@@ -146,18 +146,18 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 
 func (b *builtinTemplate) setObjectTypes(st *state.State) error {
 	targetObjectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
-	var targetObjectTypeKey bundle.TypeKey
+	var targetObjectTypeKey domain.TypeKey
 	if strings.HasPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix) {
 		// todo: remove this hack after fixing bundled templates
-		targetObjectTypeKey = bundle.TypeKey(strings.TrimPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix))
+		targetObjectTypeKey = domain.TypeKey(strings.TrimPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix))
 	} else {
 		targetObjectType, err := b.systemObjectService.GetObjectType(targetObjectTypeID)
 		if err != nil {
 			return fmt.Errorf("get object type %s: %w", targetObjectTypeID, err)
 		}
-		targetObjectTypeKey = bundle.TypeKey(targetObjectType.Key)
+		targetObjectTypeKey = domain.TypeKey(targetObjectType.Key)
 	}
-	st.SetObjectTypeKeys([]bundle.TypeKey{bundle.TypeKeyTemplate, targetObjectTypeKey})
+	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, targetObjectTypeKey})
 	return nil
 }
 
@@ -170,7 +170,7 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
 	}
 	targetObjectTypeID := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String())
-	if targetObjectTypeID == "" || bundle.TypeKey(targetObjectTypeID) == st.ObjectTypeKey() {
+	if targetObjectTypeID == "" || domain.TypeKey(targetObjectTypeID) == st.ObjectTypeKey() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), targetObjectTypeID)
 	}
 	// todo: update templates and return the validation

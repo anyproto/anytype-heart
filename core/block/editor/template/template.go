@@ -9,6 +9,7 @@ import (
 	simpleDataview "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -45,7 +46,7 @@ var WithEmpty = StateTransformer(func(s *state.State) {
 
 })
 
-var WithForcedObjectTypes = func(otypes []bundle.TypeKey) StateTransformer {
+var WithForcedObjectTypes = func(otypes []domain.TypeKey) StateTransformer {
 	return func(s *state.State) {
 		if slice.SortedEquals(s.ObjectTypeKeys(), otypes) {
 			return
@@ -78,7 +79,7 @@ var WithNoDuplicateLinks = func() StateTransformer {
 	}
 }
 
-var WithRelations = func(rels []bundle.RelationKey) StateTransformer {
+var WithRelations = func(rels []domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var links []*model.RelationLink
 		for _, relKey := range rels {
@@ -96,7 +97,7 @@ var WithRequiredRelations = func() StateTransformer {
 	return WithRelations(bundle.RequiredInternalRelations)
 }
 
-var WithObjectTypesAndLayout = func(otypes []bundle.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
+var WithObjectTypesAndLayout = func(otypes []domain.TypeKey, layout model.ObjectTypeLayout) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypeKeys()) == 0 {
 			s.SetObjectTypeKeys(otypes)
@@ -118,7 +119,7 @@ var WithDetailName = func(name string) StateTransformer {
 	return WithDetail(bundle.RelationKeyName, pbtypes.String(name))
 }
 
-var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
+var WithDetail = func(key domain.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil {
 			s.SetDetailAndBundledRelation(key, value)
@@ -126,7 +127,7 @@ var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransform
 	}
 }
 
-var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
+var WithForcedDetail = func(key domain.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil || !s.Details().Fields[key.String()].Equal(value) {
 			s.SetDetailAndBundledRelation(key, value)
@@ -243,7 +244,7 @@ var WithDefaultFeaturedRelations = func(s *state.State) {
 	}
 }
 
-var WithAddedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
+var WithAddedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var featRels = pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 		if slice.FindPos(featRels, key.String()) > -1 {
@@ -254,7 +255,7 @@ var WithAddedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
 	}
 }
 
-var WithRemovedFeaturedRelation = func(key bundle.RelationKey) StateTransformer {
+var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
 		var featRels = pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 		if slice.FindPos(featRels, key.String()) > -1 {
@@ -638,7 +639,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, k := range bookmarkRelationKeys {
 		if !s.HasRelation(k) {
-			s.AddBundledRelations(bundle.RelationKey(k))
+			s.AddBundledRelations(domain.RelationKey(k))
 		}
 	}
 

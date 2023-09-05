@@ -11,8 +11,7 @@ import (
 
 	commonspace "github.com/anyproto/any-sync/commonspace"
 	headsync "github.com/anyproto/any-sync/commonspace/headsync"
-	list "github.com/anyproto/any-sync/commonspace/object/acl/list"
-	treechangeproto "github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	syncacl "github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	objectsync "github.com/anyproto/any-sync/commonspace/objectsync"
 	objecttreebuilder "github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -46,10 +45,10 @@ func (m *MockSpace) EXPECT() *MockSpaceMockRecorder {
 }
 
 // Acl mocks base method.
-func (m *MockSpace) Acl() list.AclList {
+func (m *MockSpace) Acl() syncacl.SyncAcl {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Acl")
-	ret0, _ := ret[0].(list.AclList)
+	ret0, _ := ret[0].(syncacl.SyncAcl)
 	return ret0
 }
 
@@ -85,20 +84,6 @@ func (m *MockSpace) DebugAllHeads() []headsync.TreeHeads {
 func (mr *MockSpaceMockRecorder) DebugAllHeads() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DebugAllHeads", reflect.TypeOf((*MockSpace)(nil).DebugAllHeads))
-}
-
-// DeleteSpace mocks base method.
-func (m *MockSpace) DeleteSpace(arg0 context.Context, arg1 *treechangeproto.RawTreeChangeWithId) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteSpace", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteSpace indicates an expected call of DeleteSpace.
-func (mr *MockSpaceMockRecorder) DeleteSpace(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSpace", reflect.TypeOf((*MockSpace)(nil).DeleteSpace), arg0, arg1)
 }
 
 // DeleteTree mocks base method.
@@ -215,21 +200,6 @@ func (m *MockSpace) Init(arg0 context.Context) error {
 func (mr *MockSpaceMockRecorder) Init(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockSpace)(nil).Init), arg0)
-}
-
-// SpaceDeleteRawChange mocks base method.
-func (m *MockSpace) SpaceDeleteRawChange(arg0 context.Context) (*treechangeproto.RawTreeChangeWithId, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SpaceDeleteRawChange", arg0)
-	ret0, _ := ret[0].(*treechangeproto.RawTreeChangeWithId)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SpaceDeleteRawChange indicates an expected call of SpaceDeleteRawChange.
-func (mr *MockSpaceMockRecorder) SpaceDeleteRawChange(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SpaceDeleteRawChange", reflect.TypeOf((*MockSpace)(nil).SpaceDeleteRawChange), arg0)
 }
 
 // Storage mocks base method.

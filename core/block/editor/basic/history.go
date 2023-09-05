@@ -2,9 +2,9 @@ package basic
 
 import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -38,7 +38,7 @@ func (h *history) Undo(ctx session.Context) (counters pb.RpcObjectUndoRedoCounte
 		s.Set(b.Before.Copy())
 	}
 	if action.ObjectTypes != nil {
-		ot := make([]bundle.TypeKey, len(action.ObjectTypes.Before))
+		ot := make([]domain.TypeKey, len(action.ObjectTypes.Before))
 		copy(ot, action.ObjectTypes.Before)
 		s.SetObjectTypeKeys(ot)
 	}
@@ -70,7 +70,7 @@ func (h *history) Redo(ctx session.Context) (counters pb.RpcObjectUndoRedoCounte
 		s.Set(b.After.Copy())
 	}
 	if action.ObjectTypes != nil {
-		ot := make([]bundle.TypeKey, len(action.ObjectTypes.After))
+		ot := make([]domain.TypeKey, len(action.ObjectTypes.After))
 		copy(ot, action.ObjectTypes.After)
 		s.SetObjectTypeKeys(ot)
 	}

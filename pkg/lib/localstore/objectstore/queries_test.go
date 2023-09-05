@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -632,7 +633,7 @@ func TestQueryRaw(t *testing.T) {
 		type1 := TestObject{
 			bundle.RelationKeyId:          pbtypes.String("type1"),
 			bundle.RelationKeyType:        pbtypes.String("objectType"),
-			bundle.RelationKey("typeKey"): pbtypes.String("note"),
+			domain.RelationKey("typeKey"): pbtypes.String("note"),
 		}
 
 		s.AddObjects(t, []TestObject{obj1, type1})

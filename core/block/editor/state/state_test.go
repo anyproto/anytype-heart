@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -2180,7 +2181,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, bundle.TypeKey("page"), st.ObjectTypeKey())
+		assert.Equal(t, domain.TypeKey("page"), st.ObjectTypeKey())
 	})
 
 	t.Run("apply ObjectTypeAdd change: add another object type", func(t *testing.T) {
@@ -2195,7 +2196,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// apply
-		assert.Equal(t, []bundle.TypeKey{"page", "note"}, st.ObjectTypeKeys())
+		assert.Equal(t, []domain.TypeKey{"page", "note"}, st.ObjectTypeKeys())
 	})
 
 	t.Run("apply ObjectTypeAdd change: add existing object type - no changes", func(t *testing.T) {
@@ -2210,7 +2211,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, []bundle.TypeKey{"page", "note"}, st.ObjectTypeKeys())
+		assert.Equal(t, []domain.TypeKey{"page", "note"}, st.ObjectTypeKeys())
 	})
 }
 
@@ -2428,29 +2429,29 @@ func TestState_ApplyChangeIgnoreErrSliceUpdate(t *testing.T) {
 
 func Test_ShortenDetailsToLimit(t *testing.T) {
 	t.Run("SetDetails", func(t *testing.T) {
-		//given
+		// given
 		s := &State{rootId: "first"}
 		detail := pbtypes.StringList([]string{"hello", "world", strings.Repeat("a", detailSizeLimit-9)})
 
-		//when
+		// when
 		s.SetDetails(&types.Struct{Fields: map[string]*types.Value{
 			"key": pbtypes.CopyVal(detail),
 		}})
 
-		//then
+		// then
 		assert.Greater(t, detail.Size(), detailSizeLimit)
 		assert.True(t, assertAllDetailsLessThenLimit(s.CombinedDetails()))
 	})
 
 	t.Run("SetDetail", func(t *testing.T) {
-		//given
+		// given
 		s := &State{rootId: "first"}
 		detail := pbtypes.StringList([]string{"hello", "world", strings.Repeat("a", detailSizeLimit-9)})
 
-		//when
+		// when
 		s.SetDetail(bundle.RelationKeyType.String(), pbtypes.CopyVal(detail))
 
-		//then
+		// then
 		assert.Greater(t, detail.Size(), detailSizeLimit)
 		assert.True(t, assertAllDetailsLessThenLimit(s.CombinedDetails()))
 	})

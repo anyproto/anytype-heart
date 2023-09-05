@@ -10,6 +10,7 @@ import (
 	"github.com/dhowden/tag"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -20,7 +21,7 @@ type File interface {
 	Meta() *FileMeta
 	Hash() string
 	Reader(ctx context.Context) (io.ReadSeeker, error)
-	Details(ctx context.Context) (*types.Struct, bundle.TypeKey, error)
+	Details(ctx context.Context) (*types.Struct, domain.TypeKey, error)
 	Info() *storage.FileInfo
 }
 
@@ -79,7 +80,7 @@ func (f *file) audioDetails(ctx context.Context) (*types.Struct, error) {
 	return d, nil
 }
 
-func (f *file) Details(ctx context.Context) (*types.Struct, bundle.TypeKey, error) {
+func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, error) {
 	meta := f.Meta()
 
 	typeKey := bundle.TypeKeyFile

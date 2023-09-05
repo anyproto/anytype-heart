@@ -6,7 +6,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -31,7 +31,7 @@ type RelationLinks struct {
 }
 
 type ObjectType struct {
-	Before, After []bundle.TypeKey
+	Before, After []domain.TypeKey
 }
 
 type Action struct {
