@@ -23,7 +23,7 @@ import (
 func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (templateID string, err error) {
 	var (
 		st             *state.State
-		objectTypeKeys []bundle.TypeKey
+		objectTypeKeys []domain.TypeKey
 	)
 
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
@@ -52,7 +52,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 func (s *Service) TemplateClone(spaceID string, id string) (templateID string, err error) {
 	var (
 		st             *state.State
-		objectTypeKeys []bundle.TypeKey
+		objectTypeKeys []domain.TypeKey
 	)
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypeBundledTemplate {
@@ -89,7 +89,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	var (
 		st             *state.State
 		sbt            coresb.SmartBlockType
-		objectTypeKeys []bundle.TypeKey
+		objectTypeKeys []domain.TypeKey
 	)
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
 		objectTypeKeys = b.ObjectTypeKeys()
@@ -273,7 +273,7 @@ func (s *Service) ObjectToSet(id string, source []string) error {
 	return nil
 }
 
-func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey bundle.TypeKey) (id string, details *types.Struct, err error) {
+func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error) {
 	return s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
 }
 

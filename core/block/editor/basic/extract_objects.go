@@ -20,7 +20,7 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []bundle.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -30,7 +30,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal unique key: %w", err)
 	}
-	typeKey := bundle.TypeKey(typeUniqueKey.InternalKey())
+	typeKey := domain.TypeKey(typeUniqueKey.InternalKey())
 
 	newState := bs.NewStateCtx(ctx)
 	rootIds := newState.SelectRoots(req.BlockIds)
@@ -49,7 +49,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 			context.Background(),
 			bs.SpaceID(),
 			coresb.SmartBlockTypePage,
-			[]bundle.TypeKey{typeKey},
+			[]domain.TypeKey{typeKey},
 			details,
 			objState,
 		)

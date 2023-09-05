@@ -11,6 +11,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -19,10 +20,10 @@ import (
 
 func newTestConverter(t *testing.T) KeyToIDConverter {
 	converter := mock_system_object.NewMockService(t)
-	converter.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, spaceId string, key bundle.RelationKey) (string, error) {
+	converter.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
 		return fakeDerivedID(key.String()), nil
 	}).Maybe()
-	converter.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, spaceId string, key bundle.TypeKey) (string, error) {
+	converter.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, spaceId string, key domain.TypeKey) (string, error) {
 		return fakeDerivedID(key.String()), nil
 	}).Maybe()
 	return converter

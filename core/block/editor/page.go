@@ -103,7 +103,7 @@ func NewPage(
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
-		ctx.ObjectTypeKeys = []bundle.TypeKey{bundle.TypeKeyPage}
+		ctx.ObjectTypeKeys = []domain.TypeKey{bundle.TypeKeyPage}
 	}
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
@@ -158,7 +158,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_todo:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
+					template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),
 				)
 			case model.ObjectType_bookmark:
 				templates = append(templates,

@@ -284,7 +284,7 @@ func (bs *basic) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
-func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []bundle.TypeKey) (err error) {
+func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey) (err error) {
 	s := bs.NewStateCtx(ctx)
 	if err = bs.SetObjectTypesInState(s, objectTypeKeys); err != nil {
 		return
@@ -301,7 +301,7 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []bundle.Typ
 	return
 }
 
-func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.TypeKey) (err error) {
+func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey) (err error) {
 	if len(objectTypeKeys) == 0 {
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
@@ -334,7 +334,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []bundle.T
 	return
 }
 
-func (bs *basic) getLayoutForType(objectTypeKey bundle.TypeKey) (model.ObjectTypeLayout, error) {
+func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {
 	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, objectTypeKey.String())
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)

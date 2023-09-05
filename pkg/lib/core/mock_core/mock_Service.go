@@ -9,7 +9,6 @@ import (
 	mock "github.com/stretchr/testify/mock"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
-	bundle "github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
@@ -272,11 +271,11 @@ func (_c *MockService_EnsurePredefinedBlocks_Call) RunAndReturn(run func(context
 }
 
 // GetSystemRelationID provides a mock function with given fields: spaceID, relationKey
-func (_m *MockService) GetSystemRelationID(spaceID string, relationKey bundle.RelationKey) string {
+func (_m *MockService) GetSystemRelationID(spaceID string, relationKey domain.RelationKey) string {
 	ret := _m.Called(spaceID, relationKey)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, bundle.RelationKey) string); ok {
+	if rf, ok := ret.Get(0).(func(string, domain.RelationKey) string); ok {
 		r0 = rf(spaceID, relationKey)
 	} else {
 		r0 = ret.Get(0).(string)
@@ -292,14 +291,14 @@ type MockService_GetSystemRelationID_Call struct {
 
 // GetSystemRelationID is a helper method to define mock.On call
 //   - spaceID string
-//   - relationKey bundle.RelationKey
+//   - relationKey domain.RelationKey
 func (_e *MockService_Expecter) GetSystemRelationID(spaceID interface{}, relationKey interface{}) *MockService_GetSystemRelationID_Call {
 	return &MockService_GetSystemRelationID_Call{Call: _e.mock.On("GetSystemRelationID", spaceID, relationKey)}
 }
 
-func (_c *MockService_GetSystemRelationID_Call) Run(run func(spaceID string, relationKey bundle.RelationKey)) *MockService_GetSystemRelationID_Call {
+func (_c *MockService_GetSystemRelationID_Call) Run(run func(spaceID string, relationKey domain.RelationKey)) *MockService_GetSystemRelationID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bundle.RelationKey))
+		run(args[0].(string), args[1].(domain.RelationKey))
 	})
 	return _c
 }
@@ -309,17 +308,17 @@ func (_c *MockService_GetSystemRelationID_Call) Return(_a0 string) *MockService_
 	return _c
 }
 
-func (_c *MockService_GetSystemRelationID_Call) RunAndReturn(run func(string, bundle.RelationKey) string) *MockService_GetSystemRelationID_Call {
+func (_c *MockService_GetSystemRelationID_Call) RunAndReturn(run func(string, domain.RelationKey) string) *MockService_GetSystemRelationID_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetSystemTypeID provides a mock function with given fields: spaceID, typeKey
-func (_m *MockService) GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string {
+func (_m *MockService) GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string {
 	ret := _m.Called(spaceID, typeKey)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(string, bundle.TypeKey) string); ok {
+	if rf, ok := ret.Get(0).(func(string, domain.TypeKey) string); ok {
 		r0 = rf(spaceID, typeKey)
 	} else {
 		r0 = ret.Get(0).(string)
@@ -335,14 +334,14 @@ type MockService_GetSystemTypeID_Call struct {
 
 // GetSystemTypeID is a helper method to define mock.On call
 //   - spaceID string
-//   - typeKey bundle.TypeKey
+//   - typeKey domain.TypeKey
 func (_e *MockService_Expecter) GetSystemTypeID(spaceID interface{}, typeKey interface{}) *MockService_GetSystemTypeID_Call {
 	return &MockService_GetSystemTypeID_Call{Call: _e.mock.On("GetSystemTypeID", spaceID, typeKey)}
 }
 
-func (_c *MockService_GetSystemTypeID_Call) Run(run func(spaceID string, typeKey bundle.TypeKey)) *MockService_GetSystemTypeID_Call {
+func (_c *MockService_GetSystemTypeID_Call) Run(run func(spaceID string, typeKey domain.TypeKey)) *MockService_GetSystemTypeID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bundle.TypeKey))
+		run(args[0].(string), args[1].(domain.TypeKey))
 	})
 	return _c
 }
@@ -352,7 +351,7 @@ func (_c *MockService_GetSystemTypeID_Call) Return(_a0 string) *MockService_GetS
 	return _c
 }
 
-func (_c *MockService_GetSystemTypeID_Call) RunAndReturn(run func(string, bundle.TypeKey) string) *MockService_GetSystemTypeID_Call {
+func (_c *MockService_GetSystemTypeID_Call) RunAndReturn(run func(string, domain.TypeKey) string) *MockService_GetSystemTypeID_Call {
 	_c.Call.Return(run)
 	return _c
 }

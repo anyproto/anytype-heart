@@ -6,6 +6,7 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
@@ -20,7 +21,7 @@ import (
 )
 
 // relationsSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
-var relationsSkipList = []bundle.RelationKey{
+var relationsSkipList = []domain.RelationKey{
 	bundle.RelationKeyType,
 	bundle.RelationKeySetOf,
 	bundle.RelationKeyCreator,
@@ -83,7 +84,7 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 }
 
 func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
-	return rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !lo.Contains(relationsSkipList, bundle.RelationKey(rel.Key))
+	return rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !lo.Contains(relationsSkipList, domain.RelationKey(rel.Key))
 }
 
 func (gr *Builder) extractGraph(

@@ -55,7 +55,7 @@ func (f *file) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeFile
 }
 
-func (f *file) getDetailsForFileOrImage(ctx context.Context) (*types.Struct, bundle.TypeKey, error) {
+func (f *file) getDetailsForFileOrImage(ctx context.Context) (*types.Struct, domain.TypeKey, error) {
 	file, err := f.fileService.FileByHash(ctx, f.id)
 	if err != nil {
 		return nil, "", err

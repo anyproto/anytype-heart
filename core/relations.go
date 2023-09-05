@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -76,7 +77,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 
 			for _, relKey := range req.RelationKeys {
-				relId, err := systemObjectService.GetRelationIdByKey(cctx, spaceId, bundle.RelationKey(relKey))
+				relId, err := systemObjectService.GetRelationIdByKey(cctx, spaceId, domain.RelationKey(relKey))
 				if err != nil {
 					return nil, err
 				}

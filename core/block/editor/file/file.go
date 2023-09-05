@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -37,7 +38,7 @@ const (
 var log = logging.Logger("anytype-mw-smartfile")
 
 type PredefinedObjectsGetter interface {
-	GetSystemTypeID(spaceID string, typeKey bundle.TypeKey) string
+	GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string
 }
 
 func NewFile(

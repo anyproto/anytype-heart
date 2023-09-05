@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -156,7 +157,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	ctx context.Context,
 	spaceID string,
 	links pbtypes.RelationLinks,
-	objectTypeKeys []bundle.TypeKey,
+	objectTypeKeys []domain.TypeKey,
 ) error {
 
 	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))

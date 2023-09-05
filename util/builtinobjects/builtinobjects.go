@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -298,7 +299,7 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, s
 		log.Errorf("Failed to get id of second widget block: %s", err.Error())
 		return
 	}
-	for _, objectTypeKey := range []bundle.TypeKey{bundle.TypeKeyNote, bundle.TypeKeyTask} {
+	for _, objectTypeKey := range []domain.TypeKey{bundle.TypeKeyNote, bundle.TypeKeyTask} {
 		id, err := b.getSetIDByObjectTypeKey(spaceID, objectTypeKey)
 		if err != nil {
 			log.Errorf("Failed to get id of set by '%s' to create widget object: %s", objectTypeKey, err.Error())
@@ -328,7 +329,7 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, s
 	}
 }
 
-func (b *builtinObjects) getSetIDByObjectTypeKey(spaceID string, objectTypeKey bundle.TypeKey) (string, error) {
+func (b *builtinObjects) getSetIDByObjectTypeKey(spaceID string, objectTypeKey domain.TypeKey) (string, error) {
 	objectTypeID, err := b.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, objectTypeKey)
 	if err != nil {
 		return "", fmt.Errorf("get type id by key '%s': %s", objectTypeKey, err)
