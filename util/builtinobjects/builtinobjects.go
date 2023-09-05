@@ -178,7 +178,7 @@ func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err e
 	}
 
 	if err = os.Remove(path); err != nil {
-		log.Errorf("failed to remove temporary file %s: %s", path, err.Error())
+		log.Errorf("failed to remove temporary file: %s", err.Error())
 	}
 
 	return nil

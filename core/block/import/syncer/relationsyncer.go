@@ -93,11 +93,14 @@ func (fs *FileRelationSyncer) updateFileRelationsDetails(st *state.State, name s
 	if st.Details() == nil || st.Details().GetFields() == nil {
 		return
 	}
-	if st.Details().Fields[name].GetListValue() != nil && len(allFilesHashes) != 0 {
+	if st.Details().Fields[name].GetListValue() != nil {
 		st.SetDetail(name, pbtypes.StringList(allFilesHashes))
 	}
-
-	if st.Details().Fields[name].GetStringValue() != "" && len(allFilesHashes) != 0 {
-		st.SetDetail(name, pbtypes.String(allFilesHashes[0]))
+	hash := ""
+	if len(allFilesHashes) != 0 {
+		hash = allFilesHashes[0]
+	}
+	if st.Details().Fields[name].GetStringValue() != "" {
+		st.SetDetail(name, pbtypes.String(hash))
 	}
 }

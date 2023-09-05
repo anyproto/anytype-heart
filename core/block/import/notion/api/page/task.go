@@ -220,6 +220,9 @@ func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.O
 }
 
 func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
+	if name == "" {
+		name = "Untitled"
+	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
