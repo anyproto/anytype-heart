@@ -189,7 +189,10 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) ([]string, error) {
-	filters := generateFilters(spaceID, c.sbtProvider, typesFromSet)
+	filters, err := c.generateFilters(spaceID, typesFromSet)
+	if err != nil {
+		return nil, fmt.Errorf("generate filters: %w", err)
+	}
 	if len(filters) == 0 {
 		return []string{}, nil
 	}
@@ -285,31 +288,37 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 	return res, nil
 }
 
-func generateFilters(spaceId string, sbtProvider typeprovider.SmartBlockTypeProvider, typesAndRelations []string) []*model.BlockContentDataviewFilter {
+func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]*model.BlockContentDataviewFilter, error) {
 	var filters []*model.BlockContentDataviewFilter
-	m, err := sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
+	m, err := c.sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
 	if err != nil {
-		// todo: log error
-		return nil
+		return nil, fmt.Errorf("partition ids by sb type: %w", err)
 	}
-	filters = appendTypesFilter(m[coresb.SmartBlockTypeObjectType], filters)
-	filters = appendRelationFilters(m[coresb.SmartBlockTypeRelation], filters)
-	return filters
+	filters = c.appendTypesFilter(m[coresb.SmartBlockTypeObjectType], filters)
+	filters, err = c.appendRelationFilters(m[coresb.SmartBlockTypeRelation], filters)
+	if err != nil {
+		return nil, fmt.Errorf("append relation filters: %w", err)
+	}
+	return filters, nil
 }
 
-func appendRelationFilters(rels []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
-	if len(rels) != 0 {
-		for _, rel := range rels {
+func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
+	if len(relationIDs) != 0 {
+		for _, relationID := range relationIDs {
+			relation, err := c.systemObjectService.GetRelationByID(relationID)
+			if err != nil {
+				return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
+			}
 			filters = append(filters, &model.BlockContentDataviewFilter{
-				RelationKey: rel,
+				RelationKey: relation.Key,
 				Condition:   model.BlockContentDataviewFilter_Exists,
 			})
 		}
 	}
-	return filters
+	return filters, nil
 }
 
-func appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+func (c *layoutConverter) appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
 	if len(types) != 0 {
 		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeyType.String(),
