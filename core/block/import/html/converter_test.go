@@ -3,7 +3,7 @@ package html
 import (
 	"archive/zip"
 	"errors"
-	"io"
+	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -56,9 +56,10 @@ func TestHTML_provideFileName(t *testing.T) {
 		h := &HTML{}
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
 
 		// when
-		newFileName, _, err := h.provideFileName("http://example.com", nil, currentDir)
+		newFileName, _, err := h.provideFileName("http://example.com", source, currentDir)
 
 		// then
 		assert.Nil(t, err)
@@ -69,11 +70,12 @@ func TestHTML_provideFileName(t *testing.T) {
 		h := &HTML{}
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
 
 		// when
 		absPath, err := filepath.Abs("testdata/test")
 		assert.Nil(t, err)
-		newFileName, _, err := h.provideFileName(absPath, nil, currentDir)
+		newFileName, _, err := h.provideFileName(absPath, source, currentDir)
 
 		// then
 		assert.Nil(t, err)
@@ -84,9 +86,10 @@ func TestHTML_provideFileName(t *testing.T) {
 		h := &HTML{}
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
 
 		// when
-		newFileName, _, err := h.provideFileName("testdata/test", nil, currentDir)
+		newFileName, _, err := h.provideFileName("testdata/test", source, currentDir)
 
 		// then
 		assert.Nil(t, err)
@@ -98,12 +101,14 @@ func TestHTML_provideFileName(t *testing.T) {
 		// given
 		h := HTML{}
 		h.tempDirProvider = &MockTempDirProvider{}
-		filesFromArchive, testFileName, archiveName := prepareArchivedFiles(t)
+		testFileName, archiveName := prepareArchivedFiles(t)
 		defer os.Remove(archiveName)
-		defer filesFromArchive[testFileName].Close()
+		source := source.GetSource(archiveName)
+		err := source.Initialize(archiveName)
+		assert.Nil(t, err)
 
 		// when
-		newFileName, _, err := h.provideFileName(testFileName, filesFromArchive, archiveName)
+		newFileName, _, err := h.provideFileName(testFileName, source, archiveName)
 		defer os.Remove(newFileName)
 
 		// then
@@ -114,9 +119,10 @@ func TestHTML_provideFileName(t *testing.T) {
 	t.Run("file doesn't exist - not change original path", func(t *testing.T) {
 		// given
 		h := HTML{}
+		source := source.GetSource("test")
 
 		// when
-		newFileName, _, err := h.provideFileName("test", nil, "imported path")
+		newFileName, _, err := h.provideFileName("test", source, "imported path")
 
 		// then
 		assert.Nil(t, err)
@@ -124,7 +130,7 @@ func TestHTML_provideFileName(t *testing.T) {
 	})
 }
 
-func prepareArchivedFiles(t *testing.T) (map[string]io.ReadCloser, string, string) {
+func prepareArchivedFiles(t *testing.T) (string, string) {
 	// create test archive
 	archiveName := filepath.Join(".", strconv.FormatInt(rand.Int63(), 10)+".zip")
 	file, err := os.Create(archiveName)
@@ -142,13 +148,6 @@ func prepareArchivedFiles(t *testing.T) (map[string]io.ReadCloser, string, strin
 	reader, err := zip.OpenReader(archiveName)
 	assert.Nil(t, err)
 
-	// get test file reader from archive
 	assert.Len(t, reader.File, 1)
-	testFile := reader.File[0]
-	rc, err := testFile.Open()
-	assert.Nil(t, err)
-
-	// fill map with files from archive
-	filesFromArchive := map[string]io.ReadCloser{testFileName: rc}
-	return filesFromArchive, testFileName, archiveName
+	return testFileName, archiveName
 }

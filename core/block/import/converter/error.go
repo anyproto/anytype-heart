@@ -33,9 +33,7 @@ func NewFromError(initialError error) *ConvertError {
 }
 
 func NewCancelError(err error) *ConvertError {
-	wrappedError := errors.Wrap(ErrCancel, err.Error())
-	cancelError := NewFromError(wrappedError)
-	return cancelError
+	return NewFromError(errors.Wrap(ErrCancel, err.Error()))
 }
 
 func (ce *ConvertError) Add(err error) {

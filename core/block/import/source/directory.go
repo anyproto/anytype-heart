@@ -5,19 +5,21 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/samber/lo"
+
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 type Directory struct {
-	fileReaders map[string]io.ReadCloser
+	fileReaders map[string]string
 }
 
 func NewDirectory() *Directory {
-	return &Directory{}
+	return &Directory{fileReaders: make(map[string]string, 0)}
 }
 
-func (d *Directory) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
-	files := make(map[string]io.ReadCloser)
+func (d *Directory) Initialize(importPath string) error {
+	files := make(map[string]string)
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
 			if info != nil && !info.IsDir() {
@@ -26,27 +28,58 @@ func (d *Directory) GetFileReaders(importPath string, expectedExt []string, incl
 					log.Errorf("failed to get relative path %s", err)
 					return nil
 				}
-				if !isFileAllowedToImport(shortPath, filepath.Ext(path), expectedExt, includeFiles) {
-					return nil
-				}
-				f, err := os.Open(path)
-				if err != nil {
-					log.Errorf("failed to open file: %s", oserror.TransformError(err))
-					return nil
-				}
-				files[shortPath] = f
+				files[shortPath] = shortPath
 			}
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return files, nil
+	d.fileReaders = files
+	return nil
 }
 
-func (d *Directory) Close() {
-	for _, fileReader := range d.fileReaders {
+func (d *Directory) Iterate(callback func(fileName string, fileReader io.ReadCloser) bool) error {
+	for file := range d.fileReaders {
+		fileReader, err := os.Open(file)
+		if err != nil {
+			return oserror.TransformError(err)
+		}
+		stop := callback(file, fileReader)
 		fileReader.Close()
+		if stop {
+			break
+		}
 	}
+	return nil
 }
+
+func (d *Directory) ProcessFile(fileName string, callback func(fileReader io.ReadCloser) error) error {
+	if _, ok := d.fileReaders[fileName]; ok {
+		fileReader, err := os.Open(fileName)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return oserror.TransformError(err)
+		}
+		defer fileReader.Close()
+		if err = callback(fileReader); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *Directory) CountFilesWithGivenExtensions(extension []string) int {
+	var numberOfFiles int
+	for name := range d.fileReaders {
+		if lo.Contains(extension, filepath.Ext(name)) {
+			numberOfFiles++
+		}
+	}
+	return numberOfFiles
+}
+
+func (d *Directory) Close() {}
