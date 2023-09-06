@@ -77,7 +77,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	github.com/vektra/mockery/v2 v2.33.1
+	github.com/vektra/mockery/v2 v2.33.2
 	github.com/yuin/goldmark v1.5.6
 	go.uber.org/mock v0.2.0
 	go.uber.org/multierr v1.11.0
