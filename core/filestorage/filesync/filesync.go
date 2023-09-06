@@ -72,9 +72,10 @@ type fileSync struct {
 	onUpload     func(spaceID, fileID string) error
 	spaceService space.Service
 
-	spaceStatsLock sync.Mutex
-	spaceStats     map[string]SpaceStat
-	importEvents   []*pb.Event
+	spaceStatsLock    sync.Mutex
+	spaceStats        map[string]SpaceStat
+	importEventsMutex sync.Mutex
+	importEvents      []*pb.Event
 }
 
 func New() FileSync {

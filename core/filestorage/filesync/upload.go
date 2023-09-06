@@ -49,12 +49,16 @@ func (f *fileSync) AddFile(spaceID, fileID string, uploadedByUser, imported bool
 }
 
 func (f *fileSync) SendImportEvents() {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
 	for _, event := range f.importEvents {
 		f.sendEvent(event)
 	}
 }
 
 func (f *fileSync) ClearImportEvents() {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
 	f.importEvents = nil
 }
 
@@ -260,6 +264,8 @@ func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {
 }
 
 func (f *fileSync) addImportEvent(spaceID string, fileID string) {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
 	f.importEvents = append(f.importEvents, &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
