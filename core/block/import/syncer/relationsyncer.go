@@ -97,7 +97,7 @@ func (fs *FileRelationSyncer) updateFileRelationsDetails(st *state.State, name s
 		st.SetDetail(name, pbtypes.StringList(allFilesHashes))
 	}
 	hash := ""
-	if len(allFilesHashes) != 0 {
+	if len(allFilesHashes) > 0 {
 		hash = allFilesHashes[0]
 	}
 	if st.Details().Fields[name].GetStringValue() != "" {
