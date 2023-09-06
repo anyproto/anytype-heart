@@ -39,6 +39,7 @@ func (d *Directory) GetFileReaders(importPath string, expectedExt []string, incl
 			return nil
 		},
 	)
+	d.fileReaders = files
 	if err != nil {
 		return nil, err
 	}
