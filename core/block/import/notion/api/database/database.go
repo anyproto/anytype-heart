@@ -231,6 +231,9 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 }
 
 func (ds *Service) getRelationDetails(databaseProperty property.DatabasePropertyHandler, name, key string) *types.Struct {
+	if name == "" {
+		name = property.UntitledProperty
+	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(databaseProperty.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)

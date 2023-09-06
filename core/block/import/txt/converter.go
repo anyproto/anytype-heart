@@ -3,6 +3,7 @@ package txt
 import (
 	"errors"
 	"io"
+	"path/filepath"
 
 	"github.com/google/uuid"
 
@@ -113,6 +114,9 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode, all
 	snapshots := make([]*converter.Snapshot, 0, numberOfFiles)
 	targetObjects := make([]string, 0, numberOfFiles)
 	iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
+		if filepath.Ext(fileName) != ".txt" {
+			return false
+		}
 		var blocks []*model.Block
 		blocks, err = t.getBlocksForSnapshot(fileReader)
 		if err != nil {

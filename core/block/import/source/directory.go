@@ -11,24 +11,19 @@ import (
 )
 
 type Directory struct {
-	fileReaders map[string]string
+	fileReaders map[string]struct{}
 }
 
 func NewDirectory() *Directory {
-	return &Directory{fileReaders: make(map[string]string, 0)}
+	return &Directory{fileReaders: make(map[string]struct{}, 0)}
 }
 
 func (d *Directory) Initialize(importPath string) error {
-	files := make(map[string]string)
+	files := make(map[string]struct{})
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
 			if info != nil && !info.IsDir() {
-				shortPath, err := filepath.Rel(importPath+string(filepath.Separator), path)
-				if err != nil {
-					log.Errorf("failed to get relative path %s", err)
-					return nil
-				}
-				files[shortPath] = shortPath
+				files[path] = struct{}{}
 			}
 			return nil
 		},
