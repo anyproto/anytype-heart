@@ -193,12 +193,11 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
+	dataviewMigration := newDataviewMigrationFromOldIDs(p.SpaceID(), p.systemObjectService)
 	return migration.MakeMigrations([]migration.Migration{
 		{
 			Version: 2,
-			Proc: func(s *state.State) {
-				migrateSourcesInDataview(p, s, p.systemObjectService)
-			},
+			Proc:    dataviewMigration.migrate,
 		},
 	})
 }

@@ -100,12 +100,11 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 }
 
 func (w *WidgetObject) StateMigrations() migration.Migrations {
+	dataviewMigration := newDataviewMigrationFromOldIDs(w.SpaceID(), w.systemObjectService)
 	return migration.MakeMigrations([]migration.Migration{
 		{
 			Version: 2,
-			Proc: func(s *state.State) {
-				migrateSourcesInDataview(w, s, w.systemObjectService)
-			},
+			Proc:    dataviewMigration.migrate,
 		},
 	})
 }
