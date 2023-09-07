@@ -67,10 +67,8 @@ const (
 )
 
 var (
-	ErrBlockNotFound                     = errors.New("block not found")
-	ErrUnexpectedBlockType               = errors.New("unexpected block type")
-	ErrUnknownObjectType                 = fmt.Errorf("unknown object type")
-	ErrSubobjectAlreadyExistInCollection = errors.New("subobject already exist in collection")
+	ErrUnexpectedBlockType = errors.New("unexpected block type")
+	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -91,12 +89,17 @@ type SmartblockOpener interface {
 }
 
 func New() *Service {
-	return &Service{
+	s := &Service{
+		objectCache: newObjectCache(),
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
 			lock:    &sync.Mutex{},
 		},
 	}
+	s.treeManager = newTreeManager(s.objectCache, func(id domain.FullID) error {
+		return s.OnDelete(id, nil)
+	})
+	return s
 }
 
 type objectCreator interface {
@@ -192,6 +195,9 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.app = a
+
+	s.objectCache.init(a)
+	s.treeManager.init(a)
 	return
 }
 

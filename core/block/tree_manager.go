@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"go.uber.org/zap"
@@ -25,6 +26,19 @@ type treeManager struct {
 	syncer      map[string]*treeSyncer
 	syncStarted bool
 	syncerLock  sync.Mutex
+}
+
+func newTreeManager(objectCache *objectCache, onDelete func(id domain.FullID) error) *treeManager {
+	return &treeManager{
+		objectCache: objectCache,
+		onDelete:    onDelete,
+		syncer:      make(map[string]*treeSyncer),
+	}
+}
+
+func (s *treeManager) init(a *app.App) {
+	s.coreService = app.MustComponent[core.Service](a)
+	s.eventSender = app.MustComponent[event.Sender](a)
 }
 
 func (s *treeManager) StartSync() {

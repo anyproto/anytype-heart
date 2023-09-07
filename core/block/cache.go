@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
@@ -50,8 +51,17 @@ type objectCache struct {
 	closing       chan struct{}
 }
 
-func (s *objectCache) createCache() ocache.OCache {
-	return ocache.New(
+func newObjectCache() *objectCache {
+	return &objectCache{
+		closing: make(chan struct{}),
+	}
+}
+
+func (s *objectCache) init(a *app.App) {
+	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
+	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.cache = ocache.New(
 		s.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
 		ocache.WithGCPeriod(time.Minute),
