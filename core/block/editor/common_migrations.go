@@ -2,8 +2,8 @@ package editor
 
 import (
 	"context"
-
 	"fmt"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
