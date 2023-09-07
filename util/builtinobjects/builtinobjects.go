@@ -32,7 +32,7 @@ const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
 
-	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
+	migrationUseCase       = -1
 	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
 )
 
@@ -51,6 +51,9 @@ var notesDiaryZip []byte
 //go:embed data/migration_dashboard.zip
 var migrationDashboardZip []byte
 
+//go:embed data/strategic_writing.zip
+var strategicWritingZip []byte
+
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
@@ -59,6 +62,7 @@ var (
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
 		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
 		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
+		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
 	}
 )
 
@@ -105,7 +109,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 			fmt.Errorf("failed to import builtinObjects: invalid Use Case value: %v", useCase)
 	}
 
-	if err = b.inject(ctx, archive, false); err != nil {
+	if err = b.inject(ctx, useCase, archive); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
 			fmt.Errorf("failed to import builtinObjects for Use Case %s: %s",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err.Error())
@@ -120,10 +124,10 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 }
 
 func (b *builtinObjects) InjectMigrationDashboard() error {
-	return b.inject(nil, migrationDashboardZip, true)
+	return b.inject(nil, migrationUseCase, migrationDashboardZip)
 }
 
-func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigration bool) (err error) {
+func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
@@ -135,7 +139,7 @@ func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigratio
 
 	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
 	oldId := migrationDashboardName
-	if !isMigration {
+	if useCase != migrationUseCase {
 		oldId, err = b.getOldSpaceDashboardId(archive)
 		if err != nil {
 			log.Errorf("Failed to get old id of space dashboard object: %s", err.Error())
@@ -150,7 +154,10 @@ func (b *builtinObjects) inject(ctx *session.Context, archive []byte, isMigratio
 	}
 
 	b.handleSpaceDashboard(newId)
-	b.createNotesAndTaskTrackerWidgets()
+
+	if useCase != pb.RpcObjectImportUseCaseRequest_SKIP {
+		b.createNotesAndTaskTrackerWidgets()
+	}
 	return
 }
 
@@ -250,7 +257,7 @@ func (b *builtinObjects) createSpaceDashboardWidget(id string) {
 		return
 	}
 
-	if _, err := b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+	if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
 		ContextId:    b.coreService.PredefinedBlocks().Widgets,
 		TargetId:     targetID,
 		Position:     model.Block_Top,

@@ -9,7 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
@@ -79,7 +79,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		return nil, converter.NewFromError(converter.ErrNoObjectsToImport)
 	}
 
-	notionImportContext := block.NewNotionImportContext()
+	notionImportContext := api.NewNotionImportContext()
 	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if dbErr != nil {
 		logger.With("err", dbErr.Error()).Warnf("import from notion db failed")

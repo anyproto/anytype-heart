@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -314,6 +316,69 @@ func TestState_Normalize(t *testing.T) {
 		ApplyState(s, true)
 		assert.Equal(t, "header", s.Pick(s.RootId()).Model().ChildrenIds[0])
 	})
+
+	t.Run("normalize size - big details", func(t *testing.T) {
+		//given
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id: "root",
+				Fields: &types.Struct{Fields: map[string]*types.Value{
+					"name": pbtypes.String(strings.Repeat("a", blockSizeLimit)),
+				}},
+			},
+			)}
+		s := NewDoc("root", blocks).(*State)
+
+		//when
+		err := s.normalizeSize()
+
+		//then
+		assert.Less(t, blockSizeLimit, s.blocks["root"].Model().Size())
+		assert.Error(t, err)
+	})
+
+	t.Run("normalize size - big content", func(t *testing.T) {
+		//given
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id: "root",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+					Text: strings.Repeat("b", blockSizeLimit)},
+				},
+			}),
+		}
+		s := NewDoc("root", blocks).(*State)
+
+		//when
+		err := s.normalizeSize()
+
+		//then
+		assert.Less(t, blockSizeLimit, s.blocks["root"].Model().Size())
+		assert.Error(t, err)
+	})
+
+	t.Run("normalize size - no error", func(t *testing.T) {
+		//given
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id: "root",
+				Fields: &types.Struct{Fields: map[string]*types.Value{
+					"name": pbtypes.String(strings.Repeat("a", blockSizeLimit/3)),
+				}},
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+					Text: strings.Repeat("b", blockSizeLimit/3)},
+				},
+			}),
+		}
+		s := NewDoc("root", blocks).(*State)
+
+		//when
+		err := s.normalizeSize()
+
+		//then
+		assert.Less(t, s.blocks["root"].Model().Size(), blockSizeLimit)
+		assert.NoError(t, err)
+	})
 }
 
 func TestCleanupLayouts(t *testing.T) {
@@ -371,4 +436,85 @@ func BenchmarkNormalize(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		ApplyState(r.NewState(), true)
 	}
+}
+
+func TestShortenDetailsToLimit(t *testing.T) {
+	t.Run("shorten description", func(t *testing.T) {
+		//given
+		details := map[string]*types.Value{
+			bundle.RelationKeyName.String():          pbtypes.String("my page"),
+			bundle.RelationKeyDescription.String():   pbtypes.String(strings.Repeat("a", detailSizeLimit+10)),
+			bundle.RelationKeyWidthInPixels.String(): pbtypes.Int64(20),
+		}
+
+		//when
+		shortenDetailsToLimit("", details)
+
+		//then
+		assert.Len(t, details[bundle.RelationKeyName.String()].GetStringValue(), 7)
+		assert.Less(t, len(details[bundle.RelationKeyDescription.String()].GetStringValue()), detailSizeLimit)
+	})
+}
+
+func TestShortenValueOnN(t *testing.T) {
+	t.Run("string value", func(t *testing.T) {
+		//given
+		value := pbtypes.String("abrakadabra")
+
+		//when
+		value, left := shortenValueByN(value, 7)
+
+		//then
+		assert.Equal(t, 0, left)
+		assert.Equal(t, "abra", value.GetStringValue())
+	})
+
+	t.Run("string list", func(t *testing.T) {
+		//given
+		value := pbtypes.StringList([]string{"Liberté", "Égalité", "Fraternité"})
+
+		//when
+		value, left := shortenValueByN(value, 15)
+
+		//then
+		expected := pbtypes.StringList([]string{"", "É", "Fraternité"})
+
+		assert.Equal(t, 0, left)
+		assert.Equal(t, expected, value)
+	})
+
+	t.Run("cut off all strings", func(t *testing.T) {
+		//given
+		value := pbtypes.StringList([]string{"😂", "😄", "🥰", "😔", "😰", "😥", "🥕", "🍅", "🌶"})
+
+		//when
+		value, left := shortenValueByN(value, 100)
+
+		//then
+		assert.Equal(t, 100-(9*4), left)
+		assert.Equal(t, 0, countStringsLength(value))
+	})
+}
+
+func BenchmarkShorten(b *testing.B) {
+	value := pbtypes.StringList([]string{strings.Repeat("War And Peace", 50), "Anna Karenina", strings.Repeat("Youth", 100), "After the Ball"})
+	for i := 0; i < b.N; i++ {
+		_, _ = shortenValueByN(value, 600)
+	}
+}
+
+func countStringsLength(value *types.Value) (n int) {
+	switch value.Kind.(type) {
+	case *types.Value_StringValue:
+		return len(value.GetStringValue())
+	case *types.Value_ListValue:
+		for _, v := range value.GetListValue().Values {
+			n += countStringsLength(v)
+		}
+	case *types.Value_StructValue:
+		for _, v := range value.GetStructValue().GetFields() {
+			n += countStringsLength(v)
+		}
+	}
+	return n
 }

@@ -27,10 +27,13 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+const changeSizeLimit = 10 * 1024 * 1024
+
 var log = logging.Logger("anytype-mw-source")
 var (
 	ErrObjectNotFound = errors.New("object not found")
 	ErrReadOnly       = errors.New("object is read only")
+	ErrBigChangeSize  = errors.New("change size is above the limit")
 )
 
 type ChangeReceiver interface {
@@ -249,6 +252,11 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if err != nil {
 		return
 	}
+	if err = checkChangeSize(data, changeSizeLimit); err != nil {
+		log.With("objectID", params.State.RootId()).
+			Errorf("change size (%d bytes) is above the limit of %d bytes", len(data), changeSizeLimit)
+		return "", err
+	}
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountService.Account().SignKey,
@@ -269,6 +277,14 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		log.Debugf("%s: pushed %d changes", s.id, len(c.Content))
 	}
 	return
+}
+
+func checkChangeSize(data []byte, maxSize int) error {
+	log.Debugf("Change size is %d bytes", len(data))
+	if len(data) > maxSize {
+		return ErrBigChangeSize
+	}
+	return nil
 }
 
 func (s *source) ListIds() (ids []string, err error) {
@@ -318,7 +334,7 @@ func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (s *source) iterate(startId string, iterFunc objecttree.ChangeIterateFunc) (err error) {
-	unmarshall := func(decrypted []byte) (res any, err error) {
+	unmarshall := func(_ *objecttree.Change, decrypted []byte) (res any, err error) {
 		ch := &pb.Change{}
 		err = proto.Unmarshal(decrypted, ch)
 		res = ch
@@ -410,7 +426,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId,
-		func(decrypted []byte) (any, error) {
+		func(_ *objecttree.Change, decrypted []byte) (any, error) {
 			ch := &pb.Change{}
 			err = proto.Unmarshal(decrypted, ch)
 			if err != nil {
@@ -486,7 +502,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId,
-		func(decrypted []byte) (any, error) {
+		func(_ *objecttree.Change, decrypted []byte) (any, error) {
 			ch := &pb.Change{}
 			err = proto.Unmarshal(decrypted, ch)
 			if err != nil {

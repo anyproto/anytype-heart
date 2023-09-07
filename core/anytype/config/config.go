@@ -11,8 +11,10 @@ import (
 	//nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/metric"
+	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/rpc"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
+	"github.com/anyproto/any-sync/net/transport/quic"
 	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/kelseyhightower/envconfig"
@@ -111,6 +113,10 @@ func DisableFileConfig(disable bool) func(*Config) {
 	}
 }
 
+type quicPreferenceSetter interface {
+	PreferQuic(bool)
+}
+
 func New(options ...func(*Config)) *Config {
 	cfg := DefaultConfig
 	for _, opt := range options {
@@ -124,7 +130,7 @@ func (c *Config) Init(a *app.App) (err error) {
 	if err = c.initFromFileAndEnv(repoPath); err != nil {
 		return
 	}
-
+	a.MustComponent(peerservice.CName).(quicPreferenceSetter).PreferQuic(true)
 	return
 }
 
@@ -295,6 +301,14 @@ func (c *Config) GetNodeConfStorePath() string {
 
 func (c *Config) GetYamux() yamux.Config {
 	return yamux.Config{
+		ListenAddrs:     []string{},
+		WriteTimeoutSec: 10,
+		DialTimeoutSec:  10,
+	}
+}
+
+func (c *Config) GetQuic() quic.Config {
+	return quic.Config{
 		ListenAddrs:     []string{},
 		WriteTimeoutSec: 10,
 		DialTimeoutSec:  10,

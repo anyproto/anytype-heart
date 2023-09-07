@@ -2,7 +2,6 @@ package importer
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strings"
 	"sync"
@@ -366,7 +365,7 @@ func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *stat
 		}
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
-			return fmt.Errorf("common operations is not allowed for this object")
+			return nil
 		}
 		err = commonOperations.FeaturedRelationAdd(ctx, bundle.RelationKeyType.String())
 		if err != nil {

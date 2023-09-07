@@ -7,16 +7,22 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
-type Zip struct{}
+type Zip struct {
+	archiveReader *zip.ReadCloser
+	fileReaders   map[string]io.ReadCloser
+}
 
 func NewZip() *Zip {
 	return &Zip{}
 }
 
-func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
+func (z *Zip) GetFileReaders(importPath string, expectedExt []string, includeFiles []string) (map[string]io.ReadCloser, error) {
 	r, err := zip.OpenReader(importPath)
+	z.archiveReader = r
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +42,6 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFil
 			continue
 		}
 		if !isFileAllowedToImport(f.Name, filepath.Ext(f.Name), expectedExt, includeFiles) {
-			log.Errorf("not expected extension")
 			continue
 		}
 		shortPath := filepath.Clean(f.Name)
@@ -44,10 +49,20 @@ func (d *Zip) GetFileReaders(importPath string, expectedExt []string, includeFil
 		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
 		rc, err := f.Open()
 		if err != nil {
-			log.Errorf("failed to read file: %s", err.Error())
+			log.Errorf("failed to read file: %s", oserror.TransformError(err).Error())
 			continue
 		}
 		files[shortPath] = rc
 	}
+	z.fileReaders = files
 	return files, nil
+}
+
+func (z *Zip) Close() {
+	if z.archiveReader != nil {
+		z.archiveReader.Close()
+	}
+	for _, fileReader := range z.fileReaders {
+		fileReader.Close()
+	}
 }

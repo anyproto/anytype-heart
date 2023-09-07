@@ -15,11 +15,11 @@ type ParagraphBlock struct {
 	Paragraph TextObjectWithChildren `json:"paragraph"`
 }
 
-func (p *ParagraphBlock) GetBlocks(req *NotionImportContext, pageId string) *MapResponse {
+func (p *ParagraphBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if p.HasChildren {
 		mapper := ChildrenMapper(&p.Paragraph)
-		childResp = mapper.MapChildren(req, pageId)
+		childResp = mapper.MapChildren(req, pageID)
 	}
 	childID := getChildID(childResp)
 	resp := p.Paragraph.GetTextBlocks(model.BlockContentText_Paragraph, childID, req)
@@ -56,7 +56,7 @@ func (h *Heading1Block) GetID() string {
 	return h.ID
 }
 
-func (h *Heading1Block) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (h *Heading1Block) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	resp := h.Heading1.GetTextBlocks(model.BlockContentText_Header1, nil, req)
 	if h.Heading1.IsToggleable {
 		mapper := ChildrenMapper(&h.Heading1)
@@ -83,7 +83,7 @@ func (h *Heading2Block) GetID() string {
 	return h.ID
 }
 
-func (h *Heading2Block) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (h *Heading2Block) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	resp := h.Heading2.GetTextBlocks(model.BlockContentText_Header2, nil, req)
 	if h.Heading2.IsToggleable {
 		mapper := ChildrenMapper(&h.Heading2)
@@ -98,7 +98,7 @@ type Heading3Block struct {
 	Heading3 HeadingObject `json:"heading_3"`
 }
 
-func (h *Heading3Block) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (h *Heading3Block) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	resp := h.Heading3.GetTextBlocks(model.BlockContentText_Header3, nil, req)
 	if h.Heading3.IsToggleable {
 		mapper := ChildrenMapper(&h.Heading3)
@@ -135,7 +135,7 @@ type CalloutObject struct {
 	Icon *api.Icon `json:"icon"`
 }
 
-func (c *CalloutBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (c *CalloutBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if c.HasChild() {
 		mapper := ChildrenMapper(&c.Callout)
@@ -191,7 +191,7 @@ type QuoteBlock struct {
 	Quote TextObjectWithChildren `json:"quote"`
 }
 
-func (q *QuoteBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (q *QuoteBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if q.HasChildren {
 		mapper := ChildrenMapper(&q.Quote)
@@ -220,7 +220,7 @@ type NumberedListBlock struct {
 	NumberedList TextObjectWithChildren `json:"numbered_list_item"`
 }
 
-func (n *NumberedListBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (n *NumberedListBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if n.HasChildren {
 		mapper := ChildrenMapper(&n.NumberedList)
@@ -249,7 +249,7 @@ type ToDoBlock struct {
 	ToDo ToDoObject `json:"to_do"`
 }
 
-func (t *ToDoBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (t *ToDoBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if t.HasChildren {
 		mapper := ChildrenMapper(&t.ToDo)
@@ -293,7 +293,7 @@ type BulletedListBlock struct {
 	BulletedList TextObjectWithChildren `json:"bulleted_list_item"`
 }
 
-func (b *BulletedListBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (b *BulletedListBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if b.HasChildren {
 		mapper := ChildrenMapper(&b.BulletedList)
@@ -322,7 +322,7 @@ type ToggleBlock struct {
 	Toggle TextObjectWithChildren `json:"toggle"`
 }
 
-func (t *ToggleBlock) GetBlocks(req *NotionImportContext, pageID string) *MapResponse {
+func (t *ToggleBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {
 	childResp := &MapResponse{}
 	if t.HasChildren {
 		mapper := ChildrenMapper(&t.Toggle)
@@ -375,7 +375,7 @@ type CodeObject struct {
 	Language string         `json:"language"`
 }
 
-func (c *CodeBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
+func (c *CodeBlock) GetBlocks(*api.NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	bl := &model.Block{
 		Id: id,
@@ -411,7 +411,7 @@ type EquationBlock struct {
 	Equation api.EquationObject `json:"equation"`
 }
 
-func (e *EquationBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
+func (e *EquationBlock) GetBlocks(*api.NotionImportContext, string) *MapResponse {
 	bl := e.Equation.HandleEquation()
 	return &MapResponse{
 		Blocks:   []*model.Block{bl},

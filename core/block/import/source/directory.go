@@ -4,9 +4,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
-type Directory struct{}
+type Directory struct {
+	fileReaders map[string]io.ReadCloser
+}
 
 func NewDirectory() *Directory {
 	return &Directory{}
@@ -23,12 +27,11 @@ func (d *Directory) GetFileReaders(importPath string, expectedExt []string, incl
 					return nil
 				}
 				if !isFileAllowedToImport(shortPath, filepath.Ext(path), expectedExt, includeFiles) {
-					log.Errorf("not supported extensions")
 					return nil
 				}
 				f, err := os.Open(path)
 				if err != nil {
-					log.Errorf("failed to open file: %s", err)
+					log.Errorf("failed to open file: %s", oserror.TransformError(err))
 					return nil
 				}
 				files[shortPath] = f
@@ -40,4 +43,10 @@ func (d *Directory) GetFileReaders(importPath string, expectedExt []string, incl
 		return nil, err
 	}
 	return files, nil
+}
+
+func (d *Directory) Close() {
+	for _, fileReader := range d.fileReaders {
+		fileReader.Close()
+	}
 }
