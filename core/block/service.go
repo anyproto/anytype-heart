@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
@@ -93,8 +92,6 @@ type SmartblockOpener interface {
 
 func New() *Service {
 	return &Service{
-		closing: make(chan struct{}),
-		syncer:  map[string]*treeSyncer{},
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
 			lock:    &sync.Mutex{},
@@ -126,6 +123,9 @@ type builtinObjects interface {
 }
 
 type Service struct {
+	*objectCache
+	*treeManager
+
 	anytype             core.Service
 	syncStatus          syncstatus.Service
 	eventSender         event.Sender
@@ -137,11 +137,11 @@ type Service struct {
 	restriction         restriction.Service
 	bookmark            bookmarksvc.Service
 	systemObjectService system_object.Service
-	cache               ocache.OCache
-	indexer             indexer
 
-	objectCreator        objectCreator
-	objectFactory        *editor.ObjectFactory
+	indexer indexer
+
+	objectCreator objectCreator
+
 	spaceService         space.Service
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
@@ -152,11 +152,6 @@ type Service struct {
 
 	fileSync    filesync.FileSync
 	fileService files.Service
-	// TODO: move all this into separate treecache component or something like this
-	syncer      map[string]*treeSyncer
-	syncStarted bool
-	syncerLock  sync.Mutex
-	closing     chan struct{}
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -196,7 +191,6 @@ func (s *Service) Init(a *app.App) (err error) {
 
 	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
-	s.cache = s.createCache()
 	s.app = a
 	return
 }
@@ -307,7 +301,7 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 		if err = s.DeleteObject(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
-			s.sendOnRemoveEvent(id)
+			sendOnRemoveEvent(s.eventSender, id)
 		}
 	}
 	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id); return nil })
@@ -316,16 +310,6 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 
 func (s *Service) GetOpenedObjects() []string {
 	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
-}
-
-func (s *Service) CloseBlocks() {
-	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
-		ob := v.(smartblock.SmartBlock)
-		ob.Lock()
-		ob.ObjectCloseAllSessions()
-		ob.Unlock()
-		return true
-	})
 }
 
 func (s *Service) InstallBundledObject(
@@ -947,8 +931,7 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	close(s.closing)
-	return s.cache.Close()
+	return s.objectCache.Close()
 }
 
 func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {

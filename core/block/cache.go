@@ -8,11 +8,14 @@ import (
 
 	"github.com/anyproto/any-sync/app/ocache"
 
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
 type ctxKey int
@@ -39,7 +42,15 @@ type cacheOpts struct {
 
 type InitFunc = func(id string) *smartblock.InitContext
 
-func (s *Service) createCache() ocache.OCache {
+type objectCache struct {
+	objectFactory *editor.ObjectFactory
+	sbtProvider   typeprovider.SmartBlockTypeProvider
+	spaceService  space.Service
+	cache         ocache.OCache
+	closing       chan struct{}
+}
+
+func (s *objectCache) createCache() ocache.OCache {
 	return ocache.New(
 		s.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
@@ -49,7 +60,7 @@ func (s *Service) createCache() ocache.OCache {
 	)
 }
 
-func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
+func (s *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
 	// TODO Pass options as parameter?
 	opts := ctx.Value(optsKey).(cacheOpts)
 
@@ -82,7 +93,7 @@ func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object
 	}
 }
 
-func (s *Service) getObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (s *objectCache) getObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
 		if opts.spaceId == "" {
 			opts.spaceId = id.SpaceID
@@ -120,7 +131,7 @@ func (s *Service) getObject(ctx context.Context, id domain.FullID) (sb smartbloc
 	return v.(smartblock.SmartBlock), nil
 }
 
-func (s *Service) getObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (s *objectCache) getObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, objectLoadTimeout)
@@ -130,7 +141,7 @@ func (s *Service) getObjectWithTimeout(ctx context.Context, id domain.FullID) (s
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+func (s *objectCache) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
 	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
 	if err != nil {
 		// Object not loaded yet
@@ -139,6 +150,21 @@ func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock
 	return s.getObjectWithTimeout(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,
+	})
+}
+
+func (s *objectCache) Close() error {
+	close(s.closing)
+	return nil
+}
+
+func (s *objectCache) CloseBlocks() {
+	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
+		ob := v.(smartblock.SmartBlock)
+		ob.Lock()
+		ob.ObjectCloseAllSessions()
+		ob.Unlock()
+		return true
 	})
 }
 

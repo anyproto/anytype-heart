@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
@@ -10,19 +11,23 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
-/* TODO Extract to separate component
-DEPS:
-- s.cache
-- s.OnDelete
-- s.anytype
-- s.syncerLock
-- s.syncer
-- s.getObject
-*/
+type treeManager struct {
+	coreService core.Service
+	objectCache *objectCache
+	eventSender event.Sender
 
-func (s *Service) StartSync() {
+	onDelete func(id domain.FullID) error
+
+	syncer      map[string]*treeSyncer
+	syncStarted bool
+	syncerLock  sync.Mutex
+}
+
+func (s *treeManager) StartSync() {
 	s.syncerLock.Lock()
 	defer s.syncerLock.Unlock()
 	s.syncStarted = true
@@ -32,13 +37,13 @@ func (s *Service) StartSync() {
 }
 
 // GetTree should only be called by either space services or debug apis, not the client code
-func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
-	if !s.anytype.IsStarted() {
+func (s *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
+	if !s.coreService.IsStarted() {
 		err = errAppIsNotRunning
 		return
 	}
 
-	v, err := s.getObject(ctx, domain.FullID{
+	v, err := s.objectCache.getObject(ctx, domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: id,
 	})
@@ -50,11 +55,11 @@ func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttre
 	return sb.Tree(), nil
 }
 
-func (s *Service) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
-	err := s.OnDelete(domain.FullID{
+func (s *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
+	err := s.onDelete(domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: treeId,
-	}, nil)
+	})
 	if err != nil {
 		log.Error("failed to execute on delete for tree", zap.Error(err))
 	}
@@ -62,12 +67,12 @@ func (s *Service) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) e
 }
 
 // DeleteTree should only be called by space services
-func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
-	if !s.anytype.IsStarted() {
+func (s *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
+	if !s.coreService.IsStarted() {
 		return errAppIsNotRunning
 	}
 
-	obj, err := s.getObject(ctx, domain.FullID{
+	obj, err := s.objectCache.getObject(ctx, domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: treeId,
 	})
@@ -82,12 +87,12 @@ func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err e
 		return
 	}
 
-	s.sendOnRemoveEvent(spaceId, treeId)
-	_, err = s.cache.Remove(ctx, treeId)
+	sendOnRemoveEvent(s.eventSender, treeId)
+	_, err = s.objectCache.cache.Remove(ctx, treeId)
 	return
 }
 
-func (s *Service) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
+func (s *treeManager) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
 	s.syncerLock.Lock()
 	defer s.syncerLock.Unlock()
 	syncer := newTreeSyncer(spaceId, objectLoadTimeout, concurrentTrees, treeManager)
