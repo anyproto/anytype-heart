@@ -97,7 +97,7 @@ func (s *service) imageAdd(ctx context.Context, opts AddOptions) (string, map[in
 		return "", nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
-	err = s.fileIndexData(ctx, node, nodeHash)
+	err = s.fileIndexData(ctx, node, nodeHash, opts.Imported)
 	if err != nil {
 		return "", nil, err
 	}

@@ -50,6 +50,7 @@ type QueueItem struct {
 	FileID      string
 	Timestamp   int64
 	AddedByUser bool
+	Imported    bool
 }
 
 func (it *QueueItem) less(other *QueueItem) bool {
@@ -146,10 +147,10 @@ func versionFromItem(it *badger.Item) (int, error) {
 	return res, err
 }
 
-func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser bool) (err error) {
+func (s *fileSyncStore) QueueUpload(spaceID string, fileID string, addedByUser bool, imported bool) (err error) {
 	return s.updateTxn(func(txn *badger.Txn) error {
-		logger := log.With(zap.String("fileID", fileId), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
-		ok, err := isKeyExists(txn, discardedKey(spaceId, fileId))
+		logger := log.With(zap.String("fileID", fileID), zap.String("addedByUser", strconv.FormatBool(addedByUser)))
+		ok, err := isKeyExists(txn, discardedKey(spaceID, fileID))
 		if err != nil {
 			return fmt.Errorf("check discarded key: %w", err)
 		}
@@ -157,7 +158,7 @@ func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser b
 			logger.Info("add file to upload queue: file is in discarded queue")
 			return nil
 		}
-		ok, err = isKeyExists(txn, uploadKey(spaceId, fileId))
+		ok, err = isKeyExists(txn, uploadKey(spaceID, fileID))
 		if err != nil {
 			return fmt.Errorf("check upload key: %w", err)
 		}
@@ -166,18 +167,19 @@ func (s *fileSyncStore) QueueUpload(spaceId string, fileId string, addedByUser b
 		} else {
 			logger.Info("add file to upload queue")
 		}
-		raw, err := createQueueItem(addedByUser)
+		raw, err := createQueueItem(addedByUser, imported)
 		if err != nil {
 			return fmt.Errorf("create queue item: %w", err)
 		}
-		return txn.Set(uploadKey(spaceId, fileId), raw)
+		return txn.Set(uploadKey(spaceID, fileID), raw)
 	})
 }
 
-func createQueueItem(addedByUser bool) ([]byte, error) {
+func createQueueItem(addedByUser bool, imported bool) ([]byte, error) {
 	return json.Marshal(QueueItem{
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: addedByUser,
+		Imported:    imported,
 	})
 }
 
@@ -186,7 +188,7 @@ func (s *fileSyncStore) QueueDiscarded(spaceId, fileId string) (err error) {
 		if err = txn.Delete(uploadKey(spaceId, fileId)); err != nil {
 			return err
 		}
-		raw, err := createQueueItem(false)
+		raw, err := createQueueItem(false, false)
 		if err != nil {
 			return fmt.Errorf("create queue item: %w", err)
 		}
@@ -199,7 +201,7 @@ func (s *fileSyncStore) QueueRemove(spaceId, fileId string) (err error) {
 		if err = removeFromUploadingQueue(txn, spaceId, fileId); err != nil {
 			return err
 		}
-		raw, err := createQueueItem(false)
+		raw, err := createQueueItem(false, false)
 		if err != nil {
 			return fmt.Errorf("create queue item: %w", err)
 		}

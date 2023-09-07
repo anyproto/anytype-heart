@@ -39,17 +39,29 @@ func (m *MockFileSync) EXPECT() *MockFileSyncMockRecorder {
 }
 
 // AddFile mocks base method.
-func (m *MockFileSync) AddFile(arg0, arg1 string, arg2 bool) error {
+func (m *MockFileSync) AddFile(arg0, arg1 string, arg2, arg3 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddFile", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "AddFile", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddFile indicates an expected call of AddFile.
-func (mr *MockFileSyncMockRecorder) AddFile(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFileSyncMockRecorder) AddFile(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFile", reflect.TypeOf((*MockFileSync)(nil).AddFile), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFile", reflect.TypeOf((*MockFileSync)(nil).AddFile), arg0, arg1, arg2, arg3)
+}
+
+// ClearImportEvents mocks base method.
+func (m *MockFileSync) ClearImportEvents() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ClearImportEvents")
+}
+
+// ClearImportEvents indicates an expected call of ClearImportEvents.
+func (mr *MockFileSyncMockRecorder) ClearImportEvents() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearImportEvents", reflect.TypeOf((*MockFileSync)(nil).ClearImportEvents))
 }
 
 // Close mocks base method.
@@ -222,6 +234,18 @@ func (m *MockFileSync) Run(arg0 context.Context) error {
 func (mr *MockFileSyncMockRecorder) Run(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockFileSync)(nil).Run), arg0)
+}
+
+// SendImportEvents mocks base method.
+func (m *MockFileSync) SendImportEvents() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SendImportEvents")
+}
+
+// SendImportEvents indicates an expected call of SendImportEvents.
+func (mr *MockFileSyncMockRecorder) SendImportEvents() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendImportEvents", reflect.TypeOf((*MockFileSync)(nil).SendImportEvents))
 }
 
 // SpaceStat mocks base method.
