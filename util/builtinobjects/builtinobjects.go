@@ -70,7 +70,7 @@ var (
 		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
 	}
 
-	//TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
+	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
 	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
 		pb.RpcObjectImportUseCaseRequest_SKIP: {
 			{model.BlockContentWidget_Link, "bafyreiag57kbhehecmhe4xks5nv7p5x5flr3xoc6gm7y4i7uznp2f2spum", "", true},
@@ -185,16 +185,16 @@ func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImport
 	}
 
 	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
-	oldId := migrationDashboardName
+	oldID := migrationDashboardName
 	if useCase != migrationUseCase {
-		oldId, err = b.getOldSpaceDashboardId(archive)
+		oldID, err = b.getOldSpaceDashboardId(archive)
 		if err != nil {
 			log.Errorf("Failed to get old id of space dashboard object: %s", err.Error())
 			return nil
 		}
 	}
 
-	newID, err := b.getNewObjectID(oldId)
+	newID, err := b.getNewObjectID(oldID)
 	if err != nil {
 		log.Errorf("Failed to get new id of space dashboard object: %s", err.Error())
 		return nil
@@ -263,13 +263,13 @@ func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err 
 	return profile.SpaceDashboardId, nil
 }
 
-func (b *builtinObjects) getNewObjectID(oldId string) (id string, err error) {
+func (b *builtinObjects) getNewObjectID(oldID string) (id string, err error) {
 	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
-				Value:       pbtypes.String(oldId),
+				Value:       pbtypes.String(oldID),
 			},
 		},
 	}, nil)
