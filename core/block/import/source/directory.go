@@ -28,6 +28,7 @@ func (d *Directory) Initialize(importPath string) error {
 			return nil
 		},
 	)
+	d.fileReaders = files
 	if err != nil {
 		return err
 	}

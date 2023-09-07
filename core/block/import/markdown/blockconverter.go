@@ -1,7 +1,6 @@
 package markdown
 
 import (
-	"bufio"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -234,8 +232,6 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		if err != nil {
 			log.Errorf("failed to read blocks: %s", err.Error())
 		}
-		// md file no longer needed
-		m.processBlocks(shortPath, files[shortPath], files)
 	}
 	return nil
 }
