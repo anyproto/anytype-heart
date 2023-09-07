@@ -58,7 +58,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		assert.Nil(t, err)
 
 		// when
-		newFileName, _, err := h.provideFileName("http://example.com", nil, currentDir)
+		newFileName, _, err := cv.ProvideFileName("http://example.com", nil, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -73,7 +73,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		// when
 		absPath, err := filepath.Abs("testdata/test")
 		assert.Nil(t, err)
-		newFileName, _, err := h.provideFileName(absPath, nil, currentDir)
+		newFileName, _, err := cv.ProvideFileName(absPath, nil, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -86,7 +86,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		assert.Nil(t, err)
 
 		// when
-		newFileName, _, err := h.provideFileName("testdata/test", nil, currentDir)
+		newFileName, _, err := cv.ProvideFileName("testdata/test", nil, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -103,7 +103,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		defer filesFromArchive[testFileName].Close()
 
 		// when
-		newFileName, _, err := h.provideFileName(testFileName, filesFromArchive, archiveName)
+		newFileName, _, err := cv.ProvideFileName(testFileName, filesFromArchive, archiveName, h.tempDirProvider)
 		defer os.Remove(newFileName)
 
 		// then
@@ -116,7 +116,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		h := HTML{}
 
 		// when
-		newFileName, _, err := h.provideFileName("test", nil, "imported path")
+		newFileName, _, err := cv.ProvideFileName("test", nil, "imported path", h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
