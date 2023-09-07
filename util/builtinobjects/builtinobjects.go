@@ -194,13 +194,13 @@ func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImport
 		}
 	}
 
-	newId, err := b.getNewObjectId(oldId)
+	newID, err := b.getNewObjectID(oldId)
 	if err != nil {
 		log.Errorf("Failed to get new id of space dashboard object: %s", err.Error())
 		return nil
 	}
 
-	b.handleSpaceDashboard(newId)
+	b.handleSpaceDashboard(newID)
 	b.createWidgets(useCase)
 	return
 }
@@ -263,7 +263,7 @@ func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err 
 	return profile.SpaceDashboardId, nil
 }
 
-func (b *builtinObjects) getNewObjectId(oldId string) (id string, err error) {
+func (b *builtinObjects) getNewObjectID(oldId string) (id string, err error) {
 	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -300,7 +300,7 @@ func (b *builtinObjects) createWidgets(useCase pb.RpcObjectImportUseCaseRequestU
 	for _, param := range widgetParams[useCase] {
 		objectID := param.objectID
 		if param.isObjectIDChanged {
-			objectID, err = b.getNewObjectId(objectID)
+			objectID, err = b.getNewObjectID(objectID)
 			if err != nil {
 				log.Errorf("Failed to get new id with old id: '%s'", objectID)
 			}
