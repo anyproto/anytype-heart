@@ -208,7 +208,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, files map[string]io.ReadCl
 func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", ""),
+		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
 
