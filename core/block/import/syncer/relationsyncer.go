@@ -30,8 +30,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 
 func (fs *FileRelationSyncer) Sync(state *state.State, relationName string) []string {
 	allFiles := fs.getFilesFromRelations(state, relationName)
-	allFilesHashes := make([]string, 0)
-	filesToDelete := make([]string, 0, len(allFiles))
+	var allFilesHashes, filesToDelete []string
 	for _, f := range allFiles {
 		if f == "" {
 			continue
