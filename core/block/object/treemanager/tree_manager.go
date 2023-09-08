@@ -51,7 +51,7 @@ func newTreeManager(onDelete func(id domain.FullID) error) *treeManager {
 	}
 }
 
-func (s *treeManager) Name() string {
+func (m *treeManager) Name() string {
 	return treemanager.CName
 }
 
@@ -59,44 +59,44 @@ type onDeleteProvider interface {
 	OnDelete(id domain.FullID, workspaceRemove func() error) error
 }
 
-func (s *treeManager) Init(a *app.App) error {
-	s.coreService = app.MustComponent[core.Service](a)
-	s.eventSender = app.MustComponent[event.Sender](a)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
+func (m *treeManager) Init(a *app.App) error {
+	m.coreService = app.MustComponent[core.Service](a)
+	m.eventSender = app.MustComponent[event.Sender](a)
+	m.objectCache = app.MustComponent[objectcache.Cache](a)
 
 	onDelete := app.MustComponent[onDeleteProvider](a).OnDelete
-	s.onDelete = func(id domain.FullID) error {
+	m.onDelete = func(id domain.FullID) error {
 		return onDelete(id, nil)
 	}
 
 	return nil
 }
 
-func (s *treeManager) Run(ctx context.Context) error {
+func (m *treeManager) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *treeManager) Close(ctx context.Context) error {
+func (m *treeManager) Close(ctx context.Context) error {
 	return nil
 }
 
-func (s *treeManager) StartSync() {
-	s.syncerLock.Lock()
-	defer s.syncerLock.Unlock()
-	s.syncStarted = true
-	for _, syncer := range s.syncer {
+func (m *treeManager) StartSync() {
+	m.syncerLock.Lock()
+	defer m.syncerLock.Unlock()
+	m.syncStarted = true
+	for _, syncer := range m.syncer {
 		syncer.Run()
 	}
 }
 
 // GetTree should only be called by either space services or debug apis, not the client code
-func (s *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
-	if !s.coreService.IsStarted() {
+func (m *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
+	if !m.coreService.IsStarted() {
 		err = errAppIsNotRunning
 		return
 	}
 
-	v, err := s.objectCache.GetObject(ctx, domain.FullID{
+	v, err := m.objectCache.GetObject(ctx, domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: id,
 	})
@@ -108,8 +108,8 @@ func (s *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objec
 	return sb.Tree(), nil
 }
 
-func (s *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
-	err := s.onDelete(domain.FullID{
+func (m *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
+	err := m.onDelete(domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: treeId,
 	})
@@ -120,19 +120,19 @@ func (s *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId strin
 }
 
 // DeleteTree should only be called by space services
-func (s *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
-	if !s.coreService.IsStarted() {
+func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
+	if !m.coreService.IsStarted() {
 		return errAppIsNotRunning
 	}
 
-	obj, err := s.objectCache.GetObject(ctx, domain.FullID{
+	obj, err := m.objectCache.GetObject(ctx, domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: treeId,
 	})
 	if err != nil {
 		return
 	}
-	s.MarkTreeDeleted(ctx, spaceId, treeId)
+	m.MarkTreeDeleted(ctx, spaceId, treeId)
 	// this should be done not inside lock
 	sb := obj.(smartblock.SmartBlock)
 	err = sb.(source.ObjectTreeProvider).Tree().Delete()
@@ -140,25 +140,25 @@ func (s *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 		return
 	}
 
-	s.sendOnRemoveEvent(treeId)
-	err = s.objectCache.Remove(ctx, treeId)
+	m.sendOnRemoveEvent(treeId)
+	err = m.objectCache.Remove(ctx, treeId)
 	return
 }
 
-func (s *treeManager) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
-	s.syncerLock.Lock()
-	defer s.syncerLock.Unlock()
+func (m *treeManager) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
+	m.syncerLock.Lock()
+	defer m.syncerLock.Unlock()
 	syncer := newTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, concurrentTrees, treeManager)
-	s.syncer[spaceId] = syncer
-	if s.syncStarted {
+	m.syncer[spaceId] = syncer
+	if m.syncStarted {
 		log.With("spaceID", spaceId).Warn("creating tree syncer after run")
 		syncer.Run()
 	}
 	return syncer
 }
 
-func (s *treeManager) sendOnRemoveEvent(ids ...string) {
-	s.eventSender.Broadcast(&pb.Event{
+func (m *treeManager) sendOnRemoveEvent(ids ...string) {
+	m.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfObjectRemove{
