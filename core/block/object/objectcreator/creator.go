@@ -56,7 +56,6 @@ type Creator struct {
 	collectionService   CollectionService
 	systemObjectService system_object.Service
 	bookmark            bookmark.Service
-	objectFactory       *editor.ObjectFactory
 	app                 *app.App
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	creator             Service //nolint:unused
@@ -79,7 +78,6 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
-	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	c.collectionService = app.MustComponent[CollectionService](a)
 	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	c.coreService = app.MustComponent[core.Service](a)
