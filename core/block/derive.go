@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -14,8 +15,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+)
+
+const (
+	derivedObjectLoadTimeout = time.Minute * 30
 )
 
 // DeriveTreeCreatePayload creates payload for the tree of derived object.
@@ -57,7 +63,7 @@ func (s *Service) DeriveObject(
 	return nil
 }
 
-func (s *Service) DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+func (s *Service) DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error) {
 	payload, err := s.DeriveTreeCreatePayload(ctx, spaceID, key)
 	if err != nil {
 		return nil, err
@@ -66,7 +72,7 @@ func (s *Service) DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID str
 }
 
 func (s *Service) getDerivedObject(
-	ctx context.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
+	ctx context.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc objectcache.InitFunc,
 ) (sb smartblock.SmartBlock, err error) {
 	id := domain.FullID{
 		SpaceID:  space.Id(),
@@ -83,7 +89,7 @@ func (s *Service) getDerivedObject(
 			}
 			s.predefinedObjectWasMissing = false
 			// the object exists locally
-			return s.getObjectWithTimeout(ctx, id)
+			return s.objectCache.GetObjectWithTimeout(ctx, id)
 		}
 		tr.Close()
 		return s.cacheCreatedObject(ctx, id, initFunc)
@@ -92,17 +98,12 @@ func (s *Service) getDerivedObject(
 	// timing out when getting objects from remote
 	// here we set very long timeout, because we must load these documents
 	ctx, cancel := context.WithTimeout(ctx, derivedObjectLoadTimeout)
-	ctx = context.WithValue(ctx,
-		optsKey,
-		cacheOpts{
-			buildOption: source.BuildOptions{
-				// TODO: revive p2p (right now we are not ready to load from local clients due to the fact that we need to know when local peers connect)
-			},
-		},
-	)
+
+	// TODO: revive p2p (right now we are not ready to load from local clients due to the fact that we need to know when local peers connect)
+	ctx = objectcache.ContextWithBuildOptions(ctx, source.BuildOptions{})
 	defer cancel()
 
-	sb, err = s.getObjectWithTimeout(ctx, id)
+	sb, err = s.objectCache.GetObjectWithTimeout(ctx, id)
 	if err != nil {
 		if errors.Is(err, treechangeproto.ErrGetTree) {
 			err = spacesyncproto.ErrSpaceMissing

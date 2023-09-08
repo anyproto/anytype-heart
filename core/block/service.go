@@ -10,9 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -27,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -63,15 +62,13 @@ import (
 )
 
 const (
-	CName           = treemanager.CName
+	CName           = "block-service"
 	linkObjectShare = "anytype://object/share?"
 )
 
 var (
-	ErrBlockNotFound                     = errors.New("block not found")
-	ErrUnexpectedBlockType               = errors.New("unexpected block type")
-	ErrUnknownObjectType                 = fmt.Errorf("unknown object type")
-	ErrSubobjectAlreadyExistInCollection = errors.New("subobject already exist in collection")
+	ErrUnexpectedBlockType = errors.New("unexpected block type")
+	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -92,14 +89,13 @@ type SmartblockOpener interface {
 }
 
 func New() *Service {
-	return &Service{
-		closing: make(chan struct{}),
-		syncer:  map[string]*treeSyncer{},
+	s := &Service{
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
 			lock:    &sync.Mutex{},
 		},
 	}
+	return s
 }
 
 type objectCreator interface {
@@ -137,11 +133,12 @@ type Service struct {
 	restriction         restriction.Service
 	bookmark            bookmarksvc.Service
 	systemObjectService system_object.Service
-	cache               ocache.OCache
-	indexer             indexer
+	objectCache         objectcache.Cache
 
-	objectCreator        objectCreator
-	objectFactory        *editor.ObjectFactory
+	indexer indexer
+
+	objectCreator objectCreator
+
 	spaceService         space.Service
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
@@ -152,11 +149,6 @@ type Service struct {
 
 	fileSync    filesync.FileSync
 	fileService files.Service
-	// TODO: move all this into separate treecache component or something like this
-	syncer      map[string]*treeSyncer
-	syncStarted bool
-	syncerLock  sync.Mutex
-	closing     chan struct{}
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -184,11 +176,11 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
+	s.objectCache = app.MustComponent[objectcache.Cache](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
@@ -196,7 +188,6 @@ func (s *Service) Init(a *app.App) (err error) {
 
 	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
-	s.cache = s.createCache()
 	s.app = a
 	return
 }
@@ -205,8 +196,8 @@ func (s *Service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *Service) Anytype() core.Service {
-	return s.anytype
+func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	return s.objectCache.PickBlock(ctx, objectID)
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
@@ -307,7 +298,7 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 		if err = s.DeleteObject(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
-			s.sendOnRemoveEvent(id)
+			sendOnRemoveEvent(s.eventSender, id)
 		}
 	}
 	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id); return nil })
@@ -316,16 +307,6 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 
 func (s *Service) GetOpenedObjects() []string {
 	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
-}
-
-func (s *Service) CloseBlocks() {
-	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
-		ob := v.(smartblock.SmartBlock)
-		ob.Lock()
-		ob.ObjectCloseAllSessions()
-		ob.Unlock()
-		return true
-	})
 }
 
 func (s *Service) InstallBundledObject(
@@ -947,8 +928,7 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	close(s.closing)
-	return s.cache.Close()
+	return nil
 }
 
 func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {

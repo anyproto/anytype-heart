@@ -8,13 +8,12 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -48,8 +47,8 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 
 	// we already have this account running, lets just stop events
 	if s.app != nil && req.Id == s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account() {
-		bs := s.app.MustComponent(treemanager.CName).(*block.Service)
-		bs.CloseBlocks()
+		objectCache := app.MustComponent[objectcache.Cache](s.app)
+		objectCache.CloseBlocks()
 
 		spaceID := app.MustComponent[space.Service](s.app).AccountId()
 		acc := &model.Account{Id: req.Id}

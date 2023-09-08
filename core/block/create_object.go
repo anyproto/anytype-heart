@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
@@ -38,7 +39,7 @@ func (s *Service) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Context, 
 	return space.TreeBuilder().CreateTree(ctx, treePayload)
 }
 
-func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error) {
 	space, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
 		return nil, err
@@ -49,7 +50,7 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID strin
 	}
 	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
 	if errors.Is(err, treestorage.ErrTreeExists) {
-		return s.getObject(ctx, id)
+		return s.objectCache.GetObject(ctx, id)
 	}
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)
@@ -61,7 +62,7 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID strin
 	return s.cacheCreatedObject(ctx, id, initFunc)
 }
 
-func (s *Service) CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
+func (s *Service) CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error) {
 	space, err := s.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
 		return nil, err
@@ -73,11 +74,7 @@ func (s *Service) CreateTreeObject(ctx context.Context, spaceID string, tp cores
 	return s.CreateTreeObjectWithPayload(ctx, spaceID, payload, initFunc)
 }
 
-func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	ctx = context.WithValue(ctx, optsKey, cacheOpts{
-		createOption: &treeCreateCache{
-			initFunc: initFunc,
-		},
-	})
-	return s.getObject(ctx, id)
+func (s *Service) cacheCreatedObject(ctx context.Context, id domain.FullID, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error) {
+	ctx = objectcache.ContextWithCreateOption(ctx, initFunc)
+	return s.objectCache.GetObject(ctx, id)
 }

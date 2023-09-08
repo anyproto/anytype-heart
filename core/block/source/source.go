@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -128,6 +129,8 @@ type source struct {
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	systemObjectService system_object.Service
 }
+
+var _ updatelistener.UpdateListener = (*source)(nil)
 
 func (s *source) Tree() objecttree.ObjectTree {
 	return s.ObjectTree

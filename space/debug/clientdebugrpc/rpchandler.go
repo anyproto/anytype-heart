@@ -7,11 +7,11 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/debug/clientdebugrpc/clientdebugrpcproto"
@@ -21,7 +21,7 @@ import (
 type rpcHandler struct {
 	spaceService   space.Service
 	storageService storage.ClientStorage
-	blockService   *block.Service
+	treeManager    treemanager.TreeManager
 	account        accountservice.Service
 	file           fileservice.FileService
 }
@@ -83,7 +83,7 @@ func (r *rpcHandler) AddText(ctx context.Context, request *clientdebugrpcproto.A
 }
 
 func (r *rpcHandler) DumpTree(ctx context.Context, request *clientdebugrpcproto.DumpTreeRequest) (resp *clientdebugrpcproto.DumpTreeResponse, err error) {
-	tr, err := r.blockService.GetTree(ctx, request.SpaceId, request.DocumentId)
+	tr, err := r.treeManager.GetTree(ctx, request.SpaceId, request.DocumentId)
 	if err != nil {
 		return
 	}
@@ -124,7 +124,7 @@ func (r *rpcHandler) AllSpaces(ctx context.Context, request *clientdebugrpcproto
 }
 
 func (r *rpcHandler) TreeParams(ctx context.Context, request *clientdebugrpcproto.TreeParamsRequest) (resp *clientdebugrpcproto.TreeParamsResponse, err error) {
-	tr, err := r.blockService.GetTree(ctx, request.SpaceId, request.DocumentId)
+	tr, err := r.treeManager.GetTree(ctx, request.SpaceId, request.DocumentId)
 	if err != nil {
 		return
 	}

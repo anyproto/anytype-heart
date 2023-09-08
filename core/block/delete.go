@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -66,8 +67,8 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 		return
 	}
 
-	s.sendOnRemoveEvent(objectID)
-	_, err = s.cache.Remove(context.Background(), objectID)
+	sendOnRemoveEvent(s.eventSender, objectID)
+	err = s.objectCache.Remove(context.Background(), objectID)
 	return
 }
 
@@ -104,8 +105,8 @@ func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
 	return nil
 }
 
-func (s *Service) sendOnRemoveEvent(ids ...string) {
-	s.eventSender.Broadcast(&pb.Event{
+func sendOnRemoveEvent(eventSender event.Sender, ids ...string) {
+	eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfObjectRemove{

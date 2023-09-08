@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -72,7 +71,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.detailsSetter = a.MustComponent(treemanager.CName).(DetailsSetter)
+	s.detailsSetter = app.MustComponent[DetailsSetter](a)
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)

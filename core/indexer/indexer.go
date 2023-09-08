@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -456,7 +457,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 }
 
 func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags reindexFlags) (err error) {
-	ctx := block.CacheOptsWithRemoteLoadDisabled(context.Background())
+	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.threadObjects {
