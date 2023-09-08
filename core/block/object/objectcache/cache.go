@@ -66,12 +66,12 @@ func New() Cache {
 	}
 }
 
-func (s *objectCache) Init(a *app.App) error {
-	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
-	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	s.spaceService = app.MustComponent[space.Service](a)
-	s.cache = ocache.New(
-		s.cacheLoad,
+func (c *objectCache) Init(a *app.App) error {
+	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
+	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	c.spaceService = app.MustComponent[space.Service](a)
+	c.cache = ocache.New(
+		c.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
 		ocache.WithGCPeriod(time.Minute),
 		// TODO: [MR] Get ttl from config
@@ -80,17 +80,17 @@ func (s *objectCache) Init(a *app.App) error {
 	return nil
 }
 
-func (s *objectCache) Name() string {
+func (c *objectCache) Name() string {
 	return "object-cache"
 }
 
-func (s *objectCache) Run(_ context.Context) error {
+func (c *objectCache) Run(_ context.Context) error {
 	return nil
 }
 
-func (s *objectCache) Close(_ context.Context) error {
-	close(s.closing)
-	return s.cache.Close()
+func (c *objectCache) Close(_ context.Context) error {
+	close(c.closing)
+	return c.cache.Close()
 }
 
 func ContextWithCreateOption(ctx context.Context, initFunc InitFunc) context.Context {
@@ -110,12 +110,12 @@ func ContextWithBuildOptions(ctx context.Context, buildOpts source.BuildOptions)
 	)
 }
 
-func (s *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
+func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
 	// TODO Pass options as parameter?
 	opts := ctx.Value(optsKey).(cacheOpts)
 
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
-		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
+		return c.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
 	createObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)
@@ -123,7 +123,7 @@ func (s *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 		initCtx.Ctx = ctx
 		initCtx.SpaceID = opts.spaceId
 		initCtx.BuildOpts = opts.buildOption
-		return s.objectFactory.InitObject(id, initCtx)
+		return c.objectFactory.InitObject(id, initCtx)
 	}
 
 	switch {
@@ -136,14 +136,14 @@ func (s *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 		break
 	}
 
-	sbt, _ := s.sbtProvider.Type(opts.spaceId, id)
+	sbt, _ := c.sbtProvider.Type(opts.spaceId, id)
 	switch sbt {
 	default:
 		return buildObject(id)
 	}
 }
 
-func (s *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
 		if opts.spaceId == "" {
 			opts.spaceId = id.SpaceID
@@ -161,13 +161,13 @@ func (s *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smart
 		select {
 		case <-done:
 			cancel()
-		case <-s.closing:
+		case <-c.closing:
 			start = time.Now()
 			cancel()
 			closing = true
 		}
 	}()
-	v, err := s.cache.Get(ctx, id.ObjectID)
+	v, err := c.cache.Get(ctx, id.ObjectID)
 	close(done)
 	if closing && errors.Is(err, context.Canceled) {
 		log.With("close_delay", time.Since(start).Milliseconds()).With("objectID", id).Warnf("object was loading during closing")
@@ -181,39 +181,39 @@ func (s *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smart
 	return v.(smartblock.SmartBlock), nil
 }
 
-func (s *objectCache) Remove(ctx context.Context, objectID string) error {
-	_, err := s.cache.Remove(ctx, objectID)
+func (c *objectCache) Remove(ctx context.Context, objectID string) error {
+	_, err := c.cache.Remove(ctx, objectID)
 	return err
 }
 
-func (s *objectCache) GetObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (c *objectCache) GetObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, ObjectLoadTimeout)
 		defer cancel()
 	}
-	return s.GetObject(ctx, id)
+	return c.GetObject(ctx, id)
 }
 
 // PickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *objectCache) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
+func (c *objectCache) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := c.spaceService.ResolveSpaceID(objectID)
 	if err != nil {
 		// Object not loaded yet
 		return nil, source.ErrObjectNotFound
 	}
-	return s.GetObjectWithTimeout(ctx, domain.FullID{
+	return c.GetObjectWithTimeout(ctx, domain.FullID{
 		SpaceID:  spaceID,
 		ObjectID: objectID,
 	})
 }
 
-func (s *objectCache) DoLockedIfNotExists(objectID string, proc func() error) error {
-	return s.cache.DoLockedIfNotExists(objectID, proc)
+func (c *objectCache) DoLockedIfNotExists(objectID string, proc func() error) error {
+	return c.cache.DoLockedIfNotExists(objectID, proc)
 }
 
-func (s *objectCache) CloseBlocks() {
-	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
+func (c *objectCache) CloseBlocks() {
+	c.cache.ForEach(func(v ocache.Object) (isContinue bool) {
 		ob := v.(smartblock.SmartBlock)
 		ob.Lock()
 		ob.ObjectCloseAllSessions()
