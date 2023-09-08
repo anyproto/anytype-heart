@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
@@ -95,8 +96,8 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(templateID string, name string) (st *state.State, err error)
-	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
-	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc block.InitFunc) (sb smartblock.SmartBlock, err error)
+	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 

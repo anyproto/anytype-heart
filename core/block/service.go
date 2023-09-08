@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -90,13 +91,12 @@ type SmartblockOpener interface {
 
 func New() *Service {
 	s := &Service{
-		objectCache: newObjectCache(),
 		openedObjs: &openedObjects{
 			objects: make(map[string]bool),
 			lock:    &sync.Mutex{},
 		},
 	}
-	s.treeManager = newTreeManager(s.objectCache, func(id domain.FullID) error {
+	s.treeManager = newTreeManager(func(id domain.FullID) error {
 		return s.OnDelete(id, nil)
 	})
 	return s
@@ -126,7 +126,6 @@ type builtinObjects interface {
 }
 
 type Service struct {
-	*objectCache
 	*treeManager
 
 	anytype             core.Service
@@ -140,6 +139,7 @@ type Service struct {
 	restriction         restriction.Service
 	bookmark            bookmarksvc.Service
 	systemObjectService system_object.Service
+	objectCache         objectcache.Cache
 
 	indexer indexer
 
@@ -182,11 +182,11 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
+	s.objectCache = app.MustComponent[objectcache.Cache](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
@@ -196,7 +196,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.app = a
 
-	s.objectCache.init(a)
 	s.treeManager.init(a)
 	return
 }
@@ -205,8 +204,8 @@ func (s *Service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *Service) Anytype() core.Service {
-	return s.anytype
+func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	return s.objectCache.PickBlock(ctx, objectID)
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
@@ -937,7 +936,7 @@ func (s *Service) ProcessCancel(id string) (err error) {
 }
 
 func (s *Service) Close(ctx context.Context) (err error) {
-	return s.objectCache.Close()
+	return nil
 }
 
 func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {

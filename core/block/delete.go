@@ -68,8 +68,7 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	}
 
 	sendOnRemoveEvent(s.eventSender, objectID)
-	// TODO Separate cache method
-	_, err = s.objectCache.cache.Remove(context.Background(), objectID)
+	err = s.objectCache.Remove(context.Background(), objectID)
 	return
 }
 

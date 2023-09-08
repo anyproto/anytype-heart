@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -215,6 +216,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(builtintemplate.New()).
+		Register(objectcache.New()).
 		Register(block.New()).
 		Register(indexer.New()).
 		Register(syncstatus.New(fileWatcherUpdateInterval)).
