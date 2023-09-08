@@ -145,6 +145,7 @@ func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 	return
 }
 
+// NewTreeSyncer is called in commonspace.SpaceService/NewSpace, so loading a space into cache in space.Service creates a syncer
 func (m *treeManager) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
 	m.syncerLock.Lock()
 	defer m.syncerLock.Unlock()
