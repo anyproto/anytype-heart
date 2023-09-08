@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -63,7 +62,7 @@ import (
 )
 
 const (
-	CName           = treemanager.CName
+	CName           = "block-service"
 	linkObjectShare = "anytype://object/share?"
 )
 
@@ -96,9 +95,6 @@ func New() *Service {
 			lock:    &sync.Mutex{},
 		},
 	}
-	s.treeManager = newTreeManager(func(id domain.FullID) error {
-		return s.OnDelete(id, nil)
-	})
 	return s
 }
 
@@ -126,8 +122,6 @@ type builtinObjects interface {
 }
 
 type Service struct {
-	*treeManager
-
 	anytype             core.Service
 	syncStatus          syncstatus.Service
 	eventSender         event.Sender
@@ -195,8 +189,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.app = a
-
-	s.treeManager.init(a)
 	return
 }
 

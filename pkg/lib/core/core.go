@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -91,7 +90,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
-	a.deriver = ap.MustComponent(treemanager.CName).(ObjectsDeriver)
+	a.deriver = app.MustComponent[ObjectsDeriver](ap)
 	a.space = app.MustComponent[space.Service](ap)
 	return
 }

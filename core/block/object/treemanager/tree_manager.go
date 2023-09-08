@@ -1,4 +1,4 @@
-package block
+package treemanager
 
 import (
 	"context"
@@ -15,8 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
+
+var log = logging.Logger("anytype-mw-tree-manager")
 
 const (
 	concurrentTrees = 10
@@ -36,6 +40,10 @@ type treeManager struct {
 	syncerLock  sync.Mutex
 }
 
+func New() treemanager.TreeManager {
+	return newTreeManager(nil)
+}
+
 func newTreeManager(onDelete func(id domain.FullID) error) *treeManager {
 	return &treeManager{
 		onDelete: onDelete,
@@ -43,10 +51,33 @@ func newTreeManager(onDelete func(id domain.FullID) error) *treeManager {
 	}
 }
 
-func (s *treeManager) init(a *app.App) {
+func (s *treeManager) Name() string {
+	return treemanager.CName
+}
+
+type onDeleteProvider interface {
+	OnDelete(id domain.FullID, workspaceRemove func() error) error
+}
+
+func (s *treeManager) Init(a *app.App) error {
 	s.coreService = app.MustComponent[core.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.objectCache = app.MustComponent[objectcache.Cache](a)
+
+	onDelete := app.MustComponent[onDeleteProvider](a).OnDelete
+	s.onDelete = func(id domain.FullID) error {
+		return onDelete(id, nil)
+	}
+
+	return nil
+}
+
+func (s *treeManager) Run(ctx context.Context) error {
+	return nil
+}
+
+func (s *treeManager) Close(ctx context.Context) error {
+	return nil
 }
 
 func (s *treeManager) StartSync() {
@@ -109,7 +140,7 @@ func (s *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 		return
 	}
 
-	sendOnRemoveEvent(s.eventSender, treeId)
+	s.sendOnRemoveEvent(treeId)
 	err = s.objectCache.Remove(ctx, treeId)
 	return
 }
@@ -124,4 +155,18 @@ func (s *treeManager) NewTreeSyncer(spaceId string, treeManager treemanager.Tree
 		syncer.Run()
 	}
 	return syncer
+}
+
+func (s *treeManager) sendOnRemoveEvent(ids ...string) {
+	s.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfObjectRemove{
+					ObjectRemove: &pb.EventObjectRemove{
+						Ids: ids,
+					},
+				},
+			},
+		},
+	})
 }
