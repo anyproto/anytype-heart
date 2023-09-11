@@ -12,6 +12,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+var (
+	ftIndexInterval         = 10 * time.Second
+	ftIndexForceMinInterval = time.Second * 10
+)
+
 func (i *indexer) ForceFTIndex() {
 	select {
 	case i.forceFt <- struct{}{}:
