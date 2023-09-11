@@ -43,19 +43,22 @@ import (
 const (
 	CName = "indexer"
 
-	// ### Increasing counters below will trigger existing account to reindex their
+	// ForceObjectsReindexCounter reindex thread-based objects
+	ForceObjectsReindexCounter int32 = 8
 
-	// ForceThreadsObjectsReindexCounter reindex thread-based objects
-	ForceThreadsObjectsReindexCounter int32 = 8
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 11 //
+
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
+
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
-	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 51
+	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter int32 = 53
+
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
+
 	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
 	ForceFilestoreKeysReindexCounter int32 = 2
 )
@@ -323,7 +326,7 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums == nil {
 		checksums = &model.ObjectStoreChecksums{
 			// do no add bundled relations checksums, because we want to index them for new accounts
-			ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
+			ObjectsForceReindexCounter:       ForceObjectsReindexCounter,
 			FilesForceReindexCounter:         ForceFilesReindexCounter,
 			IdxRebuildCounter:                ForceIdxRebuildCounter,
 			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
@@ -339,8 +342,8 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums.BundledObjectTypes != bundle.TypeChecksum {
 		flags.bundledTypes = true
 	}
-	if checksums.ObjectsForceReindexCounter != ForceThreadsObjectsReindexCounter {
-		flags.threadObjects = true
+	if checksums.ObjectsForceReindexCounter != ForceObjectsReindexCounter {
+		flags.objects = true
 	}
 	if checksums.FilestoreKeysForceReindexCounter != ForceFilestoreKeysReindexCounter {
 		flags.fileKeys = true
@@ -369,7 +372,7 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 		log.Infof("start store reindex (%s)", flags.String())
 	}
 
-	if flags.threadObjects && flags.fileObjects {
+	if flags.objects && flags.fileObjects {
 		// files will be indexed within object indexing (see indexLinkedFiles)
 		// because we need to do it in the background.
 		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
@@ -398,15 +401,18 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 			}
 		}
 	}
-	var indexesWereRemoved bool
 	if flags.eraseIndexes {
 		err = i.store.EraseIndexes()
 		if err != nil {
 			log.Errorf("reindex failed to erase indexes: %v", err.Error())
 		} else {
 			log.Infof("all store indexes successfully erased")
-			indexesWereRemoved = true
 		}
+	}
+
+	err = i.reindexBundledObjects(flags)
+	if err != nil {
+		log.Errorf("failed to reindex bundled objects: %s", err)
 	}
 
 	// We derive or init predefined blocks here in order to ensure consistency of object store.
@@ -448,19 +454,25 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 	i.syncStarter.StartSync()
 
 	for _, spaceID := range spaceIDs {
-		err = i.reindexSpace(spaceID, indexesWereRemoved, flags)
+		err = i.reindexSpace(spaceID, flags)
 		if err != nil {
 			return fmt.Errorf("reindex space %s: %w", spaceID, err)
 		}
 	}
+
+	err = i.saveLatestChecksums()
+	if err != nil {
+		return fmt.Errorf("save latest checksums: %w", err)
+	}
+
 	return nil
 }
 
-func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags reindexFlags) (err error) {
+func (i *indexer) reindexSpace(spaceID string, flags reindexFlags) (err error) {
 	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
-	if flags.threadObjects {
+	if flags.objects {
 		ids, err := i.getIdsForTypes(
 			spaceID,
 			smartblock.SmartBlockTypePage,
@@ -480,9 +492,11 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 
 		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
 	} else {
+		// Index objects that updated, but not indexed yet
+		// TODO Write more informative comment
 		go func() {
 			start := time.Now()
-			total, success, err := i.reindexOutdatedThreads(ctx, spaceID)
+			total, success, err := i.reindexOutdatedObjects(ctx, spaceID)
 			if err != nil {
 				log.Infof("failed to reindex outdated objects: %s", err.Error())
 			} else {
@@ -495,42 +509,7 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 	}
 
 	if flags.fileObjects {
-		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
-		if err != nil {
-			return err
-		}
-	}
-	if flags.bundledRelations {
-		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledRelations, indexesWereRemoved, smartblock.SmartBlockTypeBundledRelation)
-		if err != nil {
-			return err
-		}
-	}
-	if flags.bundledTypes {
-		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTypes, indexesWereRemoved, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
-		if err != nil {
-			return err
-		}
-	}
-	if flags.bundledObjects {
-		// hardcoded for now
-		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
-		err = i.reindexIDs(ctx, metrics.ReindexTypeBundledObjects, false, ids)
-		if err != nil {
-			return err
-		}
-	}
-
-	if flags.bundledTemplates {
-		existing, _, err := i.store.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
-		if err != nil {
-			return err
-		}
-		for _, id := range existing {
-			i.store.DeleteObject(id)
-		}
-
-		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTemplates, indexesWereRemoved, smartblock.SmartBlockTypeBundledTemplate)
+		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeFiles, smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
 		}
@@ -558,18 +537,65 @@ func (i *indexer) reindexSpace(spaceID string, indexesWereRemoved bool, flags re
 		}
 	}
 
-	return i.saveLatestChecksums()
+	return nil
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, spaceID string, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
+func (i *indexer) reindexBundledObjects(flags reindexFlags) error {
+	ctx := context.Background()
+	spaceID := addr.AnytypeMarketplaceWorkspace
+
+	if flags.bundledRelations {
+		err := i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledRelations, smartblock.SmartBlockTypeBundledRelation)
+		if err != nil {
+			return fmt.Errorf("reindex bundled relations: %w", err)
+		}
+	}
+	if flags.bundledTypes {
+		err := i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTypes, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		if err != nil {
+			return fmt.Errorf("reindex bundled types: %w", err)
+		}
+	}
+
+	if flags.bundledObjects {
+		// hardcoded for now
+		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
+		err := i.reindexIDs(ctx, metrics.ReindexTypeBundledObjects, ids)
+		if err != nil {
+			return fmt.Errorf("reindex profile and missing object: %w", err)
+		}
+	}
+
+	if flags.bundledTemplates {
+		existing, _, err := i.store.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
+		if err != nil {
+			return err
+		}
+		for _, id := range existing {
+			err = i.store.DeleteObject(id)
+			if err != nil {
+				log.Errorf("delete old bundled template %s: %s", id, err)
+			}
+		}
+
+		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTemplates, smartblock.SmartBlockTypeBundledTemplate)
+		if err != nil {
+			return fmt.Errorf("reindex bundled templates: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, spaceID string, reindexType metrics.ReindexType, sbTypes ...smartblock.SmartBlockType) error {
 	ids, err := i.getIdsForTypes(spaceID, sbTypes...)
 	if err != nil {
 		return err
 	}
-	return i.reindexIDs(ctx, reindexType, indexesWereRemoved, ids)
+	return i.reindexIDs(ctx, reindexType, ids)
 }
 
-func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
+func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, ids []string) error {
 	start := time.Now()
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
@@ -603,7 +629,7 @@ func (i *indexer) saveLatestChecksums() error {
 		BundledObjectTypes:         bundle.TypeChecksum,
 		BundledRelations:           bundle.RelationChecksum,
 		BundledTemplates:           i.btHash.Hash(),
-		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
+		ObjectsForceReindexCounter: ForceObjectsReindexCounter,
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 
 		IdxRebuildCounter:                ForceIdxRebuildCounter,
@@ -614,7 +640,7 @@ func (i *indexer) saveLatestChecksums() error {
 	return i.store.SaveChecksums(&checksums)
 }
 
-func (i *indexer) reindexOutdatedThreads(ctx context.Context, spaceID string) (toReindex, success int, err error) {
+func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (toReindex, success int, err error) {
 	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
 	spc, err := i.spaceService.GetSpace(ctx, spaceID)
 	if err != nil {
@@ -625,7 +651,7 @@ func (i *indexer) reindexOutdatedThreads(ctx context.Context, spaceID string) (t
 	var idsToReindex []string
 	for _, tid := range tids {
 		logErr := func(err error) {
-			log.With("tree", tid).Errorf("reindexOutdatedThreads failed to get tree to reindex: %s", err.Error())
+			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err.Error())
 		}
 
 		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)

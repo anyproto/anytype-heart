@@ -2,7 +2,6 @@ package source
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -111,14 +110,4 @@ func (s *bundledObjectType) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 
 func (s *bundledObjectType) GetCreationInfo() (creator string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
-}
-
-type bundledTypeIdGetter struct {
-}
-
-func (b *bundledTypeIdGetter) GetTypeIdByKey(_ context.Context, spaceId string, key domain.TypeKey) (id string, err error) {
-	if spaceId != addr.AnytypeMarketplaceWorkspace {
-		return "", fmt.Errorf("incorrect space id: should be %s", addr.AnytypeMarketplaceWorkspace)
-	}
-	return key.BundledURL(), nil
 }
