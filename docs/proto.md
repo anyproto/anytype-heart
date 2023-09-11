@@ -17165,11 +17165,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| SKIP | 0 |  |
-| PERSONAL_PROJECTS | 1 |  |
-| KNOWLEDGE_BASE | 2 |  |
-| NOTES_DIARY | 3 |  |
-| STRATEGIC_WRITING | 4 |  |
+| EMPTY | 0 |  |
+| SKIP | 1 |  |
+| PERSONAL_PROJECTS | 2 |  |
+| KNOWLEDGE_BASE | 3 |  |
+| NOTES_DIARY | 4 |  |
+| STRATEGIC_WRITING | 5 |  |
 
 
 
