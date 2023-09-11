@@ -919,3 +919,28 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
 	return response(objCreator.CreateObjectsForUseCase(ctx, req.UseCase))
 }
+
+func (mw *Middleware) ObjectImportExperience(cctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
+	ctx := mw.newContext(cctx)
+
+	response := func(code pb.RpcObjectImportExperienceResponseErrorCode, err error) *pb.RpcObjectImportExperienceResponse {
+		resp := &pb.RpcObjectImportExperienceResponse{
+			Error: &pb.RpcObjectImportExperienceResponseError{
+				Code: code,
+			},
+		}
+		if err != nil {
+			resp.Error.Description = err.Error()
+		}
+		return resp
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	if err := objCreator.CreateObjectsForExperience(ctx, req.Source, req.IsLocal); err != nil {
+		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)
+}

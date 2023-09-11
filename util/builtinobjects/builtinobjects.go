@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -117,6 +118,7 @@ type BuiltinObjects interface {
 	app.Component
 
 	CreateObjectsForUseCase(*session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForExperience(ctx *session.Context, source string, isLocal bool) (err error)
 	InjectMigrationDashboard() error
 }
 
@@ -174,11 +176,60 @@ func (b *builtinObjects) InjectMigrationDashboard() error {
 	return b.inject(nil, migrationUseCase, migrationDashboardZip)
 }
 
+func (b *builtinObjects) CreateObjectsForExperience(ctx *session.Context, source string, isLocal bool) (err error) {
+	if isLocal {
+		return b.importArchive(ctx, source)
+	}
+	resp, err := http.Get(source)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to fetch experience from '%s': not OK status code: %s", source, resp.Status)
+	}
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			log.Errorf("failed to close response bode while downloading experience from '%s': %v", source, err)
+		}
+	}()
+
+	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	out, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err = out.Close(); err != nil {
+			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", source, err)
+		}
+		if err = os.Remove(path); err != nil {
+			log.Errorf("failed to remove temporary file: %v", err)
+		}
+	}()
+
+	if _, err = io.Copy(out, resp.Body); err != nil {
+		return err
+	}
+
+	if err = b.importArchive(ctx, path); err != nil {
+		return err
+	}
+
+	//TODO: handleMyHomepage support
+
+	return nil
+}
+
 func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}
+	defer func() {
+		if err = os.Remove(path); err != nil {
+			log.Errorf("failed to remove temporary file %s: %s", path, err.Error())
+		}
+	}()
 
 	if err = b.importArchive(ctx, path); err != nil {
 		return err
@@ -206,7 +257,7 @@ func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImport
 }
 
 func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err error) {
-	if err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	return b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
@@ -217,15 +268,7 @@ func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err e
 				Path:         []string{path},
 				NoCollection: true,
 			}},
-	}); err != nil {
-		return err
-	}
-
-	if err = os.Remove(path); err != nil {
-		log.Errorf("failed to remove temporary file %s: %s", path, err.Error())
-	}
-
-	return nil
+	})
 }
 
 func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err error) {
