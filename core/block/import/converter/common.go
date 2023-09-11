@@ -39,7 +39,7 @@ func GetSourceDetail(fileName, importPath string) string {
 	return source.String()
 }
 
-func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
+func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
 	}
@@ -51,6 +51,7 @@ func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
 		bundle.RelationKeySourceFilePath.String(): pbtypes.String(sourcePath),
 		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
 		bundle.RelationKeyCreatedDate.String():    pbtypes.Int64(time.Now().Unix()), // this relation will be after used in the tree header
+		bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(layout)),
 	}
 	return &types.Struct{Fields: fields}
 }

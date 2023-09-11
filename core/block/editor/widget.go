@@ -64,7 +64,6 @@ func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migra
 				template.WithEmpty,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
 				template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-				w.withDefaultWidgets,
 			)
 		},
 	}

@@ -1,13 +1,10 @@
 package html
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -174,7 +171,7 @@ func (h *HTML) getBlocksForSnapshot(rc io.ReadCloser, files map[string]io.ReadCl
 	blocks, _, err := anymark.HTMLToBlocks(b)
 	for _, block := range blocks {
 		if block.GetFile() != nil {
-			if newFileName, _, err := h.provideFileName(block.GetFile().GetName(), files, path); err == nil {
+			if newFileName, _, err := converter.ProvideFileName(block.GetFile().GetName(), files, path, h.tempDirProvider); err == nil {
 				block.GetFile().Name = newFileName
 			} else {
 				log.Errorf("failed to update file block with new file name: %v", oserror.TransformError(err))
@@ -196,7 +193,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, files map[string]io.ReadCl
 				newFileName     string
 				createFileBlock bool
 			)
-			if newFileName, createFileBlock, err = h.provideFileName(mark.Param, files, path); err == nil {
+			if newFileName, createFileBlock, err = converter.ProvideFileName(mark.Param, files, path, h.tempDirProvider); err == nil {
 				mark.Param = newFileName
 				if createFileBlock {
 					anymark.ConvertTextToFile(block)
@@ -212,7 +209,7 @@ func (h *HTML) updateFilesInLinks(block *model.Block, files map[string]io.ReadCl
 func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", ""),
+		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
 		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 
@@ -223,59 +220,4 @@ func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id
-}
-
-func (h *HTML) provideFileName(fileName string, files map[string]io.ReadCloser, path string) (string, bool, error) {
-	if strings.HasPrefix(strings.ToLower(fileName), "http://") || strings.HasPrefix(strings.ToLower(fileName), "https://") {
-		return fileName, false, nil
-	}
-	var createFileBlock bool
-	// first try to check if file exist on local machine
-	absolutePath := fileName
-	if !filepath.IsAbs(fileName) {
-		absolutePath = filepath.Join(path, fileName)
-	}
-	if _, err := os.Stat(absolutePath); err == nil {
-		createFileBlock = true
-		return absolutePath, createFileBlock, nil
-	}
-	// second case for archive, when file is inside zip archive
-	if rc, ok := files[fileName]; ok {
-		tempFile, err := h.extractFileFromArchiveToTempDirectory(fileName, rc)
-		if err != nil {
-			return "", false, oserror.TransformError(err)
-		}
-		createFileBlock = true
-		return tempFile, createFileBlock, nil
-	}
-	return fileName, createFileBlock, nil
-}
-
-func (h *HTML) extractFileFromArchiveToTempDirectory(fileName string, rc io.ReadCloser) (string, error) {
-	tempDir := h.tempDirProvider.TempDir()
-	directoryWithFile := filepath.Dir(fileName)
-	if directoryWithFile != "" {
-		directoryWithFile = filepath.Join(tempDir, directoryWithFile)
-		if err := os.Mkdir(directoryWithFile, 0777); err != nil && !os.IsExist(err) {
-			return "", err
-		}
-	}
-	pathToTmpFile := filepath.Join(tempDir, fileName)
-	tmpFile, err := os.Create(pathToTmpFile)
-	if os.IsExist(err) {
-		return pathToTmpFile, nil
-	}
-	if err != nil {
-		return "", err
-	}
-	defer tmpFile.Close()
-	w := bufio.NewWriter(tmpFile)
-	_, err = w.ReadFrom(rc)
-	if err != nil {
-		return "", err
-	}
-	if err = w.Flush(); err != nil {
-		return "", err
-	}
-	return pathToTmpFile, nil
 }

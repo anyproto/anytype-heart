@@ -17,6 +17,7 @@ import (
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -54,6 +55,12 @@ func Test_ImportSuccess(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().SendImportEvents().Return().Times(1)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a.pb"}}},
 		UpdateExistingObjects: false,
@@ -78,6 +85,11 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	err := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -119,6 +131,11 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -160,6 +177,11 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -203,6 +225,11 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -228,6 +255,12 @@ func Test_ImportExternalPlugin(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().SendImportEvents().Return().Times(1)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	snapshots := make([]*pb.RpcObjectImportRequestSnapshot, 0)
 	snapshots = append(snapshots, &pb.RpcObjectImportRequestSnapshot{
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a",
@@ -270,6 +303,11 @@ func Test_ImportExternalPluginError(t *testing.T) {
 	i.oc = creator
 	idGetter := NewMockIDGetter(ctrl)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                nil,
 		Snapshots:             nil,
@@ -439,6 +477,11 @@ func Test_ImportCancelError(t *testing.T) {
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -457,6 +500,11 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&cv.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -490,6 +538,11 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -531,6 +584,11 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	idGetter := NewMockIDGetter(ctrl)
 	idGetter.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	i.objectIDGetter = idGetter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -564,6 +622,11 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,
@@ -597,6 +660,11 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
+
+	fileSync := mock_filesync.NewMockFileSync(t)
+	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
+	i.fileSync = fileSync
+
 	res := i.Import(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{"test"}}},
 		UpdateExistingObjects: false,

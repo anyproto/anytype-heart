@@ -46,8 +46,7 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
-	details := converter.GetCommonDetails(path, "", "")
-	details.GetFields()[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
+	details := converter.GetCommonDetails(path, "", "", model.ObjectType_collection)
 	updateDetailsForTransposeCollection(details, params.TransposeRowsAndColumns)
 	_, _, st, err := c.collectionService.CreateCollection(details, nil)
 	if err != nil {
@@ -242,6 +241,7 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 		})
 	}
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(buildSourcePath(path, objectOrderIndex, transpose))
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
 	return details, relationLinks
 }
 

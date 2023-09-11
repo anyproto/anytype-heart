@@ -99,7 +99,7 @@ func ConvertTextToFile(block *model.Block) {
 	}
 
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
-	videoFormats := []string{"mp4", "m4v"}
+	videoFormats := []string{"mp4", "m4v", "mov"}
 	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
 	pdfFormat := "pdf"
 

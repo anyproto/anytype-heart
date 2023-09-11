@@ -38,3 +38,6 @@ packages:
   github.com/anyproto/anytype-heart/core/system_object:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/filestorage/filesync:
+    interfaces:
+      FileSync:

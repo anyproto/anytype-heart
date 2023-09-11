@@ -132,7 +132,7 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 	}
 
 	nodeHash := node.Cid().String()
-	if err = s.fileIndexData(ctx, node, domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}); err != nil {
+	if err = s.fileIndexData(ctx, node, domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}, opts.Imported); err != nil {
 		return "", nil, err
 	}
 
@@ -336,14 +336,14 @@ func (s *service) FileGetKeys(id domain.FullID) (*FileKeys, error) {
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, id domain.FullID) error {
+func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, id domain.FullID, imported bool) error {
 	dagService := s.dagServiceForSpace(id.SpaceID)
 	for _, link := range inode.Links() {
 		nd, err := helpers.NodeAtLink(ctx, dagService, link)
 		if err != nil {
 			return err
 		}
-		err = s.fileIndexNode(ctx, nd, id)
+		err = s.fileIndexNode(ctx, nd, id, imported)
 		if err != nil {
 			return err
 		}
@@ -353,9 +353,9 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, id domain.
 }
 
 // fileIndexNode walks a file node, indexing file links
-func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.FullID) error {
+func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.FullID, imported bool) error {
 	if looksLikeFileNode(inode) {
-		return s.fileIndexLink(inode, id)
+		return s.fileIndexLink(inode, id, imported)
 	}
 	dagService := s.dagServiceForSpace(id.SpaceID)
 	links := inode.Links()
@@ -365,7 +365,7 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.
 			return err
 		}
 
-		err = s.fileIndexLink(n, id)
+		err = s.fileIndexLink(n, id, imported)
 		if err != nil {
 			return err
 		}
@@ -375,7 +375,7 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(inode ipld.Node, id domain.FullID) error {
+func (s *service) fileIndexLink(inode ipld.Node, id domain.FullID, imported bool) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
@@ -384,7 +384,7 @@ func (s *service) fileIndexLink(inode ipld.Node, id domain.FullID) error {
 	if err := s.fileStore.AddTarget(linkID, id.ObjectID); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
 	}
-	if err := s.addToSyncQueue(id, true); err != nil {
+	if err := s.addToSyncQueue(id, true, imported); err != nil {
 		return fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
 	return nil
@@ -801,8 +801,8 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 	return files, nil
 }
 
-func (s *service) addToSyncQueue(id domain.FullID, uploadedByUser bool) error {
-	if err := s.fileSync.AddFile(id.SpaceID, id.ObjectID, uploadedByUser); err != nil {
+func (s *service) addToSyncQueue(id domain.FullID, uploadedByUser bool, imported bool) error {
+	if err := s.fileSync.AddFile(id.SpaceID, id.ObjectID, uploadedByUser, imported); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	if _, err := s.syncStatusWatcher.Watch(id.SpaceID, id.ObjectID, nil); err != nil {
@@ -908,7 +908,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 			}
 		}
 	}
-	if err := s.addToSyncQueue(id, false); err != nil {
+	if err := s.addToSyncQueue(id, false, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
 	fileIndex := fileList[0]

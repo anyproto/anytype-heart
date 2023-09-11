@@ -21,24 +21,24 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
-func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err error) {
-	status, err := f.fileStore.GetSyncStatus(fileId)
+func (f *fileSync) AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error) {
+	status, err := f.fileStore.GetSyncStatus(fileID)
 	if err != nil && !errors.Is(err, localstore.ErrNotFound) {
 		return fmt.Errorf("get file sync status: %w", err)
 	}
 	if status == int(syncstatus.StatusSynced) {
 		return nil
 	}
-	ok, storeErr := f.hasFileInStore(fileId)
+	ok, storeErr := f.hasFileInStore(fileID)
 	if storeErr != nil {
 		return fmt.Errorf("check if file is in store: %w", storeErr)
 	}
 	if !ok {
-		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+		log.Warn("file has been deleted from store, skip upload", zap.String("fileID", fileID))
 		return nil
 	}
 
-	err = f.queue.QueueUpload(spaceId, fileId, uploadedByUser)
+	err = f.queue.QueueUpload(spaceID, fileID, uploadedByUser, imported)
 	if err == nil {
 		select {
 		case f.uploadPingCh <- struct{}{}:
@@ -46,6 +46,20 @@ func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err err
 		}
 	}
 	return
+}
+
+func (f *fileSync) SendImportEvents() {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
+	for _, event := range f.importEvents {
+		f.eventSender.Broadcast(event)
+	}
+}
+
+func (f *fileSync) ClearImportEvents() {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
+	f.importEvents = nil
 }
 
 func (f *fileSync) addLoop() {
@@ -98,8 +112,11 @@ func (f *fileSync) tryToUpload() (string, error) {
 	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
 		if isLimitReachedErr(err) {
-			if it.AddedByUser {
+			if it.AddedByUser && !it.Imported {
 				f.sendLimitReachedEvent(spaceId, fileId)
+			}
+			if it.Imported {
+				f.addImportEvent(spaceId, fileId)
 			}
 			if qerr := f.queue.QueueDiscarded(spaceId, fileId); qerr != nil {
 				log.Warn("can't push upload task to discarded queue", zap.String("fileId", fileId), zap.Error(qerr))
@@ -108,7 +125,7 @@ func (f *fileSync) tryToUpload() (string, error) {
 		}
 
 		// Push to the back of the queue
-		if qerr := f.queue.QueueUpload(spaceId, fileId, it.AddedByUser); qerr != nil {
+		if qerr := f.queue.QueueUpload(spaceId, fileId, it.AddedByUser, it.Imported); qerr != nil {
 			log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
 		}
 		return fileId, err
@@ -233,6 +250,23 @@ func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
 
 func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {
 	f.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfFileLimitReached{
+					FileLimitReached: &pb.EventFileLimitReached{
+						SpaceId: spaceID,
+						FileId:  fileID,
+					},
+				},
+			},
+		},
+	})
+}
+
+func (f *fileSync) addImportEvent(spaceID string, fileID string) {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
+	f.importEvents = append(f.importEvents, &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileLimitReached{

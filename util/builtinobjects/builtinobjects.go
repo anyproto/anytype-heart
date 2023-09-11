@@ -13,10 +13,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -38,6 +36,12 @@ const (
 	migrationUseCase       = -1
 	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
 )
+
+type widgetParameters struct {
+	layout            model.BlockContentWidgetLayout
+	objectID, viewID  string
+	isObjectIDChanged bool
+}
 
 //go:embed data/skip.zip
 var skipZip []byte
@@ -66,6 +70,48 @@ var (
 		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
 		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY:       notesDiaryZip,
 		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: strategicWritingZip,
+	}
+
+	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
+	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
+		pb.RpcObjectImportUseCaseRequest_SKIP: {
+			{model.BlockContentWidget_Link, "bafyreiag57kbhehecmhe4xks5nv7p5x5flr3xoc6gm7y4i7uznp2f2spum", "", true},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+		},
+		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
+			{model.BlockContentWidget_Link, "bafyreier6tne4keezldgkfj5qmix4a64gehznuu4vbpqq3edl53qjoswk4", "", true},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_CompactList, "bafyreicigdupziu7vg56l7chnd6shof3e53tkcqqya33ub2v67fmclbjki", "", true}, // Task tracker
+			{model.BlockContentWidget_CompactList, "bafyreigtcovw3g3kaowacqzty7t6wcnp2u2365zjzytvgezb7rqjzokbwe", "", true}, // My Notes
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+		},
+		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE: {
+			{model.BlockContentWidget_Link, "bafyreiaszkibjyfls2og3ztgxfllqlom422y5ic64z7w3k3oio6f3pc2ia", "", true},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_CompactList, "bafyreiatdyctn5noworljilcvmhhanzyiszrtch6njw3ekz4eichw6g4eu", "", true}, // Task tracker
+			{model.BlockContentWidget_CompactList, "bafyreidjcztbyyee3qcxbkk3gp6nbkwjc5zftguubhznwvjej6q5jflp5q", "", true}, // My Notes
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+		},
+		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY: {
+			{model.BlockContentWidget_Link, "bafyreiexkrata5ofvswxyisuumukmkyerdwv3xa34qkxpgx6jtl7waah34", "", true},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_CompactList, "bafyreighzavahzdk3ewvlcftwfid6uebirl4asymohgikhpanwbzmfdaq4", "", true}, // Task tracker
+			{model.BlockContentWidget_CompactList, "bafyreignt4iidebdxh5ydjohhp75yrffebcqhgo4wjonzc3thobitdari4", "", true}, // My Notes
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+		},
+		pb.RpcObjectImportUseCaseRequest_STRATEGIC_WRITING: {
+			{model.BlockContentWidget_List, "bafyreido5lhh4vntmlxh2hwn4b3xfmz53yw5rrfmcl22cdb4phywhjlcdu", "f984ddde-eb13-497e-809a-2b9a96fd3503", true}, // Task tracker
+			{model.BlockContentWidget_List, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_Tree, "bafyreicblsgojhhlfduz7ek4g4jh6ejy24fle2q5xjbue5kkcd7ifbc4ki", "", true}, // My Home
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+			{model.BlockContentWidget_Link, "bafyreiaoeaxv4dkw4xgdcgubetieyuqlf24q2kg5pdysz4prun6qg5v2ru", "", true}, // About Anytype
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+		},
 	}
 )
 
@@ -145,26 +191,23 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.
 	}
 
 	// TODO: GO-1387 Need to use profile.pb to handle dashboard injection during migration
-	oldId := migrationDashboardName
+	oldID := migrationDashboardName
 	if useCase != migrationUseCase {
-		oldId, err = b.getOldSpaceDashboardId(archive)
+		oldID, err = b.getOldSpaceDashboardId(archive)
 		if err != nil {
 			log.Errorf("Failed to get old id of space dashboard object: %s", err.Error())
 			return nil
 		}
 	}
 
-	newId, err := b.getNewSpaceDashboardId(spaceID, oldId)
+	newID, err := b.getNewSpaceDashboardId(spaceID, oldID)
 	if err != nil {
 		log.Errorf("Failed to get new id of space dashboard object: %s", err.Error())
 		return nil
 	}
 
-	b.handleSpaceDashboard(ctx, spaceID, newId)
-
-	if useCase != pb.RpcObjectImportUseCaseRequest_SKIP {
-		b.createNotesAndTaskTrackerWidgets(ctx, spaceID)
-	}
+	b.handleSpaceDashboard(ctx, spaceID, newID)
+	b.createWidgets(spaceID, useCase)
 	return
 }
 
@@ -260,62 +303,28 @@ func (b *builtinObjects) handleSpaceDashboard(ctx context.Context, spaceID strin
 	}); err != nil {
 		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err.Error())
 	}
-	b.createSpaceDashboardWidget(ctx, spaceID, id)
 }
 
-func (b *builtinObjects) createSpaceDashboardWidget(ctx context.Context, spaceID string, id string) {
-	targetID, err := b.getWidgetBlockIdByNumber(spaceID, 0)
-	if err != nil {
-		log.Errorf(err.Error())
-		return
-	}
+func (b *builtinObjects) createWidgets(spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+	var err error
 
-	if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
-		ContextId:    b.coreService.PredefinedObjects(spaceID).Widgets,
-		TargetId:     targetID,
-		Position:     model.Block_Top,
-		WidgetLayout: model.BlockContentWidget_Link,
-		Block: &model.Block{
-			Id:          "",
-			ChildrenIds: nil,
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: id,
-					Style:         model.BlockContentLink_Page,
-					IconSize:      model.BlockContentLink_SizeNone,
-					CardStyle:     model.BlockContentLink_Inline,
-					Description:   model.BlockContentLink_None,
-				},
-			},
-		},
-	}); err != nil {
-		log.Errorf("Failed to link SpaceDashboard to Widget object: %s", err.Error())
-	}
-}
-
-func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, spaceID string) {
-	targetID, err := b.getWidgetBlockIdByNumber(spaceID, 1)
-	if err != nil {
-		log.Errorf("Failed to get id of second widget block: %s", err.Error())
-		return
-	}
-	for _, objectTypeKey := range []domain.TypeKey{bundle.TypeKeyNote, bundle.TypeKeyTask} {
-		id, err := b.getSetIDByObjectTypeKey(spaceID, objectTypeKey)
-		if err != nil {
-			log.Errorf("Failed to get id of set by '%s' to create widget object: %s", objectTypeKey, err.Error())
-			continue
+	widgetObjectID := b.coreService.PredefinedObjects(spaceID).Widgets
+	for _, param := range widgetParams[useCase] {
+		objectID := param.objectID
+		if param.isObjectIDChanged {
+			objectID, err = b.getNewObjectID(spaceID, objectID)
+			if err != nil {
+				log.Errorf("Failed to get new id with old id: '%s'", objectID)
+			}
 		}
-		if _, err = b.service.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    b.coreService.PredefinedObjects(spaceID).Widgets,
-			TargetId:     targetID,
+		request := &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectID,
 			Position:     model.Block_Bottom,
-			WidgetLayout: model.BlockContentWidget_CompactList,
+			WidgetLayout: param.layout,
 			Block: &model.Block{
-				Id:          "",
-				ChildrenIds: nil,
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
-						TargetBlockId: id,
+						TargetBlockId: objectID,
 						Style:         model.BlockContentLink_Page,
 						IconSize:      model.BlockContentLink_SizeNone,
 						CardStyle:     model.BlockContentLink_Inline,
@@ -323,51 +332,33 @@ func (b *builtinObjects) createNotesAndTaskTrackerWidgets(ctx context.Context, s
 					},
 				},
 			},
-		}); err != nil {
-			log.Errorf("Failed to make Widget block for set by '%s': %s", objectTypeKey, err.Error())
+		}
+		if param.viewID != "" {
+			request.ViewId = param.viewID
+		}
+		if _, err := b.service.CreateWidgetBlock(nil, request); err != nil {
+			log.Errorf("Failed to make Widget block for object '%s': %s", objectID, err.Error())
 		}
 	}
 }
 
-func (b *builtinObjects) getSetIDByObjectTypeKey(spaceID string, objectTypeKey domain.TypeKey) (string, error) {
-	objectTypeID, err := b.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, objectTypeKey)
-	if err != nil {
-		return "", fmt.Errorf("get type id by key '%s': %s", objectTypeKey, err)
-	}
+func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
 	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySetOf.String(),
-				Value:       pbtypes.StringList([]string{objectTypeID}),
+				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
+				Value:       pbtypes.String(oldID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	}, nil)
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
-	if len(ids) == 0 {
-		err = fmt.Errorf("no object found")
-	}
 	return "", err
-}
-
-func (b *builtinObjects) getWidgetBlockIdByNumber(spaceID string, index int) (string, error) {
-	var widgetBlockID string
-	err := getblock.Do(b.service, b.coreService.PredefinedObjects(spaceID).Widgets, func(sb smartblock.SmartBlock) error {
-		root := sb.Pick(sb.RootId())
-		if root == nil {
-			return fmt.Errorf("failed to pick root block of Widget object")
-		}
-		if len(root.Model().ChildrenIds) < index+1 {
-			return fmt.Errorf("failed to get %d block of Widget object as there olny %d of them", index+1, len(root.Model().ChildrenIds))
-		}
-		target := sb.Pick(root.Model().ChildrenIds[index])
-		if target == nil {
-			return fmt.Errorf("failed to get id of first block of Widget object")
-		}
-		widgetBlockID = target.Model().Id
-		return nil
-	})
-	return widgetBlockID, err
 }

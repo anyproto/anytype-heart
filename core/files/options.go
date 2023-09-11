@@ -23,6 +23,7 @@ type AddOptions struct {
 	Name             string
 	LastModifiedDate int64
 	Plaintext        bool
+	Imported         bool
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -40,6 +41,12 @@ func WithName(name string) AddOption {
 func WithLastModifiedDate(timestamp int64) AddOption {
 	return func(args *AddOptions) {
 		args.LastModifiedDate = timestamp
+	}
+}
+
+func WithImported(imported bool) AddOption {
+	return func(args *AddOptions) {
+		args.Imported = imported
 	}
 }
 

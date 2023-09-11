@@ -99,7 +99,8 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 		return "", nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
-	err = s.fileIndexData(ctx, node, domain.FullID{SpaceID: spaceID, ObjectID: nodeHash})
+	id := domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}
+	err = s.fileIndexData(ctx, node, id, opts.Imported)
 	if err != nil {
 		return "", nil, err
 	}

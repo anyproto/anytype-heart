@@ -68,7 +68,7 @@ func processFile(file File, outputFile string) {
 	}
 
 	// assuming Snapshot is a protobuf message
-	var snapshot proto.Message = &pb.SnapshotWithType{}
+	var snapshot proto.Message = &pb.ChangeSnapshot{}
 	if strings.HasPrefix(file.Name, constant.ProfileFile) {
 		snapshot = &pb.Profile{}
 	}
@@ -94,7 +94,10 @@ func processFile(file File, outputFile string) {
 	} else {
 
 		if err := proto.Unmarshal(content, snapshot); err != nil {
-			log.Fatalf("Failed to parse protobuf message: %v", err)
+			snapshot = &pb.SnapshotWithType{}
+			if err := proto.Unmarshal(content, snapshot); err != nil {
+				log.Fatalf("Failed to parse protobuf message: %v", err)
+			}
 		}
 
 		// convert to jsonpb and write to outputFile

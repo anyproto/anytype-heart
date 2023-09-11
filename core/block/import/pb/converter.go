@@ -111,13 +111,7 @@ func (p *Pb) getSnapshots(
 		if err := progress.TryStep(1); err != nil {
 			return nil, nil, converter.NewCancelError(err)
 		}
-		importSource := source.GetSource(path)
-		if importSource == nil {
-			allErrors.Add(fmt.Errorf("failed to identify source"))
-			continue
-		}
-		importSource.Close()
-		snapshots, widget := p.handlePath(spaceID, req, path, allErrors, isMigration, importSource)
+		snapshots, widget := p.handlePath(spaceID, req, path, allErrors, isMigration)
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil, allErrors
 		}
@@ -132,8 +126,9 @@ func (p *Pb) handlePath(
 	req *pb.RpcObjectImportRequest,
 	path string,
 	allErrors *converter.ConvertError,
-	isMigration bool,
-	importSource source.Source) ([]*converter.Snapshot, *converter.Snapshot) {
+	isMigration bool) ([]*converter.Snapshot, *converter.Snapshot) {
+	importSource := source.GetSource(path)
+	defer importSource.Close()
 	files, err := p.readFile(path, importSource)
 	if err != nil {
 		allErrors.Add(err)

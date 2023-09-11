@@ -66,7 +66,7 @@ func TestFileSync_AddFile(t *testing.T) {
 	// fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
 	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), spaceId).Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
-	require.NoError(t, fx.AddFile(spaceId, fileId, false))
+	require.NoError(t, fx.AddFile(spaceId, fileId, false, false))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
 

@@ -38,7 +38,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 		}
 	}
 
-	details := converter.GetCommonDetails(path, "", "")
+	details := converter.GetCommonDetails(path, "", "", model.ObjectType_basic)
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
