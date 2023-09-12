@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"io"
 	"net/http"
 	"os"
@@ -182,6 +183,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	if isLocal {
 		return b.importArchive(ctx, spaceID, source)
 	}
+	//nolint: gosec
 	resp, err := http.Get(source)
 	if err != nil {
 		return err
@@ -198,14 +200,14 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	out, err := os.Create(path)
 	if err != nil {
-		return err
+		return oserror.TransformError(err)
 	}
 	defer func() {
 		if err = out.Close(); err != nil {
 			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", source, err)
 		}
 		if err = os.Remove(path); err != nil {
-			log.Errorf("failed to remove temporary file: %v", err)
+			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(err))
 		}
 	}()
 
@@ -233,7 +235,7 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.
 	}
 	defer func() {
 		if err = os.Remove(path); err != nil {
-			log.Errorf("failed to remove temporary file %s: %s", path, err.Error())
+			log.Errorf("failed to remove temporary file: %s", err.Error())
 		}
 	}()
 
