@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "6a5d8e4c1369922dc5d8de797033027a0037ccb7a17379aac7c32d947be1652f"
+const RelationChecksum = "cf5f18eaaa0024cd6a6c43d6b3461311709239c9361df7210154e8a2519dfbfe"
 
 type RelationKey string
 
@@ -166,6 +166,7 @@ const (
 	RelationKeyStarred                   RelationKey = "starred"
 	RelationKeyDefaultTemplateId         RelationKey = "defaultTemplateId"
 	RelationKeyBacklinks                 RelationKey = "backlinks"
+	RelationKeyImportDate                RelationKey = "importDate"
 )
 
 var (
@@ -905,6 +906,20 @@ var (
 			Key:              "imdbRating",
 			MaxCount:         1,
 			Name:             "IMDb rating",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyImportDate: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Date of finished import",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brimportDate",
+			Key:              "importDate",
+			MaxCount:         1,
+			Name:             "Import date",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -206,7 +206,7 @@ func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImport
 }
 
 func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err error) {
-	if err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	if _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,

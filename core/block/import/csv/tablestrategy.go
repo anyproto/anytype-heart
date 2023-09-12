@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type TableStrategy struct {
@@ -22,7 +24,11 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*converter.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string,
+	csvTable [][]string,
+	params *pb.RpcObjectImportRequestCsvParams,
+	progress process.Progress,
+	timestamp int64) (string, []*converter.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -38,7 +44,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 		}
 	}
 
-	details := converter.GetCommonDetails(path, "", "", model.ObjectType_basic)
+	details := c.provideDetails(path, timestamp)
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
@@ -170,4 +176,10 @@ func (c *TableStrategy) createColumns(csvTable [][]string, st *state.State, tabl
 		columnIDs = append(columnIDs, colID)
 	}
 	return columnIDs, nil
+}
+
+func (c *TableStrategy) provideDetails(path string, timestamp int64) *types.Struct {
+	details := converter.GetCommonDetails(path, "", "", model.ObjectType_basic)
+	details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+	return details
 }

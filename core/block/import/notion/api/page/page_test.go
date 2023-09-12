@@ -1010,7 +1010,7 @@ func TestTask_provideDetails(t *testing.T) {
 		assert.Contains(t, details, bundle.RelationKeyIconImage.String())
 		assert.Equal(t, "url", details[bundle.RelationKeyIconImage.String()].GetStringValue())
 	})
-	t.Run("Database has custom file icon - details have relation iconImage", func(t *testing.T) {
+	t.Run("Page has custom file icon - details have relation iconImage", func(t *testing.T) {
 		c := client.NewClient()
 		page := Page{
 			Icon: &api.Icon{

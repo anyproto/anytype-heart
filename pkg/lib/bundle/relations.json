@@ -1409,5 +1409,15 @@
     "name": "Backlinks",
     "readonly": false,
     "source": "local"
+  },
+  {
+    "description": "Date of finished import",
+    "format": "date",
+    "key": "importDate",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Import date",
+    "readonly": false,
+    "source": "details"
   }
 ]

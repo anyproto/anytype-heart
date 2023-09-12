@@ -17,6 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -42,7 +44,7 @@ func New(c *collection.Service) converter.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*converter.Response, *converter.ConvertError) {
 	ce := converter.NewError()
 	apiKey := n.getParams(req)
 	if apiKey == "" {
@@ -116,7 +118,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 
 	n.dbService.AddPagesToCollections(dbs, pages, db, notionImportContext.NotionPageIdsToAnytype, notionImportContext.NotionDatabaseIdsToAnytype)
 
-	rootCollectionSnapshot, err := n.dbService.AddObjectsToNotionCollection(notionImportContext, db, pages)
+	rootCollectionSnapshot, rootObjects, err := n.dbService.AddObjectsToNotionRootCollection(notionImportContext, db, pages)
 	if err != nil {
 		ce.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -126,6 +128,8 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 	if rootCollectionSnapshot != nil {
 		dbs = append(dbs, rootCollectionSnapshot)
 	}
+
+	n.injectImportTimestamp(dbs, pgs, rootObjects, timestamp)
 	allSnapshots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
@@ -169,4 +173,25 @@ func (n *Notion) getParams(param *pb.RpcObjectImportRequest) string {
 
 func (n *Notion) Name() string {
 	return name
+}
+
+func (n *Notion) injectImportTimestamp(dbs []*converter.Snapshot, pages []*converter.Snapshot, rootObjects []string, timestamp int64) {
+	rootObjectSet := make(map[string]struct{}, len(rootObjects))
+	for _, rootObject := range rootObjects {
+		rootObjectSet[rootObject] = struct{}{}
+	}
+
+	for _, db := range dbs {
+		snapshotID := db.Id
+		if _, ok := rootObjectSet[snapshotID]; ok {
+			db.Snapshot.Data.Details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+		}
+	}
+
+	for _, p := range pages {
+		snapshotID := p.Id
+		if _, ok := rootObjectSet[snapshotID]; ok {
+			p.Snapshot.Data.Details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+		}
+	}
 }

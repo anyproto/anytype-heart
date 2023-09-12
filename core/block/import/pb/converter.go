@@ -55,7 +55,7 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 	}
 }
 
-func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, _ int64) (*converter.Response, *converter.ConvertError) {
 	params, e := p.getParams(req.Params)
 	if e != nil || params == nil {
 		return nil, converter.NewFromError(fmt.Errorf("wrong parameters"))

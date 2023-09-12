@@ -50,7 +50,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(pb.ModelProcess_Import), 0)
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -71,7 +71,7 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(pb.ModelProcess_Import), 0)
 
 	assert.NotNil(t, ce)
 }
@@ -98,7 +98,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(pb.ModelProcess_Import), 0)
 
 	assert.NotNil(t, ce)
 	assert.False(t, ce.IsEmpty())
@@ -116,7 +116,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(pb.ModelProcess_Import), 0)
 
 	assert.NotNil(t, ce)
 	assert.Nil(t, res)
@@ -129,7 +129,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(pb.ModelProcess_Import), 0)
 
 	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -149,7 +149,7 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(pb.ModelProcess_Import), 0)
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -185,7 +185,7 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import))
+	}, process.NewProgress(pb.ModelProcess_Import), 0)
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)

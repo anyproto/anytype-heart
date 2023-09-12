@@ -95,12 +95,15 @@ func (i *Import) Init(a *app.App) (err error) {
 	return nil
 }
 
-// Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error {
+// Import get snapshots from converter or external api and create objects from them
+func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) (int64, error) {
 	i.Lock()
 	defer i.Unlock()
 	progress := i.setupProgressBar(req)
-	var returnedErr error
+	var (
+		returnedErr error
+		timestamp   int64
+	)
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
@@ -109,15 +112,15 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 		i.s.ProcessAdd(progress)
 	}
 	if c, ok := i.converters[req.Type.String()]; ok {
-		returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
-		return returnedErr
+		returnedErr, timestamp = i.importFromBuiltinConverter(ctx, req, c, progress)
+		return timestamp, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)
-		return returnedErr
+		return timestamp, returnedErr
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
-	return returnedErr
+	return timestamp, returnedErr
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -130,26 +133,27 @@ func (i *Import) sendFileEvents(returnedErr error) {
 func (i *Import) importFromBuiltinConverter(ctx *session.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
-	progress process.Progress) error {
+	progress process.Progress) (error, int64) {
 	allErrors := converter.NewError()
-	res, err := c.GetSnapshots(req, progress)
+	timestamp := time.Now().Unix()
+	res, err := c.GetSnapshots(req, progress, timestamp)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req) {
-			return resultErr
+			return resultErr, 0
 		}
 		allErrors.Merge(err)
 	}
 	if res == nil {
-		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type), 0
 	}
 
 	if len(res.Snapshots) == 0 {
-		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type), 0
 	}
 
 	i.createObjects(ctx, res, progress, req, allErrors)
-	return allErrors.GetResultError(req.Type)
+	return allErrors.GetResultError(req.Type), timestamp
 }
 
 func (i *Import) importFromExternalSource(ctx *session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
@@ -230,7 +234,7 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(req, progress)
+	res, err := w.GetSnapshots(req, progress, 0)
 
 	if err != nil {
 		return "", nil, err.Error()

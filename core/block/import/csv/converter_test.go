@@ -28,7 +28,7 @@ func TestCsv_GetSnapshotsEmptyFile(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 2) // test + root collection
@@ -55,7 +55,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 
@@ -89,7 +89,7 @@ func TestCsv_GetSnapshotsTable(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 
@@ -119,7 +119,7 @@ func TestCsv_GetSnapshotsTableUseFirstColumnForRelationsOn(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 
@@ -156,7 +156,7 @@ func TestCsv_GetSnapshotsSemiColon(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -180,7 +180,7 @@ func TestCsv_GetSnapshotsTranspose(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -220,7 +220,7 @@ func TestCsv_GetSnapshotsTransposeUseFirstRowForRelationsOff(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -247,7 +247,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -293,7 +293,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOff(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -351,7 +351,7 @@ func TestCsv_GetSnapshotsQuotedStrings(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -370,7 +370,7 @@ func TestCsv_GetSnapshotsBigFile(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded))
@@ -390,7 +390,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOn(t *testing.T
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -417,7 +417,7 @@ func TestCsv_GetSnapshotsEmptyFirstLineUseFirstColumnForRelationsOff(t *testing.
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -463,7 +463,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.NotNil(t, sn)
 
@@ -489,7 +489,7 @@ func TestCsv_GetSnapshots1000RowsFile(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.NotNil(t, sn)
 
@@ -568,7 +568,7 @@ func Test_findUniqueRelationWithSpaces(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -611,7 +611,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -642,7 +642,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Csv,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	}, p, 0)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, sn)
@@ -681,7 +681,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 			},
 			Type: pb.RpcObjectImportRequest_Csv,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-		}, p)
+		}, p, 0)
 
 		// then
 		assert.Nil(t, err)
@@ -719,7 +719,7 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 			},
 			Type: pb.RpcObjectImportRequest_Csv,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-		}, p)
+		}, p, 0)
 
 		// then
 		assert.Nil(t, err)
@@ -741,6 +741,48 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 			assert.Equal(t, numberOfCSVRelations, 3)
 		}
 	})
+}
+
+func TestCsv_GetSnapshotsImportDateRelation(t *testing.T) {
+	csv := CSV{}
+	p := process.NewProgress(pb.ModelProcess_Import)
+	sn, err := csv.GetSnapshots(&pb.RpcObjectImportRequest{
+		Params: &pb.RpcObjectImportRequestParamsOfCsvParams{
+			CsvParams: &pb.RpcObjectImportRequestCsvParams{
+				Path:                    []string{"testdata/Journal.csv"},
+				Delimiter:               ",",
+				UseFirstRowForRelations: true,
+			},
+		},
+		Type: pb.RpcObjectImportRequest_Csv,
+		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+	}, p, 0)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, sn)
+
+	var (
+		rowsObjects []*converter.Snapshot
+		collection  *converter.Snapshot
+	)
+	for _, snapshot := range sn.Snapshots {
+		// only objects created from rows
+		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+			!lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
+			rowsObjects = append(rowsObjects, snapshot)
+		}
+
+		if snapshot.SbType != sb.SmartBlockTypeSubObject &&
+			lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) &&
+			pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String()) != rootCollectionName {
+			collection = snapshot
+		}
+	}
+
+	for _, object := range rowsObjects {
+		assert.NotContains(t, object.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
+	}
+	assert.Contains(t, collection.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
 }
 
 func getRelationsNumber(keys []string) int {

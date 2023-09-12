@@ -31,7 +31,7 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, _ int64) (*converter.Response, *converter.ConvertError) {
 	we := converter.NewError()
 	url, err := c.getParams(req.Params)
 	progress.SetTotal(1)

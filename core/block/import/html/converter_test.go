@@ -10,12 +10,14 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -26,28 +28,61 @@ func (p *MockTempDirProvider) TempDir() string {
 }
 
 func TestHTML_GetSnapshots(t *testing.T) {
-	h := &HTML{}
-	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := h.GetSnapshots(&pb.RpcObjectImportRequest{
-		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
-			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
-		},
-		Type: pb.RpcObjectImportRequest_Txt,
-		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p)
+	t.Run("successful import", func(t *testing.T) {
+		// given
+		h := &HTML{}
+		p := process.NewProgress(pb.ModelProcess_Import)
 
-	assert.NotNil(t, sn)
-	assert.Len(t, sn.Snapshots, 2)
-	assert.Contains(t, sn.Snapshots[0].FileName, "test.html")
-	assert.NotEmpty(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"])
-	assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"], pbtypes.String("test"))
+		// when
+		sn, err := h.GetSnapshots(&pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
+				HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
+			},
+			Type: pb.RpcObjectImportRequest_Txt,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p, 0)
 
-	assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
-	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
-	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+		// then
+		assert.NotNil(t, sn)
+		assert.Len(t, sn.Snapshots, 2)
+		assert.Contains(t, sn.Snapshots[0].FileName, "test.html")
+		assert.NotEmpty(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"])
+		assert.Equal(t, sn.Snapshots[0].Snapshot.Data.Details.Fields["name"], pbtypes.String("test"))
 
-	assert.NotEmpty(t, err)
-	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), cv.ErrNoObjectsToImport))
+		assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
+		assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
+		assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+
+		assert.NotEmpty(t, err)
+		assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), cv.ErrNoObjectsToImport))
+	})
+	t.Run("snapshots have relation importDate", func(t *testing.T) {
+		// given
+		h := &HTML{}
+		p := process.NewProgress(pb.ModelProcess_Import)
+
+		// when
+		sn, err := h.GetSnapshots(&pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
+				HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
+			},
+			Type: pb.RpcObjectImportRequest_Txt,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p, 1)
+
+		// then
+		assert.NotNil(t, sn)
+		assert.NotEmpty(t, err)
+
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.SbType == sb.SmartBlockTypeSubObject ||
+				lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
+				continue
+			}
+			assert.Contains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
+			assert.Equal(t, int64(1), pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyImportDate.String()))
+		}
+	})
 }
 
 func TestHTML_provideFileName(t *testing.T) {

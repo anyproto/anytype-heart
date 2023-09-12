@@ -320,17 +320,17 @@ func (ds *Service) AddPagesToCollections(databaseSnapshots []*converter.Snapshot
 	}
 }
 
-func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportContext,
+func (ds *Service) AddObjectsToNotionRootCollection(notionContext *api.NotionImportContext,
 	notionDB []Database,
-	notionPages []page.Page) (*converter.Snapshot, error) {
-	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
+	notionPages []page.Page) (*converter.Snapshot, []string, error) {
+	rootObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
 	rootCollection := converter.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, rootObjects)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return rootCol, nil
+	return rootCol, rootObjects, nil
 }
 
 func (ds *Service) filterObjects(notionContext *api.NotionImportContext,

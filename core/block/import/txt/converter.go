@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
@@ -43,14 +45,14 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*converter.Response, *converter.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	snapshots, targetObjects, cancelError := t.getSnapshots(req, progress, paths, cErr)
+	snapshots, targetObjects, cancelError := t.getSnapshots(req, progress, paths, cErr, timestamp)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -77,17 +79,14 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}, cErr
 }
 
-func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
-	progress process.Progress,
-	paths []string,
-	cErr *converter.ConvertError) ([]*converter.Snapshot, []string, *converter.ConvertError) {
+func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, cErr *converter.ConvertError, timestamp int64) ([]*converter.Snapshot, []string, *converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range paths {
 		if err := progress.TryStep(1); err != nil {
 			return nil, nil, converter.NewCancelError(err)
 		}
-		sn, to, err := t.handleImportPath(p, req.GetMode())
+		sn, to, err := t.handleImportPath(p, req.GetMode(), timestamp)
 		if err != nil {
 			cErr.Add(err)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -101,7 +100,7 @@ func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	return snapshots, targetObjects, nil
 }
 
-func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
+func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode, timestamp int64) ([]*converter.Snapshot, []string, error) {
 	importSource := source.GetSource(p)
 	if importSource == nil {
 		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
@@ -127,7 +126,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode) ([]
 			}
 			continue
 		}
-		sn, id := t.getSnapshot(blocks, name)
+		sn, id := t.getSnapshot(blocks, name, timestamp)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}
@@ -147,10 +146,11 @@ func (t *TXT) getBlocksForSnapshot(rc io.ReadCloser) ([]*model.Block, error) {
 	return blocks, nil
 }
 
-func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
+func (t *TXT) getSnapshot(blocks []*model.Block, p string, timestamp int64) (*converter.Snapshot, string) {
+	details := t.provideDetails(p, timestamp)
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
+		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
 
@@ -161,4 +161,10 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot,
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id
+}
+
+func (t *TXT) provideDetails(p string, timestamp int64) *types.Struct {
+	details := converter.GetCommonDetails(p, "", "", model.ObjectType_basic)
+	details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+	return details
 }

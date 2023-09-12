@@ -5,6 +5,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -19,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const numberOfStages = 2 // 1 cycle to get snapshots and 1 cycle to create objects
@@ -53,14 +55,14 @@ func (h *HTML) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*converter.Response, *converter.ConvertError) {
 	path := h.GetParams(req)
 	if len(path) == 0 {
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	snapshots, targetObjects, cancelError := h.getSnapshots(req, progress, path, cErr)
+	snapshots, targetObjects, cancelError := h.getSnapshots(req, progress, path, cErr, timestamp)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -95,14 +97,18 @@ func (h *HTML) shouldReturnError(req *pb.RpcObjectImportRequest, cErr *converter
 		(cErr.IsNoObjectToImportError(len(path)))
 }
 
-func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path []string, cErr *converter.ConvertError) ([]*converter.Snapshot, []string, *converter.ConvertError) {
+func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+	path []string,
+	cErr *converter.ConvertError,
+	timestamp int64) ([]*converter.Snapshot, []string, *converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range path {
 		if err := progress.TryStep(1); err != nil {
 			return nil, nil, converter.NewCancelError(err)
 		}
-		sn, to, err := h.handleImportPath(p, req.GetMode())
+		sn, to, err := h.handleImportPath(p, req.GetMode(), timestamp)
 		if err != nil {
 			cErr.Add(err)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -116,7 +122,7 @@ func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	return snapshots, targetObjects, nil
 }
 
-func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode) ([]*converter.Snapshot, []string, error) {
+func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode, timestamp int64) ([]*converter.Snapshot, []string, error) {
 	importSource := source.GetSource(path)
 	if importSource == nil {
 		return nil, nil, fmt.Errorf("failed to identify source: %s", path)
@@ -154,7 +160,7 @@ func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode)
 			}
 			continue
 		}
-		sn, id := h.getSnapshot(blocks, name)
+		sn, id := h.getSnapshot(blocks, name, timestamp)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}
@@ -205,10 +211,10 @@ func (h *HTML) updateFilesInLinks(block *model.Block, files map[string]io.ReadCl
 	}
 }
 
-func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot, string) {
+func (h *HTML) getSnapshot(blocks []*model.Block, p string, timestamp int64) (*converter.Snapshot, string) {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
-		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
+		Details:     h.provideDetails(p, timestamp),
 		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
 	}
 
@@ -219,4 +225,10 @@ func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id
+}
+
+func (h *HTML) provideDetails(p string, timestamp int64) *types.Struct {
+	details := converter.GetCommonDetails(p, "", "", model.ObjectType_basic)
+	details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+	return details
 }

@@ -60,7 +60,7 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*converter.Response, *converter.ConvertError) {
 	paths := m.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
@@ -70,7 +70,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 		allErrors    = converter.NewError()
 	)
 	for _, path := range paths {
-		snapshots, cancelError := m.getSnapshots(req, progress, path, allErrors)
+		snapshots, cancelError := m.getSnapshots(req, progress, path, allErrors, timestamp)
 		if !cancelError.IsEmpty() {
 			return nil, cancelError
 		}
@@ -110,7 +110,7 @@ func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*
 	return allSnapshots, nil
 }
 
-func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path string, allErrors *converter.ConvertError) ([]*converter.Snapshot, *converter.ConvertError) {
+func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path string, allErrors *converter.ConvertError, timestamp int64) ([]*converter.Snapshot, *converter.ConvertError) {
 	importSource := source.GetSource(path)
 	if importSource == nil {
 		return nil, nil
@@ -134,7 +134,7 @@ func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process
 	}
 	details := make(map[string]*types.Struct, 0)
 
-	if cancelErr := m.setNewID(files, progress, details); cancelErr != nil {
+	if cancelErr := m.setNewIDAndDetails(files, progress, details, timestamp); cancelErr != nil {
 		return nil, cancelErr
 	}
 
@@ -250,7 +250,7 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 			}
 			shortPath := ""
 			id := m.getIdFromPath(potentialFileName)
-			for name, _ := range files {
+			for name := range files {
 				if m.getIdFromPath(name) == id {
 					shortPath = name
 					break
@@ -534,33 +534,28 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo,
 	return childBlocks, nil
 }
 
-func (m *Markdown) setNewID(
-	files map[string]*FileInfo,
-	progress process.Progress,
-	details map[string]*types.Struct,
-) *converter.ConvertError {
+func (m *Markdown) setNewIDAndDetails(files map[string]*FileInfo, progress process.Progress, details map[string]*types.Struct, timestamp int64) *converter.ConvertError {
 	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			return converter.NewCancelError(err)
 		}
-
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
 			file.PageID = uuid.New().String()
 
-			m.setDetails(file, name, details)
+			m.setDetails(file, name, details, timestamp)
 		}
 	}
-
 	return nil
 }
 
-func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[string]*types.Struct) {
+func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[string]*types.Struct, timestamp int64) {
 	var title, emoji string
 	if len(file.ParsedBlocks) > 0 {
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
 	details[fileName] = converter.GetCommonDetails(fileName, title, emoji, model.ObjectType_basic)
+	details[fileName].Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
 	file.Title = pbtypes.GetString(details[fileName], bundle.RelationKeyName.String())
 }
 

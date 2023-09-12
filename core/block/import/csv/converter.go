@@ -55,13 +55,13 @@ func (c *CSV) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportReque
 	return nil
 }
 
-func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*converter.Response, *converter.ConvertError) {
 	params := c.GetParams(req)
 	if params == nil {
 		return nil, nil
 	}
 	cErr := converter.NewError()
-	result, cancelError := c.createObjectsFromCSVFiles(req, progress, params, cErr)
+	result, cancelError := c.createObjectsFromCSVFiles(req, progress, params, cErr, timestamp)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -96,12 +96,13 @@ func (c *CSV) needToReturnError(req *pb.RpcObjectImportRequest, cErr *converter.
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
-	cErr *converter.ConvertError) (*Result, *converter.ConvertError) {
+	cErr *converter.ConvertError,
+	timestamp int64) (*Result, *converter.ConvertError) {
 	csvMode := params.GetMode()
 	str := c.chooseStrategy(csvMode)
 	result := &Result{}
 	for _, p := range params.GetPath() {
-		pathResult := c.getSnapshotsFromFiles(req, p, cErr, str, progress)
+		pathResult := c.getSnapshotsFromFiles(req, p, cErr, str, progress, timestamp)
 		if !cErr.IsEmpty() && req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, nil
 		}
@@ -110,7 +111,11 @@ func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	return result, nil
 }
 
-func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, p string, cErr *converter.ConvertError, str Strategy, progress process.Progress) *Result {
+func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
+	p string, cErr *converter.ConvertError,
+	str Strategy,
+	progress process.Progress,
+	timestamp int64) *Result {
 	params := req.GetCsvParams()
 	importSource := source.GetSource(p)
 	if importSource == nil {
@@ -129,7 +134,7 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest, p string, cE
 		cErr.Add(converter.ErrNoObjectsToImport)
 		return nil
 	}
-	return c.getSnapshots(req.Mode, readers, params, str, cErr, progress)
+	return c.getSnapshots(req.Mode, readers, params, str, cErr, progress, timestamp)
 }
 
 func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
@@ -137,7 +142,8 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
 	cErr *converter.ConvertError,
-	progress process.Progress) *Result {
+	progress process.Progress,
+	timestamp int64) *Result {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	progress.SetProgressMessage("Start creating snapshots from files")
@@ -158,7 +164,7 @@ func (c *CSV) getSnapshots(mode pb.RpcObjectImportRequestMode,
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
 		}
-		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params, progress)
+		collectionID, snapshots, err := str.CreateObjects(filePath, csvTable, params, progress, timestamp)
 		if err != nil {
 			cErr.Add(err)
 			if errors.Is(err, converter.ErrLimitExceeded) {
