@@ -72,6 +72,8 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 }
 
 func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
+	// spaceID could be empty
+	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
@@ -81,8 +83,17 @@ func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
 	}
 
 	filters.FilterObj = filterObj
-	filters.Order = extractOrder(qry.Sorts, store)
+	filters.Order = extractOrder(spaceID, qry.Sorts, store)
 	return
+}
+
+func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
+	for _, f := range filters {
+		if f.RelationKey == bundle.RelationKeySpaceId.String() {
+			return f.Value.GetStringValue()
+		}
+	}
+	return ""
 }
 
 func compose(
@@ -101,12 +112,13 @@ func compose(
 	return filterObj, nil
 }
 
-func extractOrder(sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
+func extractOrder(spaceID string, sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
 	if len(sorts) > 0 {
 		order := SetOrder{}
 		for _, sort := range sorts {
 
 			keyOrder := &KeyOrder{
+				SpaceID:        spaceID,
 				Key:            sort.RelationKey,
 				Type:           sort.Type,
 				EmptyLast:      sort.RelationKey == bundle.RelationKeyName.String(),
@@ -241,22 +253,28 @@ func dateOnly(v *types.Value) *types.Value {
 }
 
 // ListRelationOptions returns options for specific relation
-func ListRelationOptions(store ObjectStore, relationKey string) (options []*model.RelationOption, err error) {
-	// todo: add workspace
-	records, _, err := store.Query(Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Value:       pbtypes.String(relationKey),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyLayout.String(),
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
-				// todo: revert check by objectType
-			},
+func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) (options []*model.RelationOption, err error) {
+	filters := []*model.BlockContentDataviewFilter{
+		{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyRelationKey.String(),
+			Value:       pbtypes.String(relationKey),
 		},
+		{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyLayout.String(),
+			Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+		},
+	}
+	if spaceID != "" {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeySpaceId.String(),
+			Value:       pbtypes.String(spaceID),
+		})
+	}
+	records, _, err := store.Query(Query{
+		Filters: filters,
 	})
 
 	for _, rec := range records {

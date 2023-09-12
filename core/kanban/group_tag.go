@@ -19,16 +19,27 @@ type GroupTag struct {
 	Records []database.Record
 }
 
-func (t *GroupTag) InitGroups(f *database.Filters) error {
-	filterTag := database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}}
+func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
+	spaceFilter := database.FilterEq{
+		Key:   bundle.RelationKeySpaceId.String(),
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: pbtypes.String(spaceID),
+	}
+
+	filterTag := database.FiltersAnd{
+		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
+	}
+	if spaceID != "" {
+		filterTag = append(filterTag, spaceFilter)
+	}
+
 	if f == nil {
 		f = &database.Filters{FilterObj: filterTag}
 	} else {
 		f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}
 	}
 
-	// todo: use type
-	f.FilterObj = database.FiltersOr{f.FilterObj, database.FiltersAnd{
+	relationOptionFilter := database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
@@ -39,7 +50,11 @@ func (t *GroupTag) InitGroups(f *database.Filters) error {
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
-	}}
+	}
+	if spaceID != "" {
+		relationOptionFilter = append(relationOptionFilter, spaceFilter)
+	}
+	f.FilterObj = database.FiltersOr{f.FilterObj, relationOptionFilter}
 
 	records, err := t.store.QueryRaw(f, 0, 0)
 	if err != nil {

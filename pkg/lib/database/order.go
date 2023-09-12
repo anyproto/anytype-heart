@@ -44,6 +44,7 @@ func (so SetOrder) String() (s string) {
 }
 
 type KeyOrder struct {
+	SpaceID        string
 	Key            string
 	Type           model.BlockContentDataviewSortType
 	EmptyLast      bool // consider empty strings as the last, not first
@@ -133,7 +134,7 @@ func (ko *KeyOrder) GetOptionValue(value *types.Value) *types.Value {
 	}
 
 	if len(ko.Options) == 0 && ko.Store != nil {
-		ko.Options = optionsToMap(ko.Key, ko.Store)
+		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
 	}
 
 	res := ""
