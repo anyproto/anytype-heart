@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	oserror "github.com/anyproto/anytype-heart/util/os"
 	"io"
 	"net/http"
 	"os"
@@ -26,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	_ "embed"
