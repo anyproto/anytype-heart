@@ -19,8 +19,16 @@ type GroupTag struct {
 	Records []database.Record
 }
 
-func (t *GroupTag) InitGroups(f *database.Filters) error {
-	filterTag := database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}}
+func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
+	spaceFilter := database.FilterEq{
+		Key:   bundle.RelationKeySpaceId.String(),
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: pbtypes.String(spaceID),
+	}
+	filterTag := database.FiltersAnd{
+		spaceFilter,
+		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
+	}
 	if f == nil {
 		f = &database.Filters{FilterObj: filterTag}
 	} else {
@@ -29,6 +37,7 @@ func (t *GroupTag) InitGroups(f *database.Filters) error {
 
 	// todo: use type
 	f.FilterObj = database.FiltersOr{f.FilterObj, database.FiltersAnd{
+		spaceFilter,
 		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
