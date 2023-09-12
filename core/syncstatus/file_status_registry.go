@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -177,11 +178,21 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 }
 
 func (r *fileStatusRegistry) indexFileSyncStatus(fileID string, status FileStatus) {
-	err := getblock.Do(r.picker, fileID, func(b basic.DetailsSettable) (err error) {
-		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+	err := getblock.Do(r.picker, fileID, func(sb smartblock.SmartBlock) (err error) {
+		prevStatus := pbtypes.GetFloat64(sb.LocalDetails(), bundle.RelationKeyFileSyncStatus.String())
+		newStatus := float64(status)
+		if prevStatus == newStatus {
+			return nil
+		}
+
+		detailsSetter, ok := sb.(basic.DetailsSettable)
+		if !ok {
+			return fmt.Errorf("setting of details is not supported for %T", sb)
+		}
+		return detailsSetter.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeyFileSyncStatus.String(),
-				Value: pbtypes.Float64(float64(status)),
+				Value: pbtypes.Float64(newStatus),
 			},
 		}, true)
 	})
