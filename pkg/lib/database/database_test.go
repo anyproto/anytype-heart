@@ -32,7 +32,7 @@ func testIncludeTimeWhenSingleDateSort(t *testing.T) {
 	sorts := givenSingleDateSort()
 
 	// when
-	order := extractOrder(sorts, nil)
+	order := extractOrder("", sorts, nil)
 
 	// then
 	assertIncludeTime(t, order)
@@ -43,7 +43,7 @@ func testDoNotIncludeTimeWhenNotSingleSort(t *testing.T) {
 	sorts := givenNotSingleDateSort()
 
 	// when
-	order := extractOrder(sorts, nil)
+	order := extractOrder("", sorts, nil)
 
 	// then
 	assertNotIncludeTime(t, order)
@@ -54,7 +54,7 @@ func testIncludeTimeWhenSortContainsIncludeTime(t *testing.T) {
 	sorts := givenSingleIncludeTime()
 
 	// when
-	order := extractOrder(sorts, nil)
+	order := extractOrder("", sorts, nil)
 
 	// then
 	assertIncludeTime(t, order)
@@ -65,7 +65,7 @@ func testDoNotIncludeTimeWhenSingleNotDateSort(t *testing.T) {
 	sorts := givenSingleNotDateSort()
 
 	// when
-	order := extractOrder(sorts, nil)
+	order := extractOrder("", sorts, nil)
 
 	// then
 	assertNotIncludeTime(t, order)
