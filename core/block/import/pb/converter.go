@@ -123,8 +123,6 @@ func (p *Pb) handleImportPath(req *pb.RpcObjectImportRequest,
 	isMigration bool) ([]*converter.Snapshot, *converter.Snapshot) {
 	importSource := source.GetSource(path)
 	defer importSource.Close()
-	importSource := source.GetSource(path)
-	defer importSource.Close()
 	err := p.extractFiles(path, importSource)
 	if err != nil {
 		allErrors.Add(err)

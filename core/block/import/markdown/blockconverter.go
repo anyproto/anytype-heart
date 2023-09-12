@@ -59,7 +59,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce
 	for name, file := range fileInfo {
 		m.processBlocks(name, file, fileInfo)
 		for _, b := range file.ParsedBlocks {
-			m.processFileBlock(b, importSource)
+			m.processFileBlock(b, importSource, importPath)
 		}
 	}
 	return fileInfo
@@ -157,12 +157,16 @@ func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*F
 	files[link].HasInboundLinks = true
 }
 
-func (m *mdConverter) processFileBlock(block *model.Block, importedSource source.Source) {
+func (m *mdConverter) processFileBlock(block *model.Block, importedSource source.Source, importPath string) {
 	if f := block.GetFile(); f != nil {
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
 		}
-		m.createFile(f, block.Id, importedSource)
+		name, _, err := ce.ProvideFileName(block.GetFile().Name, importedSource, importPath, m.tempDirProvider)
+		if err != nil {
+			log.Errorf("failed to update file block, %v", err)
+		}
+		block.GetFile().Name = name
 	}
 }
 
@@ -234,31 +238,4 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		}
 	}
 	return nil
-}
-
-func (m *mdConverter) createFile(f *model.BlockContentFile, id string, importedSource source.Source) {
-	shortPath := f.Name
-	if err := importedSource.ProcessFile(shortPath, func(fileReader io.ReadCloser) error {
-		baseName := filepath.Base(f.Name) + id
-		tempDir := m.tempDirProvider.TempDir()
-		newFile := filepath.Join(tempDir, baseName)
-		tmpFile, err := os.Create(newFile)
-		if err != nil {
-			return err
-		}
-		defer tmpFile.Close()
-		w := bufio.NewWriter(tmpFile)
-		_, err = w.ReadFrom(fileReader)
-		if err != nil {
-			return err
-		}
-		if err := w.Flush(); err != nil {
-			return err
-		}
-		f.Name = newFile
-		return nil
-	}); err != nil {
-		log.Errorf("failed to create file: %s", oserror.TransformError(err).Error())
-		return
-	}
 }
