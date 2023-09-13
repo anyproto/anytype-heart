@@ -5,11 +5,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/dgraph-io/badger/v3"
 )
 
 func TestConflictResolution(t *testing.T) {

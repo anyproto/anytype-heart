@@ -3,6 +3,7 @@ package objectstore
 import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 

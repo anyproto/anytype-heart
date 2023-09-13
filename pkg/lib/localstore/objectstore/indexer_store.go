@@ -1,8 +1,6 @@
 package objectstore
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

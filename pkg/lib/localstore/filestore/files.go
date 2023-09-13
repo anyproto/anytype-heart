@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (

@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/dgraph-io/badger/v3"
 )
 
 func Test_AddIndex(t *testing.T) {

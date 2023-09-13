@@ -9,8 +9,8 @@ import (
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) DeleteDetails(id string) error {

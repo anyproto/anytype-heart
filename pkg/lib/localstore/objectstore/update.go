@@ -10,9 +10,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) error {

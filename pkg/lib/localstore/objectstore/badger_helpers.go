@@ -2,6 +2,7 @@ package objectstore
 
 import (
 	"github.com/dgraph-io/badger/v3"
+
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 

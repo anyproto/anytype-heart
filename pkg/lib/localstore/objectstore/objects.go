@@ -24,8 +24,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("anytype-localstore")
