@@ -868,22 +868,24 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
-	sb.updateBackLinks(details)
 	details, hasPendingLocalDetails := sb.appendPendingDetails(details)
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
 	keys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)
-	storedLocalScopeDetails := pbtypes.StructFilterKeys(details, keys)
-	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
-	if pbtypes.StructEqualIgnore(sbLocalScopeDetails, storedLocalScopeDetails, nil) {
+
+	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
+	sb.updateBackLinks(localDetailsFromStore)
+
+	localDetailsFromState := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
+	if pbtypes.StructEqualIgnore(localDetailsFromState, localDetailsFromStore, nil) {
 		return nil
 	}
 
-	s.InjectLocalDetails(storedLocalScopeDetails)
+	s.InjectLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
 		// inject for both current and parent state
-		p.InjectLocalDetails(storedLocalScopeDetails)
+		p.InjectLocalDetails(localDetailsFromStore)
 	}
 
 	return sb.injectCreationInfo(s)
@@ -897,7 +899,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 	if err != nil || storedDetails == nil {
 		return nil, err
 	}
-	return storedDetails.GetDetails(), nil
+	return pbtypes.CopyStruct(storedDetails.GetDetails()), nil
 }
 
 func (sb *smartBlock) injectWorkspaceID(s *state.State) {
