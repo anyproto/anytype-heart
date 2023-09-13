@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -54,6 +55,7 @@ type Import struct {
 	objectIDGetter  IDGetter
 	tempDirProvider core.TempDirProvider
 	sbtProvider     typeprovider.SmartBlockTypeProvider
+	fileSync        filesync.FileSync
 	sync.Mutex
 }
 
@@ -73,7 +75,7 @@ func (i *Import) Init(a *app.App) (err error) {
 		notion.New(col),
 		pbc.New(col, i.sbtProvider, coreService),
 		web.NewConverter(),
-		html.New(col),
+		html.New(col, i.tempDirProvider),
 		txt.New(col),
 		csv.New(col),
 	}
@@ -89,6 +91,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, objCreator, coreService, factory, store, relationSyncer, fileStore)
 	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	i.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
 	return nil
 }
 
@@ -100,6 +103,7 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	var returnedErr error
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
+		i.sendFileEvents(returnedErr)
 	}()
 	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
@@ -114,6 +118,13 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) er
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
 	return returnedErr
+}
+
+func (i *Import) sendFileEvents(returnedErr error) {
+	if returnedErr == nil {
+		i.fileSync.SendImportEvents()
+	}
+	i.fileSync.ClearImportEvents()
 }
 
 func (i *Import) importFromBuiltinConverter(ctx *session.Context,

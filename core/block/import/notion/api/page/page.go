@@ -66,7 +66,7 @@ func (ds *Service) GetPages(ctx context.Context,
 	apiKey string,
 	mode pb.RpcObjectImportRequestMode,
 	pages []Page,
-	notionImportContext *block.NotionImportContext,
+	notionImportContext *api.NotionImportContext,
 	relations *property.PropertiesStore,
 	progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	progress.SetProgressMessage("Start creating pages from notion")
@@ -147,23 +147,23 @@ func (ds *Service) extractTitleFromPages(page Page) string {
 	return ""
 }
 
-func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *block.NotionImportContext) *converter.ConvertError {
+func (ds *Service) fillNotionImportContext(pages []Page, progress process.Progress, importContext *api.NotionImportContext) *converter.ConvertError {
 	for _, p := range pages {
 		if err := progress.TryStep(1); err != nil {
 			return converter.NewCancelError(err)
 		}
 		importContext.NotionPageIdsToAnytype[p.ID] = uuid.New().String()
 		if p.Parent.PageID != "" {
-			importContext.ParentPageToChildIDs[p.Parent.PageID] = append(importContext.ParentPageToChildIDs[p.Parent.PageID], p.ID)
+			importContext.PageTree.ParentPageToChildIDs[p.Parent.PageID] = append(importContext.PageTree.ParentPageToChildIDs[p.Parent.PageID], p.ID)
 		}
 		if p.Parent.DatabaseID != "" {
-			importContext.ParentPageToChildIDs[p.Parent.DatabaseID] = append(importContext.ParentPageToChildIDs[p.Parent.DatabaseID], p.ID)
+			importContext.PageTree.ParentPageToChildIDs[p.Parent.DatabaseID] = append(importContext.PageTree.ParentPageToChildIDs[p.Parent.DatabaseID], p.ID)
 		}
 		if p.Parent.BlockID != "" {
-			importContext.ParentPageToChildIDs[p.Parent.BlockID] = append(importContext.ParentPageToChildIDs[p.Parent.BlockID], p.ID)
+			importContext.PageTree.ParentPageToChildIDs[p.Parent.BlockID] = append(importContext.PageTree.ParentPageToChildIDs[p.Parent.BlockID], p.ID)
 		}
 		if p.Parent.PageID == "" && p.Parent.DatabaseID == "" && p.Parent.BlockID == "" {
-			importContext.ParentPageToChildIDs[""] = append(importContext.ParentPageToChildIDs[""], p.ID)
+			importContext.PageTree.ParentPageToChildIDs[""] = append(importContext.PageTree.ParentPageToChildIDs[""], p.ID)
 		}
 		importContext.PageNameToID[p.ID] = ds.extractTitleFromPages(p)
 	}

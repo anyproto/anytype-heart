@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -69,9 +70,9 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 		allErrors    = converter.NewError()
 	)
 	for _, path := range paths {
-		snapshots, convertError := m.getSnapshots(req, progress, path, allErrors)
-		if !convertError.IsEmpty() {
-			return nil, convertError
+		snapshots, cancelError := m.getSnapshots(req, progress, path, allErrors)
+		if !cancelError.IsEmpty() {
+			return nil, cancelError
 		}
 		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, allErrors
@@ -110,7 +111,12 @@ func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*
 }
 
 func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path string, allErrors *converter.ConvertError) ([]*converter.Snapshot, *converter.ConvertError) {
-	files, e := m.blockConverter.markdownToBlocks(path, req.GetMode().String())
+	importSource := source.GetSource(path)
+	if importSource == nil {
+		return nil, nil
+	}
+	defer importSource.Close()
+	files, e := m.blockConverter.markdownToBlocks(path, req.GetMode().String(), importSource)
 	if !e.IsEmpty() {
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 			return nil, e
@@ -554,7 +560,7 @@ func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[strin
 	if len(file.ParsedBlocks) > 0 {
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
-	details[fileName] = converter.GetCommonDetails(fileName, title, emoji)
+	details[fileName] = converter.GetCommonDetails(fileName, title, emoji, model.ObjectType_basic)
 	file.Title = pbtypes.GetString(details[fileName], bundle.RelationKeyName.String())
 }
 

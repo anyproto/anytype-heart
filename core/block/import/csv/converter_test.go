@@ -274,7 +274,7 @@ func TestCsv_GetSnapshotsUseFirstColumnForRelationsOn(t *testing.T) {
 
 func assertSnapshotsHaveDetails(t *testing.T, want []string, objects *converter.Snapshot) {
 	for key, value := range objects.Snapshot.Data.Details.Fields {
-		if key == bundle.RelationKeySourceFilePath.String() {
+		if key == bundle.RelationKeySourceFilePath.String() || key == bundle.RelationKeyLayout.String() {
 			continue
 		}
 		assert.Contains(t, want, value.GetStringValue())
@@ -627,7 +627,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 
 	for _, object := range objects {
 		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
-		numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+		numberOfCSVRelations := getRelationsNumber(keys)
 		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
 
@@ -658,7 +658,7 @@ func TestCsv_GetSnapshots10Relations(t *testing.T) {
 
 	for _, object := range objects {
 		keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
-		numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+		numberOfCSVRelations := getRelationsNumber(keys)
 		assert.Equal(t, numberOfCSVRelations, limitForColumns)
 	}
 }
@@ -737,8 +737,14 @@ func TestCsv_GetSnapshotsTableModeDifferentColumnsNumber(t *testing.T) {
 		assert.Len(t, objects, 2)
 		for _, object := range objects {
 			keys := lo.MapToSlice(object.Snapshot.Data.Details.Fields, func(key string, value *types.Value) string { return key })
-			numberOfCSVRelations := lo.CountBy(keys, func(item string) bool { return item != bundle.RelationKeySourceFilePath.String() })
+			numberOfCSVRelations := getRelationsNumber(keys)
 			assert.Equal(t, numberOfCSVRelations, 3)
 		}
+	})
+}
+
+func getRelationsNumber(keys []string) int {
+	return lo.CountBy(keys, func(item string) bool {
+		return item != bundle.RelationKeySourceFilePath.String() && item != bundle.RelationKeyLayout.String()
 	})
 }

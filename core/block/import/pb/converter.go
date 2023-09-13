@@ -121,7 +121,9 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 	path string,
 	allErrors *converter.ConvertError,
 	isMigration bool) ([]*converter.Snapshot, *converter.Snapshot) {
-	files, err := p.readFile(path)
+	importSource := source.GetSource(path)
+	defer importSource.Close()
+	files, err := p.readFile(path, importSource)
 	if err != nil {
 		allErrors.Add(err)
 		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING || errors.Is(err, converter.ErrNoObjectsToImport) {
@@ -157,12 +159,8 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 	return snapshots, widget
 }
 
-func (p *Pb) readFile(importPath string) (map[string]io.ReadCloser, error) {
-	s := source.GetSource(importPath)
-	if s == nil {
-		return nil, fmt.Errorf("failed to identify source")
-	}
-	readers, err := s.GetFileReaders(importPath, []string{".pb", ".json"}, []string{constant.ProfileFile, configFile})
+func (p *Pb) readFile(importPath string, importSource source.Source) (map[string]io.ReadCloser, error) {
+	readers, err := importSource.GetFileReaders(importPath, []string{".pb", ".json"}, []string{constant.ProfileFile, configFile})
 	if err != nil {
 		return nil, err
 	}

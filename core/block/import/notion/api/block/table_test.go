@@ -23,7 +23,7 @@ func Test_TableWithOneColumnAndRow(t *testing.T) {
 		},
 	}
 
-	resp := tb.GetBlocks(&NotionImportContext{}, "")
+	resp := tb.GetBlocks(&api.NotionImportContext{}, "")
 
 	assert.NotNil(t, resp)
 	assert.Len(t, resp.Blocks, 5) // table block + column block + row block + 2 empty text blocks
@@ -49,7 +49,7 @@ func Test_TableWithoutContent(t *testing.T) {
 
 	assert.Len(t, tb.Table.Children, 2)
 
-	resp := tb.GetBlocks(&NotionImportContext{}, "")
+	resp := tb.GetBlocks(&api.NotionImportContext{}, "")
 
 	assert.NotNil(t, resp)
 	assert.Len(t, resp.Blocks, 8) // table block + 3 * column block + 1 column layout + 1 row layout + 3 * row block
@@ -84,7 +84,7 @@ func Test_TableWithDifferentText(t *testing.T) {
 
 	assert.Len(t, tb.Table.Children, 2)
 
-	resp := tb.GetBlocks(&NotionImportContext{}, "")
+	resp := tb.GetBlocks(&api.NotionImportContext{}, "")
 
 	assert.NotNil(t, resp)
 	assert.Len(t, resp.Blocks, 9) // table block + 3 * column block + 1 column layout + 1 row layout + 3 * row block + 1 text block
