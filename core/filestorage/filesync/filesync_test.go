@@ -251,10 +251,6 @@ func (b *badgerProvider) Close(ctx context.Context) (err error) {
 	return b.db.Close()
 }
 
-func (b *badgerProvider) LocalstoreDS() (datastore.DSTxnBatching, error) {
-	return nil, nil
-}
-
 func (b *badgerProvider) LocalStorage() (*badger.DB, error) {
 	return b.db, nil
 }

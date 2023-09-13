@@ -88,11 +88,11 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.fileStore = a.MustComponent("filestore").(filestore.FileStore)
-	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
-	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
-	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.coreService = a.MustComponent(core.CName).(core.Service)
+	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.commonFile = app.MustComponent[fileservice.FileService](a)
+	s.fileSync = app.MustComponent[filesync.FileSync](a)
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.coreService = app.MustComponent[core.Service](a)
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)

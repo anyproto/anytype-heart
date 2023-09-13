@@ -63,7 +63,6 @@ type PoolManager interface {
 	StreamPeerPool() pool.Pool
 }
 
-//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anyproto/anytype-heart/space Service
 //go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anyproto/any-sync/commonspace Space
 type Service interface {
 	AccountSpace(ctx context.Context) (commonspace.Space, error)

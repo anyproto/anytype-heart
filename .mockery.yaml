@@ -41,3 +41,17 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/pkg/lib/datastore:
+    interfaces:
+      Datastore:
+  github.com/anyproto/any-sync/commonfile/fileservice:
+    interfaces:
+      FileService:
+        config:
+          dir: "core/files/mock_fileservice"
+  github.com/anyproto/anytype-heart/space:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/filestorage:
+    interfaces:
+      FileStorage:
