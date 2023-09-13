@@ -7,19 +7,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	badger "github.com/textileio/go-ds-badger3"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
+	"github.com/dgraph-io/badger/v3"
 )
 
 func Test_AddIndex(t *testing.T) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "anytypetestds*")
 	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
-	ds2, err := badger.NewDatastore(tempDir, &badger.DefaultOptions)
+	db, err := badger.Open(badger.DefaultOptions(tempDir))
 	require.NoError(t, err)
 
-	ds := noctxds.New(ds2)
 	type Item struct {
 		PrimKey string
 		Field1  string
@@ -60,15 +58,13 @@ func Test_AddIndex(t *testing.T) {
 		Slice:  []string{"s1", "s2"},
 	}
 
+	txn := db.NewTransaction(true)
+	defer txn.Discard()
+
 	for _, idx := range idxs {
-		err = AddIndex(idx, ds, item, "primkey1")
+		err = AddIndexWithTxn(idx, txn, item, "primkey1")
 		require.NoError(t, err)
 	}
-
-	txn, err := ds.NewTransaction(true)
-	require.NoError(t, err)
-
-	defer txn.Discard()
 
 	key, err := GetKeyByIndex(idxs[0], txn, item)
 	require.NoError(t, err)
@@ -77,16 +73,10 @@ func Test_AddIndex(t *testing.T) {
 	key, err = GetKeyByIndex(idxs[1], txn, item)
 	require.True(t, err != nil)
 
-	results, err := GetKeysByIndexParts(txn, idxs[1].Prefix, idxs[1].Name, []string{item.Slice[0]}, "", false, 1)
+	keys, err := GetKeysByIndexParts(txn, idxs[1].Prefix, idxs[1].Name, []string{item.Slice[0]}, "", false, 1)
 	require.NoError(t, err)
-
-	res := <-results.Next()
-	require.NotNil(t, res)
-
-	require.NoError(t, res.Error)
-	require.Equal(t, "/idx/items/slice/s1/primkey1", res.Key)
-	err = os.RemoveAll(tempDir)
-	require.NoError(t, err)
+	require.Equal(t, 1, len(keys))
+	require.Equal(t, "/idx/items/slice/s1/primkey1", keys[0])
 }
 
 func TestCarveKeyParts(t *testing.T) {
@@ -131,10 +121,10 @@ func TestCarveKeyParts(t *testing.T) {
 func Test_RunLargeOperationWithRetries(t *testing.T) {
 	tempDir, err := os.MkdirTemp(os.TempDir(), "anytypetestds*")
 	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
-	ds2, err := badger.NewDatastore(tempDir, &badger.DefaultOptions)
+	db, err := badger.Open(badger.DefaultOptions(tempDir))
 	require.NoError(t, err)
-	ds := noctxds.New(ds2)
 
 	index := Index{
 		Prefix: "test1",
@@ -150,32 +140,28 @@ func Test_RunLargeOperationWithRetries(t *testing.T) {
 		SplitIndexKeyParts: false,
 	}
 
+	tx := db.NewTransaction(true)
+	require.NoError(t, err)
+
 	for i := 0; i < 30000; i++ {
-		err = AddIndex(index, ds, i, "2")
+		err = AddIndexWithTxn(index, tx, i, "2")
 		require.NoError(t, err)
 	}
 
 	targetPrefix := IndexBase.ChildString(index.Prefix)
 
-	tx, err := ds.NewTransaction(false)
+	keys := GetKeys(tx, targetPrefix.String(), 0)
 	require.NoError(t, err)
-	res, err := GetKeys(tx, targetPrefix.String(), 0)
-	require.NoError(t, err)
-	total, err := CountAllKeysFromResults(res)
-	require.NoError(t, err)
-	require.Equal(t, 30000, total)
+	require.Len(t, keys, 30000)
 
-	err = EraseIndex(index, ds)
+	tx, err = EraseIndex(index, db, tx)
 	require.NoError(t, err)
-	tx, err = ds.NewTransaction(false)
-	require.NoError(t, err)
-	res, err = GetKeys(tx, index.Prefix, 0)
-	require.NoError(t, err)
-	total, err = CountAllKeysFromResults(res)
-	require.NoError(t, err)
-	require.Equal(t, 0, total)
 
-	err = ds.Close()
+	keys = GetKeys(tx, index.Prefix, 0)
+	require.NoError(t, err)
+	require.Len(t, keys, 0)
+
+	err = db.Close()
 	require.NoError(t, err)
 	err = os.RemoveAll(tempDir)
 	require.NoError(t, err)

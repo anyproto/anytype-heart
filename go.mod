@@ -75,7 +75,6 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shirou/gopsutil/v3 v3.23.8
 	github.com/stretchr/testify v1.8.4
-	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/vektra/mockery/v2 v2.33.2
 	github.com/yuin/goldmark v1.5.6
@@ -231,7 +230,6 @@ require (
 	github.com/spf13/viper v1.15.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	github.com/textileio/go-datastore-extensions v1.1.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
@@ -265,10 +263,6 @@ require (
 replace github.com/libp2p/zeroconf/v2 => github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941
 
 replace github.com/elastic/gosigar => github.com/anyproto/gosigar v0.0.0-20220811145612-92bd3366198a
-
-replace github.com/textileio/go-ds-badger3 => github.com/anyproto/go-ds-badger3 v0.3.1-0.20230524095230-434cf6346d9b
-
-replace github.com/dgraph-io/ristretto => github.com/dgraph-io/ristretto v0.1.1-0.20220403145359-8e850b710d6d
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20230814233030-a0434e69902f
 

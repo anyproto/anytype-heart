@@ -12,9 +12,8 @@ const CName = "datastore"
 
 type Datastore interface {
 	app.ComponentRunnable
-	LocalstoreDS() (DSTxnBatching, error)
 	SpaceStorage() (*badger.DB, error)
-	LocalstoreBadger() (*badger.DB, error)
+	LocalStorage() (*badger.DB, error)
 }
 
 type DSTxnBatching interface {

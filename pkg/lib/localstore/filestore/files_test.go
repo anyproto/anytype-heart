@@ -7,11 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dsbadgerv3 "github.com/textileio/go-ds-badger3"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/dgraph-io/badger/v3"
 )
 
 func TestConflictResolution(t *testing.T) {
@@ -179,12 +177,11 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	ds, err := dsbadgerv3.NewDatastore(t.TempDir(), nil)
-
+	db, err := badger.Open(badger.DefaultOptions(t.TempDir()))
 	require.NoError(t, err)
 
 	store := &dsFileStore{
-		ds: noctxds.New(ds),
+		db: db,
 	}
 
 	return &fixture{
