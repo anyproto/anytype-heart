@@ -79,18 +79,18 @@ func (m *MockConverter) EXPECT() *MockConverterMockRecorder {
 }
 
 // GetSnapshots mocks base method.
-func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*Response, *ConvertError) {
+func (m *MockConverter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, importID string) (*Response, *ConvertError) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSnapshots", req, progress, timestamp)
+	ret := m.ctrl.Call(m, "GetSnapshots", req, progress, importID)
 	ret0, _ := ret[0].(*Response)
 	ret1, _ := ret[1].(*ConvertError)
 	return ret0, ret1
 }
 
 // GetSnapshots indicates an expected call of GetSnapshots.
-func (mr *MockConverterMockRecorder) GetSnapshots(req interface{}, progress interface{}, timestamp interface{}) *gomock.Call {
+func (mr *MockConverterMockRecorder) GetSnapshots(req interface{}, progress interface{}, importID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnapshots", reflect.TypeOf((*MockConverter)(nil).GetSnapshots), req, progress, timestamp)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSnapshots", reflect.TypeOf((*MockConverter)(nil).GetSnapshots), req, progress, importID)
 }
 
 // Name mocks base method.

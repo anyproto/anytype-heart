@@ -3,6 +3,7 @@ package markdown
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestMarkdown_GetSnapshots(t *testing.T) {
@@ -26,7 +26,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 			},
 			Type: 4,
 			Mode: 1,
-		}, p, 1)
+		}, p, uuid.New().String())
 
 		// then
 		assert.Nil(t, err)
@@ -37,8 +37,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 				lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
 				continue
 			}
-			assert.Contains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
-			assert.Equal(t, int64(1), pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyImportDate.String()))
+			assert.Contains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 		}
 	})
 }

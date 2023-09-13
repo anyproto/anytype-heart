@@ -7,5 +7,5 @@ import (
 )
 
 type Strategy interface {
-	CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress, timestamp int64) (string, []*converter.Snapshot, error)
+	CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress, importID string) (string, []*converter.Snapshot, error)
 }

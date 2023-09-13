@@ -1411,12 +1411,12 @@
     "source": "local"
   },
   {
-    "description": "Date of finished import",
-    "format": "date",
-    "key": "importDate",
+    "description": "Import identifier",
+    "format": "longtext",
+    "key": "importID",
     "maxCount": 1,
     "hidden": true,
-    "name": "Import date",
+    "name": "Import identifier",
     "readonly": false,
     "source": "details"
   }

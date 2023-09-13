@@ -43,7 +43,7 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress, timestamp int64) (string, []*converter.Snapshot, error) {
+func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress, importID string) (string, []*converter.Snapshot, error) {
 	snapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	details := converter.GetCommonDetails(path, "", "", model.ObjectType_collection)
@@ -61,7 +61,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, par
 	allObjectsIDs = append(allObjectsIDs, targetIDs...)
 
 	st.UpdateStoreSlice(template.CollectionStoreKey, targetIDs)
-	snapshot := c.makeCollectionSnapshot(details, st, path, relations, timestamp)
+	snapshot := c.makeCollectionSnapshot(details, st, path, relations, importID)
 
 	snapshots = append(snapshots, snapshot)
 	snapshots = append(snapshots, objectsSnapshots...)
@@ -262,10 +262,10 @@ func provideObjectSnapshot(st *state.State, details *types.Struct) *converter.Sn
 	return snapshot
 }
 
-func (c *CollectionStrategy) makeCollectionSnapshot(details *types.Struct, st *state.State, p string, relations []*model.Relation, timestamp int64) *converter.Snapshot {
+func (c *CollectionStrategy) makeCollectionSnapshot(details *types.Struct, st *state.State, p string, relations []*model.Relation, importID string) *converter.Snapshot {
 	details = pbtypes.StructMerge(st.CombinedDetails(), details, false)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-	details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+	details.Fields[bundle.RelationKeyImportID.String()] = pbtypes.String(importID)
 
 	for _, relation := range relations {
 		err := converter.AddRelationsToDataView(st, &model.RelationLink{

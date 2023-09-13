@@ -44,7 +44,7 @@ func New(c *collection.Service) converter.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*converter.Response, *converter.ConvertError) {
+func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, importID string) (*converter.Response, *converter.ConvertError) {
 	ce := converter.NewError()
 	apiKey := n.getParams(req)
 	if apiKey == "" {
@@ -129,7 +129,7 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 		dbs = append(dbs, rootCollectionSnapshot)
 	}
 
-	n.injectImportTimestamp(dbs, pgs, rootObjects, timestamp)
+	n.injectImportImportID(dbs, pgs, rootObjects, importID)
 	allSnapshots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
@@ -175,7 +175,7 @@ func (n *Notion) Name() string {
 	return name
 }
 
-func (n *Notion) injectImportTimestamp(dbs []*converter.Snapshot, pages []*converter.Snapshot, rootObjects []string, timestamp int64) {
+func (n *Notion) injectImportImportID(dbs []*converter.Snapshot, pages []*converter.Snapshot, rootObjects []string, importID string) {
 	rootObjectSet := make(map[string]struct{}, len(rootObjects))
 	for _, rootObject := range rootObjects {
 		rootObjectSet[rootObject] = struct{}{}
@@ -184,14 +184,14 @@ func (n *Notion) injectImportTimestamp(dbs []*converter.Snapshot, pages []*conve
 	for _, db := range dbs {
 		snapshotID := db.Id
 		if _, ok := rootObjectSet[snapshotID]; ok {
-			db.Snapshot.Data.Details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+			db.Snapshot.Data.Details.Fields[bundle.RelationKeyImportID.String()] = pbtypes.String(importID)
 		}
 	}
 
 	for _, p := range pages {
 		snapshotID := p.Id
 		if _, ok := rootObjectSet[snapshotID]; ok {
-			p.Snapshot.Data.Details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+			p.Snapshot.Data.Details.Fields[bundle.RelationKeyImportID.String()] = pbtypes.String(importID)
 		}
 	}
 }

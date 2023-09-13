@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	converter2 "github.com/anyproto/anytype-heart/core/block/import/converter"
@@ -13,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestNotion_getUniqueProperties(t *testing.T) {
@@ -94,7 +94,7 @@ func TestNotion_getUniqueProperties(t *testing.T) {
 	})
 }
 
-func TestNotion_addImportTimestamp(t *testing.T) {
+func TestNotion_injectImportImportID(t *testing.T) {
 	t.Run("No root objects - all snapshots doesn't have relationImportDate", func(t *testing.T) {
 		// given
 		converter := &Notion{}
@@ -121,14 +121,14 @@ func TestNotion_addImportTimestamp(t *testing.T) {
 		}
 
 		// when
-		converter.injectImportTimestamp(databases, pages, nil, 1)
+		converter.injectImportImportID(databases, pages, nil, uuid.New().String())
 
 		// then
 		for _, snapshot := range databases {
-			assert.NotContains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
+			assert.NotContains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 		}
 		for _, snapshot := range pages {
-			assert.NotContains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
+			assert.NotContains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 		}
 	})
 	t.Run("Page is root a objects - page has relationImportDate", func(t *testing.T) {
@@ -159,13 +159,12 @@ func TestNotion_addImportTimestamp(t *testing.T) {
 		rootObjects := []string{"id2"}
 
 		// when
-		converter.injectImportTimestamp(databases, pages, rootObjects, 1)
+		converter.injectImportImportID(databases, pages, rootObjects, uuid.New().String())
 
 		// then
-		assert.NotContains(t, databases[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
+		assert.NotContains(t, databases[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 
-		assert.Contains(t, pages[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
-		assert.Equal(t, int64(1), pbtypes.GetInt64(pages[0].Snapshot.Data.Details, bundle.RelationKeyImportDate.String()))
+		assert.Contains(t, pages[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 	})
 	t.Run("Database is a root objects - database has relationImportDate", func(t *testing.T) {
 		// given
@@ -195,12 +194,10 @@ func TestNotion_addImportTimestamp(t *testing.T) {
 		rootObjects := []string{"id1"}
 
 		// when
-		converter.injectImportTimestamp(databases, pages, rootObjects, 1)
+		converter.injectImportImportID(databases, pages, rootObjects, uuid.New().String())
 
 		// then
-		assert.NotContains(t, pages[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
-
-		assert.Contains(t, databases[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
-		assert.Equal(t, int64(1), pbtypes.GetInt64(databases[0].Snapshot.Data.Details, bundle.RelationKeyImportDate.String()))
+		assert.NotContains(t, pages[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
+		assert.Contains(t, databases[0].Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 	})
 }

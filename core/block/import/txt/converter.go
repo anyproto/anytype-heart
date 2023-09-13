@@ -45,14 +45,14 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, timestamp int64) (*converter.Response, *converter.ConvertError) {
+func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, importID string) (*converter.Response, *converter.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	cErr := converter.NewError()
-	snapshots, targetObjects, cancelError := t.getSnapshots(req, progress, paths, cErr, timestamp)
+	snapshots, targetObjects, cancelError := t.getSnapshots(req, progress, paths, cErr, importID)
 	if !cancelError.IsEmpty() {
 		return nil, cancelError
 	}
@@ -79,14 +79,14 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	}, cErr
 }
 
-func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, cErr *converter.ConvertError, timestamp int64) ([]*converter.Snapshot, []string, *converter.ConvertError) {
+func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, cErr *converter.ConvertError, importID string) ([]*converter.Snapshot, []string, *converter.ConvertError) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range paths {
 		if err := progress.TryStep(1); err != nil {
 			return nil, nil, converter.NewCancelError(err)
 		}
-		sn, to, err := t.handleImportPath(p, req.GetMode(), timestamp)
+		sn, to, err := t.handleImportPath(p, req.GetMode(), importID)
 		if err != nil {
 			cErr.Add(err)
 			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
@@ -100,7 +100,7 @@ func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	return snapshots, targetObjects, nil
 }
 
-func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode, timestamp int64) ([]*converter.Snapshot, []string, error) {
+func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode, importID string) ([]*converter.Snapshot, []string, error) {
 	importSource := source.GetSource(p)
 	if importSource == nil {
 		return nil, nil, fmt.Errorf("failed to identify source: %s", p)
@@ -126,7 +126,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode, tim
 			}
 			continue
 		}
-		sn, id := t.getSnapshot(blocks, name, timestamp)
+		sn, id := t.getSnapshot(blocks, name, importID)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
 	}
@@ -146,8 +146,8 @@ func (t *TXT) getBlocksForSnapshot(rc io.ReadCloser) ([]*model.Block, error) {
 	return blocks, nil
 }
 
-func (t *TXT) getSnapshot(blocks []*model.Block, p string, timestamp int64) (*converter.Snapshot, string) {
-	details := t.provideDetails(p, timestamp)
+func (t *TXT) getSnapshot(blocks []*model.Block, p string, importID string) (*converter.Snapshot, string) {
+	details := t.provideDetails(p, importID)
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
 		Details:     details,
@@ -163,8 +163,8 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string, timestamp int64) (*co
 	return snapshot, snapshot.Id
 }
 
-func (t *TXT) provideDetails(p string, timestamp int64) *types.Struct {
+func (t *TXT) provideDetails(p string, importID string) *types.Struct {
 	details := converter.GetCommonDetails(p, "", "", model.ObjectType_basic)
-	details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+	details.Fields[bundle.RelationKeyImportID.String()] = pbtypes.String(importID)
 	return details
 }

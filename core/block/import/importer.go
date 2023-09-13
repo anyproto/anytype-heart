@@ -7,12 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -96,13 +98,13 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create objects from them
-func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) (int64, error) {
+func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, error) {
 	i.Lock()
 	defer i.Unlock()
 	progress := i.setupProgressBar(req)
 	var (
 		returnedErr error
-		timestamp   int64
+		importID    string
 	)
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
@@ -112,15 +114,15 @@ func (i *Import) Import(ctx *session.Context, req *pb.RpcObjectImportRequest) (i
 		i.s.ProcessAdd(progress)
 	}
 	if c, ok := i.converters[req.Type.String()]; ok {
-		returnedErr, timestamp = i.importFromBuiltinConverter(ctx, req, c, progress)
-		return timestamp, returnedErr
+		returnedErr, importID = i.importFromBuiltinConverter(ctx, req, c, progress)
+		return importID, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)
-		return timestamp, returnedErr
+		return importID, returnedErr
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
-	return timestamp, returnedErr
+	return importID, returnedErr
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -133,27 +135,28 @@ func (i *Import) sendFileEvents(returnedErr error) {
 func (i *Import) importFromBuiltinConverter(ctx *session.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
-	progress process.Progress) (error, int64) {
+	progress process.Progress,
+) (error, string) {
 	allErrors := converter.NewError()
-	timestamp := time.Now().Unix()
-	res, err := c.GetSnapshots(req, progress, timestamp)
+	importID := uuid.New().String()
+	res, err := c.GetSnapshots(req, progress, importID)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req) {
-			return resultErr, 0
+			return resultErr, ""
 		}
 		allErrors.Merge(err)
 	}
 	if res == nil {
-		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type), 0
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type), ""
 	}
 
 	if len(res.Snapshots) == 0 {
-		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type), 0
+		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type), ""
 	}
 
 	i.createObjects(ctx, res, progress, req, allErrors)
-	return allErrors.GetResultError(req.Type), timestamp
+	return allErrors.GetResultError(req.Type), importID
 }
 
 func (i *Import) importFromExternalSource(ctx *session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
@@ -234,7 +237,7 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(req, progress, 0)
+	res, err := w.GetSnapshots(req, progress, uuid.New().String())
 
 	if err != nil {
 		return "", nil, err.Error()

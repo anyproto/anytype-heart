@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -50,7 +51,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import), 0)
+	}, process.NewProgress(pb.ModelProcess_Import), uuid.New().String())
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -71,7 +72,7 @@ func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import), 0)
+	}, process.NewProgress(pb.ModelProcess_Import), uuid.New().String())
 
 	assert.NotNil(t, ce)
 }
@@ -98,7 +99,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import), 0)
+	}, process.NewProgress(pb.ModelProcess_Import), uuid.New().String())
 
 	assert.NotNil(t, ce)
 	assert.False(t, ce.IsEmpty())
@@ -116,7 +117,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import), 0)
+	}, process.NewProgress(pb.ModelProcess_Import), uuid.New().String())
 
 	assert.NotNil(t, ce)
 	assert.Nil(t, res)
@@ -129,7 +130,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
-	}, process.NewProgress(pb.ModelProcess_Import), 0)
+	}, process.NewProgress(pb.ModelProcess_Import), uuid.New().String())
 
 	assert.NotNil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -149,7 +150,7 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import), 0)
+	}, process.NewProgress(pb.ModelProcess_Import), uuid.New().String())
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
@@ -185,7 +186,7 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
-	}, process.NewProgress(pb.ModelProcess_Import), 0)
+	}, process.NewProgress(pb.ModelProcess_Import), uuid.New().String())
 
 	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)

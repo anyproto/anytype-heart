@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
@@ -40,7 +41,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 			},
 			Type: pb.RpcObjectImportRequest_Txt,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-		}, p, 0)
+		}, p, uuid.New().String())
 
 		// then
 		assert.NotNil(t, sn)
@@ -68,7 +69,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 			},
 			Type: pb.RpcObjectImportRequest_Txt,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-		}, p, 1)
+		}, p, uuid.New().String())
 
 		// then
 		assert.NotNil(t, sn)
@@ -79,8 +80,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 				lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
 				continue
 			}
-			assert.Contains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
-			assert.Equal(t, int64(1), pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyImportDate.String()))
+			assert.Contains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 		}
 	})
 }

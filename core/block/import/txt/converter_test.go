@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
@@ -29,7 +30,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 			},
 			Type: 4,
 			Mode: 1,
-		}, p, 0)
+		}, p, uuid.New().String())
 
 		// then
 		assert.Nil(t, err)
@@ -71,7 +72,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 			},
 			Type: 4,
 			Mode: 1,
-		}, p, 0)
+		}, p, uuid.New().String())
 
 		// then
 		assert.NotNil(t, err)
@@ -91,7 +92,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 			},
 			Type: 4,
 			Mode: 1,
-		}, p, 1)
+		}, p, uuid.New().String())
 
 		// then
 		assert.Nil(t, err)
@@ -102,8 +103,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 				lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {
 				continue
 			}
-			assert.Contains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportDate.String())
-			assert.Equal(t, int64(1), pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyImportDate.String()))
+			assert.Contains(t, snapshot.Snapshot.Data.Details.Fields, bundle.RelationKeyImportID.String())
 		}
 	})
 }

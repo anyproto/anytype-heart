@@ -24,11 +24,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string,
-	csvTable [][]string,
-	params *pb.RpcObjectImportRequestCsvParams,
-	progress process.Progress,
-	timestamp int64) (string, []*converter.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress, importID string) (string, []*converter.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -44,7 +40,7 @@ func (c *TableStrategy) CreateObjects(path string,
 		}
 	}
 
-	details := c.provideDetails(path, timestamp)
+	details := c.provideDetails(path, importID)
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
@@ -178,8 +174,8 @@ func (c *TableStrategy) createColumns(csvTable [][]string, st *state.State, tabl
 	return columnIDs, nil
 }
 
-func (c *TableStrategy) provideDetails(path string, timestamp int64) *types.Struct {
+func (c *TableStrategy) provideDetails(path string, importID string) *types.Struct {
 	details := converter.GetCommonDetails(path, "", "", model.ObjectType_basic)
-	details.Fields[bundle.RelationKeyImportDate.String()] = pbtypes.Int64(timestamp)
+	details.Fields[bundle.RelationKeyImportID.String()] = pbtypes.String(importID)
 	return details
 }

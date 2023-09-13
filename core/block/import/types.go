@@ -8,20 +8,20 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pb"
-
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 // Importer incapsulate logic with import
 type Importer interface {
 	app.Component
-	Import(ctx *session.Context, req *pb.RpcObjectImportRequest) (int64, error)
+	Import(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, error)
 	ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 	//nolint: lll
