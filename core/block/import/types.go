@@ -5,9 +5,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
