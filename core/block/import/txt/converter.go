@@ -78,7 +78,8 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	paths []string,
-	allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
+	allErrors *converter.ConvertError,
+) ([]*converter.Snapshot, []string) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
 	for _, p := range paths {
@@ -166,7 +167,7 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot,
 }
 
 func (t *TXT) shouldReturnError(req *pb.RpcObjectImportRequest, cErr *converter.ConvertError, path []string) bool {
-	return (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
-		(cErr.IsNoObjectToImportError(len(path))) ||
+	return !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING ||
+		cErr.IsNoObjectToImportError(len(path)) ||
 		errors.Is(cErr.GetResultError(pb.RpcObjectImportRequest_Txt), converter.ErrCancel)
 }

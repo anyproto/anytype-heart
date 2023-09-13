@@ -3,7 +3,6 @@ package html
 import (
 	"archive/zip"
 	"errors"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"

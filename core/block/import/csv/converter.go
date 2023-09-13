@@ -94,7 +94,8 @@ func (c *CSV) needToReturnError(req *pb.RpcObjectImportRequest, allErrors *conve
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
-	allErrors *converter.ConvertError) *Result {
+	allErrors *converter.ConvertError,
+) *Result {
 	csvMode := params.GetMode()
 	str := c.chooseStrategy(csvMode)
 	result := &Result{}
@@ -112,7 +113,8 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	importPath string,
 	allErrors *converter.ConvertError,
 	str Strategy,
-	progress process.Progress) *Result {
+	progress process.Progress,
+) *Result {
 	params := req.GetCsvParams()
 	importSource := source.GetSource(importPath)
 	defer importSource.Close()
@@ -138,7 +140,8 @@ func (c *CSV) getSnapshotsAndObjectsIDs(mode pb.RpcObjectImportRequestMode,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
 	allErrors *converter.ConvertError,
-	progress process.Progress) *Result {
+	progress process.Progress,
+) *Result {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {

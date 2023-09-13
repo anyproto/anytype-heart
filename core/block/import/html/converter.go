@@ -131,7 +131,8 @@ func (h *HTML) getSnapshotsAndRootObjects(path string,
 	mode pb.RpcObjectImportRequestMode,
 	allErrors *converter.ConvertError,
 	numberOfFiles int,
-	importSource source.Source) ([]*converter.Snapshot, []string) {
+	importSource source.Source,
+) ([]*converter.Snapshot, []string) {
 	snapshots := make([]*converter.Snapshot, 0, numberOfFiles)
 	rootObjects := make([]string, 0, numberOfFiles)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {

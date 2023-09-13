@@ -32,7 +32,6 @@ func (d *Directory) Initialize(importPath string) error {
 	if err != nil {
 		return err
 	}
-	d.fileReaders = files
 	return nil
 }
 
