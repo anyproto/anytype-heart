@@ -201,7 +201,7 @@ func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImport
 	}
 
 	b.handleSpaceDashboard(newID)
-	b.createWidgets(useCase)
+	b.createWidgets(ctx, useCase)
 	return
 }
 
@@ -293,7 +293,7 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 	}
 }
 
-func (b *builtinObjects) createWidgets(useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
 
 	widgetObjectID := b.coreService.PredefinedBlocks().Widgets
@@ -324,7 +324,7 @@ func (b *builtinObjects) createWidgets(useCase pb.RpcObjectImportUseCaseRequestU
 		if param.viewID != "" {
 			request.ViewId = param.viewID
 		}
-		if _, err := b.service.CreateWidgetBlock(nil, request); err != nil {
+		if _, err := b.service.CreateWidgetBlock(ctx, request); err != nil {
 			log.Errorf("Failed to make Widget block for object '%s': %s", objectID, err.Error())
 		}
 	}
