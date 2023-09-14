@@ -177,7 +177,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		}
 	}
 
-	details := info.State.CombinedDetails()
+	details := info.Details
 
 	indexSetTime := time.Now()
 	var hasError bool
@@ -240,7 +240,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
 		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		RelationsCount:          len(info.State.PickRelationLinks()),
 		DetailsCount:            detailsCount,
 	})
 

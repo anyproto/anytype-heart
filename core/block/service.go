@@ -325,29 +325,27 @@ func (s *Service) InstallBundledObject(
 	return ids[0], details[0], nil
 }
 
-func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID string, installedID string, bundledDetails *types.Struct) (*types.Struct, error) {
-	newDetails := pbtypes.CopyStruct(bundledDetails)
-	sourceId := pbtypes.GetString(newDetails, bundle.RelationKeyId.String())
-	if pbtypes.GetString(newDetails, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
+func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID string, details *types.Struct) (*types.Struct, error) {
+	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	if pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
 		return nil, errors.New("object is not bundled")
 	}
-	newDetails.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
+	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
 
-	newDetails.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
-	// newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(installedID)
-	newDetails.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
+	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
+	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
-	switch pbtypes.GetString(newDetails, bundle.RelationKeyType.String()) {
+	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.BundledURL():
 		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyObjectType)
-		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	case bundle.TypeKeyRelation.BundledURL():
 		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyRelation)
-		newDetails.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
+		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	default:
-		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(newDetails, bundle.RelationKeyType.String()))
+		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(details, bundle.RelationKeyType.String()))
 	}
-	relations := pbtypes.GetStringList(newDetails, bundle.RelationKeyRecommendedRelations.String())
+	relations := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 
 	if len(relations) > 0 {
 		for i, relation := range relations {
@@ -364,10 +362,10 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 			}
 			relations[i] = id
 		}
-		newDetails.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relations)
+		details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relations)
 	}
 
-	objectTypes := pbtypes.GetStringList(newDetails, bundle.RelationKeyRelationFormatObjectTypes.String())
+	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyRelationFormatObjectTypes.String())
 
 	if len(objectTypes) > 0 {
 		for i, objectType := range objectTypes {
@@ -384,10 +382,10 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 			}
 			objectTypes[i] = id
 		}
-		newDetails.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
+		details.Fields[bundle.RelationKeyRelationFormatObjectTypes.String()] = pbtypes.StringList(objectTypes)
 	}
 
-	return newDetails, nil
+	return details, nil
 }
 
 func (s *Service) InstallBundledObjects(
@@ -420,7 +418,7 @@ func (s *Service) InstallBundledObjects(
 			continue
 		}
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
-			d, err := s.prepareDetailsForInstallingObject(ctx, spaceID, b.Id(), b.CombinedDetails())
+			d, err := s.prepareDetailsForInstallingObject(ctx, spaceID, b.CombinedDetails())
 			if err != nil {
 				return err
 			}

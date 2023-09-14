@@ -158,7 +158,7 @@ type DocInfo struct {
 	FileHashes []string
 	Heads      []string
 	Creator    string
-	State      *state.State
+	Details    *types.Struct
 }
 
 // TODO Maybe create constructor? Don't want to forget required fields
@@ -1286,8 +1286,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Heads:      heads,
 		FileHashes: fileHashes,
 		Creator:    creator,
-		// TODO Invent mechanism to avoid copying state
-		State: st.Copy(),
+		Details:    sb.CombinedDetails(),
 	}
 }
 
