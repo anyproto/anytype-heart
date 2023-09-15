@@ -158,6 +158,7 @@ type DocInfo struct {
 	FileHashes []string
 	Heads      []string
 	Creator    string
+	Type       domain.TypeKey
 	Details    *types.Struct
 }
 
@@ -1287,6 +1288,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		FileHashes: fileHashes,
 		Creator:    creator,
 		Details:    sb.CombinedDetails(),
+		Type:       sb.ObjectTypeKey(),
 	}
 }
 
