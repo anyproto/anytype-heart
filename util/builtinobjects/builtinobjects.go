@@ -295,6 +295,7 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 
 func (b *builtinObjects) createWidgets(ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
+	reqs := make([]*pb.RpcBlockCreateWidgetRequest, 0)
 
 	widgetObjectID := b.coreService.PredefinedBlocks().Widgets
 	for _, param := range widgetParams[useCase] {
@@ -324,8 +325,9 @@ func (b *builtinObjects) createWidgets(ctx *session.Context, useCase pb.RpcObjec
 		if param.viewID != "" {
 			request.ViewId = param.viewID
 		}
-		if _, err := b.service.CreateWidgetBlock(ctx, request); err != nil {
-			log.Errorf("Failed to make Widget block for object '%s': %s", objectID, err.Error())
-		}
+		reqs = append(reqs, request)
+	}
+	if _, err = b.service.CreateWidgetBlocks(ctx, reqs); err != nil {
+		log.Errorf("Failed to make Widget blocks: %s", err.Error())
 	}
 }
