@@ -249,7 +249,7 @@ install-dev-js-addon: setup build-lib build-js-addon protos-js
 	@cp -r clientlibrary/jsaddon/build ../anytype-ts/
 	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
 
-install-dev-js: build-js
+install-dev-js: setup-go build-server protos-js
 	@echo 'Installing JS-server (dev-mode)...'
 	@rm -f ../anytype-ts/dist/anytypeHelper
 
