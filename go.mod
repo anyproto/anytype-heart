@@ -81,7 +81,7 @@ require (
 	github.com/yuin/goldmark v1.5.6
 	go.uber.org/mock v0.2.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.25.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/image v0.12.0
 	golang.org/x/mobile v0.0.0-20230531173138-3c911d8e3eda
