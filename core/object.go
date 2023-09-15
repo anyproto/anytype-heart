@@ -871,6 +871,8 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 }
 
 func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
+	ctx := mw.newContext(cctx)
+
 	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
 			Error: &pb.RpcObjectImportUseCaseResponseError{
@@ -879,12 +881,14 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 		}
 		if err != nil {
 			resp.Error.Description = err.Error()
+		} else {
+
 		}
 		return resp
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	return response(objCreator.CreateObjectsForUseCase(cctx, req.SpaceId, req.UseCase))
+	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.UseCase))
 }
 
 func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {

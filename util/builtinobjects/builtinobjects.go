@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -120,7 +121,7 @@ var (
 type BuiltinObjects interface {
 	app.Component
 
-	CreateObjectsForUseCase(ctx context.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 	CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error)
 	InjectMigrationDashboard(spaceID string) error
 }
@@ -153,7 +154,7 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) CreateObjectsForUseCase(
-	ctx context.Context,
+	ctx session.Context,
 	spaceID string,
 	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
@@ -229,10 +230,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 }
 
 func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
-	return b.inject(context.Background(), spaceID, migrationUseCase, migrationDashboardZip)
+	return b.inject(nil, spaceID, migrationUseCase, migrationDashboardZip)
 }
 
-func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
+func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
@@ -243,7 +244,7 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(ctx, spaceID, path); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
 		return err
 	}
 
@@ -263,8 +264,8 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.
 		return nil
 	}
 
-	b.handleSpaceDashboard(ctx, spaceID, newID)
-	b.createWidgets(spaceID, useCase)
+	b.handleSpaceDashboard(spaceID, newID)
+	b.createWidgets(ctx, spaceID, useCase)
 	return
 }
 
@@ -340,7 +341,7 @@ func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (i
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(ctx context.Context, spaceID string, id string) {
+func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: b.coreService.PredefinedObjects(spaceID).Workspace,
 		Details: []*pb.RpcObjectSetDetailsDetail{
@@ -354,8 +355,9 @@ func (b *builtinObjects) handleSpaceDashboard(ctx context.Context, spaceID strin
 	}
 }
 
-func (b *builtinObjects) createWidgets(spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
+	reqs := make([]*pb.RpcBlockCreateWidgetRequest, 0)
 
 	widgetObjectID := b.coreService.PredefinedObjects(spaceID).Widgets
 	for _, param := range widgetParams[useCase] {
@@ -385,9 +387,10 @@ func (b *builtinObjects) createWidgets(spaceID string, useCase pb.RpcObjectImpor
 		if param.viewID != "" {
 			request.ViewId = param.viewID
 		}
-		if _, err := b.service.CreateWidgetBlock(nil, request); err != nil {
-			log.Errorf("Failed to make Widget block for object '%s': %s", objectID, err.Error())
-		}
+		reqs = append(reqs, request)
+	}
+	if _, err = b.service.CreateWidgetBlocks(ctx, reqs); err != nil {
+		log.Errorf("Failed to make Widget blocks: %v", err)
 	}
 }
 
