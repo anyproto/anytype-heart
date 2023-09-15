@@ -1036,7 +1036,7 @@ func Test_CopyAndCutText(t *testing.T) {
 
 		// when
 		cb := NewClipboard(sb, nil, nil, nil, nil)
-		_, _, anySlotCopy, err := cb.Copy(pb.RpcBlockCopyRequest{
+		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks:            []*model.Block{sb.Pick("2").Model()},
 			SelectedTextRange: &model.Range{From: 1, To: 1},
 		})
@@ -1067,7 +1067,7 @@ func Test_CopyAndCutText(t *testing.T) {
 
 		// when
 		cb := NewClipboard(sb, nil, nil, nil, nil)
-		_, _, anySlotCopy, err := cb.Copy(pb.RpcBlockCopyRequest{
+		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks:            []*model.Block{sb.Pick("2").Model()},
 			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("2").Model().GetText().Text))},
 		})
