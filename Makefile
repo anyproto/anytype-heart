@@ -266,7 +266,7 @@ endif
 	@cp pkg/lib/bundle/internal*.json ../anytype-ts/dist/lib/json/generated
 
 build-js: setup-go build-server protos-js
-	@echo "Run 'make install-dev-js' instead if you want to build&install into ../anytype-ts"
+	@echo "Run 'make install-dev-js' instead if you want to build & install into ../anytype-ts"
 
 install-linter:
 	@go install github.com/daixiang0/gci@latest
