@@ -193,7 +193,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v4
         with:
           go-version: '~1.20.8'
       - name: Setup GO

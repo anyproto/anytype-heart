@@ -4,6 +4,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/anyproto/anytype-heart/tests/blockbuilder"
+	"github.com/anyproto/anytype-heart/tests/testutil"
+	textutil "github.com/anyproto/anytype-heart/util/text"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -595,6 +598,16 @@ func TestClipboard_TitleOps(t *testing.T) {
 		}
 	}
 
+	requiredBlockReq := func(blockId string) *pb.RpcBlockPasteRequest {
+		return &pb.RpcBlockPasteRequest{
+			SelectedBlockIds:  []string{blockId},
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				newTextBlock("whatever").Model(),
+			},
+		}
+	}
+
 	multiBlockReq := &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    template.TitleBlockId,
 		SelectedTextRange: &model.Range{},
@@ -612,8 +625,70 @@ func TestClipboard_TitleOps(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "single", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
 	})
-	t.Run("single description to empty description", func(t *testing.T) {
+
+	for _, text := range []string{"", "full"} {
+		t.Run("paste - when ("+text+")", func(t *testing.T) {
+			// given
+			sb := smarttest.New("text")
+			require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						text,
+						blockbuilder.ID("1"),
+					),
+					blockbuilder.Text(
+						"toggle",
+						blockbuilder.ID("2"),
+						blockbuilder.TextStyle(model.BlockContentText_Toggle),
+					),
+				)))
+
+			// when
+			cb := NewClipboard(sb, nil, nil, nil, nil)
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
+				AnySlot:           []*model.Block{sb.Pick("2").Model()},
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, model.BlockContentText_Toggle, sb.Doc.Pick("1").Model().GetText().Style)
+		})
+	}
+	t.Run("paste - when insert partially", func(t *testing.T) {
 		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"123",
+					blockbuilder.ID("1"),
+				),
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "1",
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+			AnySlot:           []*model.Block{sb.Pick("2").Model()},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentText_Paragraph, sb.Pick("1").Model().GetText().Style)
+	})
+	t.Run("single description to empty title", func(t *testing.T) {
+		//given
 		state := withTitle(t, "")
 		addDescription(state, "current description")
 		cb := NewClipboard(state, nil, nil, nil, nil)
@@ -632,6 +707,27 @@ func TestClipboard_TitleOps(t *testing.T) {
 		)
 		assert.True(t, true, find)
 	})
+
+	for _, blockIdToPasteTo := range []string{
+		template.TitleBlockId,
+		template.HeaderLayoutId,
+		template.FeaturedRelationsId,
+		template.DescriptionBlockId,
+	} {
+		t.Run("single text to "+blockIdToPasteTo, func(t *testing.T) {
+			//given
+			state := withTitle(t, "")
+			addRelations(state)
+			cb := NewClipboard(state, nil, nil, nil, nil)
+
+			//when
+			_, _, _, _, err := cb.Paste(nil, requiredBlockReq(blockIdToPasteTo), "")
+
+			//then
+			require.NoError(t, err)
+			assert.NotNil(t, state.Doc.Pick(blockIdToPasteTo))
+		})
+	}
 	t.Run("single to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
 		cb := NewClipboard(st, nil, nil, nil, nil)
@@ -816,6 +912,14 @@ func addDescription(st *smarttest.SmartTest, description string) {
 	state.ApplyState(newState, false)
 }
 
+func addRelations(st *smarttest.SmartTest) {
+	newState := st.Doc.NewState()
+	template.InitTemplate(newState, template.RequireHeader)
+	template.InitTemplate(newState, template.WithFeaturedRelations)
+	template.InitTemplate(newState, template.WithForcedDescription)
+	state.ApplyState(newState, false)
+}
+
 func TestClipboard_PasteToCodeBock(t *testing.T) {
 	sb := smarttest.New("text")
 	require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
@@ -916,6 +1020,68 @@ func Test_PasteText(t *testing.T) {
 }
 
 func Test_CopyAndCutText(t *testing.T) {
+
+	t.Run("copy/cut do not preserve style - when full text copied", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, anySlotCopy, err := cb.Copy(pb.RpcBlockCopyRequest{
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+		})
+		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+		})
+
+		// then
+		require.NoError(t, err)
+
+		assert.Equal(t, model.BlockContentText_Paragraph, anySlotCopy[0].GetText().Style)
+		assert.Equal(t, model.BlockContentText_Paragraph, anySlotCut[0].GetText().Style)
+	})
+
+	t.Run("copy/cut preserve style - when full text copied", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, anySlotCopy, err := cb.Copy(pb.RpcBlockCopyRequest{
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("2").Model().GetText().Text))},
+		})
+		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("2").Model().GetText().Text))},
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+		})
+
+		// then
+		require.NoError(t, err)
+
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCopy[0].GetText().Style)
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCut[0].GetText().Style)
+	})
 
 	t.Run("copy/cut - when with children", func(t *testing.T) {
 		// given

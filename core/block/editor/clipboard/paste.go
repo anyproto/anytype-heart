@@ -28,7 +28,7 @@ type pasteCtrl struct {
 }
 
 type pasteMode struct {
-	toTitle             bool
+	toHeaderChild       bool
 	removeSelection     bool
 	multiRange          bool
 	singleRange         bool
@@ -116,13 +116,10 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 			return
 		}
 		selText := p.getFirstSelectedText()
-		p.mode.toTitle = selText != nil && p.s.HasParent(selText.Model().Id, template.HeaderLayoutId)
-		p.mode.intoBlockPasteStyle = p.mode.toTitle
+		p.mode.toHeaderChild = selText != nil && p.s.HasParent(selText.Model().Id, template.HeaderLayoutId)
+		p.mode.intoBlockPasteStyle = p.mode.toHeaderChild
 		if selText != nil && textCount == 1 && nonTextCount == 0 && req.IsPartOfBlock {
 			p.mode.intoBlock = true
-			if selText.GetText() == "" {
-				p.mode.intoBlockPasteStyle = true
-			}
 		} else {
 			p.mode.intoBlock = selText != nil && selText.Model().GetText().Style == model.BlockContentText_Code
 		}
@@ -194,7 +191,8 @@ func (p *pasteCtrl) singleRange() (err error) {
 		return target.PasteInside(p.s, p.ps, secondBlock)
 	}
 
-	isPasteToHeader := targetId == template.TitleBlockId || targetId == template.DescriptionBlockId
+	isPasteToHeader := isRequiredRelation(targetId)
+
 	pos := model.Block_Bottom
 	if isPasteToHeader {
 		targetId = template.HeaderLayoutId
@@ -274,7 +272,7 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	)
 	if len(p.selIds) > 0 {
 		targetId = p.selIds[0]
-		if targetId == template.TitleBlockId || targetId == template.DescriptionBlockId {
+		if isRequiredRelation(targetId) {
 			targetId = template.HeaderLayoutId
 		}
 		targetPos = model.Block_Bottom
@@ -290,9 +288,18 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	})
 }
 
+func isRequiredRelation(targetID string) bool {
+	return targetID == template.TitleBlockId ||
+		targetID == template.DescriptionBlockId ||
+		targetID == template.FeaturedRelationsId ||
+		targetID == template.HeaderLayoutId
+}
+
 func (p *pasteCtrl) removeSelection() {
 	for _, toRemove := range p.selIds {
-		p.s.Unlink(toRemove)
+		if !isRequiredRelation(toRemove) {
+			p.s.Unlink(toRemove)
+		}
 	}
 }
 
