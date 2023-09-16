@@ -882,7 +882,7 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 		if err != nil {
 			resp.Error.Description = err.Error()
 		} else {
-
+			resp.Event = ctx.GetResponseEvent()
 		}
 		return resp
 	}
