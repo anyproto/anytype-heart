@@ -1,4 +1,4 @@
-package block
+package objectcache
 
 import (
 	"crypto/rand"
@@ -10,10 +10,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	spaceservice "github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
-func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (data []byte, err error) {
+const ChangeType = "anytype.object"
+
+func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey, spaceID string) (data []byte, err error) {
 	var keyStr string
 	if key != nil {
 		if key.SmartblockType() != sbType {
@@ -21,15 +23,31 @@ func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (da
 		}
 		keyStr = key.InternalKey()
 	}
-
 	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType), Key: keyStr}
+	if sbType == coresb.SmartBlockTypeSpaceObject {
+		mdl := &model.SpaceObjectHeader{SpaceID: spaceID}
+		marshalled, err := mdl.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		payload.Data = marshalled
+	}
 	return payload.Marshal()
 }
 
-func derivePayload(spaceId string, signKey crypto.PrivKey, changePayload []byte) objecttree.ObjectTreeCreatePayload {
+func derivePayload(spaceId string, changePayload []byte) objecttree.ObjectTreeCreatePayload {
+	return objecttree.ObjectTreeCreatePayload{
+		ChangeType:    spacecore.ChangeType,
+		ChangePayload: changePayload,
+		SpaceId:       spaceId,
+		IsEncrypted:   true,
+	}
+}
+
+func derivePersonalPayload(spaceId string, signKey crypto.PrivKey, changePayload []byte) objecttree.ObjectTreeCreatePayload {
 	return objecttree.ObjectTreeCreatePayload{
 		PrivKey:       signKey,
-		ChangeType:    spaceservice.ChangeType,
+		ChangeType:    spacecore.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       spaceId,
 		IsEncrypted:   true,
@@ -43,7 +61,7 @@ func createPayload(spaceId string, signKey crypto.PrivKey, changePayload []byte,
 	}
 	return objecttree.ObjectTreeCreatePayload{
 		PrivKey:       signKey,
-		ChangeType:    spaceservice.ChangeType,
+		ChangeType:    spacecore.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       spaceId,
 		IsEncrypted:   true,

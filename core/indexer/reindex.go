@@ -22,7 +22,6 @@ import (
 )
 
 const (
-
 	// ForceObjectsReindexCounter reindex thread-based objects
 	ForceObjectsReindexCounter int32 = 8
 
@@ -43,7 +42,7 @@ const (
 	ForceFilestoreKeysReindexCounter int32 = 2
 )
 
-func (i *indexer) reindexIfNeeded() error {
+func (i *indexer) PrepareFlags() error {
 	checksums, err := i.store.GetChecksums()
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return err
@@ -88,11 +87,12 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		flags.enableAll()
 	}
-
-	return i.reindex(flags)
+	i.flags = flags
+	return nil
 }
 
-func (i *indexer) reindex(flags reindexFlags) (err error) {
+func (i *indexer) RemoveIndexes() (err error) {
+	flags := i.flags
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
 	}
@@ -134,80 +134,132 @@ func (i *indexer) reindex(flags reindexFlags) (err error) {
 			log.Infof("all store indexes successfully erased")
 		}
 	}
-
-	err = i.reindexBundledObjects(flags)
-	if err != nil {
-		log.Errorf("failed to reindex bundled objects: %s", err)
-	}
-
-	// We derive or init predefined blocks here in order to ensure consistency of object store.
-	// If we call this method before removing objects from store, we will end up with inconsistent state
-	// because indexing of predefined objects will not run again
-	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(context.Background(), i.spaceService.AccountId())
-	if err != nil {
-		return fmt.Errorf("ensure predefined objects: %w", err)
-	}
-	spaceIDs := []string{i.spaceService.AccountId()}
-
-	// spaceID => workspaceID
-	spacesToInit := map[string]string{}
-	err = block.Do(i.picker, predefinedObjectIDs.Workspace, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		spaces := st.Store().GetFields()["spaces"]
-		for k, v := range spaces.GetStructValue().GetFields() {
-			spacesToInit[k] = v.GetStringValue()
-		}
-		return nil
-	})
-	for spaceID, _ := range spacesToInit {
-		spaceIDs = append(spaceIDs, spaceID)
-		_, err = i.anytype.EnsurePredefinedBlocks(context.Background(), spaceID)
-		if err != nil {
-			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
-		}
-	}
-
-	for _, spaceID := range spaceIDs {
-		err = i.EnsurePreinstalledObjects(spaceID)
-		if err != nil {
-			return fmt.Errorf("ensure preinstalled objects: %w", err)
-		}
-	}
-
-	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
-	// due to parallel load which can overload the stream
-	i.syncStarter.StartSync()
-
-	for _, spaceID := range spaceIDs {
-		err = i.reindexSpace(spaceID, flags)
-		if err != nil {
-			return fmt.Errorf("reindex space %s: %w", spaceID, err)
-		}
-	}
-
-	err = i.saveLatestChecksums()
-	if err != nil {
-		return fmt.Errorf("save latest checksums: %w", err)
-	}
-
-	return nil
+	return
 }
 
-func (i *indexer) reindexSpace(spaceID string, flags reindexFlags) (err error) {
+//
+//func (i *indexer) reindex(flags reindexFlags) (err error) {
+//	if flags.any() {
+//		log.Infof("start store reindex (%s)", flags.String())
+//	}
+//
+//	if flags.objects && flags.fileObjects {
+//		// files will be indexed within object indexing (see indexLinkedFiles)
+//		// because we need to do it in the background.
+//		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
+//		// will be waiting for the linkedFiles background indexing without this flag
+//		flags.fileObjects = false
+//	}
+//
+//	if flags.fileKeys {
+//		err = i.fileStore.RemoveEmptyFileKeys()
+//		if err != nil {
+//			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err.Error())
+//		} else {
+//			log.Infof("RemoveEmptyFileKeys filekeys succeed")
+//		}
+//	}
+//
+//	if flags.removeAllIndexedObjects {
+//		ids, err := i.store.ListIds()
+//		if err != nil {
+//			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err.Error())
+//		}
+//		for _, id := range ids {
+//			err = i.store.DeleteDetails(id)
+//			if err != nil {
+//				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
+//			}
+//		}
+//	}
+//	if flags.eraseIndexes {
+//		err = i.store.EraseIndexes()
+//		if err != nil {
+//			log.Errorf("reindex failed to erase indexes: %v", err.Error())
+//		} else {
+//			log.Infof("all store indexes successfully erased")
+//		}
+//	}
+//
+//	err = i.reindexBundledObjects(flags)
+//	if err != nil {
+//		log.Errorf("failed to reindex bundled objects: %s", err)
+//	}
+//
+//	// We derive or init predefined blocks here in order to ensure consistency of object store.
+//	// If we call this method before removing objects from store, we will end up with inconsistent state
+//	// because indexing of predefined objects will not run again
+//	predefinedObjectIDs, err := i.anytype.EnsurePredefinedBlocks(context.Background(), i.spaceService.AccountId())
+//	if err != nil {
+//		return fmt.Errorf("ensure predefined objects: %w", err)
+//	}
+//	spaceIDs := []string{i.spaceService.AccountId()}
+//
+//	// spaceID => workspaceID
+//	spacesToInit := map[string]string{}
+//	err = block.Do(i.picker, predefinedObjectIDs.Workspace, func(sb smartblock.SmartBlock) error {
+//		st := sb.NewState()
+//		spaces := st.Store().GetFields()["spaces"]
+//		for k, v := range spaces.GetStructValue().GetFields() {
+//			spacesToInit[k] = v.GetStringValue()
+//		}
+//		return nil
+//	})
+//	for spaceID, _ := range spacesToInit {
+//		spaceIDs = append(spaceIDs, spaceID)
+//		_, err = i.anytype.EnsurePredefinedBlocks(context.Background(), spaceID)
+//		if err != nil {
+//			return fmt.Errorf("ensure predefined objects for child space %s: %w", spaceID, err)
+//		}
+//	}
+//
+//	for _, spaceID := range spaceIDs {
+//		err = i.EnsurePreinstalledObjects(spaceID)
+//		if err != nil {
+//			return fmt.Errorf("ensure preinstalled objects: %w", err)
+//		}
+//	}
+//
+//	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
+//	// due to parallel load which can overload the stream
+//	i.syncStarter.StartSync()
+//
+//	for _, spaceID := range spaceIDs {
+//		err = i.ReindexSpace(spaceID, flags)
+//		if err != nil {
+//			return fmt.Errorf("reindex space %s: %w", spaceID, err)
+//		}
+//	}
+//
+//	err = i.SaveLatestChecksums()
+//	if err != nil {
+//		return fmt.Errorf("save latest checksums: %w", err)
+//	}
+//
+//	return nil
+//}
+
+func (i *indexer) ReindexSpace(spaceID string, includeProfile bool) (err error) {
+	flags := i.flags
 	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.objects {
-		ids, err := i.getIdsForTypes(
-			spaceID,
+		types := []smartblock2.SmartBlockType{
 			smartblock2.SmartBlockTypePage,
-			smartblock2.SmartBlockTypeProfilePage,
 			smartblock2.SmartBlockTypeTemplate,
 			smartblock2.SmartBlockTypeArchive,
 			smartblock2.SmartBlockTypeHome,
 			smartblock2.SmartBlockTypeWorkspace,
 			smartblock2.SmartBlockTypeObjectType,
 			smartblock2.SmartBlockTypeRelation,
+		}
+		if includeProfile {
+			types = append(types, smartblock2.SmartBlockTypeProfilePage)
+		}
+		ids, err := i.getIdsForTypes(
+			spaceID,
+			types...,
 		)
 		if err != nil {
 			return err
@@ -267,7 +319,8 @@ func (i *indexer) reindexSpace(spaceID string, flags reindexFlags) (err error) {
 	return nil
 }
 
-func (i *indexer) reindexBundledObjects(flags reindexFlags) error {
+func (i *indexer) ReindexBundledObjects() error {
+	flags := i.flags
 	ctx := context.Background()
 	spaceID := addr.AnytypeMarketplaceWorkspace
 
@@ -405,27 +458,7 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (succe
 	return
 }
 
-func (i *indexer) EnsurePreinstalledObjects(spaceID string) error {
-	start := time.Now()
-	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
-	for _, ot := range bundle.SystemTypes {
-		ids = append(ids, ot.BundledURL())
-	}
-
-	for _, rk := range bundle.SystemRelations {
-		ids = append(ids, rk.BundledURL())
-	}
-	_, _, err := i.objectCreator.InstallBundledObjects(context.Background(), spaceID, ids)
-	if err != nil {
-		return err
-	}
-
-	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
-
-	return nil
-}
-
-func (i *indexer) saveLatestChecksums() error {
+func (i *indexer) SaveLatestChecksums() error {
 	checksums := model.ObjectStoreChecksums{
 		BundledObjectTypes:         bundle.TypeChecksum,
 		BundledRelations:           bundle.RelationChecksum,

@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
@@ -39,10 +41,21 @@ type cacheOpts struct {
 	putObject    smartblock.SmartBlock
 }
 
+const CName = "client.object.objectcache"
+
 type InitFunc = func(id string) *smartblock.InitContext
+
+type objectFactory interface {
+	InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
+}
 
 type Cache interface {
 	app.ComponentRunnable
+	payloadcreator.PayloadCreator
+
+	CreateTreeObject(ctx context.Context, spaceID string, params TreeCreationParams) (sb smartblock.SmartBlock, err error)
+	CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObject(ctx context.Context, spaceID string, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 
 	PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
 	GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
@@ -53,11 +66,12 @@ type Cache interface {
 }
 
 type objectCache struct {
-	objectFactory *editor.ObjectFactory
-	sbtProvider   typeprovider.SmartBlockTypeProvider
-	spaceService  space.Service
-	cache         ocache.OCache
-	closing       chan struct{}
+	objectFactory  objectFactory
+	sbtProvider    typeprovider.SmartBlockTypeProvider
+	spaceService   spacecore.SpaceService
+	accountService accountservice.Service
+	cache          ocache.OCache
+	closing        chan struct{}
 }
 
 func New() Cache {
@@ -67,9 +81,10 @@ func New() Cache {
 }
 
 func (c *objectCache) Init(a *app.App) error {
-	c.objectFactory = app.MustComponent[*editor.ObjectFactory](a)
+	c.accountService = app.MustComponent[accountservice.Service](a)
+	c.objectFactory = app.MustComponent[objectFactory](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	c.spaceService = app.MustComponent[space.Service](a)
+	c.spaceService = app.MustComponent[spacecore.SpaceService](a)
 	c.cache = ocache.New(
 		c.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
@@ -81,7 +96,7 @@ func (c *objectCache) Init(a *app.App) error {
 }
 
 func (c *objectCache) Name() string {
-	return "object-cache"
+	return CName
 }
 
 func (c *objectCache) Run(_ context.Context) error {

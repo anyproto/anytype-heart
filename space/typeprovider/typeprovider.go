@@ -22,7 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 const CName = "space.typeprovider"
@@ -54,7 +54,7 @@ func (p *provider) PartitionIDsByType(spaceId string, ids []string) (map[smartbl
 
 type provider struct {
 	sync.RWMutex
-	spaceService space.Service
+	spaceService spacecore.SpaceService
 	badger       *badger.DB
 	cache        map[string]smartblock.SmartBlockType
 }
@@ -95,7 +95,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("init cache from badger: %w", err)
 	}
-	p.spaceService = app.MustComponent[space.Service](a)
+	p.spaceService = app.MustComponent[spacecore.SpaceService](a)
 	return
 }
 
@@ -218,7 +218,7 @@ func GetTypeFromRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (smartblock.S
 	if err != nil {
 		return 0, fmt.Errorf("unmarshall root: %w", err)
 	}
-	if root.ChangeType != space.ChangeType {
+	if root.ChangeType != spacecore.ChangeType {
 		err = ErrUnknownChangeType
 		return 0, err
 	}

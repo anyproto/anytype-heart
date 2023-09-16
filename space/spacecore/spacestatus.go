@@ -1,4 +1,4 @@
-package space
+package spacecore
 
 import (
 	"errors"
@@ -28,14 +28,14 @@ type StatusPayload struct {
 	DeletionDate time.Time
 }
 
-func newSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) StatusPayload {
+func NewSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) StatusPayload {
 	return StatusPayload{
 		Status:       Status(payload.Status),
 		DeletionDate: time.Unix(payload.DeletionTimestamp, 0),
 	}
 }
 
-func coordError(err error) error {
+func CoordError(err error) error {
 	switch err {
 	case coordinatorproto.ErrSpaceDeletionPending:
 		return ErrSpaceDeletionPending

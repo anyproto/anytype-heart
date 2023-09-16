@@ -52,6 +52,7 @@ type Service interface {
 
 type Creator struct {
 	blockService        BlockService
+	objectCache         objectcache.Cache
 	blockPicker         block.Picker
 	objectStore         objectstore.ObjectStore
 	collectionService   CollectionService
@@ -75,6 +76,7 @@ func NewCreator() *Creator {
 
 func (c *Creator) Init(a *app.App) (err error) {
 	c.blockService = a.MustComponent(block.CName).(BlockService)
+	c.objectCache = a.MustComponent(objectcache.CName).(objectcache.Cache)
 	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
@@ -96,8 +98,6 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(templateID string, name string) (st *state.State, err error)
-	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error)
-	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
@@ -171,12 +171,19 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 		if err != nil {
 			return "", nil, err
 		}
-		sb, err = c.blockService.DeriveTreeObjectWithUniqueKey(ctx, spaceID, uk, initFunc)
+		sb, err = c.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+			Key:      uk,
+			InitFunc: initFunc,
+		})
 		if err != nil {
 			return "", nil, err
 		}
 	} else {
-		sb, err = c.blockService.CreateTreeObject(ctx, spaceID, sbType, initFunc)
+		sb, err = c.objectCache.CreateTreeObject(ctx, spaceID, objectcache.TreeCreationParams{
+			Time:           time.Now(),
+			SmartblockType: sbType,
+			InitFunc:       initFunc,
+		})
 		if err != nil {
 			return
 		}
@@ -308,7 +315,7 @@ func (w *Creator) createRelationOption(ctx context.Context, spaceID string, deta
 	} else if pbtypes.GetString(details, "name") == "" {
 		return "", nil, fmt.Errorf("name is empty")
 	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
-		return "", nil, fmt.Errorf("invalid relation key: unknown enum")
+		return "", nil, fmt.Errorf("invalid relation Key: unknown enum")
 	}
 
 	object = pbtypes.CopyStruct(details)
@@ -379,9 +386,9 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	for _, relKey := range recommendedRelationKeys {
 		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to create unique key: %w", err)
+			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
 		}
-		id, err := w.coreService.DeriveObjectId(ctx, spaceID, uk)
+		id, err := w.objectCache.DeriveObjectId(ctx, spaceID, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}

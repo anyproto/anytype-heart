@@ -113,32 +113,24 @@ type TemplateIDGetter interface {
 	GetTemplateId() string
 }
 
-type indexer interface {
-	EnsurePreinstalledObjects(spaceID string) error
-}
-
 type builtinObjects interface {
 	CreateObjectsForUseCase(ctx context.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type Service struct {
-	anytype             core.Service
-	syncStatus          syncstatus.Service
-	eventSender         event.Sender
-	linkPreview         linkpreview.LinkPreview
-	process             process.Service
-	app                 *app.App
-	source              source.Service
-	objectStore         objectstore.ObjectStore
-	restriction         restriction.Service
-	bookmark            bookmarksvc.Service
-	systemObjectService system_object.Service
-	objectCache         objectcache.Cache
-
-	indexer indexer
-
-	objectCreator objectCreator
-
+	anytype              core.Service
+	syncStatus           syncstatus.Service
+	eventSender          event.Sender
+	linkPreview          linkpreview.LinkPreview
+	process              process.Service
+	app                  *app.App
+	source               source.Service
+	objectStore          objectstore.ObjectStore
+	restriction          restriction.Service
+	bookmark             bookmarksvc.Service
+	systemObjectService  system_object.Service
+	objectCache          objectcache.Cache
+	objectCreator        objectCreator
 	spaceService         space.Service
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
@@ -186,7 +178,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 
-	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.app = a
 	return
@@ -357,7 +348,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uniqueKey)
+			id, err := s.objectCache.DeriveObjectId(ctx, spaceID, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -377,7 +368,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uniqueKey)
+			id, err := s.objectCache.DeriveObjectId(ctx, spaceID, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -561,60 +552,19 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	return "", nil
+	panic("should be removed")
 }
 
 func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
-	return nil, nil
+	panic("should be removed")
 }
 
 func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
-	panic("is not implemented")
-	// workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	// return Do(s,ctx, workspaceId, func(b smartblock.SmartBlock) error {
-	//	workspace, ok := b.(*editor.Workspaces)
-	//	if !ok {
-	//		return fmt.Errorf("incorrect object with workspace id")
-	//	}
-	//	return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
-	// })
+	panic("should be removed")
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
-	return "", fmt.Errorf("not implemented")
-	// workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	// if err == core.ErrObjectDoesNotBelongToWorkspace {
-	//	workspaceId = s.Anytype().AccountObjects().Account
-	// }
-	// var key string
-	// var addrs []string
-	// err = Do(s,ctx, workspaceId, func(b smartblock.SmartBlock) error {
-	//	workspace, ok := b.(*editor.Workspaces)
-	//	if !ok {
-	//		return fmt.Errorf("incorrect object with workspace id")
-	//	}
-	//	key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
-	//	return err
-	// })
-	// if err != nil {
-	//	return "", err
-	// }
-	// payload := &model.ThreadDeeplinkPayload{
-	//	Key:   key,
-	//	Addrs: addrs,
-	// }
-	// marshalledPayload, err := proto.Marshal(payload)
-	// if err != nil {
-	//	return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
-	// }
-	// encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
-	//
-	// params := url.Values{}
-	// params.Add("id", req.ObjectId)
-	// params.Add("payload", encodedPayload)
-	// encoded := params.Encode()
-	//
-	// return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
+	panic("should be removed")
 }
 
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {

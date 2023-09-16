@@ -51,6 +51,10 @@
     "name": "Space"
   },
   {
+    "id": "spaceObject",
+    "name": "SpaceObject"
+  },
+  {
     "id": "image",
     "name": "Image",
     "requiredRelations": [

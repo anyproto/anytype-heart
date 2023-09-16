@@ -4,6 +4,7 @@
   "video",
   "audio",
   "space",
+  "spaceObject",
   "dashboard",
   "objectType",
   "relation",
@@ -15,6 +16,7 @@
   "task",
   "collection",
   "set",
+  "space",
   "profile",
   "bookmark"
 ]

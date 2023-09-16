@@ -7,24 +7,20 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 var log = logging.Logger("anytype-core")
-
-var ErrObjectDoesNotBelongToWorkspace = fmt.Errorf("object does not belong to workspace")
 
 const (
 	CName = "anytype"
@@ -33,12 +29,6 @@ const (
 type Service interface {
 	Stop() error
 	IsStarted() bool
-
-	DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
-
-	DeriveObjectId(ctx context.Context, spaceID string, key domain.UniqueKey) (string, error)
-
-	EnsurePredefinedBlocks(ctx context.Context, spaceID string) (predefinedObjectIDs threads.DerivedSmartblockIds, err error)
 	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 	GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string
@@ -53,15 +43,9 @@ var _ app.Component = (*Anytype)(nil)
 
 var _ Service = (*Anytype)(nil)
 
-type ObjectsDeriver interface {
-	DeriveTreeCreatePayload(ctx context.Context, spaceID string, key domain.UniqueKey) (treestorage.TreeStorageCreatePayload, error)
-	DeriveObject(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, newAccount bool) (err error)
-}
-
 type Anytype struct {
-	space       space.Service
+	space       spacecore.SpaceService
 	objectStore objectstore.ObjectStore
-	deriver     ObjectsDeriver
 
 	predefinedObjectsPerSpace map[string]threads.DerivedSmartblockIds
 
@@ -90,8 +74,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
-	a.deriver = app.MustComponent[ObjectsDeriver](ap)
-	a.space = app.MustComponent[space.Service](ap)
+	a.space = app.MustComponent[spacecore.SpaceService](ap)
 	return
 }
 
@@ -104,6 +87,7 @@ func (a *Anytype) Run(ctx context.Context) (err error) {
 	return nil
 }
 
+// TODO: refactor to call tech space
 func (a *Anytype) IsStarted() bool {
 	a.lock.Lock()
 	defer a.lock.Unlock()
@@ -115,27 +99,24 @@ func (a *Anytype) IsStarted() bool {
 // ⚠️ Will return empty struct in case it runs before Anytype.Start()
 // TODO Its deprecated
 func (a *Anytype) AccountObjects() threads.DerivedSmartblockIds {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return a.predefinedObjectsPerSpace[a.space.AccountId()]
+	return a.PredefinedObjects(a.space.AccountId())
 }
 
 func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return a.predefinedObjectsPerSpace[spaceID]
+	ids, err := a.space.TechSpace().SpaceDerivedIDs(context.Background(), spaceID)
+	if err != nil {
+		log.Error("failed to get account objects", zap.Error(err))
+		return threads.DerivedSmartblockIds{}
+	}
+	return ids
 }
 
 func (a *Anytype) GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return a.predefinedObjectsPerSpace[spaceID].SystemTypes[typeKey]
+	return a.PredefinedObjects(spaceID).SystemTypes[typeKey]
 }
 
 func (a *Anytype) GetSystemRelationID(spaceID string, relationKey domain.RelationKey) string {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return a.predefinedObjectsPerSpace[spaceID].SystemRelations[relationKey]
+	return a.PredefinedObjects(spaceID).SystemRelations[relationKey]
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
@@ -151,107 +132,6 @@ func (a *Anytype) start() {
 	}
 
 	a.isStarted = true
-}
-
-func (a *Anytype) DeriveObjectId(ctx context.Context, spaceID string, key domain.UniqueKey) (string, error) {
-	// todo: cache it or use the objectstore
-	payload, err := a.deriver.DeriveTreeCreatePayload(ctx, spaceID, key)
-	if err != nil {
-		return "", fmt.Errorf("failed to derive tree create payload for space %s and key %s: %w", spaceID, key, err)
-	}
-	return payload.RootRawChange.Id, nil
-}
-
-func (a *Anytype) DerivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
-	a.lock.RLock()
-	// TODO Weak condition
-	ids, ok := a.predefinedObjectsPerSpace[spaceID]
-	a.lock.RUnlock()
-	if ok && ids.IsFilled() {
-		return ids, nil
-	}
-	ids, err = a.derivePredefinedObjects(ctx, spaceID, createTrees)
-	if err != nil {
-		return threads.DerivedSmartblockIds{}, err
-	}
-	return ids, nil
-}
-
-func (a *Anytype) derivePredefinedObjects(ctx context.Context, spaceID string, createTrees bool) (predefinedObjectIDs threads.DerivedSmartblockIds, err error) {
-	sbTypes := []coresb.SmartBlockType{
-		coresb.SmartBlockTypeWorkspace,
-		coresb.SmartBlockTypeProfilePage,
-		coresb.SmartBlockTypeArchive,
-		coresb.SmartBlockTypeWidget,
-		coresb.SmartBlockTypeHome,
-	}
-	payloads := make([]treestorage.TreeStorageCreatePayload, len(sbTypes))
-	predefinedObjectIDs.SystemRelations = make(map[domain.RelationKey]string)
-	predefinedObjectIDs.SystemTypes = make(map[domain.TypeKey]string)
-
-	for i, sbt := range sbTypes {
-		a.lock.RLock()
-		exists := a.predefinedObjectsPerSpace[spaceID].HasID(sbt)
-		a.lock.RUnlock()
-
-		if exists {
-			continue
-		}
-		// we have only 1 object per sbtype so key is empty (also for the backward compatibility, because before we didn't have a key)
-		uk, err := domain.NewUniqueKey(sbt, "")
-		if err != nil {
-			return predefinedObjectIDs, err
-		}
-		payloads[i], err = a.deriver.DeriveTreeCreatePayload(ctx, spaceID, uk)
-		if err != nil {
-			log.With("uniqueKey", uk).Errorf("create payload for derived object: %s", err)
-			return predefinedObjectIDs, fmt.Errorf("derive tree create payload: %w", err)
-		}
-		predefinedObjectIDs.InsertId(sbt, payloads[i].RootRawChange.Id)
-	}
-
-	for _, ot := range bundle.SystemTypes {
-		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, ot.String())
-		if err != nil {
-			return predefinedObjectIDs, err
-		}
-		id, err := a.DeriveObjectId(ctx, spaceID, uk)
-		if err != nil {
-			return predefinedObjectIDs, err
-		}
-		predefinedObjectIDs.SystemTypes[ot] = id
-	}
-
-	for _, rk := range bundle.SystemRelations {
-		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, rk.String())
-		if err != nil {
-			return predefinedObjectIDs, err
-		}
-		id, err := a.DeriveObjectId(ctx, spaceID, uk)
-		if err != nil {
-			return predefinedObjectIDs, err
-		}
-		predefinedObjectIDs.SystemRelations[rk] = id
-	}
-
-	a.lock.Lock()
-	a.predefinedObjectsPerSpace[spaceID] = predefinedObjectIDs
-	a.lock.Unlock()
-
-	for _, payload := range payloads {
-		// todo: move types/relations derivation here
-		err = a.deriver.DeriveObject(ctx, spaceID, payload, createTrees)
-		if err != nil {
-			log.With("id", payload.RootRawChange).Errorf("derive object: %s", err)
-			return predefinedObjectIDs, fmt.Errorf("derive object: %w", err)
-		}
-	}
-
-	return
-}
-
-func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, spaceID string) (threads.DerivedSmartblockIds, error) {
-	return a.DerivePredefinedObjects(ctx, spaceID, a.config.NewAccount)
 }
 
 func (a *Anytype) Close(ctx context.Context) (err error) {

@@ -48,8 +48,11 @@ func New() Indexer {
 
 type Indexer interface {
 	ForceFTIndex()
+	PrepareFlags() error
+	RemoveIndexes() error
+	ReindexBundledObjects() error
+	ReindexSpace(spaceID string, includeProfile bool) error
 	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
-	EnsurePreinstalledObjects(spaceID string) error
 	app.ComponentRunnable
 }
 
@@ -91,6 +94,8 @@ type indexer struct {
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
+
+	flags reindexFlags
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -117,12 +122,9 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run(context.Context) (err error) {
+	// TODO: [MR] think what to do with full text search
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
-	}
-	err = i.reindexIfNeeded()
-	if err != nil {
-		return err
 	}
 	go i.ftLoop()
 	return

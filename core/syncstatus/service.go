@@ -105,6 +105,15 @@ func (s *service) RegisterSpace(space commonspace.Space) {
 	s.objectWatchers[space.Id()] = watcher
 }
 
+func (s *service) UnregisterSpace(space commonspace.Space) {
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+
+	// TODO: [MR] now we can't set a nil update receiver, but maybe it doesn't matter that much
+	//  and we can just leave as it is, because no events will come through
+	delete(s.objectWatchers, space.Id())
+}
+
 func (s *service) Watch(spaceID string, id string, filesGetter func() []string) (new bool, err error) {
 	return s.watch(spaceID, id, filesGetter)
 }

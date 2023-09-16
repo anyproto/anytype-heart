@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -30,7 +29,6 @@ type Service interface {
 
 type service struct {
 	spaceService space.Service
-	coreService  core.Service
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
@@ -43,7 +41,6 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.coreService = app.MustComponent[core.Service](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.gateway = app.MustComponent[gateway.Gateway](a)
 	s.config = app.MustComponent[*config.Config](a)
@@ -59,7 +56,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().Account()
 
-	analyticsId, err := s.getAnalyticsID()
+	analyticsId, err := s.getAnalyticsID(ctx)
 	if err != nil {
 		log.Errorf("failed to get analytics id: %s", err)
 	}
@@ -75,9 +72,9 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
-	ids, err := s.coreService.DerivePredefinedObjects(ctx, spaceID, false)
+	ids, err := s.spaceService.TechSpace().SpaceDerivedIDs(ctx, spaceID)
 	if err != nil {
-		return nil, fmt.Errorf("derive predefined objects: %w", err)
+		return nil, fmt.Errorf("failed to get derived ids: %w", err)
 	}
 	return &model.AccountInfo{
 		HomeObjectId:           ids.Home,
@@ -96,12 +93,15 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	}, nil
 }
 
-func (s *service) getAnalyticsID() (string, error) {
+func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
 	if s.config.AnalyticsId != "" {
 		return s.config.AnalyticsId, nil
 	}
-	accountObjectID := s.coreService.AccountObjects().Workspace
-	sb, err := s.blockService.PickBlock(context.Background(), accountObjectID)
+	ids, err := s.spaceService.TechSpace().SpaceDerivedIDs(ctx, s.spaceService.AccountId())
+	if err != nil {
+		return "", fmt.Errorf("failed to get derived ids: %w", err)
+	}
+	sb, err := s.blockService.PickBlock(context.Background(), ids.Workspace)
 	if err != nil {
 		return "", err
 	}

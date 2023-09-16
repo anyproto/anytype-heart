@@ -34,6 +34,7 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKe
 	coresb.SmartBlockTypeWidget:      TypeKeyDashboard,
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
 	coresb.SmartBlockTypeRelation:    TypeKeyRelation,
+	coresb.SmartBlockTypeSpaceObject: TypeKeySpace,
 }
 
 // filled in init

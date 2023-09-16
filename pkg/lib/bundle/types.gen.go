@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "95f4f96dbb1537fa332ee00bb4d46061ccd3e3f2e1c1b50693e4f539e2a7406b"
+const TypeChecksum = "f7544fb1aca4d4460ecb510329045fce0de8385fbd1aa733616c0d7acddaa1fd"
 const (
 	TypePrefix = "_ot"
 )
@@ -31,6 +31,7 @@ const (
 	TypeKeyObjectType     domain.TypeKey = "objectType"
 	TypeKeyRelationOption domain.TypeKey = "relationOption"
 	TypeKeySpace          domain.TypeKey = "space"
+	TypeKeySpaceObject    domain.TypeKey = "spaceObject"
 	TypeKeyTemplate       domain.TypeKey = "template"
 	TypeKeySet            domain.TypeKey = "set"
 	TypeKeyCollection     domain.TypeKey = "collection"
@@ -68,7 +69,7 @@ var (
 			Layout:        model.ObjectType_basic,
 			Name:          "Book",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyCategory), MustGetRelationLink(RelationKeyRating), MustGetRelationLink(RelationKeyStatus)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyCategory), MustGetRelationLink(RelationKeyRating), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyStarred), MustGetRelationLink(RelationKeyUrl)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "book",
 		},
@@ -350,7 +351,7 @@ var (
 		},
 		TypeKeySpace: {
 
-			Description:   "Space for sharing",
+			Description:   "Workspace",
 			Hidden:        true,
 			IconEmoji:     "🌎",
 			Layout:        model.ObjectType_space,
@@ -359,6 +360,18 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Workspace},
 			Url:           TypePrefix + "space",
+		},
+		TypeKeySpaceObject: {
+
+			Description:   "Space",
+			Hidden:        true,
+			IconEmoji:     "🌎",
+			Layout:        model.ObjectType_spaceObject,
+			Name:          "Space",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_SpaceObject},
+			Url:           TypePrefix + "spaceObject",
 		},
 		TypeKeyTask: {
 

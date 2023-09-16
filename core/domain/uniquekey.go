@@ -14,6 +14,7 @@ var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
 	smartblock.SmartBlockTypeObjectType:  "ot",
 	smartblock.SmartBlockTypeRelation:    "rel",
 	smartblock.SmartBlockTypeWorkspace:   "ws",
+	smartblock.SmartBlockTypeSpaceObject: "spaceobject",
 	smartblock.SmartBlockTypeHome:        "home",
 	smartblock.SmartBlockTypeArchive:     "archive",
 	smartblock.SmartBlockTypeProfilePage: "profile",

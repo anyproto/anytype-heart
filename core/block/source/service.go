@@ -22,7 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
@@ -48,7 +48,7 @@ type service struct {
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	account             accountservice.Service
 	fileStore           filestore.FileStore
-	spaceService        space.Service
+	spaceService        spacecore.SpaceService
 	fileService         files.Service
 	systemObjectService system_object.Service
 
@@ -64,7 +64,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceService = app.MustComponent[space.Service](a)
+	s.spaceService = app.MustComponent[spacecore.SpaceService](a)
 	s.systemObjectService = app.MustComponent[system_object.Service](a)
 
 	s.fileService = app.MustComponent[files.Service](a)

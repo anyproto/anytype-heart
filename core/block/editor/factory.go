@@ -2,6 +2,8 @@ package editor
 
 import (
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/space"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -27,6 +29,11 @@ import (
 
 var log = logging.Logger("anytype-mw-editor")
 
+type spaceIndexer interface {
+	smartblock.Indexer
+	ReindexSpace(spaceID string, includeProfile bool) error
+}
+
 type ObjectFactory struct {
 	anytype             core.Service
 	bookmarkService     bookmark.BookmarkService
@@ -44,7 +51,9 @@ type ObjectFactory struct {
 	picker              getblock.Picker
 	eventSender         event.Sender
 	restrictionService  restriction.Service
-	indexer             smartblock.Indexer
+	indexer             spaceIndexer
+	spaceService        space.Service
+	objectCache         objectcache.Cache
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -53,6 +62,8 @@ func NewObjectFactory() *ObjectFactory {
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
+	f.spaceService = app.MustComponent[space.Service](a)
+	f.objectCache = app.MustComponent[objectcache.Cache](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
@@ -67,7 +78,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 	f.picker = app.MustComponent[getblock.Picker](a)
-	f.indexer = app.MustComponent[smartblock.Indexer](a)
+	f.indexer = app.MustComponent[spaceIndexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 
 	return nil
@@ -212,6 +223,16 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.templateCloner,
 			f.config,
 			f.eventSender,
+		), nil
+	case coresb.SmartBlockTypeSpaceObject:
+		return newSpaceObject(
+			sb,
+			spaceObjectDeps{
+				spaceService: f.spaceService,
+				techSpace:    f.spaceService.TechSpace(),
+				objectCache:  f.objectCache,
+				indexer:      f.indexer,
+			},
 		), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil

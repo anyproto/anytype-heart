@@ -1412,6 +1412,7 @@
     - [Restrictions](#anytype-model-Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
+    - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -21976,6 +21977,7 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | smartBlockType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 | key | [string](#string) |  |  |
+| data | [bytes](#bytes) |  |  |
 
 
 
@@ -22261,6 +22263,21 @@ stored |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | key | [string](#string) |  | this field is not passing to the crdt changes and can be only set in the snapshot |
+
+
+
+
+
+
+<a name="anytype-model-SpaceObjectHeader"></a>
+
+### SpaceObjectHeader
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceID | [string](#string) |  |  |
 
 
 
@@ -22707,6 +22724,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | audio | 15 |  |
 | video | 16 |  |
 | date | 17 |  |
+| spaceObject | 18 |  |
 | database | 20 | to be released later |
 
 
@@ -22821,6 +22839,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Workspace | 518 |  |
 | STRelation | 521 |  |
 | STType | 528 |  |
+| SpaceObject | 529 |  |
 | MissingObject | 519 |  |
 
 

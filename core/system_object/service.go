@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -52,14 +51,18 @@ type Service interface {
 	app.Component
 }
 
+type deriver interface {
+	DeriveObjectId(ctx context.Context, spaceId string, uniqueKey domain.UniqueKey) (id string, err error)
+}
+
 type service struct {
 	objectStore objectstore.ObjectStore
-	core        core.Service
+	deriver     deriver
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.core = app.MustComponent[core.Service](a)
+	s.deriver = app.MustComponent[deriver](a)
 	return
 }
 
@@ -78,7 +81,7 @@ func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key domain
 		return addr.BundledObjectTypeURLPrefix + key.String(), nil
 	}
 
-	return s.core.DeriveObjectId(ctx, spaceId, uk)
+	return s.deriver.DeriveObjectId(ctx, spaceId, uk)
 }
 
 func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error) {
@@ -92,7 +95,7 @@ func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key do
 		return addr.BundledRelationURLPrefix + key.String(), nil
 	}
 
-	return s.core.DeriveObjectId(ctx, spaceId, uk)
+	return s.deriver.DeriveObjectId(ctx, spaceId, uk)
 }
 
 func (s *service) FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {

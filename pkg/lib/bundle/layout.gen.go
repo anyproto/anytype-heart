@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
-const LayoutChecksum = "b68551da17a246d49e1ec23433d7879a5cdeacad7ca3dba0a7eccda3e13ef4eb"
+const LayoutChecksum = "060fc38d7fc0ef43174165ee3db4a4899fb4643fe8260d0dba0b9841d1472ff8"
 
 var (
 	Layouts = map[model.ObjectTypeLayout]model.Layout{
@@ -86,6 +86,11 @@ var (
 
 			Id:   model.ObjectType_space,
 			Name: "Space",
+		},
+		model.ObjectType_spaceObject: {
+
+			Id:   model.ObjectType_spaceObject,
+			Name: "SpaceObject",
 		},
 		model.ObjectType_todo: {
 

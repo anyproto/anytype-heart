@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
-	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
@@ -35,19 +34,21 @@ import (
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/space/clientserver"
 	"github.com/anyproto/anytype-heart/space/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/storage"
 )
 
 const (
-	CName      = "client.clientspace"
-	SpaceType  = "anytype.space"
-	ChangeType = "anytype.object"
+	CName         = "coordinator.clientspace"
+	SpaceType     = "anytype.space"
+	TechSpaceType = "anytype.techspace"
 )
 
 var ErrUsingOldStorage = errors.New("using old storage")
@@ -66,18 +67,7 @@ type PoolManager interface {
 //go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anyproto/anytype-heart/space Service
 //go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anyproto/any-sync/commonspace Space
 type Service interface {
-	AccountSpace(ctx context.Context) (commonspace.Space, error)
-	AccountId() string
-	CreateSpace(ctx context.Context) (container commonspace.Space, err error)
-	GetSpace(ctx context.Context, id string) (commonspace.Space, error)
-	DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (commonspace.Space, error)
-	DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error)
-	DeleteAccount(ctx context.Context, revert bool) (payload StatusPayload, err error)
-	StreamPool() streampool.StreamPool
-
-	ResolveSpaceID(objectID string) (string, error)
-	StoreSpaceID(objectID, spaceID string) error
-	app.ComponentRunnable
+	spacecore.SpaceService
 }
 
 type service struct {
@@ -86,7 +76,7 @@ type service struct {
 	accountKeys          *accountdata.AccountKeys
 	nodeConf             nodeconf.Service
 	commonSpace          commonspace.SpaceService
-	client               coordinatorclient.CoordinatorClient
+	coordinator          coordinatorclient.CoordinatorClient
 	wallet               wallet.Wallet
 	spaceStorageProvider storage.ClientStorage
 	streamPool           streampool.StreamPool
@@ -95,6 +85,11 @@ type service struct {
 	poolManager          PoolManager
 	streamHandler        *streamHandler
 	syncStatusService    syncStatusService
+	spaceLoader          *spaceLoader
+	indexer              spaceIndexer
+	installer            bundledInstaller
+	objectCache          objectcache.Cache
+	techSpace            *TechSpace
 
 	accountId  string
 	newAccount bool
@@ -105,6 +100,14 @@ type service struct {
 
 type syncStatusService interface {
 	RegisterSpace(space commonspace.Space)
+	UnregisterSpace(space commonspace.Space)
+}
+
+type spaceIndexer interface {
+	PrepareFlags() error
+	RemoveIndexes() error
+	ReindexSpace(spaceID string, includeProfile bool) error
+	ReindexBundledObjects() error
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -115,15 +118,19 @@ func (s *service) Init(a *app.App) (err error) {
 	s.nodeConf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
 	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
 	s.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
-	s.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
+	s.coordinator = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 	s.syncStatusService = app.MustComponent[syncStatusService](a)
+	s.indexer = app.MustComponent[spaceIndexer](a)
+	s.installer = app.MustComponent[bundledInstaller](a)
+	s.objectCache = app.MustComponent[objectcache.Cache](a)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.streamHandler = &streamHandler{s: s}
+	s.spaceLoader = &spaceLoader{spaceService: s}
 
 	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(s.streamHandler, streampool.StreamConfig{
 		SendQueueSize:    300,
@@ -148,7 +155,7 @@ func (s *service) Init(a *app.App) (err error) {
 		BufferItems: 64,
 	})
 	if err != nil {
-		return fmt.Errorf("init cache: %w", err)
+		return fmt.Errorf("init objectCache: %w", err)
 	}
 	s.spaceResolverCache = spaceResolverCache
 
@@ -163,30 +170,16 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
+func (s *service) TechSpace() spacecore.TechSpace {
+	return s.techSpace
+}
+
 func (s *service) Run(ctx context.Context) (err error) {
-	payload := commonspace.SpaceDerivePayload{
-		SigningKey: s.wallet.GetAccountPrivkey(),
-		MasterKey:  s.wallet.GetMasterKey(),
-		SpaceType:  SpaceType,
-	}
 	if s.newAccount {
-		// creating storage
-		s.accountId, err = s.commonSpace.DeriveSpace(ctx, payload)
-		if err != nil {
-			return
-		}
+		return s.spaceLoader.CreateSpaces(ctx)
 	} else {
-		s.accountId, err = s.commonSpace.DeriveId(ctx, payload)
-		if err != nil {
-			return
-		}
-		// pulling space from remote
-		_, err = s.GetSpace(ctx, s.accountId)
-		if err != nil {
-			return rpcerr.Unwrap(err)
-		}
+		return s.spaceLoader.LoadSpaces(ctx)
 	}
-	return
 }
 
 func (s *service) DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (container commonspace.Space, err error) {
@@ -269,11 +262,11 @@ func (s *service) StreamPool() streampool.StreamPool {
 	return s.streamPool
 }
 
-func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload StatusPayload, err error) {
+func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload spacecore.StatusPayload, err error) {
 	return s.DeleteSpace(ctx, s.accountId, revert)
 }
 
-func (s *service) DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload StatusPayload, err error) {
+func (s *service) DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload spacecore.StatusPayload, err error) {
 	var (
 		delConf *coordinatorproto.DeletionConfirmPayloadWithSignature
 		status  *coordinatorproto.SpaceStatusPayload
@@ -285,12 +278,12 @@ func (s *service) DeleteSpace(ctx context.Context, spaceID string, revert bool) 
 			return
 		}
 	}
-	status, err = s.client.ChangeStatus(ctx, spaceID, delConf)
+	status, err = s.coordinator.ChangeStatus(ctx, spaceID, delConf)
 	if err != nil {
-		err = coordError(err)
+		err = spacecore.CoordError(err)
 		return
 	}
-	payload = newSpaceStatus(status)
+	payload = spacecore.NewSpaceStatus(status)
 	return
 }
 
@@ -299,7 +292,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return
 	}
-	ns, err := newClientSpace(cc)
+	ns, err := newClientSpace(cc, s.syncStatusService)
 	if err != nil {
 		return
 	}
@@ -310,7 +303,6 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return nil, fmt.Errorf("store mapping for space: %w", err)
 	}
-	s.syncStatusService.RegisterSpace(ns)
 	return ns, nil
 }
 
@@ -323,6 +315,7 @@ func (s *service) getOpenedSpaceIds() (ids []string) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	s.spaceLoader.Close()
 	return s.spaceCache.Close()
 }
 

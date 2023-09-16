@@ -199,11 +199,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
-		Register(space.New()).
 		Register(filestore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
+		Register(space.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).

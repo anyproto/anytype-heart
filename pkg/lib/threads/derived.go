@@ -8,7 +8,6 @@ import (
 )
 
 type DerivedSmartblockIds struct {
-	AccountOld      string
 	Workspace       string
 	Profile         string
 	Home            string
@@ -18,12 +17,21 @@ type DerivedSmartblockIds struct {
 	SystemRelations map[domain.RelationKey]string
 }
 
-func (d DerivedSmartblockIds) IsFilled() bool {
-	return d.Workspace != "" && d.Profile != "" && d.Home != "" && d.Archive != "" && d.Widgets != ""
+func (d DerivedSmartblockIds) IDs() []string {
+	allIds := []string{
+		d.Workspace,
+		d.Home,
+		d.Archive,
+		d.Widgets,
+	}
+	if d.Profile != "" {
+		allIds = append(allIds, d.Profile)
+	}
+	return allIds
 }
 
-func (d DerivedSmartblockIds) IsAccount(id string) bool {
-	return id == d.Workspace || id == d.AccountOld
+func (d DerivedSmartblockIds) IsFilled() bool {
+	return d.Workspace != "" && d.Profile != "" && d.Home != "" && d.Archive != "" && d.Widgets != ""
 }
 
 func (d DerivedSmartblockIds) HasID(sbt smartblock.SmartBlockType) bool {

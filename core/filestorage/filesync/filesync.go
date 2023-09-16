@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 const CName = "filesync"
@@ -69,7 +69,7 @@ type fileSync struct {
 	fileStore    filestore.FileStore
 	eventSender  event.Sender
 	onUpload     func(spaceID, fileID string) error
-	spaceService space.Service
+	spaceService spacecore.SpaceService
 
 	spaceStatsLock    sync.Mutex
 	spaceStats        map[string]SpaceStat
@@ -88,7 +88,7 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
-	f.spaceService = app.MustComponent[space.Service](a)
+	f.spaceService = app.MustComponent[spacecore.SpaceService](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
@@ -127,6 +127,7 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 
 func (f *fileSync) precacheSpaceStats() {
 	// TODO multi-spaces: init for each space: GO-1681
+	// TODO: [MR] adapt to multi-spaces
 	spaceID := f.spaceService.AccountId()
 	_, err := f.SpaceStat(context.Background(), spaceID)
 	if err != nil {

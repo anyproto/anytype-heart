@@ -6,7 +6,7 @@ package bundle
 
 import domain "github.com/anyproto/anytype-heart/core/domain"
 
-const InternalTypesChecksum = "d80636e9d0d0b6e96ecd0bd7e1dd8279298778ed077fe748c4c129de6a9128f1"
+const InternalTypesChecksum = "8dfc459900cb1aa809b38a4715a672ef89b86bf48ff22a8bd76ab4986cd9b841"
 
 // InternalTypes contains the list of types that are not possible to create directly via ObjectCreate
 // to create as a general object because they have specific logic
@@ -16,6 +16,7 @@ var InternalTypes = []domain.TypeKey{
 	TypeKeyVideo,
 	TypeKeyAudio,
 	TypeKeySpace,
+	TypeKeySpaceObject,
 	TypeKeyDashboard,
 	TypeKeyObjectType,
 	TypeKeyRelation,

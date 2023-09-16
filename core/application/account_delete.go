@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 var (
@@ -30,11 +31,11 @@ func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteReq
 	s.refreshRemoteAccountState()
 
 	switch err {
-	case space.ErrSpaceIsDeleted:
+	case spacecore.ErrSpaceIsDeleted:
 		return nil, ErrAccountIsAlreadyDeleted
-	case space.ErrSpaceDeletionPending:
+	case spacecore.ErrSpaceDeletionPending:
 		return nil, ErrAccountIsAlreadyDeleted
-	case space.ErrSpaceIsCreated:
+	case spacecore.ErrSpaceIsCreated:
 		return nil, ErrAccountIsActive
 	}
 	return status, err

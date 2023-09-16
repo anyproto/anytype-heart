@@ -6,7 +6,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -146,40 +145,15 @@ func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, obje
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {
-	spc, err := s.spaceService.CreateSpace(ctx)
+	techSpace := s.spaceService.TechSpace()
+	newSpace, err := techSpace.CreateSpace(ctx)
 	if err != nil {
-		return "", fmt.Errorf("create space: %w", err)
+		return "", fmt.Errorf("error creating space: %w", err)
 	}
-
-	predefinedObjectIDs, err := s.anytype.DerivePredefinedObjects(ctx, spc.Id(), true)
+	predefinedObjectIDs, err := techSpace.SpaceDerivedIDs(ctx, newSpace.SpaceID())
 	if err != nil {
-		// TODO Delete space?
-		return "", fmt.Errorf("derive workspace object for space %s: %w", spc.Id(), err)
+		return "", fmt.Errorf("error getting predefined object ids: %w", err)
 	}
-
-	err = DoStateAsync(s, s.anytype.AccountObjects().Workspace, func(st *state.State, b *editor.Workspaces) error {
-		spaces := pbtypes.CopyVal(st.Store().GetFields()["spaces"])
-		if spaces == nil {
-			spaces = pbtypes.Struct(&types.Struct{
-				Fields: map[string]*types.Value{
-					spc.Id(): pbtypes.String(predefinedObjectIDs.Workspace),
-				},
-			})
-		} else {
-			spaces.GetStructValue().Fields[spc.Id()] = pbtypes.String(predefinedObjectIDs.Workspace)
-		}
-		st.SetInStore([]string{"spaces"}, spaces)
-		return nil
-	})
-	if err != nil {
-		return "", fmt.Errorf("add space to account space: %w", err)
-	}
-
-	err = s.indexer.EnsurePreinstalledObjects(spc.Id())
-	if err != nil {
-		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
-	}
-
 	err = Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
@@ -191,14 +165,13 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {
-		return "", fmt.Errorf("set details for space %s: %w", spc.Id(), err)
+		return "", fmt.Errorf("set details for space %s: %w", newSpace.SpaceID(), err)
 	}
-
-	_, err = s.builtinObjectService.CreateObjectsForUseCase(ctx, spc.Id(), req.UseCase)
+	_, err = s.builtinObjectService.CreateObjectsForUseCase(ctx, newSpace.SpaceID(), req.UseCase)
 	if err != nil {
 		return "", fmt.Errorf("import use-case: %w", err)
 	}
-	return spc.Id(), err
+	return newSpace.SpaceID(), err
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block

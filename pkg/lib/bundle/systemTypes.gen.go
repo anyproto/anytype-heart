@@ -6,7 +6,7 @@ package bundle
 
 import domain "github.com/anyproto/anytype-heart/core/domain"
 
-const SystemTypesChecksum = "1db8347b19281b4f7831f6d7ffe89dab23f37b09ad143208b7e0e34eb4402ac1"
+const SystemTypesChecksum = "5c61d50802df6baefb9d702b8a73f123710960dbd96f3fc17c68cf866c720d84"
 
 // SystemTypes contains types that have some special biz logic depends on them in some objects
 // they shouldn't be removed or edited in any way

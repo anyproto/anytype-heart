@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -36,6 +37,7 @@ const relationsLimit = 10
 
 type ObjectCreator struct {
 	service        *block.Service
+	objectCache    objectcache.Cache
 	picker         getblock.Picker
 	core           core.Service
 	objectStore    objectstore.ObjectStore
@@ -46,6 +48,7 @@ type ObjectCreator struct {
 }
 
 func NewCreator(service *block.Service,
+	cache objectcache.Cache,
 	core core.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
@@ -61,6 +64,7 @@ func NewCreator(service *block.Service,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
 		picker:         picker,
+		objectCache:    cache,
 	}
 }
 
@@ -189,7 +193,7 @@ func (oc *ObjectCreator) createNewObject(
 	st *state.State,
 	newID string,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
-	sb, err := oc.service.CreateTreeObjectWithPayload(ctx, spaceID, payload, func(id string) *sb.InitContext {
+	sb, err := oc.objectCache.CreateTreeObjectWithPayload(ctx, spaceID, payload, func(id string) *sb.InitContext {
 		return &sb.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,
