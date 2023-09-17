@@ -2,6 +2,10 @@ package collection
 
 import (
 	"fmt"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/samber/lo"
+	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -207,6 +211,7 @@ func (s *Service) ObjectToCollection(id string) error {
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
+		setDefaultObjectTypeToViews(st)
 		st.SetObjectType(bundle.TypeKeyCollection.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
@@ -218,4 +223,28 @@ func (s *Service) ObjectToCollection(id string) error {
 	}
 
 	return nil
+}
+
+func setDefaultObjectTypeToViews(st *state.State) {
+	if !lo.Contains(st.ObjectTypes(), bundle.TypeKeySet.URL()) {
+		return
+	}
+
+	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
+	if len(setOfValue) == 0 || !strings.HasPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix) {
+		return
+	}
+
+	dataviewBlock := st.Get(state.DataviewBlockID)
+	if dataviewBlock == nil {
+		return
+	}
+	content, ok := dataviewBlock.Model().Content.(*model.BlockContentOfDataview)
+	if !ok {
+		return
+	}
+
+	for _, view := range content.Dataview.Views {
+		view.DefaultObjectTypeId = setOfValue[0]
+	}
 }
