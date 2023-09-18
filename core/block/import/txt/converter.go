@@ -1,7 +1,6 @@
 package txt
 
 import (
-	"errors"
 	"io"
 	"path/filepath"
 
@@ -50,16 +49,16 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
-	allErrors := converter.NewError()
+	allErrors := converter.NewError(req.Mode)
 	snapshots, targetObjects := t.getSnapshots(req, progress, paths, allErrors)
-	if t.shouldReturnError(req, allErrors, paths) {
+	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
 	}
 	rootCollection := converter.NewRootCollection(t.service)
 	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
 		allErrors.Add(err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if allErrors.ShouldAbortImport(len(paths), req.Type) {
 			return nil, allErrors
 		}
 	}
@@ -87,8 +86,8 @@ func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 			allErrors.Add(converter.ErrCancel)
 			return nil, nil
 		}
-		sn, to := t.handleImportPath(p, req.GetMode(), allErrors)
-		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		sn, to := t.handleImportPath(p, len(paths), allErrors)
+		if allErrors.ShouldAbortImport(len(paths), req.Type) {
 			return nil, nil
 		}
 		snapshots = append(snapshots, sn...)
@@ -97,13 +96,13 @@ func (t *TXT) getSnapshots(req *pb.RpcObjectImportRequest,
 	return snapshots, targetObjects
 }
 
-func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
+func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
 	importSource := source.GetSource(p)
 	defer importSource.Close()
 	err := importSource.Initialize(p)
 	if err != nil {
 		allErrors.Add(err)
-		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if allErrors.ShouldAbortImport(pathsCount, pb.RpcObjectImportRequest_Txt) {
 			return nil, nil
 		}
 	}
@@ -122,7 +121,7 @@ func (t *TXT) handleImportPath(p string, mode pb.RpcObjectImportRequestMode, all
 		blocks, err = t.getBlocksForSnapshot(fileReader)
 		if err != nil {
 			allErrors.Add(err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if allErrors.ShouldAbortImport(pathsCount, pb.RpcObjectImportRequest_Txt) {
 				return true
 			}
 		}
@@ -164,10 +163,4 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot,
 		SbType:   smartblock.SmartBlockTypePage,
 	}
 	return snapshot, snapshot.Id
-}
-
-func (t *TXT) shouldReturnError(req *pb.RpcObjectImportRequest, cErr *converter.ConvertError, path []string) bool {
-	return !cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING ||
-		cErr.IsNoObjectToImportError(len(path)) ||
-		errors.Is(cErr.GetResultError(pb.RpcObjectImportRequest_Txt), converter.ErrCancel)
 }

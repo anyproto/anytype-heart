@@ -36,7 +36,7 @@ func Test_processFiles(t *testing.T) {
 		source := source.GetSource(absolutePath)
 
 		// when
-		files := converter.processFiles(absolutePath, pb.RpcObjectImportRequest_IGNORE_ERRORS.String(), converter2.NewError(), source)
+		files := converter.processFiles(absolutePath, converter2.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
 		assert.Len(t, files, 3)
@@ -68,7 +68,7 @@ func Test_processFiles(t *testing.T) {
 		absolutePath := filepath.Join(workingDir, "./testdata")
 
 		// when
-		files := converter.processFiles(absolutePath, pb.RpcObjectImportRequest_IGNORE_ERRORS.String(), converter2.NewError(), source)
+		files := converter.processFiles(absolutePath, converter2.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
 		assert.Len(t, files, 1)

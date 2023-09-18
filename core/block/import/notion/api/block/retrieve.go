@@ -48,12 +48,12 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	pageID, apiKey string,
 	pageSize int64,
 	mode pb.RpcObjectImportRequestMode) ([]interface{}, *converter.ConvertError) {
-	ce := converter.NewError()
+	ce := converter.NewError(mode)
 	allBlocks := make([]interface{}, 0)
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
 		ce.Add(err)
-		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if ce.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
 			return nil, ce
 		}
 	}
@@ -68,7 +68,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 			if err != nil {
 				ce.Merge(err)
 			}
-			if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if ce.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
 				return nil, ce
 			}
 			cs.SetChildren(children)

@@ -16,16 +16,18 @@ var ErrLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
 
 type ConvertError struct {
 	errors []error
+	mode   pb.RpcObjectImportRequestMode
 }
 
-func NewError() *ConvertError {
+func NewError(mode pb.RpcObjectImportRequestMode) *ConvertError {
 	return &ConvertError{
 		errors: make([]error, 0),
+		mode:   mode,
 	}
 }
 
-func NewFromError(initialError error) *ConvertError {
-	ce := &ConvertError{}
+func NewFromError(initialError error, mode pb.RpcObjectImportRequestMode) *ConvertError {
+	ce := &ConvertError{mode: mode}
 
 	ce.Add(initialError)
 
@@ -33,7 +35,7 @@ func NewFromError(initialError error) *ConvertError {
 }
 
 func NewCancelError(err error) *ConvertError {
-	return NewFromError(errors.Wrap(ErrCancel, err.Error()))
+	return NewFromError(errors.Wrap(ErrCancel, err.Error()), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 }
 
 func (ce *ConvertError) Add(err error) {
@@ -85,6 +87,9 @@ func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType)
 }
 
 func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
+	if importPathsCount == 0 {
+		return false
+	}
 	var countNoObjectsToImport int
 	for _, err := range ce.errors {
 		if errors.Is(err, ErrNoObjectsToImport) {
@@ -92,4 +97,10 @@ func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {
 		}
 	}
 	return importPathsCount == countNoObjectsToImport
+}
+func (ce *ConvertError) ShouldAbortImport(pathsCount int, importType pb.RpcObjectImportRequestType) bool {
+	return !ce.IsEmpty() && ce.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING ||
+		ce.IsNoObjectToImportError(pathsCount) ||
+		errors.Is(ce.GetResultError(importType), ErrLimitExceeded) ||
+		errors.Is(ce.GetResultError(importType), ErrCancel)
 }

@@ -34,20 +34,19 @@ func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath, mode string, importSource source.Source) (map[string]*FileInfo, *ce.ConvertError) {
-	allErrors := ce.NewError()
-	files := m.processFiles(importPath, mode, allErrors, importSource)
+func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *ce.ConvertError) map[string]*FileInfo {
+	files := m.processFiles(importPath, allErrors, importSource)
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
 
-	return files, allErrors
+	return files
 }
 
-func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce.ConvertError, importSource source.Source) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath string, allErrors *ce.ConvertError, importSource source.Source) map[string]*FileInfo {
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(err)
-		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
+		if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
 			return nil
 		}
 	}
@@ -55,7 +54,7 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce
 		allErrors.Add(ce.ErrNoObjectsToImport)
 		return nil
 	}
-	fileInfo := m.getFileInfo(importSource, allErrors, mode)
+	fileInfo := m.getFileInfo(importSource, allErrors)
 	for name, file := range fileInfo {
 		m.processBlocks(name, file, fileInfo)
 		for _, b := range file.ParsedBlocks {
@@ -65,12 +64,12 @@ func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce
 	return fileInfo
 }
 
-func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *ce.ConvertError, mode string) map[string]*FileInfo {
+func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *ce.ConvertError) map[string]*FileInfo {
 	fileInfo := make(map[string]*FileInfo, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
 		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {
 			allErrors.Add(err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
+			if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
 				return true
 			}
 		}

@@ -131,7 +131,7 @@ func (i *Import) importFromBuiltinConverter(ctx *session.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
 	progress process.Progress) error {
-	allErrors := converter.NewError()
+	allErrors := converter.NewError(0)
 	res, err := c.GetSnapshots(req, progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
@@ -153,7 +153,7 @@ func (i *Import) importFromBuiltinConverter(ctx *session.Context,
 }
 
 func (i *Import) importFromExternalSource(ctx *session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
-	allErrors := converter.NewError()
+	allErrors := converter.NewError(0)
 	if req.Snapshots != nil {
 		sn := make([]*converter.Snapshot, len(req.Snapshots))
 		for i, s := range req.Snapshots {
@@ -226,7 +226,7 @@ func (i *Import) ValidateNotionToken(
 func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish(nil)
-	allErrors := converter.NewError()
+	allErrors := converter.NewError(0)
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]

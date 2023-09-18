@@ -2,7 +2,6 @@ package csv
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 
@@ -60,9 +59,9 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	if params == nil {
 		return nil, nil
 	}
-	allErrors := converter.NewError()
+	allErrors := converter.NewError(req.Mode)
 	result := c.createObjectsFromCSVFiles(req, progress, params, allErrors)
-	if c.needToReturnError(req, allErrors, params.Path) {
+	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
 	}
 	rootCollection := converter.NewRootCollection(c.collectionService)
@@ -84,13 +83,6 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 	return &converter.Response{Snapshots: result.snapshots}, allErrors
 }
 
-func (c *CSV) needToReturnError(req *pb.RpcObjectImportRequest, allErrors *converter.ConvertError, paths []string) bool {
-	return (!allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
-		(allErrors.IsNoObjectToImportError(len(paths))) ||
-		errors.Is(allErrors.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrLimitExceeded) ||
-		errors.Is(allErrors.GetResultError(pb.RpcObjectImportRequest_Csv), converter.ErrCancel)
-}
-
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	params *pb.RpcObjectImportRequestCsvParams,
@@ -101,7 +93,7 @@ func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
 	result := &Result{}
 	for _, p := range params.GetPath() {
 		pathResult := c.getSnapshotsFromFiles(req, p, allErrors, str, progress)
-		if c.needToReturnError(req, allErrors, params.GetPath()) {
+		if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
 			return nil
 		}
 		result.Merge(pathResult)
@@ -121,7 +113,7 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(fmt.Errorf("failed to extract files: %s", err.Error()))
-		if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
 			return nil
 		}
 	}
@@ -132,11 +124,10 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
 	progress.SetTotal(int64(numberOfFiles) * numberOfProgressSteps)
-	return c.getSnapshotsAndObjectsIDs(req.Mode, importSource, params, str, allErrors, progress)
+	return c.getSnapshotsAndObjectsIDs(importSource, params, str, allErrors, progress)
 }
 
-func (c *CSV) getSnapshotsAndObjectsIDs(mode pb.RpcObjectImportRequestMode,
-	importSource source.Source,
+func (c *CSV) getSnapshotsAndObjectsIDs(importSource source.Source,
 	params *pb.RpcObjectImportRequestCsvParams,
 	str Strategy,
 	allErrors *converter.ConvertError,
@@ -152,7 +143,7 @@ func (c *CSV) getSnapshotsAndObjectsIDs(mode pb.RpcObjectImportRequestMode,
 		csvTable, err := c.getCSVTable(fileReader, params.GetDelimiter())
 		if err != nil {
 			allErrors.Add(err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv) {
 				return true
 			}
 			return false
@@ -163,7 +154,7 @@ func (c *CSV) getSnapshotsAndObjectsIDs(mode pb.RpcObjectImportRequestMode,
 		collectionID, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
 		if err != nil {
 			allErrors.Add(err)
-			if errors.Is(err, converter.ErrLimitExceeded) || mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv) {
 				return true
 			}
 			return false

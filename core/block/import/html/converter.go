@@ -1,7 +1,6 @@
 package html
 
 import (
-	"errors"
 	"io"
 	"path/filepath"
 
@@ -59,16 +58,16 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 		return nil, nil
 	}
 	progress.SetProgressMessage("Start creating snapshots from files")
-	allErrors := converter.NewError()
+	allErrors := converter.NewError(req.Mode)
 	snapshots, targetObjects := h.getSnapshots(req, progress, path, allErrors)
-	if h.shouldReturnError(req, allErrors, path) {
+	if allErrors.ShouldAbortImport(len(path), req.Type) {
 		return nil, allErrors
 	}
 	rootCollection := converter.NewRootCollection(h.collectionService)
 	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
 		allErrors.Add(err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if allErrors.ShouldAbortImport(len(path), req.Type) {
 			return nil, allErrors
 		}
 	}
@@ -85,12 +84,6 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	}, allErrors
 }
 
-func (h *HTML) shouldReturnError(req *pb.RpcObjectImportRequest, cErr *converter.ConvertError, path []string) bool {
-	return (!cErr.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
-		(cErr.IsNoObjectToImportError(len(path))) ||
-		errors.Is(cErr.GetResultError(pb.RpcObjectImportRequest_Html), converter.ErrCancel)
-}
-
 func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress, path []string, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
 	snapshots := make([]*converter.Snapshot, 0)
 	targetObjects := make([]string, 0)
@@ -99,8 +92,8 @@ func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 			allErrors.Add(converter.ErrCancel)
 			return nil, nil
 		}
-		sn, to := h.handleImportPath(p, req.GetMode(), allErrors)
-		if h.shouldReturnError(req, allErrors, path) {
+		sn, to := h.handleImportPath(p, allErrors)
+		if allErrors.ShouldAbortImport(len(path), req.Type) {
 			return nil, nil
 		}
 		snapshots = append(snapshots, sn...)
@@ -109,13 +102,13 @@ func (h *HTML) getSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	return snapshots, targetObjects
 }
 
-func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
+func (h *HTML) handleImportPath(path string, allErrors *converter.ConvertError) ([]*converter.Snapshot, []string) {
 	importSource := source.GetSource(path)
 	defer importSource.Close()
 	err := importSource.Initialize(path)
 	if err != nil {
 		allErrors.Add(err)
-		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if allErrors.ShouldAbortImport(len(path), pb.RpcObjectImportRequest_Html) {
 			return nil, nil
 		}
 	}
@@ -124,11 +117,10 @@ func (h *HTML) handleImportPath(path string, mode pb.RpcObjectImportRequestMode,
 		allErrors.Add(converter.ErrNoObjectsToImport)
 		return nil, nil
 	}
-	return h.getSnapshotsAndRootObjects(path, mode, allErrors, numberOfFiles, importSource)
+	return h.getSnapshotsAndRootObjects(path, allErrors, numberOfFiles, importSource)
 }
 
 func (h *HTML) getSnapshotsAndRootObjects(path string,
-	mode pb.RpcObjectImportRequestMode,
 	allErrors *converter.ConvertError,
 	numberOfFiles int,
 	importSource source.Source,
@@ -142,7 +134,7 @@ func (h *HTML) getSnapshotsAndRootObjects(path string,
 		blocks, err := h.getBlocksForSnapshot(fileReader, importSource, path)
 		if err != nil {
 			allErrors.Add(err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if allErrors.ShouldAbortImport(len(path), pb.RpcObjectImportRequest_Html) {
 				return true
 			}
 		}
