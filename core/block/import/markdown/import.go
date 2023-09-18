@@ -131,6 +131,7 @@ func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest,
 	if m.processImportStep(pathsCount, files, progress, allErrors, details, m.setInboundLinks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
@@ -148,10 +149,7 @@ func (m *Markdown) processImportStep(pathCount int,
 	callback func(map[string]*FileInfo, process.Progress, map[string]*types.Struct, *converter.ConvertError),
 ) (abortImport bool) {
 	callback(files, progress, details, allErrors)
-	if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Markdown) {
-		return true
-	}
-	return false
+	return allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Markdown)
 }
 
 func (m *Markdown) convertCsvToLinks(csvFileName string, files map[string]*FileInfo) (blocks []*model.Block) {
@@ -298,8 +296,6 @@ func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.
 			}
 		}
 	}
-
-	return
 }
 
 func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *converter.ConvertError) {
@@ -338,8 +334,6 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress pr
 
 		file.ParsedBlocks = blocks
 	}
-
-	return
 }
 func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *converter.ConvertError) {
 	progress.SetProgressMessage("Start creating link blocks")
@@ -368,8 +362,6 @@ func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Pr
 			},
 		})
 	}
-
-	return
 }
 
 func (m *Markdown) createSnapshots(files map[string]*FileInfo,
@@ -435,7 +427,6 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.P
 			},
 		})
 	}
-	return
 }
 
 func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) []string {
@@ -506,8 +497,6 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 			}
 		}
 	}
-
-	return
 }
 
 func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*types.Struct, allErrors *converter.ConvertError) {
@@ -529,7 +518,6 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.
 			}
 		}
 	}
-	return
 }
 
 func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, details map[string]*types.Struct, allErrors *converter.ConvertError) {
@@ -546,8 +534,6 @@ func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progres
 			m.setDetails(file, name, details)
 		}
 	}
-
-	return
 }
 
 func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[string]*types.Struct) {
