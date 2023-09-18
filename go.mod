@@ -10,7 +10,7 @@ require (
 	github.com/anyproto/any-sync v0.3.0-alpha.2
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
-	github.com/blevesearch/bleve/v2 v2.3.9
+	github.com/blevesearch/bleve/v2 v2.3.10
 	github.com/chai2010/webp v1.1.1
 	github.com/cheggaaa/mb v1.0.3
 	github.com/cheggaaa/mb/v3 v3.0.1
@@ -76,9 +76,9 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.8
 	github.com/stretchr/testify v1.8.4
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	github.com/vektra/mockery/v2 v2.33.2
+	github.com/vektra/mockery/v2 v2.33.3
 	github.com/yuin/goldmark v1.5.6
-	go.uber.org/mock v0.2.0
+	go.uber.org/mock v0.3.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
@@ -110,21 +110,21 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
-	github.com/blevesearch/bleve_index_api v1.0.5 // indirect
-	github.com/blevesearch/geo v0.1.17 // indirect
+	github.com/blevesearch/bleve_index_api v1.0.6 // indirect
+	github.com/blevesearch/geo v0.1.18 // indirect
 	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect
 	github.com/blevesearch/gtreap v0.1.1 // indirect
 	github.com/blevesearch/mmap-go v1.0.4 // indirect
-	github.com/blevesearch/scorch_segment_api/v2 v2.1.5 // indirect
+	github.com/blevesearch/scorch_segment_api/v2 v2.1.6 // indirect
 	github.com/blevesearch/segment v0.9.1 // indirect
 	github.com/blevesearch/snowballstem v0.9.0 // indirect
 	github.com/blevesearch/upsidedown_store_api v1.0.2 // indirect
 	github.com/blevesearch/vellum v1.0.10 // indirect
-	github.com/blevesearch/zapx/v11 v11.3.9 // indirect
-	github.com/blevesearch/zapx/v12 v12.3.9 // indirect
-	github.com/blevesearch/zapx/v13 v13.3.9 // indirect
-	github.com/blevesearch/zapx/v14 v14.3.9 // indirect
-	github.com/blevesearch/zapx/v15 v15.3.12 // indirect
+	github.com/blevesearch/zapx/v11 v11.3.10 // indirect
+	github.com/blevesearch/zapx/v12 v12.3.10 // indirect
+	github.com/blevesearch/zapx/v13 v13.3.10 // indirect
+	github.com/blevesearch/zapx/v14 v14.3.10 // indirect
+	github.com/blevesearch/zapx/v15 v15.3.13 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
