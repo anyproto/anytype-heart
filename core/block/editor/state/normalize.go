@@ -47,6 +47,54 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	return
 }
 
+// MigrateSubobjectLinks do the in-place migration for links to sub-objects to provide backward compatibility
+// todo: remove it and make a persistent migration
+func (s *State) MigrateSubobjectLinks(migrateId func(oldId string) (newId string, migrated bool)) (err error) {
+	for _, rel := range s.GetRelationLinks() {
+		if rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
+			vals := pbtypes.GetStringList(s.Details(), rel.Key)
+			changed := false
+			for i := range vals {
+				newId, migrated := migrateId(vals[i])
+				if !migrated {
+					continue
+				}
+				vals[i] = newId
+				changed = true
+			}
+			if changed {
+				s.SetDetail(rel.Key, pbtypes.StringList(vals))
+			}
+		}
+	}
+	// migrate links in blocks
+	for _, b := range s.Blocks() {
+		switch a := b.Content.(type) {
+		// we purposely don't migrate bookmarks and dataview links because they can't have sub-objects
+		case *model.BlockContentOfLink:
+			newId, migrated := migrateId(a.Link.TargetBlockId)
+			if !migrated {
+				continue
+			}
+
+			a.Link.TargetBlockId = newId
+		case *model.BlockContentOfText:
+			for _, mark := range a.Text.Marks.Marks {
+				if mark.Type != model.BlockContentTextMark_Link {
+					continue
+				}
+				newId, migrated := migrateId(mark.Param)
+				if !migrated {
+					continue
+				}
+				mark.Param = newId
+			}
+
+		}
+	}
+	return
+}
+
 func (s *State) normalizeSize() (err error) {
 	if iErr := s.Iterate(func(b simple.Block) (isContinue bool) {
 		size := b.Model().Size()
