@@ -118,6 +118,7 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 	if firstTextBlock != nil &&
 		req.SelectedTextRange != nil &&
 		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) &&
 		lastTextBlock == nil {
 		cutBlock, _, err := simple.New(firstTextBlock).(text.Block).RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
@@ -179,7 +180,8 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	if firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		req.SelectedTextRange != nil &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) {
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) {
 		first := s.Get(firstTextBlock.Id).(text.Block)
 		cutBlock, initialBlock, err := first.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
@@ -196,6 +198,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 			}
 		}
 
+		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
