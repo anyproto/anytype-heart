@@ -19,7 +19,6 @@ const (
 
 type Widget interface {
 	CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error)
-	CreateBlocks(s *state.State, reqs []*pb.RpcBlockCreateWidgetRequest) error
 }
 
 type widget struct {
@@ -106,13 +105,4 @@ func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest
 	}
 
 	return wrapper.Model().Id, nil
-}
-
-func (w *widget) CreateBlocks(s *state.State, reqs []*pb.RpcBlockCreateWidgetRequest) error {
-	for _, req := range reqs {
-		if _, err := w.CreateBlock(s, req); err != nil {
-			return err
-		}
-	}
-	return nil
 }
