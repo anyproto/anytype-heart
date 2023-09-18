@@ -48,13 +48,13 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	pageID, apiKey string,
 	pageSize int64,
 	mode pb.RpcObjectImportRequestMode) ([]interface{}, *converter.ConvertError) {
-	ce := converter.NewError()
+	converterError := converter.NewError()
 	allBlocks := make([]interface{}, 0)
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
-		ce.Add(err)
+		converterError.Add(err)
 		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, ce
+			return nil, converterError
 		}
 	}
 	for _, b := range blocks {
@@ -63,16 +63,20 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 			allBlocks = append(allBlocks, b)
 			continue
 		}
+		var (
+			children []interface{}
+			childErr *converter.ConvertError
+		)
 		if cs.HasChild() {
-			children, err := s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
-			if err != nil {
-				ce.Merge(err)
+			children, childErr = s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
+			if !childErr.IsEmpty() {
+				converterError.Merge(childErr)
+				if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+					return nil, converterError
+				}
 			}
-			if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, ce
-			}
-			cs.SetChildren(children)
 		}
+		cs.SetChildren(children)
 		allBlocks = append(allBlocks, b)
 	}
 	return allBlocks, nil
@@ -393,7 +397,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	b, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		return Response{}, err
+		return Response{}, fmt.Errorf("GetBlocks: %s", err)
 	}
 	var objects Response
 	if res.StatusCode != http.StatusOK {
@@ -408,7 +412,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	err = json.Unmarshal(b, &objects)
 
 	if err != nil {
-		return Response{}, err
+		return Response{}, fmt.Errorf("GetBlocks: %s", err)
 	}
 	return objects, nil
 }
