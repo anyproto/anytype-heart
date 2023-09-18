@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -295,39 +296,44 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 
 func (b *builtinObjects) createWidgets(ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
-	reqs := make([]*pb.RpcBlockCreateWidgetRequest, 0)
-
 	widgetObjectID := b.coreService.PredefinedBlocks().Widgets
-	for _, param := range widgetParams[useCase] {
-		objectID := param.objectID
-		if param.isObjectIDChanged {
-			objectID, err = b.getNewObjectID(objectID)
-			if err != nil {
-				log.Errorf("Failed to get new id with old id: '%s'", objectID)
+
+	if err = block.DoStateCtx(b.service, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+		for _, param := range widgetParams[useCase] {
+			objectID := param.objectID
+			if param.isObjectIDChanged {
+				objectID, err = b.getNewObjectID(objectID)
+				if err != nil {
+					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
+					continue
+				}
 			}
-		}
-		request := &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectID,
-			Position:     model.Block_Bottom,
-			WidgetLayout: param.layout,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: objectID,
-						Style:         model.BlockContentLink_Page,
-						IconSize:      model.BlockContentLink_SizeNone,
-						CardStyle:     model.BlockContentLink_Inline,
-						Description:   model.BlockContentLink_None,
+			request := &pb.RpcBlockCreateWidgetRequest{
+				ContextId:    widgetObjectID,
+				Position:     model.Block_Bottom,
+				WidgetLayout: param.layout,
+				Block: &model.Block{
+					Content: &model.BlockContentOfLink{
+						Link: &model.BlockContentLink{
+							TargetBlockId: objectID,
+							Style:         model.BlockContentLink_Page,
+							IconSize:      model.BlockContentLink_SizeNone,
+							CardStyle:     model.BlockContentLink_Inline,
+							Description:   model.BlockContentLink_None,
+						},
 					},
 				},
-			},
+			}
+			if param.viewID != "" {
+				request.ViewId = param.viewID
+			}
+			if _, err = w.CreateBlock(s, request); err != nil {
+				return err
+			}
 		}
-		if param.viewID != "" {
-			request.ViewId = param.viewID
-		}
-		reqs = append(reqs, request)
-	}
-	if _, err = b.service.CreateWidgetBlocks(ctx, reqs); err != nil {
-		log.Errorf("Failed to make Widget blocks: %s", err.Error())
+		return nil
+	}); err != nil {
+		log.Errorf("failed to create widget blocks for useCase '%s': %v",
+			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
 	}
 }

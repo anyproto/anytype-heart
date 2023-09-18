@@ -848,14 +848,6 @@ func (s *Service) CreateWidgetBlock(ctx *session.Context, req *pb.RpcBlockCreate
 	return id, err
 }
 
-func (s *Service) CreateWidgetBlocks(ctx *session.Context, reqs []*pb.RpcBlockCreateWidgetRequest) (string, error) {
-	var id string
-	err := DoStateCtx(s, ctx, reqs[0].ContextId, func(st *state.State, w widget.Widget) error {
-		return w.CreateBlocks(st, reqs)
-	})
-	return id, err
-}
-
 func (s *Service) CopyDataviewToBlock(ctx *session.Context,
 	req *pb.RpcBlockDataviewCreateFromExistingObjectRequest) ([]*model.BlockContentDataviewView, error) {
 
