@@ -13,7 +13,7 @@ import (
 
 var (
 	maxChildrenThreshold = 40
-	blockSizeLimit       = 65 * 1024
+	blockSizeLimit       = 1 * 1024 * 1024
 	detailSizeLimit      = 65 * 1024
 )
 
