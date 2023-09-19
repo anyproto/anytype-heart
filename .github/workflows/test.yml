@@ -44,7 +44,7 @@ jobs:
           license_finder --enabled-package-managers gomodules
       - name: Generate mocks
         run: |
-          go install go.uber.org/mock/mockgen@latest
+          go install go.uber.org/mock/mockgen@v0.3.0
           CGO_ENABLED=0 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go generate ./...
       - name: Go test
         env:
