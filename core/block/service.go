@@ -1039,7 +1039,7 @@ func (s *Service) DoWithContext(ctx context.Context, id string, apply func(b sma
 	return apply(sb)
 }
 
-func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
+func (s *Service) ObjectApplyTemplate(contextId, templateId string, deleteInternalFlags bool) error {
 	return s.Do(contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
 		name := pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String())
@@ -1063,8 +1063,10 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.SetObjectType(objType)
 
 		flags := internalflag.NewFromState(ts)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorSelectTemplate)
+		if deleteInternalFlags {
+			flags.Remove(model.InternalFlag_editorSelectType)
+			flags.Remove(model.InternalFlag_editorSelectTemplate)
+		}
 		flags.AddToState(ts)
 
 		return b.Apply(ts, smartblock.NoRestrictions)

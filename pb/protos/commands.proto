@@ -1759,6 +1759,7 @@ message Rpc {
                 string contextId = 1;
                 // id of template
                 string templateId = 2;
+                bool deleteInternalFlags = 3;
             }
 
             message Response {

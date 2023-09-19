@@ -67,7 +67,7 @@ func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjec
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ObjectApplyTemplate(req.ContextId, req.TemplateId)
+		return bs.ObjectApplyTemplate(req.ContextId, req.TemplateId, req.DeleteInternalFlags)
 	})
 	return response(err)
 }
