@@ -356,6 +356,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			logger.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
+		cl.SetChildren([]interface{}{})
 		blocks = append(blocks, &cl)
 	case TypeColumn:
 		var cb ColumnBlock
