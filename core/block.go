@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 
 	"github.com/globalsign/mgo/bson"
 	"google.golang.org/grpc/metadata"
@@ -252,6 +254,28 @@ func (mw *Middleware) BlockExport(cctx context.Context, req *pb.RpcBlockExportRe
 	}
 
 	return response(pb.RpcBlockExportResponseError_NULL, path, nil)
+}
+
+func (mw *Middleware) BlockSetCarriage(_ context.Context, req *pb.RpcBlockSetCarriageRequest) *pb.RpcBlockSetCarriageResponse {
+	response := func(code pb.RpcBlockSetCarriageResponseErrorCode, err error) *pb.RpcBlockSetCarriageResponse {
+		m := &pb.RpcBlockSetCarriageResponse{Error: &pb.RpcBlockSetCarriageResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.Do(req.ObjectId, func(sb smartblock.SmartBlock) error {
+			return sb.History().SetCarriageInfo(undo.CarriageInfo{
+				CarriageBlockID:  req.BlockId,
+				CarriagePosition: req.CarriagePosition,
+			})
+		})
+	})
+	if err != nil {
+		return response(pb.RpcBlockSetCarriageResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockSetCarriageResponseError_NULL, err)
 }
 
 func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {

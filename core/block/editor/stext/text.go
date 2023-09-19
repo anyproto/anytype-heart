@@ -2,6 +2,7 @@ package stext
 
 import (
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"sort"
 	"strings"
 	"time"
@@ -156,6 +157,10 @@ func (t *textImpl) Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (new
 	if err = t.Apply(s); err != nil {
 		return
 	}
+	_ = t.History().SetCarriageInfo(undo.CarriageInfo{
+		CarriageBlockID:  newId,
+		CarriagePosition: 0,
+	})
 	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
 	metrics.SharedClient.RecordEvent(metrics.BlockSplit{
 		ObjectId:    t.Id(),
@@ -333,6 +338,10 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 			return
 		}
 		msgs := ctx.GetMessages()
+		_ = t.History().SetCarriageInfo(undo.CarriageInfo{
+			CarriageBlockID:  req.BlockId,
+			CarriagePosition: req.CarriagePosition,
+		})
 		var filtered = msgs[:0]
 		for _, msg := range msgs {
 			if msg.GetBlockSetText() == nil {

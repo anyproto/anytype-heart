@@ -32,6 +32,11 @@ type ObjectType struct {
 	Before, After []string
 }
 
+type CarriageInfo struct {
+	CarriageBlockID  string
+	CarriagePosition int32
+}
+
 type Action struct {
 	Add           []simple.Block
 	Change        []Change
@@ -40,6 +45,7 @@ type Action struct {
 	RelationLinks *RelationLinks
 	Group         string
 	ObjectTypes   *ObjectType
+	CarriageInfo  CarriageInfo
 }
 
 func (a Action) IsEmpty() bool {
@@ -84,6 +90,7 @@ type History interface {
 	Next() (Action, error)
 	Reset()
 	Counters() (undo int32, redo int32)
+	SetCarriageInfo(info CarriageInfo) error
 }
 
 func NewHistory(limit int) History {
@@ -148,6 +155,14 @@ func (h *history) Reset() {
 
 func (h *history) Counters() (undo int32, redo int32) {
 	return int32(h.pointer), int32(len(h.actions) - h.pointer)
+}
+
+func (h *history) SetCarriageInfo(info CarriageInfo) error {
+	if h.pointer > 0 {
+		h.actions[h.pointer-1].CarriageInfo = info
+		return nil
+	}
+	return ErrNoHistory
 }
 
 func (h *history) applyGroup(b Action) (ok bool) {

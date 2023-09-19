@@ -156,6 +156,7 @@ service ClientCommands {
     rpc BlockCut (anytype.Rpc.Block.Cut.Request) returns (anytype.Rpc.Block.Cut.Response);
     rpc BlockSetFields (anytype.Rpc.Block.SetFields.Request) returns (anytype.Rpc.Block.SetFields.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
+    rpc BlockSetCarriage (anytype.Rpc.Block.SetCarriage.Request) returns (anytype.Rpc.Block.SetCarriage.Response);
 
     rpc BlockListDelete (anytype.Rpc.Block.ListDelete.Request) returns (anytype.Rpc.Block.ListDelete.Response);
     rpc BlockListMoveToExistingObject (anytype.Rpc.Block.ListMoveToExistingObject.Request) returns (anytype.Rpc.Block.ListMoveToExistingObject.Response);
