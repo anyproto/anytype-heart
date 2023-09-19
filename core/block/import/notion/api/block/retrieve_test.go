@@ -990,7 +990,7 @@ func TestTableBlocks(t *testing.T) {
 	assert.Len(t, bl, 3)
 }
 
-func Test_GetBlocksAndChildrenResponseError(t *testing.T) {
+func Test_GetBlocksAndChildrenHasChildrenIsFalse(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`
 		{
@@ -1034,6 +1034,57 @@ func Test_GetBlocksAndChildrenResponseError(t *testing.T) {
 
 	blockService := New(c)
 	bl, err := blockService.GetBlocksAndChildren(context.TODO(), "id", "key", pageSize, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	assert.Nil(t, err)
+	columnListBlock, ok := bl[0].(*ColumnListBlock)
+	assert.True(t, ok)
+	_, ok = columnListBlock.ColumnList.([]interface{})
+	assert.True(t, ok)
+}
+
+func Test_GetBlocksAndChildrenResponseError(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`
+		{
+			"object": "list",
+			"results": [
+				{
+					"object": "block",
+					"id": "1",
+					"parent": {
+						"type": "page_id",
+						"page_id": "page_id"
+					},
+					"created_time": "2023-09-18T09:30:00.000Z",
+					"last_edited_time": "2023-09-18T09:30:00.000Z",
+					"created_by": {
+						"object": "user",
+						"id": "user"
+					},
+					"last_edited_by": {
+						"object": "user",
+						"id": "user"
+					},
+					"has_children": true,
+					"archived": false,
+					"type": "column_list",
+					"column_list": {}
+				}
+			],
+			"next_cursor": null,
+			"has_more": false,
+			"type": "block",
+			"block": {}
+		}
+		`))
+	}))
+
+	defer s.Close()
+	pageSize := int64(100)
+	c := client.NewClient()
+	c.BasePath = s.URL
+
+	blockService := New(c)
+	bl, err := blockService.getBlocks(context.TODO(), "id", "key", pageSize)
 	assert.Nil(t, err)
 	columnListBlock, ok := bl[0].(*ColumnListBlock)
 	assert.True(t, ok)
