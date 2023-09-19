@@ -48,11 +48,12 @@ func (s *State) normalize(withLayouts bool) (err error) {
 
 func (s *State) normalizeSize() (err error) {
 	if iErr := s.Iterate(func(b simple.Block) (isContinue bool) {
-		size := b.Model().Size()
-		if size > blockSizeLimit {
-			err = fmt.Errorf("size of block '%s' (%d) is above the limit of %d", b.Model().Id, size, blockSizeLimit)
-			return false
-		}
+		// TODO: GO-2062 Need to refactor block size limiting process - either split block, or cut it
+		//size := b.Model().Size()
+		//if size > blockSizeLimit {
+		//	err = fmt.Errorf("size of block '%s' (%d) is above the limit of %d", b.Model().Id, size, blockSizeLimit)
+		//	return false
+		//}
 		return true
 	}); iErr != nil {
 		return iErr
