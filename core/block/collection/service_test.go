@@ -175,4 +175,26 @@ func TestSetObjectTypeToViews(t *testing.T) {
 		// then
 		assertViews(st, bundle.TypeKeyBook.URL())
 	})
+
+	t.Run("object is a set by internal type", func(t *testing.T) {
+		// given
+		st := generateState(bundle.TypeKeySet.URL(), bundle.TypeKeyFile.URL())
+
+		// when
+		setDefaultObjectTypeToViews(st)
+
+		// then
+		assertViews(st, "")
+	})
+
+	t.Run("object is a set by not creatable type", func(t *testing.T) {
+		// given
+		st := generateState(bundle.TypeKeySet.URL(), bundle.TypeKeyCollection.URL())
+
+		// when
+		setDefaultObjectTypeToViews(st)
+
+		// then
+		assertViews(st, "")
+	})
 }
