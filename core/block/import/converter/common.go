@@ -2,6 +2,7 @@ package converter
 
 import (
 	"bytes"
+	"github.com/anyproto/anytype-heart/core/block/import/filetimes"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
@@ -41,7 +41,7 @@ func GetSourceDetail(fileName, importPath string) string {
 }
 
 func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
-	creationTime, modTime := source.ExtractFileTimes(sourcePath)
+	creationTime, modTime := filetimes.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
 	}

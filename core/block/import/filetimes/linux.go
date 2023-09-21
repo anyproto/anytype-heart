@@ -1,15 +1,18 @@
-//go:build linux || darwin
-// +build linux darwin
+//go:build (linux || darwin) && !android
 
-package source
+package filetimes
 
 import (
 	"os"
 	"syscall"
 	"time"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
+
+var log = logging.Logger("import")
 
 func ExtractFileTimes(fileName string) (int64, int64) {
 	fileInfo, err := os.Stat(fileName)
