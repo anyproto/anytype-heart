@@ -235,6 +235,10 @@ func setDefaultObjectTypeToViews(st *state.State) {
 		return
 	}
 
+	if isNotCreatableType(bundle.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+		return
+	}
+
 	dataviewBlock := st.Get(state.DataviewBlockID)
 	if dataviewBlock == nil {
 		return
@@ -247,4 +251,8 @@ func setDefaultObjectTypeToViews(st *state.State) {
 	for _, view := range content.Dataview.Views {
 		view.DefaultObjectTypeId = setOfValue[0]
 	}
+}
+
+func isNotCreatableType(key bundle.TypeKey) bool {
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType, bundle.TypeKeySet, bundle.TypeKeyCollection), key)
 }
