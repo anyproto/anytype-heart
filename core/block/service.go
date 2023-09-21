@@ -962,8 +962,7 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 	return Do(s, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		name := pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String())
-		ts, err := s.StateFromTemplate(templateId, name)
+		ts, err := s.StateFromTemplate(templateId, "")
 		if err != nil {
 			return err
 		}
@@ -982,12 +981,10 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectTypeKey(objType)
 
-		flags := internalflag.NewFromState(ts)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorSelectTemplate)
+		flags := internalflag.NewFromState(orig)
 		flags.AddToState(ts)
 
-		return b.Apply(ts, smartblock.NoRestrictions)
+		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
 }
 

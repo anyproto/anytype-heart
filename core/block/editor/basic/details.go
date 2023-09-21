@@ -291,11 +291,10 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 	}
 
 	flags := internalflag.NewFromState(s)
-	flags.Remove(model.InternalFlag_editorSelectType)
 	flags.AddToState(s)
 
 	// send event here to send updated details to client
-	if err = bs.Apply(s, smartblock.NoRestrictions); err != nil {
+	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
 		return
 	}
 	return

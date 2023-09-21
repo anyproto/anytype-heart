@@ -274,10 +274,15 @@ func (t *textImpl) newSetTextState(blockId string, ctx session.Context) *state.S
 
 func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
+		applyFlags := []smartblock.ApplyFlag{smartblock.NoHooks}
+		if t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID {
+			applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
+		}
+
 		// We create new context to avoid sending events to the current session
 		ctx := session.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
-		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks); err != nil {
+		if err := t.Apply(t.lastSetTextState, applyFlags...); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
 		}
 		t.sendEvents(ctx)
@@ -322,6 +327,11 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 		}
 	}()
 
+	applyFlags := make([]smartblock.ApplyFlag, 0)
+	if req.BlockId == state.TitleBlockID || req.BlockId == state.DescriptionBlockID {
+		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
+	}
+
 	if len(req.Text) > textSizeLimit {
 		log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)
 		req.Text = req.Text[:textSizeLimit]
@@ -342,7 +352,7 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 
 	if _, ok := tb.(text.DetailsBlock); ok || wasEmpty {
 		defer t.cancelSetTextState()
-		if err = t.Apply(s); err != nil {
+		if err = t.Apply(s, applyFlags...); err != nil {
 			return
 		}
 		t.sendEvents(ctx)

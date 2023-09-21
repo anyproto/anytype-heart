@@ -58,6 +58,7 @@ const (
 	NoHooks
 	DoSnapshot
 	SkipIfNoChanges
+	KeepInternalFlags
 )
 
 type Hook int
@@ -612,6 +613,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		checkRestrictions = true
 		hooks             = true
 		skipIfNoChanges   = false
+		keepInternalFlags = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -627,6 +629,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			hooks = false
 		case SkipIfNoChanges:
 			skipIfNoChanges = true
+		case KeepInternalFlags:
+			keepInternalFlags = true
 		}
 	}
 
@@ -655,7 +659,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
 		}
 	}
-	sb.onApply(s)
+	sb.onApply(s, keepInternalFlags)
 	// this one will be reverted in case we don't have any actual change being made
 	s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 
@@ -1297,23 +1301,30 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	}
 }
 
-func (sb *smartBlock) onApply(s *state.State) {
+func (sb *smartBlock) onApply(s *state.State, keepInternalFlags bool) {
+	if !keepInternalFlags {
+		removeInternalFlags(s)
+	}
+	sb.setRestrictionsDetail(s)
+	sb.injectLinksDetails(s)
+}
+
+func removeInternalFlags(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
 	// Run empty check only if any of these flags are present
-	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) {
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) || flags.Has(model.InternalFlag_editorSelectTemplate) {
+
 		if !s.IsEmpty(true) {
 			flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		}
 		if !s.IsEmpty(false) {
 			flags.Remove(model.InternalFlag_editorSelectType)
+			flags.Remove(model.InternalFlag_editorSelectTemplate)
 		}
 
 		flags.AddToState(s)
 	}
-
-	sb.setRestrictionsDetail(s)
-	sb.injectLinksDetails(s)
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
