@@ -1,6 +1,6 @@
 //go:build windows
 
-package filetimes
+package filetime
 
 import (
 	"os"

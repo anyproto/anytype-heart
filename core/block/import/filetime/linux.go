@@ -1,6 +1,6 @@
 //go:build (linux || darwin) && !android
 
-package filetimes
+package filetime
 
 import (
 	"os"
@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
@@ -22,7 +21,7 @@ func ExtractFileTimes(fileName string) (int64, int64) {
 	}
 
 	if stat, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
-		creationTime := time.Unix(stat.Ctimespec.Sec, stat.Ctimespec.Nsec)
+		creationTime := time.Unix(stat.Birthtimespec.Sec, stat.Birthtimespec.Nsec)
 		modTime := fileInfo.ModTime().Unix()
 		return creationTime.Unix(), modTime
 	}
