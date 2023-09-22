@@ -29,7 +29,7 @@ var log = logging.Logger(CName)
 type Service interface {
 	app.Component
 	GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error)
-	Delete(ctx context.Context) error
+	Delete(ctx context.Context) (spacecore.NetworkStatus, error)
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
 	PersonalSpaceID() string
@@ -62,8 +62,8 @@ func (s *service) Init(a *app.App) (err error) {
 	return
 }
 
-func (s *service) Delete(ctx context.Context) error {
-	return fmt.Errorf("not implemented")
+func (s *service) Delete(ctx context.Context) (spacecore.NetworkStatus, error) {
+	return spacecore.NetworkStatus{}, fmt.Errorf("not implemented")
 }
 
 func (s *service) RevertDeletion(ctx context.Context) error {

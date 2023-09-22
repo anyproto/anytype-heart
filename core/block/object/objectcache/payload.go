@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 const ChangeType = "anytype.object"

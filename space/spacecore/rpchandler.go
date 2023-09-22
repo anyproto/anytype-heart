@@ -27,7 +27,7 @@ func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.
 }
 
 func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
-	sp, err := r.s.GetSpace(ctx, req.SpaceId)
+	sp, err := r.s.Get(ctx, req.SpaceId)
 	if err != nil {
 		if err != spacesyncproto.ErrSpaceMissing {
 			err = spacesyncproto.ErrUnexpected
@@ -62,7 +62,7 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 }
 
 func (r *rpcHandler) SpacePull(ctx context.Context, request *spacesyncproto.SpacePullRequest) (resp *spacesyncproto.SpacePullResponse, err error) {
-	sp, err := r.s.GetSpace(ctx, request.Id)
+	sp, err := r.s.Get(ctx, request.Id)
 	if err != nil {
 		if err != spacesyncproto.ErrSpaceMissing {
 			err = spacesyncproto.ErrUnexpected
@@ -97,7 +97,7 @@ func (r *rpcHandler) SpacePush(ctx context.Context, req *spacesyncproto.SpacePus
 		SpaceSettingsId:      req.Payload.SpaceSettingsPayloadId,
 	}
 	ctx = context.WithValue(ctx, commonspace.AddSpaceCtxKey, description)
-	_, err = r.s.GetSpace(ctx, description.SpaceHeader.GetId())
+	_, err = r.s.Get(ctx, description.SpaceHeader.GetId())
 	if err != nil {
 		return
 	}
@@ -106,7 +106,7 @@ func (r *rpcHandler) SpacePush(ctx context.Context, req *spacesyncproto.SpacePus
 }
 
 func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncRequest) (*spacesyncproto.HeadSyncResponse, error) {
-	sp, err := r.s.GetSpace(ctx, req.SpaceId)
+	sp, err := r.s.Get(ctx, req.SpaceId)
 	if err != nil {
 		return nil, spacesyncproto.ErrSpaceMissing
 	}

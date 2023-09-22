@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 )
 
 var (
@@ -19,26 +19,44 @@ var (
 func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) (*model.AccountStatus, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
-	spaceService := s.app.MustComponent(spacecore.CName).(spacecore.Service)
-	resp, err := spaceService.DeleteAccount(ctx, req.Revert)
-	status := &model.AccountStatus{
-		StatusType:   model.AccountStatusType(resp.Status),
-		DeletionDate: resp.DeletionDate.Unix(),
+	convErr := func(err error) error {
+		switch err {
+		case spacecore.ErrSpaceIsDeleted:
+			return ErrAccountIsAlreadyDeleted
+		case spacecore.ErrSpaceDeletionPending:
+			return ErrAccountIsAlreadyDeleted
+		case spacecore.ErrSpaceIsCreated:
+			return ErrAccountIsActive
+		default:
+			return err
+		}
+	}
+	var (
+		accountService = s.app.MustComponent(account.CName).(account.Service)
+		status         *model.AccountStatus
+	)
+	if !req.Revert {
+		networkStatus, err := accountService.Delete(ctx)
+		if err != nil {
+			return nil, convErr(err)
+		}
+		status = &model.AccountStatus{
+			StatusType:   model.AccountStatusType(networkStatus.Status),
+			DeletionDate: networkStatus.DeletionDate.Unix(),
+		}
+	} else {
+		err := accountService.RevertDeletion(ctx)
+		if err != nil {
+			return nil, convErr(err)
+		}
+		status = &model.AccountStatus{
+			StatusType: model.AccountStatusType(spacecore.SpaceStatusCreated),
+		}
 	}
 
 	// so we will receive updated account status
 	s.refreshRemoteAccountState()
-
-	switch err {
-	case spacecore.ErrSpaceIsDeleted:
-		return nil, ErrAccountIsAlreadyDeleted
-	case spacecore.ErrSpaceDeletionPending:
-		return nil, ErrAccountIsAlreadyDeleted
-	case spacecore.ErrSpaceIsCreated:
-		return nil, ErrAccountIsActive
-	}
-	return status, err
+	return status, nil
 }
 
 func (s *Service) refreshRemoteAccountState() {
