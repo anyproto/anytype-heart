@@ -7,8 +7,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
+
+var log = logging.Logger("import")
 
 func ExtractFileTimes(fileName string) (int64, int64) {
 	fileInfo, err := os.Stat(fileName)
