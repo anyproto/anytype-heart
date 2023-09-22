@@ -22,7 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 const CName = "space.typeprovider"

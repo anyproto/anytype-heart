@@ -50,13 +50,18 @@ func (i *indexer) buildFlags(spaceID string) (flags reindexFlags, err error) {
 	if checksums == nil {
 		// TODO: [MR] split object store checksums for space and common?
 		checksums = &model.ObjectStoreChecksums{
-			// do no add bundled relations checksums, because we want to index them for new accounts
-			ObjectsForceReindexCounter:       ForceObjectsReindexCounter,
-			FilesForceReindexCounter:         ForceFilesReindexCounter,
-			IdxRebuildCounter:                ForceIdxRebuildCounter,
-			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-			FulltextRebuild:                  ForceFulltextIndexCounter,
-			BundledObjects:                   ForceBundledObjectsReindexCounter,
+			// per space
+			ObjectsForceReindexCounter: ForceObjectsReindexCounter,
+			// ?
+			FilesForceReindexCounter: ForceFilesReindexCounter,
+			// global
+			IdxRebuildCounter: ForceIdxRebuildCounter,
+			// per space
+			FilestoreKeysForceReindexCounter: ForceFilestore KeysReindexCounter,
+			// per space
+			FulltextRebuild: ForceFulltextIndexCounter,
+			// global
+			BundledObjects: ForceBundledObjectsReindexCounter,
 		}
 	}
 

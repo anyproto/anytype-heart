@@ -57,6 +57,7 @@ type Cache interface {
 	CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
 	DeriveTreeObject(ctx context.Context, spaceID string, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 
+	BindSpaceID(spaceID string, objectID string) error
 	ResolveSpaceID(objectID string) (spaceID string, err error)
 	ResolveObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
 	GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
@@ -159,6 +160,10 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 	default:
 		return buildObject(id)
 	}
+}
+
+func (c *objectCache) BindSpaceID(spaceID, objectID string) (err error) {
+	return c.resolver.StoreSpaceID(spaceID, objectID)
 }
 
 func (c *objectCache) ResolveSpaceID(objectID string) (spaceID string, err error) {

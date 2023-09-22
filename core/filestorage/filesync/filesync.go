@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 )
 
 const CName = "filesync"
@@ -53,23 +52,27 @@ type QueueInfo struct {
 	RemovingQueue  []*QueueItem
 }
 
+type personalSpaceIDGetter interface {
+	PersonalSpaceID() string
+}
+
 type SyncStatus struct {
 	QueueLen int
 }
 
 type fileSync struct {
-	dbProvider   datastore.Datastore
-	rpcStore     rpcstore.RpcStore
-	queue        *fileSyncStore
-	loopCtx      context.Context
-	loopCancel   context.CancelFunc
-	uploadPingCh chan struct{}
-	removePingCh chan struct{}
-	dagService   ipld.DAGService
-	fileStore    filestore.FileStore
-	eventSender  event.Sender
-	onUpload     func(spaceID, fileID string) error
-	spaceService spacecore.SpaceService
+	dbProvider       datastore.Datastore
+	rpcStore         rpcstore.RpcStore
+	queue            *fileSyncStore
+	loopCtx          context.Context
+	loopCancel       context.CancelFunc
+	uploadPingCh     chan struct{}
+	removePingCh     chan struct{}
+	dagService       ipld.DAGService
+	fileStore        filestore.FileStore
+	eventSender      event.Sender
+	onUpload         func(spaceID, fileID string) error
+	personalIDGetter personalSpaceIDGetter
 
 	spaceStatsLock    sync.Mutex
 	spaceStats        map[string]SpaceStat
@@ -88,7 +91,7 @@ func (f *fileSync) Init(a *app.App) (err error) {
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
-	f.spaceService = app.MustComponent[spacecore.SpaceService](a)
+	f.personalIDGetter = app.MustComponent[personalSpaceIDGetter](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
@@ -128,7 +131,7 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 func (f *fileSync) precacheSpaceStats() {
 	// TODO multi-spaces: init for each space: GO-1681
 	// TODO: [MR] adapt to multi-spaces
-	spaceID := f.spaceService.AccountId()
+	spaceID := f.personalIDGetter.PersonalSpaceID()
 	_, err := f.SpaceStat(context.Background(), spaceID)
 	if err != nil {
 		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
@@ -136,7 +139,7 @@ func (f *fileSync) precacheSpaceStats() {
 			SpaceId:    spaceID,
 			BytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
-		log.Error("can't init space stats", zap.String("spaceID", f.spaceService.AccountId()), zap.Error(err))
+		log.Error("can't init space stats", zap.String("spaceID", f.personalIDGetter.PersonalSpaceID()), zap.Error(err))
 	}
 }
 

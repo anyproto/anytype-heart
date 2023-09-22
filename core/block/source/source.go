@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -83,7 +83,7 @@ type sourceDeps struct {
 
 	coreService         core.Service
 	accountService      accountservice.Service
-	spaceService        spacecore.SpaceService
+	spaceService        spacecore.SpaceCoreService
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
 	systemObjectService system_object.Service
@@ -125,7 +125,7 @@ type source struct {
 	coreService         core.Service
 	fileService         files.Service
 	accountService      accountservice.Service
-	spaceService        spacecore.SpaceService
+	spaceService        spacecore.SpaceCoreService
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	systemObjectService system_object.Service
 }

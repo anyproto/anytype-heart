@@ -22,7 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
@@ -30,6 +30,11 @@ const CName = "source"
 
 func New() Service {
 	return &service{}
+}
+
+type idResolver interface {
+	BindSpaceID(spaceID string, objectID string) error
+	ResolveSpaceID(objectID string) (spaceID string, err error)
 }
 
 type Service interface {
@@ -48,7 +53,8 @@ type service struct {
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	account             accountservice.Service
 	fileStore           filestore.FileStore
-	spaceService        spacecore.SpaceService
+	spaceService        spacecore.SpaceCoreService
+	resolver            idResolver
 	fileService         files.Service
 	systemObjectService system_object.Service
 
@@ -64,7 +70,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceService = app.MustComponent[spacecore.SpaceService](a)
+	s.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
+	s.resolver = app.MustComponent[idResolver](a)
 	s.systemObjectService = app.MustComponent[system_object.Service](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
@@ -92,7 +99,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	if err != nil {
 		return nil, err
 	}
-	err = s.spaceService.StoreSpaceID(src.Id(), src.SpaceID())
+	err = s.resolver.BindSpaceID(src.SpaceID(), src.Id())
 	if err != nil {
 		return nil, fmt.Errorf("store space id for object: %w", err)
 	}
@@ -197,7 +204,7 @@ func (s *service) RegisterStaticSource(src Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[src.Id()] = src
-	err := s.spaceService.StoreSpaceID(src.Id(), src.SpaceID())
+	err := s.resolver.BindSpaceID(src.SpaceID(), src.Id())
 	if err != nil {
 		return fmt.Errorf("store space id for object: %w", err)
 	}

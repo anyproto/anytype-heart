@@ -41,7 +41,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema/anytype"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -76,7 +76,7 @@ type service struct {
 	commonFile        fileservice.FileService
 	fileSync          filesync.FileSync
 	dagService        ipld.DAGService
-	spaceService      spacecore.SpaceService
+	spaceService      spacecore.SpaceCoreService
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
 	objectStore       objectstore.ObjectStore
@@ -95,7 +95,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.spaceService = app.MustComponent[spacecore.SpaceService](a)
+	s.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.syncStatusWatcher = app.MustComponent[SyncStatusWatcher](a)
 	return nil

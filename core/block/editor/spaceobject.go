@@ -3,6 +3,7 @@ package editor
 import (
 	"errors"
 	"fmt"
+	"github.com/anyproto/anytype-heart/space"
 
 	"github.com/gogo/protobuf/proto"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 )
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
@@ -20,8 +20,7 @@ var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 type SpaceObject struct {
 	smartblock.SmartBlock
 
-	spaceService   spacecore.SpaceService
-	techSpace      spacecore.TechSpace
+	spaceService   space.SpaceService
 	indexer        spaceIndexer
 	objectCache    objectcache.Cache
 	derivedObjects threads.DerivedSmartblockIds
@@ -30,8 +29,7 @@ type SpaceObject struct {
 
 // spaceObjectDeps is a set of dependencies for SpaceObject
 type spaceObjectDeps struct {
-	spaceService spacecore.SpaceService
-	techSpace    spacecore.TechSpace
+	spaceService space.SpaceService
 	objectCache  objectcache.Cache
 	indexer      spaceIndexer
 }

@@ -170,6 +170,11 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if s.newAccount {
 		return spaceLoader.CreateSpaces(ctx)
 	}
+	// counter files + bundled objects : delete???
+	err = s.indexer.ReindexCommonObjects()
+	if err != nil {
+		return
+	}
 	return spaceLoader.LoadSpaces(ctx)
 }
 
