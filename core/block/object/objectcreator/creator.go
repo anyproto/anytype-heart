@@ -95,7 +95,7 @@ func (c *Creator) Name() (name string) {
 
 // TODO Temporarily
 type BlockService interface {
-	StateFromTemplate(templateID string, name string) (st *state.State, err error)
+	StateFromTemplate(spaceID, templateID, name string) (st *state.State, err error)
 	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error)
 	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
@@ -104,7 +104,7 @@ type BlockService interface {
 func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
-		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+		if createState, err = c.blockService.StateFromTemplate(spaceID, templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 			return
 		}
 	} else {

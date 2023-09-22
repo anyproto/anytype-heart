@@ -64,11 +64,13 @@ import (
 const (
 	CName           = "block-service"
 	linkObjectShare = "anytype://object/share?"
+	BlankTemplateId = "blank"
 )
 
 var (
-	ErrUnexpectedBlockType = errors.New("unexpected block type")
-	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
+	ErrUnexpectedBlockType   = errors.New("unexpected block type")
+	ErrUnknownObjectType     = fmt.Errorf("unknown object type")
+	ErrObjectNotFoundByOldID = fmt.Errorf("failed to find template by Source Object id")
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -933,7 +935,12 @@ func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
 	return s.spaceService.ResolveSpaceID(objectID)
 }
 
-func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
+func (s *Service) StateFromTemplate(spaceID, templateID, name string) (st *state.State, err error) {
+	if templateID == BlankTemplateId {
+		if templateID, err = s.GetNewTemplateID(spaceID, templateID); err != nil {
+			return nil, fmt.Errorf("failed to find blank template: %v", err)
+		}
+	}
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
@@ -959,14 +966,14 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
 }
 
-func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
-	return Do(s, contextId, func(b smartblock.SmartBlock) error {
+func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
+	return Do(s, contextID, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		ts, err := s.StateFromTemplate(templateId, "")
+		ts, err := s.StateFromTemplate(orig.SpaceID(), templateID, "")
 		if err != nil {
 			return err
 		}
-		ts.SetRootId(contextId)
+		ts.SetRootId(contextID)
 		ts.SetParent(orig)
 
 		fromLayout, _ := orig.Layout()
@@ -977,8 +984,14 @@ func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
 		}
 
 		ts.BlocksInit(ts)
+
 		objType := ts.ObjectTypeKey()
-		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
+		if templateID == BlankTemplateId {
+			objType = orig.ObjectTypeKey()
+			if originalLayout, found := orig.Layout(); found {
+				ts.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(originalLayout)))
+			}
+		}
 		ts.SetObjectTypeKey(objType)
 
 		flags := internalflag.NewFromState(orig)
@@ -1060,4 +1073,28 @@ func (s *Service) GetLogFields() []zap.Field {
 		fields = append(fields, zap.Bool("predefined_object_was_missing", true))
 	}
 	return fields
+}
+
+func (s *Service) GetNewTemplateID(spaceID, sourceObjectID string) (id string, err error) {
+	ids, _, err := s.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySourceObject.String(),
+				Value:       pbtypes.String(sourceObjectID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	}, nil)
+	if err == nil {
+		if len(ids) > 0 {
+			return ids[0], nil
+		}
+		err = ErrObjectNotFoundByOldID
+	}
+	return "", err
 }

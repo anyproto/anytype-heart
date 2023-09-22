@@ -9,11 +9,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
@@ -94,14 +94,10 @@ func (b *builtinTemplate) Hash() string {
 
 func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	defer rd.Close()
-	data, err := ioutil.ReadAll(rd)
+	data, err := io.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
 	if err = snapshot.Unmarshal(data); err != nil {
-		snapshotWithType := &pb.SnapshotWithType{}
-		if err = snapshotWithType.Unmarshal(data); err != nil {
-			return
-		}
-		snapshot = snapshotWithType.Snapshot
+		return
 	}
 	var id string
 	for _, block := range snapshot.Data.Blocks {
@@ -148,6 +144,10 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 }
 
 func (b *builtinTemplate) setObjectTypes(st *state.State) error {
+	if st.RootId() == block.BlankTemplateId {
+		st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate})
+		return nil
+	}
 	targetObjectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	var targetObjectTypeKey domain.TypeKey
 	if strings.HasPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix) {
@@ -178,21 +178,8 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	}
 	// todo: update templates and return the validation
 	return nil
-	var relKeys []string
-	st.Iterate(func(b simple.Block) (isContinue bool) {
-		if rb, ok := b.(relation.Block); ok {
-			relKeys = append(relKeys, rb.Model().GetRelation().Key)
-		}
-		return true
-	})
-	for _, rk := range relKeys {
-		if !st.HasRelation(rk) {
-			return fmt.Errorf("bundled template validation: relation '%v' exists in block but not in extra relations", rk)
-		}
-	}
-	return nil
 }
 
-func (b *builtinTemplate) Close(ctx context.Context) (err error) {
+func (b *builtinTemplate) Close(_ context.Context) (err error) {
 	return
 }
