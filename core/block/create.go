@@ -103,7 +103,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		return
 	}
 
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.objectCache.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -145,15 +145,11 @@ func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, obje
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {
-	techSpace := s.spaceService.TechSpace()
-	newSpace, err := techSpace.CreateSpace(ctx)
+	newSpace, err := s.spaceService.Create(ctx)
 	if err != nil {
 		return "", fmt.Errorf("error creating space: %w", err)
 	}
-	predefinedObjectIDs, err := techSpace.SpaceDerivedIDs(ctx, newSpace.SpaceID())
-	if err != nil {
-		return "", fmt.Errorf("error getting predefined object ids: %w", err)
-	}
+	predefinedObjectIDs := newSpace.DerivedIDs()
 	err = Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {

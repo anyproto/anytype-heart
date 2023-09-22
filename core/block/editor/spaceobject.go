@@ -78,7 +78,7 @@ func (p *SpaceObject) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	for _, id := range p.derivedObjects.IDs() {
-		_, err := p.objectCache.PickBlock(ctx.Ctx, id)
+		_, err := p.objectCache.ResolveObject(ctx.Ctx, id)
 		if err != nil {
 			return err
 		}

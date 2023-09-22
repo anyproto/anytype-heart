@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
@@ -57,7 +57,8 @@ type Cache interface {
 	CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
 	DeriveTreeObject(ctx context.Context, spaceID string, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 
-	PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
+	ResolveSpaceID(objectID string) (spaceID string, err error)
+	ResolveObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
 	GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
 	GetObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
 	DoLockedIfNotExists(objectID string, proc func() error) error
@@ -68,9 +69,10 @@ type Cache interface {
 type objectCache struct {
 	objectFactory  objectFactory
 	sbtProvider    typeprovider.SmartBlockTypeProvider
-	spaceService   spacecore.SpaceService
+	spaceService   spacecore.SpaceCoreService
 	accountService accountservice.Service
 	cache          ocache.OCache
+	resolver       *resolver
 	closing        chan struct{}
 }
 
@@ -84,7 +86,8 @@ func (c *objectCache) Init(a *app.App) error {
 	c.accountService = app.MustComponent[accountservice.Service](a)
 	c.objectFactory = app.MustComponent[objectFactory](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	c.spaceService = app.MustComponent[spacecore.SpaceService](a)
+	c.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
+	c.resolver = &resolver{}
 	c.cache = ocache.New(
 		c.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
@@ -158,6 +161,10 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 	}
 }
 
+func (c *objectCache) ResolveSpaceID(objectID string) (spaceID string, err error) {
+	return c.resolver.ResolveSpaceID(objectID)
+}
+
 func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
 		if opts.spaceId == "" {
@@ -210,9 +217,8 @@ func (c *objectCache) GetObjectWithTimeout(ctx context.Context, id domain.FullID
 	return c.GetObject(ctx, id)
 }
 
-// PickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (c *objectCache) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := c.spaceService.ResolveSpaceID(objectID)
+func (c *objectCache) ResolveObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := c.resolver.ResolveSpaceID(objectID)
 	if err != nil {
 		// Object not loaded yet
 		return nil, source.ErrObjectNotFound

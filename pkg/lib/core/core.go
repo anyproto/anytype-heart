@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 )
 
 var log = logging.Logger("anytype-core")
@@ -43,11 +42,18 @@ var _ app.Component = (*Anytype)(nil)
 
 var _ Service = (*Anytype)(nil)
 
-type Anytype struct {
-	space       spacecore.SpaceService
-	objectStore objectstore.ObjectStore
+type personalSpaceIDGetter interface {
+	PersonalSpaceID() string
+}
 
-	predefinedObjectsPerSpace map[string]threads.DerivedSmartblockIds
+type derivedIDsGetter interface {
+	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
+}
+
+type Anytype struct {
+	derivedIDs     derivedIDsGetter
+	personalGetter personalSpaceIDGetter
+	objectStore    objectstore.ObjectStore
 
 	migrationOnce    sync.Once
 	lock             sync.RWMutex
@@ -64,8 +70,7 @@ type Anytype struct {
 
 func New() *Anytype {
 	return &Anytype{
-		shutdownStartsCh:          make(chan struct{}),
-		predefinedObjectsPerSpace: make(map[string]threads.DerivedSmartblockIds),
+		shutdownStartsCh: make(chan struct{}),
 	}
 }
 
@@ -74,7 +79,8 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
-	a.space = app.MustComponent[spacecore.SpaceService](ap)
+	a.derivedIDs = app.MustComponent[derivedIDsGetter](ap)
+	a.personalGetter = app.MustComponent[personalSpaceIDGetter](ap)
 	return
 }
 
@@ -99,11 +105,11 @@ func (a *Anytype) IsStarted() bool {
 // ⚠️ Will return empty struct in case it runs before Anytype.Start()
 // TODO Its deprecated
 func (a *Anytype) AccountObjects() threads.DerivedSmartblockIds {
-	return a.PredefinedObjects(a.space.AccountId())
+	return a.PredefinedObjects(a.personalGetter.PersonalSpaceID())
 }
 
 func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds {
-	ids, err := a.space.TechSpace().SpaceDerivedIDs(context.Background(), spaceID)
+	ids, err := a.derivedIDs.DerivedIDs(context.Background(), spaceID)
 	if err != nil {
 		log.Error("failed to get account objects", zap.Error(err))
 		return threads.DerivedSmartblockIds{}

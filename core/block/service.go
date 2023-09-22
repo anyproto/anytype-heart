@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anyproto/anytype-heart/space"
 	"strings"
 	"sync"
 	"time"
@@ -47,7 +48,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -131,7 +131,7 @@ type Service struct {
 	systemObjectService  system_object.Service
 	objectCache          objectcache.Cache
 	objectCreator        objectCreator
-	spaceService         spacecore.Service
+	spaceService         space.SpaceService
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
@@ -167,7 +167,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
-	s.spaceService = a.MustComponent(spacecore.CName).(spacecore.Service)
+	s.spaceService = a.MustComponent(space.CName).(space.SpaceService)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
@@ -188,11 +188,11 @@ func (s *Service) Run(ctx context.Context) (err error) {
 }
 
 func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	return s.objectCache.PickBlock(ctx, objectID)
+	return s.objectCache.ResolveObject(ctx, objectID)
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.objectCache.ResolveSpaceID(id)
 	if err != nil {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
@@ -637,7 +637,7 @@ func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
 	res := map[string][]string{}
 	for _, objectID := range objectIDs {
-		spaceID, err := s.spaceService.ResolveSpaceID(objectID)
+		spaceID, err := s.objectCache.ResolveSpaceID(objectID)
 		if err != nil {
 			return nil, fmt.Errorf("resolve spaceID: %w", err)
 		}
@@ -789,7 +789,7 @@ func (s *Service) ObjectsDuplicate(ctx context.Context, ids []string) (newIds []
 }
 
 func (s *Service) DeleteArchivedObject(id string) (err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.objectCache.ResolveSpaceID(id)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -882,7 +882,7 @@ func (s *Service) Close(ctx context.Context) (err error) {
 }
 
 func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
-	return s.spaceService.ResolveSpaceID(objectID)
+	return s.objectCache.ResolveSpaceID(objectID)
 }
 
 func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
@@ -950,7 +950,7 @@ func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.objectCache.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -968,7 +968,7 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 }
 
 func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.objectCache.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}

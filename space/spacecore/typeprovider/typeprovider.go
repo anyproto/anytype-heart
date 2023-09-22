@@ -54,7 +54,7 @@ func (p *provider) PartitionIDsByType(spaceId string, ids []string) (map[smartbl
 
 type provider struct {
 	sync.RWMutex
-	spaceService spacecore.SpaceService
+	spaceService spacecore.SpaceCoreService
 	badger       *badger.DB
 	cache        map[string]smartblock.SmartBlockType
 }
@@ -95,7 +95,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("init cache from badger: %w", err)
 	}
-	p.spaceService = app.MustComponent[spacecore.SpaceService](a)
+	p.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	return
 }
 

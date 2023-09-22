@@ -40,6 +40,10 @@ var (
 	}
 )
 
+func New() SpaceService {
+	return &service{}
+}
+
 type spaceIndexer interface {
 	ReindexCommonObjects() error
 	ReindexSpace(spaceID string) error
@@ -49,13 +53,13 @@ type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
 }
 
-type SpaceParams struct {
+type spaceParams struct {
 	IDs           threads.DerivedSmartblockIds
 	SpaceObjectID string
 }
 
 type SpaceService interface {
-	SpaceParams(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
+	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
 	Do(ctx context.Context, spaceID string, perform func(spaceObject spaceobject.SpaceObject) error) error
 	Create(ctx context.Context) (spaceObject spaceobject.SpaceObject, err error)
 
@@ -75,7 +79,15 @@ type service struct {
 	repKey uint64
 }
 
-func (s *service) SpaceParams(ctx context.Context, spaceID string) (params SpaceParams, err error) {
+func (s *service) DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
+	params, err := s.spaceParams(ctx, spaceID)
+	if err != nil {
+		return
+	}
+	return params.IDs, nil
+}
+
+func (s *service) spaceParams(ctx context.Context, spaceID string) (params spaceParams, err error) {
 	params, ok := s.cache.Get(spaceID)
 	if ok {
 		return
@@ -88,7 +100,7 @@ func (s *service) SpaceParams(ctx context.Context, spaceID string) (params Space
 	if err != nil {
 		return
 	}
-	s.cache.Set(spaceID, SpaceParams{
+	s.cache.Set(spaceID, spaceParams{
 		IDs:           ids,
 		SpaceObjectID: spaceObjID,
 	})
@@ -96,7 +108,7 @@ func (s *service) SpaceParams(ctx context.Context, spaceID string) (params Space
 }
 
 func (s *service) Do(ctx context.Context, spaceID string, perform func(spaceObject spaceobject.SpaceObject) error) error {
-	params, err := s.SpaceParams(ctx, spaceID)
+	params, err := s.spaceParams(ctx, spaceID)
 	if err != nil {
 		return err
 	}

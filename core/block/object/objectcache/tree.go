@@ -71,7 +71,7 @@ func (c *objectCache) CreateTreeObjectWithPayload(ctx context.Context, spaceID s
 	}
 	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
 	if errors.Is(err, treestorage.ErrTreeExists) {
-		return c.PickBlock(ctx, payload.RootRawChange.Id)
+		return c.ResolveObject(ctx, payload.RootRawChange.Id)
 	}
 	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 		err = fmt.Errorf("failed to put tree: %w", err)

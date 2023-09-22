@@ -3,12 +3,16 @@ package account
 import (
 	"context"
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space"
 	"path/filepath"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
@@ -27,16 +31,20 @@ type Service interface {
 	GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error)
 	Delete(ctx context.Context) error
 	RevertDeletion(ctx context.Context) error
-	AccountId() string
-	PersonalSpaceId() string
+	AccountID() string
+	PersonalSpaceID() string
 }
 
 type service struct {
-	spaceService spacecore.Service
+	spaceCore    spacecore.SpaceCoreService
+	spaceService space.SpaceService
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
-	blockService *block.Service
+	objectCache  objectcache.Cache
+
+	once            sync.Once
+	personalSpaceID string
 }
 
 func New() Service {
@@ -44,12 +52,30 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.spaceService = app.MustComponent[spacecore.Service](a)
+	s.spaceService = app.MustComponent[space.SpaceService](a)
+	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.gateway = app.MustComponent[gateway.Gateway](a)
 	s.config = app.MustComponent[*config.Config](a)
-	s.blockService = app.MustComponent[*block.Service](a)
-	return nil
+	s.objectCache = app.MustComponent[objectcache.Cache](a)
+	s.personalSpaceID, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	return
+}
+
+func (s *service) Delete(ctx context.Context) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (s *service) RevertDeletion(ctx context.Context) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (s *service) AccountID() string {
+	return s.wallet.Account().SignKey.GetPublic().Account()
+}
+
+func (s *service) PersonalSpaceID() string {
+	return s.personalSpaceID
 }
 
 func (s *service) Name() (name string) {
@@ -76,7 +102,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
-	ids, err := s.spaceService.TechSpace().SpaceDerivedIDs(ctx, spaceID)
+	ids, err := s.getIds(ctx, spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get derived ids: %w", err)
 	}
@@ -97,15 +123,22 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	}, nil
 }
 
+func (s *service) getIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
+	return s.spaceService.DerivedIDs(ctx, spaceID)
+}
+
 func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
 	if s.config.AnalyticsId != "" {
 		return s.config.AnalyticsId, nil
 	}
-	ids, err := s.spaceService.TechSpace().SpaceDerivedIDs(ctx, s.spaceService.AccountId())
+	ids, err := s.getIds(ctx, s.personalSpaceID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get derived ids: %w", err)
 	}
-	sb, err := s.blockService.PickBlock(context.Background(), ids.Workspace)
+	sb, err := s.objectCache.GetObject(ctx, domain.FullID{
+		ObjectID: ids.Workspace,
+		SpaceID:  s.personalSpaceID,
+	})
 	if err != nil {
 		return "", err
 	}
