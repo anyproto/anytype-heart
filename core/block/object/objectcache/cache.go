@@ -16,8 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-object-cache")

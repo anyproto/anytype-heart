@@ -22,8 +22,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 const CName = "source"
@@ -125,7 +125,7 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 		return staticSrc, nil
 	}
 
-	spc, err := s.spaceService.GetSpace(ctx, spaceID)
+	spc, err := s.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("get space: %w", err)
 	}

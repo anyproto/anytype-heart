@@ -16,7 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -28,8 +28,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -48,11 +48,9 @@ func New() Indexer {
 
 type Indexer interface {
 	ForceFTIndex()
-	PrepareFlags() error
-	RemoveIndexes() error
-	ReindexBundledObjects() error
-	ReindexSpace(spaceID string, includeProfile bool) error
-	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
+	ReindexCommonObjects() error
+	ReindexSpace(spaceID string) error
+	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -69,10 +67,6 @@ type objectCreator interface {
 	) (ids []string, objects []*types.Struct, err error)
 }
 
-type syncStarter interface {
-	StartSync()
-}
-
 type indexer struct {
 	store         objectstore.ObjectStore
 	fileStore     filestore.FileStore
@@ -81,7 +75,6 @@ type indexer struct {
 	picker        block.Picker
 	ftsearch      ftsearch.FTSearch
 	objectCreator objectCreator
-	syncStarter   syncStarter
 	fileService   files.Service
 
 	quit       chan struct{}
@@ -90,7 +83,7 @@ type indexer struct {
 	forceFt    chan struct{}
 
 	typeProvider typeprovider.SmartBlockTypeProvider
-	spaceService space.Service
+	spaceService spacecore.SpaceCoreService
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
@@ -108,9 +101,8 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.objectCreator = app.MustComponent[objectCreator](a)
-	i.syncStarter = app.MustComponent[syncStarter](a)
 	i.picker = app.MustComponent[block.Picker](a)
-	i.spaceService = app.MustComponent[space.Service](a)
+	i.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
@@ -135,10 +127,10 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
-	opts := &smartblock2.IndexOptions{}
+	opts := &editorsb.IndexOptions{}
 	for _, o := range options {
 		o(opts)
 	}
@@ -272,11 +264,6 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			if ok {
 				return
 			}
-			storeErr := i.spaceService.StoreSpaceID(id, spaceID)
-			if storeErr != nil {
-				log.With("id", id).Errorf("failed to store space id: %v", storeErr)
-				return
-			}
 			// file's hash is id
 			idxErr := i.reindexDoc(ctx, id)
 			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
@@ -290,8 +277,8 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 	}
 }
 
-func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock2.DocInfo, err error) {
-	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
+func (i *indexer) getObjectInfo(ctx context.Context, id string) (info editorsb.DocInfo, err error) {
+	err = block.DoContext(i.picker, ctx, id, func(sb editorsb.SmartBlock) error {
 		info = sb.GetDocInfo()
 		return nil
 	})

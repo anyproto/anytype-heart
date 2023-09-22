@@ -32,7 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spacecore/mock_space"
 )
 
 var ctx = context.Background()

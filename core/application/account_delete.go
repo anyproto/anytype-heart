@@ -7,8 +7,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 )
 
 var (
@@ -20,7 +20,7 @@ func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteReq
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	spaceService := s.app.MustComponent(space.CName).(space.Service)
+	spaceService := s.app.MustComponent(spacecore.CName).(spacecore.Service)
 	resp, err := spaceService.DeleteAccount(ctx, req.Revert)
 	status := &model.AccountStatus{
 		StatusType:   model.AccountStatusType(resp.Status),

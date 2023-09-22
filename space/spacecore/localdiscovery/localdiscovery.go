@@ -19,7 +19,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/net/addrs"
-	"github.com/anyproto/anytype-heart/space/clientserver"
+	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 )
 
 var interfacesSortPriority = []string{"en", "wlan", "wl", "eth", "lo"}

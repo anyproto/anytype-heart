@@ -2,378 +2,198 @@ package space
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"strconv"
-	"strings"
-	"time"
+	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/anyproto/any-sync/commonspace"
-	// nolint: misspell
-	commonconfig "github.com/anyproto/any-sync/commonspace/config"
-	"github.com/anyproto/any-sync/commonspace/object/accountdata"
-	"github.com/anyproto/any-sync/commonspace/peermanager"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
-	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/anyproto/any-sync/net/peerservice"
-	"github.com/anyproto/any-sync/net/pool"
-	"github.com/anyproto/any-sync/net/rpc/server"
-	"github.com/anyproto/any-sync/net/streampool"
-	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/ristretto"
-	"github.com/gogo/protobuf/proto"
-	"go.uber.org/zap"
-	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/space/clientserver"
-	"github.com/anyproto/anytype-heart/space/clientspaceproto"
-	"github.com/anyproto/anytype-heart/space/localdiscovery"
-	"github.com/anyproto/anytype-heart/space/peerstore"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/storage"
+	"github.com/anyproto/anytype-heart/space/spaceobject"
+	"github.com/anyproto/anytype-heart/space/spaceobject/objectprovider"
 )
 
-const (
-	CName         = "coordinator.clientspace"
-	SpaceType     = "anytype.space"
-	TechSpaceType = "anytype.techspace"
-)
-
-var ErrUsingOldStorage = errors.New("using old storage")
+const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
-func New() Service {
-	return &service{}
+var (
+	personalSpaceTypes = []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeWidget,
+		smartblock.SmartBlockTypeWorkspace,
+		smartblock.SmartBlockTypeAnytypeProfile,
+	}
+	spaceTypes = []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeWidget,
+		smartblock.SmartBlockTypeWorkspace,
+	}
+)
+
+type spaceIndexer interface {
+	ReindexCommonObjects() error
+	ReindexSpace(spaceID string) error
 }
 
-type PoolManager interface {
-	UnaryPeerPool() pool.Pool
-	StreamPeerPool() pool.Pool
+type bundledObjectsInstaller interface {
+	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
 }
 
-//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anyproto/anytype-heart/space Service
-//go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anyproto/any-sync/commonspace Space
-type Service interface {
-	spacecore.SpaceService
+type SpaceParams struct {
+	IDs           threads.DerivedSmartblockIds
+	SpaceObjectID string
+}
+
+type SpaceService interface {
+	SpaceParams(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
+	Do(ctx context.Context, spaceID string, perform func(spaceObject spaceobject.SpaceObject) error) error
+	Create(ctx context.Context) (spaceObject spaceobject.SpaceObject, err error)
+
+	app.ComponentRunnable
 }
 
 type service struct {
-	conf                 commonconfig.Config
-	spaceCache           ocache.OCache
-	accountKeys          *accountdata.AccountKeys
-	nodeConf             nodeconf.Service
-	commonSpace          commonspace.SpaceService
-	coordinator          coordinatorclient.CoordinatorClient
-	wallet               wallet.Wallet
-	spaceStorageProvider storage.ClientStorage
-	streamPool           streampool.StreamPool
-	peerStore            peerstore.PeerStore
-	peerService          peerservice.PeerService
-	poolManager          PoolManager
-	streamHandler        *streamHandler
-	syncStatusService    syncStatusService
-	spaceLoader          *spaceLoader
-	indexer              spaceIndexer
-	installer            bundledInstaller
-	objectCache          objectcache.Cache
-	techSpace            *TechSpace
+	indexer     spaceIndexer
+	spaceCore   spacecore.SpaceCoreService
+	provider    objectprovider.ObjectProvider
+	objectCache objectcache.Cache
 
-	accountId  string
+	cache      *idCache
+	techSpace  *spacecore.AnySpace
 	newAccount bool
 
-	db                 *badger.DB
-	spaceResolverCache *ristretto.Cache
+	repKey uint64
 }
 
-type syncStatusService interface {
-	RegisterSpace(space commonspace.Space)
-	UnregisterSpace(space commonspace.Space)
-}
-
-type spaceIndexer interface {
-	PrepareFlags() error
-	RemoveIndexes() error
-	ReindexSpace(spaceID string, includeProfile bool) error
-	ReindexBundledObjects() error
-}
-
-func (s *service) Init(a *app.App) (err error) {
-	conf := a.MustComponent(config.CName).(*config.Config)
-	s.conf = conf.GetSpace()
-	s.newAccount = conf.NewAccount
-	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
-	s.nodeConf = a.MustComponent(nodeconf.CName).(nodeconf.Service)
-	s.commonSpace = a.MustComponent(commonspace.CName).(commonspace.SpaceService)
-	s.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
-	s.coordinator = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
-	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
-	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
-	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
-	s.syncStatusService = app.MustComponent[syncStatusService](a)
-	s.indexer = app.MustComponent[spaceIndexer](a)
-	s.installer = app.MustComponent[bundledInstaller](a)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
-	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
-	localDiscovery.SetNotifier(s)
-	s.streamHandler = &streamHandler{s: s}
-	s.spaceLoader = &spaceLoader{spaceService: s}
-
-	s.streamPool = a.MustComponent(streampool.CName).(streampool.Service).NewStreamPool(s.streamHandler, streampool.StreamConfig{
-		SendQueueSize:    300,
-		DialQueueWorkers: 4,
-		DialQueueSize:    300,
-	})
-	s.spaceCache = ocache.New(
-		s.loadSpace,
-		ocache.WithLogger(log.Sugar()),
-		ocache.WithGCPeriod(time.Minute),
-		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
-	)
-
-	datastoreService := app.MustComponent[datastore.Datastore](a)
-	s.db, err = datastoreService.SpaceStorage()
-	if err != nil {
-		return fmt.Errorf("get badger storage: %w", err)
+func (s *service) SpaceParams(ctx context.Context, spaceID string) (params SpaceParams, err error) {
+	params, ok := s.cache.Get(spaceID)
+	if ok {
+		return
 	}
-	spaceResolverCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 10_000_000,
-		MaxCost:     100_000_000,
-		BufferItems: 64,
-	})
-	if err != nil {
-		return fmt.Errorf("init objectCache: %w", err)
-	}
-	s.spaceResolverCache = spaceResolverCache
-
-	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
+	ids, err := s.provider.DeriveObjectIDs(ctx, spaceID, spaceTypes)
 	if err != nil {
 		return
 	}
-	return clientspaceproto.DRPCRegisterClientSpace(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
+	spaceObjID, err := s.deriveSpaceObjectId(ctx, s.techSpace.Id(), spaceID)
+	if err != nil {
+		return
+	}
+	s.cache.Set(spaceID, SpaceParams{
+		IDs:           ids,
+		SpaceObjectID: spaceObjID,
+	})
+	return
+}
+
+func (s *service) Do(ctx context.Context, spaceID string, perform func(spaceObject spaceobject.SpaceObject) error) error {
+	params, err := s.SpaceParams(ctx, spaceID)
+	if err != nil {
+		return err
+	}
+	spaceObject, err := s.objectCache.GetObject(ctx, domain.FullID{
+		ObjectID: params.SpaceObjectID,
+		SpaceID:  spaceID,
+	})
+	if err != nil {
+		return err
+	}
+	spaceObject.Lock()
+	defer spaceObject.Unlock()
+	return perform(spaceObject.(spaceobject.SpaceObject))
+}
+
+func (s *service) Create(ctx context.Context) (spaceObject spaceobject.SpaceObject, err error) {
+	space, err := s.spaceCore.Create(ctx, s.repKey)
+	if err != nil {
+		return
+	}
+	_, err = s.provider.DeriveObjectIDs(ctx, space.Id(), spaceTypes)
+	if err != nil {
+		return
+	}
+	err = s.provider.CreateMandatoryObjects(ctx, space.Id(), spaceTypes)
+	if err != nil {
+		return
+	}
+	return s.deriveSpaceObject(ctx, space.Id(), s.techSpace.Id())
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.indexer = app.MustComponent[spaceIndexer](a)
+	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	s.objectCache = app.MustComponent[objectcache.Cache](a)
+	s.cache = newCache()
+	installer := app.MustComponent[bundledObjectsInstaller](a)
+	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
+	s.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
+	return nil
 }
 
 func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) TechSpace() spacecore.TechSpace {
-	return s.techSpace
-}
-
 func (s *service) Run(ctx context.Context) (err error) {
+	s.techSpace, err = s.spaceCore.Derive(ctx, spacecore.TechSpaceType)
+	if err != nil {
+		return
+	}
+	spaceLoader := spaceLoader{
+		spaceCore: s.spaceCore,
+		deriver:   s,
+		provider:  s.provider,
+		cache:     s.objectCache,
+		techSpace: s.techSpace,
+	}
 	if s.newAccount {
-		return s.spaceLoader.CreateSpaces(ctx)
-	} else {
-		return s.spaceLoader.LoadSpaces(ctx)
+		return spaceLoader.CreateSpaces(ctx)
 	}
-}
-
-func (s *service) DeriveSpace(ctx context.Context, payload commonspace.SpaceDerivePayload) (container commonspace.Space, err error) {
-	id, err := s.commonSpace.DeriveSpace(ctx, payload)
-	if err != nil {
-		return
-	}
-
-	obj, err := s.spaceCache.Get(ctx, id)
-	if err != nil {
-		return
-	}
-	return obj.(commonspace.Space), nil
-}
-
-func (s *service) AccountSpace(ctx context.Context) (container commonspace.Space, err error) {
-	return s.GetSpace(ctx, s.accountId)
-}
-
-func (s *service) AccountId() string {
-	return s.accountId
-}
-
-func parseReplicationKey(spaceID string) (uint64, error) {
-	parts := strings.Split(spaceID, ".")
-	raw := parts[len(parts)-1]
-	return strconv.ParseUint(raw, 36, 64)
-}
-
-func (s *service) CreateSpace(ctx context.Context) (container commonspace.Space, err error) {
-	replicationKey, err := parseReplicationKey(s.accountId)
-	if err != nil {
-		return nil, fmt.Errorf("parse account's replication key: %w", err)
-	}
-	metadataPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
-	if err != nil {
-		return nil, fmt.Errorf("generate metadata key: %w", err)
-	}
-	payload := commonspace.SpaceCreatePayload{
-		SigningKey:     s.wallet.GetAccountPrivkey(),
-		MasterKey:      s.wallet.GetMasterKey(),
-		ReadKey:        crypto.NewAES(),
-		MetadataKey:    metadataPrivKey,
-		SpaceType:      SpaceType,
-		ReplicationKey: replicationKey,
-	}
-	id, err := s.commonSpace.CreateSpace(ctx, payload)
-	if err != nil {
-		return
-	}
-	obj, err := s.spaceCache.Get(ctx, id)
-	if err != nil {
-		return
-	}
-	return obj.(commonspace.Space), nil
-}
-
-func (s *service) GetSpace(ctx context.Context, id string) (space commonspace.Space, err error) {
-	v, err := s.spaceCache.Get(ctx, id)
-	if err != nil {
-		return
-	}
-	return v.(commonspace.Space), nil
-}
-
-func (s *service) HandleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
-	var msg = &spacesyncproto.SpaceSubscription{}
-	if err = msg.Unmarshal(req.Payload); err != nil {
-		return
-	}
-	log.InfoCtx(ctx, "got subscription message", zap.Strings("spaceIds", msg.SpaceIds))
-	if msg.Action == spacesyncproto.SpaceSubscriptionAction_Subscribe {
-		return s.streamPool.AddTagsCtx(ctx, msg.SpaceIds...)
-	} else {
-		return s.streamPool.RemoveTagsCtx(ctx, msg.SpaceIds...)
-	}
-}
-
-func (s *service) StreamPool() streampool.StreamPool {
-	return s.streamPool
-}
-
-func (s *service) DeleteAccount(ctx context.Context, revert bool) (payload spacecore.StatusPayload, err error) {
-	return s.DeleteSpace(ctx, s.accountId, revert)
-}
-
-func (s *service) DeleteSpace(ctx context.Context, spaceID string, revert bool) (payload spacecore.StatusPayload, err error) {
-	var (
-		delConf *coordinatorproto.DeletionConfirmPayloadWithSignature
-		status  *coordinatorproto.SpaceStatusPayload
-	)
-	if !revert {
-		networkID := s.nodeConf.Configuration().NetworkId
-		delConf, err = coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceID, s.accountKeys.PeerId, networkID)
-		if err != nil {
-			return
-		}
-	}
-	status, err = s.coordinator.ChangeStatus(ctx, spaceID, delConf)
-	if err != nil {
-		err = spacecore.CoordError(err)
-		return
-	}
-	payload = spacecore.NewSpaceStatus(status)
-	return
-}
-
-func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
-	cc, err := s.commonSpace.NewSpace(ctx, id)
-	if err != nil {
-		return
-	}
-	ns, err := newClientSpace(cc, s.syncStatusService)
-	if err != nil {
-		return
-	}
-	if err = ns.Init(ctx); err != nil {
-		return
-	}
-	err = s.storeMappingForSpace(cc)
-	if err != nil {
-		return nil, fmt.Errorf("store mapping for space: %w", err)
-	}
-	return ns, nil
-}
-
-func (s *service) getOpenedSpaceIds() (ids []string) {
-	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
-		ids = append(ids, v.(commonspace.Space).Id())
-		return true
-	})
-	return
+	return spaceLoader.LoadSpaces(ctx)
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
-	s.spaceLoader.Close()
-	return s.spaceCache.Close()
+	return nil
 }
 
-func (s *service) PeerDiscovered(peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
-	s.peerService.SetPeerAddrs(peer.PeerId, s.addSchema(peer.Addrs))
-	ctx := context.Background()
-	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
+func (s *service) deriveSpaceObject(ctx context.Context, spaceID, targetSpaceID string) (spaceobject.SpaceObject, error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
 	if err != nil {
-		return
+		return nil, err
 	}
-	allIds, err := s.spaceStorageProvider.AllSpaceIds()
-	if err != nil {
-		return
-	}
-	log.Debug("sending info about spaces to peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", allIds))
-	var resp *clientspaceproto.SpaceExchangeResponse
-	err = unaryPeer.DoDrpc(ctx, func(conn drpc.Conn) error {
-		resp, err = clientspaceproto.NewDRPCClientSpaceClient(conn).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
-			SpaceIds: allIds,
-			LocalServer: &clientspaceproto.LocalServer{
-				Ips:  own.Addrs,
-				Port: int32(own.Port),
-			},
-		})
-		return err
+	obj, err := s.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+		Key: uniqueKey,
+		InitFunc: func(id string) *editorsb.InitContext {
+			return &editorsb.InitContext{Ctx: ctx, SpaceID: spaceID, State: state.NewDoc(id, nil).(*state.State)}
+		},
+		TargetSpaceID: targetSpaceID,
 	})
 	if err != nil {
-		return
+		return nil, err
 	}
-	log.Debug("got peer ids from peer", zap.String("peer", peer.PeerId), zap.Strings("spaces", resp.SpaceIds))
-	s.peerStore.UpdateLocalPeer(peer.PeerId, resp.SpaceIds)
+	return obj.(spaceobject.SpaceObject), nil
 }
 
-func (s *service) addSchema(addrs []string) (res []string) {
-	res = make([]string, 0, len(addrs))
-	for _, addr := range addrs {
-		res = append(res, clientserver.PreferredSchema+"://"+addr)
-	}
-	return res
-}
-
-func (s *service) getSpaceType(header *spacesyncproto.RawSpaceHeaderWithId) (tp string, err error) {
-	raw := &spacesyncproto.RawSpaceHeader{}
-	err = proto.Unmarshal(header.RawHeader, raw)
+func (s *service) deriveSpaceObjectId(ctx context.Context, spaceID, targetSpaceID string) (string, error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
 	if err != nil {
-		return
+		return "", err
 	}
-	payload := &spacesyncproto.SpaceHeader{}
-	err = proto.Unmarshal(raw.SpaceHeader, payload)
+	payload, err := s.objectCache.DeriveTreePayload(ctx, spaceID, payloadcreator.PayloadDerivationParams{
+		Key:           uniqueKey,
+		TargetSpaceID: targetSpaceID,
+	})
 	if err != nil {
-		return
+		return "", err
 	}
-	tp = payload.SpaceType
-	return
-}
-
-func (s *service) GetLogFields() []zap.Field {
-	return []zap.Field{
-		zap.Bool("newAccount", s.newAccount),
-	}
+	return payload.RootRawChange.Id, nil
 }

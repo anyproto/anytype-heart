@@ -3,7 +3,7 @@ package editor
 import (
 	"fmt"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -24,7 +24,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -52,7 +52,7 @@ type ObjectFactory struct {
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             spaceIndexer
-	spaceService        space.Service
+	spaceService        spacecore.Service
 	objectCache         objectcache.Cache
 }
 
@@ -62,7 +62,7 @@ func NewObjectFactory() *ObjectFactory {
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
-	f.spaceService = app.MustComponent[space.Service](a)
+	f.spaceService = app.MustComponent[spacecore.Service](a)
 	f.objectCache = app.MustComponent[objectcache.Cache](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 var log = logging.Logger("anytype-mw-configfetcher")
@@ -55,7 +55,7 @@ type configFetcher struct {
 
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
-	spaceService space.Service
+	spaceService spacecore.Service
 	wallet       wallet.Wallet
 	lastStatus   model.AccountStatusType
 }
@@ -91,7 +91,7 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.eventSender = a.MustComponent(event.CName).(event.Sender)
 	c.periodicSync = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
-	c.spaceService = a.MustComponent(space.CName).(space.Service)
+	c.spaceService = a.MustComponent(spacecore.CName).(spacecore.Service)
 	c.fetched = make(chan struct{})
 	return nil
 }
@@ -108,7 +108,7 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 	}()
 	res, err := c.client.StatusCheck(ctx, c.spaceService.AccountId())
 	if err == coordinatorproto.ErrSpaceNotExists {
-		sp, cErr := c.spaceService.GetSpace(ctx, c.spaceService.AccountId())
+		sp, cErr := c.spaceService.Get(ctx, c.spaceService.AccountId())
 		if cErr != nil {
 			return cErr
 		}

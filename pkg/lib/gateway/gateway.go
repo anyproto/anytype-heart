@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/netutil"
 )
 
@@ -47,7 +47,7 @@ type Gateway interface {
 
 type gateway struct {
 	fileService     files.Service
-	spaceService    space.Service
+	spaceService    spacecore.Service
 	objectStore     objectstore.ObjectStore
 	server          *http.Server
 	listener        net.Listener
@@ -89,7 +89,7 @@ func GatewayAddr() string {
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
-	g.spaceService = app.MustComponent[space.Service](a)
+	g.spaceService = app.MustComponent[spacecore.Service](a)
 	g.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)

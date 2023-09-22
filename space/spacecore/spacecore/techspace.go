@@ -10,7 +10,7 @@ import (
 
 type TechSpace interface {
 	SpaceDerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
-	DoSpaceObject(ctx context.Context, spaceID string, openBlock func(spaceObject SpaceObject) error) error
+	DoSpaceObject(ctx context.Context, spaceID string, perform func(spaceObject SpaceObject) error) error
 	PredefinedObjects(ctx context.Context, sp commonspace.Space, create bool) (objIDs threads.DerivedSmartblockIds, err error)
 	PreinstalledObjects(ctx context.Context, spaceID string) error
 

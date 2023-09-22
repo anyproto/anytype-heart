@@ -23,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -144,9 +144,9 @@ type IndexerStore interface {
 	FTSearch() ftsearch.FTSearch
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
-	GetChecksums() (checksums *model.ObjectStoreChecksums, err error)
+	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
 	// SaveChecksums Used to save checksums and force reindex counter
-	SaveChecksums(checksums *model.ObjectStoreChecksums) (err error)
+	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
 
 	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)

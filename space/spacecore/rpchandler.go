@@ -1,4 +1,4 @@
-package space
+package spacecore
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/space/clientspaceproto"
+	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 )
 
 type rpcHandler struct {
@@ -50,7 +50,7 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 		}
 		var portAddrs []string
 		for _, ip := range request.LocalServer.Ips {
-			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", ip, request.LocalServer.Port))
+			portAddrs = append(portAddrs, fmt.Sprintf("%spaceCore:%d", ip, request.LocalServer.Port))
 		}
 		r.s.peerService.SetPeerAddrs(peerId, portAddrs)
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)

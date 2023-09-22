@@ -38,8 +38,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -65,7 +65,7 @@ type export struct {
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
 	systemObjectService system_object.Service
-	spaceService        space.Service
+	spaceService        spacecore.Service
 }
 
 func New() Export {
@@ -80,7 +80,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.picker = app.MustComponent[getblock.Picker](a)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.systemObjectService = app.MustComponent[system_object.Service](a)
-	e.spaceService = app.MustComponent[space.Service](a)
+	e.spaceService = app.MustComponent[spacecore.Service](a)
 	return
 }
 

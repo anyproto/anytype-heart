@@ -30,7 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -388,7 +388,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
 		}
-		id, err := w.objectCache.DeriveObjectId(ctx, spaceID, uk)
+		id, err := w.objectCache.DeriveObjectID(ctx, spaceID, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}

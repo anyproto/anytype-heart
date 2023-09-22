@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 
@@ -64,9 +64,9 @@ func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
-func (mw *Middleware) getAccountService() (a space.Service, err error) {
+func (mw *Middleware) getAccountService() (a spacecore.Service, err error) {
 	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent(space.CName).(space.Service), nil
+		return a.MustComponent(spacecore.CName).(spacecore.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -99,7 +99,7 @@ func requireApp(a *app.App) {
 	}
 }
 
-func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error) {
+func (mw *Middleware) doAccountService(f func(a spacecore.Service) error) (err error) {
 	bs, err := mw.getAccountService()
 	if err != nil {
 		return

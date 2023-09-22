@@ -23,19 +23,19 @@ const (
 	SpaceStatusDeleted
 )
 
-type StatusPayload struct {
+type NetworkStatus struct {
 	Status       Status
 	DeletionDate time.Time
 }
 
-func NewSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) StatusPayload {
-	return StatusPayload{
+func NewSpaceStatus(payload *coordinatorproto.SpaceStatusPayload) NetworkStatus {
+	return NetworkStatus{
 		Status:       Status(payload.Status),
 		DeletionDate: time.Unix(payload.DeletionTimestamp, 0),
 	}
 }
 
-func CoordError(err error) error {
+func convertCoordError(err error) error {
 	switch err {
 	case coordinatorproto.ErrSpaceDeletionPending:
 		return ErrSpaceDeletionPending

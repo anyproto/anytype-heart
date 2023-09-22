@@ -1,7 +1,8 @@
-package space
+package spacecore
 
 import (
 	"errors"
+	"go.uber.org/zap"
 	"sync/atomic"
 	"time"
 
@@ -19,11 +20,11 @@ var (
 var lastMsgId atomic.Uint64
 
 type streamHandler struct {
-	s *service
+	spaceCore *service
 }
 
 func (s *streamHandler) OpenStream(ctx context.Context, p peer.Peer) (stream drpc.Stream, tags []string, err error) {
-	return s.OpenSpaceStream(ctx, p, s.s.getOpenedSpaceIds())
+	return s.OpenSpaceStream(ctx, p, s.spaceCore.getOpenedSpaceIds())
 }
 
 func (s *streamHandler) OpenSpaceStream(ctx context.Context, p peer.Peer, spaceIds []string) (stream drpc.Stream, tags []string, err error) {
@@ -63,10 +64,10 @@ func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg dr
 	ctx = peer.CtxWithPeerId(ctx, peerId)
 
 	if syncMsg.SpaceId == "" {
-		return s.s.HandleMessage(ctx, peerId, syncMsg)
+		return s.spaceCore.HandleMessage(ctx, peerId, syncMsg)
 	}
 
-	space, err := s.s.GetSpace(ctx, syncMsg.SpaceId)
+	space, err := s.spaceCore.Get(ctx, syncMsg.SpaceId)
 	if err != nil {
 		return
 	}
@@ -78,6 +79,19 @@ func (s *streamHandler) HandleMessage(ctx context.Context, peerId string, msg dr
 		PeerCtx:  ctx,
 	})
 	return
+}
+
+func (s *streamHandler) handleMessage(ctx context.Context, senderId string, req *spacesyncproto.ObjectSyncMessage) (err error) {
+	var msg = &spacesyncproto.SpaceSubscription{}
+	if err = msg.Unmarshal(req.Payload); err != nil {
+		return
+	}
+	log.InfoCtx(ctx, "got subscription message", zap.Strings("spaceIds", msg.SpaceIds))
+	if msg.Action == spacesyncproto.SpaceSubscriptionAction_Subscribe {
+		return s.spaceCore.streamPool.AddTagsCtx(ctx, msg.SpaceIds...)
+	} else {
+		return s.spaceCore.streamPool.RemoveTagsCtx(ctx, msg.SpaceIds...)
+	}
 }
 
 func (s *streamHandler) NewReadMessage() drpc.Message {

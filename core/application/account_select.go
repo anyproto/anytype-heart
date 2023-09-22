@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 // we cannot check the constant error from badger because they hardcoded it there
@@ -50,7 +50,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		objectCache := app.MustComponent[objectcache.Cache](s.app)
 		objectCache.CloseBlocks()
 
-		spaceID := app.MustComponent[space.Service](s.app).AccountId()
+		spaceID := app.MustComponent[spacecore.Service](s.app).AccountId()
 		acc := &model.Account{Id: req.Id}
 		var err error
 		acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
@@ -122,7 +122,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	}
 
 	acc := &model.Account{Id: req.Id}
-	spaceID := app.MustComponent[space.Service](s.app).AccountId()
+	spaceID := app.MustComponent[spacecore.Service](s.app).AccountId()
 	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
 	return acc, nil
 }

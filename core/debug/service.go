@@ -13,16 +13,13 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 const CName = "debug"
@@ -44,8 +41,8 @@ type Debug interface {
 type debug struct {
 	block         *block.Service
 	store         objectstore.ObjectStore
-	clientService space.Service
-	spaceService  space.Service
+	clientService spacecore.Service
+	spaceService  spacecore.Service
 
 	server *http.Server
 }
@@ -56,9 +53,9 @@ type Debuggable interface {
 
 func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	d.clientService = a.MustComponent(space.CName).(space.Service)
+	d.clientService = a.MustComponent(spacecore.CName).(spacecore.Service)
 	d.block = a.MustComponent(block.CName).(*block.Service)
-	d.spaceService = app.MustComponent[space.Service](a)
+	d.spaceService = app.MustComponent[spacecore.Service](a)
 
 	if addr, ok := os.LookupEnv("ANYDEBUG"); ok && addr != "" {
 		r := chi.NewRouter()
@@ -143,88 +140,90 @@ type SpaceSummary struct {
 }
 
 func (d *debug) SpaceSummary() (summary SpaceSummary, err error) {
-	spc, err := d.clientService.AccountSpace(context.Background())
-	if err != nil {
-		return
-	}
-	summary.SpaceId = spc.Id()
-	for _, t := range spc.DebugAllHeads() {
-		summary.TreeInfos = append(summary.TreeInfos, TreeInfo{
-			Heads: t.Heads,
-			Id:    t.Id,
-		})
-	}
+	//spc, err := d.clientService.AccountSpace(context.Background())
+	//if err != nil {
+	//	return
+	//}
+	//summary.SpaceId = spc.Id()
+	//for _, t := range spc.DebugAllHeads() {
+	//	summary.TreeInfos = append(summary.TreeInfos, TreeInfo{
+	//		Heads: t.Heads,
+	//		Id:    t.Id,
+	//	})
+	//}
 	return
 }
 
 func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
-	spc, err := d.clientService.AccountSpace(context.Background())
-	if err != nil {
-		return
-	}
-	tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), id, objecttreebuilder.HistoryTreeOpts{})
-	if err != nil {
-		return
-	}
-	info = TreeInfo{
-		Id:      id,
-		Heads:   tree.Heads(),
-		SpaceId: spc.Id(),
-	}
+	//spc, err := d.clientService.AccountSpace(context.Background())
+	//
+	//if err != nil {
+	//	return
+	//}
+	//tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), id, objecttreebuilder.HistoryTreeOpts{})
+	//if err != nil {
+	//	return
+	//}
+	//info = TreeInfo{
+	//	Id:      id,
+	//	Heads:   tree.Heads(),
+	//	SpaceId: spc.Id(),
+	//}
 	return
 }
 
 func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anonymize bool, withSvg bool) (filename string, err error) {
-	// 0 - get space and tree
-	spc, err := d.clientService.AccountSpace(context.Background())
-	if err != nil {
-		return
-	}
-	tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), objectID, objecttreebuilder.HistoryTreeOpts{BuildFullTree: true})
-	if err != nil {
-		return
-	}
-
-	// 1 - create ZIP file
-	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
-	spaceID, err := d.spaceService.ResolveSpaceID(objectID)
-	if err != nil {
-		return "", fmt.Errorf("resolve spaceID: %w", err)
-	}
-	exporter := &treeExporter{s: d.store, anonymized: anonymize, id: domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: objectID,
-	}}
-	zipFilename, err := exporter.Export(ctx, path, tree)
-	if err != nil {
-		logger.Error("build tree error:", err)
-		return "", err
-	}
-
-	// if client never asked for SVG generation -> return
-	if !withSvg {
-		return zipFilename, err
-	}
-
-	// 2 - create SVG file near ZIP
-	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.svg
+	//// 0 - get space and tree
+	//spc, err := d.clientService.AccountSpace(context.Background())
+	//if err != nil {
+	//	return
+	//}
+	//tree, err := spc.TreeBuilder().BuildHistoryTree(context.Background(), objectID, objecttreebuilder.HistoryTreeOpts{BuildFullTree: true})
+	//if err != nil {
+	//	return
+	//}
 	//
-	// this will return "graphviz is not supported on the current platform" error if no graphviz!
-	// generate a filename just like zip file had
-	maxReplacements := 1
-	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
-	debugInfo, err := tree.Debug(state.ChangeParser{})
-	if err != nil {
-		return
-	}
-
-	err = GraphvizSvg(debugInfo.Graphviz, svgFilename)
-	if err != nil {
-		return
-	}
-
-	// return zip filename, but not svgFilename
-	return zipFilename, nil
+	//// 1 - create ZIP file
+	//// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
+	//spaceID, err := d.spaceService.ResolveSpaceID(objectID)
+	//if err != nil {
+	//	return "", fmt.Errorf("resolve spaceID: %w", err)
+	//}
+	//exporter := &treeExporter{s: d.store, anonymized: anonymize, id: domain.FullID{
+	//	SpaceID:  spaceID,
+	//	ObjectID: objectID,
+	//}}
+	//zipFilename, err := exporter.Export(ctx, path, tree)
+	//if err != nil {
+	//	logger.Error("build tree error:", err)
+	//	return "", err
+	//}
+	//
+	//// if client never asked for SVG generation -> return
+	//if !withSvg {
+	//	return zipFilename, err
+	//}
+	//
+	//// 2 - create SVG file near ZIP
+	//// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.svg
+	////
+	//// this will return "graphviz is not supported on the current platform" error if no graphviz!
+	//// generate a filename just like zip file had
+	//maxReplacements := 1
+	//svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
+	//debugInfo, err := tree.Debug(state.ChangeParser{})
+	//if err != nil {
+	//	return
+	//}
+	//
+	//err = GraphvizSvg(debugInfo.Graphviz, svgFilename)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//// return zip filename, but not svgFilename
+	//return zipFilename, nil
+	return "", nil
 }
 
 func (d *debug) DumpLocalstore(spaceID string, objIds []string, path string) (filename string, err error) {

@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 const CName = "account"
@@ -25,10 +25,14 @@ var log = logging.Logger(CName)
 type Service interface {
 	app.Component
 	GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error)
+	Delete(ctx context.Context) error
+	RevertDeletion(ctx context.Context) error
+	AccountId() string
+	PersonalSpaceId() string
 }
 
 type service struct {
-	spaceService space.Service
+	spaceService spacecore.Service
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
@@ -40,7 +44,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.spaceService = app.MustComponent[space.Service](a)
+	s.spaceService = app.MustComponent[spacecore.Service](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.gateway = app.MustComponent[gateway.Gateway](a)
 	s.config = app.MustComponent[*config.Config](a)

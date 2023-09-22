@@ -22,7 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 )
 
 const CName = "space.typeprovider"
@@ -179,7 +179,7 @@ func (p *provider) objectTypeFromSpace(spaceID string, id string) (tp smartblock
 	}
 	p.RUnlock()
 
-	sp, err := p.spaceService.GetSpace(context.Background(), spaceID)
+	sp, err := p.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
 		return
 	}

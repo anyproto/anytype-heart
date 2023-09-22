@@ -9,8 +9,8 @@ import (
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/streampool"
 
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 func New() peermanager.PeerManagerProvider {
@@ -31,7 +31,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	p.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	poolService := a.MustComponent(pool.CName).(pool.Service)
 	p.pool = poolService
-	p.streamPool = a.MustComponent(space.CName).(space.Service).StreamPool()
+	p.streamPool = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService).StreamPool()
 	return nil
 }
 

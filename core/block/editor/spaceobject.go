@@ -2,14 +2,15 @@ package editor
 
 import (
 	"errors"
-	
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 )
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
@@ -67,10 +68,11 @@ func (p *SpaceObject) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	// TODO: check if we should even load the space
-	sp, err := p.spaceService.GetSpace(ctx.Ctx, p.spaceID)
+	sp, err := p.spaceService.Get(ctx.Ctx, p.spaceID)
 	if err != nil {
 		return
 	}
+	fmt.Println(sp.StoredIds(), "ids of space with", p.spaceID)
 	p.derivedObjects, err = p.techSpace.PredefinedObjects(ctx.Ctx, sp, false)
 	if err != nil {
 		return

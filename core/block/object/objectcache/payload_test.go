@@ -12,7 +12,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
-	spaceservice "github.com/anyproto/anytype-heart/space"
+	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 func Test_Payloads(t *testing.T) {

@@ -15,7 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 type fileWithSpace struct {
@@ -34,7 +34,7 @@ type fileWatcher struct {
 
 	dbProvider   datastore.Datastore
 	badger       *badger.DB
-	spaceService space.Service
+	spaceService spacecore.Service
 	registry     *fileStatusRegistry
 	updateCh     chan fileWithSpace
 	closeCh      chan struct{}
@@ -45,7 +45,7 @@ type fileWatcher struct {
 }
 
 func newFileWatcher(
-	spaceService space.Service,
+	spaceService spacecore.Service,
 	dbProvider datastore.Datastore,
 	registry *fileStatusRegistry,
 	updateReceiver syncstatus.UpdateReceiver,

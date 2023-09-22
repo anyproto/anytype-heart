@@ -31,7 +31,7 @@ type TreeCreationParams struct {
 
 // CreateTreePayload creates a tree payload for a given space and smart block type
 func (c *objectCache) CreateTreePayload(ctx context.Context, spaceID string, params payloadcreator.PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error) {
-	space, err := c.spaceService.GetSpace(ctx, spaceID)
+	space, err := c.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -61,7 +61,7 @@ func (c *objectCache) CreateTreeObject(ctx context.Context, spaceID string, para
 
 // CreateTreeObjectWithPayload creates a tree object with a given payload and object init func
 func (c *objectCache) CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := c.spaceService.GetSpace(ctx, spaceID)
+	space, err := c.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (c *objectCache) CreateTreeObjectWithPayload(ctx context.Context, spaceID s
 // it takes into account whether it is for personal space and if so uses old derivation logic
 // to maintain backward compatibility
 func (c *objectCache) DeriveTreePayload(ctx context.Context, spaceID string, params payloadcreator.PayloadDerivationParams) (storagePayload treestorage.TreeStorageCreatePayload, err error) {
-	space, err := c.spaceService.GetSpace(ctx, spaceID)
+	space, err := c.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -129,7 +129,7 @@ func (c *objectCache) DeriveTreeObject(ctx context.Context, spaceID string, para
 	return c.CreateTreeObjectWithPayload(ctx, spaceID, payload, params.InitFunc)
 }
 
-func (c *objectCache) DeriveObjectId(ctx context.Context, spaceID string, uniqueKey domain.UniqueKey) (id string, err error) {
+func (c *objectCache) DeriveObjectID(ctx context.Context, spaceID string, uniqueKey domain.UniqueKey) (id string, err error) {
 	payload, err := c.DeriveTreePayload(ctx, spaceID, payloadcreator.PayloadDerivationParams{
 		Key:           uniqueKey,
 		TargetSpaceID: spaceID,

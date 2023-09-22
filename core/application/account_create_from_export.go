@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -110,7 +110,7 @@ func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExp
 		return "", err
 	}
 
-	spaceID := app.MustComponent[space.Service](s.app).AccountId()
+	spaceID := app.MustComponent[spacecore.Service](s.app).AccountId()
 	if err = s.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
 		return "", errors.Join(ErrBadInput, err)
 	}

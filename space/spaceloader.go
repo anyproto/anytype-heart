@@ -2,109 +2,58 @@ package space
 
 import (
 	"context"
-	"github.com/anyproto/any-sync/commonspace"
+
 	"github.com/anyproto/any-sync/net/streampool"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spaceobject"
+	"github.com/anyproto/anytype-heart/space/spaceobject/objectprovider"
 )
 
+type objectDeriver interface {
+	deriveSpaceObject(ctx context.Context, spaceID, targetSpaceID string) (spaceobject.SpaceObject, error)
+	deriveSpaceObjectId(ctx context.Context, spaceID, targetSpaceID string) (string, error)
+}
+
 type spaceLoader struct {
-	spaceService *service
-	execPool     *streampool.ExecPool
-	ctx          context.Context
-	cancel       context.CancelFunc
+	spaceCore spacecore.SpaceCoreService
+	deriver   objectDeriver
+	provider  objectprovider.ObjectProvider
+	cache     objectcache.Cache
+	techSpace *spacecore.AnySpace
+
+	execPool *streampool.ExecPool
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
-func (s *spaceLoader) prepareIndexes() (err error) {
-	err = s.spaceService.indexer.PrepareFlags()
+func (s *spaceLoader) CreateSpaces(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	return s.spaceService.indexer.RemoveIndexes()
-}
-
-func (s *spaceLoader) initTechSpace(ctx context.Context) (err error) {
-	// derive tech space
-	payload := commonspace.SpaceDerivePayload{
-		SigningKey: s.spaceService.wallet.GetAccountPrivkey(),
-		MasterKey:  s.spaceService.wallet.GetMasterKey(),
-		SpaceType:  TechSpaceType,
-	}
-	spaceID, err := s.spaceService.commonSpace.DeriveSpace(ctx, payload)
-	if err != nil {
-		return
-	}
-	sp, err := s.spaceService.GetSpace(ctx, spaceID)
-	if err != nil {
-		return
-	}
-	s.spaceService.techSpace = newTechSpace(sp.(*clientSpace), s.spaceService)
+	_, err = s.derivePersonalSpace(ctx)
 	return
 }
 
 func (s *spaceLoader) LoadSpaces(ctx context.Context) (err error) {
-	err = s.prepareIndexes()
+	_, err = s.loadPersonalSpace(ctx)
 	if err != nil {
 		return
 	}
-	err = s.initTechSpace(ctx)
-	if err != nil {
-		return
-	}
-	err = s.spaceService.indexer.ReindexBundledObjects()
-	if err != nil {
-		return
-	}
-	// derive personal space
-	obj, err := s.spaceService.techSpace.DerivePersonalSpace(ctx, false)
-	if err != nil {
-		return
-	}
-	s.cacheDerivedIDs(obj)
-	// load all spaces asynchronously, so they can reindex themselves
-	storedIds := s.spaceService.techSpace.StoredIds()
+	storedIDs := s.techSpace.StoredIds()
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.execPool = streampool.NewExecPool(10, len(storedIds))
-	for _, id := range storedIds {
+	s.execPool = streampool.NewExecPool(10, len(storedIDs))
+	for _, id := range storedIDs {
 		_ = s.execPool.Add(s.ctx, func() {
-			obj, err := s.spaceService.objectCache.PickBlock(s.ctx, id)
+			err := s.loadSpaceObject(id)
 			if err != nil {
-				log.Debug("failed to load block", zap.Error(err), zap.String("id", id))
+				log.Debug("failed to load space object", zap.Error(err), zap.String("id", id))
 			}
-			s.cacheDerivedIDs(obj.(spacecore.SpaceObject))
 		})
 	}
-	return
-}
-
-func (s *spaceLoader) cacheDerivedIDs(spaceObject spacecore.SpaceObject) {
-	spaceID := spaceObject.SpaceID()
-	_, err := s.spaceService.techSpace.SpaceDerivedIDs(s.ctx, spaceID)
-	if err != nil {
-		log.Debug("failed to get derived ids", zap.Error(err), zap.String("spaceID", spaceID))
-	}
-	return
-}
-
-func (s *spaceLoader) CreateSpaces(ctx context.Context) (err error) {
-	err = s.prepareIndexes()
-	if err != nil {
-		return
-	}
-	err = s.initTechSpace(ctx)
-	if err != nil {
-		return
-	}
-	err = s.spaceService.indexer.ReindexBundledObjects()
-	if err != nil {
-		return
-	}
-	// derive personal space
-	obj, err := s.spaceService.techSpace.DerivePersonalSpace(ctx, true)
-	if err != nil {
-		return
-	}
-	s.cacheDerivedIDs(obj.(spacecore.SpaceObject))
 	return
 }
 
@@ -115,4 +64,81 @@ func (s *spaceLoader) Close() {
 	if s.execPool != nil {
 		s.execPool.Close()
 	}
+}
+
+func (s *spaceLoader) derivePersonalSpace(ctx context.Context) (spaceObject spaceobject.SpaceObject, err error) {
+	space, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
+	if err != nil {
+		return nil, err
+	}
+	sp, err := s.spaceCore.Get(ctx, space.Id())
+	if err != nil {
+		return nil, err
+	}
+	obj, err := s.deriver.deriveSpaceObject(ctx, s.techSpace.Id(), sp.Id())
+	if err != nil {
+		return nil, err
+	}
+	return obj, obj.WaitLoad()
+}
+
+func (s *spaceLoader) loadPersonalSpace(ctx context.Context) (spaceObject spaceobject.SpaceObject, err error) {
+	id, err := s.spaceCore.DeriveID(ctx, spacecore.SpaceType)
+	if err != nil {
+		return nil, err
+	}
+	sp, err := s.spaceCore.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	ids, err := s.provider.DeriveObjectIDs(ctx, id, personalSpaceTypes)
+	if err != nil {
+		return nil, err
+	}
+	err = s.loadObjects(ctx, id, ids.IDs())
+	if err != nil {
+		return nil, err
+	}
+	obj, err := s.getOrDerive(ctx, s.techSpace.Id(), sp.Id())
+	if err != nil {
+		return nil, err
+	}
+	return obj, obj.WaitLoad()
+}
+
+func (s *spaceLoader) getOrDerive(ctx context.Context, spaceID, targetSpaceID string) (spaceobject.SpaceObject, error) {
+	id, err := s.deriver.deriveSpaceObjectId(ctx, spaceID, targetSpaceID)
+	if err != nil {
+		return nil, err
+	}
+	obj, err := s.cache.GetObject(ctx, domain.FullID{
+		ObjectID: id,
+		SpaceID:  spaceID,
+	})
+	if err != nil {
+		return s.deriver.deriveSpaceObject(ctx, spaceID, targetSpaceID)
+	}
+	return obj.(spaceobject.SpaceObject), nil
+}
+
+func (s *spaceLoader) loadObjects(ctx context.Context, spaceID string, objIDs []string) (err error) {
+	for _, id := range objIDs {
+		_, err = s.cache.GetObject(ctx, domain.FullID{
+			ObjectID: id,
+			SpaceID:  spaceID,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (s *spaceLoader) loadSpaceObject(id string) (err error) {
+	obj, err := s.cache.GetObject(s.ctx, domain.FullID{ObjectID: id, SpaceID: s.techSpace.Id()})
+	if err != nil {
+		return
+	}
+	spaceObject := obj.(spaceobject.SpaceObject)
+	return spaceObject.WaitLoad()
 }

@@ -41,7 +41,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema/anytype"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/spacecore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 

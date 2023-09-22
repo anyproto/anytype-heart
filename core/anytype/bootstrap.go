@@ -65,15 +65,15 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientserver"
-	"github.com/anyproto/anytype-heart/space/credentialprovider"
-	"github.com/anyproto/anytype-heart/space/localdiscovery"
-	"github.com/anyproto/anytype-heart/space/peermanager"
-	"github.com/anyproto/anytype-heart/space/peerstore"
-	"github.com/anyproto/anytype-heart/space/storage"
-	"github.com/anyproto/anytype-heart/space/syncstatusprovider"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
+	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -203,7 +203,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
-		Register(space.New()).
+		Register(spacecore.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).

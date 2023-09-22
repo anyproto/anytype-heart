@@ -47,8 +47,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/mutex"
@@ -131,7 +131,7 @@ type Service struct {
 	systemObjectService  system_object.Service
 	objectCache          objectcache.Cache
 	objectCreator        objectCreator
-	spaceService         space.Service
+	spaceService         spacecore.Service
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
@@ -167,7 +167,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
-	s.spaceService = a.MustComponent(space.CName).(space.Service)
+	s.spaceService = a.MustComponent(spacecore.CName).(spacecore.Service)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
@@ -348,7 +348,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.objectCache.DeriveObjectId(ctx, spaceID, uniqueKey)
+			id, err := s.objectCache.DeriveObjectID(ctx, spaceID, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -368,7 +368,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.objectCache.DeriveObjectId(ctx, spaceID, uniqueKey)
+			id, err := s.objectCache.DeriveObjectID(ctx, spaceID, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err

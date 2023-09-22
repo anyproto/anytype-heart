@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/space/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 type clientPeerManager struct {

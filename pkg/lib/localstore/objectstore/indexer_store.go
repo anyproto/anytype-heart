@@ -37,15 +37,15 @@ func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
 	}
 }
 
-func (s *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
-	return getValue(s.db, bundledChecksums.Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
+func (s *dsObjectStore) GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error) {
+	return getValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
 		checksums := &model.ObjectStoreChecksums{}
 		return checksums, proto.Unmarshal(raw, checksums)
 	})
 }
 
-func (s *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (err error) {
-	return setValue(s.db, bundledChecksums.Bytes(), checksums)
+func (s *dsObjectStore) SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error) {
+	return setValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), checksums)
 }
 
 // GetLastIndexedHeadsHash return empty hash without error if record was not found

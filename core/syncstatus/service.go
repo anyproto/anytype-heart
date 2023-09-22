@@ -21,8 +21,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-status")
@@ -66,7 +66,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 
 	dbProvider := app.MustComponent[datastore.Datastore](a)
-	spaceService := app.MustComponent[space.Service](a)
+	spaceService := app.MustComponent[spacecore.Service](a)
 	coreService := app.MustComponent[core.Service](a)
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	fileStore := app.MustComponent[filestore.FileStore](a)

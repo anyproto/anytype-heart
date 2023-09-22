@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider, _ system_object.Service) converter.MultiConverter {

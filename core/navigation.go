@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -51,7 +51,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return filtered
 	}
 
-	spaceService := getService[space.Service](mw)
+	spaceService := getService[spacecore.Service](mw)
 	store := app.MustComponent[objectstore.ObjectStore](mw.applicationService.GetApp())
 	spaceID, err := spaceService.ResolveSpaceID(req.ObjectId)
 	if err != nil {
