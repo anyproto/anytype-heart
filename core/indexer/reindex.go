@@ -57,7 +57,7 @@ func (i *indexer) buildFlags(spaceID string) (flags reindexFlags, err error) {
 			// global
 			IdxRebuildCounter: ForceIdxRebuildCounter,
 			// per space
-			FilestoreKeysForceReindexCounter: ForceFilestore KeysReindexCounter,
+			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 			// per space
 			FulltextRebuild: ForceFulltextIndexCounter,
 			// global

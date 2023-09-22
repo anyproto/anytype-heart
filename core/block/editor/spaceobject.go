@@ -2,15 +2,10 @@ package editor
 
 import (
 	"errors"
-	"fmt"
-	"github.com/anyproto/anytype-heart/space"
-
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
@@ -19,75 +14,22 @@ var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 // additional functionality for space creation/deletion/etc
 type SpaceObject struct {
 	smartblock.SmartBlock
-
-	spaceService   space.SpaceService
-	indexer        spaceIndexer
-	objectCache    objectcache.Cache
-	derivedObjects threads.DerivedSmartblockIds
-	spaceID        string
 }
 
 // spaceObjectDeps is a set of dependencies for SpaceObject
 type spaceObjectDeps struct {
-	spaceService space.SpaceService
-	objectCache  objectcache.Cache
-	indexer      spaceIndexer
 }
 
 // newSpaceObject creates a new SpaceObject with given deps
 func newSpaceObject(sb smartblock.SmartBlock, deps spaceObjectDeps) *SpaceObject {
 	return &SpaceObject{
-		SmartBlock:   sb,
-		spaceService: deps.spaceService,
-		techSpace:    deps.techSpace,
-		objectCache:  deps.objectCache,
-		indexer:      deps.indexer,
+		SmartBlock: sb,
 	}
-}
-
-// SpaceID returns space id of the space object
-func (p *SpaceObject) SpaceID() string {
-	return p.spaceID
-}
-
-// DerivedIDs returns derived smartblock ids
-func (p *SpaceObject) DerivedIDs() threads.DerivedSmartblockIds {
-	return p.derivedObjects
 }
 
 // Init initializes SpaceObject
 func (p *SpaceObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
-		return
-	}
-	// get space id from the root
-	p.spaceID, err = p.targetSpaceID()
-	if err != nil {
-		return
-	}
-	// TODO: check if we should even load the space
-	sp, err := p.spaceService.Get(ctx.Ctx, p.spaceID)
-	if err != nil {
-		return
-	}
-	fmt.Println(sp.StoredIds(), "ids of space with", p.spaceID)
-	p.derivedObjects, err = p.techSpace.PredefinedObjects(ctx.Ctx, sp, false)
-	if err != nil {
-		return
-	}
-	for _, id := range p.derivedObjects.IDs() {
-		_, err := p.objectCache.ResolveObject(ctx.Ctx, id)
-		if err != nil {
-			return err
-		}
-	}
-	err = p.techSpace.PreinstalledObjects(ctx.Ctx, p.spaceID)
-	if err != nil {
-		return
-	}
-	// TODO: [MR] we should save the flags somewhere
-	err = p.indexer.ReindexSpace(p.spaceID, p.spaceID == p.spaceService.AccountId())
-	if err != nil {
 		return
 	}
 	p.DisableLayouts()

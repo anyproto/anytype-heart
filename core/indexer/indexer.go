@@ -48,6 +48,7 @@ func New() Indexer {
 
 type Indexer interface {
 	ForceFTIndex()
+
 	ReindexCommonObjects() error
 	ReindexSpace(spaceID string) error
 	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error

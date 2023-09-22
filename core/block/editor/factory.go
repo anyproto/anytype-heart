@@ -52,7 +52,7 @@ type ObjectFactory struct {
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             spaceIndexer
-	spaceService        spacecore.Service
+	spaceService        spacecore.SpaceCoreService
 	objectCache         objectcache.Cache
 }
 
@@ -62,7 +62,7 @@ func NewObjectFactory() *ObjectFactory {
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
-	f.spaceService = app.MustComponent[spacecore.Service](a)
+	f.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	f.objectCache = app.MustComponent[objectcache.Cache](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
@@ -227,12 +227,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 	case coresb.SmartBlockTypeSpaceObject:
 		return newSpaceObject(
 			sb,
-			spaceObjectDeps{
-				spaceService: f.spaceService,
-				techSpace:    f.spaceService.TechSpace(),
-				objectCache:  f.objectCache,
-				indexer:      f.indexer,
-			},
+			spaceObjectDeps{},
 		), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil

@@ -12,3 +12,10 @@ type SpaceObject interface {
 	DerivedIDs() threads.DerivedSmartblockIds
 	WaitLoad() error
 }
+
+type spaceObject struct {
+}
+
+func NewSpaceObject() SpaceObject {
+	return &spaceObject{}
+}
