@@ -1,4 +1,4 @@
-//go:build linux && !android
+//go:build darwin
 
 package filetime
 
@@ -21,7 +21,7 @@ func ExtractFileTimes(fileName string) (int64, int64) {
 	}
 
 	if stat, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
-		creationTime := time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
+		creationTime := time.Unix(stat.Birthtimespec.Sec, stat.Birthtimespec.Nsec)
 		modTime := fileInfo.ModTime().Unix()
 		return creationTime.Unix(), modTime
 	}

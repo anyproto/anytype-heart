@@ -1,4 +1,4 @@
-//go:build (linux || darwin) && !android
+//go:build darwin
 
 package filetime
 
