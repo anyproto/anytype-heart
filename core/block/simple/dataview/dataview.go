@@ -216,6 +216,18 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	return ids
 }
 
+func (l *Dataview) ReplaceSmartIds(f func(id string) (newId string, replaced bool)) (anyReplaced bool) {
+	if l.content.TargetObjectId != "" {
+		newId, replaced := f(l.content.TargetObjectId)
+		if replaced {
+			l.content.TargetObjectId = newId
+			return true
+		}
+	}
+
+	return
+}
+
 func (l *Dataview) HasSmartIds() bool {
 	return len(l.content.RelationLinks) > 0 || l.content.TargetObjectId != ""
 }

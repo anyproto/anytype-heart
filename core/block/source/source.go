@@ -237,7 +237,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 
 	// temporarily do the migration in place without actually creating changes to increase the backward compatibility
-	if err = st.MigrateSubobjectLinks(s.migrateSubObjectId); err != nil {
+	if err = st.ReplaceAllObjectLinks(s.migrateSubObjectId); err != nil {
 		return
 	}
 

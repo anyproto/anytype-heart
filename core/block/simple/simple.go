@@ -48,6 +48,10 @@ type DetailsHandler interface {
 	ApplyToDetails(prev Block, s DetailsService) (ok bool, err error)
 }
 
+type ObjectLinkReplacer interface {
+	ReplaceSmartIds(f func(id string) (newId string, replaced bool)) (anyReplaced bool)
+}
+
 type EventMessage struct {
 	Virtual bool
 	Msg     *pb.EventMessage

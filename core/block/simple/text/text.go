@@ -651,6 +651,22 @@ func (t *Text) FillSmartIds(ids []string) []string {
 	return ids
 }
 
+func (t *Text) ReplaceSmartIds(f func(id string) (newId string, replaced bool)) (anyReplaced bool) {
+	if t.content.Marks != nil {
+		for _, m := range t.content.Marks.Marks {
+			if (m.Type == model.BlockContentTextMark_Mention ||
+				m.Type == model.BlockContentTextMark_Object) && m.Param != "" {
+				newId, replaced := f(m.Param)
+				if replaced {
+					m.Param = newId
+					anyReplaced = true
+				}
+			}
+		}
+	}
+	return
+}
+
 func (t *Text) HasSmartIds() bool {
 	if t.content.Marks != nil {
 		for _, m := range t.content.Marks.Marks {
