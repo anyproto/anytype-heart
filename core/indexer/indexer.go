@@ -47,7 +47,7 @@ func New() Indexer {
 
 type Indexer interface {
 	ForceFTIndex()
-
+	StartFullTextIndex() error
 	ReindexCommonObjects() error
 	ReindexSpace(spaceID string) error
 	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
@@ -125,7 +125,10 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run(context.Context) (err error) {
-	// TODO: [MR] think what to do with full text search
+	return
+}
+
+func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}

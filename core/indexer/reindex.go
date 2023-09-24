@@ -43,7 +43,12 @@ const (
 )
 
 func (i *indexer) buildFlags(spaceID string) (flags reindexFlags, err error) {
-	checksums, err := i.store.GetChecksums(spaceID)
+	var checksums *model.ObjectStoreChecksums
+	if spaceID == "" {
+		checksums, err = i.store.GetGlobalChecksums()
+	} else {
+		checksums, err = i.store.GetChecksums(spaceID)
+	}
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
 		return
 	}
@@ -95,53 +100,11 @@ func (i *indexer) buildFlags(spaceID string) (flags reindexFlags, err error) {
 	return
 }
 
-func (i *indexer) removeIndexes(flags reindexFlags) (err error) {
-	if flags.any() {
-		log.Infof("start store reindex (%s)", flags.String())
-	}
-
-	if flags.objects && flags.fileObjects {
-		// files will be indexed within object indexing (see indexLinkedFiles)
-		// because we need to do it in the background.
-		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
-		// will be waiting for the linkedFiles background indexing without this flag
-		flags.fileObjects = false
-	}
-
-	if flags.fileKeys {
-		err = i.fileStore.RemoveEmptyFileKeys()
-		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err.Error())
-		} else {
-			log.Infof("RemoveEmptyFileKeys filekeys succeed")
-		}
-	}
-
-	if flags.removeAllIndexedObjects {
-		ids, err := i.store.ListIds()
-		if err != nil {
-			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err.Error())
-		}
-		for _, id := range ids {
-			err = i.store.DeleteDetails(id)
-			if err != nil {
-				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
-			}
-		}
-	}
-	if flags.eraseIndexes {
-		err = i.store.EraseIndexes()
-		if err != nil {
-			log.Errorf("reindex failed to erase indexes: %v", err.Error())
-		} else {
-			log.Infof("all store indexes successfully erased")
-		}
-	}
-	return
-}
-
 func (i *indexer) ReindexSpace(spaceID string) (err error) {
-	flags := i.flags
+	flags, err := i.buildFlags(spaceID)
+	if err != nil {
+		return
+	}
 	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
 	// for all ids except home and archive setting cache timeout for reindexing
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
@@ -216,12 +179,15 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 		}
 	}
 
-	return nil
+	return i.saveLatestChecksums(spaceID)
 }
 
 func (i *indexer) ReindexCommonObjects() error {
-	// TODO: [MR] figure out where to put counters for common objects and how to remove them
-	flags := i.flags
+	flags, err := i.buildFlags("")
+	if err != nil {
+		return err
+	}
+	err = i.removeGlobalIndexes(flags)
 	ctx := context.Background()
 	spaceID := addr.AnytypeMarketplaceWorkspace
 
@@ -265,7 +231,51 @@ func (i *indexer) ReindexCommonObjects() error {
 		}
 	}
 
-	return nil
+	return i.saveLatestChecksums("")
+}
+
+func (i *indexer) removeGlobalIndexes(flags reindexFlags) (err error) {
+	if flags.any() {
+		log.Infof("start store reindex (%s)", flags.String())
+	}
+	if flags.objects && flags.fileObjects {
+		// files will be indexed within object indexing (see indexLinkedFiles)
+		// because we need to do it in the background.
+		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
+		// will be waiting for the linkedFiles background indexing without this flag
+		flags.fileObjects = false
+	}
+
+	if flags.fileKeys {
+		err = i.fileStore.RemoveEmptyFileKeys()
+		if err != nil {
+			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err.Error())
+		} else {
+			log.Infof("RemoveEmptyFileKeys filekeys succeed")
+		}
+	}
+
+	if flags.removeAllIndexedObjects {
+		ids, err := i.store.ListIds()
+		if err != nil {
+			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err.Error())
+		}
+		for _, id := range ids {
+			err = i.store.DeleteDetails(id)
+			if err != nil {
+				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
+			}
+		}
+	}
+	if flags.eraseIndexes {
+		err = i.store.EraseIndexes()
+		if err != nil {
+			log.Errorf("reindex failed to erase indexes: %v", err.Error())
+		} else {
+			log.Infof("all store indexes successfully erased")
+		}
+	}
+	return
 }
 
 func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, spaceID string, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
@@ -359,22 +369,23 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (succe
 	return
 }
 
-// TODO: [MR] save checksums per space and per common
-//func (i *indexer) SaveLatestChecksums() error {
-//	checksums := model.ObjectStoreChecksums{
-//		BundledObjectTypes:         bundle.TypeChecksum,
-//		BundledRelations:           bundle.RelationChecksum,
-//		BundledTemplates:           i.btHash.Hash(),
-//		ObjectsForceReindexCounter: ForceObjectsReindexCounter,
-//		FilesForceReindexCounter:   ForceFilesReindexCounter,
-//
-//		IdxRebuildCounter:                ForceIdxRebuildCounter,
-//		FulltextRebuild:                  ForceFulltextIndexCounter,
-//		BundledObjects:                   ForceBundledObjectsReindexCounter,
-//		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-//	}
-//	return i.store.SaveChecksums(&checksums)
-//}
+func (i *indexer) saveLatestChecksums(spaceID string) error {
+	checksums := model.ObjectStoreChecksums{
+		BundledObjectTypes:               bundle.TypeChecksum,
+		BundledRelations:                 bundle.RelationChecksum,
+		BundledTemplates:                 i.btHash.Hash(),
+		ObjectsForceReindexCounter:       ForceObjectsReindexCounter,
+		FilesForceReindexCounter:         ForceFilesReindexCounter,
+		IdxRebuildCounter:                ForceIdxRebuildCounter,
+		FulltextRebuild:                  ForceFulltextIndexCounter,
+		BundledObjects:                   ForceBundledObjectsReindexCounter,
+		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+	}
+	if spaceID == "" {
+		return i.store.SaveGlobalChecksums(&checksums)
+	}
+	return i.store.SaveChecksums(spaceID, &checksums)
+}
 
 func (i *indexer) getIdsForTypes(spaceID string, sbt ...smartblock2.SmartBlockType) ([]string, error) {
 	var ids []string

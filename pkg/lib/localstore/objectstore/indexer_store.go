@@ -48,6 +48,17 @@ func (s *dsObjectStore) SaveChecksums(spaceID string, checksums *model.ObjectSto
 	return setValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), checksums)
 }
 
+func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
+	return getValue(s.db, bundledChecksums.Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
+		checksums := &model.ObjectStoreChecksums{}
+		return checksums, proto.Unmarshal(raw, checksums)
+	})
+}
+
+func (s *dsObjectStore) SaveGlobalChecksums(checksums *model.ObjectStoreChecksums) (err error) {
+	return setValue(s.db, bundledChecksums.Bytes(), checksums)
+}
+
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
 func (s *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
 	headsHash, err = getValue(s.db, indexedHeadsState.ChildString(id).Bytes(), bytesToString)

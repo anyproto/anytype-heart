@@ -3,7 +3,8 @@ package objectcache
 import (
 	"context"
 	"errors"
-	"fmt"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -94,7 +95,11 @@ func (c *objectCache) Init(a *app.App) error {
 	c.provider = app.MustComponent[personalIDProvider](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
-	c.resolver = &resolver{}
+	db, err := a.MustComponent(datastore.CName).(datastore.Datastore).SpaceStorage()
+	if err != nil {
+		return err
+	}
+	c.resolver = newResolver(c.spaceService, newResolverStorage(db))
 	c.cache = ocache.New(
 		c.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
@@ -138,7 +143,11 @@ func ContextWithBuildOptions(ctx context.Context, buildOpts source.BuildOptions)
 func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
 	// TODO Pass options as parameter?
 	opts := ctx.Value(optsKey).(cacheOpts)
-
+	defer func() {
+		if err == nil {
+			_ = c.BindSpaceID(opts.spaceId, id)
+		}
+	}()
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
 		return c.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
@@ -169,6 +178,10 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 }
 
 func (c *objectCache) BindSpaceID(spaceID, objectID string) (err error) {
+	// this will work only once per space
+	if err := c.resolver.StoreCurrentIDs(context.Background(), spaceID); err != nil {
+		log.Warn("failed to store all ids for space", zap.Error(err), zap.String("spaceID", spaceID))
+	}
 	return c.resolver.StoreSpaceID(spaceID, objectID)
 }
 
@@ -207,9 +220,6 @@ func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smart
 	}
 	if err != nil {
 		return
-	}
-	if v == nil {
-		fmt.Println()
 	}
 	return v.(smartblock.SmartBlock), nil
 }
