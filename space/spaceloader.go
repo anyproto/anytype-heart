@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceobject"
 	"github.com/anyproto/anytype-heart/space/spaceobject/objectprovider"
@@ -91,7 +92,7 @@ func (s *spaceLoader) loadPersonalSpace(ctx context.Context) (spaceObject spaceo
 	if err != nil {
 		return nil, err
 	}
-	ids, err := s.provider.DeriveObjectIDs(ctx, id, personalSpaceTypes)
+	ids, err := s.provider.DeriveObjectIDs(ctx, id, threads.PersonalSpaceTypes)
 	if err != nil {
 		return nil, err
 	}

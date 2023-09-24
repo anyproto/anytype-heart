@@ -24,22 +24,6 @@ const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
-var (
-	personalSpaceTypes = []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeHome,
-		smartblock.SmartBlockTypeArchive,
-		smartblock.SmartBlockTypeWidget,
-		smartblock.SmartBlockTypeWorkspace,
-		smartblock.SmartBlockTypeAnytypeProfile,
-	}
-	spaceTypes = []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeHome,
-		smartblock.SmartBlockTypeArchive,
-		smartblock.SmartBlockTypeWidget,
-		smartblock.SmartBlockTypeWorkspace,
-	}
-)
-
 func New() SpaceService {
 	return &service{}
 }
@@ -92,7 +76,7 @@ func (s *service) spaceParams(ctx context.Context, spaceID string) (params space
 	if ok {
 		return
 	}
-	ids, err := s.provider.DeriveObjectIDs(ctx, spaceID, spaceTypes)
+	ids, err := s.provider.DeriveObjectIDs(ctx, spaceID, threads.PersonalSpaceTypes)
 	if err != nil {
 		return
 	}
@@ -129,11 +113,11 @@ func (s *service) Create(ctx context.Context) (spaceObject spaceobject.SpaceObje
 	if err != nil {
 		return
 	}
-	_, err = s.provider.DeriveObjectIDs(ctx, space.Id(), spaceTypes)
+	_, err = s.provider.DeriveObjectIDs(ctx, space.Id(), threads.PersonalSpaceTypes)
 	if err != nil {
 		return
 	}
-	err = s.provider.CreateMandatoryObjects(ctx, space.Id(), spaceTypes)
+	err = s.provider.CreateMandatoryObjects(ctx, space.Id(), threads.PersonalSpaceTypes)
 	if err != nil {
 		return
 	}

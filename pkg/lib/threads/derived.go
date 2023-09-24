@@ -7,6 +7,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
+var (
+	PersonalSpaceTypes = []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeWidget,
+		smartblock.SmartBlockTypeWorkspace,
+		smartblock.SmartBlockTypeAnytypeProfile,
+	}
+	SpaceTypes = []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeWidget,
+		smartblock.SmartBlockTypeWorkspace,
+	}
+)
+
 type DerivedSmartblockIds struct {
 	Workspace       string
 	Profile         string
@@ -31,7 +47,12 @@ func (d DerivedSmartblockIds) IDs() []string {
 }
 
 func (d DerivedSmartblockIds) IsFilled() bool {
-	return d.Workspace != "" && d.Profile != "" && d.Home != "" && d.Archive != "" && d.Widgets != ""
+	for _, id := range d.IDs() {
+		if id == "" {
+			return false
+		}
+	}
+	return true
 }
 
 func (d DerivedSmartblockIds) HasID(sbt smartblock.SmartBlockType) bool {

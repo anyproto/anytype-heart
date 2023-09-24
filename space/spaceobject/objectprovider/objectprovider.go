@@ -26,6 +26,7 @@ type ObjectProvider interface {
 	DeriveObjectIDs(ctx context.Context, spaceID string, sbTypes []smartblock.SmartBlockType) (objIDs threads.DerivedSmartblockIds, err error)
 	LoadObjects(ctx context.Context, spaceID string, ids []string) (err error)
 	CreateMandatoryObjects(ctx context.Context, spaceID string, sbTypes []smartblock.SmartBlockType) (err error)
+	InstallBundledObjects(ctx context.Context, spaceID string) error
 }
 
 func NewObjectProvider(cache objectcache.Cache, installer bundledObjectsInstaller) ObjectProvider {

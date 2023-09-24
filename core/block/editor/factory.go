@@ -1,12 +1,12 @@
 package editor
 
 import (
+	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -24,6 +25,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
@@ -31,7 +33,14 @@ var log = logging.Logger("anytype-mw-editor")
 
 type spaceIndexer interface {
 	smartblock.Indexer
-	ReindexSpace(spaceID string, includeProfile bool) error
+}
+
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
+type bundledObjectsInstaller interface {
+	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
 }
 
 type ObjectFactory struct {
@@ -52,8 +61,10 @@ type ObjectFactory struct {
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             spaceIndexer
-	spaceService        spacecore.SpaceCoreService
+	spaceCore           spacecore.SpaceCoreService
 	objectCache         objectcache.Cache
+	personalIDProvider  personalIDProvider
+	installer           bundledObjectsInstaller
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -62,7 +73,7 @@ func NewObjectFactory() *ObjectFactory {
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
-	f.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
+	f.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	f.objectCache = app.MustComponent[objectcache.Cache](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
@@ -80,7 +91,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.picker = app.MustComponent[getblock.Picker](a)
 	f.indexer = app.MustComponent[spaceIndexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
-
+	f.personalIDProvider = app.MustComponent[personalIDProvider](a)
+	f.installer = app.MustComponent[bundledObjectsInstaller](a)
 	return nil
 }
 
@@ -227,7 +239,12 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 	case coresb.SmartBlockTypeSpaceObject:
 		return newSpaceObject(
 			sb,
-			spaceObjectDeps{},
+			spaceObjectDeps{
+				cache:     f.objectCache,
+				installer: f.installer,
+				spaceCore: f.spaceCore,
+				provider:  f.personalIDProvider,
+			},
 		), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
