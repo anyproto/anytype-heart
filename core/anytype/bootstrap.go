@@ -65,6 +65,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
@@ -239,6 +240,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory()).
+		Register(space.New()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New())
 }
