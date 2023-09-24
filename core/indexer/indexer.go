@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -59,6 +58,11 @@ type Hasher interface {
 	Hash() string
 }
 
+type spaceIDResolver interface {
+	BindSpaceID(spaceID string, objectID string) error
+	ResolveSpaceID(objectID string) (spaceID string, err error)
+}
+
 type objectCreator interface {
 	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 	InstallBundledObjects(
@@ -68,10 +72,14 @@ type objectCreator interface {
 	) (ids []string, objects []*types.Struct, err error)
 }
 
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
 type indexer struct {
 	store         objectstore.ObjectStore
 	fileStore     filestore.FileStore
-	anytype       core.Service
+	resolver      spaceIDResolver
 	source        source.Service
 	picker        block.Picker
 	ftsearch      ftsearch.FTSearch
@@ -84,7 +92,8 @@ type indexer struct {
 	forceFt    chan struct{}
 
 	typeProvider typeprovider.SmartBlockTypeProvider
-	spaceService spacecore.SpaceCoreService
+	spaceCore    spacecore.SpaceCoreService
+	provider     personalIDProvider
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
@@ -94,8 +103,8 @@ type indexer struct {
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
-	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	i.resolver = app.MustComponent[spaceIDResolver](a)
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
@@ -103,7 +112,8 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.objectCreator = app.MustComponent[objectCreator](a)
 	i.picker = app.MustComponent[block.Picker](a)
-	i.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
+	i.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
@@ -263,6 +273,11 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			// Deduplicate
 			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
 			if ok {
+				return
+			}
+			err := i.resolver.BindSpaceID(spaceID, id)
+			if err != nil {
+				log.Error("failed to bind space id", zap.Error(err), zap.String("id", id))
 				return
 			}
 			// file's hash is id

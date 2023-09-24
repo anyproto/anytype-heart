@@ -97,8 +97,8 @@ func (c *objectCache) DeriveTreePayload(ctx context.Context, spaceID string, par
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
 	accountKeys := c.accountService.Account()
-	isPersonal := c.spaceService.AccountId() == spaceID
-	if isPersonal {
+	// we have to derive ids differently for personal space
+	if c.provider.PersonalSpaceID() == spaceID {
 		treePayload := derivePersonalPayload(space.Id(), accountKeys.SignKey, changePayload)
 		create, err := space.TreeBuilder().CreateTree(context.Background(), treePayload)
 		if err != nil {

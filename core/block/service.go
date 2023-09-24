@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anyproto/anytype-heart/space"
 	"strings"
 	"sync"
 	"time"
@@ -48,6 +47,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -102,7 +103,6 @@ type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 }
-
 type DetailsGetter interface {
 	GetDetails() *types.Struct
 }
@@ -112,7 +112,9 @@ type InternalFlagsGetter interface {
 type TemplateIDGetter interface {
 	GetTemplateId() string
 }
-
+type spaceIDResolver interface {
+	ResolveSpaceID(objectID string) (spaceID string, err error)
+}
 type builtinObjects interface {
 	CreateObjectsForUseCase(ctx context.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
@@ -131,7 +133,9 @@ type Service struct {
 	systemObjectService  system_object.Service
 	objectCache          objectcache.Cache
 	objectCreator        objectCreator
+	resolver             spaceIDResolver
 	spaceService         space.SpaceService
+	spaceCore            spacecore.SpaceCoreService
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
@@ -173,6 +177,8 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectCache = app.MustComponent[objectcache.Cache](a)
+	s.resolver = app.MustComponent[spaceIDResolver](a)
+	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)

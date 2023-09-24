@@ -15,7 +15,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 type fileWithSpace struct {
@@ -28,16 +27,20 @@ type fileStatus struct {
 	updatedAt time.Time
 }
 
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
 type fileWatcher struct {
 	filesToWatchLock *sync.Mutex
 	filesToWatch     map[fileWithSpace]struct{}
 
-	dbProvider   datastore.Datastore
-	badger       *badger.DB
-	spaceService spacecore.Service
-	registry     *fileStatusRegistry
-	updateCh     chan fileWithSpace
-	closeCh      chan struct{}
+	dbProvider datastore.Datastore
+	badger     *badger.DB
+	provider   personalIDProvider
+	registry   *fileStatusRegistry
+	updateCh   chan fileWithSpace
+	closeCh    chan struct{}
 
 	updateReceiver syncstatus.UpdateReceiver
 
@@ -45,7 +48,7 @@ type fileWatcher struct {
 }
 
 func newFileWatcher(
-	spaceService spacecore.Service,
+	provider personalIDProvider,
 	dbProvider datastore.Datastore,
 	registry *fileStatusRegistry,
 	updateReceiver syncstatus.UpdateReceiver,
@@ -60,7 +63,7 @@ func newFileWatcher(
 		updateReceiver:   updateReceiver,
 		registry:         registry,
 		dbProvider:       dbProvider,
-		spaceService:     spaceService,
+		provider:         provider,
 	}
 	return watcher
 }
@@ -69,7 +72,7 @@ const filesToWatchPrefix = "/files_to_watch/"
 
 func (s *fileWatcher) loadFilesToWatch() error {
 	return s.badger.View(func(txn *badger.Txn) error {
-		defaultSpaceID := s.spaceService.AccountId()
+		defaultSpaceID := s.provider.PersonalSpaceID()
 		iter := txn.NewIterator(badger.IteratorOptions{
 			Prefix: []byte(filesToWatchPrefix),
 		})

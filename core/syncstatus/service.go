@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
@@ -66,7 +65,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 
 	dbProvider := app.MustComponent[datastore.Datastore](a)
-	spaceService := app.MustComponent[spacecore.Service](a)
+	personalIDProvider := app.MustComponent[personalIDProvider](a)
 	coreService := app.MustComponent[core.Service](a)
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	fileStore := app.MustComponent[filestore.FileStore](a)
@@ -77,7 +76,7 @@ func (s *service) Init(a *app.App) (err error) {
 	fileStatusRegistry := newFileStatusRegistry(s.fileSyncService, fileStore, picker, s.fileWatcherUpdateInterval)
 	s.linkedFilesWatcher = newLinkedFilesWatcher(fileStatusRegistry)
 	s.updateReceiver = newUpdateReceiver(coreService, s.linkedFilesWatcher, nodeConfService, cfg, eventSender)
-	s.fileWatcher = newFileWatcher(spaceService, dbProvider, fileStatusRegistry, s.updateReceiver, s.fileWatcherUpdateInterval)
+	s.fileWatcher = newFileWatcher(personalIDProvider, dbProvider, fileStatusRegistry, s.updateReceiver, s.fileWatcherUpdateInterval)
 
 	s.fileSyncService.OnUpload(s.OnFileUpload)
 	return s.fileWatcher.init()

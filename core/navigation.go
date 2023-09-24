@@ -8,10 +8,10 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -51,9 +51,9 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return filtered
 	}
 
-	spaceService := getService[spacecore.Service](mw)
+	cache := getService[objectcache.Cache](mw)
 	store := app.MustComponent[objectstore.ObjectStore](mw.applicationService.GetApp())
-	spaceID, err := spaceService.ResolveSpaceID(req.ObjectId)
+	spaceID, err := cache.ResolveSpaceID(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("resolve spaceID: %w", err))
 	}

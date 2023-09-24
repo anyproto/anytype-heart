@@ -285,7 +285,7 @@ func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexTyp
 
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (toReindex, success int, err error) {
 	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
-	spc, err := i.spaceService.Get(ctx, spaceID)
+	spc, err := i.spaceCore.Get(ctx, spaceID)
 	if err != nil {
 		return
 	}

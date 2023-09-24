@@ -39,10 +39,9 @@ type Debug interface {
 }
 
 type debug struct {
-	block         *block.Service
-	store         objectstore.ObjectStore
-	clientService spacecore.Service
-	spaceService  spacecore.Service
+	block        *block.Service
+	store        objectstore.ObjectStore
+	spaceService spacecore.SpaceCoreService
 
 	server *http.Server
 }
@@ -53,9 +52,8 @@ type Debuggable interface {
 
 func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	d.clientService = a.MustComponent(spacecore.CName).(spacecore.Service)
 	d.block = a.MustComponent(block.CName).(*block.Service)
-	d.spaceService = app.MustComponent[spacecore.Service](a)
+	d.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 
 	if addr, ok := os.LookupEnv("ANYDEBUG"); ok && addr != "" {
 		r := chi.NewRouter()
@@ -140,6 +138,7 @@ type SpaceSummary struct {
 }
 
 func (d *debug) SpaceSummary() (summary SpaceSummary, err error) {
+	// TODO: [MR] revive this
 	//spc, err := d.clientService.AccountSpace(context.Background())
 	//if err != nil {
 	//	return
@@ -155,6 +154,7 @@ func (d *debug) SpaceSummary() (summary SpaceSummary, err error) {
 }
 
 func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
+	// TODO: [MR] revive this
 	//spc, err := d.clientService.AccountSpace(context.Background())
 	//
 	//if err != nil {
@@ -173,6 +173,7 @@ func (d *debug) TreeHeads(id string) (info TreeInfo, err error) {
 }
 
 func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anonymize bool, withSvg bool) (filename string, err error) {
+	// TODO: [MR] revive this
 	//// 0 - get space and tree
 	//spc, err := d.clientService.AccountSpace(context.Background())
 	//if err != nil {

@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/netutil"
 )
 
@@ -45,9 +44,13 @@ type Gateway interface {
 	app.ComponentStatable
 }
 
+type spaceIDResolver interface {
+	ResolveSpaceID(objectID string) (spaceID string, err error)
+}
+
 type gateway struct {
 	fileService     files.Service
-	spaceService    spacecore.Service
+	resolver        spaceIDResolver
 	objectStore     objectstore.ObjectStore
 	server          *http.Server
 	listener        net.Listener
@@ -89,7 +92,7 @@ func GatewayAddr() string {
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
-	g.spaceService = app.MustComponent[spacecore.Service](a)
+	g.resolver = app.MustComponent[spaceIDResolver](a)
 	g.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
@@ -252,7 +255,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	parts := strings.Split(fileHashAndPath, "/")
 	fileHash := parts[0]
 
-	spaceID, err := g.spaceService.ResolveSpaceID(fileHash)
+	spaceID, err := g.resolver.ResolveSpaceID(fileHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -308,7 +311,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	imageHash := urlParts[2]
 	query := r.URL.Query()
 
-	spaceID, err := g.spaceService.ResolveSpaceID(imageHash)
+	spaceID, err := g.resolver.ResolveSpaceID(imageHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
 	}

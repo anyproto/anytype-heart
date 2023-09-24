@@ -67,10 +67,15 @@ type Cache interface {
 	CloseBlocks()
 }
 
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
 type objectCache struct {
 	objectFactory  objectFactory
 	sbtProvider    typeprovider.SmartBlockTypeProvider
 	spaceService   spacecore.SpaceCoreService
+	provider       personalIDProvider
 	accountService accountservice.Service
 	cache          ocache.OCache
 	resolver       *resolver
@@ -86,6 +91,7 @@ func New() Cache {
 func (c *objectCache) Init(a *app.App) error {
 	c.accountService = app.MustComponent[accountservice.Service](a)
 	c.objectFactory = app.MustComponent[objectFactory](a)
+	c.provider = app.MustComponent[personalIDProvider](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	c.resolver = &resolver{}

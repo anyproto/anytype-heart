@@ -57,6 +57,10 @@ type Export interface {
 	app.Component
 }
 
+type spaceIDResolver interface {
+	ResolveSpaceID(objectID string) (spaceID string, err error)
+}
+
 type export struct {
 	blockService        *block.Service
 	picker              getblock.Picker
@@ -65,7 +69,8 @@ type export struct {
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
 	systemObjectService system_object.Service
-	spaceService        spacecore.Service
+	spaceService        spacecore.SpaceCoreService
+	resolver            spaceIDResolver
 }
 
 func New() Export {
@@ -78,9 +83,10 @@ func (e *export) Init(a *app.App) (err error) {
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
 	e.picker = app.MustComponent[getblock.Picker](a)
+	e.resolver = app.MustComponent[spaceIDResolver](a)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.systemObjectService = app.MustComponent[system_object.Service](a)
-	e.spaceService = app.MustComponent[spacecore.Service](a)
+	e.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	return
 }
 
@@ -375,7 +381,7 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, queue process.Q
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err error) {
-	spaceID, err := e.spaceService.ResolveSpaceID(hash)
+	spaceID, err := e.resolver.ResolveSpaceID(hash)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
