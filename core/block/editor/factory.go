@@ -33,6 +33,7 @@ var log = logging.Logger("anytype-mw-editor")
 
 type spaceIndexer interface {
 	smartblock.Indexer
+	ReindexSpace(spaceID string) error
 }
 
 type personalIDProvider interface {
@@ -244,6 +245,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 				installer: f.installer,
 				spaceCore: f.spaceCore,
 				provider:  f.personalIDProvider,
+				indexer:   f.indexer,
 			},
 		), nil
 	case coresb.SmartBlockTypeMissingObject:

@@ -18,7 +18,7 @@ type SpaceObject interface {
 	TargetSpaceID() string
 	Space() (*spacecore.AnySpace, error)
 	TryDerivedIDs() (threads.DerivedSmartblockIds, error)
-	Run(spaceID string, isPersonal bool) error
+	Run(spaceID string) error
 	Close() error
 	WaitLoad() error
 }
@@ -27,38 +27,50 @@ type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
 }
 
+type spaceIndexer interface {
+	ReindexSpace(spaceID string) error
+}
+
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
 type Deps struct {
-	Installer bundledObjectsInstaller
-	Cache     objectcache.Cache
-	SpaceCore spacecore.SpaceCoreService
+	Installer          bundledObjectsInstaller
+	Cache              objectcache.Cache
+	SpaceCore          spacecore.SpaceCoreService
+	Indexer            spaceIndexer
+	PersonalIDProvider personalIDProvider
 }
 
 func NewSpaceObject(deps Deps) SpaceObject {
 	return &spaceObject{
-		cache:          deps.Cache,
-		spaceCore:      deps.SpaceCore,
-		objectProvider: objectprovider.NewObjectProvider(deps.Cache, deps.Installer),
-		loadWaiter:     make(chan struct{}),
+		cache:            deps.Cache,
+		spaceCore:        deps.SpaceCore,
+		objectProvider:   objectprovider.NewObjectProvider(deps.Cache, deps.Installer),
+		indexer:          deps.Indexer,
+		loadWaiter:       make(chan struct{}),
+		personalProvider: deps.PersonalIDProvider,
 	}
 }
 
 type spaceObject struct {
-	spaceID        string
-	cache          objectcache.Cache
-	spaceCore      spacecore.SpaceCoreService
-	objectProvider objectprovider.ObjectProvider
-	ctx            context.Context
-	cancel         context.CancelFunc
-	isPersonal     bool
-	loadWaiter     chan struct{}
-	loadErr        error
-	derivedIds     threads.DerivedSmartblockIds
-	derivedLock    sync.Mutex
+	spaceID          string
+	cache            objectcache.Cache
+	spaceCore        spacecore.SpaceCoreService
+	objectProvider   objectprovider.ObjectProvider
+	indexer          spaceIndexer
+	personalProvider personalIDProvider
+	ctx              context.Context
+	cancel           context.CancelFunc
+	loadWaiter       chan struct{}
+	loadErr          error
+	derivedIds       threads.DerivedSmartblockIds
+	derivedLock      sync.Mutex
 }
 
-func (s *spaceObject) Run(spaceID string, isPersonal bool) error {
+func (s *spaceObject) Run(spaceID string) error {
 	s.spaceID = spaceID
-	s.isPersonal = isPersonal
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	go s.run()
 	return nil
@@ -73,7 +85,7 @@ func (s *spaceObject) Close() error {
 func (s *spaceObject) run() {
 	defer close(s.loadWaiter)
 	var sbTypes []coresb.SmartBlockType
-	if s.isPersonal {
+	if s.personalProvider.PersonalSpaceID() == s.spaceID {
 		sbTypes = threads.PersonalSpaceTypes
 	} else {
 		sbTypes = threads.SpaceTypes
@@ -91,6 +103,10 @@ func (s *spaceObject) run() {
 		return
 	}
 	s.loadErr = s.objectProvider.InstallBundledObjects(s.ctx, s.spaceID)
+	if s.loadErr != nil {
+		return
+	}
+	s.loadErr = s.indexer.ReindexSpace(s.spaceID)
 	return
 }
 

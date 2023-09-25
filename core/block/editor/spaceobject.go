@@ -21,7 +21,6 @@ var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 type SpaceObject struct {
 	smartblock.SmartBlock
 	spaceobject.SpaceObject
-	provider personalIDProvider
 }
 
 // spaceObjectDeps is a set of dependencies for SpaceObject
@@ -30,6 +29,7 @@ type spaceObjectDeps struct {
 	cache     objectcache.Cache
 	spaceCore spacecore.SpaceCoreService
 	provider  personalIDProvider
+	indexer   spaceIndexer
 }
 
 // newSpaceObject creates a new SpaceObject with given deps
@@ -37,11 +37,12 @@ func newSpaceObject(sb smartblock.SmartBlock, deps spaceObjectDeps) *SpaceObject
 	return &SpaceObject{
 		SmartBlock: sb,
 		SpaceObject: spaceobject.NewSpaceObject(spaceobject.Deps{
-			Installer: deps.installer,
-			Cache:     deps.cache,
-			SpaceCore: deps.spaceCore,
+			Installer:          deps.installer,
+			Cache:              deps.cache,
+			SpaceCore:          deps.spaceCore,
+			PersonalIDProvider: deps.provider,
+			Indexer:            deps.indexer,
 		}),
-		provider: deps.provider,
 	}
 }
 
@@ -54,7 +55,7 @@ func (s *SpaceObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err != nil {
 		return
 	}
-	err = s.SpaceObject.Run(spaceID, s.provider.PersonalSpaceID() == spaceID)
+	err = s.SpaceObject.Run(spaceID)
 	if err != nil {
 		return
 	}
