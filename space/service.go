@@ -2,10 +2,10 @@ package space
 
 import (
 	"context"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceobject"
@@ -64,6 +65,9 @@ type service struct {
 }
 
 func (s *service) DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
+	if addr.IsBundledId(spaceID) {
+		return threads.DerivedSmartblockIds{}, nil
+	}
 	params, err := s.spaceParams(ctx, spaceID)
 	if err != nil {
 		return

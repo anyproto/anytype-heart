@@ -30,7 +30,7 @@ func newResolver(spaceGetter anySpaceGetter, storage resolverStorage) *resolver 
 		storage:        storage,
 		resolvedSpaces: make(map[string]struct{}),
 	}
-	res.resolvedSpaces["_anytype_marketplace"] = struct{}{}
+	res.resolvedSpaces[addr.AnytypeMarketplaceWorkspace] = struct{}{}
 	return res
 }
 
