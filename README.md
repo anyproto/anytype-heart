@@ -13,6 +13,10 @@ Current main branch doesn't work with the production any-sync nodes. For now, yo
 - [Style guide](docs/Codestyle.md)
 - [Project workflows](docs/Flow.md)
 
+### CLI tools
+- [Archive processor](cmd/archiveprocessor/README.md)
+- [Archive converter](cmd/archiveconverter/README.md)
+
 ## Contribution
 Thank you for your desire to develop Anytype together!
 
