@@ -813,29 +813,29 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
 	ctx := mw.newContext(cctx)
 
-	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}}
+	response := func(code pb.RpcObjectImportResponseErrorCode, rootCollectionID string, err error) *pb.RpcObjectImportResponse {
+		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}, CollectionID: rootCollectionID}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
 
-	err := getService[importer.Importer](mw).Import(ctx, req)
+	rootCollectionID, err := getService[importer.Importer](mw).Import(ctx, req)
 
 	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, nil)
+		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
 	}
 
 	switch {
 	case errors.Is(err, converter.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, err)
+		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
 	case errors.Is(err, converter.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, err)
+		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
 	case errors.Is(err, converter.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, err)
+		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
 	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, err)
+		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
 	}
 }
 
