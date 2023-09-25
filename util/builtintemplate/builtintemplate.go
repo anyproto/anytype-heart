@@ -144,7 +144,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 }
 
 func (b *builtinTemplate) setObjectTypes(st *state.State) error {
-	if st.RootId() == block.BlankTemplateId {
+	if st.RootId() == block.BlankTemplateID {
 		st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate})
 		return nil
 	}

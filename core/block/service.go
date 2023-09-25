@@ -64,7 +64,7 @@ import (
 const (
 	CName           = "block-service"
 	linkObjectShare = "anytype://object/share?"
-	BlankTemplateId = "blank"
+	BlankTemplateID = "blank"
 )
 
 var (
@@ -936,7 +936,7 @@ func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
 }
 
 func (s *Service) StateFromTemplate(spaceID, templateID, name string) (st *state.State, err error) {
-	if templateID == BlankTemplateId {
+	if templateID == BlankTemplateID {
 		if templateID, err = s.GetNewTemplateID(spaceID, templateID); err != nil {
 			return nil, fmt.Errorf("failed to find blank template: %v", err)
 		}
@@ -986,7 +986,7 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		ts.BlocksInit(ts)
 
 		objType := ts.ObjectTypeKey()
-		if templateID == BlankTemplateId {
+		if templateID == BlankTemplateID {
 			objType = orig.ObjectTypeKey()
 			if originalLayout, found := orig.Layout(); found {
 				ts.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(originalLayout)))
