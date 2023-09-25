@@ -1,10 +1,10 @@
-## Exported archives converter tool
+## Exported Archives unpacking tool
 
 Anytype allows user to export desired objects whether in _JSON_ or _PROTOBUF_ formats. 
 
 Most of exported archives contain objects stored in _PROTOBUF_ format, as it is encoded and lightweight. However, if you need to convert an exported archive to see all objects in _JSON_ format you can use **archiveconverter** tool.
 
-CLI can run in two modes.
+Program is located in [cmd/archiveunpacker](../cmd/archiveunpacker) folder. CLI can run in two modes:
 
 ### Unpack
 ```bash

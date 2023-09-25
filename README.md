@@ -14,8 +14,8 @@ Current main branch doesn't work with the production any-sync nodes. For now, yo
 - [Project workflows](docs/Flow.md)
 
 ### CLI tools
-- [Archive processor](cmd/archiveprocessor/README.md)
-- [Archive converter](cmd/archiveconverter/README.md)
+- [Usecase generator](docs/UsecaseGenerator.md)
+- [Export Archive unpacker](docs/ExportArchiveUnpacker.md)
 
 ## Contribution
 Thank you for your desire to develop Anytype together!
