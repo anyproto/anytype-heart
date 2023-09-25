@@ -127,21 +127,21 @@ func (h *HTML) getSnapshotsAndRootObjects(path string,
 ) ([]*converter.Snapshot, []string) {
 	snapshots := make([]*converter.Snapshot, 0, numberOfFiles)
 	rootObjects := make([]string, 0, numberOfFiles)
-	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
+	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if filepath.Ext(fileName) != ".html" {
-			return false
+			return true
 		}
 		blocks, err := h.getBlocksForSnapshot(fileReader, importSource, path)
 		if err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(len(path), pb.RpcObjectImportRequest_Html) {
-				return true
+				return false
 			}
 		}
 		sn, id := h.getSnapshot(blocks, fileName)
 		snapshots = append(snapshots, sn)
 		rootObjects = append(rootObjects, id)
-		return false
+		return true
 	}); iterateErr != nil {
 		allErrors.Add(iterateErr)
 	}

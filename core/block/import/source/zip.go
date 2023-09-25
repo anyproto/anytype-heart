@@ -43,9 +43,9 @@ func (z *Zip) Iterate(callback func(fileName string, fileReader io.ReadCloser) b
 		if err != nil {
 			return oserror.TransformError(err)
 		}
-		stop := callback(name, fileReader)
+		isContinue := callback(name, fileReader)
 		fileReader.Close()
-		if stop {
+		if !isContinue {
 			break
 		}
 	}

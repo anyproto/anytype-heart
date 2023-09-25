@@ -41,9 +41,9 @@ func (d *Directory) Iterate(callback func(fileName string, fileReader io.ReadClo
 		if err != nil {
 			return oserror.TransformError(err)
 		}
-		stop := callback(file, fileReader)
+		isContinue := callback(file, fileReader)
 		fileReader.Close()
-		if stop {
+		if !isContinue {
 			break
 		}
 	}

@@ -173,12 +173,12 @@ func (p *Pb) getProfileFromFiles(importSource source.Source) (*pb.Profile, error
 		profile *pb.Profile
 		err     error
 	)
-	iterateError := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
+	iterateError := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if filepath.Base(fileName) == constant.ProfileFile {
 			profile, err = p.readProfileFile(fileReader)
-			return true
+			return false
 		}
-		return false
+		return true
 	})
 	if iterateError != nil {
 		return nil, iterateError
@@ -211,12 +211,12 @@ func (p *Pb) getSnapshotsFromProvidedFiles(pathCount int,
 ) ([]*converter.Snapshot, *converter.Snapshot) {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	var widgetSnapshot *converter.Snapshot
-	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
+	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		snapshot, err := p.makeSnapshot(fileName, profileID, path, fileReader, isMigration)
 		if err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
-				return true
+				return false
 			}
 		}
 		if snapshot != nil {
@@ -227,7 +227,7 @@ func (p *Pb) getSnapshotsFromProvidedFiles(pathCount int,
 				widgetSnapshot = snapshot
 			}
 		}
-		return false
+		return true
 	}); iterateErr != nil {
 		allErrors.Add(iterateErr)
 	}

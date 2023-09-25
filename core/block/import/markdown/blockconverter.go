@@ -66,14 +66,14 @@ func (m *mdConverter) processFiles(importPath string, allErrors *ce.ConvertError
 
 func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *ce.ConvertError) map[string]*FileInfo {
 	fileInfo := make(map[string]*FileInfo, 0)
-	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
+	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
-				return true
+				return false
 			}
 		}
-		return false
+		return true
 	}); iterateErr != nil {
 		allErrors.Add(iterateErr)
 	}

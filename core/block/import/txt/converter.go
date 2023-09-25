@@ -113,22 +113,22 @@ func (t *TXT) handleImportPath(p string, pathsCount int, allErrors *converter.Co
 	}
 	snapshots := make([]*converter.Snapshot, 0, numberOfFiles)
 	targetObjects := make([]string, 0, numberOfFiles)
-	iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
+	iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if filepath.Ext(fileName) != ".txt" {
-			return false
+			return true
 		}
 		var blocks []*model.Block
 		blocks, err = t.getBlocksForSnapshot(fileReader)
 		if err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(pathsCount, pb.RpcObjectImportRequest_Txt) {
-				return true
+				return false
 			}
 		}
 		sn, id := t.getSnapshot(blocks, fileName)
 		snapshots = append(snapshots, sn)
 		targetObjects = append(targetObjects, id)
-		return false
+		return true
 	})
 	if iterateErr != nil {
 		allErrors.Add(iterateErr)

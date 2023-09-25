@@ -135,15 +135,15 @@ func (c *CSV) getSnapshotsAndObjectsIDs(importSource source.Source,
 ) *Result {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
-	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (stop bool) {
+	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(converter.ErrCancel)
-			return true
+			return false
 		}
 		csvTable, err := c.getCSVTable(fileReader, params.GetDelimiter())
 		if err != nil {
 			allErrors.Add(err)
-			return allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv)
+			return !allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv)
 		}
 		if params.TransposeRowsAndColumns && len(csvTable) != 0 {
 			csvTable = transpose(csvTable)
@@ -151,11 +151,11 @@ func (c *CSV) getSnapshotsAndObjectsIDs(importSource source.Source,
 		collectionID, snapshots, err := str.CreateObjects(fileName, csvTable, params, progress)
 		if err != nil {
 			allErrors.Add(err)
-			return allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv)
+			return !allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Csv)
 		}
 		allObjectsIDs = append(allObjectsIDs, collectionID)
 		allSnapshots = append(allSnapshots, snapshots...)
-		return false
+		return true
 	}); iterateErr != nil {
 		allErrors.Add(iterateErr)
 	}
