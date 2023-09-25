@@ -1906,6 +1906,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                string CollectionID = 2;
 
                 message Error {
                     Code code = 1;

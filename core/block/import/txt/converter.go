@@ -65,15 +65,18 @@ func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 			return nil, cErr
 		}
 	}
+	var rootCollectionID string
 	if rootCol != nil {
 		snapshots = append(snapshots, rootCol)
+		rootCollectionID = rootCol.Id
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if cErr.IsEmpty() {
-		return &converter.Response{Snapshots: snapshots}, nil
+		return &converter.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
 	}
 	return &converter.Response{
-		Snapshots: snapshots,
+		Snapshots:        snapshots,
+		RootCollectionID: rootCollectionID,
 	}, cErr
 }
 
