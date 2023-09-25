@@ -4,9 +4,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/anyproto/anytype-heart/tests/blockbuilder"
-	"github.com/anyproto/anytype-heart/tests/testutil"
-	textutil "github.com/anyproto/anytype-heart/util/text"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +18,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/tests/blockbuilder"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	textutil "github.com/anyproto/anytype-heart/util/text"
 
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 )

@@ -26,6 +26,7 @@ func main() {
 	// command line flags
 	unpack := flag.String("unpack", "", "Unpack zip archive with pb files to the directory with json files")
 	pack := flag.String("pack", "", "Convert json files in a directory to pb and write to a zip file")
+	useTypedSnapshot := flag.Bool("snapshotWithType", false, "If true, SnapshotWithType is used instead of ChangeSnapshot")
 
 	flag.Parse()
 
@@ -35,7 +36,7 @@ func main() {
 	}
 
 	if *pack != "" {
-		createZipFromDirectory(*pack, *pack+".zip")
+		createZipFromDirectory(*pack, *pack+".zip", *useTypedSnapshot)
 		return
 	}
 
@@ -173,7 +174,7 @@ func handleDirectory(input, output string) {
 	}
 }
 
-func createZipFromDirectory(input, output string) {
+func createZipFromDirectory(input, output string, useTypedSnapshot bool) {
 	// create a new zip file
 	newZipFile, err := os.Create(output)
 	if err != nil {
@@ -204,9 +205,13 @@ func createZipFromDirectory(input, output string) {
 			isProfile := strings.HasPrefix(info.Name(), constant.ProfileFile)
 
 			// assuming Snapshot is a protobuf message
-			var snapshot proto.Message = &pb.SnapshotWithType{}
+			var snapshot proto.Message = &pb.ChangeSnapshot{}
 			if isProfile {
 				snapshot = &pb.Profile{}
+			}
+			if useTypedSnapshot {
+				fmt.Printf("wabada")
+				snapshot = &pb.SnapshotWithType{}
 			}
 
 			err = jsonpb.UnmarshalString(string(data), snapshot)
