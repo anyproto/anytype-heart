@@ -2,6 +2,7 @@ package objectcache
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"sync"
 )
@@ -55,6 +56,9 @@ func (r *resolver) StoreCurrentIDs(ctx context.Context, spaceID string) (err err
 }
 
 func (r *resolver) ResolveSpaceID(objectID string) (string, error) {
+	if addr.IsBundledId(objectID) {
+		return addr.AnytypeMarketplaceWorkspace, nil
+	}
 	return r.storage.ResolveSpaceID(objectID)
 }
 
