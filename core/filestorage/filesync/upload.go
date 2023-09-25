@@ -209,6 +209,25 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 }
 
 func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId string) ([]blocks.Block, error) {
+	fileInfos, err := f.fileStore.ListByTarget(fileId)
+	if err != nil {
+		return nil, fmt.Errorf("list file info: %w", err)
+	}
+	var totalSize int
+	for _, info := range fileInfos {
+		totalSize += int(info.Size_)
+	}
+
+	stat, err := f.getAndUpdateSpaceStat(ctx, spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("get space stat: %w", err)
+	}
+	vacantSpace := stat.BytesLimit - stat.BytesUsage
+
+	if totalSize > vacantSpace {
+		return nil, errReachedLimit
+	}
+
 	fileBlocks, err := f.collectFileBlocks(ctx, fileId)
 	if err != nil {
 		return nil, fmt.Errorf("collect file blocks: %w", err)
@@ -227,13 +246,7 @@ func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId s
 		)
 	}
 
-	stat, err := f.getAndUpdateSpaceStat(ctx, spaceId)
-	if err != nil {
-		return nil, fmt.Errorf("get space stat: %w", err)
-	}
-
-	bytesLeft := stat.BytesLimit - stat.BytesUsage
-	if len(blocksToUpload) > 0 && bytesToUpload > bytesLeft {
+	if len(blocksToUpload) > 0 && bytesToUpload > vacantSpace {
 		return nil, errReachedLimit
 	}
 
