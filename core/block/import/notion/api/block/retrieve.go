@@ -53,7 +53,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
 		converterError.Add(err)
-		if ce.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+		if converterError.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
 			return nil, converterError
 		}
 	}
