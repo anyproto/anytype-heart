@@ -1324,6 +1324,11 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 		ints[i] = int(v)
 	}
 	s.SetLocalDetail(bundle.RelationKeyRestrictions.String(), pbtypes.IntList(ints...))
+
+	// todo: verify this logic with clients
+	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil && sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
+	}
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
@@ -1416,6 +1421,8 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
 		}
 	}
+
+	sb.setRestrictionsDetail(s)
 
 	snippet := s.Snippet()
 	if snippet != "" || s.LocalDetails() != nil {
