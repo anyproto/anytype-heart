@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -126,9 +127,9 @@ func TestSetObjectTypeToViews(t *testing.T) {
 		viewID1 = "view1"
 		viewID2 = "view2"
 
-		generateState = func(objectType, setOf string) *state.State {
+		generateState = func(objectType domain.TypeKey, setOf string) *state.State {
 			parent := state.NewDoc("root", nil).(*state.State)
-			parent.SetObjectType(objectType)
+			parent.SetObjectTypeKey(objectType)
 			parent.Set(dataview.NewDataview(&model.Block{
 				Id: state.DataviewBlockID,
 				Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
@@ -151,7 +152,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is not a set", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeyPage.URL(), bundle.TypeKeySet.URL())
+		st := generateState(bundle.TypeKeyPage, bundle.TypeKeySet.URL())
 
 		// when
 		setDefaultObjectTypeToViews(st)
@@ -162,7 +163,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is a set by relation", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeySet.URL(), bundle.RelationKeyDescription.URL())
+		st := generateState(bundle.TypeKeySet, bundle.RelationKeyDescription.URL())
 
 		// when
 		setDefaultObjectTypeToViews(st)
@@ -173,7 +174,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is a set by object type", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeySet.URL(), bundle.TypeKeyBook.URL())
+		st := generateState(bundle.TypeKeySet, bundle.TypeKeyBook.URL())
 
 		// when
 		setDefaultObjectTypeToViews(st)
@@ -184,7 +185,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is a set by internal type", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeySet.URL(), bundle.TypeKeyFile.URL())
+		st := generateState(bundle.TypeKeySet, bundle.TypeKeyFile.URL())
 
 		// when
 		setDefaultObjectTypeToViews(st)
@@ -195,7 +196,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is a set by not creatable type", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeySet.URL(), bundle.TypeKeyCollection.URL())
+		st := generateState(bundle.TypeKeySet, bundle.TypeKeyCollection.URL())
 
 		// when
 		setDefaultObjectTypeToViews(st)

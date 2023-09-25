@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
@@ -232,7 +233,7 @@ func (s *Service) ObjectToCollection(id string) error {
 }
 
 func setDefaultObjectTypeToViews(st *state.State) {
-	if !lo.Contains(st.ObjectTypes(), bundle.TypeKeySet.URL()) {
+	if !lo.Contains(st.ObjectTypeKeys(), bundle.TypeKeySet) {
 		return
 	}
 
@@ -241,7 +242,7 @@ func setDefaultObjectTypeToViews(st *state.State) {
 		return
 	}
 
-	if isNotCreatableType(bundle.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+	if isNotCreatableType(domain.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
 		return
 	}
 
@@ -259,6 +260,6 @@ func setDefaultObjectTypeToViews(st *state.State) {
 	}
 }
 
-func isNotCreatableType(key bundle.TypeKey) bool {
+func isNotCreatableType(key domain.TypeKey) bool {
 	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType, bundle.TypeKeySet, bundle.TypeKeyCollection), key)
 }
