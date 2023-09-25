@@ -24,11 +24,13 @@ type resolver struct {
 }
 
 func newResolver(spaceGetter anySpaceGetter, storage resolverStorage) *resolver {
-	return &resolver{
+	res := &resolver{
 		spaceGetter:    spaceGetter,
 		storage:        storage,
 		resolvedSpaces: make(map[string]struct{}),
 	}
+	res.resolvedSpaces["_anytype_marketplace"] = struct{}{}
+	return res
 }
 
 func (r *resolver) StoreCurrentIDs(ctx context.Context, spaceID string) (err error) {
@@ -57,5 +59,5 @@ func (r *resolver) ResolveSpaceID(objectID string) (string, error) {
 }
 
 func (r *resolver) StoreSpaceID(spaceID, objectID string) error {
-	return r.StoreSpaceID(spaceID, objectID)
+	return r.storage.StoreSpaceID(spaceID, objectID)
 }

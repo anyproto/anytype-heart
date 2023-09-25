@@ -13,7 +13,7 @@ var (
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeWidget,
 		smartblock.SmartBlockTypeWorkspace,
-		smartblock.SmartBlockTypeAnytypeProfile,
+		smartblock.SmartBlockTypeProfilePage,
 	}
 	SpaceTypes = []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeHome,

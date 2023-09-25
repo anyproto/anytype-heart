@@ -18,7 +18,7 @@ type SpaceObject interface {
 	TargetSpaceID() string
 	Space() (*spacecore.AnySpace, error)
 	TryDerivedIDs() (threads.DerivedSmartblockIds, error)
-	Run(ctx context.Context) error
+	Run(spaceID string, isPersonal bool) error
 	Close() error
 	WaitLoad() error
 }
@@ -28,27 +28,21 @@ type bundledObjectsInstaller interface {
 }
 
 type Deps struct {
-	Installer  bundledObjectsInstaller
-	Cache      objectcache.Cache
-	SpaceCore  spacecore.SpaceCoreService
-	SpaceID    string
-	IsPersonal bool
+	Installer bundledObjectsInstaller
+	Cache     objectcache.Cache
+	SpaceCore spacecore.SpaceCoreService
 }
 
-func NewSpaceObject(id string, deps Deps) SpaceObject {
+func NewSpaceObject(deps Deps) SpaceObject {
 	return &spaceObject{
-		id:             id,
-		spaceID:        deps.SpaceID,
 		cache:          deps.Cache,
 		spaceCore:      deps.SpaceCore,
 		objectProvider: objectprovider.NewObjectProvider(deps.Cache, deps.Installer),
 		loadWaiter:     make(chan struct{}),
-		isPersonal:     deps.IsPersonal,
 	}
 }
 
 type spaceObject struct {
-	id             string
 	spaceID        string
 	cache          objectcache.Cache
 	spaceCore      spacecore.SpaceCoreService
@@ -62,8 +56,10 @@ type spaceObject struct {
 	derivedLock    sync.Mutex
 }
 
-func (s *spaceObject) Run(ctx context.Context) error {
-	s.ctx, s.cancel = context.WithCancel(ctx)
+func (s *spaceObject) Run(spaceID string, isPersonal bool) error {
+	s.spaceID = spaceID
+	s.isPersonal = isPersonal
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	go s.run()
 	return nil
 }
@@ -91,7 +87,7 @@ func (s *spaceObject) run() {
 	s.derivedIds = ids
 	s.derivedLock.Unlock()
 	s.loadErr = s.objectProvider.LoadObjects(s.ctx, s.spaceID, ids.IDs())
-	if err != nil {
+	if s.loadErr != nil {
 		return
 	}
 	s.loadErr = s.objectProvider.InstallBundledObjects(s.ctx, s.spaceID)

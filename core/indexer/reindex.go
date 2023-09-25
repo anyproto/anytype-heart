@@ -42,15 +42,19 @@ const (
 	ForceFilestoreKeysReindexCounter int32 = 2
 )
 
-func (i *indexer) buildFlags(spaceID string) (flags reindexFlags, err error) {
-	var checksums *model.ObjectStoreChecksums
+func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
+	var (
+		checksums *model.ObjectStoreChecksums
+		flags     reindexFlags
+		err       error
+	)
 	if spaceID == "" {
 		checksums, err = i.store.GetGlobalChecksums()
 	} else {
 		checksums, err = i.store.GetChecksums(spaceID)
 	}
 	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-		return
+		return reindexFlags{}, err
 	}
 	if checksums == nil {
 		// TODO: [MR] split object store checksums for space and common?
@@ -97,7 +101,7 @@ func (i *indexer) buildFlags(spaceID string) (flags reindexFlags, err error) {
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		flags.enableAll()
 	}
-	return
+	return flags, nil
 }
 
 func (i *indexer) ReindexSpace(spaceID string) (err error) {

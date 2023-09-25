@@ -52,7 +52,7 @@ type Service interface {
 }
 
 type deriver interface {
-	DeriveObjectId(ctx context.Context, spaceId string, uniqueKey domain.UniqueKey) (id string, err error)
+	DeriveObjectID(ctx context.Context, spaceID string, uniqueKey domain.UniqueKey) (id string, err error)
 }
 
 type service struct {
@@ -81,7 +81,7 @@ func (s *service) GetTypeIdByKey(ctx context.Context, spaceId string, key domain
 		return addr.BundledObjectTypeURLPrefix + key.String(), nil
 	}
 
-	return s.deriver.DeriveObjectId(ctx, spaceId, uk)
+	return s.deriver.DeriveObjectID(ctx, spaceId, uk)
 }
 
 func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error) {
@@ -95,7 +95,7 @@ func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key do
 		return addr.BundledRelationURLPrefix + key.String(), nil
 	}
 
-	return s.deriver.DeriveObjectId(ctx, spaceId, uk)
+	return s.deriver.DeriveObjectID(ctx, spaceId, uk)
 }
 
 func (s *service) FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {

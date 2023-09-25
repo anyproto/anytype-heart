@@ -21,6 +21,7 @@ var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 type SpaceObject struct {
 	smartblock.SmartBlock
 	spaceobject.SpaceObject
+	provider personalIDProvider
 }
 
 // spaceObjectDeps is a set of dependencies for SpaceObject
@@ -33,16 +34,14 @@ type spaceObjectDeps struct {
 
 // newSpaceObject creates a new SpaceObject with given deps
 func newSpaceObject(sb smartblock.SmartBlock, deps spaceObjectDeps) *SpaceObject {
-	spaceID := mustTargetSpaceID(sb)
 	return &SpaceObject{
 		SmartBlock: sb,
-		SpaceObject: spaceobject.NewSpaceObject(sb.Id(), spaceobject.Deps{
-			Installer:  deps.installer,
-			Cache:      deps.cache,
-			SpaceCore:  deps.spaceCore,
-			SpaceID:    spaceID,
-			IsPersonal: spaceID == deps.provider.PersonalSpaceID(),
+		SpaceObject: spaceobject.NewSpaceObject(spaceobject.Deps{
+			Installer: deps.installer,
+			Cache:     deps.cache,
+			SpaceCore: deps.spaceCore,
 		}),
+		provider: deps.provider,
 	}
 }
 
@@ -51,7 +50,11 @@ func (s *SpaceObject) Init(ctx *smartblock.InitContext) (err error) {
 	if err = s.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	err = s.SpaceObject.Run(ctx.Ctx)
+	spaceID, err := s.targetSpaceID()
+	if err != nil {
+		return
+	}
+	err = s.SpaceObject.Run(spaceID, s.provider.PersonalSpaceID() == spaceID)
 	if err != nil {
 		return
 	}
@@ -70,16 +73,8 @@ func (s *SpaceObject) Close() (err error) {
 	return s.SmartBlock.Close()
 }
 
-func mustTargetSpaceID(s smartblock.SmartBlock) string {
-	id, err := targetSpaceID(s)
-	if err != nil {
-		panic("space object cannot be without space ID in header")
-	}
-	return id
-}
-
 // targetSpaceID returns space id from the root of space object's tree
-func targetSpaceID(s smartblock.SmartBlock) (id string, err error) {
+func (s *SpaceObject) targetSpaceID() (id string, err error) {
 	changeInfo := s.Tree().ChangeInfo()
 	if changeInfo == nil {
 		return "", ErrIncorrectSpaceInfo
