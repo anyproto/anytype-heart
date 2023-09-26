@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/cheggaaa/mb/v3"
 	blocks "github.com/ipfs/go-block-format"
@@ -209,22 +211,17 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err 
 }
 
 func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId string) ([]blocks.Block, error) {
-	fileInfos, err := f.fileStore.ListByTarget(fileId)
+	estimatedSize, err := f.estimateFileSize(fileId)
 	if err != nil {
-		return nil, fmt.Errorf("list file info: %w", err)
+		return nil, fmt.Errorf("estimate file size: %w", err)
 	}
-	var totalSize int
-	for _, info := range fileInfos {
-		totalSize += int(info.Size_)
-	}
-
 	stat, err := f.getAndUpdateSpaceStat(ctx, spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("get space stat: %w", err)
 	}
 	vacantSpace := stat.BytesLimit - stat.BytesUsage
 
-	if totalSize > vacantSpace {
+	if estimatedSize > vacantSpace {
 		return nil, errReachedLimit
 	}
 
@@ -251,6 +248,42 @@ func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId s
 	}
 
 	return blocksToUpload, nil
+}
+
+// estimateFileSize use heuristic to estimate file size. It's pretty accurate for ordinary files,
+// But getting worse for images because they have a different structure.
+// Ordinary file structure:
+/*
+- dir (root)
+  	- dir (content and meta pair)
+  		- meta
+  		- content (just content if file < 1Mb, and chunks list otherwise)
+			- chunk1
+			- chunk2
+			...
+*/
+func (f *fileSync) estimateFileSize(fileID string) (int, error) {
+	const (
+		linkSize     = 50  // Roughly minimal size of a link
+		metaNodeSize = 300 // Roughly minimal size of a meta node
+
+		chunkSize = fileservice.ChunkSize
+	)
+	fileInfos, err := f.fileStore.ListByTarget(fileID)
+	if err != nil {
+		return 0, fmt.Errorf("list file info: %w", err)
+	}
+	var totalSize int
+	for _, info := range fileInfos {
+		// Content is divided by chunks of 1Mb, and chunk is linked to the directory node
+		chunksCount := math.Ceil(float64(info.Size_) / float64(chunkSize))
+		totalSize += int(info.Size_) + int(chunksCount)*linkSize
+
+		totalSize += metaNodeSize + linkSize
+	}
+	totalSize += linkSize // for root node
+
+	return totalSize, nil
 }
 
 func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
