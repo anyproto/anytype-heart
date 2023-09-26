@@ -3,7 +3,6 @@ package objectcache
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -174,9 +173,6 @@ func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smart
 	}
 	if err != nil {
 		return
-	}
-	if v == nil {
-		fmt.Println()
 	}
 	return v.(smartblock.SmartBlock), nil
 }

@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"path"
 	"sync"
 
@@ -197,7 +198,9 @@ func (oc *ObjectCreator) createNewObject(
 			SpaceID:     spaceID,
 		}
 	})
-
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		sb, err = oc.picker.PickBlock(ctx, newID)
+	}
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
 		return nil, err
