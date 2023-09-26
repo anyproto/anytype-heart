@@ -1602,7 +1602,7 @@ message Rpc {
                 Error error = 1;
                 ResponseEvent event = 2;
                 UndoRedoCounter counters = 3;
-                anytype.model.Range textRange = 4;
+                anytype.model.Range range = 4;
 
                 message Error {
                     Code code = 1;
@@ -1628,7 +1628,7 @@ message Rpc {
                 Error error = 1;
                 ResponseEvent event = 2;
                 UndoRedoCounter counters = 3;
-                anytype.model.Range textRange = 4;
+                anytype.model.Range range = 4;
 
                 message Error {
                     Code code = 1;
@@ -3464,7 +3464,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                anytype.model.Range textRange = 3;
+                anytype.model.Range range = 3;
             }
 
             message Response {
@@ -3518,7 +3518,6 @@ message Rpc {
                 string blockId = 2;
                 string text = 3;
                 anytype.model.Block.Content.Text.Marks marks = 4;
-                int32 carriagePosition = 5;
             }
 
             message Response {

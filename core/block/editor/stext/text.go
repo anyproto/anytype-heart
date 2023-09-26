@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
-	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -157,11 +156,6 @@ func (t *textImpl) Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (new
 	if err = t.Apply(s); err != nil {
 		return
 	}
-	_ = t.History().SetCarriageInfo(undo.CarriageInfo{
-		CarriageBlockID: newId,
-		RangeFrom:       0,
-		RangeTo:         0,
-	})
 	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
 	metrics.SharedClient.RecordEvent(metrics.BlockSplit{
 		ObjectId:    t.Id(),
@@ -339,11 +333,6 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 			return
 		}
 		msgs := ctx.GetMessages()
-		_ = t.History().SetCarriageInfo(undo.CarriageInfo{
-			CarriageBlockID: req.BlockId,
-			RangeFrom:       req.CarriagePosition,
-			RangeTo:         req.CarriagePosition,
-		})
 		var filtered = msgs[:0]
 		for _, msg := range msgs {
 			if msg.GetBlockSetText() == nil {

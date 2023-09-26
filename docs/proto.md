@@ -4207,7 +4207,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| textRange | [model.Range](#anytype-model-Range) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -8389,7 +8389,6 @@ Get marks list in the selected range in text block.
 | blockId | [string](#string) |  |  |
 | text | [string](#string) |  |  |
 | marks | [model.Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks) |  |  |
-| carriagePosition | [int32](#int32) |  |  |
 
 
 
@@ -11841,7 +11840,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | error | [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
-| textRange | [model.Range](#anytype-model-Range) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -12923,7 +12922,7 @@ DEPRECATED, GO-1926 |
 | error | [Rpc.Object.Undo.Response.Error](#anytype-Rpc-Object-Undo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
-| textRange | [model.Range](#anytype-model-Range) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
 
 
 

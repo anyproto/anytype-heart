@@ -23,7 +23,7 @@ func (mw *Middleware) ObjectUndo(cctx context.Context, req *pb.RpcObjectUndoRequ
 		} else {
 			m.Event = ctx.GetResponseEvent()
 			m.Counters = &counters
-			m.TextRange = &textRange
+			m.Range = &textRange
 		}
 		return m
 	}
@@ -54,7 +54,7 @@ func (mw *Middleware) ObjectRedo(cctx context.Context, req *pb.RpcObjectRedoRequ
 		} else {
 			m.Event = ctx.GetResponseEvent()
 			m.Counters = &counters
-			m.TextRange = &textRange
+			m.Range = &textRange
 		}
 		return m
 	}

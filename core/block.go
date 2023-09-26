@@ -268,8 +268,8 @@ func (mw *Middleware) BlockSetCarriage(_ context.Context, req *pb.RpcBlockSetCar
 		return bs.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
 			return sb.History().SetCarriageInfo(undo.CarriageInfo{
 				CarriageBlockID: req.BlockId,
-				RangeFrom:       req.TextRange.From,
-				RangeTo:         req.TextRange.To,
+				RangeFrom:       req.Range.From,
+				RangeTo:         req.Range.To,
 			})
 		})
 	})
