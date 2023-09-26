@@ -529,9 +529,9 @@ func (s *Service) UploadFileBlockWithHash(
 
 func (s *Service) Undo(
 	ctx *session.Context, req pb.RpcObjectUndoRequest,
-) (counters pb.RpcObjectUndoRedoCounter, err error) {
+) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
-		counters, err = b.Undo(ctx)
+		counters, textRange, err = b.Undo(ctx)
 		return err
 	})
 	return
@@ -539,9 +539,9 @@ func (s *Service) Undo(
 
 func (s *Service) Redo(
 	ctx *session.Context, req pb.RpcObjectRedoRequest,
-) (counters pb.RpcObjectUndoRedoCounter, err error) {
+) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
-		counters, err = b.Redo(ctx)
+		counters, textRange, err = b.Redo(ctx)
 		return err
 	})
 	return

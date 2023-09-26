@@ -2,7 +2,6 @@ package stext
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/block/undo"
 	"sort"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -158,8 +158,9 @@ func (t *textImpl) Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (new
 		return
 	}
 	_ = t.History().SetCarriageInfo(undo.CarriageInfo{
-		CarriageBlockID:  newId,
-		CarriagePosition: 0,
+		CarriageBlockID: newId,
+		RangeFrom:       0,
+		RangeTo:         0,
 	})
 	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
 	metrics.SharedClient.RecordEvent(metrics.BlockSplit{
@@ -339,8 +340,9 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 		}
 		msgs := ctx.GetMessages()
 		_ = t.History().SetCarriageInfo(undo.CarriageInfo{
-			CarriageBlockID:  req.BlockId,
-			CarriagePosition: req.CarriagePosition,
+			CarriageBlockID: req.BlockId,
+			RangeFrom:       req.CarriagePosition,
+			RangeTo:         req.CarriagePosition,
 		})
 		var filtered = msgs[:0]
 		for _, msg := range msgs {

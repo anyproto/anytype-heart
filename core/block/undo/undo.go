@@ -3,9 +3,10 @@ package undo
 import (
 	"errors"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/types"
 )
 
 const (
@@ -33,8 +34,8 @@ type ObjectType struct {
 }
 
 type CarriageInfo struct {
-	CarriageBlockID  string
-	CarriagePosition int32
+	CarriageBlockID    string
+	RangeFrom, RangeTo int32
 }
 
 type Action struct {

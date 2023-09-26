@@ -2,14 +2,14 @@ package core
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/undo"
 
 	"github.com/globalsign/mgo/bson"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -265,10 +265,11 @@ func (mw *Middleware) BlockSetCarriage(_ context.Context, req *pb.RpcBlockSetCar
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.Do(req.ObjectId, func(sb smartblock.SmartBlock) error {
+		return bs.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
 			return sb.History().SetCarriageInfo(undo.CarriageInfo{
-				CarriageBlockID:  req.BlockId,
-				CarriagePosition: req.CarriagePosition,
+				CarriageBlockID: req.BlockId,
+				RangeFrom:       req.TextRange.From,
+				RangeTo:         req.TextRange.To,
 			})
 		})
 	})

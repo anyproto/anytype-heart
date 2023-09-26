@@ -6,13 +6,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) ObjectUndo(cctx context.Context, req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
 	ctx := mw.newContext(cctx)
 	var (
-		counters pb.RpcObjectUndoRedoCounter
-		err      error
+		counters  pb.RpcObjectUndoRedoCounter
+		textRange model.Range
+		err       error
 	)
 	response := func(code pb.RpcObjectUndoResponseErrorCode, err error) *pb.RpcObjectUndoResponse {
 		m := &pb.RpcObjectUndoResponse{Error: &pb.RpcObjectUndoResponseError{Code: code}}
@@ -21,11 +23,12 @@ func (mw *Middleware) ObjectUndo(cctx context.Context, req *pb.RpcObjectUndoRequ
 		} else {
 			m.Event = ctx.GetResponseEvent()
 			m.Counters = &counters
+			m.TextRange = &textRange
 		}
 		return m
 	}
 	err = mw.doBlockService(func(bs *block.Service) error {
-		counters, err = bs.Undo(ctx, *req)
+		counters, textRange, err = bs.Undo(ctx, *req)
 		return err
 	})
 	if err != nil {
@@ -40,8 +43,9 @@ func (mw *Middleware) ObjectUndo(cctx context.Context, req *pb.RpcObjectUndoRequ
 func (mw *Middleware) ObjectRedo(cctx context.Context, req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
 	ctx := mw.newContext(cctx)
 	var (
-		counters pb.RpcObjectUndoRedoCounter
-		err      error
+		counters  pb.RpcObjectUndoRedoCounter
+		textRange model.Range
+		err       error
 	)
 	response := func(code pb.RpcObjectRedoResponseErrorCode, err error) *pb.RpcObjectRedoResponse {
 		m := &pb.RpcObjectRedoResponse{Error: &pb.RpcObjectRedoResponseError{Code: code}}
@@ -50,12 +54,13 @@ func (mw *Middleware) ObjectRedo(cctx context.Context, req *pb.RpcObjectRedoRequ
 		} else {
 			m.Event = ctx.GetResponseEvent()
 			m.Counters = &counters
+			m.TextRange = &textRange
 		}
 		return m
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
-		counters, err = bs.Redo(ctx, *req)
+		counters, textRange, err = bs.Redo(ctx, *req)
 		return err
 	})
 	if err != nil {

@@ -4,12 +4,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type IHistory interface {
-	Undo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
-	Redo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
+	Undo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error)
+	Redo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error)
 }
 
 func NewHistory(sb smartblock.SmartBlock) IHistory {
@@ -20,7 +21,7 @@ type history struct {
 	smartblock.SmartBlock
 }
 
-func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Previous()
 	if err != nil {
@@ -49,10 +50,14 @@ func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 		return
 	}
 	counters.Undo, counters.Redo = h.History().Counters()
+	textRange = model.Range{
+		From: action.CarriageInfo.RangeFrom,
+		To:   action.CarriageInfo.RangeTo,
+	}
 	return
 }
 
-func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Next()
 	if err != nil {
@@ -80,5 +85,9 @@ func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 		return
 	}
 	counters.Undo, counters.Redo = h.History().Counters()
+	textRange = model.Range{
+		From: action.CarriageInfo.RangeFrom,
+		To:   action.CarriageInfo.RangeTo,
+	}
 	return
 }
