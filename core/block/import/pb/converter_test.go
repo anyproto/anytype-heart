@@ -53,7 +53,6 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	}, process.NewProgress(pb.ModelProcess_Import))
 
 	assert.Nil(t, ce)
-	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 2)
 
 	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
