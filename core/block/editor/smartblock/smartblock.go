@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -672,6 +673,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return
 	}
 
+	// we may have layout changed, so we need to update restrictions
+	sb.updateRestrictions()
+	sb.setRestrictionsDetail(s)
+
 	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
@@ -778,8 +783,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		ObjectId:       sb.Id(),
 	})
 
-	// we may have layout changed, so we need to update restrictions
-	sb.updateRestrictions()
 	return
 }
 
@@ -1010,6 +1013,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
+	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
@@ -1038,6 +1042,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
+	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
