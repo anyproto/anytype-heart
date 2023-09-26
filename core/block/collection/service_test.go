@@ -6,14 +6,20 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type testPicker struct {
@@ -114,4 +120,88 @@ func TestBroadcast(t *testing.T) {
 		{"1", "2", "3", "4"},
 		{"1", "4"},
 	}, sub2Results)
+}
+
+func TestSetObjectTypeToViews(t *testing.T) {
+	var (
+		viewID1 = "view1"
+		viewID2 = "view2"
+
+		generateState = func(objectType domain.TypeKey, setOf string) *state.State {
+			parent := state.NewDoc("root", nil).(*state.State)
+			parent.SetObjectTypeKey(objectType)
+			parent.Set(dataview.NewDataview(&model.Block{
+				Id: state.DataviewBlockID,
+				Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+					Views: []*model.BlockContentDataviewView{{Id: viewID1}, {Id: viewID2}},
+				}},
+			}))
+			parent.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList([]string{setOf}))
+			return parent.NewState()
+		}
+
+		assertViews = func(st *state.State, defaultObjectType string) {
+			block := st.Get(state.DataviewBlockID)
+			dataviewBlock, _ := block.(dataview.Block)
+			view1, _ := dataviewBlock.GetView(viewID1)
+			view2, _ := dataviewBlock.GetView(viewID2)
+			assert.Equal(t, defaultObjectType, view1.DefaultObjectTypeId)
+			assert.Equal(t, defaultObjectType, view2.DefaultObjectTypeId)
+		}
+	)
+
+	t.Run("object is not a set", func(t *testing.T) {
+		// given
+		st := generateState(bundle.TypeKeyPage, bundle.TypeKeySet.URL())
+
+		// when
+		setDefaultObjectTypeToViews(st)
+
+		// then
+		assertViews(st, "")
+	})
+
+	t.Run("object is a set by relation", func(t *testing.T) {
+		// given
+		st := generateState(bundle.TypeKeySet, bundle.RelationKeyDescription.URL())
+
+		// when
+		setDefaultObjectTypeToViews(st)
+
+		// then
+		assertViews(st, "")
+	})
+
+	t.Run("object is a set by object type", func(t *testing.T) {
+		// given
+		st := generateState(bundle.TypeKeySet, bundle.TypeKeyBook.URL())
+
+		// when
+		setDefaultObjectTypeToViews(st)
+
+		// then
+		assertViews(st, bundle.TypeKeyBook.URL())
+	})
+
+	t.Run("object is a set by internal type", func(t *testing.T) {
+		// given
+		st := generateState(bundle.TypeKeySet, bundle.TypeKeyFile.URL())
+
+		// when
+		setDefaultObjectTypeToViews(st)
+
+		// then
+		assertViews(st, "")
+	})
+
+	t.Run("object is a set by not creatable type", func(t *testing.T) {
+		// given
+		st := generateState(bundle.TypeKeySet, bundle.TypeKeyCollection.URL())
+
+		// when
+		setDefaultObjectTypeToViews(st)
+
+		// then
+		assertViews(st, "")
+	})
 }

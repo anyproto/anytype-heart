@@ -11127,6 +11127,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ImportExperience.Response.Error](#anytype-Rpc-Object-ImportExperience-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 

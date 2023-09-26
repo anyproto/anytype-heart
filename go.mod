@@ -76,7 +76,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.8
 	github.com/stretchr/testify v1.8.4
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	github.com/vektra/mockery/v2 v2.33.3
+	github.com/vektra/mockery/v2 v2.34.0
 	github.com/yuin/goldmark v1.5.6
 	go.uber.org/mock v0.3.0
 	go.uber.org/multierr v1.11.0
@@ -87,7 +87,7 @@ require (
 	golang.org/x/net v0.15.0
 	golang.org/x/oauth2 v0.12.0
 	golang.org/x/text v0.13.0
-	google.golang.org/grpc v1.58.1
+	google.golang.org/grpc v1.58.2
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.33

@@ -6,11 +6,9 @@ package service
 import (
 	"context"
 	fmt "fmt"
-	math "math"
-
-	proto "github.com/gogo/protobuf/proto"
-
 	pb "github.com/anyproto/anytype-heart/pb"
+	proto "github.com/gogo/protobuf/proto"
+	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
