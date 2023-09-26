@@ -252,6 +252,13 @@ func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId s
 
 // estimateFileSize use heuristic to estimate file size. It's pretty accurate for ordinary files,
 // But getting worse for images because they have a different structure.
+// Samples of estimation errors in bytes (the bigger the file, the bigger the error):
+/*
+	Estimation error: 968 — 10Mb jpeg file
+	Estimation error: 1401 — 30Mb png file
+	Estimation error: 810 — 50Mb ordinary file
+	Estimation error: 3576 — 250Mb ordinary file
+*/
 // Ordinary file structure:
 /*
 - dir (root)
