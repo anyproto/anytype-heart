@@ -368,7 +368,14 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash strin
 // fileIndexNode walks a file node, indexing file links
 func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string, imported bool) error {
 	if looksLikeFileNode(inode) {
-		return s.fileIndexLink(ctx, inode, fileID, imported)
+		err := s.fileIndexLink(ctx, inode, fileID)
+		if err != nil {
+			return fmt.Errorf("index file %s link: %w", fileID, err)
+		}
+		err = s.addToSyncQueue(fileID, true, imported)
+		if err != nil {
+			return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
+		}
 	}
 
 	links := inode.Links()
@@ -378,17 +385,21 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID str
 			return err
 		}
 
-		err = s.fileIndexLink(ctx, n, fileID, imported)
+		err = s.fileIndexLink(ctx, n, fileID)
 		if err != nil {
 			return err
 		}
+	}
+	err := s.addToSyncQueue(fileID, true, imported)
+	if err != nil {
+		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 	}
 
 	return nil
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(_ context.Context, inode ipld.Node, fileID string, imported bool) error {
+func (s *service) fileIndexLink(_ context.Context, inode ipld.Node, fileID string) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
@@ -396,9 +407,6 @@ func (s *service) fileIndexLink(_ context.Context, inode ipld.Node, fileID strin
 	linkID := dlink.Cid.String()
 	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
-	}
-	if err := s.addToSyncQueue(fileID, true, imported); err != nil {
-		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 	}
 	return nil
 }
