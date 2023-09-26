@@ -2,12 +2,13 @@ package subscription
 
 import (
 	"context"
-	"testing"
-
+	"fmt"
+	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/app/testapp"
@@ -303,17 +304,358 @@ func TestService_Search(t *testing.T) {
 		assert.NotEmpty(t, fx.events[0].Messages[3].GetSubscriptionCounters())
 		assert.NotEmpty(t, fx.events[0].Messages[0].GetObjectDetailsSet().Details)
 	})
+
+	t.Run("collection: error getting collections entries - no records in response", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return(nil, nil, fmt.Errorf("error"))
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:        "subId",
+			CollectionId: collectionID,
+		})
+		require.Error(t, err)
+		assert.Nil(t, resp)
+	})
+
+	t.Run("collection: collection is empty - no records in response", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return(nil, nil, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:        subscriptionID,
+			CollectionId: collectionID,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Records, 0)
+		assert.Len(t, resp.Dependencies, 0)
+	})
+
+	t.Run("collection: collection has 2 objects - return 2 objects in response", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2"}, nil, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+
+		fx.store.EXPECT().QueryByID([]string{"1", "2"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("1"),
+				"name": pbtypes.String("1"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("2"),
+				"name": pbtypes.String("2"),
+			}}},
+		}, nil)
+
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:        subscriptionID,
+			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
+			CollectionId: collectionID,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Records, 2)
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyName.String()))
+		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyId.String()))
+	})
+
+	t.Run("collection: collection has 3 objects, 1 is filtered - return 2 objects in response", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+
+		fx.store.EXPECT().QueryByID([]string{"1", "2", "3"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("1"),
+				"name": pbtypes.String("1"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("2"),
+				"name": pbtypes.String("2"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("3"),
+				"name": pbtypes.String("3"),
+			}}},
+		}, nil)
+
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:        subscriptionID,
+			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
+			CollectionId: collectionID,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Id:          "1",
+					RelationKey: bundle.RelationKeyName.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String("3"),
+				},
+			},
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Records, 2)
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyName.String()))
+		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], bundle.RelationKeyId.String()))
+	})
+	t.Run("collection: collection has 3 objects, offset = 2 - return 1 object after offset", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+
+		fx.store.EXPECT().QueryByID([]string{"1", "2", "3"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("1"),
+				"name": pbtypes.String("1"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("2"),
+				"name": pbtypes.String("2"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("3"),
+				"name": pbtypes.String("3"),
+			}}},
+		}, nil)
+
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:        subscriptionID,
+			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
+			CollectionId: collectionID,
+			Offset:       2,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Records, 1)
+		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
+		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+	})
+	t.Run("collection: collection has object with dependency - return objects without dependency", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+		testRelationKey := "link_to_object"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+
+		fx.store.EXPECT().QueryByID([]string{"1"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":            pbtypes.String("1"),
+				"name":          pbtypes.String("1"),
+				testRelationKey: pbtypes.String("2"),
+			}}},
+		}, nil)
+
+		// dependency
+		fx.store.EXPECT().QueryByID([]string{"2"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("2"),
+				"name": pbtypes.String("2"),
+			}}},
+		}, nil)
+
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+
+		fx.store.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
+			Key:    testRelationKey,
+			Format: model.RelationFormat_object,
+		}, nil).AnyTimes()
+
+		s := fx.Service.(*service)
+		s.ds = newDependencyService(s)
+
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:             subscriptionID,
+			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey},
+			CollectionId:      collectionID,
+			NoDepSubscription: true,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Records, 1)
+		assert.Len(t, resp.Dependencies, 0)
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+	})
+	t.Run("collection: collection has object with dependency - return objects with dependency", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+		testRelationKey := "link_to_object"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+
+		fx.store.EXPECT().QueryByID([]string{"1"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":            pbtypes.String("1"),
+				"name":          pbtypes.String("1"),
+				testRelationKey: pbtypes.String("2"),
+			}}},
+		}, nil)
+
+		// dependency
+		fx.store.EXPECT().QueryByID([]string{"2"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("2"),
+				"name": pbtypes.String("2"),
+			}}},
+		}, nil)
+
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+
+		fx.store.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
+			Key:    testRelationKey,
+			Format: model.RelationFormat_object,
+		}, nil).AnyTimes()
+
+		s := fx.Service.(*service)
+		s.ds = newDependencyService(s)
+
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:             subscriptionID,
+			Keys:              []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String(), testRelationKey},
+			CollectionId:      collectionID,
+			NoDepSubscription: false,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Records, 1)
+		assert.Len(t, resp.Dependencies, 1)
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+		assert.Equal(t, "2", pbtypes.GetString(resp.Dependencies[0], bundle.RelationKeyName.String()))
+		assert.Equal(t, "2", pbtypes.GetString(resp.Dependencies[0], bundle.RelationKeyId.String()))
+	})
+	t.Run("collection: collection has 3 objects, but limit = 2 - return 2 objects in response", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		collectionID := "id"
+		subscriptionID := "subId"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+
+		fx.store.EXPECT().QueryByID([]string{"1", "2", "3"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("1"),
+				"name": pbtypes.String("1"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("2"),
+				"name": pbtypes.String("2"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("3"),
+				"name": pbtypes.String("3"),
+			}}},
+		}, nil)
+
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId:        subscriptionID,
+			Keys:         []string{bundle.RelationKeyName.String(), bundle.RelationKeyId.String()},
+			CollectionId: collectionID,
+			Limit:        1,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, resp.Records, 1)
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
+		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+	})
 }
 
 type collectionServiceMock struct {
-	updateCh chan []string
-}
-
-func (c *collectionServiceMock) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
-	return nil, c.updateCh, nil
-}
-
-func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+	*mock_subscription.MockCollectionService
 }
 
 func (c *collectionServiceMock) Name() string {
@@ -336,9 +678,11 @@ func newFixture(t *testing.T) *fixture {
 	fx.sender = &testapp.EventSender{F: func(e *pb.Event) {
 		fx.events = append(fx.events, e)
 	}}
+	collectionService := mock_subscription.NewMockCollectionService(t)
+	fx.collectionService = &collectionServiceMock{MockCollectionService: collectionService}
 	a.Register(fx.Service)
 	a.Register(fx.sender)
-	a.Register(&collectionServiceMock{updateCh: make(chan []string, 1)})
+	a.Register(fx.collectionService)
 
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("sbtProvider")
@@ -353,9 +697,10 @@ func newFixture(t *testing.T) *fixture {
 
 type fixture struct {
 	Service
-	a      *testapp.TestApp
-	ctrl   *gomock.Controller
-	store  *testMock.MockObjectStore
-	sender *testapp.EventSender
-	events []*pb.Event
+	a                 *testapp.TestApp
+	ctrl              *gomock.Controller
+	store             *testMock.MockObjectStore
+	sender            *testapp.EventSender
+	events            []*pb.Event
+	collectionService *collectionServiceMock
 }
