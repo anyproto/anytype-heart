@@ -376,6 +376,7 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID str
 		if err != nil {
 			return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 		}
+		return nil
 	}
 
 	links := inode.Links()
