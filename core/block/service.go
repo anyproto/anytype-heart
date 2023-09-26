@@ -936,8 +936,8 @@ func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
 }
 
 func (s *Service) StateFromTemplate(spaceID, templateID, name string) (st *state.State, err error) {
-	if templateID == BlankTemplateID {
-		if templateID, err = s.GetNewTemplateID(spaceID, templateID); err != nil {
+	if templateID == BlankTemplateID || templateID == "" {
+		if templateID, err = s.GetNewTemplateID(spaceID, BlankTemplateID); err != nil {
 			return nil, fmt.Errorf("failed to find blank template: %v", err)
 		}
 	}
@@ -945,7 +945,7 @@ func (s *Service) StateFromTemplate(spaceID, templateID, name string) (st *state
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
 		} else {
-			return fmt.Errorf("not a template")
+			return fmt.Errorf("object '%s' is not a template", templateID)
 		}
 		return nil
 	}); err != nil {
@@ -1076,12 +1076,21 @@ func (s *Service) GetLogFields() []zap.Field {
 }
 
 func (s *Service) GetNewTemplateID(spaceID, sourceObjectID string) (id string, err error) {
+	var templateObjectTypeID string
+	if templateObjectTypeID, err = s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate); err != nil {
+		return "", fmt.Errorf("failed to get template object type id: %v", err)
+	}
 	ids, _, err := s.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeySourceObject.String(),
 				Value:       pbtypes.String(sourceObjectID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyType.String(),
+				Value:       pbtypes.String(templateObjectTypeID),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
