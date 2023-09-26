@@ -131,8 +131,9 @@ func (i *Import) sendFileEvents(returnedErr error) {
 func (i *Import) importFromBuiltinConverter(ctx *session.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
-	progress process.Progress) (string, error) {
-	allErrors := converter.NewError(0)
+	progress process.Progress,
+) (string, error) {
+	allErrors := converter.NewError(req.Mode)
 	res, err := c.GetSnapshots(req, progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
@@ -157,8 +158,11 @@ func (i *Import) importFromBuiltinConverter(ctx *session.Context,
 	return rootCollectionID, resultErr
 }
 
-func (i *Import) importFromExternalSource(ctx *session.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
-	allErrors := converter.NewError(0)
+func (i *Import) importFromExternalSource(ctx *session.Context,
+	req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+) error {
+	allErrors := converter.NewError(req.Mode)
 	if req.Snapshots != nil {
 		sn := make([]*converter.Snapshot, len(req.Snapshots))
 		for i, s := range req.Snapshots {
@@ -252,7 +256,12 @@ func (i *Import) ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest)
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) createObjects(ctx *session.Context, res *converter.Response, progress process.Progress, req *pb.RpcObjectImportRequest, allErrors *converter.ConvertError) (map[string]*types.Struct, string) {
+func (i *Import) createObjects(ctx *session.Context,
+	res *converter.Response,
+	progress process.Progress,
+	req *pb.RpcObjectImportRequest,
+	allErrors *converter.ConvertError,
+) (map[string]*types.Struct, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
 	if err != nil {
 		return nil, ""
@@ -281,7 +290,11 @@ func (i *Import) getFilesIDs(res *converter.Response) []string {
 	return fileIDs
 }
 
-func (i *Import) getIDForAllObjects(ctx *session.Context, res *converter.Response, allErrors *converter.ConvertError, req *pb.RpcObjectImportRequest) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
+func (i *Import) getIDForAllObjects(ctx *session.Context,
+	res *converter.Response,
+	allErrors *converter.ConvertError,
+	req *pb.RpcObjectImportRequest,
+) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*converter.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
@@ -367,7 +380,11 @@ func (i *Import) addWork(res *converter.Response, pool *workerpool.WorkerPool) {
 	pool.CloseTask()
 }
 
-func (i *Import) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, allErrors *converter.ConvertError, progress process.Progress) map[string]*types.Struct {
+func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
+	mode pb.RpcObjectImportRequestMode,
+	allErrors *converter.ConvertError,
+	progress process.Progress,
+) map[string]*types.Struct {
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {

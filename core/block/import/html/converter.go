@@ -74,7 +74,7 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 	var rootCollectionID string
 	if rootCollectionSnapshot != nil {
 		snapshots = append(snapshots, rootCollectionSnapshot)
-		rootCollectionID = rootCol.Id
+		rootCollectionID = rootCollectionSnapshot.Id
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {

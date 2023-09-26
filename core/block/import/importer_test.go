@@ -843,7 +843,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i := Import{}
 		expectedRootCollectionID := ""
 		originalRootCollectionID := "rootCollectionID"
-		converterError := cv.NewFromError(errors.New("converter error"))
+		converterError := cv.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		ctrl := gomock.NewController(t)
 		converter := cv.NewMockConverter(ctrl)
@@ -880,7 +880,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i := Import{}
 		expectedRootCollectionID := ""
 		originalRootCollectionID := "rootCollectionID"
-		converterError := cv.NewFromError(errors.New("converter error"))
+		converterError := cv.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		ctrl := gomock.NewController(t)
 		converter := cv.NewMockConverter(ctrl)

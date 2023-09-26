@@ -78,7 +78,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		}
 		if rootCollection != nil {
 			allSnapshots = append(allSnapshots, rootCollection)
-			rootCollectionID = rootCol.Id
+			rootCollectionID = rootCollection.Id
 		}
 	}
 	progress.SetTotal(int64(len(allSnapshots)))
