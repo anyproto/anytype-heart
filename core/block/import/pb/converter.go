@@ -67,6 +67,7 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 	if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
 		return nil, allErrors
 	}
+	var rootCollectionID string
 	if !params.GetNoCollection() {
 		rootCollection, colErr := p.provideRootCollection(allSnapshots, widgetSnapshot, oldToNewID)
 		if colErr != nil {
@@ -77,13 +78,14 @@ func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progr
 		}
 		if rootCollection != nil {
 			allSnapshots = append(allSnapshots, rootCollection)
+			rootCollectionID = rootCol.Id
 		}
 	}
 	progress.SetTotal(int64(len(allSnapshots)))
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, nil
+		return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, allErrors
+	return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
 }
 
 func (p *Pb) Name() string {

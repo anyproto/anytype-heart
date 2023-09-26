@@ -116,18 +116,20 @@ func (n *Notion) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.P
 			return nil, ce
 		}
 	}
+	var rootCollectionID string
 	if rootCollectionSnapshot != nil {
 		dbs = append(dbs, rootCollectionSnapshot)
+		rootCollectionID = rootCollectionSnapshot.Id
 	}
 	allSnapshots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
 
 	if !ce.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, ce
+		return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, ce
 	}
 
-	return &converter.Response{Snapshots: allSnapshots}, nil
+	return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 }
 
 func (n *Notion) getUniqueProperties(db []database.Database, pages []page.Page) []string {

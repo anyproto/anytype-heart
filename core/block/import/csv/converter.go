@@ -72,15 +72,17 @@ func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Prog
 			return nil, allErrors
 		}
 	}
+	var rootCollectionID string
 	if rootCol != nil {
 		result.snapshots = append(result.snapshots, rootCol)
+		rootCollectionID = rootCol.Id
 	}
 	progress.SetTotal(int64(len(result.snapshots)))
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: result.snapshots}, nil
+		return &converter.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, nil
 	}
 
-	return &converter.Response{Snapshots: result.snapshots}, allErrors
+	return &converter.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, allErrors
 }
 
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,

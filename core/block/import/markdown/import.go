@@ -70,7 +70,7 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
 	}
-	allSnapshots, err := m.createRootCollection(allSnapshots)
+	allSnapshots, rootCollectionID, err := m.createRootCollection(allSnapshots)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -79,9 +79,9 @@ func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process
 	}
 
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, nil
+		return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, allErrors
+	return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
 }
 
 func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *converter.ConvertError) []*converter.Snapshot {
@@ -96,18 +96,20 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 	return allSnapshots
 }
 
-func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*converter.Snapshot, error) {
+func (m *Markdown) createRootCollection(allSnapshots []*converter.Snapshot) ([]*converter.Snapshot, string, error) {
 	targetObjects := m.getObjectIDs(allSnapshots)
 	rootCollection := converter.NewRootCollection(m.service)
 	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
+	var rootCollectionID string
 	if rootCol != nil {
 		allSnapshots = append(allSnapshots, rootCol)
+		rootCollectionID = rootCol.Id
 	}
-	return allSnapshots, nil
+	return allSnapshots, rootCollectionID, nil
 }
 
 func (m *Markdown) getSnapshots(req *pb.RpcObjectImportRequest,

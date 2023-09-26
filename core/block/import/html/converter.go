@@ -71,16 +71,19 @@ func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Pro
 			return nil, allErrors
 		}
 	}
+	var rootCollectionID string
 	if rootCollectionSnapshot != nil {
 		snapshots = append(snapshots, rootCollectionSnapshot)
+		rootCollectionID = rootCol.Id
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: snapshots}, nil
+		return &converter.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
 	}
 
 	return &converter.Response{
-		Snapshots: snapshots,
+		Snapshots:        snapshots,
+		RootCollectionID: rootCollectionID,
 	}, allErrors
 }
 
