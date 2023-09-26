@@ -991,14 +991,22 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 			if originalLayout, found := orig.Layout(); found {
 				ts.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(originalLayout)))
 			}
+			ts.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(false))
 		}
 		ts.SetObjectTypeKey(objType)
 
-		flags := internalflag.NewFromState(orig)
+		flags := defaultInternalFlags()
 		flags.AddToState(ts)
 
 		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
+}
+
+func defaultInternalFlags() (flags internalflag.Set) {
+	flags.Add(model.InternalFlag_editorDeleteEmpty)
+	flags.Add(model.InternalFlag_editorSelectType)
+	flags.Add(model.InternalFlag_editorSelectTemplate)
+	return
 }
 
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
