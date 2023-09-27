@@ -333,6 +333,7 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 		if err = t.Apply(s); err != nil {
 			return
 		}
+		t.setCarriageInfo(req)
 		msgs := ctx.GetMessages()
 		var filtered = msgs[:0]
 		for _, msg := range msgs {
@@ -354,12 +355,18 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 		}
 	}
 
-	t.History().SetCarriageInfo(undo.CarriageInfo{
-		CarriageBlockID: req.BlockId,
-		RangeFrom:       req.SelectedTextRange.From,
-		RangeTo:         req.SelectedTextRange.To,
-	})
+	t.setCarriageInfo(req)
 	return
+}
+
+func (t *textImpl) setCarriageInfo(req pb.RpcBlockTextSetTextRequest) {
+	if req.SelectedTextRange != nil {
+		t.History().SetCarriageInfo(undo.CarriageInfo{
+			CarriageBlockID: req.BlockId,
+			RangeFrom:       req.SelectedTextRange.From,
+			RangeTo:         req.SelectedTextRange.To,
+		})
+	}
 }
 
 func (t *textImpl) TurnInto(ctx *session.Context, style model.BlockContentTextStyle, ids ...string) (err error) {
