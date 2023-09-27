@@ -106,10 +106,8 @@ func (c *objectCache) DeriveTreePayload(ctx context.Context, spaceID string, par
 		}
 		return create, err
 	}
-	// TODO: [MR] make derivation through any-sync
-	//treePayload := derivePayload(space.Id(), changePayload)
-	treePayload := derivePersonalPayload(space.Id(), accountKeys.SignKey, changePayload)
-	create, err := space.TreeBuilder().CreateTree(context.Background(), treePayload)
+	treePayload := derivePayload(space.Id(), changePayload)
+	create, err := space.TreeBuilder().DeriveTree(context.Background(), treePayload)
 	if err != nil {
 		return storagePayload, err
 	}

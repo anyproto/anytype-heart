@@ -1,4 +1,4 @@
-package treemanager
+package treesyncer
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func TestTreeSyncer(t *testing.T) {
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
 
 	t.Run("delayed sync", func(t *testing.T) {
-		syncer := newTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 10, managerMock)
+		syncer := NewTreeSyncer(spaceId)
 		syncer.Init()
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
 		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
@@ -43,7 +43,7 @@ func TestTreeSyncer(t *testing.T) {
 	})
 
 	t.Run("sync after run", func(t *testing.T) {
-		syncer := newTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 10, managerMock)
+		syncer := NewTreeSyncer(spaceId)
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
 		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(missingMock, nil)
@@ -59,7 +59,7 @@ func TestTreeSyncer(t *testing.T) {
 	})
 
 	t.Run("sync same ids", func(t *testing.T) {
-		syncer := newTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 10, managerMock)
+		syncer := NewTreeSyncer(spaceId)
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
 		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(missingMock, nil)
@@ -76,7 +76,7 @@ func TestTreeSyncer(t *testing.T) {
 
 	t.Run("sync concurrent ids", func(t *testing.T) {
 		ch := make(chan struct{}, 2)
-		syncer := newTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 2, managerMock)
+		syncer := NewTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 2, managerMock)
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
 		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId+"1").DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
@@ -102,7 +102,7 @@ func TestTreeSyncer(t *testing.T) {
 
 	t.Run("sync context cancel", func(t *testing.T) {
 		var events []string
-		syncer := newTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 1, managerMock)
+		syncer := NewTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 1, managerMock)
 		mutex := sync.Mutex{}
 		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
 			<-ctx.Done()

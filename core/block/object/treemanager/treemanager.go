@@ -22,10 +22,6 @@ import (
 
 var log = logging.Logger("anytype-mw-tree-manager")
 
-const (
-	concurrentTrees = 10
-)
-
 var errAppIsNotRunning = errors.New("app is not running")
 
 type treeManager struct {
@@ -35,7 +31,6 @@ type treeManager struct {
 
 	onDelete func(id domain.FullID) error
 
-	syncer      map[string]*treeSyncer
 	syncStarted bool
 	syncerLock  sync.Mutex
 }
@@ -47,7 +42,6 @@ func New() treemanager.TreeManager {
 func newTreeManager(onDelete func(id domain.FullID) error) *treeManager {
 	return &treeManager{
 		onDelete: onDelete,
-		syncer:   make(map[string]*treeSyncer),
 	}
 }
 
@@ -78,15 +72,6 @@ func (m *treeManager) Run(ctx context.Context) error {
 
 func (m *treeManager) Close(ctx context.Context) error {
 	return nil
-}
-
-func (m *treeManager) StartSync() {
-	m.syncerLock.Lock()
-	defer m.syncerLock.Unlock()
-	m.syncStarted = true
-	for _, syncer := range m.syncer {
-		syncer.Run()
-	}
 }
 
 // GetTree should only be called by either space services or debug apis, not the client code
@@ -143,19 +128,6 @@ func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 	m.sendOnRemoveEvent(treeId)
 	err = m.objectCache.Remove(ctx, treeId)
 	return
-}
-
-// NewTreeSyncer is called in commonspace.SpaceService/NewSpace, so loading a space into cache in spacecore.Service creates a syncer
-func (m *treeManager) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
-	m.syncerLock.Lock()
-	defer m.syncerLock.Unlock()
-	syncer := newTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, concurrentTrees, treeManager)
-	m.syncer[spaceId] = syncer
-	if m.syncStarted {
-		log.With("spaceID", spaceId).Warn("creating tree syncer after run")
-		syncer.Run()
-	}
-	return syncer
 }
 
 func (m *treeManager) sendOnRemoveEvent(ids ...string) {

@@ -155,13 +155,12 @@ func (s *service) Run(ctx context.Context) (err error) {
 		cache:     s.objectCache,
 		techSpace: s.techSpace,
 	}
-	if s.newAccount {
-		return spaceLoader.CreateSpaces(ctx)
-	}
-	// counter files + bundled objects : delete???
 	err = s.indexer.ReindexCommonObjects()
 	if err != nil {
 		return
+	}
+	if s.newAccount {
+		return spaceLoader.CreateSpaces(ctx)
 	}
 	return spaceLoader.LoadSpaces(ctx)
 }

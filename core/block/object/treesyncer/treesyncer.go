@@ -1,16 +1,22 @@
-package treemanager
+package treesyncer
 
 import (
 	"context"
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
+	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
+
 	"go.uber.org/zap"
 )
+
+var log = logger.NewNamed(treemanager.CName)
 
 type executor struct {
 	pool *streampool.ExecPool
@@ -61,24 +67,47 @@ type treeSyncer struct {
 	isRunning    bool
 }
 
-func newTreeSyncer(spaceId string, timeout time.Duration, concurrentReqs int, treeManager treemanager.TreeManager) *treeSyncer {
+func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 	mainCtx, cancel := context.WithCancel(context.Background())
 	return &treeSyncer{
 		mainCtx:      mainCtx,
 		cancel:       cancel,
-		requests:     concurrentReqs,
+		requests:     10,
 		spaceId:      spaceId,
-		timeout:      timeout,
+		timeout:      time.Second * 30,
 		requestPools: map[string]*executor{},
 		headPools:    map[string]*executor{},
-		treeManager:  treeManager,
 	}
 }
 
-func (t *treeSyncer) Init() {
+func (t *treeSyncer) Init(a *app.App) (err error) {
+	t.treeManager = a.MustComponent(treemanager.CName).(treemanager.TreeManager)
+	return nil
 }
 
-func (t *treeSyncer) Run() {
+func (t *treeSyncer) Name() (name string) {
+	return treesyncer.CName
+}
+
+func (t *treeSyncer) Run(ctx context.Context) (err error) {
+	return nil
+}
+
+func (t *treeSyncer) Close(ctx context.Context) (err error) {
+	t.Lock()
+	defer t.Unlock()
+	t.cancel()
+	t.isRunning = false
+	for _, pool := range t.headPools {
+		pool.close()
+	}
+	for _, pool := range t.requestPools {
+		pool.close()
+	}
+	return nil
+}
+
+func (t *treeSyncer) StartSync() {
 	t.Lock()
 	defer t.Unlock()
 	t.isRunning = true
@@ -161,18 +190,4 @@ func (t *treeSyncer) updateTree(peerId, id string) {
 	} else {
 		log.Debug("success synctree.SyncWithPeer")
 	}
-}
-
-func (t *treeSyncer) Close() error {
-	t.Lock()
-	defer t.Unlock()
-	t.cancel()
-	t.isRunning = false
-	for _, pool := range t.headPools {
-		pool.close()
-	}
-	for _, pool := range t.requestPools {
-		pool.close()
-	}
-	return nil
 }

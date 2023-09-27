@@ -32,6 +32,7 @@ type spaceLoader struct {
 }
 
 func (s *spaceLoader) CreateSpaces(ctx context.Context) (err error) {
+	s.techSpace.TreeSyncer().StartSync()
 	if err != nil {
 		return
 	}
@@ -48,13 +49,16 @@ func (s *spaceLoader) LoadSpaces(ctx context.Context) (err error) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.execPool = streampool.NewExecPool(10, len(storedIDs))
 	for _, id := range storedIDs {
+		idCopy := id
 		_ = s.execPool.Add(s.ctx, func() {
-			err := s.loadSpaceObject(id)
+			err := s.loadSpaceObject(idCopy)
 			if err != nil {
-				log.Debug("failed to load space object", zap.Error(err), zap.String("id", id))
+				log.Debug("failed to load space object", zap.Error(err), zap.String("id", idCopy))
 			}
 		})
 	}
+	s.execPool.Run()
+	s.techSpace.TreeSyncer().StartSync()
 	return
 }
 
@@ -116,6 +120,7 @@ func (s *spaceLoader) getOrDerive(ctx context.Context, spaceID, targetSpaceID st
 		ObjectID: id,
 		SpaceID:  spaceID,
 	})
+
 	if err != nil {
 		return s.deriver.deriveSpaceObject(ctx, spaceID, targetSpaceID)
 	}

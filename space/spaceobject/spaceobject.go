@@ -107,6 +107,15 @@ func (s *spaceObject) run() {
 		return
 	}
 	s.loadErr = s.indexer.ReindexSpace(s.spaceID)
+	if s.loadErr != nil {
+		return
+	}
+	sp, err := s.Space()
+	if err != nil {
+		s.loadErr = err
+		return
+	}
+	sp.TreeSyncer().StartSync()
 	return
 }
 
