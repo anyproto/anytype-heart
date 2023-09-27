@@ -160,3 +160,115 @@ func TestHistory_Counters(t *testing.T) {
 	assert.Equal(t, int32(1), uc)
 	assert.Equal(t, int32(1), rc)
 }
+
+func TestHistory_SetCarriageInfo(t *testing.T) {
+	info := CarriageInfo{
+		CarriageBlockID: "title",
+		RangeFrom:       1,
+		RangeTo:         2,
+	}
+	t.Run("carriage info from initial state", func(t *testing.T) {
+		// given
+		h := NewHistory(0)
+
+		// when
+		h.SetCarriageInfo(info)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		action, err := h.Previous()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, info, action.CarriageInfo)
+	})
+
+	t.Run("no initial carriage info", func(t *testing.T) {
+		// given
+		h := NewHistory(0)
+
+		// when
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		action, err := h.Previous()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, CarriageInfo{}, action.CarriageInfo)
+	})
+
+	t.Run("single undo", func(t *testing.T) {
+		//given
+		h := NewHistory(0)
+
+		// when
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageInfo(info)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		action, err := h.Previous()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, info, action.CarriageInfo)
+	})
+
+	t.Run("multiple undo", func(t *testing.T) {
+		//given
+		h := NewHistory(0)
+
+		// when
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		h.SetCarriageInfo(info)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "3"})}})
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "4"})}})
+		_, err1 := h.Previous()
+		action, err2 := h.Previous()
+
+		// then
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Equal(t, info, action.CarriageInfo)
+	})
+
+	t.Run("single redo", func(t *testing.T) {
+		//given
+		h := NewHistory(0)
+
+		// when
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		h.SetCarriageInfo(info)
+		_, err1 := h.Previous()
+		action, err2 := h.Next()
+
+		// then
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Equal(t, info, action.CarriageInfo)
+	})
+
+	t.Run("multiple redo", func(t *testing.T) {
+		//given
+		h := NewHistory(0)
+
+		// when
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		h.SetCarriageInfo(info)
+		_, _ = h.Previous()
+		_, _ = h.Previous()
+		_, _ = h.Next()
+		action, err := h.Next()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, info, action.CarriageInfo)
+	})
+
+	t.Run("real hard typing", func(t *testing.T) {
+		//given
+		h := NewHistory(0)
+
+		//when
+		h.SetCarriageInfo(CarriageInfo{CarriageBlockID: "a", RangeFrom: 0, RangeTo: 0})
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+	})
+}
