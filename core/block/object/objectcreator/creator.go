@@ -312,22 +312,18 @@ func (w *Creator) createRelationOption(ctx context.Context, spaceID string, deta
 		return "", nil, fmt.Errorf("invalid relation key: unknown enum")
 	}
 
-	object = pbtypes.CopyStruct(details)
-	key := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	if key == "" {
-		key = bson.NewObjectId().Hex()
+	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeRelation, details)
+	if err != nil {
+		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 
-	// options has a short id for now to avoid migration of values inside relations
-	id = key
-	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	object = pbtypes.CopyStruct(details)
+	object.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relationOption))
 
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []domain.TypeKey{bundle.TypeKeyRelationOption}, object, nil)
-}
-
-type internalKeyGetter interface {
-	InternalKey() string
+	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
+	createState.SetDetails(object)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []domain.TypeKey{bundle.TypeKeyRelationOption}, nil, createState)
 }
 
 func (w *Creator) createObjectType(ctx context.Context, spaceID string, details *types.Struct) (id string, newDetails *types.Struct, err error) {
@@ -335,13 +331,12 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
 
-	sbType := coresb.SmartBlockTypeObjectType
-	uniqueKey, err := getUniqueKeyOrGenerate(sbType, details)
+	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeObjectType, details)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
-	key := uniqueKey.(internalKeyGetter).InternalKey()
+	key := uniqueKey.InternalKey()
 
 	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	recommendedRelationKeys := make([]string, 0, len(recommendedRelationIDs))
@@ -455,7 +450,6 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		}
 	}()
 
-	// we need to create it here directly, because we need to set the object type
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
 	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, []domain.TypeKey{bundle.TypeKeyObjectType}, nil, createState)
