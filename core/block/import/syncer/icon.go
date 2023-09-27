@@ -2,8 +2,9 @@ package syncer
 
 import (
 	"fmt"
-	"os"
 	"strings"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -11,7 +12,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
+
+var log = logging.Logger("import")
 
 type IconSyncer struct {
 	service *block.Service
@@ -22,14 +27,18 @@ func NewIconSyncer(service *block.Service) *IconSyncer {
 }
 
 func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
-	fileName := b.Model().GetText().GetIconImage()
-	req := pb.RpcFileUploadRequest{LocalPath: fileName}
-	if strings.HasPrefix(fileName, "http://") || strings.HasPrefix(fileName, "https://") {
-		req = pb.RpcFileUploadRequest{Url: fileName}
+	icon := b.Model().GetText().GetIconImage()
+	_, err := cid.Decode(icon)
+	if err == nil {
+		return nil
+	}
+	req := pb.RpcFileUploadRequest{LocalPath: icon}
+	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
+		req = pb.RpcFileUploadRequest{Url: icon}
 	}
 	hash, err := is.service.UploadFile(req)
 	if err != nil {
-		return fmt.Errorf("failed uploading icon image file: %s", err)
+		log.Errorf("failed uploading icon image file: %s", oserror.TransformError(err))
 	}
 
 	err = is.service.Do(id, func(sb smartblock.SmartBlock) error {
@@ -46,6 +55,5 @@ func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	if err != nil {
 		return fmt.Errorf("failed to update block: %s", err)
 	}
-	os.Remove(fileName)
 	return nil
 }

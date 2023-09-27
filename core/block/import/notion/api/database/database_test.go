@@ -598,4 +598,26 @@ func Test_makeDatabaseSnapshot(t *testing.T) {
 		icon := pbtypes.GetString(snapshot[0].Snapshot.Data.Details, bundle.RelationKeyIconImage.String())
 		assert.Equal(t, "", icon)
 	})
+	t.Run("Database has property without name - return relation with name Untitled", func(t *testing.T) {
+		selectProperty := property.DatabaseSelect{
+			Property: property.Property{
+				ID:   "id1",
+				Name: "",
+			},
+		}
+		properties := property.DatabaseProperties{"": &selectProperty}
+		dbService := New(nil)
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		db := Database{Properties: properties}
+
+		// when
+		dbService.makeDatabaseSnapshot(db, api.NewNotionImportContext(), req)
+
+		// then
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.Equal(t, property.UntitledProperty, pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyName.String()))
+	})
 }

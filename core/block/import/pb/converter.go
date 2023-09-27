@@ -58,31 +58,34 @@ func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypePro
 func (p *Pb) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	params, e := p.getParams(req.Params)
 	if e != nil || params == nil {
-		return nil, converter.NewFromError(fmt.Errorf("wrong parameters"))
+		return nil, converter.NewFromError(fmt.Errorf("wrong parameters"), req.Mode)
 	}
-	allSnapshots, widgetSnapshot, allErrors := p.getSnapshots(req, progress, params.GetPath(), req.IsMigration)
-	oldToNewID := p.updateLinksToObjects(allSnapshots, allErrors, req.Mode)
+	allErrors := converter.NewError(req.Mode)
+	allSnapshots, widgetSnapshot := p.getSnapshots(progress, params.GetPath(), req.IsMigration, allErrors)
+	oldToNewID := p.updateLinksToObjects(allSnapshots, allErrors, len(params.GetPath()))
 	p.updateDetails(allSnapshots)
-	if p.shouldReturnError(req, allErrors, params) {
+	if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
 		return nil, allErrors
 	}
+	var rootCollectionID string
 	if !params.GetNoCollection() {
-		rootCol, colErr := p.provideRootCollection(allSnapshots, widgetSnapshot, oldToNewID)
+		rootCollection, colErr := p.provideRootCollection(allSnapshots, widgetSnapshot, oldToNewID)
 		if colErr != nil {
 			allErrors.Add(colErr)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
 				return nil, allErrors
 			}
 		}
-		if rootCol != nil {
-			allSnapshots = append(allSnapshots, rootCol)
+		if rootCollection != nil {
+			allSnapshots = append(allSnapshots, rootCollection)
+			rootCollectionID = rootCollection.Id
 		}
 	}
 	progress.SetTotal(int64(len(allSnapshots)))
 	if allErrors.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, nil
+		return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 	}
-	return &converter.Response{Snapshots: allSnapshots}, allErrors
+	return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
 }
 
 func (p *Pb) Name() string {
@@ -96,37 +99,38 @@ func (p *Pb) getParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 	return nil, errors.New("PB: getParams wrong parameters format")
 }
 
-func (p *Pb) getSnapshots(req *pb.RpcObjectImportRequest,
-	progress process.Progress,
+func (p *Pb) getSnapshots(progress process.Progress,
 	allPaths []string,
-	isMigration bool) ([]*converter.Snapshot, *converter.Snapshot, *converter.ConvertError) {
+	isMigration bool,
+	allErrors *converter.ConvertError,
+) ([]*converter.Snapshot, *converter.Snapshot) {
 	allSnapshots := make([]*converter.Snapshot, 0)
-	allErrors := converter.NewError()
 	var widgetSnapshot *converter.Snapshot
 	for _, path := range allPaths {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, converter.NewCancelError(err)
+			allErrors.Add(converter.ErrCancel)
+			return nil, nil
 		}
-		snapshots, widget := p.handlePath(req, path, allErrors, isMigration)
-		if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, allErrors
+		snapshots, widget := p.handleImportPath(len(path), path, allErrors, isMigration)
+		if allErrors.ShouldAbortImport(len(allPaths), pb.RpcObjectImportRequest_Pb) {
+			return nil, nil
 		}
 		allSnapshots = append(allSnapshots, snapshots...)
 		widgetSnapshot = widget
 	}
-	return allSnapshots, widgetSnapshot, allErrors
+	return allSnapshots, widgetSnapshot
 }
 
-func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
+func (p *Pb) handleImportPath(pathCount int,
 	path string,
 	allErrors *converter.ConvertError,
 	isMigration bool) ([]*converter.Snapshot, *converter.Snapshot) {
 	importSource := source.GetSource(path)
 	defer importSource.Close()
-	files, err := p.readFile(path, importSource)
+	err := p.extractFiles(path, importSource)
 	if err != nil {
 		allErrors.Add(err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING || errors.Is(err, converter.ErrNoObjectsToImport) {
+		if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
 			return nil, nil
 		}
 	}
@@ -134,10 +138,10 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 		profileID           string
 		needToImportWidgets bool
 	)
-	profile, err := p.getProfileFromFiles(files)
+	profile, err := p.getProfileFromFiles(importSource)
 	if err != nil {
 		allErrors.Add(err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
 			return nil, nil
 		}
 	}
@@ -145,46 +149,43 @@ func (p *Pb) handlePath(req *pb.RpcObjectImportRequest,
 		pr, e := p.core.LocalProfile()
 		if e != nil {
 			allErrors.Add(e)
-			if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
 				return nil, nil
 			}
 		}
 		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
 		profileID = profile.ProfileId
 	}
-	snapshots, widget := p.getSnapshotsFromProvidedFiles(req, files, allErrors, path, profileID, needToImportWidgets, isMigration)
-	if !allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-		return nil, nil
-	}
-	return snapshots, widget
+	return p.getSnapshotsFromProvidedFiles(pathCount, importSource, allErrors, path, profileID, needToImportWidgets, isMigration)
 }
 
-func (p *Pb) readFile(importPath string, importSource source.Source) (map[string]io.ReadCloser, error) {
-	readers, err := importSource.GetFileReaders(importPath, []string{".pb", ".json"}, []string{constant.ProfileFile, configFile})
+func (p *Pb) extractFiles(importPath string, importSource source.Source) error {
+	err := importSource.Initialize(importPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if len(readers) == 0 {
-		return nil, converter.ErrNoObjectsToImport
+	if importSource.CountFilesWithGivenExtensions([]string{".pb", ".json"}) == 0 {
+		return converter.ErrNoObjectsToImport
 	}
-	return readers, nil
+	return nil
 }
 
-func (p *Pb) getProfileFromFiles(files map[string]io.ReadCloser) (*pb.Profile, error) {
+func (p *Pb) getProfileFromFiles(importSource source.Source) (*pb.Profile, error) {
 	var (
 		profile *pb.Profile
 		err     error
 	)
-	for name, f := range files {
-		if filepath.Base(name) == constant.ProfileFile {
-			profile, err = p.readProfileFile(f)
-			if err != nil {
-				return nil, err
-			}
-			break
+	iterateError := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
+		if filepath.Base(fileName) == constant.ProfileFile {
+			profile, err = p.readProfileFile(fileReader)
+			return false
 		}
+		return true
+	})
+	if iterateError != nil {
+		return nil, iterateError
 	}
-	return profile, nil
+	return profile, err
 }
 
 func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
@@ -204,20 +205,21 @@ func (p *Pb) needToImportWidgets(address, accountID string) bool {
 	return address == accountID
 }
 
-func (p *Pb) getSnapshotsFromProvidedFiles(req *pb.RpcObjectImportRequest,
-	pbFiles map[string]io.ReadCloser,
-	allErrors *converter.ConvertError, path, profileID string,
-	needToImportWidgets, isMigration bool) ([]*converter.Snapshot, *converter.Snapshot) {
+func (p *Pb) getSnapshotsFromProvidedFiles(pathCount int,
+	pbFiles source.Source,
+	allErrors *converter.ConvertError,
+	path, profileID string,
+	needToImportWidgets, isMigration bool,
+) ([]*converter.Snapshot, *converter.Snapshot) {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	var widgetSnapshot *converter.Snapshot
-	for name, file := range pbFiles {
-		snapshot, err := p.makeSnapshot(name, profileID, path, file, isMigration)
+	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
+		snapshot, err := p.makeSnapshot(fileName, profileID, path, fileReader, isMigration)
 		if err != nil {
 			allErrors.Add(err)
-			if req.GetMode() == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, nil
+			if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
+				return false
 			}
-			continue
 		}
 		if snapshot != nil {
 			if p.shouldImportSnapshot(snapshot, needToImportWidgets) {
@@ -227,6 +229,9 @@ func (p *Pb) getSnapshotsFromProvidedFiles(req *pb.RpcObjectImportRequest,
 				widgetSnapshot = snapshot
 			}
 		}
+		return true
+	}); iterateErr != nil {
+		allErrors.Add(iterateErr)
 	}
 	return allSnapshots, widgetSnapshot
 }
@@ -236,7 +241,6 @@ func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMi
 		return nil, nil
 	}
 	snapshot, errGS := p.getSnapshotFromFile(file, name)
-	file.Close()
 	if errGS != nil {
 		return nil, errGS
 	}
@@ -256,22 +260,26 @@ func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMi
 
 func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWithType, error) {
 	defer rd.Close()
-	snapshot := &pb.SnapshotWithType{}
 	if filepath.Ext(name) == ".json" {
+		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %s", uErr)
 		}
 		return snapshot, nil
 	}
-	data, err := io.ReadAll(rd)
-	if err != nil {
-		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+	if filepath.Ext(name) == ".pb" {
+		snapshot := &pb.SnapshotWithType{}
+		data, err := io.ReadAll(rd)
+		if err != nil {
+			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+		}
+		if err = snapshot.Unmarshal(data); err != nil {
+			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+		}
+		return snapshot, nil
 	}
-	if err = snapshot.Unmarshal(data); err != nil {
-		return nil, fmt.Errorf("PB:GetSnapshot %s", err)
-	}
-	return snapshot, nil
+	return nil, nil
 }
 
 func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profileID string, isMigration bool) string {
@@ -365,7 +373,7 @@ func (p *Pb) shouldImportSnapshot(snapshot *converter.Snapshot, needToImportWidg
 	return snapshot.SbType != smartblock.SmartBlockTypeWidget || (snapshot.SbType == smartblock.SmartBlockTypeWidget && needToImportWidgets)
 }
 
-func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *converter.ConvertError, mode pb.RpcObjectImportRequestMode) map[string]string {
+func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *converter.ConvertError, pathCount int) map[string]string {
 	oldToNewID := make(map[string]string, len(snapshots))
 	fileIDs := make([]string, 0)
 	for _, snapshot := range snapshots {
@@ -380,7 +388,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 		err := converter.UpdateLinksToObjects(st.(*state.State), oldToNewID, fileIDs)
 		if err != nil {
 			allErrors.Add(err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+			if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
 				return nil
 			}
 			continue
@@ -426,11 +434,6 @@ func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[strin
 	if len(objectsInCollections) != 0 {
 		st.UpdateStoreSlice(template.CollectionStoreKey, objectsInCollections)
 	}
-}
-
-func (p *Pb) shouldReturnError(req *pb.RpcObjectImportRequest, allErrors *converter.ConvertError, params *pb.RpcObjectImportRequestPbParams) bool {
-	return (!allErrors.IsEmpty() && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING) ||
-		allErrors.IsNoObjectToImportError(len(params.GetPath()))
 }
 
 func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *converter.Snapshot, oldToNewID map[string]string) (*converter.Snapshot, error) {

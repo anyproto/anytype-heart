@@ -23,76 +23,69 @@ type mdConverter struct {
 
 type FileInfo struct {
 	os.FileInfo
-	io.ReadCloser
 	HasInboundLinks bool
 	PageID          string
 	IsRootFile      bool
 	Title           string
 	ParsedBlocks    []*model.Block
-	Source          string
 }
 
 func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath, mode string, importSource source.Source) (map[string]*FileInfo, *ce.ConvertError) {
-	allErrors := ce.NewError()
-	files := m.processFiles(importPath, mode, allErrors, importSource)
+func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *ce.ConvertError) map[string]*FileInfo {
+	files := m.processFiles(importPath, allErrors, importSource)
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
 
-	return files, allErrors
+	return files
 }
 
-func (m *mdConverter) processFiles(importPath string, mode string, allErrors *ce.ConvertError, importSource source.Source) map[string]*FileInfo {
-	fileInfo := make(map[string]*FileInfo, 0)
-	supportedExtensions := []string{".md", ".csv"}
-	imageFormats := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
-	videoFormats := []string{".mp4", ".m4v", ".mov"}
-	audioFormats := []string{".mp3", ".ogg", ".wav", ".m4a", ".flac"}
-	pdfFormat := []string{".pdf"}
-
-	supportedExtensions = append(supportedExtensions, videoFormats...)
-	supportedExtensions = append(supportedExtensions, imageFormats...)
-	supportedExtensions = append(supportedExtensions, audioFormats...)
-	supportedExtensions = append(supportedExtensions, pdfFormat...)
-	readers, err := importSource.GetFileReaders(importPath, supportedExtensions, nil)
+func (m *mdConverter) processFiles(importPath string, allErrors *ce.ConvertError, importSource source.Source) map[string]*FileInfo {
+	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(err)
-		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
+		if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
 			return nil
 		}
 	}
-	if source.CountFilesWithGivenExtension(readers, ".md") == 0 {
+	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
 		allErrors.Add(ce.ErrNoObjectsToImport)
 		return nil
 	}
-	for path, rc := range readers {
-		if err = m.fillFilesInfo(importPath, fileInfo, path, rc); err != nil {
-			allErrors.Add(err)
-			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING.String() {
-				return nil
-			}
-		}
-	}
-
+	fileInfo := m.getFileInfo(importSource, allErrors)
 	for name, file := range fileInfo {
 		m.processBlocks(name, file, fileInfo)
 		for _, b := range file.ParsedBlocks {
-			m.processFileBlock(b, readers, importPath)
+			m.processFileBlock(b, importSource, importPath)
 		}
 	}
 	return fileInfo
 }
 
-func (m *mdConverter) fillFilesInfo(importPath string, fileInfo map[string]*FileInfo, path string, rc io.ReadCloser) error {
+func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *ce.ConvertError) map[string]*FileInfo {
+	fileInfo := make(map[string]*FileInfo, 0)
+	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
+		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {
+			allErrors.Add(err)
+			if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
+				return false
+			}
+		}
+		return true
+	}); iterateErr != nil {
+		allErrors.Add(iterateErr)
+	}
+	return fileInfo
+}
+
+func (m *mdConverter) fillFilesInfo(fileInfo map[string]*FileInfo, path string, rc io.ReadCloser) error {
 	fileInfo[path] = &FileInfo{}
 	if err := m.createBlocksFromFile(path, rc, fileInfo); err != nil {
 		log.Errorf("failed to create blocks from file: %s", err)
 		return err
 	}
-	fileInfo[path].Source = ce.GetSourceDetail(path, importPath)
 	return nil
 }
 
@@ -163,12 +156,12 @@ func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*F
 	files[link].HasInboundLinks = true
 }
 
-func (m *mdConverter) processFileBlock(block *model.Block, files map[string]io.ReadCloser, importPath string) {
+func (m *mdConverter) processFileBlock(block *model.Block, importedSource source.Source, importPath string) {
 	if f := block.GetFile(); f != nil {
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
 		}
-		name, _, err := ce.ProvideFileName(block.GetFile().Name, files, importPath, m.tempDirProvider)
+		name, _, err := ce.ProvideFileName(block.GetFile().Name, importedSource, importPath, m.tempDirProvider)
 		if err != nil {
 			log.Errorf("failed to update file block, %v", err)
 		}
@@ -234,7 +227,6 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		files[shortPath].IsRootFile = true
 	}
 	if filepath.Ext(shortPath) == ".md" {
-		defer f.Close()
 		b, err := io.ReadAll(f)
 		if err != nil {
 			return err
@@ -243,9 +235,6 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		if err != nil {
 			log.Errorf("failed to read blocks: %s", err.Error())
 		}
-	} else {
-		// need to store file reader, so we can use it to create local file and upload it
-		files[shortPath].ReadCloser = f
 	}
 	return nil
 }

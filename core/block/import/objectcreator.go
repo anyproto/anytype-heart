@@ -32,8 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const relationsLimit = 10
-
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSubObjectInWorkspace(details *types.Struct, workspaceID string) (id string, newDetails *types.Struct, err error)

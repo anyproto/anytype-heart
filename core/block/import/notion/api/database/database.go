@@ -74,7 +74,7 @@ func (ds *Service) GetDatabase(_ context.Context,
 	req *api.NotionImportContext) (*converter.Response, *property.PropertiesStore, *converter.ConvertError) {
 	var (
 		allSnapshots = make([]*converter.Snapshot, 0)
-		convertError = converter.NewError()
+		convertError = converter.NewError(mode)
 	)
 	progress.SetProgressMessage("Start creating pages from notion databases")
 	relations := &property.PropertiesStore{
@@ -83,14 +83,15 @@ func (ds *Service) GetDatabase(_ context.Context,
 	}
 	for _, d := range databases {
 		if err := progress.TryStep(1); err != nil {
-			return nil, nil, converter.NewCancelError(err)
+			convertError.Add(converter.ErrCancel)
+			return nil, nil, convertError
 		}
 		snapshot, err := ds.makeDatabaseSnapshot(d, req, relations)
-		if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, converter.NewFromError(err)
-		}
 		if err != nil {
 			convertError.Add(err)
+			if convertError.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+				return nil, nil, convertError
+			}
 			continue
 		}
 		allSnapshots = append(allSnapshots, snapshot...)
@@ -231,6 +232,9 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 }
 
 func (ds *Service) getRelationDetails(databaseProperty property.DatabasePropertyHandler, name, key string) *types.Struct {
+	if name == "" {
+		name = property.UntitledProperty
+	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(databaseProperty.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
