@@ -274,18 +274,17 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	if key == "" {
 		key = bson.NewObjectId().Hex()
-
 	} else {
 		// no need to check for the generated bson's
 		if bundle.HasRelation(key) {
 			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
 		}
 	}
-	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key)
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key)
 	if err != nil {
 		return "", nil, err
 	}
-	object.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
+	object.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	if pbtypes.GetInt64(details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_status) {
@@ -295,7 +294,9 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 	// todo: check the objectTypes
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(model.ObjectType_relation))
 
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []domain.TypeKey{bundle.TypeKeyRelation}, object, nil)
+	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
+	createState.SetDetails(object)
+	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []domain.TypeKey{bundle.TypeKeyRelation}, nil, createState)
 }
 
 func (w *Creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
@@ -335,13 +336,13 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	}
 
 	sbType := coresb.SmartBlockTypeObjectType
-	uk, err := getUniqueKeyOrGenerate(sbType, details)
+	uniqueKey, err := getUniqueKeyOrGenerate(sbType, details)
 	if err != nil {
 		return "", nil, err
 	}
-	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
-	key := uk.(internalKeyGetter).InternalKey()
-	// TODO Is it ok? Do recommendedRElation contain IDs or keys?
+	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
+	key := uniqueKey.(internalKeyGetter).InternalKey()
+
 	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
 	recommendedRelationKeys := make([]string, 0, len(recommendedRelationIDs))
 	for _, relId := range recommendedRelationIDs {
@@ -455,7 +456,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	}()
 
 	// we need to create it here directly, because we need to set the object type
-	createState := state.NewDoc("", nil).(*state.State)
+	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
 	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, []domain.TypeKey{bundle.TypeKeyObjectType}, nil, createState)
 }
