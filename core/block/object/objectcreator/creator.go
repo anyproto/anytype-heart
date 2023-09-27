@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -338,26 +337,6 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
 	key := uniqueKey.InternalKey()
 
-	recommendedRelationIDs := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
-	recommendedRelationKeys := make([]string, 0, len(recommendedRelationIDs))
-	for _, relId := range recommendedRelationIDs {
-		relKey, err2 := pbtypes.BundledRelationIdToKey(relId)
-		if err2 != nil {
-			log.Errorf("create object type: invalid recommended relation id: %s", relId)
-			continue
-		}
-		// todo: support custom relations here
-		rel, _ := bundle.GetRelation(domain.RelationKey(relKey))
-		if rel != nil {
-			_, _, err2 := w.createRelation(ctx, spaceID, (&relationutils.Relation{rel}).ToStruct())
-			// todo: check if the relation already exists
-			if err2 != nil && err2 != fmt.Errorf("TODO: relation already exists") {
-				err = fmt.Errorf("failed to create relation for objectType: %s", err2.Error())
-				return
-			}
-		}
-		recommendedRelationKeys = append(recommendedRelationKeys, relKey)
-	}
 	object := pbtypes.CopyStruct(details)
 	rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
 	recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
@@ -365,13 +344,14 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		return "", nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
 	}
 
+	var recommendedRelationKeys []string
 	for _, rel := range recommendedLayout.RequiredRelations {
 		if slice.FindPos(recommendedRelationKeys, rel.Key) != -1 {
 			continue
 		}
 		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
 	}
-	var recommendedRelationIds = make([]string, len(recommendedRelationKeys))
+	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
 	for _, relKey := range recommendedRelationKeys {
 		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
 		if err != nil {
@@ -381,12 +361,12 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}
-		recommendedRelationIds = append(recommendedRelationIds, id)
+		recommendedRelationIDs = append(recommendedRelationIDs, id)
 	}
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
 	object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(rawRecommendedLayout)
-	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIDs)
 
 	if details.GetFields() == nil {
 		details.Fields = map[string]*types.Value{}
