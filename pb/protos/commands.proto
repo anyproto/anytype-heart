@@ -1602,7 +1602,8 @@ message Rpc {
                 Error error = 1;
                 ResponseEvent event = 2;
                 UndoRedoCounter counters = 3;
-                anytype.model.Range range = 4;
+                string blockId = 4;
+                anytype.model.Range range = 5;
 
                 message Error {
                     Code code = 1;
@@ -1628,7 +1629,8 @@ message Rpc {
                 Error error = 1;
                 ResponseEvent event = 2;
                 UndoRedoCounter counters = 3;
-                anytype.model.Range range = 4;
+                string blockId = 4;
+                anytype.model.Range range = 5;
 
                 message Error {
                     Code code = 1;

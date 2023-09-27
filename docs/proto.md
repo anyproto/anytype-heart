@@ -11840,6 +11840,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | error | [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
+| blockId | [string](#string) |  |  |
 | range | [model.Range](#anytype-model-Range) |  |  |
 
 
@@ -12922,6 +12923,7 @@ DEPRECATED, GO-1926 |
 | error | [Rpc.Object.Undo.Response.Error](#anytype-Rpc-Object-Undo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
+| blockId | [string](#string) |  |  |
 | range | [model.Range](#anytype-model-Range) |  |  |
 
 

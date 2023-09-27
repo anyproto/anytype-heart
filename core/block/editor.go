@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -529,9 +530,9 @@ func (s *Service) UploadFileBlockWithHash(
 
 func (s *Service) Undo(
 	ctx *session.Context, req pb.RpcObjectUndoRequest,
-) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error) {
+) (counters pb.RpcObjectUndoRedoCounter, carriageInfo undo.CarriageInfo, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
-		counters, textRange, err = b.Undo(ctx)
+		counters, carriageInfo, err = b.Undo(ctx)
 		return err
 	})
 	return
@@ -539,9 +540,9 @@ func (s *Service) Undo(
 
 func (s *Service) Redo(
 	ctx *session.Context, req pb.RpcObjectRedoRequest,
-) (counters pb.RpcObjectUndoRedoCounter, textRange model.Range, err error) {
+) (counters pb.RpcObjectUndoRedoCounter, carriageInfo undo.CarriageInfo, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
-		counters, textRange, err = b.Redo(ctx)
+		counters, carriageInfo, err = b.Redo(ctx)
 		return err
 	})
 	return

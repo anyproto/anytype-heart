@@ -91,7 +91,7 @@ type History interface {
 	Next() (Action, error)
 	Reset()
 	Counters() (undo int32, redo int32)
-	SetCarriageInfo(info CarriageInfo) error
+	SetCarriageInfo(info CarriageInfo)
 }
 
 func NewHistory(limit int) History {
@@ -102,9 +102,10 @@ func NewHistory(limit int) History {
 }
 
 type history struct {
-	limit   int
-	actions []Action
-	pointer int
+	limit       int
+	actions     []Action
+	pointer     int
+	initialInfo CarriageInfo
 }
 
 func (h *history) Add(a Action) {
@@ -132,10 +133,16 @@ func (h *history) Len() int {
 	return h.pointer
 }
 
-func (h *history) Previous() (Action, error) {
+func (h *history) Previous() (action Action, err error) {
 	if h.pointer > 0 {
 		h.pointer--
-		return h.actions[h.pointer], nil
+		action = h.actions[h.pointer]
+		if h.pointer > 0 {
+			action.CarriageInfo = h.actions[h.pointer-1].CarriageInfo
+		} else {
+			action.CarriageInfo = h.initialInfo
+		}
+		return
 	}
 	return Action{}, ErrNoHistory
 }
@@ -158,12 +165,12 @@ func (h *history) Counters() (undo int32, redo int32) {
 	return int32(h.pointer), int32(len(h.actions) - h.pointer)
 }
 
-func (h *history) SetCarriageInfo(info CarriageInfo) error {
+func (h *history) SetCarriageInfo(info CarriageInfo) {
 	if h.pointer > 0 {
 		h.actions[h.pointer-1].CarriageInfo = info
-		return nil
+		return
 	}
-	return ErrNoHistory
+	h.initialInfo = info
 }
 
 func (h *history) applyGroup(b Action) (ok bool) {

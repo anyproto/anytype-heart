@@ -266,11 +266,12 @@ func (mw *Middleware) BlockSetCarriage(_ context.Context, req *pb.RpcBlockSetCar
 	}
 	err := mw.doBlockService(func(bs *block.Service) error {
 		return bs.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
-			return sb.History().SetCarriageInfo(undo.CarriageInfo{
+			sb.History().SetCarriageInfo(undo.CarriageInfo{
 				CarriageBlockID: req.BlockId,
 				RangeFrom:       req.Range.From,
 				RangeTo:         req.Range.To,
 			})
+			return nil
 		})
 	})
 	if err != nil {
