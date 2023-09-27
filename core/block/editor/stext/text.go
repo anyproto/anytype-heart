@@ -2,6 +2,7 @@ package stext
 
 import (
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"sort"
 	"strings"
 	"time"
@@ -353,6 +354,11 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 		}
 	}
 
+	t.History().SetCarriageInfo(undo.CarriageInfo{
+		CarriageBlockID: req.BlockId,
+		RangeFrom:       req.SelectedTextRange.From,
+		RangeTo:         req.SelectedTextRange.To,
+	})
 	return
 }
 

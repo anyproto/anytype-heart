@@ -3522,6 +3522,7 @@ message Rpc {
                 string blockId = 2;
                 string text = 3;
                 anytype.model.Block.Content.Text.Marks marks = 4;
+                anytype.model.Range selectedTextRange = 5;
             }
 
             message Response {

@@ -8389,6 +8389,7 @@ Get marks list in the selected range in text block.
 | blockId | [string](#string) |  |  |
 | text | [string](#string) |  |  |
 | marks | [model.Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks) |  |  |
+| selectedTextRange | [model.Range](#anytype-model-Range) |  |  |
 
 
 
