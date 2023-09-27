@@ -266,9 +266,34 @@ func TestHistory_SetCarriageInfo(t *testing.T) {
 	t.Run("real hard typing", func(t *testing.T) {
 		//given
 		h := NewHistory(0)
+		info1 := CarriageInfo{CarriageBlockID: "a", RangeFrom: 0, RangeTo: 0}
+		info2 := CarriageInfo{CarriageBlockID: "b", RangeFrom: 1, RangeTo: 1}
+		info3 := CarriageInfo{CarriageBlockID: "c", RangeFrom: 2, RangeTo: 9}
+		info4 := CarriageInfo{CarriageBlockID: "d", RangeFrom: 0, RangeTo: 5}
+		info5 := CarriageInfo{CarriageBlockID: "e", RangeFrom: 3, RangeTo: 3}
 
 		//when
-		h.SetCarriageInfo(CarriageInfo{CarriageBlockID: "a", RangeFrom: 0, RangeTo: 0})
+		h.SetCarriageInfo(info1)
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageInfo(info2)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageInfo(info3)
+		action1, _ := h.Previous()
+		action2, _ := h.Next()
+		_, _ = h.Previous()
+		action3, _ := h.Previous()
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageInfo(info4)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageInfo(info5)
+		action4, _ := h.Previous()
+		action5, _ := h.Next()
+
+		// then
+		assert.Equal(t, info2, action1.CarriageInfo)
+		assert.Equal(t, info3, action2.CarriageInfo)
+		assert.Equal(t, info1, action3.CarriageInfo)
+		assert.Equal(t, info4, action4.CarriageInfo)
+		assert.Equal(t, info5, action5.CarriageInfo)
 	})
 }
