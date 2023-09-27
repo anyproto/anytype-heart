@@ -976,8 +976,9 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		ts.SetRootId(contextID)
 		ts.SetParent(orig)
 
-		fromLayout, _ := orig.Layout()
+		fromLayout, _ := ts.Layout()
 		if toLayout, ok := orig.Layout(); ok {
+			ts.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
 			if err := s.layoutConverter.Convert(ts, fromLayout, toLayout); err != nil {
 				return fmt.Errorf("convert layout: %w", err)
 			}
@@ -988,9 +989,6 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		objType := ts.ObjectTypeKey()
 		if templateID == BlankTemplateID {
 			objType = orig.ObjectTypeKey()
-			if originalLayout, found := orig.Layout(); found {
-				ts.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(originalLayout)))
-			}
 			ts.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(false))
 		}
 		ts.SetObjectTypeKey(objType)

@@ -323,9 +323,9 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
-	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
-		prevType == nil || // if we have no type set for some reason or it is missing
-		float64(prevType.Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
+	if pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()) == nil || // if layout is not set yet
+		prevType == nil || // if we have no type set for some reason, or it is missing
+		prevType.Layout != toLayout { // if layout set to object does not correspond to the one recommended by type
 		if err = bs.SetLayoutInState(s, toLayout); err != nil {
 			return
 		}
