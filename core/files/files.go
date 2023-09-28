@@ -139,7 +139,21 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
+	err = s.storeFileSize(nodeHash, node)
+	if err != nil {
+		return "", nil, fmt.Errorf("store file size: %w", err)
+	}
+
 	return nodeHash, fileInfo, nil
+}
+
+func (s *service) storeFileSize(hash string, node ipld.Node) error {
+	// Size method returns the size of the whole tree with root at `node`
+	size, err := node.Size()
+	if err != nil {
+		return fmt.Errorf("fetch node size: %w", err)
+	}
+	return s.fileStore.SetFileSize(hash, int(size))
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore

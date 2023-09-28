@@ -111,5 +111,11 @@ func (s *service) imageAdd(ctx context.Context, opts AddOptions) (string, map[in
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}
 	}
+
+	err = s.storeFileSize(nodeHash, node)
+	if err != nil {
+		return "", nil, fmt.Errorf("store file size: %w", err)
+	}
+
 	return nodeHash, variantsByWidth, nil
 }
