@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
 	dsbadgerv3 "github.com/textileio/go-ds-badger3"
@@ -70,18 +71,19 @@ func init() {
 	DefaultConfig.Spacestore.ValueThreshold = 1024 * 128 // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
 	DefaultConfig.Spacestore.Logger = logging.LWrapper{logging.Logger("store.spacestore")}
 	DefaultConfig.Spacestore.SyncWrites = false
-	DefaultConfig.Spacestore.WithCompression(0) // disable compression
+	DefaultConfig.Spacestore.BlockCacheSize = 0
+	DefaultConfig.Spacestore.Compression = options.None
 
 	// used to store objects localstore + threads logs info
-	DefaultConfig.Localstore.MemTableSize = 64 * 1024 * 1024
+	DefaultConfig.Localstore.MemTableSize = 32 * 1024 * 1024
 	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
 	DefaultConfig.Localstore.GcInterval = 0                      // we don't need to have value GC here, because all the values should fit in the ValueThreshold. So GC will be done by the live LSM compactions
 	DefaultConfig.Localstore.GcSleep = 0
 	DefaultConfig.Localstore.ValueThreshold = 1024 * 1024 // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
 	DefaultConfig.Localstore.Logger = logging.LWrapper{logging.Logger("store.localstore")}
 	DefaultConfig.Localstore.SyncWrites = false
-	DefaultConfig.Localstore.WithCompression(0) // disable compression
-
+	DefaultConfig.Localstore.BlockCacheSize = 0
+	DefaultConfig.Localstore.Compression = options.None
 }
 
 func (r *clientds) Init(a *app.App) (err error) {
