@@ -13,13 +13,12 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	relation_service "github.com/anyproto/anytype-heart/core/system_object"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -47,14 +46,14 @@ type BuiltinTemplate interface {
 type builtinTemplate struct {
 	source              source.Service
 	objectStore         objectstore.ObjectStore
-	systemObjectService relation_service.Service
+	systemObjectService system_object.Service
 	generatedHash       string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = app.MustComponent[source.Service](a)
 	b.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	b.systemObjectService = app.MustComponent[relation_service.Service](a)
+	b.systemObjectService = app.MustComponent[system_object.Service](a)
 
 	b.makeGenHash(4)
 	return
@@ -144,10 +143,6 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 }
 
 func (b *builtinTemplate) setObjectTypes(st *state.State) error {
-	if st.RootId() == block.BlankTemplateID {
-		st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate})
-		return nil
-	}
 	targetObjectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	var targetObjectTypeKey domain.TypeKey
 	if strings.HasPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix) {

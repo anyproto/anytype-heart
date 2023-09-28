@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -935,11 +936,9 @@ func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
 	return s.spaceService.ResolveSpaceID(objectID)
 }
 
-func (s *Service) StateFromTemplate(spaceID, templateID, name string) (st *state.State, err error) {
+func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, err error) {
 	if templateID == BlankTemplateID || templateID == "" {
-		if templateID, err = s.GetNewTemplateID(spaceID, BlankTemplateID); err != nil {
-			return nil, fmt.Errorf("failed to find blank template: %v", err)
-		}
+		return s.BlankTemplateState(), nil
 	}
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
@@ -969,7 +968,7 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 	return Do(s, contextID, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		ts, err := s.StateFromTemplate(orig.SpaceID(), templateID, "")
+		ts, err := s.StateFromTemplate(templateID, "")
 		if err != nil {
 			return err
 		}
@@ -989,7 +988,6 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		objType := ts.ObjectTypeKey()
 		if templateID == BlankTemplateID {
 			objType = orig.ObjectTypeKey()
-			ts.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(false))
 		}
 		ts.SetObjectTypeKey(objType)
 
@@ -1074,35 +1072,14 @@ func (s *Service) GetLogFields() []zap.Field {
 	return fields
 }
 
-func (s *Service) GetNewTemplateID(spaceID, sourceObjectID string) (id string, err error) {
-	var templateObjectTypeID string
-	if templateObjectTypeID, err = s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate); err != nil {
-		return "", fmt.Errorf("failed to get template object type id: %v", err)
-	}
-	ids, _, err := s.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySourceObject.String(),
-				Value:       pbtypes.String(sourceObjectID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(templateObjectTypeID),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Value:       pbtypes.String(spaceID),
-			},
-		},
-	}, nil)
-	if err == nil {
-		if len(ids) > 0 {
-			return ids[0], nil
-		}
-		err = ErrObjectNotFoundByOldID
-	}
-	return "", err
+func (s *Service) BlankTemplateState() (st *state.State) {
+	st = state.NewDoc(BlankTemplateID, nil).NewState()
+	template.InitTemplate(st, template.WithEmpty,
+		template.WithDefaultFeaturedRelations,
+		template.WithFeaturedRelations,
+		template.WithRequiredRelations(),
+		template.WithTitle,
+		template.WithDescription,
+	)
+	return
 }
