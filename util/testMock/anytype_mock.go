@@ -13,9 +13,10 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
+	gomock "go.uber.org/mock/gomock"
+
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockService is a mock of Service interface.
