@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 
@@ -15,12 +13,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (

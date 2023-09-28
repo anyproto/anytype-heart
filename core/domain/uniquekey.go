@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/globalsign/mgo/bson"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 const uniqueKeySeparator = "-"
