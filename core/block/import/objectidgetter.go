@@ -88,7 +88,11 @@ func (ou *ObjectIDGetter) Get(
 		id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		uk, err := domain.UnmarshalUniqueKey(id)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, err
+			id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+			uk, err = domain.UnmarshalUniqueKey(id)
+			if err != nil {
+				return "", treestorage.TreeStorageCreatePayload{}, err
+			}
 		}
 		payload, err = ou.service.DeriveTreeCreatePayload(context.Background(), spaceID, uk)
 		if err != nil {
