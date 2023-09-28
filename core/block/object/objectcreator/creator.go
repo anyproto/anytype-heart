@@ -32,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -344,11 +343,8 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		return "", nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
 	}
 
-	var recommendedRelationKeys []string
+	recommendedRelationKeys := make([]string, 0, len(recommendedLayout.RequiredRelations))
 	for _, rel := range recommendedLayout.RequiredRelations {
-		if slice.FindPos(recommendedRelationKeys, rel.Key) != -1 {
-			continue
-		}
 		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
 	}
 	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
