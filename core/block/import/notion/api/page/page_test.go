@@ -964,6 +964,41 @@ func Test_handlePagePropertiesSelectWithTagName(t *testing.T) {
 		assert.NotEqual(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[multiSelectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 		assert.Equal(t, bundle.RelationKeyTag.String(), pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyRelationKey.String()))
 	})
+
+	t.Run("Page has property with empty name - return relation with name Untitled", func(t *testing.T) {
+		// given
+		details := make(map[string]*types.Value, 0)
+		c := client.NewClient()
+		selectProperty := property.SelectItem{
+			Object: "",
+			ID:     "id1",
+			Type:   string(property.PropertyConfigTypeSelect),
+			Select: property.SelectOption{},
+		}
+		properties := property.Properties{"": &selectProperty}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: properties},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			request:   &api.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := pageTask.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 1) // 1 relation
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.Equal(t, property.UntitledProperty, pbtypes.GetString(req.PropertyIdsToSnapshots[selectProperty.ID].GetDetails(), bundle.RelationKeyName.String()))
+	})
 }
 
 func TestTask_provideDetails(t *testing.T) {
