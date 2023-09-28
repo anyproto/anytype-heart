@@ -291,13 +291,25 @@ func (f *fileSync) walkDAG(ctx context.Context, fileID string, visit func(node i
 }
 
 func (f *fileSync) calculateFileSize(ctx context.Context, fileID string) (int, error) {
-	var size int
-	err := f.walkDAG(ctx, fileID, func(node ipld.NavigableNode) error {
+	size, err := f.fileStore.GetFileSize(fileID)
+	if err == nil {
+		return size, nil
+	}
+
+	size = 0
+	err = f.walkDAG(ctx, fileID, func(node ipld.NavigableNode) error {
 		raw := node.GetIPLDNode().RawData()
 		size += len(raw)
 		return nil
 	})
-	return size, err
+	if err != nil {
+		return 0, fmt.Errorf("walk DAG: %w", err)
+	}
+	err = f.fileStore.SetFileSize(fileID, size)
+	if err != nil {
+		log.Error("can't store file size", zap.String("fileID", fileID), zap.Error(err))
+	}
+	return size, nil
 }
 
 const batchSize = 10
