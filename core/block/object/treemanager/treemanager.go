@@ -125,6 +125,7 @@ func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 		return
 	}
 
+	// TODO: move to block service
 	m.sendOnRemoveEvent(treeId)
 	err = m.objectCache.Remove(ctx, treeId)
 	return
