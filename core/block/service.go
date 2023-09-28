@@ -993,7 +993,7 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		}
 		ts.SetObjectTypeKey(objType)
 
-		flags := defaultInternalFlags()
+		flags := internalflag.NewFromState(orig)
 		flags.AddToState(ts)
 
 		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
