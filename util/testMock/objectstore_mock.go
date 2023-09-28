@@ -14,13 +14,14 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
+
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	schema "github.com/anyproto/anytype-heart/pkg/lib/schema"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockObjectStore is a mock of ObjectStore interface.

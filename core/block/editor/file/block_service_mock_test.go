@@ -11,12 +11,13 @@ package file_test
 import (
 	reflect "reflect"
 
+	gomock "go.uber.org/mock/gomock"
+
 	file "github.com/anyproto/anytype-heart/core/block/editor/file"
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	process "github.com/anyproto/anytype-heart/core/block/process"
 	session "github.com/anyproto/anytype-heart/core/session"
 	pb "github.com/anyproto/anytype-heart/pb"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockBlockService is a mock of BlockService interface.
