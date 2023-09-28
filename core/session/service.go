@@ -1,9 +1,10 @@
 package session
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"github.com/golang-jwt/jwt"
-	"math/rand"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -79,21 +80,21 @@ func (s *service) CloseSession(token string) error {
 func generateToken(privKey []byte) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		// "expiresAt": time.Now().Add(10 * time.Minute).Unix(),
-		"seed": randStringRunes(8),
+		"seed": randBytesInHex(8),
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
 	return token.SignedString(privKey)
 }
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func randStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+// Return hexlify representation of a random byte[n]
+func randBytesInHex(n int) string {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
 	}
-	return string(b)
+	return hex.EncodeToString(b)
 }
 
 func validateToken(privKey []byte, rawToken string) error {
