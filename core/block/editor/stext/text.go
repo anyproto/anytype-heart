@@ -275,8 +275,11 @@ func (t *textImpl) newSetTextState(blockId string, ctx session.Context) *state.S
 func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
 		applyFlags := []smartblock.ApplyFlag{smartblock.NoHooks}
-		textChanged, _ := t.lastTextBlockChanged()
-		if t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID || textChanged {
+		textChanged, err := t.isLastTextBlockChanged()
+		if err != nil {
+			textChanged = true
+		}
+		if t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID || !textChanged {
 			applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
 		}
 
@@ -473,15 +476,14 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 	return t.Apply(s)
 }
 
-// lastTextBlockChanged returns true in case of error, because it is better to register possible change
-func (t *textImpl) lastTextBlockChanged() (bool, error) {
+func (t *textImpl) isLastTextBlockChanged() (bool, error) {
 	newTextBlock, err := getText(t.lastSetTextState, t.lastSetTextId)
 	if err != nil {
 		return true, err
 	}
 	oldTextBlock := t.Pick(t.lastSetTextId)
 	messages, err := oldTextBlock.Diff(newTextBlock)
-	return len(messages) == 0, err
+	return len(messages) != 0, err
 }
 
 func getText(s *state.State, id string) (text.Block, error) {

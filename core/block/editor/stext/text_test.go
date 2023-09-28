@@ -545,3 +545,64 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		assert.Equal(t, "link name", sb.Doc.Pick(secondBlockId).Model().GetText().Text)
 	})
 }
+
+func TestTextImpl_isLastTextBlockChanged(t *testing.T) {
+	text := "text"
+	blockID := "test"
+
+	t.Run("text inside last text block is changed", func(t *testing.T) {
+		// given
+		sb := smarttest.New(blockID)
+		sb.AddBlock(newTextBlock(blockID, text))
+		tb := NewText(sb, nil, nil)
+		tb.(*textImpl).lastSetTextId = blockID
+		lastState := tb.(*textImpl).NewState().ParentState().Copy()
+		lastBlock := lastState.Pick(blockID)
+		lastBlock.Model().Content.(*model.BlockContentOfText).Text.Text = text + " is changed"
+		tb.(*textImpl).lastSetTextState = lastState
+
+		// when
+		isChanged, err := tb.(*textImpl).isLastTextBlockChanged()
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, isChanged)
+	})
+	t.Run("other fields of last text block are changed", func(t *testing.T) {
+		// given
+		sb := smarttest.New(blockID)
+		sb.AddBlock(newTextBlock(blockID, text))
+		tb := NewText(sb, nil, nil)
+		tb.(*textImpl).lastSetTextId = blockID
+		lastState := tb.(*textImpl).NewState().ParentState().Copy()
+		lastBlock := lastState.Pick(blockID)
+		lastBlock.Model().Content.(*model.BlockContentOfText).Text.Color = "blue"
+		lastBlock.Model().Content.(*model.BlockContentOfText).Text.Style = model.BlockContentText_Quote
+		tb.(*textImpl).lastSetTextState = lastState
+
+		// when
+		isChanged, err := tb.(*textImpl).isLastTextBlockChanged()
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, isChanged)
+	})
+	t.Run("last text block is the same", func(t *testing.T) {
+		// given
+		sb := smarttest.New(blockID)
+		sb.AddBlock(newTextBlock(blockID, text))
+		tb := NewText(sb, nil, nil)
+		tb.(*textImpl).lastSetTextId = blockID
+		lastState := tb.(*textImpl).NewState().ParentState().Copy()
+		lastBlock := lastState.Pick(blockID)
+		lastBlock.Model().Content.(*model.BlockContentOfText).Text.Text = text
+		tb.(*textImpl).lastSetTextState = lastState
+
+		// when
+		isChanged, err := tb.(*textImpl).isLastTextBlockChanged()
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, isChanged)
+	})
+}
