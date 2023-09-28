@@ -405,7 +405,10 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 }
 
 func TestSmartBlock_removeInternalFlags(t *testing.T) {
-	t.Run("")
+	t.Run("no flags - no changes", func(t *testing.T) {
+		// given
+
+	})
 }
 
 type fixture struct {

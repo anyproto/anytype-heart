@@ -36,10 +36,18 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
 	updates := bs.collectDetailUpdates(details, s)
+
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoRestrictions}
+	for _, update := range updates {
+		if update.key == bundle.RelationKeyName.String() || update.key == bundle.RelationKeyDescription.String() {
+			applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
+			break
+		}
+	}
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
-	if err = bs.Apply(s, smartblock.NoRestrictions); err != nil {
+	if err = bs.Apply(s, applyFlags...); err != nil {
 		return
 	}
 
