@@ -1000,13 +1000,6 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 	})
 }
 
-func defaultInternalFlags() (flags internalflag.Set) {
-	flags.Add(model.InternalFlag_editorDeleteEmpty)
-	flags.Add(model.InternalFlag_editorSelectType)
-	flags.Add(model.InternalFlag_editorSelectTemplate)
-	return
-}
-
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 	return Do(s, pageID, func(sb smartblock.SmartBlock) error {
 		return history.ResetToVersion(sb, st)

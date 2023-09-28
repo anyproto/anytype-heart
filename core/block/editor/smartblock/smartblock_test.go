@@ -404,6 +404,10 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 	})
 }
 
+func TestSmartBlock_removeInternalFlags(t *testing.T) {
+	t.Run("")
+}
+
 type fixture struct {
 	ctrl               *gomock.Controller
 	source             *mockSource.MockSource
