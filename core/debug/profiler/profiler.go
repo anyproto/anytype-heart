@@ -22,7 +22,7 @@ type Service interface {
 }
 
 const (
-	highMemoryUsageThreshold = 5 * 1024 * 1024 * 1024 // 5 Gb
+	highMemoryUsageThreshold = 1024 * 1024 * 1024 // 1 Gb
 	maxProfiles              = 3
 	growthFactor             = 1.5
 )
@@ -102,7 +102,6 @@ func (s *service) detect() (stop bool, err error) {
 		gzipWriter.Close()
 
 		log.With("sysMemory", s.previousHighMemoryDetected, "profile", base64.StdEncoding.EncodeToString(buf.Bytes())).Error("high memory usage detected, logging memory profile")
-		fmt.Println(base64.StdEncoding.EncodeToString(buf.Bytes()))
 		s.timesHighMemoryUsageDetected++
 
 		if s.timesHighMemoryUsageDetected >= maxProfiles {
