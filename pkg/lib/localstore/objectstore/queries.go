@@ -31,6 +31,7 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	var records []database.Record
 	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
 		opts.Prefix = pagesDetailsBase.Bytes()
 		iterator := txn.NewIterator(opts)
 		defer iterator.Close()
