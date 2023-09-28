@@ -1432,5 +1432,15 @@
     "name": "Backlinks",
     "readonly": false,
     "source": "local"
+  },
+  {
+    "description": "Relation that indicates document has been uninstalled",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isUninstalled",
+    "maxCount": 1,
+    "name": "Is uninstalled",
+    "readonly": true,
+    "source": "details"
   }
 ]

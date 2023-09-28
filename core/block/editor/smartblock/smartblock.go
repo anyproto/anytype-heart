@@ -1419,4 +1419,13 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	if snippet != "" || s.LocalDetails() != nil {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
 	}
+
+	// Set isDeleted relation only if isUninstalled is present in details
+	if isUninstalled := s.Details().GetFields()[bundle.RelationKeyIsUninstalled.String()]; isUninstalled != nil {
+		var isDeleted bool
+		if isUninstalled.GetBoolValue() {
+			isDeleted = true
+		}
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
+	}
 }
