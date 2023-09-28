@@ -151,14 +151,14 @@ func isLimitReachedErr(err error) bool {
 	return errors.Is(err, errReachedLimit) || strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error())
 }
 
-func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) error {
-	log.Debug("uploading file", zap.String("fileId", fileId))
+func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileID string) error {
+	log.Debug("uploading file", zap.String("fileID", fileID))
 
-	fileSize, err := f.calculateFileSize(ctx, fileId)
+	fileSize, err := f.calculateFileSize(ctx, fileID)
 	if err != nil {
 		return fmt.Errorf("calculate file size: %w", err)
 	}
-	stat, err := f.getAndUpdateSpaceStat(ctx, spaceId)
+	stat, err := f.getAndUpdateSpaceStat(ctx, spaceID)
 	if err != nil {
 		return fmt.Errorf("get space stat: %w", err)
 	}
@@ -169,12 +169,12 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) error
 	}
 
 	var totalBytesUploaded int
-	err = f.walkFileBlocks(ctx, fileId, func(fileBlocks []blocks.Block) error {
-		bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceId, fileId, fileBlocks)
+	err = f.walkFileBlocks(ctx, fileID, func(fileBlocks []blocks.Block) error {
+		bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceID, fileID, fileBlocks)
 		if err != nil {
 			return fmt.Errorf("select blocks to upload: %w", err)
 		}
-		if err = f.rpcStore.AddToFile(ctx, spaceId, fileId, blocksToUpload); err != nil {
+		if err = f.rpcStore.AddToFile(ctx, spaceID, fileID, blocksToUpload); err != nil {
 			return err
 		}
 		totalBytesUploaded += bytesToUpload
@@ -184,7 +184,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) error
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
-	log.Warn("done upload", zap.String("fileID", fileId), zap.Int("estimatedSize", fileSize), zap.Int("bytesUploaded", totalBytesUploaded))
+	log.Warn("done upload", zap.String("fileID", fileID), zap.Int("estimatedSize", fileSize), zap.Int("bytesUploaded", totalBytesUploaded))
 
 	return nil
 }
@@ -314,10 +314,10 @@ func (f *fileSync) calculateFileSize(ctx context.Context, fileID string) (int, e
 
 const batchSize = 10
 
-func (f *fileSync) walkFileBlocks(ctx context.Context, fileId string, proc func(fileBlocks []blocks.Block) error) error {
+func (f *fileSync) walkFileBlocks(ctx context.Context, fileID string, proc func(fileBlocks []blocks.Block) error) error {
 	blocksBuf := make([]blocks.Block, 0, batchSize)
 
-	err := f.walkDAG(ctx, fileId, func(node ipld.NavigableNode) error {
+	err := f.walkDAG(ctx, fileID, func(node ipld.NavigableNode) error {
 		b, err := blocks.NewBlockWithCid(node.GetIPLDNode().RawData(), node.GetIPLDNode().Cid())
 		if err != nil {
 			return err
