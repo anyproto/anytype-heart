@@ -39,6 +39,8 @@ enum SmartBlockType {
     Workspace = 0x206;
     STRelation = 0x209;
     STType = 0x210;
+    STRelationOption = 0x211;
+
 
     MissingObject = 0x207;
 }

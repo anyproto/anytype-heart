@@ -189,7 +189,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	if isLocal {
 		return b.importArchive(ctx, spaceID, source)
 	}
-	//nolint: gosec
+	// nolint: gosec
 	resp, err := http.Get(source)
 	if err != nil {
 		return err
@@ -225,7 +225,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		return err
 	}
 
-	//TODO: handleMyHomepage support
+	// TODO: handleMyHomepage support
 
 	return nil
 }
@@ -239,11 +239,6 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}
-	defer func() {
-		if err = os.Remove(path); err != nil {
-			log.Errorf("failed to remove temporary file: %s", err.Error())
-		}
-	}()
 
 	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
 		return err
@@ -271,7 +266,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 }
 
 func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string) (err error) {
-	return b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	if _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
@@ -283,7 +278,15 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path
 				Path:         []string{path},
 				NoCollection: true,
 			}},
-	})
+	}); err != nil {
+		return err
+	}
+
+	if err = os.Remove(path); err != nil {
+		log.Errorf("failed to remove temporary file: %s", err.Error())
+	}
+
+	return nil
 }
 
 func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err error) {

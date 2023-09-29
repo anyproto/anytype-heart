@@ -42,6 +42,6 @@ type Snapshot struct {
 
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors
 type Response struct {
-	Snapshots []*Snapshot
-	Error     ConvertError
+	Snapshots        []*Snapshot
+	RootCollectionID string
 }

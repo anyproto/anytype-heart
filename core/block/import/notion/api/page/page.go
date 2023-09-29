@@ -95,7 +95,7 @@ func (ds *Service) GetPages(ctx context.Context,
 
 func (ds *Service) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, progress process.Progress) ([]*converter.Snapshot, *converter.ConvertError) {
 	allSnapshots := make([]*converter.Snapshot, 0)
-	ce := converter.NewError()
+	ce := converter.NewError(mode)
 
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {

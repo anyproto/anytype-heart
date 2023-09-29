@@ -136,7 +136,8 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
-		coresb.SmartBlockTypeRelation:
+		coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeRelationOption:
 		return NewPage(
 			sb,
 			f.objectStore,

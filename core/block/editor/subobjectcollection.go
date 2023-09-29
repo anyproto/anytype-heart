@@ -14,19 +14,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
-	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var (
@@ -109,26 +107,61 @@ func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (
 		if data == nil {
 			continue
 		}
+		tk, ok := collectionKeyToObjectType(coll)
+		if !ok {
+			log.With("collection", coll).Errorf("subobject migration: collection is invalid")
+			continue
+		}
 
-		for subId := range data.GetFields() {
-			fullId := c.getId(coll, subId)
-
-			_, err := c.subState(st, coll, fullId)
-			if err != nil {
-				log.Errorf("failed to get sub object %s: %v", subId, err)
+		for subId, d := range data.GetFields() {
+			if st, ok := d.Kind.(*types.Value_StructValue); !ok {
+				log.Errorf("got invalid value for %s.%s:%t", coll, subId, d.Kind)
 				continue
+			} else {
+				uk, err := c.getUniqueKey(coll, subId)
+				if err != nil {
+					log.With("collection", coll).Errorf("subobject migration: failed to get uniqueKey: %s", err.Error())
+					continue
+				}
+
+				d := st.StructValue
+				d.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
+
+				if !f(smartblock.DocInfo{
+					SpaceID:    c.SpaceID(),
+					Links:      nil,
+					FileHashes: nil,
+					Heads:      nil,
+					Type:       tk,
+					Details:    d,
+				}) {
+					return
+				}
 			}
-			// todo: migrate
 		}
 	}
 	return
 }
 
-func (c *SubObjectCollection) getId(collection, key string) string {
-	if collection == c.defaultCollectionName {
-		return key
+func (c *SubObjectCollection) getUniqueKey(collection, key string) (domain.UniqueKey, error) {
+	ot, ok := collectionKeyToObjectType(collection)
+	if !ok {
+		return nil, fmt.Errorf("unknown collection %s", collection)
 	}
-	return collection + addr.SubObjectCollectionIdSeparator + key
+
+	var sbt smartblock2.SmartBlockType
+	switch ot {
+	case bundle.TypeKeyRelation:
+		sbt = smartblock2.SmartBlockTypeRelation
+	case bundle.TypeKeyObjectType:
+		sbt = smartblock2.SmartBlockTypeObjectType
+	case bundle.TypeKeyRelationOption:
+		sbt = smartblock2.SmartBlockTypeRelationOption
+	default:
+		return nil, fmt.Errorf("unknown collection %s", collection)
+	}
+
+	return domain.NewUniqueKey(sbt, key)
 }
 
 func (c *SubObjectCollection) getCollectionAndKeyFromId(id string) (collection, key string) {
@@ -157,61 +190,6 @@ func (c *SubObjectCollection) Locked() bool {
 		}
 	}
 	return false
-}
-
-// subState returns a details-only state for a subobject
-// make sure to call sbimpl.initState(st) before using it
-func (c *SubObjectCollection) subState(st *state.State, collection string, fullId string) (*state.State, error) {
-	subId := strings.TrimPrefix(fullId, collection+addr.SubObjectCollectionIdSeparator)
-	data := pbtypes.GetStruct(st.GetSubObjectCollection(collection), subId)
-	if data == nil || data.Fields == nil {
-		return nil, fmt.Errorf("no data for subId %s: %v", collection, subId)
-	}
-	subst := structToState(fullId, data)
-
-	relationsToCopy := []domain.RelationKey{bundle.RelationKeyCreator}
-	for _, rk := range relationsToCopy {
-		subst.SetDetailAndBundledRelation(rk, pbtypes.String(pbtypes.GetString(st.CombinedDetails(), rk.String())))
-	}
-
-	subst.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList([]string{}))
-	changeId := st.StoreChangeIdForPath(collection + addr.SubObjectCollectionIdSeparator + subId)
-	if changeId == "" {
-		log.Infof("subState %s: no changeId for %s", fullId, collection+addr.SubObjectCollectionIdSeparator+subId)
-	}
-	subst.SetLocalDetail(bundle.RelationKeyLastChangeId.String(), pbtypes.String(changeId))
-
-	subst.AddBundledRelations(bundle.RelationKeyLastModifiedDate, bundle.RelationKeyLastOpenedDate, bundle.RelationKeyLastModifiedBy)
-	subst.SetDetailAndBundledRelation(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySourceObject.String()}))
-	subst.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(c.SpaceID()))
-
-	return subst, nil
-}
-
-func structToState(id string, data *types.Struct) *state.State {
-	blocks := map[string]simple.Block{
-		id: simple.New(&model.Block{Id: id, ChildrenIds: []string{}}),
-	}
-	subState := state.NewDoc(id, blocks).(*state.State)
-
-	for k, v := range data.Fields {
-		if rel, err := bundle.GetRelation(domain.RelationKey(k)); err == nil {
-			if rel.DataSource == model.Relation_details || slice.FindPos(localDetailsAllowedToBeStored, k) > -1 {
-				subState.SetDetailAndBundledRelation(domain.RelationKey(k), v)
-			}
-		}
-	}
-	subState.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
-	switch pbtypes.GetInt64(data, bundle.RelationKeyLayout.String()) {
-	case int64(model.ObjectType_relationOption):
-		subState.SetObjectTypeKey(bundle.TypeKeyRelationOption)
-	case int64(model.ObjectType_relation):
-		subState.SetObjectTypeKey(bundle.TypeKeyRelation)
-	case int64(model.ObjectType_objectType):
-		subState.SetObjectTypeKey(bundle.TypeKeyObjectType)
-	}
-
-	return subState
 }
 
 func (p *SubObjectCollection) TryClose(objectTTL time.Duration) (res bool, err error) {

@@ -20,7 +20,7 @@ import (
 // Importer incapsulate logic with import
 type Importer interface {
 	app.Component
-	Import(ctx context.Context, req *pb.RpcObjectImportRequest) error
+	Import(ctx context.Context, req *pb.RpcObjectImportRequest) (string, error)
 	ListImports(req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 	// nolint: lll

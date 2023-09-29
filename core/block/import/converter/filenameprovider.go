@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
-func ProvideFileName(fileName string, files map[string]io.ReadCloser, path string, tempDirProvider core.TempDirProvider) (string, bool, error) {
+func ProvideFileName(fileName string, filesSource source.Source, path string, tempDirProvider core.TempDirProvider) (string, bool, error) {
 	if strings.HasPrefix(strings.ToLower(fileName), "http://") || strings.HasPrefix(strings.ToLower(fileName), "https://") {
 		return fileName, false, nil
 	}
@@ -26,13 +27,16 @@ func ProvideFileName(fileName string, files map[string]io.ReadCloser, path strin
 		return absolutePath, createFileBlock, nil
 	}
 	// second case for archive, when file is inside zip archive
-	if rc, ok := files[fileName]; ok {
-		tempFile, err := extractFileFromArchiveToTempDirectory(fileName, rc, tempDirProvider)
+	if err := filesSource.ProcessFile(fileName, func(fileReader io.ReadCloser) error {
+		tempFile, err := extractFileFromArchiveToTempDirectory(fileName, fileReader, tempDirProvider)
 		if err != nil {
-			return "", false, err
+			return err
 		}
 		createFileBlock = true
-		return tempFile, createFileBlock, nil
+		fileName = tempFile
+		return nil
+	}); err != nil {
+		return "", false, err
 	}
 	return fileName, createFileBlock, nil
 }
