@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -201,7 +202,7 @@ func (f *File) FillFileHashes(hashes []string) []string {
 }
 
 func (f *File) detectTypeByMIME(mime string) model.BlockContentFileType {
-	if strings.HasPrefix(mime, "image") {
+	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image
 	}
 	if strings.HasPrefix(mime, "video") {

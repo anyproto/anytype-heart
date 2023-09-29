@@ -2,7 +2,6 @@ package source
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -15,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -60,7 +60,7 @@ func (f *file) getDetailsForFileOrImage(ctx context.Context) (*types.Struct, dom
 	if err != nil {
 		return nil, "", err
 	}
-	if strings.HasPrefix(file.Info().Media, "image") {
+	if mill.IsImage(file.Info().Media) {
 		image, err := f.fileService.ImageByHash(ctx, f.id)
 		if err != nil {
 			return nil, "", err

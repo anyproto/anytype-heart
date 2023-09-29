@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
@@ -38,6 +39,24 @@ const (
 	WEBP Format = "webp"
 	HEIC Format = "heic"
 )
+
+func IsImage(mime string) bool {
+	parts := strings.SplitN(mime, "/", 2)
+	if len(parts) == 1 {
+		return false
+	}
+	mimeType := parts[0]
+	mimeSubtype := parts[1]
+	return mimeType == "image" && IsImageFormatSupported(Format(mimeSubtype))
+}
+
+func IsImageFormatSupported(format Format) bool {
+	switch format {
+	case JPEG, PNG, GIF, ICO, WEBP, HEIC:
+		return true
+	}
+	return false
+}
 
 var ErrFormatSupportNotEnabled = errors.New("this image format support is not enabled in this build")
 

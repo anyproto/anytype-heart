@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -27,7 +28,7 @@ type Files struct {
 }
 
 func detectFileType(mime string) model.BlockContentFileType {
-	if strings.HasPrefix(mime, "image") {
+	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image
 	}
 	if strings.HasPrefix(mime, "video") {
