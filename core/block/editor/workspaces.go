@@ -17,14 +17,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-)
-
-const (
-	collectionKeySignature = "signature"
-	collectionKeyAccount   = "account"
-	collectionKeyAddrs     = "addrs"
-	collectionKeyId        = "id"
-	collectionKeyKey       = "key"
+	"context"
+	"github.com/gogo/protobuf/types"
+	"github.com/anyproto/anytype-heart/core/block/migration"
 )
 
 const (
@@ -48,6 +43,7 @@ type Workspaces struct {
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
 	config          *config.Config
+	objectDeriver   objectDeriver
 }
 
 func NewWorkspace(
@@ -62,6 +58,7 @@ func NewWorkspace(
 	templateCloner templateCloner,
 	config *config.Config,
 	eventSender event.Sender,
+	objectDeriver objectDeriver,
 ) *Workspaces {
 	return &Workspaces{
 		SubObjectCollection: NewSubObjectCollection(
@@ -81,7 +78,12 @@ func NewWorkspace(
 		sourceService:   sourceService,
 		templateCloner:  templateCloner,
 		config:          config,
+		objectDeriver:   objectDeriver,
 	}
+}
+
+type objectDeriver interface {
+	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 // nolint:funlen
@@ -161,4 +163,69 @@ func collectionKeyToObjectType(collKey string) (domain.TypeKey, bool) {
 		}
 	}
 	return "", false
+}
+
+func (p *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	// TODO Maybe move init logic here?
+	return migration.Migration{
+		Version: 0,
+		Proc: func(s *state.State) {
+			// no-op
+		},
+	}
+}
+
+func (p *Workspaces) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 1,
+			Proc:    p.migrateSubObjects,
+		},
+	})
+}
+
+func (p *Workspaces) migrateSubObjects(_ *state.State) {
+	p.GetAllDocInfoIterator(
+		func(info smartblock.DocInfo) bool {
+			details := info.Details
+			uniqueKeyRaw := pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String())
+			uniqueKey, err := domain.UnmarshalUniqueKey(uniqueKeyRaw)
+			if err != nil {
+				log.With("objectID", p.Id()).Errorf("failed to unmarshal unique key: %v", err)
+				return true
+			}
+
+			id, err := p.MigrateSubObjects(context.Background(), uniqueKey, details, info.Type)
+			if err != nil {
+				log.Errorf("failed to index subobject %s: %s", info.Id, err)
+				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
+				return true
+			}
+			log.With("objectId", id, "uniqueKey", uniqueKeyRaw).Warnf("migrated sub-object")
+			return true
+		},
+	)
+}
+
+func (p *Workspaces) MigrateSubObjects(
+	ctx context.Context,
+	uniqueKey domain.UniqueKey,
+	details *types.Struct,
+	typeKey domain.TypeKey,
+) (id string, err error) {
+	sb, err := p.objectDeriver.DeriveTreeObjectWithUniqueKey(ctx, p.SpaceID(), uniqueKey, func(id string) *smartblock.InitContext {
+		st := state.NewDocWithUniqueKey(id, nil, uniqueKey).NewState()
+		st.SetDetails(details)
+		st.SetObjectTypeKey(typeKey)
+		return &smartblock.InitContext{
+			IsNewObject: true,
+			State:       st,
+			SpaceID:     p.SpaceID(),
+		}
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return sb.Id(), nil
 }

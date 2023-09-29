@@ -63,7 +63,7 @@ func (s *Service) DeriveObject(
 	return nil
 }
 
-func (s *Service) DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc objectcache.InitFunc) (sb smartblock.SmartBlock, err error) {
+func (s *Service) DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, err error) {
 	payload, err := s.DeriveTreeCreatePayload(ctx, spaceID, key)
 	if err != nil {
 		return nil, err
@@ -72,7 +72,7 @@ func (s *Service) DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID str
 }
 
 func (s *Service) getDerivedObject(
-	ctx context.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc objectcache.InitFunc,
+	ctx context.Context, space commonspace.Space, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc smartblock.InitFunc,
 ) (sb smartblock.SmartBlock, err error) {
 	id := domain.FullID{
 		SpaceID:  space.Id(),

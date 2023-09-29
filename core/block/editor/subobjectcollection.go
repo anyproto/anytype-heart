@@ -99,6 +99,7 @@ func (c *SubObjectCollection) Init(ctx *smartblock.InitContext) error {
 	return c.SmartBlock.Init(ctx)
 }
 
+// TODO This is a part of migration!!!
 // GetAllDocInfoIterator returns all sub objects in the collection
 func (c *SubObjectCollection) GetAllDocInfoIterator(f func(smartblock.DocInfo) (contin bool)) {
 	st := c.NewState()
