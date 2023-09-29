@@ -39,7 +39,7 @@ func (r *DerivedObject) GetID(spaceID string, sn *converter.Snapshot, createTime
 		id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 		uk, err = domain.UnmarshalUniqueKey(id)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create get unique key: %w", err)
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get unique key: %w", err)
 		}
 	}
 	payload, err = r.service.DeriveTreeCreatePayload(context.Background(), spaceID, uk)
