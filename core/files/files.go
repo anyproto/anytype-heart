@@ -39,7 +39,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
-	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema/anytype"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -705,7 +704,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 		Files: make(map[string]*storage.FileInfo),
 	}
 
-	mil, err := anytype.GetMill(sch.Mill, sch.Opts)
+	mil, err := schema.GetMill(sch.Mill, sch.Opts)
 	if err != nil {
 		return nil, err
 	}
@@ -737,7 +736,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 
 		// send each link
 		for _, step := range steps {
-			stepMill, err := anytype.GetMill(step.Link.Mill, step.Link.Opts)
+			stepMill, err := schema.GetMill(step.Link.Mill, step.Link.Opts)
 			if err != nil {
 				return nil, err
 			}
