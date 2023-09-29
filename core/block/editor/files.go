@@ -7,12 +7,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -25,23 +25,6 @@ func NewFiles(sb smartblock.SmartBlock) *Files {
 
 type Files struct {
 	smartblock.SmartBlock
-}
-
-func detectFileType(mime string) model.BlockContentFileType {
-	if mill.IsImage(mime) {
-		return model.BlockContentFile_Image
-	}
-	if strings.HasPrefix(mime, "video") {
-		return model.BlockContentFile_Video
-	}
-	if strings.HasPrefix(mime, "audio") {
-		return model.BlockContentFile_Audio
-	}
-	if strings.HasPrefix(mime, "application/pdf") {
-		return model.BlockContentFile_PDF
-	}
-
-	return model.BlockContentFile_File
 }
 
 func (p *Files) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) error {
@@ -69,7 +52,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	details := p.NewState().CombinedDetails()
-	fileType := detectFileType(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
+	fileType := fileblock.DetectTypeByMIME(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()))
 
 	fname := pbtypes.GetString(details, bundle.RelationKeyName.String())
 	ext := pbtypes.GetString(details, bundle.RelationKeyFileExt.String())
@@ -86,7 +69,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 				Name:    fname,
 				Mime:    pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
 				Hash:    p.Id(),
-				Type:    detectFileType(pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String())),
+				Type:    fileType,
 				Size_:   int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
 				State:   model.BlockContentFile_Done,
 				AddedAt: int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),

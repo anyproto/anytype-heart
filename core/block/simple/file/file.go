@@ -170,7 +170,7 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	if e.Type != nil {
 		f.content.Type = e.Type.GetValue()
 		if f.content.Type == model.BlockContentFile_File {
-			f.content.Type = f.detectTypeByMIME(f.content.GetMime())
+			f.content.Type = DetectTypeByMIME(f.content.GetMime())
 		}
 	}
 	if e.State != nil {
@@ -201,7 +201,7 @@ func (f *File) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
-func (f *File) detectTypeByMIME(mime string) model.BlockContentFileType {
+func DetectTypeByMIME(mime string) model.BlockContentFileType {
 	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image
 	}

@@ -441,24 +441,7 @@ func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
 		return model.BlockContentFile_File
 	}
 	tp, _ := filetype.Match(b)
-	return u.detectTypeByMIME(tp.MIME.Value)
-}
-
-func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
-	if mill.IsImage(mime) {
-		return model.BlockContentFile_Image
-	}
-	if strings.HasPrefix(mime, "video") {
-		return model.BlockContentFile_Video
-	}
-	if strings.HasPrefix(mime, "audio") {
-		return model.BlockContentFile_Audio
-	}
-	if strings.HasPrefix(mime, "application/pdf") {
-		return model.BlockContentFile_PDF
-	}
-
-	return model.BlockContentFile_File
+	return file.DetectTypeByMIME(tp.MIME.Value)
 }
 
 func (u *uploader) updateBlock() {

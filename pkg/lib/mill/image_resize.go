@@ -47,10 +47,10 @@ func IsImage(mime string) bool {
 	}
 	mimeType := parts[0]
 	mimeSubtype := parts[1]
-	return mimeType == "image" && IsImageFormatSupported(Format(mimeSubtype))
+	return mimeType == "image" && isImageFormatSupported(Format(mimeSubtype))
 }
 
-func IsImageFormatSupported(format Format) bool {
+func isImageFormatSupported(format Format) bool {
 	switch format {
 	case JPEG, PNG, GIF, ICO, WEBP, HEIC:
 		return true
