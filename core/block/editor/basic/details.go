@@ -321,24 +321,13 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
 	}
 
-	prevTypeID := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
-	// nolint:errcheck
-	prevType, _ := bs.systemObjectService.GetObjectType(prevTypeID)
-
 	s.SetObjectTypeKeys(objectTypeKeys)
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
-	if pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()) == nil || // if layout is not set yet
-		prevType == nil || // if we have no type set for some reason, or it is missing
-		prevType.Layout != toLayout { // if layout set to object does not correspond to the one recommended by type
-		if err = bs.SetLayoutInState(s, toLayout); err != nil {
-			return
-		}
-	}
-	return
+	return bs.SetLayoutInState(s, toLayout)
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {

@@ -3,11 +3,10 @@ package smartblock
 import (
 	"context"
 	"errors"
-	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/samber/lo"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -28,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
