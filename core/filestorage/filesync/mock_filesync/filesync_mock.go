@@ -57,6 +57,21 @@ func (mr *MockFileSyncMockRecorder) AddFile(arg0, arg1, arg2, arg3 any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFile", reflect.TypeOf((*MockFileSync)(nil).AddFile), arg0, arg1, arg2, arg3)
 }
 
+// CalculateFileSize mocks base method.
+func (m *MockFileSync) CalculateFileSize(arg0 context.Context, arg1 string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CalculateFileSize", arg0, arg1)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CalculateFileSize indicates an expected call of CalculateFileSize.
+func (mr *MockFileSyncMockRecorder) CalculateFileSize(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalculateFileSize", reflect.TypeOf((*MockFileSync)(nil).CalculateFileSize), arg0, arg1)
+}
+
 // ClearImportEvents mocks base method.
 func (m *MockFileSync) ClearImportEvents() {
 	m.ctrl.T.Helper()
