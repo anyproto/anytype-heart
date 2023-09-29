@@ -13,12 +13,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -34,7 +36,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 51
+	ForceIdxRebuildCounter int32 = 52
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
@@ -375,14 +377,25 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (t
 func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 	err := block.DoContext(i.picker, ctx, id, func(sb smartblock.SmartBlock) error {
 		d := sb.GetDocInfo()
+		spaceId := sb.SpaceID()
 		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
 			// index all the subobjects
 			v.GetAllDocInfoIterator(
 				func(info smartblock.DocInfo) (contin bool) {
-					err := i.Index(ctx, info)
+					details := info.Details
+					uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String()))
+					if err != nil {
+						log.With("objectID", id).Errorf("failed to unmarshal unique key: %v", err)
+						return true
+					}
+
+					id, err := i.objectCreator.MigrateSubObjects(ctx, &uk, details, info.Type, spaceId)
 					if err != nil {
 						log.Errorf("failed to index subobject %s: %s", info.Id, err)
+						log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
+						return true
 					}
+					log.With("objectID", id).Warnf("migrated subobject")
 					return true
 				},
 			)

@@ -158,6 +158,7 @@ type DocInfo struct {
 	FileHashes []string
 	Heads      []string
 	Creator    string
+	Type       domain.TypeKey
 	Details    *types.Struct
 }
 
@@ -671,6 +672,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return
 	}
 
+	// we may have layout changed, so we need to update restrictions
+	sb.updateRestrictions()
+	sb.setRestrictionsDetail(s)
+
 	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
@@ -777,8 +782,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		ObjectId:       sb.Id(),
 	})
 
-	// we may have layout changed, so we need to update restrictions
-	sb.updateRestrictions()
 	return
 }
 
@@ -1009,6 +1012,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if err != nil {
 		return err
 	}
+	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
@@ -1037,6 +1041,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
+	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
@@ -1287,6 +1292,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		FileHashes: fileHashes,
 		Creator:    creator,
 		Details:    sb.CombinedDetails(),
+		Type:       sb.ObjectTypeKey(),
 	}
 }
 
@@ -1322,6 +1328,11 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 		ints[i] = int(v)
 	}
 	s.SetLocalDetail(bundle.RelationKeyRestrictions.String(), pbtypes.IntList(ints...))
+
+	// todo: verify this logic with clients
+	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil && sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
+	}
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
@@ -1414,6 +1425,8 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 			s.SetDetailAndBundledRelation(bundle.RelationKeyUniqueKey, pbtypes.String(uk.Marshal()))
 		}
 	}
+
+	sb.setRestrictionsDetail(s)
 
 	snippet := s.Snippet()
 	if snippet != "" || s.LocalDetails() != nil {

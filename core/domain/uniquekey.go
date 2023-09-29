@@ -5,19 +5,22 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 const uniqueKeySeparator = "-"
 
 var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
-	smartblock.SmartBlockTypeObjectType:  "ot",
-	smartblock.SmartBlockTypeRelation:    "rel",
-	smartblock.SmartBlockTypeWorkspace:   "ws",
-	smartblock.SmartBlockTypeHome:        "home",
-	smartblock.SmartBlockTypeArchive:     "archive",
-	smartblock.SmartBlockTypeProfilePage: "profile",
-	smartblock.SmartBlockTypeWidget:      "widget",
+	smartblock.SmartBlockTypeObjectType:     "ot",
+	smartblock.SmartBlockTypeRelation:       "rel",
+	smartblock.SmartBlockTypeRelationOption: "opt",
+	smartblock.SmartBlockTypeWorkspace:      "ws",
+	smartblock.SmartBlockTypeHome:           "home",
+	smartblock.SmartBlockTypeArchive:        "archive",
+	smartblock.SmartBlockTypeProfilePage:    "profile",
+	smartblock.SmartBlockTypeWidget:         "widget",
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.
@@ -80,6 +83,9 @@ func UnmarshalUniqueKey(raw string) (UniqueKey, error) {
 	if len(parts) == 2 {
 		key = parts[1]
 	}
+	if key == "" {
+		return nil, fmt.Errorf("invalid key format: empty key")
+	}
 	for sbt, sbtString := range smartBlockTypeToKey {
 		if sbtString == parts[0] {
 			return &uniqueKey{
@@ -100,4 +106,21 @@ func GetTypeKeyFromRawUniqueKey(raw string) (TypeKey, error) {
 		return "", fmt.Errorf("wrong type of unique key %s", uk.SmartblockType().String())
 	}
 	return TypeKey(uk.InternalKey()), nil
+}
+
+// SubObjectIdToUniqueKey converts legacy subobject id to uniqueKey
+// if id is not supported subObjectId, it will return nil, false
+// suppose to be used only for migration and almost free to use
+func SubObjectIdToUniqueKey(id string) (uk UniqueKey, valid bool) {
+	if bson.IsObjectIdHex(id) {
+		// historically, we don't have the prefix for the options
+		// so we need to handled it this ugly way
+		id = smartBlockTypeToKey[smartblock.SmartBlockTypeRelationOption] + uniqueKeySeparator + id
+	}
+	uk, err := UnmarshalUniqueKey(id)
+	if err != nil {
+		return nil, false
+	}
+
+	return uk, true
 }

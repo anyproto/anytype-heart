@@ -203,6 +203,22 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 	return s.buildState()
 }
 
+func (s *source) migrateSubObjectId(id string) (newID string, migrated bool) {
+	// this should be replaced by the persisted state migration
+	uk, valid := domain.SubObjectIdToUniqueKey(id)
+	if !valid {
+		return "", false
+	}
+
+	var err error
+	newID, err = s.systemObjectService.GetObjectIdByUniqueKey(context.Background(), s.spaceID, uk)
+	if err != nil {
+		log.With("uk", uk.Marshal()).Errorf("failed to derive id: %s", err.Error())
+		return "", false
+	}
+	return newID, true
+}
+
 func (s *source) buildState() (doc state.Doc, err error) {
 	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedObjects(s.spaceID).Profile)
 	if err != nil {
@@ -217,6 +233,11 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
+		return
+	}
+
+	// temporarily do the migration in place without actually creating changes to increase the backward compatibility
+	if err = st.ReplaceAllObjectLinks(s.migrateSubObjectId); err != nil {
 		return
 	}
 
