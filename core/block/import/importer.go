@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/import/notion"
+	"github.com/anyproto/anytype-heart/core/block/import/objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
@@ -32,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -48,13 +48,13 @@ const CName = "importer"
 const workerPoolSize = 10
 
 type Import struct {
-	converters      map[string]converter.Converter
-	s               *block.Service
-	oc              Creator
-	objectIDGetter  IDGetter
-	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	fileSync        filesync.FileSync
+	converters       map[string]converter.Converter
+	s                *block.Service
+	oc               Creator
+	idGetterProvider objectid.IdGetterProvider
+	tempDirProvider  core.TempDirProvider
+	sbtProvider      typeprovider.SmartBlockTypeProvider
+	fileSync         filesync.FileSync
 	sync.Mutex
 }
 
@@ -85,7 +85,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	picker := app.MustComponent[getblock.Picker](a)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, picker))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.objectIDGetter = NewObjectIDGetter(store, coreService, i.s)
+	i.idGetterProvider = objectid.NewProvider(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore, picker)
@@ -346,7 +346,6 @@ func (i *Import) getObjectID(
 	updateExisting bool,
 ) error {
 	var (
-		err         error
 		id          string
 		payload     treestorage.TreeStorageCreatePayload
 		createdTime time.Time
@@ -357,17 +356,16 @@ func (i *Import) getObjectID(
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(spaceID, snapshot, createdTime, updateExisting); err == nil {
-		oldIDToNew[snapshot.Id] = id
-		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
-			oldIDToNew[snapshot.Id] = snapshot.Id
-		}
-		if payload.RootRawChange != nil {
-			createPayloads[id] = payload
-		}
-		return nil
+	if idGetter, err := i.idGetterProvider.ProvideIdGetter(snapshot.SbType); err != nil {
+		return err
+	} else if id, payload, err = idGetter.GetID(spaceID, snapshot, createdTime, updateExisting); err != nil {
+		return err
 	}
-	return err
+	oldIDToNew[snapshot.Id] = id
+	if payload.RootRawChange != nil {
+		createPayloads[id] = payload
+	}
+	return nil
 }
 
 func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {

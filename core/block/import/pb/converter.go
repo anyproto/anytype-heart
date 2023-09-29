@@ -476,7 +476,8 @@ func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *con
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
 		rootObjects = lo.FilterMap(allObjects, func(item *converter.Snapshot, index int) (string, bool) {
-			if item.SbType != smartblock.SmartBlockTypeSubObject && item.SbType != smartblock.SmartBlockTypeTemplate {
+			if item.SbType != smartblock.SmartBlockTypeSubObject && item.SbType != smartblock.SmartBlockTypeTemplate &&
+				item.SbType != smartblock.SmartBlockTypeRelation && item.SbType != smartblock.SmartBlockTypeObjectType {
 				return item.Id, true
 			}
 			return item.Id, false
@@ -513,7 +514,8 @@ func (p *Pb) getObjectsFromWidgets(widgetSnapshot *converter.Snapshot, oldToNewI
 func (p *Pb) filterObjects(objectTypesToImport widgets.ImportWidgetFlags, objectsNotInWidget []*converter.Snapshot) []string {
 	var rootObjects []string
 	for _, snapshot := range objectsNotInWidget {
-		if snapshot.SbType == smartblock.SmartBlockTypeSubObject || snapshot.SbType == smartblock.SmartBlockTypeTemplate {
+		if snapshot.SbType == smartblock.SmartBlockTypeSubObject || snapshot.SbType == smartblock.SmartBlockTypeTemplate ||
+			snapshot.SbType == smartblock.SmartBlockTypeRelation || snapshot.SbType == smartblock.SmartBlockTypeObjectType {
 			continue
 		}
 		if objectTypesToImport.ImportCollection && lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {

@@ -41,3 +41,9 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/block/import/objectid:
+    interfaces:
+      IdGetterProvider:
+  github.com/anyproto/anytype-heart/core/block/import:
+    interfaces:
+      Creator:
