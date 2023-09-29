@@ -458,6 +458,9 @@ func (m *dsFileStore) DeleteFile(hash string) error {
 			} else {
 				// Update targets by saving the whole file structure
 				err = badgerhelper.SetValueTxn(txn, filesInfoBase.ChildString(file.Hash).Bytes(), file)
+				if err != nil {
+					return fmt.Errorf("put updated file info: %w", err)
+				}
 
 				// Add updated targets to index
 				if err = localstore.AddIndexWithTxn(indexTargets, txn, file, file.Hash); err != nil {

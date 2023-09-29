@@ -2,7 +2,6 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -49,10 +48,7 @@ func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, spaceID strin
 		ObjectID: payload.RootRawChange.Id,
 	}
 	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		return s.objectCache.GetObject(ctx, id)
-	}
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+	if err != nil {
 		err = fmt.Errorf("failed to put tree: %w", err)
 		return
 	}

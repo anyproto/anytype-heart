@@ -52,11 +52,10 @@ func (pt *Task) ID() string {
 
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
-	snapshot, subObjectsSnapshots, ce := pt.makeSnapshotFromPages(do)
-	if ce != nil {
-		if do.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return &Result{ce: ce}
-		}
+	allErrors := converter.NewError(do.mode)
+	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
+	if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+		return &Result{ce: allErrors}
 	}
 	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
 	resultSnapshots := make([]*converter.Snapshot, 0, 1+len(subObjectsSnapshots))
@@ -75,22 +74,21 @@ func (pt *Task) Execute(data interface{}) interface{} {
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
 		})
 	}
-	return &Result{snapshot: resultSnapshots, ce: ce}
+	return &Result{snapshot: resultSnapshots, ce: allErrors}
 }
 
-func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase, *converter.ConvertError) {
-	allErrors := converter.NewError()
+func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *converter.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
 	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
-		if object.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, allErrors
+		if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+			return nil, nil
 		}
 	}
 	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
-	return snapshot, subObjectsSnapshots, nil
+	return snapshot, subObjectsSnapshots
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
@@ -220,6 +218,9 @@ func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.O
 }
 
 func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
+	if name == "" {
+		name = property.UntitledProperty
+	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)

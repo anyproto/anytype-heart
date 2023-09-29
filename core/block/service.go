@@ -118,7 +118,7 @@ type indexer interface {
 }
 
 type builtinObjects interface {
-	CreateObjectsForUseCase(ctx context.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type Service struct {
@@ -417,6 +417,11 @@ func (s *Service) InstallBundledObjects(
 	spaceID string,
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
+	ids, objects, err = s.reinstallBundledObjects(spaceID, sourceObjectIds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reinstall bundled objects: %w", err)
+	}
+
 	// todo: replace this func to the universal space to space copy
 	existingObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -497,6 +502,56 @@ func (s *Service) InstallBundledObjects(
 	}
 
 	return
+}
+
+func (s *Service) reinstallBundledObjects(spaceID string, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
+	uninstalledObjects, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySourceObject.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(sourceObjectIDs),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceID),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("query uninstalled objects: %w", err)
+	}
+
+	var (
+		ids     []string
+		objects []*types.Struct
+	)
+	for _, rec := range uninstalledObjects {
+		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		err = Do(s, id, func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+
+			ids = append(ids, id)
+			objects = append(objects, st.CombinedDetails())
+
+			return sb.Apply(st)
+		})
+		if err != nil {
+			sourceObjectID := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+			return nil, nil, fmt.Errorf("reinstall object %s (source object: %s): %w", id, sourceObjectID, err)
+		}
+
+	}
+
+	return ids, objects, nil
 }
 
 func (s *Service) installTemplatesForObjectType(spaceID string, typeKey domain.TypeKey) error {

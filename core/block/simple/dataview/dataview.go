@@ -213,6 +213,16 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	if l.content.TargetObjectId != "" {
 		ids = append(ids, l.content.TargetObjectId)
 	}
+
+	for _, view := range l.content.Views {
+		if view.DefaultObjectTypeId != "" {
+			ids = append(ids, view.DefaultObjectTypeId)
+		}
+		if view.DefaultTemplateId != "" {
+			ids = append(ids, view.DefaultTemplateId)
+		}
+	}
+
 	return ids
 }
 
@@ -229,6 +239,11 @@ func (l *Dataview) ReplaceSmartIds(f func(id string) (newId string, replaced boo
 }
 
 func (l *Dataview) HasSmartIds() bool {
+	for _, view := range l.content.Views {
+		if view.DefaultObjectTypeId != "" || view.DefaultTemplateId != "" {
+			return true
+		}
+	}
 	return len(l.content.RelationLinks) > 0 || l.content.TargetObjectId != ""
 }
 
