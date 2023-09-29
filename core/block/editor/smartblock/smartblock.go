@@ -1442,3 +1442,5 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(isDeleted))
 	}
 }
+
+type InitFunc = func(id string) *InitContext

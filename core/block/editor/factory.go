@@ -45,6 +45,7 @@ type ObjectFactory struct {
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             smartblock.Indexer
+	objectDeriver       objectDeriver
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -69,6 +70,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.picker = app.MustComponent[getblock.Picker](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
+	f.objectDeriver = app.MustComponent[objectDeriver](a)
 
 	return nil
 }
@@ -213,6 +215,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.templateCloner,
 			f.config,
 			f.eventSender,
+			f.objectDeriver,
 		), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil

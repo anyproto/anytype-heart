@@ -1,4 +1,4 @@
-package anytype
+package schema
 
 import (
 	"fmt"

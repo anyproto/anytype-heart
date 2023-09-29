@@ -62,13 +62,6 @@ type objectCreator interface {
 		spaceID string,
 		sourceObjectIds []string,
 	) (ids []string, objects []*types.Struct, err error)
-	MigrateSubObjects(
-		ctx context.Context,
-		uk *domain.UniqueKey,
-		details *types.Struct,
-		tk domain.TypeKey,
-		spaceId string,
-	) (id string, err error)
 }
 
 type syncStarter interface {
