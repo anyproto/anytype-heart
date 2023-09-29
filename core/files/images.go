@@ -24,6 +24,9 @@ func (s *service) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		return nil, err
 	}
 
+	// TODO Can we use FileByHash here? FileByHash contains important syncing logic. Yes, we use FileByHash before ImageByHash
+	// 	but it doesn't seem to be clear why we repeat file indexing process here
+
 	// check the image files count explicitly because we have a bug when the info can be cached not fully(only for some files)
 	if len(files) < 4 || files[0].MetaHash == "" {
 		// index image files info from ipfs
@@ -111,5 +114,11 @@ func (s *service) imageAdd(ctx context.Context, opts AddOptions) (string, map[in
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}
 	}
+
+	err = s.storeFileSize(nodeHash)
+	if err != nil {
+		return "", nil, fmt.Errorf("store file size: %w", err)
+	}
+
 	return nodeHash, variantsByWidth, nil
 }
