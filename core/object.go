@@ -793,29 +793,29 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
-	response := func(code pb.RpcObjectImportResponseErrorCode, err error) *pb.RpcObjectImportResponse {
-		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}}
+	response := func(code pb.RpcObjectImportResponseErrorCode, rootCollectionID string, err error) *pb.RpcObjectImportResponse {
+		m := &pb.RpcObjectImportResponse{Error: &pb.RpcObjectImportResponseError{Code: code}, CollectionId: rootCollectionID}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
 
-	err := getService[importer.Importer](mw).Import(cctx, req)
+	rootCollectionID, err := getService[importer.Importer](mw).Import(cctx, req)
 
 	if err == nil {
-		return response(pb.RpcObjectImportResponseError_NULL, nil)
+		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
 	}
 
 	switch {
 	case errors.Is(err, converter.ErrNoObjectsToImport):
-		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, err)
+		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
 	case errors.Is(err, converter.ErrCancel):
-		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, err)
+		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
 	case errors.Is(err, converter.ErrLimitExceeded):
-		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, err)
+		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
 	default:
-		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, err)
+		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
 	}
 }
 
@@ -871,9 +871,30 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 }
 
 func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
+	ctx := mw.newContext(cctx)
+
 	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
 			Error: &pb.RpcObjectImportUseCaseResponseError{
+				Code: code,
+			},
+		}
+		if err != nil {
+			resp.Error.Description = err.Error()
+		} else {
+			resp.Event = ctx.GetResponseEvent()
+		}
+		return resp
+	}
+
+	objCreator := getService[builtinobjects.BuiltinObjects](mw)
+	return response(objCreator.CreateObjectsForUseCase(ctx, req.SpaceId, req.UseCase))
+}
+
+func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObjectImportExperienceRequest) *pb.RpcObjectImportExperienceResponse {
+	response := func(code pb.RpcObjectImportExperienceResponseErrorCode, err error) *pb.RpcObjectImportExperienceResponse {
+		resp := &pb.RpcObjectImportExperienceResponse{
+			Error: &pb.RpcObjectImportExperienceResponseError{
 				Code: code,
 			},
 		}
@@ -884,5 +905,8 @@ func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjec
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	return response(objCreator.CreateObjectsForUseCase(cctx, req.SpaceId, req.UseCase))
+	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Source, req.IsLocal); err != nil {
+		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)
 }

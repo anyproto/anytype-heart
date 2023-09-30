@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -13,8 +14,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -24,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	_ "embed"
@@ -118,7 +122,8 @@ var (
 type BuiltinObjects interface {
 	app.Component
 
-	CreateObjectsForUseCase(ctx context.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error)
 	InjectMigrationDashboard(spaceID string) error
 }
 
@@ -150,7 +155,7 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) CreateObjectsForUseCase(
-	ctx context.Context,
+	ctx session.Context,
 	spaceID string,
 	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
@@ -180,17 +185,62 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
-	return b.inject(context.Background(), spaceID, migrationUseCase, migrationDashboardZip)
+func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error) {
+	if isLocal {
+		return b.importArchive(ctx, spaceID, source)
+	}
+	// nolint: gosec
+	resp, err := http.Get(source)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to fetch experience from '%s': not OK status code: %s", source, resp.Status)
+	}
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			log.Errorf("failed to close response bode while downloading experience from '%s': %v", source, err)
+		}
+	}()
+
+	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	out, err := os.Create(path)
+	if err != nil {
+		return oserror.TransformError(err)
+	}
+	defer func() {
+		if err = out.Close(); err != nil {
+			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", source, err)
+		}
+		if err = os.Remove(path); err != nil {
+			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(err))
+		}
+	}()
+
+	if _, err = io.Copy(out, resp.Body); err != nil {
+		return err
+	}
+
+	if err = b.importArchive(ctx, spaceID, path); err != nil {
+		return err
+	}
+
+	// TODO: handleMyHomepage support
+
+	return nil
 }
 
-func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
+func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
+	return b.inject(nil, spaceID, migrationUseCase, migrationDashboardZip)
+}
+
+func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}
 
-	if err = b.importArchive(ctx, spaceID, path); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
 		return err
 	}
 
@@ -210,13 +260,13 @@ func (b *builtinObjects) inject(ctx context.Context, spaceID string, useCase pb.
 		return nil
 	}
 
-	b.handleSpaceDashboard(ctx, spaceID, newID)
-	b.createWidgets(spaceID, useCase)
+	b.handleSpaceDashboard(spaceID, newID)
+	b.createWidgets(ctx, spaceID, useCase)
 	return
 }
 
 func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string) (err error) {
-	if err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+	if _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
@@ -233,7 +283,7 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path
 	}
 
 	if err = os.Remove(path); err != nil {
-		log.Errorf("failed to remove temporary file %s: %s", path, err.Error())
+		log.Errorf("failed to remove temporary file: %s", err.Error())
 	}
 
 	return nil
@@ -295,7 +345,7 @@ func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (i
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(ctx context.Context, spaceID string, id string) {
+func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: b.coreService.PredefinedObjects(spaceID).Workspace,
 		Details: []*pb.RpcObjectSetDetailsDetail{
@@ -309,40 +359,47 @@ func (b *builtinObjects) handleSpaceDashboard(ctx context.Context, spaceID strin
 	}
 }
 
-func (b *builtinObjects) createWidgets(spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
-
 	widgetObjectID := b.coreService.PredefinedObjects(spaceID).Widgets
-	for _, param := range widgetParams[useCase] {
-		objectID := param.objectID
-		if param.isObjectIDChanged {
-			objectID, err = b.getNewObjectID(spaceID, objectID)
-			if err != nil {
-				log.Errorf("Failed to get new id with old id: '%s'", objectID)
+
+	if err = block.DoStateCtx(b.service, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+		for _, param := range widgetParams[useCase] {
+			objectID := param.objectID
+			if param.isObjectIDChanged {
+				objectID, err = b.getNewObjectID(spaceID, objectID)
+				if err != nil {
+					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
+					continue
+				}
 			}
-		}
-		request := &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectID,
-			Position:     model.Block_Bottom,
-			WidgetLayout: param.layout,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: objectID,
-						Style:         model.BlockContentLink_Page,
-						IconSize:      model.BlockContentLink_SizeNone,
-						CardStyle:     model.BlockContentLink_Inline,
-						Description:   model.BlockContentLink_None,
+			request := &pb.RpcBlockCreateWidgetRequest{
+				ContextId:    widgetObjectID,
+				Position:     model.Block_Bottom,
+				WidgetLayout: param.layout,
+				Block: &model.Block{
+					Content: &model.BlockContentOfLink{
+						Link: &model.BlockContentLink{
+							TargetBlockId: objectID,
+							Style:         model.BlockContentLink_Page,
+							IconSize:      model.BlockContentLink_SizeNone,
+							CardStyle:     model.BlockContentLink_Inline,
+							Description:   model.BlockContentLink_None,
+						},
 					},
 				},
-			},
+			}
+			if param.viewID != "" {
+				request.ViewId = param.viewID
+			}
+			if _, err = w.CreateBlock(s, request); err != nil {
+				log.Errorf("Failed to make Widget blocks: %v", err)
+			}
 		}
-		if param.viewID != "" {
-			request.ViewId = param.viewID
-		}
-		if _, err := b.service.CreateWidgetBlock(nil, request); err != nil {
-			log.Errorf("Failed to make Widget block for object '%s': %s", objectID, err.Error())
-		}
+		return nil
+	}); err != nil {
+		log.Errorf("failed to create widget blocks for useCase '%s': %v",
+			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
 	}
 }
 

@@ -66,6 +66,7 @@ type ObjectFactory struct {
 	objectCache         objectcache.Cache
 	personalIDProvider  personalIDProvider
 	installer           bundledObjectsInstaller
+	objectDeriver       objectDeriver
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -94,6 +95,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.personalIDProvider = app.MustComponent[personalIDProvider](a)
 	f.installer = app.MustComponent[bundledObjectsInstaller](a)
+	f.objectDeriver = app.MustComponent[objectDeriver](a)
+
 	return nil
 }
 
@@ -160,7 +163,8 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
-		coresb.SmartBlockTypeRelation:
+		coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeRelationOption:
 		return NewPage(
 			sb,
 			f.objectStore,
@@ -236,6 +240,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.templateCloner,
 			f.config,
 			f.eventSender,
+			f.objectDeriver,
 		), nil
 	case coresb.SmartBlockTypeSpaceObject:
 		return newSpaceObject(

@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -33,7 +32,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 51
+	ForceIdxRebuildCounter int32 = 52
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
@@ -342,21 +341,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (t
 
 func (i *indexer) reindexDoc(ctx context.Context, id string) error {
 	err := block.DoContext(i.picker, ctx, id, func(sb smartblock.SmartBlock) error {
-		d := sb.GetDocInfo()
-		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
-			// index all the subobjects
-			v.GetAllDocInfoIterator(
-				func(info smartblock.DocInfo) (contin bool) {
-					err := i.Index(ctx, info)
-					if err != nil {
-						log.Errorf("failed to index subobject %s: %s", info.Id, err)
-					}
-					return true
-				},
-			)
-		}
-
-		return i.Index(ctx, d)
+		return i.Index(ctx, sb.GetDocInfo())
 	})
 	return err
 }

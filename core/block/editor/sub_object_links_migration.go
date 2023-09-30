@@ -11,22 +11,47 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-// Migrate old relation (rel-name, etc.) and object type (ot-page, etc.) IDs to new ones (just generic object IDs)
-type dataviewMigrationFromOldIDs struct {
+// Migrate old relation (rel-name, etc.) and object type (ot-page, etc.) IDs to new ones (just ordinary object IDs)
+// Those old ids are ids of sub-objects, legacy system for storing types and relations inside workspace object
+type subObjectsLinksMigration struct {
 	spaceID             string
 	systemObjectService system_object.Service
 }
 
-func newDataviewMigrationFromOldIDs(spaceID string, systemObjectService system_object.Service) *dataviewMigrationFromOldIDs {
-	return &dataviewMigrationFromOldIDs{
+func newSubObjectsLinksMigration(spaceID string, systemObjectService system_object.Service) *subObjectsLinksMigration {
+	return &subObjectsLinksMigration{
 		spaceID:             spaceID,
 		systemObjectService: systemObjectService,
 	}
 }
 
-func (m *dataviewMigrationFromOldIDs) migrate(s *state.State) {
+// TODO Refactor
+func (m *subObjectsLinksMigration) replaceSubObjectLinksInDetails(s *state.State) {
+	for _, rel := range s.GetRelationLinks() {
+		if rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
+			vals := pbtypes.GetStringList(s.Details(), rel.Key)
+			changed := false
+			for i := range vals {
+				newId, replaced := m.migrateSubObjectId(vals[i])
+				if !replaced {
+					continue
+				}
+				vals[i] = newId
+				changed = true
+			}
+			if changed {
+				s.SetDetail(rel.Key, pbtypes.StringList(vals))
+			}
+		}
+	}
+}
+
+func (m *subObjectsLinksMigration) migrate(s *state.State) {
+	m.replaceSubObjectLinksInDetails(s)
+
 	s.Iterate(func(block simple.Block) bool {
 		if block.Model().GetDataview() != nil {
 			// Mark block as mutable
@@ -34,11 +59,34 @@ func (m *dataviewMigrationFromOldIDs) migrate(s *state.State) {
 			m.migrateSources(dv)
 			m.migrateFilters(dv)
 		}
+
+		if v, ok := block.(simple.ObjectLinkReplacer); ok {
+			// TODO Analyze this method (ReplaceSmartIds)
+			// TODO Looks like we should just map here: oldId OR newId
+			v.ReplaceSmartIds(m.migrateSubObjectId)
+		}
+
 		return true
 	})
 }
 
-func (m *dataviewMigrationFromOldIDs) migrateFilters(dv dataview2.Block) {
+func (m *subObjectsLinksMigration) migrateSubObjectId(id string) (newID string, migrated bool) {
+	// this should be replaced by the persisted state migration
+	// TODO Smells like SubObjectIdToUniqueKey should be here in-place, not in domain package!
+	uk, valid := domain.SubObjectIdToUniqueKey(id)
+	if !valid {
+		return "", false
+	}
+
+	newID, err := m.systemObjectService.GetObjectIdByUniqueKey(context.Background(), m.spaceID, uk)
+	if err != nil {
+		log.With("uk", uk.Marshal()).Errorf("failed to derive id: %s", err.Error())
+		return "", false
+	}
+	return newID, true
+}
+
+func (m *subObjectsLinksMigration) migrateFilters(dv dataview2.Block) {
 	for _, view := range dv.Model().GetDataview().GetViews() {
 		for _, filter := range view.GetFilters() {
 			err := m.migrateFilter(filter)
@@ -49,7 +97,7 @@ func (m *dataviewMigrationFromOldIDs) migrateFilters(dv dataview2.Block) {
 	}
 }
 
-func (m *dataviewMigrationFromOldIDs) migrateFilter(filter *model.BlockContentDataviewFilter) error {
+func (m *subObjectsLinksMigration) migrateFilter(filter *model.BlockContentDataviewFilter) error {
 	relation, err := m.systemObjectService.GetRelationByKey(filter.RelationKey)
 	if err != nil {
 		return fmt.Errorf("failed to get relation by key %s: %w", filter.RelationKey, err)
@@ -59,7 +107,7 @@ func (m *dataviewMigrationFromOldIDs) migrateFilter(filter *model.BlockContentDa
 		if oldID := filter.Value.GetStringValue(); oldID != "" {
 			newID, err := m.migrateID(oldID)
 			if err != nil {
-				log.Errorf("dataviewMigrationFromOldIDs: failed to migrate filter %s with single value %s: %s", filter.Id, oldID, err)
+				log.Errorf("subObjectsLinksMigration: failed to migrate filter %s with single value %s: %s", filter.Id, oldID, err)
 			}
 
 			filter.Value = pbtypes.String(newID)
@@ -70,7 +118,7 @@ func (m *dataviewMigrationFromOldIDs) migrateFilter(filter *model.BlockContentDa
 			for _, oldID := range oldIDs {
 				newID, err := m.migrateID(oldID)
 				if err != nil {
-					log.Errorf("dataviewMigrationFromOldIDs: failed to migrate filter %s with value list: id %s: %s", filter.Id, oldID, err)
+					log.Errorf("subObjectsLinksMigration: failed to migrate filter %s with value list: id %s: %s", filter.Id, oldID, err)
 				}
 				newIDs = append(newIDs, newID)
 			}
@@ -80,12 +128,12 @@ func (m *dataviewMigrationFromOldIDs) migrateFilter(filter *model.BlockContentDa
 	return nil
 }
 
-func (m *dataviewMigrationFromOldIDs) migrateSources(dv dataview2.Block) {
+func (m *subObjectsLinksMigration) migrateSources(dv dataview2.Block) {
 	newSources := make([]string, 0, len(dv.GetSource()))
 	for _, src := range dv.GetSource() {
 		newID, err := m.migrateID(src)
 		if err != nil {
-			log.Errorf("dataviewMigrationFromOldIDs: failed to migrate source %s: %s", src, err)
+			log.Errorf("subObjectsLinksMigration: failed to migrate source %s: %s", src, err)
 		}
 		newSources = append(newSources, newID)
 	}
@@ -93,7 +141,7 @@ func (m *dataviewMigrationFromOldIDs) migrateSources(dv dataview2.Block) {
 }
 
 // migrateID always returns ID, even if migration failed
-func (m *dataviewMigrationFromOldIDs) migrateID(id string) (string, error) {
+func (m *subObjectsLinksMigration) migrateID(id string) (string, error) {
 	typeKey, err := bundle.TypeKeyFromUrl(id)
 	if err == nil {
 		typeID, err := m.systemObjectService.GetTypeIdByKey(context.Background(), m.spaceID, typeKey)
@@ -115,7 +163,7 @@ func (m *dataviewMigrationFromOldIDs) migrateID(id string) (string, error) {
 	return id, nil
 }
 
-func (m *dataviewMigrationFromOldIDs) canRelationContainObjectValues(relation *model.Relation) bool {
+func (m *subObjectsLinksMigration) canRelationContainObjectValues(relation *model.Relation) bool {
 	switch relation.Format {
 	case
 		model.RelationFormat_status,

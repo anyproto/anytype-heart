@@ -648,6 +648,10 @@
     - [Rpc.Object.Import.Request.TxtParams](#anytype-Rpc-Object-Import-Request-TxtParams)
     - [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response)
     - [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error)
+    - [Rpc.Object.ImportExperience](#anytype-Rpc-Object-ImportExperience)
+    - [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request)
+    - [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response)
+    - [Rpc.Object.ImportExperience.Response.Error](#anytype-Rpc-Object-ImportExperience-Response-Error)
     - [Rpc.Object.ImportList](#anytype-Rpc-Object-ImportList)
     - [Rpc.Object.ImportList.ImportResponse](#anytype-Rpc-Object-ImportList-ImportResponse)
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
@@ -1080,6 +1084,7 @@
     - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
     - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
+    - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
     - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase)
@@ -1539,6 +1544,7 @@
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
+| ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
@@ -11064,6 +11070,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
+| collectionId | [string](#string) |  |  |
 
 
 
@@ -11079,6 +11086,65 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience"></a>
+
+### Rpc.Object.ImportExperience
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience-Request"></a>
+
+### Rpc.Object.ImportExperience.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| source | [string](#string) |  |  |
+| isLocal | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience-Response"></a>
+
+### Rpc.Object.ImportExperience.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportExperience.Response.Error](#anytype-Rpc-Object-ImportExperience-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience-Response-Error"></a>
+
+### Rpc.Object.ImportExperience.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11188,6 +11254,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -17131,6 +17198,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-ImportExperience-Response-Error-Code"></a>
+
+### Rpc.Object.ImportExperience.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-ImportList-ImportResponse-Type"></a>
 
 ### Rpc.Object.ImportList.ImportResponse.Type
@@ -22839,7 +22919,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Workspace | 518 |  |
 | STRelation | 521 |  |
 | STType | 528 |  |
-| SpaceObject | 529 |  |
+| STRelationOption | 529 |  |
+| SpaceObject | 530 |  |
 | MissingObject | 519 |  |
 
 

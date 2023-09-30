@@ -138,14 +138,14 @@ func Test_GrouperTags(t *testing.T) {
 
 	grouper, err := kanbanSrv.Grouper("", "tag")
 	require.NoError(t, err)
-	err = grouper.InitGroups(nil)
+	err = grouper.InitGroups("", nil)
 	require.NoError(t, err)
 	groups, err := grouper.MakeDataViewGroups()
 	require.NoError(t, err)
 	require.Len(t, groups, 6)
 
 	f := &database.Filters{FilterObj: database.FilterEq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
-	err = grouper.InitGroups(f)
+	err = grouper.InitGroups("", f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
 	require.NoError(t, err)

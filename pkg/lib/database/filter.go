@@ -22,12 +22,13 @@ func MakeFiltersAnd(protoFilters []*model.BlockContentDataviewFilter, store Obje
 	if store == nil {
 		return FiltersAnd{}, fmt.Errorf("objectStore dependency is nil")
 	}
+	spaceID := getSpaceIDFromFilters(protoFilters)
 	protoFilters = TransformQuickOption(protoFilters, nil)
 
 	var and FiltersAnd
 	for _, pf := range protoFilters {
 		if pf.Condition != model.BlockContentDataviewFilter_None {
-			f, err := MakeFilter(pf, store)
+			f, err := MakeFilter(spaceID, pf, store)
 			if err != nil {
 				return nil, err
 			}
@@ -37,13 +38,13 @@ func MakeFiltersAnd(protoFilters []*model.BlockContentDataviewFilter, store Obje
 	return and, nil
 }
 
-func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
+func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {
 	if store == nil {
 		return nil, fmt.Errorf("objectStore dependency is nil")
 	}
 	parts := strings.SplitN(rawFilter.RelationKey, ".", 2)
 	if len(parts) == 2 {
-		return makeFilterNestedIn(rawFilter, store, parts[0], parts[1])
+		return makeFilterNestedIn(spaceID, rawFilter, store, parts[0], parts[1])
 	}
 
 	// replaces "value == false" to "value != true" for expected work with checkboxes
@@ -143,7 +144,7 @@ func MakeFilter(rawFilter *model.BlockContentDataviewFilter, store ObjectStore) 
 		return FilterExactIn{
 			Key:     rawFilter.RelationKey,
 			Value:   list,
-			Options: optionsToMap(rawFilter.RelationKey, store),
+			Options: optionsToMap(spaceID, rawFilter.RelationKey, store),
 		}, nil
 	case model.BlockContentDataviewFilter_NotExactIn:
 		list, err := pbtypes.ValueListWrapper(rawFilter.Value)
@@ -486,9 +487,9 @@ func (exIn FilterExactIn) String() string {
 	return fmt.Sprintf("%s EXACTINN(%v)", exIn.Key, exIn.Value)
 }
 
-func optionsToMap(key string, store ObjectStore) map[string]string {
+func optionsToMap(spaceID string, key string, store ObjectStore) map[string]string {
 	result := make(map[string]string)
-	options, err := ListRelationOptions(store, key)
+	options, err := ListRelationOptions(store, spaceID, key)
 	if err != nil {
 		log.Warn("nil objectStore for getting options")
 		return result
@@ -512,10 +513,10 @@ type FilterNestedIn struct {
 
 var _ WithNestedFilter = &FilterNestedIn{}
 
-func makeFilterNestedIn(rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey string, nestedRelationKey string) (Filter, error) {
+func makeFilterNestedIn(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore, relationKey string, nestedRelationKey string) (Filter, error) {
 	rawNestedFilter := proto.Clone(rawFilter).(*model.BlockContentDataviewFilter)
 	rawNestedFilter.RelationKey = nestedRelationKey
-	nestedFilter, err := MakeFilter(rawNestedFilter, store)
+	nestedFilter, err := MakeFilter(spaceID, rawNestedFilter, store)
 	if err != nil {
 		return nil, fmt.Errorf("make nested filter %s -> %s: %w", relationKey, nestedRelationKey, err)
 	}

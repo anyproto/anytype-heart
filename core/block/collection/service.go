@@ -2,25 +2,30 @@ package collection
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -214,6 +219,7 @@ func (s *Service) ObjectToCollection(id string) error {
 			return fmt.Errorf("set layout: %w", err)
 		}
 		st.SetObjectTypeKey(bundle.TypeKeyCollection)
+		setDefaultObjectTypeToViews(st)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)
@@ -224,4 +230,36 @@ func (s *Service) ObjectToCollection(id string) error {
 	}
 
 	return nil
+}
+
+func setDefaultObjectTypeToViews(st *state.State) {
+	if !lo.Contains(st.ObjectTypeKeys(), bundle.TypeKeySet) {
+		return
+	}
+
+	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
+	if len(setOfValue) == 0 || !strings.HasPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix) {
+		return
+	}
+
+	if isNotCreatableType(domain.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+		return
+	}
+
+	dataviewBlock := st.Get(state.DataviewBlockID)
+	if dataviewBlock == nil {
+		return
+	}
+	content, ok := dataviewBlock.Model().Content.(*model.BlockContentOfDataview)
+	if !ok {
+		return
+	}
+
+	for _, view := range content.Dataview.Views {
+		view.DefaultObjectTypeId = setOfValue[0]
+	}
+}
+
+func isNotCreatableType(key domain.TypeKey) bool {
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType, bundle.TypeKeySet, bundle.TypeKeyCollection), key)
 }

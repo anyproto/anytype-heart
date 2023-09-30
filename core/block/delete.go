@@ -38,6 +38,20 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	}
 	sbt, _ := s.sbtProvider.Type(spaceID, objectID)
 	switch sbt {
+	case coresb.SmartBlockTypeObjectType,
+		coresb.SmartBlockTypeRelation:
+		err = Do(s, objectID, func(b smartblock.SmartBlock) error {
+			st := b.NewState()
+			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(true))
+			return b.Apply(st)
+		})
+		if err != nil {
+			return fmt.Errorf("set isUninstalled flag: %w", err)
+		}
+		err = s.OnDelete(id, nil)
+		if err != nil {
+			return fmt.Errorf("on delete: %w", err)
+		}
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFile:

@@ -5,14 +5,12 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
-	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -21,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -29,8 +26,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -152,9 +150,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-	if info.SpaceID == "" || pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeySpaceId.String()) == "" {
-		log.Warnf("index spaceID is empty for object %s %v", info.Id, info.State.ObjectTypeKeys())
-	}
+
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
@@ -189,7 +185,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 		}
 	}
 
-	details := info.State.CombinedDetails()
+	details := info.Details
 
 	indexSetTime := time.Now()
 	var hasError bool
@@ -217,9 +213,6 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
 					With("lastHashIsEmpty", lastIndexedHash == "").
 					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
-				// With("old", pbtypes.Sprint(oldDetails.Details)).
-				// With("new", pbtypes.Sprint(info.State.CombinedDetails())).
-				// With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
 
 				if opts.SkipIfHeadsNotChanged {
 					l.Warnf("details have changed, but heads are equal")
@@ -255,7 +248,6 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
 		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		RelationsCount:          len(info.State.PickRelationLinks()),
 		DetailsCount:            detailsCount,
 	})
 

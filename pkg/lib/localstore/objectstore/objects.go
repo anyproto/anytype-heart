@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -74,7 +75,7 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 		s.fts = fts.(ftsearch.FTSearch)
 	}
 	datastoreService := a.MustComponent(datastore.CName).(datastore.Datastore)
-	s.db, err = datastoreService.LocalstoreBadger()
+	s.db, err = datastoreService.LocalStorage()
 	if err != nil {
 		return fmt.Errorf("get badger: %w", err)
 	}
@@ -187,7 +188,7 @@ func (s *dsObjectStore) EraseIndexes() error {
 }
 
 func (s *dsObjectStore) eraseLinks() (outboundRemoved int, inboundRemoved int, err error) {
-	err = retryOnConflict(func() error {
+	err = badgerhelper.RetryOnConflict(func() error {
 		txn := s.db.NewTransaction(true)
 		defer txn.Discard()
 		txn, outboundRemoved, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String())
@@ -319,7 +320,7 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 		details, err = s.extractDetailsFromItem(it)
 		return err
 	})
-	if isNotFound(err) {
+	if badgerhelper.IsNotFound(err) {
 		return &model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
 		}, nil
@@ -463,8 +464,8 @@ func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string
 		}
 		details = detailsModel.Details
 	}
-	snippet, err := getValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
-	if err != nil && !isNotFound(err) {
+	snippet, err := badgerhelper.GetValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
+	if err != nil && !badgerhelper.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
@@ -481,7 +482,7 @@ func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, spaceID string, ids []st
 	for _, id := range ids {
 		info, err := s.getObjectInfo(txn, spaceID, id)
 		if err != nil {
-			if isNotFound(err) || errors.Is(err, ErrObjectNotFound) || errors.Is(err, ErrNotAnObject) {
+			if badgerhelper.IsNotFound(err) || errors.Is(err, ErrObjectNotFound) || errors.Is(err, ErrNotAnObject) {
 				continue
 			}
 			return nil, err

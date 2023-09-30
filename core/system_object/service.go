@@ -47,6 +47,7 @@ type Service interface {
 	GetRelationByKey(key string) (relation *model.Relation, err error)
 
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
+	GetObjectIdByUniqueKey(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error)
 
 	app.Component
 }
@@ -96,6 +97,13 @@ func (s *service) GetRelationIdByKey(ctx context.Context, spaceId string, key do
 	}
 
 	return s.deriver.DeriveObjectID(ctx, spaceId, uk)
+}
+
+// GetObjectIdByUniqueKey returns object id by uniqueKey and spaceId
+// context is used in case of space cache miss(shouldn't be a case for a valid spaceId)
+// cheap to use in terms of performance (about 500ms per 10000 derivations)
+func (s *service) GetObjectIdByUniqueKey(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error) {
+	return s.deriver.DeriveObjectID(ctx, spaceId, key)
 }
 
 func (s *service) FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {

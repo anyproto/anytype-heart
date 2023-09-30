@@ -3,19 +3,19 @@ package objectcache
 import (
 	"context"
 	"errors"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"go.uber.org/zap"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -32,7 +32,7 @@ const (
 )
 
 type treeCreateCache struct {
-	initFunc InitFunc
+	initFunc smartblock.InitFunc
 }
 
 type cacheOpts struct {
@@ -123,7 +123,7 @@ func (c *objectCache) Close(_ context.Context) error {
 	return c.cache.Close()
 }
 
-func ContextWithCreateOption(ctx context.Context, initFunc InitFunc) context.Context {
+func ContextWithCreateOption(ctx context.Context, initFunc smartblock.InitFunc) context.Context {
 	return context.WithValue(ctx, optsKey, cacheOpts{
 		createOption: &treeCreateCache{
 			initFunc: initFunc,

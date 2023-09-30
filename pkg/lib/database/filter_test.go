@@ -408,7 +408,7 @@ func TestNestedFilters(t *testing.T) {
 			},
 		}, nil)
 
-		f, err := MakeFilter(&model.BlockContentDataviewFilter{
+		f, err := MakeFilter("", &model.BlockContentDataviewFilter{
 			RelationKey: "type.typeKey",
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.String("note"),

@@ -375,7 +375,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 		return nil, err
 	}
 
-	if err := grouper.InitGroups(flt); err != nil {
+	if err := grouper.InitGroups(req.SpaceId, flt); err != nil {
 		return nil, err
 	}
 

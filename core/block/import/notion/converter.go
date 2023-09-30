@@ -2,7 +2,6 @@ package notion
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -43,7 +42,7 @@ func New(c *collection.Service) converter.Converter {
 }
 
 func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
-	ce := converter.NewError()
+	ce := converter.NewError(req.Mode)
 	apiKey := n.getParams(req)
 	if apiKey == "" {
 		ce.Add(fmt.Errorf("failed to extract apikey"))
@@ -73,34 +72,28 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	progress.SetTotal(int64(len(db)*numberOfStepsForDatabases+len(pages)*numberOfStepsForPages+len(allProperties)) + stepForSearch)
 
 	if err = progress.TryStep(1); err != nil {
-		return nil, converter.NewFromError(converter.ErrCancel)
+		return nil, converter.NewFromError(converter.ErrCancel, req.Mode)
 	}
 	if len(db) == 0 && len(pages) == 0 {
-		return nil, converter.NewFromError(converter.ErrNoObjectsToImport)
+		return nil, converter.NewFromError(converter.ErrNoObjectsToImport, req.Mode)
 	}
 
 	notionImportContext := api.NewNotionImportContext()
 	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if dbErr != nil {
 		logger.With("err", dbErr.Error()).Warnf("import from notion db failed")
-	}
-	if errors.Is(dbErr.GetResultError(req.Type), converter.ErrCancel) {
-		return nil, converter.NewFromError(converter.ErrCancel)
-	}
-	if dbErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(dbErr)
+	}
+	if ce.ShouldAbortImport(0, req.Type) {
 		return nil, ce
 	}
 
 	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, relations, progress)
 	if pgErr != nil {
 		logger.With("err", pgErr.Error()).Warnf("import from notion pages failed")
-	}
-	if errors.Is(pgErr.GetResultError(req.Type), converter.ErrCancel) {
-		return nil, converter.NewFromError(converter.ErrCancel)
-	}
-	if pgErr != nil && req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 		ce.Merge(pgErr)
+	}
+	if ce.ShouldAbortImport(0, req.Type) {
 		return nil, ce
 	}
 
@@ -119,29 +112,24 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	rootCollectionSnapshot, err := n.dbService.AddObjectsToNotionCollection(notionImportContext, db, pages)
 	if err != nil {
 		ce.Add(err)
-		if req.Mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
+		if ce.ShouldAbortImport(0, req.Type) {
 			return nil, ce
 		}
 	}
+	var rootCollectionID string
 	if rootCollectionSnapshot != nil {
 		dbs = append(dbs, rootCollectionSnapshot)
+		rootCollectionID = rootCollectionSnapshot.Id
 	}
 	allSnapshots := make([]*converter.Snapshot, 0, len(pgs)+len(dbs))
 	allSnapshots = append(allSnapshots, pgs...)
 	allSnapshots = append(allSnapshots, dbs...)
 
-	if pgErr != nil {
-		ce.Merge(pgErr)
-	}
-
-	if dbErr != nil {
-		ce.Merge(dbErr)
-	}
 	if !ce.IsEmpty() {
-		return &converter.Response{Snapshots: allSnapshots}, ce
+		return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, ce
 	}
 
-	return &converter.Response{Snapshots: allSnapshots}, nil
+	return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 }
 
 func (n *Notion) getUniqueProperties(db []database.Database, pages []page.Page) []string {

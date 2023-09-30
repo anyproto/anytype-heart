@@ -29,6 +29,7 @@ const (
 	SmartBlockTypeRelation          = SmartBlockType(model.SmartBlockType_STRelation)
 	SmartBlockTypeObjectType        = SmartBlockType(model.SmartBlockType_STType)
 	SmartBlockTypeSpaceObject       = SmartBlockType(model.SmartBlockType_SpaceObject)
+	SmartBlockTypeRelationOption    = SmartBlockType(model.SmartBlockType_STRelationOption)
 
 	SmartBlockTypeMissingObject = SmartBlockType(model.SmartBlockType_MissingObject)
 )

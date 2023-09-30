@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"path"
 	"sync"
 
@@ -136,7 +137,9 @@ func (oc *ObjectCreator) Create(
 			return nil, "", err
 		}
 	} else {
-		respDetails = oc.updateExistingObject(st, oldIDtoNew, newID)
+		if canUpdateObject(sn.SbType) {
+			respDetails = oc.updateExistingObject(st, oldIDtoNew, newID)
+		}
 	}
 	oc.setFavorite(snapshot, newID)
 
@@ -148,6 +151,10 @@ func (oc *ObjectCreator) Create(
 	}
 
 	return respDetails, newID, nil
+}
+
+func canUpdateObject(sbType coresb.SmartBlockType) bool {
+	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -201,7 +208,9 @@ func (oc *ObjectCreator) createNewObject(
 			SpaceID:     spaceID,
 		}
 	})
-
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		sb, err = oc.picker.PickBlock(ctx, newID)
+	}
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
 		return nil, err

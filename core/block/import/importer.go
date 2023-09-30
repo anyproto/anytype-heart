@@ -96,7 +96,7 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) error {
+func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (string, error) {
 	i.Lock()
 	defer i.Unlock()
 	progress := i.setupProgressBar(req)
@@ -108,16 +108,17 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) err
 	if i.s != nil && !req.GetNoProgress() {
 		i.s.ProcessAdd(progress)
 	}
+	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
-		return returnedErr
+		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
+		return rootCollectionID, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
 		returnedErr = i.importFromExternalSource(ctx, req, progress)
-		return returnedErr
+		return rootCollectionID, returnedErr
 	}
 	returnedErr = fmt.Errorf("unknown import type %s", req.Type)
-	return returnedErr
+	return rootCollectionID, returnedErr
 }
 
 func (i *Import) sendFileEvents(returnedErr error) {
@@ -130,30 +131,38 @@ func (i *Import) sendFileEvents(returnedErr error) {
 func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
-	progress process.Progress) error {
-	allErrors := converter.NewError()
+	progress process.Progress,
+) (string, error) {
+	allErrors := converter.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req) {
-			return resultErr
+			return "", resultErr
 		}
 		allErrors.Merge(err)
 	}
 	if res == nil {
-		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
 	if len(res.Snapshots) == 0 {
-		return fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	i.createObjects(ctx, res, progress, req, allErrors)
-	return allErrors.GetResultError(req.Type)
+	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors)
+	resultErr := allErrors.GetResultError(req.Type)
+	if resultErr != nil {
+		rootCollectionID = ""
+	}
+	return rootCollectionID, resultErr
 }
 
-func (i *Import) importFromExternalSource(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) error {
-	allErrors := converter.NewError()
+func (i *Import) importFromExternalSource(ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+) error {
+	allErrors := converter.NewError(req.Mode)
 	if req.Snapshots != nil {
 		sn := make([]*converter.Snapshot, len(req.Snapshots))
 		for i, s := range req.Snapshots {
@@ -225,7 +234,7 @@ func (i *Import) ValidateNotionToken(
 func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish(nil)
-	allErrors := converter.NewError()
+	allErrors := converter.NewError(0)
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
@@ -239,17 +248,22 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 	}
 
 	progress.SetProgressMessage("Create objects")
-	details := i.createObjects(ctx, res, progress, req, allErrors)
+	details, _ := i.createObjects(ctx, res, progress, req, allErrors)
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) createObjects(ctx context.Context, res *converter.Response, progress process.Progress, req *pb.RpcObjectImportRequest, allErrors *converter.ConvertError) map[string]*types.Struct {
+func (i *Import) createObjects(ctx context.Context,
+	res *converter.Response,
+	progress process.Progress,
+	req *pb.RpcObjectImportRequest,
+	allErrors *converter.ConvertError,
+) (map[string]*types.Struct, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
 	if err != nil {
-		return nil
+		return nil, ""
 	}
 	filesIDs := i.getFilesIDs(res)
 	numWorkers := workerPoolSize
@@ -262,7 +276,7 @@ func (i *Import) createObjects(ctx context.Context, res *converter.Response, pro
 	go i.addWork(req.SpaceId, res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
-	return details
+	return details, oldIDToNew[res.RootCollectionID]
 }
 
 func (i *Import) getFilesIDs(res *converter.Response) []string {
@@ -275,7 +289,11 @@ func (i *Import) getFilesIDs(res *converter.Response) []string {
 	return fileIDs
 }
 
-func (i *Import) getIDForAllObjects(ctx context.Context, res *converter.Response, allErrors *converter.ConvertError, req *pb.RpcObjectImportRequest) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
+func (i *Import) getIDForAllObjects(ctx context.Context,
+	res *converter.Response,
+	allErrors *converter.ConvertError,
+	req *pb.RpcObjectImportRequest,
+) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*converter.Snapshot, 0)
 	oldIDToNew := make(map[string]string, len(res.Snapshots))
 	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
@@ -364,7 +382,11 @@ func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpo
 	pool.CloseTask()
 }
 
-func (i *Import) readResultFromPool(pool *workerpool.WorkerPool, mode pb.RpcObjectImportRequestMode, allErrors *converter.ConvertError, progress process.Progress) map[string]*types.Struct {
+func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
+	mode pb.RpcObjectImportRequestMode,
+	allErrors *converter.ConvertError,
+	progress process.Progress,
+) map[string]*types.Struct {
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
