@@ -1,4 +1,4 @@
-package spacecontroller
+package space
 
 import (
 	"context"
@@ -6,9 +6,8 @@ import (
 )
 
 type (
-	DeletionParams struct{}
-	LocalStatus    struct{}
-	RemoteStatus   struct{}
+	LocalStatus  struct{}
+	RemoteStatus struct{}
 )
 
 type SpaceStatus struct {
@@ -19,14 +18,19 @@ type SpaceStatus struct {
 type MandatoryIds struct {
 }
 
-type SpaceController interface {
+type Space interface {
 	Id() string
-	Delete(ctx context.Context, params DeletionParams) error
-	RevertDeletion(ctx context.Context) error
-	WaitLoad(ctx context.Context) error
 	GetStatus() (SpaceStatus, error)
 	MandatoryIds() (MandatoryIds, error)
 	CreateObject(ctx context.Context, id string) (editorsb.SmartBlock, error)
 	DeleteObject(ctx context.Context, id string) error
 	GetObject(ctx context.Context, id string) (editorsb.SmartBlock, error)
 }
+
+// space view -> space Id
+// (...)
+//
+// logic space status -> AclInvite loop || Load loop
+//
+
+// SpaceStatusManager -> ...

@@ -63,6 +63,10 @@ type spaceIDResolver interface {
 	ResolveSpaceID(objectID string) (spaceID string, err error)
 }
 
+type spaceIDCache interface {
+	BindSpaceID(spaceID string, objectID string) error
+}
+
 type objectCreator interface {
 	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 	InstallBundledObjects(
@@ -249,6 +253,8 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	if !hasError {
 		saveIndexedHash()
 	}
+
+	i.resolver.BindSpaceID(info.SpaceID, info.Id)
 
 	metrics.SharedClient.RecordEvent(metrics.IndexEvent{
 		ObjectId:                info.Id,

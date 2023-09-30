@@ -1,8 +1,20 @@
 package space
 
-import "context"
+import (
+	"context"
+)
+
+type DeletionParams struct{}
 
 type SpaceService interface {
-	Get(ctx context.Context, id string) (SpaceController, error)
-	Create(ctx context.Context) (SpaceController, error)
+	Get(ctx context.Context, id string) (Space, error)
+	Create(ctx context.Context) (Space, error)
+	Delete(ctx context.Context, params DeletionParams) error
+	RevertDeletion(ctx context.Context) error
+}
+
+type spaceService struct {
+}
+
+func (s *spaceService) UpdateSpace(spaceId string, status SpaceStatus) {
 }
