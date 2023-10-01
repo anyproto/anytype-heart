@@ -8,6 +8,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 type storageService struct {
@@ -20,6 +21,8 @@ type ClientStorage interface {
 	spacestorage.SpaceStorageProvider
 	app.ComponentRunnable
 	AllSpaceIds() (ids []string, err error)
+	GetSpaceID(objectID string) (spaceID string, err error)
+	BindSpaceID(spaceID, objectID string) (err error)
 }
 
 func New() ClientStorage {
@@ -56,6 +59,16 @@ func (s *storageService) SpaceExists(id string) bool {
 
 func (s *storageService) CreateSpaceStorage(payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
 	return createSpaceStorage(s.db, payload)
+}
+
+func (s *storageService) GetSpaceID(objectID string) (spaceID string, err error) {
+	return badgerhelper.GetValue(s.db, s.keys.BindObjectIDKey(objectID), func(bytes []byte) (string, error) {
+		return string(bytes), nil
+	})
+}
+
+func (s *storageService) BindSpaceID(spaceID, objectID string) (err error) {
+	return badgerhelper.SetValue(s.db, s.keys.BindObjectIDKey(objectID), []byte(spaceID))
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {

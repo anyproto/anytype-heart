@@ -51,7 +51,7 @@ type Service interface {
 type Creator struct {
 	blockService        BlockService
 	objectCache         objectcache.Cache
-	blockPicker         block.Picker
+	blockPicker         block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	collectionService   CollectionService
 	systemObjectService system_object.Service
@@ -75,7 +75,7 @@ func NewCreator() *Creator {
 func (c *Creator) Init(a *app.App) (err error) {
 	c.blockService = a.MustComponent(block.CName).(BlockService)
 	c.objectCache = a.MustComponent(objectcache.CName).(objectcache.Cache)
-	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
+	c.blockPicker = a.MustComponent(block.CName).(block.ObjectGetter)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)

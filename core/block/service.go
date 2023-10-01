@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -112,9 +113,6 @@ type InternalFlagsGetter interface {
 type TemplateIDGetter interface {
 	GetTemplateId() string
 }
-type spaceIDResolver interface {
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-}
 type builtinObjects interface {
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
@@ -133,7 +131,7 @@ type Service struct {
 	systemObjectService  system_object.Service
 	objectCache          objectcache.Cache
 	objectCreator        objectCreator
-	resolver             spaceIDResolver
+	resolver             idresolver.Resolver
 	spaceService         space.SpaceService
 	spaceCore            spacecore.SpaceCoreService
 	commonAccount        accountservice.Service
@@ -177,7 +175,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectCache = app.MustComponent[objectcache.Cache](a)
-	s.resolver = app.MustComponent[spaceIDResolver](a)
+	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
@@ -193,12 +191,19 @@ func (s *Service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	return s.objectCache.ResolveObject(ctx, objectID)
+func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	if err != nil {
+		return nil, err
+	}
+	return s.objectCache.GetObject(ctx, domain.FullID{
+		ObjectID: objectID,
+		SpaceID:  spaceID,
+	})
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	spaceID, err := s.objectCache.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
@@ -696,7 +701,7 @@ func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
 	res := map[string][]string{}
 	for _, objectID := range objectIDs {
-		spaceID, err := s.objectCache.ResolveSpaceID(objectID)
+		spaceID, err := s.resolver.ResolveSpaceID(objectID)
 		if err != nil {
 			return nil, fmt.Errorf("resolve spaceID: %w", err)
 		}
@@ -750,7 +755,7 @@ func (s *Service) objectLinksCollectionModify(collectionId string, objectId stri
 }
 
 func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error) {
-	spaceID, err := s.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -758,7 +763,7 @@ func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err e
 }
 
 func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
-	spaceID, err := s.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -848,7 +853,7 @@ func (s *Service) ObjectsDuplicate(ctx context.Context, ids []string) (newIds []
 }
 
 func (s *Service) DeleteArchivedObject(id string) (err error) {
-	spaceID, err := s.objectCache.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -940,10 +945,6 @@ func (s *Service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
-	return s.objectCache.ResolveSpaceID(objectID)
-}
-
 func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
@@ -959,7 +960,7 @@ func (s *Service) StateFromTemplate(templateID string, name string) (st *state.S
 }
 
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, err := s.PickBlock(context.Background(), id)
+	sb, err := s.GetObject(context.Background(), id)
 	if err != nil {
 		return err
 	}
@@ -1009,7 +1010,7 @@ func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	spaceID, err := s.objectCache.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -1027,7 +1028,7 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 }
 
 func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
-	spaceID, err := s.objectCache.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}

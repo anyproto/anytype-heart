@@ -49,7 +49,7 @@ type History interface {
 
 type history struct {
 	a                   core.Service
-	picker              block.Picker
+	picker              block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	systemObjectService system_object.Service
 	spaceService        spacecore.SpaceCoreService
@@ -57,7 +57,7 @@ type history struct {
 
 func (h *history) Init(a *app.App) (err error) {
 	h.a = a.MustComponent(core.CName).(core.Service)
-	h.picker = app.MustComponent[block.Picker](a)
+	h.picker = app.MustComponent[block.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	h.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)

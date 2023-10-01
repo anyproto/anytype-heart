@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/converter/dot"
@@ -57,20 +58,16 @@ type Export interface {
 	app.Component
 }
 
-type spaceIDResolver interface {
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-}
-
 type export struct {
 	blockService        *block.Service
-	picker              getblock.Picker
+	picker              getblock.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	coreService         core.Service
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
 	systemObjectService system_object.Service
 	spaceService        spacecore.SpaceCoreService
-	resolver            spaceIDResolver
+	resolver            idresolver.Resolver
 }
 
 func New() Export {
@@ -82,8 +79,8 @@ func (e *export) Init(a *app.App) (err error) {
 	e.coreService = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
-	e.picker = app.MustComponent[getblock.Picker](a)
-	e.resolver = app.MustComponent[spaceIDResolver](a)
+	e.picker = app.MustComponent[getblock.ObjectGetter](a)
+	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.systemObjectService = app.MustComponent[system_object.Service](a)
 	e.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)

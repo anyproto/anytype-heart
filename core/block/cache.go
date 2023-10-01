@@ -9,13 +9,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 )
 
-type Picker interface {
-	PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
+type ObjectGetter interface {
+	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
 }
 
-func Do[t any](p Picker, objectID string, apply func(sb t) error) error {
+func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
 	ctx := context.Background()
-	sb, err := p.PickBlock(ctx, objectID)
+	sb, err := p.GetObject(ctx, objectID)
 	if err != nil {
 		return err
 	}
@@ -31,8 +31,8 @@ func Do[t any](p Picker, objectID string, apply func(sb t) error) error {
 	return apply(bb)
 }
 
-func DoContext[t any](p Picker, ctx context.Context, objectID string, apply func(sb t) error) error {
-	sb, err := p.PickBlock(ctx, objectID)
+func DoContext[t any](p ObjectGetter, ctx context.Context, objectID string, apply func(sb t) error) error {
+	sb, err := p.GetObject(ctx, objectID)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func DoContext[t any](p Picker, ctx context.Context, objectID string, apply func
 
 // DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
 // It correctly handles the case when two ids are the same.
-func DoState2[t1, t2 any](s Picker, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
+func DoState2[t1, t2 any](s ObjectGetter, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
 	if firstID == secondID {
 		return DoStateAsync(s, firstID, func(st *state.State, b t1) error {
 			// Check that b satisfies t2
@@ -76,9 +76,9 @@ func DoState2[t1, t2 any](s Picker, firstID, secondID string, f func(*state.Stat
 	})
 }
 
-func DoStateAsync[t any](p Picker, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoStateAsync[t any](p ObjectGetter, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	ctx := context.Background()
-	sb, err := p.PickBlock(ctx, id)
+	sb, err := p.GetObject(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -102,8 +102,8 @@ func DoStateAsync[t any](p Picker, id string, apply func(s *state.State, sb t) e
 }
 
 // TODO rename to something more meaningful
-func DoStateCtx[t any](p Picker, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
-	sb, err := p.PickBlock(context.Background(), id)
+func DoStateCtx[t any](p ObjectGetter, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	sb, err := p.GetObject(context.Background(), id)
 	if err != nil {
 		return err
 	}

@@ -36,7 +36,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return
 	}
 
-	spaceID, err := s.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -103,7 +103,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		return
 	}
 
-	spaceID, err := s.objectCache.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}

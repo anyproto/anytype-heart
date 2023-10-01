@@ -48,7 +48,7 @@ func NewPage(
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 	bookmarkService bookmark.BookmarkService,
 	systemObjectService system_object.Service,
 	tempDirProvider core.TempDirProvider,

@@ -16,7 +16,6 @@ import (
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
@@ -39,7 +38,6 @@ const relationsLimit = 10
 type ObjectCreator struct {
 	service        *block.Service
 	objectCache    objectcache.Cache
-	picker         getblock.Picker
 	core           core.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
@@ -55,7 +53,6 @@ func NewCreator(service *block.Service,
 	objectStore objectstore.ObjectStore,
 	relationSyncer syncer.RelationSyncer,
 	fileStore filestore.FileStore,
-	picker getblock.Picker,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
@@ -64,7 +61,6 @@ func NewCreator(service *block.Service,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
-		picker:         picker,
 		objectCache:    cache,
 	}
 }
@@ -209,7 +205,7 @@ func (oc *ObjectCreator) createNewObject(
 		}
 	})
 	if errors.Is(err, treestorage.ErrTreeExists) {
-		sb, err = oc.picker.PickBlock(ctx, newID)
+		sb, err = oc.service.GetObject(ctx, newID)
 	}
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
@@ -341,7 +337,7 @@ func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State) []
 
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
-	err := getblock.Do(oc.picker, newID, func(b sb.SmartBlock) error {
+	err := block.Do(oc.service, newID, func(b sb.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
@@ -387,7 +383,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
-	err := getblock.Do(oc.picker, newID, func(b sb.SmartBlock) error {
+	err := block.Do(oc.service, newID, func(b sb.SmartBlock) error {
 		st := b.NewState()
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
 			s := oc.syncFactory.GetSyncer(bl)

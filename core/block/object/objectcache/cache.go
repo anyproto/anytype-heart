@@ -9,13 +9,11 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -57,10 +55,6 @@ type Cache interface {
 	CreateTreeObject(ctx context.Context, spaceID string, params TreeCreationParams) (sb smartblock.SmartBlock, err error)
 	CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
 	DeriveTreeObject(ctx context.Context, spaceID string, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
-
-	BindSpaceID(spaceID string, objectID string) error
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-	ResolveObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
 	GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
 	GetObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
 	DoLockedIfNotExists(objectID string, proc func() error) error
@@ -79,7 +73,6 @@ type objectCache struct {
 	provider       personalIDProvider
 	accountService accountservice.Service
 	cache          ocache.OCache
-	resolver       *resolver
 	closing        chan struct{}
 }
 
@@ -95,11 +88,6 @@ func (c *objectCache) Init(a *app.App) error {
 	c.provider = app.MustComponent[personalIDProvider](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
-	db, err := a.MustComponent(datastore.CName).(datastore.Datastore).SpaceStorage()
-	if err != nil {
-		return err
-	}
-	c.resolver = newResolver(c.spaceService, newResolverStorage(db))
 	c.cache = ocache.New(
 		c.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
@@ -143,11 +131,6 @@ func ContextWithBuildOptions(ctx context.Context, buildOpts source.BuildOptions)
 func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
 	// TODO Pass options as parameter?
 	opts := ctx.Value(optsKey).(cacheOpts)
-	defer func() {
-		if err == nil {
-			_ = c.BindSpaceID(opts.spaceId, id)
-		}
-	}()
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
 		return c.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
 	}
@@ -175,18 +158,6 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 	default:
 		return buildObject(id)
 	}
-}
-
-func (c *objectCache) BindSpaceID(spaceID, objectID string) (err error) {
-	// this will work only once per space
-	if err := c.resolver.StoreCurrentIDs(context.Background(), spaceID); err != nil {
-		log.Warn("failed to store all ids for space", zap.Error(err), zap.String("spaceID", spaceID))
-	}
-	return c.resolver.StoreSpaceID(spaceID, objectID)
-}
-
-func (c *objectCache) ResolveSpaceID(objectID string) (spaceID string, err error) {
-	return c.resolver.ResolveSpaceID(objectID)
 }
 
 func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
@@ -236,18 +207,6 @@ func (c *objectCache) GetObjectWithTimeout(ctx context.Context, id domain.FullID
 		defer cancel()
 	}
 	return c.GetObject(ctx, id)
-}
-
-func (c *objectCache) ResolveObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := c.resolver.ResolveSpaceID(objectID)
-	if err != nil {
-		// Object not loaded yet
-		return nil, source.ErrObjectNotFound
-	}
-	return c.GetObjectWithTimeout(ctx, domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: objectID,
-	})
 }
 
 func (c *objectCache) DoLockedIfNotExists(objectID string, proc func() error) error {

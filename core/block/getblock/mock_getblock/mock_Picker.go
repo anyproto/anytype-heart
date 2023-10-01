@@ -24,7 +24,7 @@ func (_m *MockPicker) EXPECT() *MockPicker_Expecter {
 }
 
 // PickBlock provides a mock function with given fields: ctx, id
-func (_m *MockPicker) PickBlock(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+func (_m *MockPicker) GetObject(ctx context.Context, id string) (smartblock.SmartBlock, error) {
 	ret := _m.Called(ctx, id)
 
 	var r0 smartblock.SmartBlock
