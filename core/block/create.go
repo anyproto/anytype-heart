@@ -149,10 +149,8 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	if err != nil {
 		return "", fmt.Errorf("error creating space: %w", err)
 	}
-	predefinedObjectIDs, err := newSpace.TryDerivedIDs()
-	if err != nil {
-		return "", fmt.Errorf("error deriving object IDs: %w", err)
-	}
+	predefinedObjectIDs := newSpace.DerivedIDs()
+
 	err = Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
 		for k, v := range req.Details.GetFields() {
@@ -164,13 +162,13 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {
-		return "", fmt.Errorf("set details for space %s: %w", newSpace.TargetSpaceID(), err)
+		return "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
-	_, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.TargetSpaceID(), req.UseCase)
+	_, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
 	if err != nil {
 		return "", fmt.Errorf("import use-case: %w", err)
 	}
-	return newSpace.TargetSpaceID(), err
+	return newSpace.Id(), err
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block

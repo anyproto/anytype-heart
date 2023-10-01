@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -33,13 +32,7 @@ type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
 }
 
-type spaceParams struct {
-	IDs           threads.DerivedSmartblockIds
-	SpaceObjectID string
-}
-
 type SpaceService interface {
-	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
 	Create(ctx context.Context) (space Space, err error)
 	Get(ctx context.Context, id string) (space Space, err error)
 
