@@ -2,23 +2,18 @@ package space
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/space/objectprovider"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spaceobject"
-	"github.com/anyproto/anytype-heart/space/spaceobject/objectprovider"
 )
 
 const CName = "client.space"
@@ -45,8 +40,8 @@ type spaceParams struct {
 
 type SpaceService interface {
 	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
-	Do(ctx context.Context, spaceID string, perform func(spaceObject spaceobject.SpaceObject) error) error
-	Create(ctx context.Context) (spaceObject spaceobject.SpaceObject, err error)
+	Create(ctx context.Context) (space Space, err error)
+	Get(ctx context.Context, id string) (space Space, err error)
 
 	app.ComponentRunnable
 }
@@ -57,82 +52,26 @@ type service struct {
 	provider    objectprovider.ObjectProvider
 	objectCache objectcache.Cache
 
-	cache      *idCache
-	techSpace  *spacecore.AnySpace
+	techSpace *techSpace
+
+	personalSpaceID string
+
 	newAccount bool
 
+	loading map[string]*loadingSpace
+	loaded  map[string]Space
+	mu      sync.Mutex
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+
 	repKey uint64
-}
-
-func (s *service) DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	if addr.IsBundledId(spaceID) {
-		return threads.DerivedSmartblockIds{}, nil
-	}
-	params, err := s.spaceParams(ctx, spaceID)
-	if err != nil {
-		return
-	}
-	return params.IDs, nil
-}
-
-func (s *service) spaceParams(ctx context.Context, spaceID string) (params spaceParams, err error) {
-	params, ok := s.cache.Get(spaceID)
-	if ok {
-		return
-	}
-	ids, err := s.provider.DeriveObjectIDs(ctx, spaceID, threads.PersonalSpaceTypes)
-	if err != nil {
-		return
-	}
-	spaceObjID, err := s.deriveSpaceObjectId(ctx, s.techSpace.Id(), spaceID)
-	if err != nil {
-		return
-	}
-	s.cache.Set(spaceID, spaceParams{
-		IDs:           ids,
-		SpaceObjectID: spaceObjID,
-	})
-	return
-}
-
-func (s *service) Do(ctx context.Context, spaceID string, perform func(spaceObject spaceobject.SpaceObject) error) error {
-	params, err := s.spaceParams(ctx, spaceID)
-	if err != nil {
-		return err
-	}
-	spaceObject, err := s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: params.SpaceObjectID,
-		SpaceID:  spaceID,
-	})
-	if err != nil {
-		return err
-	}
-	spaceObject.Lock()
-	defer spaceObject.Unlock()
-	return perform(spaceObject.(spaceobject.SpaceObject))
-}
-
-func (s *service) Create(ctx context.Context) (spaceObject spaceobject.SpaceObject, err error) {
-	space, err := s.spaceCore.Create(ctx, s.repKey)
-	if err != nil {
-		return
-	}
-	_, err = s.provider.DeriveObjectIDs(ctx, space.Id(), threads.PersonalSpaceTypes)
-	if err != nil {
-		return
-	}
-	err = s.provider.CreateMandatoryObjects(ctx, space.Id(), threads.PersonalSpaceTypes)
-	if err != nil {
-		return
-	}
-	return s.deriveSpaceObject(ctx, space.Id(), s.techSpace.Id())
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.indexer = app.MustComponent[spaceIndexer](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.objectCache = app.MustComponent[objectcache.Cache](a)
-	s.cache = newCache()
 	installer := app.MustComponent[bundledObjectsInstaller](a)
 	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
 	s.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
@@ -144,60 +83,76 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.techSpace, err = s.spaceCore.Derive(ctx, spacecore.TechSpaceType)
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+
+	s.personalSpaceID, err = s.spaceCore.DeriveID(ctx, spacecore.SpaceType)
 	if err != nil {
 		return
 	}
-	spaceLoader := spaceLoader{
-		spaceCore: s.spaceCore,
-		deriver:   s,
-		provider:  s.provider,
-		cache:     s.objectCache,
-		techSpace: s.techSpace,
+
+	techSpaceCore, err := s.spaceCore.Derive(ctx, spacecore.TechSpaceType)
+	if err != nil {
+		return
 	}
+	s.techSpace = &techSpace{service: s, techCore: techSpaceCore}
+
 	err = s.indexer.ReindexCommonObjects()
 	if err != nil {
 		return
 	}
+
 	if s.newAccount {
-		return spaceLoader.CreateSpaces(ctx)
+		return s.createPersonalSpace(ctx)
 	}
-	return spaceLoader.LoadSpaces(ctx)
+	return s.loadPersonalSpace(ctx)
+}
+
+func (s *service) Create(ctx context.Context) (Space, error) {
+	coreSpace, err := s.spaceCore.Create(ctx, s.repKey)
+	if err != nil {
+		return nil, err
+	}
+	return s.create(ctx, coreSpace)
+}
+
+func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
+	return s.waitLoad(ctx, spaceID)
+}
+
+func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error) {
+	coreSpace, err := s.spaceCore.Get(ctx, spaceID)
+	if err != nil {
+		return nil, err
+	}
+	sp = newSpace(s, coreSpace)
+	return
+}
+
+func (s *service) createPersonalSpace(ctx context.Context) (err error) {
+	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
+	if err != nil {
+		return
+	}
+	_, err = s.create(ctx, coreSpace)
+	return
+}
+
+func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
+	if err = s.startLoad(ctx, s.personalSpaceID); err != nil {
+		return
+	}
+	_, err = s.waitLoad(ctx, s.personalSpaceID)
+	return err
+}
+
+func (s *service) IsPersonal(id string) bool {
+	return s.personalSpaceID == id
+}
+
+func (s *service) OnViewCreated(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
+	return s.startLoad(ctx, info.SpaceID)
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
 	return nil
-}
-
-func (s *service) deriveSpaceObject(ctx context.Context, spaceID, targetSpaceID string) (spaceobject.SpaceObject, error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
-	if err != nil {
-		return nil, err
-	}
-	obj, err := s.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
-		Key: uniqueKey,
-		InitFunc: func(id string) *editorsb.InitContext {
-			return &editorsb.InitContext{Ctx: ctx, SpaceID: spaceID, State: state.NewDoc(id, nil).(*state.State)}
-		},
-		TargetSpaceID: targetSpaceID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return obj.(spaceobject.SpaceObject), nil
-}
-
-func (s *service) deriveSpaceObjectId(ctx context.Context, spaceID, targetSpaceID string) (string, error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
-	if err != nil {
-		return "", err
-	}
-	payload, err := s.objectCache.DeriveTreePayload(ctx, spaceID, payloadcreator.PayloadDerivationParams{
-		Key:           uniqueKey,
-		TargetSpaceID: targetSpaceID,
-	})
-	if err != nil {
-		return "", err
-	}
-	return payload.RootRawChange.Id, nil
 }

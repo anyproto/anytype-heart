@@ -1,0 +1,73 @@
+package space
+
+import (
+	"context"
+	"fmt"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
+)
+
+type techSpace struct {
+	service  *service
+	techCore *spacecore.AnySpace
+	info     map[string]spaceinfo.SpaceInfo
+}
+
+func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (viewID string, err error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
+	if err != nil {
+		return
+	}
+	obj, err := s.service.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+		Key: uniqueKey,
+		InitFunc: func(id string) *editorsb.InitContext {
+			return &editorsb.InitContext{Ctx: ctx, SpaceID: spaceID, State: state.NewDoc(id, nil).(*state.State)}
+		},
+		TargetSpaceID: spaceID,
+	})
+	if err != nil {
+		return
+	}
+	return obj.Id(), nil
+}
+
+func (s *techSpace) DeriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
+	if err != nil {
+		return "", err
+	}
+	payload, err := s.service.objectCache.DeriveTreePayload(ctx, s.techCore.Id(), payloadcreator.PayloadDerivationParams{
+		Key:           uniqueKey,
+		TargetSpaceID: spaceID,
+	})
+	if err != nil {
+		return "", err
+	}
+	return payload.RootRawChange.Id, nil
+}
+
+func (s *techSpace) SetStatuses(ctx context.Context, spaceID string, local spaceinfo.LocalStatus, remote spaceinfo.RemoteStatus) (err error) {
+	info, ok := s.info[spaceID]
+	if !ok {
+		return fmt.Errorf("not status")
+	}
+	info.LocalStatus = local
+	info.RemoteStatus = remote
+	return s.SetInfo(ctx, info)
+}
+
+func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
+	s.info[info.SpaceID] = info
+	// TODO: call space view here
+	return
+}
+
+func (s *techSpace) GetInfo(spaceID string) spaceinfo.SpaceInfo {
+	return s.info[spaceID]
+}
