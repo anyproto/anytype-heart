@@ -2,6 +2,8 @@ package space
 
 import (
 	"context"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -35,6 +37,8 @@ type bundledObjectsInstaller interface {
 type SpaceService interface {
 	Create(ctx context.Context) (space Space, err error)
 	Get(ctx context.Context, id string) (space Space, err error)
+
+	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
 
 	app.ComponentRunnable
 }
@@ -142,6 +146,16 @@ func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
 
 func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceID == id
+}
+
+func (s *service) DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
+	var sbTypes []coresb.SmartBlockType
+	if s.IsPersonal(spaceID) {
+		sbTypes = threads.PersonalSpaceTypes
+	} else {
+		sbTypes = threads.SpaceTypes
+	}
+	return s.provider.DeriveObjectIDs(ctx, spaceID, sbTypes)
 }
 
 func (s *service) OnViewCreated(ctx context.Context, spaceID string) (info spaceinfo.SpaceInfo, err error) {
