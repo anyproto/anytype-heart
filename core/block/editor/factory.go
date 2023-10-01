@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"fmt"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
