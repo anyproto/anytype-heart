@@ -3,8 +3,8 @@ package space
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"

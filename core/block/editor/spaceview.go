@@ -3,15 +3,15 @@ package editor
 import (
 	"context"
 	"errors"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
