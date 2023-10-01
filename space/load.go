@@ -10,10 +10,25 @@ import (
 func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	info, loaderCreated, err := s.createLoaderOrReturnInfo(ctx, spaceID)
+	if err != nil {
+		return
+	}
+	if loaderCreated {
+		err = s.techSpace.SetInfo(ctx, info)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
 
-	if s.techSpace.GetInfo(spaceID).LocalStatus != spaceinfo.LocalStatusUnknown {
+func (s *service) createLoaderOrReturnInfo(ctx context.Context, spaceID string) (info spaceinfo.SpaceInfo, loaderCreated bool, err error) {
+	currentInfo := s.techSpace.GetInfo(spaceID)
+
+	if currentInfo.LocalStatus != spaceinfo.LocalStatusUnknown {
 		// loading already started
-		return nil
+		return currentInfo, false, nil
 	}
 
 	viewID, err := s.techSpace.DeriveSpaceViewID(ctx, spaceID)
@@ -21,15 +36,13 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 		return
 	}
 
-	err = s.techSpace.SetInfo(ctx, spaceinfo.SpaceInfo{
+	info = spaceinfo.SpaceInfo{
 		SpaceID:     spaceID,
 		ViewID:      viewID,
 		LocalStatus: spaceinfo.LocalStatusLoading,
-	})
-	if err != nil {
-		return
 	}
 	s.loading[spaceID] = newLoadingSpace(s.ctx, s.open, spaceID, s.onLoad)
+	loaderCreated = true
 	return
 }
 

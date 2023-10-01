@@ -3,6 +3,7 @@ package space
 import (
 	"context"
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -14,10 +15,27 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
+func newTechSpace(s *service, spaceCore *spacecore.AnySpace) *techSpace {
+	return &techSpace{
+		service:  s,
+		techCore: spaceCore,
+		info:     map[string]spaceinfo.SpaceInfo{},
+	}
+}
+
 type techSpace struct {
 	service  *service
 	techCore *spacecore.AnySpace
 	info     map[string]spaceinfo.SpaceInfo
+}
+
+func (s *techSpace) wakeUpViews(ctx context.Context) (err error) {
+	for _, id := range s.techCore.StoredIds() {
+		_ = s.doSpaceView(ctx, id, func(spaceView *editor.SpaceView) error {
+			return nil
+		})
+	}
+	return
 }
 
 func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (viewID string, err error) {
@@ -53,6 +71,23 @@ func (s *techSpace) DeriveSpaceViewID(ctx context.Context, spaceID string) (stri
 	return payload.RootRawChange.Id, nil
 }
 
+func (s *techSpace) doSpaceView(ctx context.Context, viewId string, apply func(spaceView *editor.SpaceView) error) (err error) {
+	obj, err := s.service.objectCache.GetObject(ctx, domain.FullID{
+		ObjectID: viewId,
+		SpaceID:  s.techCore.Id(),
+	})
+	if err != nil {
+		return
+	}
+	spaceView, ok := obj.(*editor.SpaceView)
+	if !ok {
+		return fmt.Errorf("smartblock not a spaceView")
+	}
+	spaceView.Lock()
+	defer spaceView.Unlock()
+	return apply(spaceView)
+}
+
 func (s *techSpace) SetStatuses(ctx context.Context, spaceID string, local spaceinfo.LocalStatus, remote spaceinfo.RemoteStatus) (err error) {
 	info, ok := s.info[spaceID]
 	if !ok {
@@ -64,9 +99,14 @@ func (s *techSpace) SetStatuses(ctx context.Context, spaceID string, local space
 }
 
 func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
+	// do nothing if it's identical
+	if s.info[info.SpaceID] == info {
+		return nil
+	}
 	s.info[info.SpaceID] = info
-	// TODO: call space view here
-	return
+	return s.doSpaceView(ctx, info.ViewID, func(spaceView *editor.SpaceView) error {
+		return spaceView.SetSpaceInfo(info)
+	})
 }
 
 func (s *techSpace) GetInfo(spaceID string) spaceinfo.SpaceInfo {

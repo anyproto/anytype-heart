@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -12,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 const CName = "client.space"
@@ -68,6 +68,8 @@ func (s *service) Init(a *app.App) (err error) {
 	installer := app.MustComponent[bundledObjectsInstaller](a)
 	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
 	s.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
+	s.loading = map[string]*loadingSpace{}
+	s.loaded = map[string]Space{}
 	return nil
 }
 
@@ -87,7 +89,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	s.techSpace = &techSpace{service: s, techCore: techSpaceCore}
+	s.techSpace = newTechSpace(s, techSpaceCore)
 
 	err = s.indexer.ReindexCommonObjects()
 	if err != nil {
@@ -142,8 +144,11 @@ func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceID == id
 }
 
-func (s *service) OnViewCreated(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
-	return s.startLoad(ctx, info.SpaceID)
+func (s *service) OnViewCreated(ctx context.Context, spaceID string) (info spaceinfo.SpaceInfo, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	info, _, err = s.createLoaderOrReturnInfo(ctx, spaceID)
+	return
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
