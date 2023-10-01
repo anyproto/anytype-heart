@@ -2,7 +2,9 @@ package space
 
 import (
 	"context"
+
 	"github.com/anyproto/any-sync/commonspace"
+
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"

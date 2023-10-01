@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )

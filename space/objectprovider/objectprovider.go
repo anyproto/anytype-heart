@@ -3,12 +3,13 @@ package objectprovider
 import (
 	"context"
 	"fmt"
+
 	"github.com/anyproto/any-sync/app/logger"
-	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"

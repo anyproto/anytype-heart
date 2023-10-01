@@ -2,8 +2,6 @@ package space
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/space/objectprovider"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -13,7 +11,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 const CName = "client.space"

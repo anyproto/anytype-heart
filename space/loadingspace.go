@@ -2,9 +2,10 @@ package space
 
 import (
 	"context"
+	"time"
+
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
-	"time"
 )
 
 var loadingRetryTimeout = time.Second * 20
