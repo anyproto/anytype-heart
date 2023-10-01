@@ -5,12 +5,15 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/anyproto/anytype-heart/util/slice"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -25,10 +28,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/gogo/protobuf/types"
-	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
@@ -56,11 +58,6 @@ type Hasher interface {
 	Hash() string
 }
 
-type spaceIDResolver interface {
-	BindSpaceID(spaceID string, objectID string) error
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-}
-
 type objectCreator interface {
 	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 	InstallBundledObjects(
@@ -75,14 +72,14 @@ type personalIDProvider interface {
 }
 
 type indexer struct {
-	store         objectstore.ObjectStore
-	fileStore     filestore.FileStore
-	resolver      spaceIDResolver
-	source        source.Service
-	picker        block.Picker
-	ftsearch      ftsearch.FTSearch
-	objectCreator objectCreator
-	fileService   files.Service
+	store          objectstore.ObjectStore
+	fileStore      filestore.FileStore
+	source         source.Service
+	picker         block.ObjectGetter
+	ftsearch       ftsearch.FTSearch
+	storageService storage.ClientStorage
+	objectCreator  objectCreator
+	fileService    files.Service
 
 	quit       chan struct{}
 	btHash     Hasher
@@ -102,14 +99,14 @@ type indexer struct {
 func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.resolver = app.MustComponent[spaceIDResolver](a)
+	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.objectCreator = app.MustComponent[objectCreator](a)
-	i.picker = app.MustComponent[block.Picker](a)
+	i.picker = app.MustComponent[block.ObjectGetter](a)
 	i.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
@@ -123,7 +120,7 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run(context.Context) (err error) {
-	return
+	return i.StartFullTextIndex()
 }
 
 func (i *indexer) StartFullTextIndex() (err error) {
@@ -150,7 +147,11 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-
+	err = i.storageService.BindSpaceID(info.SpaceID, info.Id)
+	if err != nil {
+		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
+		return err
+	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
@@ -270,7 +271,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			if ok {
 				return
 			}
-			err := i.resolver.BindSpaceID(spaceID, id)
+			err := i.storageService.BindSpaceID(spaceID, id)
 			if err != nil {
 				log.Error("failed to bind space id", zap.Error(err), zap.String("id", id))
 				return

@@ -23,6 +23,7 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -69,16 +70,12 @@ type SyncStatusWatcher interface {
 	Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error)
 }
 
-type spaceIDResolver interface {
-	ResolveSpaceID(objectID string) (spaceID string, err error)
-}
-
 type service struct {
 	fileStore         filestore.FileStore
 	commonFile        fileservice.FileService
 	fileSync          filesync.FileSync
 	dagService        ipld.DAGService
-	resolver          spaceIDResolver
+	resolver          idresolver.Resolver
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
 	objectStore       objectstore.ObjectStore
@@ -97,7 +94,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
-	s.resolver = app.MustComponent[spaceIDResolver](a)
+	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.syncStatusWatcher = app.MustComponent[SyncStatusWatcher](a)
 	return nil

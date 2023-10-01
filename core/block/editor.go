@@ -475,7 +475,7 @@ func (s *Service) CreateAndUploadFile(
 }
 
 func (s *Service) UploadFile(ctx context.Context, spaceID string, req pb.RpcFileUploadRequest) (hash string, err error) {
-	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
+	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}

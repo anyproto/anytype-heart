@@ -58,7 +58,7 @@ type ObjectFactory struct {
 	templateCloner      templateCloner
 	fileService         files.Service
 	config              *config.Config
-	picker              getblock.Picker
+	picker              getblock.ObjectGetter
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             spaceIndexer
@@ -90,7 +90,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.picker = app.MustComponent[getblock.Picker](a)
+	f.picker = app.MustComponent[getblock.ObjectGetter](a)
 	f.indexer = app.MustComponent[spaceIndexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.personalIDProvider = app.MustComponent[personalIDProvider](a)

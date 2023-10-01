@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
@@ -50,7 +51,7 @@ type spaceIDResolver interface {
 
 type gateway struct {
 	fileService     files.Service
-	resolver        spaceIDResolver
+	resolver        idresolver.Resolver
 	objectStore     objectstore.ObjectStore
 	server          *http.Server
 	listener        net.Listener
@@ -92,7 +93,7 @@ func GatewayAddr() string {
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
-	g.resolver = app.MustComponent[spaceIDResolver](a)
+	g.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	g.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -23,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
@@ -54,7 +56,7 @@ type service struct {
 	account             accountservice.Service
 	fileStore           filestore.FileStore
 	spaceService        spacecore.SpaceCoreService
-	resolver            idResolver
+	storageService      storage.ClientStorage
 	fileService         files.Service
 	systemObjectService system_object.Service
 
@@ -71,7 +73,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
-	s.resolver = app.MustComponent[idResolver](a)
+	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.systemObjectService = app.MustComponent[system_object.Service](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
@@ -99,7 +101,7 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	if err != nil {
 		return nil, err
 	}
-	err = s.resolver.BindSpaceID(src.SpaceID(), src.Id())
+	err = s.storageService.BindSpaceID(src.SpaceID(), src.Id())
 	if err != nil {
 		return nil, fmt.Errorf("store space id for object: %w", err)
 	}
@@ -113,7 +115,10 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 	if id == addr.MissingObject {
 		return NewMissingObject(), nil
 	}
-	st, _ := s.sbtProvider.Type(spaceID, id)
+	st, err := s.sbtProvider.Type(spaceID, id)
+	if err != nil {
+		return nil, err
+	}
 	switch st {
 	case smartblock.SmartBlockTypeFile:
 		return NewFile(s.coreService, s.fileStore, s.fileService, spaceID, id), nil
@@ -204,7 +209,7 @@ func (s *service) RegisterStaticSource(src Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[src.Id()] = src
-	err := s.resolver.BindSpaceID(src.SpaceID(), src.Id())
+	err := s.storageService.BindSpaceID(src.SpaceID(), src.Id())
 	if err != nil {
 		return fmt.Errorf("store space id for object: %w", err)
 	}

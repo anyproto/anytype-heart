@@ -69,7 +69,7 @@ func (s *service) Init(a *app.App) (err error) {
 	coreService := app.MustComponent[core.Service](a)
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	fileStore := app.MustComponent[filestore.FileStore](a)
-	picker := app.MustComponent[getblock.Picker](a)
+	picker := app.MustComponent[getblock.ObjectGetter](a)
 	cfg := app.MustComponent[*config.Config](a)
 	eventSender := app.MustComponent[event.Sender](a)
 

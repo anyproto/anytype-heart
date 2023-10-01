@@ -119,3 +119,7 @@ func newStorageServiceKeys() storageServiceKeys {
 func (s storageServiceKeys) SpacePrefix() []byte {
 	return s.spacePrefix
 }
+
+func (s storageServiceKeys) BindObjectIDKey(objectID string) []byte {
+	return treestorage.JoinStringsToBytes("bind", objectID)
+}
