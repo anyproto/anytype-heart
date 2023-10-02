@@ -142,7 +142,7 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 		return "", nil, err
 	}
 
-	err = s.storeFileSize(nodeHash)
+	err = s.storeFileSize(spaceID, nodeHash)
 	if err != nil {
 		return "", nil, fmt.Errorf("store file size: %w", err)
 	}
@@ -150,8 +150,8 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 	return nodeHash, fileInfo, nil
 }
 
-func (s *service) storeFileSize(hash string) error {
-	_, err := s.fileSync.CalculateFileSize(context.Background(), hash)
+func (s *service) storeFileSize(spaceId string, hash string) error {
+	_, err := s.fileSync.CalculateFileSize(context.Background(), spaceId, hash)
 	return err
 }
 

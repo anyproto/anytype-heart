@@ -68,6 +68,21 @@ func (mr *MockSmartBlockTypeProviderMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Name))
 }
 
+// PartitionIDsByType mocks base method.
+func (m *MockSmartBlockTypeProvider) PartitionIDsByType(arg0 string, arg1 []string) (map[smartblock.SmartBlockType][]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PartitionIDsByType", arg0, arg1)
+	ret0, _ := ret[0].(map[smartblock.SmartBlockType][]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PartitionIDsByType indicates an expected call of PartitionIDsByType.
+func (mr *MockSmartBlockTypeProviderMockRecorder) PartitionIDsByType(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PartitionIDsByType", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).PartitionIDsByType), arg0, arg1)
+}
+
 // RegisterStaticType mocks base method.
 func (m *MockSmartBlockTypeProvider) RegisterStaticType(arg0 string, arg1 smartblock.SmartBlockType) {
 	m.ctrl.T.Helper()
@@ -81,16 +96,16 @@ func (mr *MockSmartBlockTypeProviderMockRecorder) RegisterStaticType(arg0, arg1 
 }
 
 // Type mocks base method.
-func (m *MockSmartBlockTypeProvider) Type(arg0 string) (smartblock.SmartBlockType, error) {
+func (m *MockSmartBlockTypeProvider) Type(arg0, arg1 string) (smartblock.SmartBlockType, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Type", arg0)
+	ret := m.ctrl.Call(m, "Type", arg0, arg1)
 	ret0, _ := ret[0].(smartblock.SmartBlockType)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Type indicates an expected call of Type.
-func (mr *MockSmartBlockTypeProviderMockRecorder) Type(arg0 any) *gomock.Call {
+func (mr *MockSmartBlockTypeProviderMockRecorder) Type(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Type", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Type), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Type", reflect.TypeOf((*MockSmartBlockTypeProvider)(nil).Type), arg0, arg1)
 }

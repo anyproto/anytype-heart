@@ -44,7 +44,7 @@ type FileSync interface {
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
-	CalculateFileSize(ctx context.Context, fileID string) (int, error)
+	CalculateFileSize(ctx context.Context, spaceId string, fileID string) (int, error)
 	app.ComponentRunnable
 }
 

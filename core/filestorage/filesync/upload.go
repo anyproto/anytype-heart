@@ -154,7 +154,7 @@ func isLimitReachedErr(err error) bool {
 func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileID string) error {
 	log.Debug("uploading file", zap.String("fileID", fileID))
 
-	fileSize, err := f.CalculateFileSize(ctx, fileID)
+	fileSize, err := f.CalculateFileSize(ctx, spaceID, fileID)
 	if err != nil {
 		return fmt.Errorf("calculate file size: %w", err)
 	}
@@ -169,7 +169,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileID string
 	}
 
 	var totalBytesUploaded int
-	err = f.walkFileBlocks(ctx, fileID, func(fileBlocks []blocks.Block) error {
+	err = f.walkFileBlocks(ctx, spaceID, fileID, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceID, fileID, fileBlocks)
 		if err != nil {
 			return fmt.Errorf("select blocks to upload: %w", err)
@@ -272,12 +272,12 @@ func (f *fileSync) selectBlocksToUploadAndBindExisting(ctx context.Context, spac
 	return bytesToUpload, blocksToUpload, nil
 }
 
-func (f *fileSync) walkDAG(ctx context.Context, fileID string, visit func(node ipld.Node) error) error {
+func (f *fileSync) walkDAG(ctx context.Context, spaceId string, fileID string, visit func(node ipld.Node) error) error {
 	fileCid, err := cid.Parse(fileID)
 	if err != nil {
 		return fmt.Errorf("parse CID %s: %w", fileID, err)
 	}
-	dagService := f.dagServiceForSpace(spaceID)
+	dagService := f.dagServiceForSpace(spaceId)
 	rootNode, err := dagService.Get(ctx, fileCid)
 	if err != nil {
 		return fmt.Errorf("get root node: %w", err)
@@ -300,14 +300,14 @@ func (f *fileSync) walkDAG(ctx context.Context, fileID string, visit func(node i
 }
 
 // CalculateFileSize calculates or gets already calculated file size
-func (f *fileSync) CalculateFileSize(ctx context.Context, fileID string) (int, error) {
+func (f *fileSync) CalculateFileSize(ctx context.Context, spaceId string, fileID string) (int, error) {
 	size, err := f.fileStore.GetFileSize(fileID)
 	if err == nil {
 		return size, nil
 	}
 
 	size = 0
-	err = f.walkDAG(ctx, fileID, func(node ipld.Node) error {
+	err = f.walkDAG(ctx, spaceId, fileID, func(node ipld.Node) error {
 		size += len(node.RawData())
 		return nil
 	})
@@ -323,10 +323,10 @@ func (f *fileSync) CalculateFileSize(ctx context.Context, fileID string) (int, e
 
 const batchSize = 10
 
-func (f *fileSync) walkFileBlocks(ctx context.Context, fileID string, proc func(fileBlocks []blocks.Block) error) error {
+func (f *fileSync) walkFileBlocks(ctx context.Context, spaceId string, fileID string, proc func(fileBlocks []blocks.Block) error) error {
 	blocksBuf := make([]blocks.Block, 0, batchSize)
 
-	err := f.walkDAG(ctx, fileID, func(node ipld.Node) error {
+	err := f.walkDAG(ctx, spaceId, fileID, func(node ipld.Node) error {
 		b, err := blocks.NewBlockWithCid(node.RawData(), node.Cid())
 		if err != nil {
 			return err

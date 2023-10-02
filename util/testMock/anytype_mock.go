@@ -15,6 +15,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	gomock "go.uber.org/mock/gomock"
 
+	domain "github.com/anyproto/anytype-heart/core/domain"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
@@ -42,6 +43,20 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
+// AccountObjects mocks base method.
+func (m *MockService) AccountObjects() threads.DerivedSmartblockIds {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AccountObjects")
+	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
+	return ret0
+}
+
+// AccountObjects indicates an expected call of AccountObjects.
+func (mr *MockServiceMockRecorder) AccountObjects() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AccountObjects", reflect.TypeOf((*MockService)(nil).AccountObjects))
+}
+
 // Close mocks base method.
 func (m *MockService) Close(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -56,48 +71,77 @@ func (mr *MockServiceMockRecorder) Close(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockService)(nil).Close), arg0)
 }
 
-// EnsurePredefinedBlocks mocks base method.
-func (m *MockService) EnsurePredefinedBlocks(arg0 context.Context) error {
+// DeriveObjectId mocks base method.
+func (m *MockService) DeriveObjectId(arg0 context.Context, arg1 string, arg2 domain.UniqueKey) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnsurePredefinedBlocks", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// EnsurePredefinedBlocks indicates an expected call of EnsurePredefinedBlocks.
-func (mr *MockServiceMockRecorder) EnsurePredefinedBlocks(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsurePredefinedBlocks", reflect.TypeOf((*MockService)(nil).EnsurePredefinedBlocks), arg0)
-}
-
-// GetAllWorkspaces mocks base method.
-func (m *MockService) GetAllWorkspaces() ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllWorkspaces")
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetAllWorkspaces indicates an expected call of GetAllWorkspaces.
-func (mr *MockServiceMockRecorder) GetAllWorkspaces() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllWorkspaces", reflect.TypeOf((*MockService)(nil).GetAllWorkspaces))
-}
-
-// GetWorkspaceIdForObject mocks base method.
-func (m *MockService) GetWorkspaceIdForObject(arg0 string) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWorkspaceIdForObject", arg0)
+	ret := m.ctrl.Call(m, "DeriveObjectId", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetWorkspaceIdForObject indicates an expected call of GetWorkspaceIdForObject.
-func (mr *MockServiceMockRecorder) GetWorkspaceIdForObject(arg0 any) *gomock.Call {
+// DeriveObjectId indicates an expected call of DeriveObjectId.
+func (mr *MockServiceMockRecorder) DeriveObjectId(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkspaceIdForObject", reflect.TypeOf((*MockService)(nil).GetWorkspaceIdForObject), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeriveObjectId", reflect.TypeOf((*MockService)(nil).DeriveObjectId), arg0, arg1, arg2)
+}
+
+// DerivePredefinedObjects mocks base method.
+func (m *MockService) DerivePredefinedObjects(arg0 context.Context, arg1 string, arg2 bool) (threads.DerivedSmartblockIds, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DerivePredefinedObjects", arg0, arg1, arg2)
+	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DerivePredefinedObjects indicates an expected call of DerivePredefinedObjects.
+func (mr *MockServiceMockRecorder) DerivePredefinedObjects(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DerivePredefinedObjects", reflect.TypeOf((*MockService)(nil).DerivePredefinedObjects), arg0, arg1, arg2)
+}
+
+// EnsurePredefinedBlocks mocks base method.
+func (m *MockService) EnsurePredefinedBlocks(arg0 context.Context, arg1 string) (threads.DerivedSmartblockIds, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsurePredefinedBlocks", arg0, arg1)
+	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnsurePredefinedBlocks indicates an expected call of EnsurePredefinedBlocks.
+func (mr *MockServiceMockRecorder) EnsurePredefinedBlocks(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsurePredefinedBlocks", reflect.TypeOf((*MockService)(nil).EnsurePredefinedBlocks), arg0, arg1)
+}
+
+// GetSystemRelationID mocks base method.
+func (m *MockService) GetSystemRelationID(arg0 string, arg1 domain.RelationKey) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSystemRelationID", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSystemRelationID indicates an expected call of GetSystemRelationID.
+func (mr *MockServiceMockRecorder) GetSystemRelationID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemRelationID", reflect.TypeOf((*MockService)(nil).GetSystemRelationID), arg0, arg1)
+}
+
+// GetSystemTypeID mocks base method.
+func (m *MockService) GetSystemTypeID(arg0 string, arg1 domain.TypeKey) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSystemTypeID", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetSystemTypeID indicates an expected call of GetSystemTypeID.
+func (mr *MockServiceMockRecorder) GetSystemTypeID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemTypeID", reflect.TypeOf((*MockService)(nil).GetSystemTypeID), arg0, arg1)
 }
 
 // Init mocks base method.
@@ -129,18 +173,18 @@ func (mr *MockServiceMockRecorder) IsStarted() *gomock.Call {
 }
 
 // LocalProfile mocks base method.
-func (m *MockService) LocalProfile() (core.Profile, error) {
+func (m *MockService) LocalProfile(arg0 string) (core.Profile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LocalProfile")
+	ret := m.ctrl.Call(m, "LocalProfile", arg0)
 	ret0, _ := ret[0].(core.Profile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // LocalProfile indicates an expected call of LocalProfile.
-func (mr *MockServiceMockRecorder) LocalProfile() *gomock.Call {
+func (mr *MockServiceMockRecorder) LocalProfile(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LocalProfile", reflect.TypeOf((*MockService)(nil).LocalProfile))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LocalProfile", reflect.TypeOf((*MockService)(nil).LocalProfile), arg0)
 }
 
 // Name mocks base method.
@@ -157,32 +201,32 @@ func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockService)(nil).Name))
 }
 
-// PredefinedBlocks mocks base method.
-func (m *MockService) PredefinedBlocks() threads.DerivedSmartblockIds {
+// PredefinedObjects mocks base method.
+func (m *MockService) PredefinedObjects(arg0 string) threads.DerivedSmartblockIds {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PredefinedBlocks")
+	ret := m.ctrl.Call(m, "PredefinedObjects", arg0)
 	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
 	return ret0
 }
 
-// PredefinedBlocks indicates an expected call of PredefinedBlocks.
-func (mr *MockServiceMockRecorder) PredefinedBlocks() *gomock.Call {
+// PredefinedObjects indicates an expected call of PredefinedObjects.
+func (mr *MockServiceMockRecorder) PredefinedObjects(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PredefinedBlocks", reflect.TypeOf((*MockService)(nil).PredefinedBlocks))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PredefinedObjects", reflect.TypeOf((*MockService)(nil).PredefinedObjects), arg0)
 }
 
 // ProfileID mocks base method.
-func (m *MockService) ProfileID() string {
+func (m *MockService) ProfileID(arg0 string) string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProfileID")
+	ret := m.ctrl.Call(m, "ProfileID", arg0)
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
 // ProfileID indicates an expected call of ProfileID.
-func (mr *MockServiceMockRecorder) ProfileID() *gomock.Call {
+func (mr *MockServiceMockRecorder) ProfileID(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProfileID", reflect.TypeOf((*MockService)(nil).ProfileID))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProfileID", reflect.TypeOf((*MockService)(nil).ProfileID), arg0)
 }
 
 // Run mocks base method.
