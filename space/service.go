@@ -166,5 +166,8 @@ func (s *service) OnViewCreated(ctx context.Context, spaceID string) (info space
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+	}
 	return nil
 }

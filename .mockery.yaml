@@ -1,10 +1,10 @@
 dir: "{{.InterfaceDir}}/mock_{{.PackageName}}"
-testonly: True
+#testonly: True
 with-expecter: True
 all: False
 outpkg: "mock_{{.PackageName}}"
 packages:
-  github.com/anyproto/anytype-heart/space/typeprovider:
+  github.com/anyproto/anytype-heart/space/spacecore/typeprovider:
     interfaces:
       SmartBlockTypeProvider:
   github.com/anyproto/anytype-heart/core/wallet:
@@ -41,3 +41,6 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/block/object/objectcache:
+    interfaces:
+      Cache:

@@ -16,6 +16,7 @@ import (
 	commonspace "github.com/anyproto/any-sync/commonspace"
 	headsync "github.com/anyproto/any-sync/commonspace/headsync"
 	syncacl "github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
+	treesyncer "github.com/anyproto/any-sync/commonspace/object/treesyncer"
 	objectsync "github.com/anyproto/any-sync/commonspace/objectsync"
 	objecttreebuilder "github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	spacestorage "github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -260,6 +261,20 @@ func (m *MockSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
 func (mr *MockSpaceMockRecorder) TreeBuilder() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TreeBuilder", reflect.TypeOf((*MockSpace)(nil).TreeBuilder))
+}
+
+// TreeSyncer mocks base method.
+func (m *MockSpace) TreeSyncer() treesyncer.TreeSyncer {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TreeSyncer")
+	ret0, _ := ret[0].(treesyncer.TreeSyncer)
+	return ret0
+}
+
+// TreeSyncer indicates an expected call of TreeSyncer.
+func (mr *MockSpaceMockRecorder) TreeSyncer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TreeSyncer", reflect.TypeOf((*MockSpace)(nil).TreeSyncer))
 }
 
 // TryClose mocks base method.
