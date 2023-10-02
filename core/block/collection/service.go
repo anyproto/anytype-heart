@@ -254,5 +254,5 @@ func setDefaultObjectTypeToViews(st *state.State) {
 }
 
 func isNotCreatableType(key bundle.TypeKey) bool {
-	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType, bundle.TypeKeySet, bundle.TypeKeyCollection), key)
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType), key)
 }
