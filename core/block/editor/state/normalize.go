@@ -47,46 +47,14 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	return
 }
 
-// ReplaceAllObjectLinks do the in-place migration for links to sub-objects to provide backward compatibility
-// todo: remove it and make a persistent migration
-func (s *State) ReplaceAllObjectLinks(replaceFunc func(oldId string) (newId string, replaced bool)) (err error) {
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			vals := pbtypes.GetStringList(s.Details(), rel.Key)
-			changed := false
-			for i := range vals {
-				newId, replaced := replaceFunc(vals[i])
-				if !replaced {
-					continue
-				}
-				vals[i] = newId
-				changed = true
-			}
-			if changed {
-				s.SetDetail(rel.Key, pbtypes.StringList(vals))
-			}
-		}
-	}
-	// migrate links in blocks
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if v, ok := b.(simple.ObjectLinkReplacer); ok {
-			if v.ReplaceSmartIds(replaceFunc) {
-				isContinue = true
-			}
-		}
-		return true
-	})
-	return
-}
-
 func (s *State) normalizeSize() (err error) {
 	if iErr := s.Iterate(func(b simple.Block) (isContinue bool) {
 		// TODO: GO-2062 Need to refactor block size limiting process - either split block, or cut it
-		//size := b.Model().Size()
-		//if size > blockSizeLimit {
+		// size := b.Model().Size()
+		// if size > blockSizeLimit {
 		//	err = fmt.Errorf("size of block '%s' (%d) is above the limit of %d", b.Model().Id, size, blockSizeLimit)
 		//	return false
-		//}
+		// }
 		return true
 	}); iErr != nil {
 		return iErr

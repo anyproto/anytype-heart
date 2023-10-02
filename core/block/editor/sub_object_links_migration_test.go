@@ -1,7 +1,9 @@
-package domain
+package editor
 
 import (
 	"testing"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func TestSubObjectIdToUniqueKey(t *testing.T) {
@@ -25,7 +27,7 @@ func TestSubObjectIdToUniqueKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotUk, gotValid := SubObjectIdToUniqueKey(tt.args.id)
+			gotUk, gotValid := subObjectIdToUniqueKey(tt.args.id)
 			if gotValid != tt.wantValid {
 				t.Errorf("SubObjectIdToUniqueKey() gotValid = %v, want %v", gotValid, tt.wantValid)
 				t.Fail()
@@ -35,7 +37,7 @@ func TestSubObjectIdToUniqueKey(t *testing.T) {
 				return
 			}
 
-			wantUk, err := UnmarshalUniqueKey(tt.wantUk)
+			wantUk, err := domain.UnmarshalUniqueKey(tt.wantUk)
 			if err != nil {
 				t.Errorf("SubObjectIdToUniqueKey() error = %v", err)
 				t.Fail()

@@ -312,30 +312,6 @@ func (s *Service) GetOpenedObjects() []string {
 	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
 }
 
-func (s *Service) MigrateSubObjects(
-	ctx context.Context,
-	uk *domain.UniqueKey,
-	details *types.Struct,
-	tk domain.TypeKey,
-	spaceId string,
-) (id string, err error) {
-	sb, err := s.DeriveTreeObjectWithUniqueKey(ctx, spaceId, *uk, func(id string) *smartblock.InitContext {
-		st := state.NewDocWithUniqueKey(id, nil, *uk).NewState()
-		st.SetDetails(details)
-		st.SetObjectTypeKey(tk)
-		return &smartblock.InitContext{
-			IsNewObject: true,
-			State:       st,
-			SpaceID:     spaceId,
-		}
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return sb.Id(), nil
-}
-
 func (s *Service) InstallBundledObject(
 	ctx context.Context,
 	spaceID string,

@@ -2,10 +2,14 @@ package editor
 
 import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -19,35 +23,19 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const (
-	collectionKeySignature = "signature"
-	collectionKeyAccount   = "account"
-	collectionKeyAddrs     = "addrs"
-	collectionKeyId        = "id"
-	collectionKeyKey       = "key"
-)
-
-const (
-	collectionKeyRelationOptions = "opt"
-	collectionKeyRelations       = "rel"
-	collectionKeyObjectTypes     = "ot"
-)
-
-var objectTypeToCollection = map[domain.TypeKey]string{
-	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
-	bundle.TypeKeyRelation:       collectionKeyRelations,
-	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
-}
-
 type Workspaces struct {
-	*SubObjectCollection
+	smartblock.SmartBlock
+	basic.AllOperations
+	basic.IHistory
+	dataview.Dataview
+	stext.Text
 
 	DetailsModifier DetailsModifier
-	templateCloner  templateCloner
 	sourceService   source.Service
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
 	config          *config.Config
+	objectDeriver   objectDeriver
 }
 
 func NewWorkspace(
@@ -59,62 +47,50 @@ func NewWorkspace(
 	modifier DetailsModifier,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	templateCloner templateCloner,
 	config *config.Config,
 	eventSender event.Sender,
+	objectDeriver objectDeriver,
 ) *Workspaces {
 	return &Workspaces{
-		SubObjectCollection: NewSubObjectCollection(
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
+		IHistory:      basic.NewHistory(sb),
+		Text: stext.NewText(
 			sb,
-			collectionKeyRelationOptions,
 			objectStore,
-			anytype,
-			systemObjectService,
-			sourceService,
-			sbtProvider,
-			layoutConverter,
 			eventSender,
+		),
+		Dataview: dataview.NewDataview(
+			sb,
+			anytype,
+			objectStore,
+			systemObjectService,
+			sbtProvider,
 		),
 		DetailsModifier: modifier,
 		anytype:         anytype,
 		objectStore:     objectStore,
 		sourceService:   sourceService,
-		templateCloner:  templateCloner,
 		config:          config,
+		objectDeriver:   objectDeriver,
 	}
 }
 
-// nolint:funlen
-func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
-	// init template before sub-object initialization because sub-objects could fire onSubObjectChange callback
-	// and index incomplete workspace template
-
-	err = p.SubObjectCollection.Init(ctx)
+func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
+	err = w.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
 	}
-	p.initTemplate(ctx)
+	w.initTemplate(ctx)
 
-	data := ctx.State.Store()
-	if data != nil && data.Fields != nil {
-		// todo: replace with migration
-		for collName, coll := range data.Fields {
-			if !collectionKeyIsSupported(collName) {
-				continue
-			}
-			if coll != nil && coll.GetStructValue() != nil {
-
-			}
-		}
-	}
 	return nil
 }
 
-func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
-	if p.config.AnalyticsId != "" {
-		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(p.config.AnalyticsId))
+func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
+	if w.config.AnalyticsId != "" {
+		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(w.config.AnalyticsId))
 	} else if ctx.State.GetSetting(state.SettingsAnalyticsId) == nil {
-		// add analytics id for existing users so it will be active from the next start
+		// add analytics id for existing users, so it will be active from the next start
 		log.Warnf("analyticsID is missing, generating new one")
 		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
 	}
@@ -128,37 +104,31 @@ func (p *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
-		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(p.anytype.PredefinedObjects(p.SpaceID()).Profile)),
+		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(w.anytype.PredefinedObjects(w.SpaceID()).Profile)),
 	)
 }
 
-type templateCloner interface {
-	TemplateClone(spaceID string, id string) (templateID string, err error)
-}
-
-type WorkspaceParameters struct {
-	IsHighlighted bool
-	WorkspaceId   string
-}
-
-func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
-	return wp.IsHighlighted == other.IsHighlighted
-}
-
-func collectionKeyIsSupported(collKey string) bool {
-	for _, v := range objectTypeToCollection {
-		if v == collKey {
-			return true
-		}
+func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	// TODO Maybe move init logic here?
+	return migration.Migration{
+		Version: 0,
+		Proc: func(s *state.State) {
+			// no-op
+		},
 	}
-	return false
 }
 
-func collectionKeyToObjectType(collKey string) (domain.TypeKey, bool) {
-	for ot, v := range objectTypeToCollection {
-		if v == collKey {
-			return ot, true
-		}
-	}
-	return "", false
+func (w *Workspaces) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 1,
+			Proc: func(st *state.State) {
+				subObjectMigration := subObjectsMigration{
+					workspace:     w,
+					objectDeriver: w.objectDeriver,
+				}
+				subObjectMigration.migrateSubObjects(st)
+			},
+		},
+	})
 }

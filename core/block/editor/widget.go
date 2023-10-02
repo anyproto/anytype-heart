@@ -99,7 +99,7 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 }
 
 func (w *WidgetObject) StateMigrations() migration.Migrations {
-	dataviewMigration := newDataviewMigrationFromOldIDs(w.SpaceID(), w.systemObjectService)
+	dataviewMigration := newSubObjectsLinksMigration(w.SpaceID(), w.systemObjectService)
 	return migration.MakeMigrations([]migration.Migration{
 		{
 			Version: 2,

@@ -70,6 +70,60 @@ func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(string, string, bool,
 	return _c
 }
 
+// CalculateFileSize provides a mock function with given fields: ctx, spaceId, fileID
+func (_m *MockFileSync) CalculateFileSize(ctx context.Context, spaceId string, fileID string) (int, error) {
+	ret := _m.Called(ctx, spaceId, fileID)
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (int, error)); ok {
+		return rf(ctx, spaceId, fileID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) int); ok {
+		r0 = rf(ctx, spaceId, fileID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, spaceId, fileID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFileSync_CalculateFileSize_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CalculateFileSize'
+type MockFileSync_CalculateFileSize_Call struct {
+	*mock.Call
+}
+
+// CalculateFileSize is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - fileID string
+func (_e *MockFileSync_Expecter) CalculateFileSize(ctx interface{}, spaceId interface{}, fileID interface{}) *MockFileSync_CalculateFileSize_Call {
+	return &MockFileSync_CalculateFileSize_Call{Call: _e.mock.On("CalculateFileSize", ctx, spaceId, fileID)}
+}
+
+func (_c *MockFileSync_CalculateFileSize_Call) Run(run func(ctx context.Context, spaceId string, fileID string)) *MockFileSync_CalculateFileSize_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_CalculateFileSize_Call) Return(_a0 int, _a1 error) *MockFileSync_CalculateFileSize_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFileSync_CalculateFileSize_Call) RunAndReturn(run func(context.Context, string, string) (int, error)) *MockFileSync_CalculateFileSize_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ClearImportEvents provides a mock function with given fields:
 func (_m *MockFileSync) ClearImportEvents() {
 	_m.Called()

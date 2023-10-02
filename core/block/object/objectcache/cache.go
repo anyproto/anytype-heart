@@ -28,7 +28,7 @@ const (
 )
 
 type treeCreateCache struct {
-	initFunc InitFunc
+	initFunc smartblock.InitFunc
 }
 
 type cacheOpts struct {
@@ -37,8 +37,6 @@ type cacheOpts struct {
 	buildOption  source.BuildOptions
 	putObject    smartblock.SmartBlock
 }
-
-type InitFunc = func(id string) *smartblock.InitContext
 
 type Cache interface {
 	app.ComponentRunnable
@@ -92,7 +90,7 @@ func (c *objectCache) Close(_ context.Context) error {
 	return c.cache.Close()
 }
 
-func ContextWithCreateOption(ctx context.Context, initFunc InitFunc) context.Context {
+func ContextWithCreateOption(ctx context.Context, initFunc smartblock.InitFunc) context.Context {
 	return context.WithValue(ctx, optsKey, cacheOpts{
 		createOption: &treeCreateCache{
 			initFunc: initFunc,
