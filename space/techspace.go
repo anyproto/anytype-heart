@@ -43,10 +43,10 @@ func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (spaceV
 	if err != nil {
 		return
 	}
-	obj, err := s.service.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+	obj, err := s.service.objectCache.DeriveTreeObject(ctx, s.techCore.Id(), objectcache.TreeDerivationParams{
 		Key: uniqueKey,
 		InitFunc: func(id string) *editorsb.InitContext {
-			return &editorsb.InitContext{Ctx: ctx, SpaceID: spaceID, State: state.NewDoc(id, nil).(*state.State)}
+			return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: state.NewDoc(id, nil).(*state.State)}
 		},
 		TargetSpaceID: spaceID,
 	})
