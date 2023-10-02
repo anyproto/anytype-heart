@@ -73,7 +73,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.38.1
 	github.com/sasha-s/go-deadlock v0.3.1
-	github.com/shirou/gopsutil/v3 v3.23.8
+	github.com/shirou/gopsutil/v3 v3.23.9
 	github.com/stretchr/testify v1.8.4
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
