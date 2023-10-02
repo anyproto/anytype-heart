@@ -1,11 +1,20 @@
 package editor
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -13,18 +22,11 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"context"
-	"github.com/gogo/protobuf/types"
-	"github.com/anyproto/anytype-heart/core/block/migration"
-	"fmt"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/stext"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 )
 
 type Workspaces struct {
@@ -153,16 +155,15 @@ func (w *Workspaces) StateMigrations() migration.Migrations {
 
 func (w *Workspaces) migrateSubObjects(_ *state.State) {
 	w.iterateAllSubObjects(
-		func(info smartblock.DocInfo) bool {
+		func(info smartblock.DocInfo) {
 			uniqueKeyRaw := pbtypes.GetString(info.Details, bundle.RelationKeyUniqueKey.String())
 			id, err := w.migrateSubObject(context.Background(), uniqueKeyRaw, info.Details, info.Type)
 			if err != nil {
 				log.Errorf("failed to index subobject %s: %s", info.Id, err)
 				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
-				return true
+			} else {
+				log.With("objectId", id, "uniqueKey", uniqueKeyRaw).Warnf("migrated sub-object")
 			}
-			log.With("objectId", id, "uniqueKey", uniqueKeyRaw).Warnf("migrated sub-object")
-			return true
 		},
 	)
 }
@@ -215,43 +216,36 @@ func collectionKeyToTypeKey(collKey string) (domain.TypeKey, bool) {
 	return "", false
 }
 
-func (w *Workspaces) iterateAllSubObjects(proc func(smartblock.DocInfo) bool) {
+func (w *Workspaces) iterateAllSubObjects(proc func(smartblock.DocInfo)) {
 	st := w.NewState()
-	for _, coll := range objectTypeToCollection {
-		data := st.GetSubObjectCollection(coll)
-		if data == nil {
-			continue
-		}
-		tk, ok := collectionKeyToTypeKey(coll)
-		if !ok {
-			log.With("collection", coll).Errorf("subobject migration: collection is invalid")
+	for typeKey, coll := range objectTypeToCollection {
+		collection := st.GetSubObjectCollection(coll)
+		if collection == nil {
 			continue
 		}
 
-		for subId, d := range data.GetFields() {
-			if st, ok := d.Kind.(*types.Value_StructValue); !ok {
-				log.Errorf("got invalid value for %s.%s:%t", coll, subId, d.Kind)
-				continue
-			} else {
-				uk, err := w.getUniqueKey(coll, subId)
+		for subObjectId, subObjectStruct := range collection.GetFields() {
+			if v, ok := subObjectStruct.Kind.(*types.Value_StructValue); ok {
+				uk, err := w.getUniqueKey(coll, subObjectId)
 				if err != nil {
 					log.With("collection", coll).Errorf("subobject migration: failed to get uniqueKey: %s", err.Error())
 					continue
 				}
 
-				d := st.StructValue
-				d.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
+				details := v.StructValue
+				details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
 
-				if !proc(smartblock.DocInfo{
+				proc(smartblock.DocInfo{
 					SpaceID:    w.SpaceID(),
 					Links:      nil,
 					FileHashes: nil,
 					Heads:      nil,
-					Type:       tk,
-					Details:    d,
-				}) {
-					return
-				}
+					Type:       typeKey,
+					Details:    details,
+				})
+			} else {
+				log.Errorf("got invalid value for %s.%s:%t", coll, subObjectId, subObjectStruct.Kind)
+				continue
 			}
 		}
 	}
@@ -273,7 +267,7 @@ func (w *Workspaces) getUniqueKey(collection, key string) (domain.UniqueKey, err
 	case bundle.TypeKeyRelationOption:
 		sbt = smartblock2.SmartBlockTypeRelationOption
 	default:
-		return nil, fmt.Errorf("unknown collection %s", collection)
+		return nil, fmt.Errorf("unknown type key %s", typeKey)
 	}
 
 	return domain.NewUniqueKey(sbt, key)
