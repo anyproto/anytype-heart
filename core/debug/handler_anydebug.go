@@ -3,11 +3,12 @@
 package debug
 
 import (
-	"os"
-	"github.com/go-chi/chi/v5"
-	"github.com/anyproto/any-sync/app"
 	"fmt"
 	"net/http"
+	"os"
+
+	"github.com/anyproto/any-sync/app"
+	"github.com/go-chi/chi/v5"
 )
 
 func (d *debug) initHandlers(a *app.App) {

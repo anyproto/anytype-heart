@@ -2,10 +2,12 @@ package blockbuilder
 
 import (
 	"encoding/json"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/gogo/protobuf/jsonpb"
 	"fmt"
+
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type blockView struct {

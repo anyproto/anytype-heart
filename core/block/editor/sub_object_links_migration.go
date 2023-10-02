@@ -4,14 +4,17 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 // Migrate old relation (rel-name, etc.) and object type (ot-page, etc.) IDs to new ones (just ordinary object IDs)
@@ -28,22 +31,20 @@ func newSubObjectsLinksMigration(spaceID string, systemObjectService system_obje
 	}
 }
 
-// TODO Refactor
 func (m *subObjectsLinksMigration) replaceSubObjectLinksInDetails(s *state.State) {
 	for _, rel := range s.GetRelationLinks() {
-		if rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			vals := pbtypes.GetStringList(s.Details(), rel.Key)
+		if m.canRelationContainObjectValues(rel.Format) {
+			ids := pbtypes.GetStringList(s.Details(), rel.Key)
 			changed := false
-			for i := range vals {
-				newId, replaced := m.migrateSubObjectId(vals[i])
-				if !replaced {
-					continue
+			for i, oldId := range ids {
+				newId := m.migrateSubObjectId(oldId)
+				if oldId != newId {
+					ids[i] = newId
+					changed = true
 				}
-				vals[i] = newId
-				changed = true
 			}
 			if changed {
-				s.SetDetail(rel.Key, pbtypes.StringList(vals))
+				s.SetDetail(rel.Key, pbtypes.StringList(ids))
 			}
 		}
 	}
@@ -60,30 +61,45 @@ func (m *subObjectsLinksMigration) migrate(s *state.State) {
 			m.migrateFilters(dv)
 		}
 
-		if v, ok := block.(simple.ObjectLinkReplacer); ok {
-			// TODO Analyze this method (ReplaceSmartIds)
-			// TODO Looks like we should just map here: oldId OR newId
-			v.ReplaceSmartIds(m.migrateSubObjectId)
+		if _, ok := block.(simple.ObjectLinkReplacer); ok {
+			// Mark block as mutable
+			b := s.Get(block.Model().Id)
+			replacer := b.(simple.ObjectLinkReplacer)
+			replacer.ReplaceLinkIds(m.migrateSubObjectId)
 		}
 
 		return true
 	})
 }
 
-func (m *subObjectsLinksMigration) migrateSubObjectId(id string) (newID string, migrated bool) {
-	// this should be replaced by the persisted state migration
-	// TODO Smells like SubObjectIdToUniqueKey should be here in-place, not in domain package!
-	uk, valid := domain.SubObjectIdToUniqueKey(id)
+func (m *subObjectsLinksMigration) migrateSubObjectId(oldId string) (newId string) {
+	uniqueKey, valid := subObjectIdToUniqueKey(oldId)
 	if !valid {
-		return "", false
+		return oldId
 	}
 
-	newID, err := m.systemObjectService.GetObjectIdByUniqueKey(context.Background(), m.spaceID, uk)
+	newId, err := m.systemObjectService.GetObjectIdByUniqueKey(context.Background(), m.spaceID, uniqueKey)
 	if err != nil {
-		log.With("uk", uk.Marshal()).Errorf("failed to derive id: %s", err.Error())
-		return "", false
+		log.With("uniqueKey", uniqueKey.Marshal()).Errorf("failed to derive id: %s", err)
+		return oldId
 	}
-	return newID, true
+	return newId
+}
+
+// subObjectIdToUniqueKey converts legacy sub-object id to uniqueKey
+// if id is not supported subObjectId, it will return nil, false
+// suppose to be used only for migration and almost free to use
+func subObjectIdToUniqueKey(id string) (uniqueKey domain.UniqueKey, valid bool) {
+	// historically, we don't have the prefix for the options,
+	// so we need to handled it this ugly way
+	if bson.IsObjectIdHex(id) {
+		return domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id), true
+	}
+	uniqueKey, err := domain.UnmarshalUniqueKey(id)
+	if err != nil {
+		return nil, false
+	}
+	return uniqueKey, true
 }
 
 func (m *subObjectsLinksMigration) migrateFilters(dv dataview2.Block) {
@@ -103,7 +119,7 @@ func (m *subObjectsLinksMigration) migrateFilter(filter *model.BlockContentDatav
 		return fmt.Errorf("failed to get relation by key %s: %w", filter.RelationKey, err)
 	}
 
-	if m.canRelationContainObjectValues(relation) {
+	if m.canRelationContainObjectValues(relation.Format) {
 		if oldID := filter.Value.GetStringValue(); oldID != "" {
 			newID, err := m.migrateID(oldID)
 			if err != nil {
@@ -163,13 +179,12 @@ func (m *subObjectsLinksMigration) migrateID(id string) (string, error) {
 	return id, nil
 }
 
-func (m *subObjectsLinksMigration) canRelationContainObjectValues(relation *model.Relation) bool {
-	switch relation.Format {
+func (m *subObjectsLinksMigration) canRelationContainObjectValues(format model.RelationFormat) bool {
+	switch format {
 	case
 		model.RelationFormat_status,
 		model.RelationFormat_tag,
-		model.RelationFormat_object,
-		model.RelationFormat_relations:
+		model.RelationFormat_object:
 		return true
 	default:
 		return false

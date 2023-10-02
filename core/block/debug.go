@@ -1,14 +1,16 @@
 package block
 
 import (
-	"github.com/anyproto/anytype-heart/util/debug"
-	"github.com/go-chi/chi/v5"
-	"net/http"
-	"github.com/anyproto/anytype-heart/tests/blockbuilder"
-	"fmt"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
+
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/tests/blockbuilder"
+	"github.com/anyproto/anytype-heart/util/debug"
 )
 
 func (s *Service) DebugRouter(r chi.Router) {
