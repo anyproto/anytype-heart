@@ -1,15 +1,29 @@
 package html
 
 import (
+	"archive/zip"
 	"errors"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
+
+type MockTempDirProvider struct{}
+
+func (p *MockTempDirProvider) TempDir() string {
+	return os.TempDir()
+}
 
 func TestHTML_GetSnapshots(t *testing.T) {
 	h := &HTML{}
@@ -34,4 +48,106 @@ func TestHTML_GetSnapshots(t *testing.T) {
 
 	assert.NotEmpty(t, err)
 	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), cv.ErrNoObjectsToImport))
+}
+
+func TestHTML_provideFileName(t *testing.T) {
+	t.Run("web link in file block - return web link", func(t *testing.T) {
+		// given
+		h := &HTML{}
+		currentDir, err := os.Getwd()
+		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
+
+		// when
+		newFileName, _, err := cv.ProvideFileName("http://example.com", source, currentDir, h.tempDirProvider)
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "http://example.com", newFileName)
+	})
+	t.Run("absolute file name exist on local machine - return not changed file name", func(t *testing.T) {
+		// given
+		h := &HTML{}
+		currentDir, err := os.Getwd()
+		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
+
+		// when
+		absPath, err := filepath.Abs("testdata/test")
+		assert.Nil(t, err)
+		newFileName, _, err := cv.ProvideFileName(absPath, source, currentDir, h.tempDirProvider)
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, absPath, newFileName)
+	})
+	t.Run("given relative file name from imported directory - return absolute path", func(t *testing.T) {
+		// given
+		h := &HTML{}
+		currentDir, err := os.Getwd()
+		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
+
+		// when
+		newFileName, _, err := cv.ProvideFileName("testdata/test", source, currentDir, h.tempDirProvider)
+
+		// then
+		assert.Nil(t, err)
+		absPath, err := filepath.Abs("testdata/test")
+		assert.Nil(t, err)
+		assert.Equal(t, absPath, newFileName)
+	})
+	t.Run("archive with files is imported - return path to temp directory", func(t *testing.T) {
+		// given
+		h := HTML{}
+		h.tempDirProvider = &MockTempDirProvider{}
+		testFileName, archiveName := prepareArchivedFiles(t)
+		defer os.Remove(archiveName)
+		source := source.GetSource(archiveName)
+		err := source.Initialize(archiveName)
+		assert.Nil(t, err)
+
+		// when
+		newFileName, _, err := cv.ProvideFileName(testFileName, source, archiveName, h.tempDirProvider)
+		defer os.Remove(newFileName)
+
+		// then
+		assert.Nil(t, err)
+		absoluteFileName := filepath.Join(os.TempDir(), testFileName)
+		assert.Equal(t, absoluteFileName, newFileName)
+	})
+	t.Run("file doesn't exist - not change original path", func(t *testing.T) {
+		// given
+		h := HTML{}
+		source := source.GetSource("test")
+
+		// when
+		newFileName, _, err := cv.ProvideFileName("test", source, "imported path", h.tempDirProvider)
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "test", newFileName)
+	})
+}
+
+func prepareArchivedFiles(t *testing.T) (string, string) {
+	// create test archive
+	archiveName := filepath.Join(".", strconv.FormatInt(rand.Int63(), 10)+".zip")
+	file, err := os.Create(archiveName)
+	assert.Nil(t, err)
+
+	// write test file to archive
+	writer := zip.NewWriter(file)
+	testFileName := "testfile"
+	_, err = writer.Create(testFileName)
+	assert.Nil(t, err)
+	writer.Close()
+	file.Close()
+
+	// open zip archive for reading
+	reader, err := zip.OpenReader(archiveName)
+	assert.Nil(t, err)
+
+	assert.Len(t, reader.File, 1)
+	return testFileName, archiveName
 }

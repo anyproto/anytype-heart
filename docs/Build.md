@@ -1,6 +1,6 @@
 # Build instructions
 ## Build from Source
-1. Install Golang 1.21.x [from here](http://golang.org/dl/) or using preferred package manager
+1. Install Golang 1.20.x [from here](http://golang.org/dl/) or using preferred package manager
 2. Follow instructions below for the target systems
 
 ### Install local deps
@@ -21,9 +21,11 @@ We need to have protoc binary (3.x version) and libprotoc headers in orderto bui
 ```
 apt install protobuf-compiler libprotoc-dev
 ```
+### Install custom protoc
+`make setup-protoc` to install grpc-web plugin (see [Protogen](https://github.com/anyproto/anytype-heart/blob/main/docs/Protogen.md) for additional information)
 
 ### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
-`make install-dev-js` — build the local server and copy it and protobuf binding into `../anytype-ts`
+`make install-dev-js` to build the local server and copy it and protobuf binding into `../anytype-ts`
 
 Parameters:
 - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)

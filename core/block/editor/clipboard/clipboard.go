@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/strutil"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -100,16 +101,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 
 	s := cb.blocksToState(req.Blocks)
 
-	var texts []string
-	for _, b := range req.Blocks {
-		if text := b.GetText(); text != nil {
-			texts = append(texts, text.Text)
-		}
-	}
-
-	if len(texts) > 0 {
-		textSlot = strings.Join(texts, "\n")
-	}
+	textSlot = renderText(s)
 
 	var firstTextBlock, lastTextBlock *model.Block
 	for _, b := range req.Blocks {
@@ -126,6 +118,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 	if firstTextBlock != nil &&
 		req.SelectedTextRange != nil &&
 		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) &&
 		lastTextBlock == nil {
 		cutBlock, _, err := simple.New(firstTextBlock).(text.Block).RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
@@ -187,7 +180,8 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 	if firstTextBlock != nil &&
 		lastTextBlock == nil &&
 		req.SelectedTextRange != nil &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) {
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) {
 		first := s.Get(firstTextBlock.Id).(text.Block)
 		cutBlock, initialBlock, err := first.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
@@ -204,6 +198,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 			}
 		}
 
+		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
@@ -214,16 +209,14 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 	}
 
 	// scenario: cutBlocks
+	state := cb.blocksToState(req.Blocks)
 	var ids []string
 	for _, b := range req.Blocks {
-		if text := b.GetText(); text != nil {
-			textSlot += text.Text + "\n"
-		}
-
 		ids = append(ids, b.Id)
 	}
+	textSlot = renderText(state)
 
-	htmlSlot = html.NewHTMLConverter(cb.fileService, cb.blocksToState(req.Blocks)).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.fileService, state).Convert()
 	anySlot = req.Blocks
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
@@ -571,4 +564,58 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 
 	d.RelationLinks = links
 	return
+}
+
+func renderText(s *state.State) string {
+	texts := make([]string, 0)
+	texts, _ = renderBlock(s, texts, s.RootId(), -1, 0)
+
+	if len(texts) > 0 {
+		return strutil.JoinWithTrailingEnd(texts, "\n")
+	}
+
+	return ""
+}
+
+func renderBlock(s *state.State, texts []string, id string, level int, numberedCount int) ([]string, int) {
+	block := s.Pick(id).Model()
+	texts, numberedCount = extractTextWithStyleAndTabs(block, texts, level, numberedCount)
+	childrenIds := s.Pick(id).Model().ChildrenIds
+	texts = renderChildren(s, texts, childrenIds, level, 0)
+	return texts, numberedCount
+}
+
+func renderChildren(s *state.State, texts []string, childrenIds []string, level int, numberedCount int) []string {
+	var oldNumberedCount int
+	for _, id := range childrenIds {
+		oldNumberedCount = numberedCount
+		texts, numberedCount = renderBlock(s, texts, id, level+1, numberedCount)
+		if oldNumberedCount == numberedCount {
+			numberedCount = 0
+		}
+	}
+	return texts
+}
+
+func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, numberedCount int) ([]string, int) {
+	if text := block.GetText(); text != nil {
+		switch text.Style {
+		case model.BlockContentText_Quote:
+			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "> ", text.Text))
+		case model.BlockContentText_Code:
+			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), "```", text.Text, "```"))
+		case model.BlockContentText_Checkbox:
+			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- [ ] ", text.Text))
+		case model.BlockContentText_Marked:
+			texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "- ", text.Text))
+		case model.BlockContentText_Numbered:
+			numberedCount++
+			texts = append(texts, fmt.Sprintf("%s%d%s%s", strings.Repeat("\t", level), numberedCount, ". ", text.Text))
+		case model.BlockContentText_Callout:
+			texts = append(texts, fmt.Sprintf("%s%s%s%s", strings.Repeat("\t", level), text.IconEmoji, " ", text.Text))
+		default:
+			texts = append(texts, fmt.Sprintf("%s%s", strings.Repeat("\t", level), text.Text))
+		}
+	}
+	return texts, numberedCount
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/cheggaaa/mb/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -21,24 +20,24 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
-func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err error) {
-	status, err := f.fileStore.GetSyncStatus(fileId)
+func (f *fileSync) AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error) {
+	status, err := f.fileStore.GetSyncStatus(fileID)
 	if err != nil && !errors.Is(err, localstore.ErrNotFound) {
 		return fmt.Errorf("get file sync status: %w", err)
 	}
 	if status == int(syncstatus.StatusSynced) {
 		return nil
 	}
-	ok, storeErr := f.hasFileInStore(fileId)
+	ok, storeErr := f.hasFileInStore(fileID)
 	if storeErr != nil {
 		return fmt.Errorf("check if file is in store: %w", storeErr)
 	}
 	if !ok {
-		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
+		log.Warn("file has been deleted from store, skip upload", zap.String("fileID", fileID))
 		return nil
 	}
 
-	err = f.queue.QueueUpload(spaceId, fileId, uploadedByUser)
+	err = f.queue.QueueUpload(spaceID, fileID, uploadedByUser, imported)
 	if err == nil {
 		select {
 		case f.uploadPingCh <- struct{}{}:
@@ -46,6 +45,20 @@ func (f *fileSync) AddFile(spaceId, fileId string, uploadedByUser bool) (err err
 		}
 	}
 	return
+}
+
+func (f *fileSync) SendImportEvents() {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
+	for _, event := range f.importEvents {
+		f.sendEvent(event)
+	}
+}
+
+func (f *fileSync) ClearImportEvents() {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
+	f.importEvents = nil
 }
 
 func (f *fileSync) addLoop() {
@@ -98,8 +111,11 @@ func (f *fileSync) tryToUpload() (string, error) {
 	}
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
 		if isLimitReachedErr(err) {
-			if it.AddedByUser {
+			if it.AddedByUser && !it.Imported {
 				f.sendLimitReachedEvent(spaceId, fileId)
+			}
+			if it.Imported {
+				f.addImportEvent(spaceId, fileId)
 			}
 			if qerr := f.queue.QueueDiscarded(spaceId, fileId); qerr != nil {
 				log.Warn("can't push upload task to discarded queue", zap.String("fileId", fileId), zap.Error(qerr))
@@ -108,12 +124,11 @@ func (f *fileSync) tryToUpload() (string, error) {
 		}
 
 		// Push to the back of the queue
-		if qerr := f.queue.QueueUpload(spaceId, fileId, it.AddedByUser); qerr != nil {
+		if qerr := f.queue.QueueUpload(spaceId, fileId, it.AddedByUser, it.Imported); qerr != nil {
 			log.Warn("can't push upload task back to queue", zap.String("fileId", fileId), zap.Error(qerr))
 		}
 		return fileId, err
 	}
-	log.Warn("done upload", zap.String("fileID", fileId))
 	if f.onUpload != nil {
 		err := f.onUpload(spaceId, fileId)
 		if err != nil {
@@ -136,91 +151,42 @@ func isLimitReachedErr(err error) bool {
 	return errors.Is(err, errReachedLimit) || strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error())
 }
 
-func (f *fileSync) uploadFile(ctx context.Context, spaceId, fileId string) (err error) {
-	log.Debug("uploading file", zap.String("fileId", fileId))
+func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileID string) error {
+	log.Debug("uploading file", zap.String("fileID", fileID))
 
-	var (
-		batcher = mb.New[blocks.Block](10)
-		dagErr  = make(chan error, 1)
-		bs      []blocks.Block
-	)
-	defer func() {
-		_ = batcher.Close()
-	}()
-
-	blocksToUpload, err := f.prepareToUpload(ctx, spaceId, fileId)
+	fileSize, err := f.CalculateFileSize(ctx, fileID)
 	if err != nil {
-		return err
+		return fmt.Errorf("calculate file size: %w", err)
 	}
-
-	if len(blocksToUpload) == 0 {
-		return nil
-	}
-
-	log.Info("start uploading file", zap.String("fileID", fileId), zap.Int("blocksCount", len(blocksToUpload)))
-
-	go func() {
-		defer func() {
-			_ = batcher.Close()
-		}()
-		proc := func() error {
-			for _, b := range blocksToUpload {
-				if addErr := batcher.Add(ctx, b); addErr != nil {
-					return addErr
-				}
-			}
-			return nil
-		}
-		dagErr <- proc()
-	}()
-
-	for {
-		if bs, err = batcher.Wait(ctx); err != nil {
-			if err == mb.ErrClosed {
-				err = nil
-				break
-			} else {
-				return err
-			}
-		}
-
-		if err = f.rpcStore.AddToFile(ctx, spaceId, fileId, bs); err != nil {
-			return err
-		}
-	}
-	return <-dagErr
-}
-
-func (f *fileSync) prepareToUpload(ctx context.Context, spaceId string, fileId string) ([]blocks.Block, error) {
-	fileBlocks, err := f.collectFileBlocks(ctx, fileId)
+	stat, err := f.getAndUpdateSpaceStat(ctx, spaceID)
 	if err != nil {
-		return nil, fmt.Errorf("collect file blocks: %w", err)
-	}
-
-	bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceId, fileId, fileBlocks)
-	if err != nil {
-		return nil, fmt.Errorf("select blocks to upload: %w", err)
-	}
-
-	if len(blocksToUpload) > 0 {
-		log.Warn("collecting blocks to upload",
-			zap.String("fileID", fileId),
-			zap.Int("blocksToUpload", len(blocksToUpload)),
-			zap.Int("totalBlocks", len(fileBlocks)),
-		)
-	}
-
-	stat, err := f.getAndUpdateSpaceStat(ctx, spaceId)
-	if err != nil {
-		return nil, fmt.Errorf("get space stat: %w", err)
+		return fmt.Errorf("get space stat: %w", err)
 	}
 
 	bytesLeft := stat.BytesLimit - stat.BytesUsage
-	if len(blocksToUpload) > 0 && bytesToUpload > bytesLeft {
-		return nil, errReachedLimit
+	if fileSize > bytesLeft {
+		return errReachedLimit
 	}
 
-	return blocksToUpload, nil
+	var totalBytesUploaded int
+	err = f.walkFileBlocks(ctx, fileID, func(fileBlocks []blocks.Block) error {
+		bytesToUpload, blocksToUpload, err := f.selectBlocksToUploadAndBindExisting(ctx, spaceID, fileID, fileBlocks)
+		if err != nil {
+			return fmt.Errorf("select blocks to upload: %w", err)
+		}
+		if err = f.rpcStore.AddToFile(ctx, spaceID, fileID, blocksToUpload); err != nil {
+			return err
+		}
+		totalBytesUploaded += bytesToUpload
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("walk file blocks: %w", err)
+	}
+
+	log.Warn("done upload", zap.String("fileID", fileID), zap.Int("estimatedSize", fileSize), zap.Int("bytesUploaded", totalBytesUploaded))
+
+	return nil
 }
 
 func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
@@ -233,6 +199,23 @@ func (f *fileSync) hasFileInStore(fileID string) (bool, error) {
 
 func (f *fileSync) sendLimitReachedEvent(spaceID string, fileID string) {
 	f.sendEvent(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfFileLimitReached{
+					FileLimitReached: &pb.EventFileLimitReached{
+						SpaceId: spaceID,
+						FileId:  fileID,
+					},
+				},
+			},
+		},
+	})
+}
+
+func (f *fileSync) addImportEvent(spaceID string, fileID string) {
+	f.importEventsMutex.Lock()
+	defer f.importEventsMutex.Unlock()
+	f.importEvents = append(f.importEvents, &pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileLimitReached{
@@ -289,29 +272,85 @@ func (f *fileSync) selectBlocksToUploadAndBindExisting(ctx context.Context, spac
 	return bytesToUpload, blocksToUpload, nil
 }
 
-func (f *fileSync) collectFileBlocks(ctx context.Context, fileId string) (result []blocks.Block, err error) {
-	fileCid, err := cid.Parse(fileId)
+func (f *fileSync) walkDAG(ctx context.Context, fileID string, visit func(node ipld.Node) error) error {
+	fileCid, err := cid.Parse(fileID)
 	if err != nil {
-		return
+		return fmt.Errorf("parse CID %s: %w", fileID, err)
 	}
-	node, err := f.dagService.Get(ctx, fileCid)
+	rootNode, err := f.dagService.Get(ctx, fileCid)
 	if err != nil {
-		return
+		return fmt.Errorf("get root node: %w", err)
 	}
 
-	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
-	err = walker.Iterate(func(node ipld.NavigableNode) error {
-		b, err := blocks.NewBlockWithCid(node.GetIPLDNode().RawData(), node.GetIPLDNode().Cid())
+	visited := map[cid.Cid]struct{}{}
+	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(rootNode, f.dagService))
+	err = walker.Iterate(func(navNode ipld.NavigableNode) error {
+		node := navNode.GetIPLDNode()
+		if _, ok := visited[node.Cid()]; !ok {
+			visited[node.Cid()] = struct{}{}
+			return visit(node)
+		}
+		return nil
+	})
+	if errors.Is(err, ipld.EndOfDag) {
+		err = nil
+	}
+	return err
+}
+
+// CalculateFileSize calculates or gets already calculated file size
+func (f *fileSync) CalculateFileSize(ctx context.Context, fileID string) (int, error) {
+	size, err := f.fileStore.GetFileSize(fileID)
+	if err == nil {
+		return size, nil
+	}
+
+	size = 0
+	err = f.walkDAG(ctx, fileID, func(node ipld.Node) error {
+		size += len(node.RawData())
+		return nil
+	})
+	if err != nil {
+		return 0, fmt.Errorf("walk DAG: %w", err)
+	}
+	err = f.fileStore.SetFileSize(fileID, size)
+	if err != nil {
+		log.Error("can't store file size", zap.String("fileID", fileID), zap.Error(err))
+	}
+	return size, nil
+}
+
+const batchSize = 10
+
+func (f *fileSync) walkFileBlocks(ctx context.Context, fileID string, proc func(fileBlocks []blocks.Block) error) error {
+	blocksBuf := make([]blocks.Block, 0, batchSize)
+
+	err := f.walkDAG(ctx, fileID, func(node ipld.Node) error {
+		b, err := blocks.NewBlockWithCid(node.RawData(), node.Cid())
 		if err != nil {
 			return err
 		}
-		result = append(result, b)
+		blocksBuf = append(blocksBuf, b)
+		if len(blocksBuf) == batchSize {
+			err = proc(blocksBuf)
+			if err != nil {
+				return fmt.Errorf("process batch: %w", err)
+			}
+			blocksBuf = blocksBuf[:0]
+		}
 		return nil
 	})
-	if err == ipld.EndOfDag {
-		err = nil
+	if err != nil {
+		return fmt.Errorf("walk DAG: %w", err)
 	}
-	return
+
+	if len(blocksBuf) > 0 {
+		err = proc(blocksBuf)
+		if err != nil {
+			return fmt.Errorf("process batch: %w", err)
+		}
+	}
+	return nil
 }
 
 func (f *fileSync) HasUpload(spaceId, fileId string) (ok bool, err error) {

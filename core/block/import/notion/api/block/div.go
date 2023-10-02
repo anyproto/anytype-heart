@@ -3,6 +3,7 @@ package block
 import (
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -11,7 +12,7 @@ type DividerBlock struct {
 	Divider struct{} `json:"divider"`
 }
 
-func (*DividerBlock) GetBlocks(*NotionImportContext, string) *MapResponse {
+func (*DividerBlock) GetBlocks(*api.NotionImportContext, string) *MapResponse {
 	id := bson.NewObjectId().Hex()
 	block := &model.Block{
 		Id: id,

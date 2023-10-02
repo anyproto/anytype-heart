@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	
+
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 
@@ -68,7 +68,7 @@ func processFile(file File, outputFile string) {
 	}
 
 	// assuming Snapshot is a protobuf message
-	var snapshot proto.Message = &pb.SnapshotWithType{}
+	var snapshot proto.Message = &pb.ChangeSnapshot{}
 	if strings.HasPrefix(file.Name, constant.ProfileFile) {
 		snapshot = &pb.Profile{}
 	}
@@ -94,7 +94,10 @@ func processFile(file File, outputFile string) {
 	} else {
 
 		if err := proto.Unmarshal(content, snapshot); err != nil {
-			log.Fatalf("Failed to parse protobuf message: %v", err)
+			snapshot = &pb.SnapshotWithType{}
+			if err := proto.Unmarshal(content, snapshot); err != nil {
+				log.Fatalf("Failed to parse protobuf message: %v", err)
+			}
 		}
 
 		// convert to jsonpb and write to outputFile
@@ -201,14 +204,17 @@ func createZipFromDirectory(input, output string) {
 			isProfile := strings.HasPrefix(info.Name(), constant.ProfileFile)
 
 			// assuming Snapshot is a protobuf message
-			var snapshot proto.Message = &pb.SnapshotWithType{}
+			var snapshot proto.Message = &pb.ChangeSnapshot{}
 			if isProfile {
 				snapshot = &pb.Profile{}
 			}
 
 			err = jsonpb.UnmarshalString(string(data), snapshot)
 			if err != nil {
-				return err
+				snapshot = &pb.SnapshotWithType{}
+				if err = jsonpb.UnmarshalString(string(data), snapshot); err != nil {
+					return err
+				}
 			}
 
 			pbData, err := proto.Marshal(snapshot)

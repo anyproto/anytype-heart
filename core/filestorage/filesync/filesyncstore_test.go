@@ -13,7 +13,7 @@ import (
 func TestFileSyncStore_QueueUpload(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", true))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", true, false))
 	l, err := fx.QueueLen()
 	require.NoError(t, err)
 	assert.Equal(t, 1, l)
@@ -40,7 +40,7 @@ func TestFileSyncStore_QueueRemove(t *testing.T) {
 func TestFileSyncStore_DoneUpload(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false, false))
 	require.NoError(t, fx.DoneUpload("spaceId1", "fileId1"))
 	l, err := fx.QueueLen()
 	require.NoError(t, err)
@@ -60,7 +60,7 @@ func TestFileSyncStore_DoneRemove(t *testing.T) {
 func TestFileSyncStore_GetUpload(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", true))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", true, false))
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
 	assert.Equal(t, "spaceId1", it.SpaceID)
@@ -74,9 +74,9 @@ func TestFileSyncStore_PushBackToQueue(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
 
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false, false))
 	time.Sleep(2 * time.Millisecond)
-	require.NoError(t, fx.QueueUpload("spaceId2", "fileId2", false))
+	require.NoError(t, fx.QueueUpload("spaceId2", "fileId2", false, false))
 
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestFileSyncStore_PushBackToQueue(t *testing.T) {
 	assert.False(t, it.AddedByUser)
 
 	time.Sleep(2 * time.Millisecond)
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false, false))
 
 	it, err = fx.GetUpload()
 	require.NoError(t, err)
@@ -98,9 +98,9 @@ func TestFileSyncStore_CheckSorting(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
 
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false, false))
 	time.Sleep(2 * time.Millisecond)
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId2", true))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId2", true, false))
 
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
@@ -112,7 +112,7 @@ func TestFileSyncStore_CheckSorting(t *testing.T) {
 func TestFileSyncStore_IsDone(t *testing.T) {
 	fx := newStoreFixture(t)
 	defer fx.Finish()
-	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false))
+	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", false, false))
 	done, err := fx.IsAlreadyUploaded("spaceId1", "fileId1")
 	require.NoError(t, err)
 	assert.False(t, done)

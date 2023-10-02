@@ -15,13 +15,12 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 // Importer incapsulate logic with import
 type Importer interface {
 	app.Component
-	Import(ctx *session.Context, req *pb.RpcObjectImportRequest) error
+	Import(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, error)
 	ListImports(ctx *session.Context, req *pb.RpcObjectImportListRequest) ([]*pb.RpcObjectImportListImportResponse, error)
 	ImportWeb(ctx *session.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 	//nolint: lll
@@ -37,5 +36,5 @@ type Creator interface {
 // IDGetter is interface for updating existing objects
 type IDGetter interface {
 	//nolint:lll
-	Get(ctx *session.Context, cs *converter.Snapshot, sbType sb.SmartBlockType, createdTime time.Time, updateExisting bool, oldIDToNew map[string]string) (string, treestorage.TreeStorageCreatePayload, error)
+	Get(ctx *session.Context, cs *converter.Snapshot, createdTime time.Time, updateExisting bool) (string, treestorage.TreeStorageCreatePayload, error)
 }

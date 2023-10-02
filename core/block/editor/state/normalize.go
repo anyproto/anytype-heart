@@ -3,6 +3,7 @@ package state
 import (
 	"fmt"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -12,6 +13,8 @@ import (
 
 var (
 	maxChildrenThreshold = 40
+	blockSizeLimit       = 1 * 1024 * 1024
+	detailSizeLimit      = 65 * 1024
 )
 
 func (s *State) Normalize(withLayouts bool) (err error) {
@@ -24,9 +27,7 @@ type Normalizable interface {
 }
 
 func (s *State) normalize(withLayouts bool) (err error) {
-	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
-		return true
-	}); err != nil {
+	if err = s.normalizeSize(); err != nil {
 		return err
 	}
 	// remove invalid children
@@ -34,32 +35,60 @@ func (s *State) normalize(withLayouts bool) (err error) {
 		s.normalizeChildren(b)
 	}
 
+	if err = s.doCustomBlockNormalizations(); err != nil {
+		return err
+	}
+
+	s.normalizeLayout()
+	if withLayouts {
+		return s.normalizeTree()
+	}
+	return
+}
+
+func (s *State) normalizeSize() (err error) {
+	if iErr := s.Iterate(func(b simple.Block) (isContinue bool) {
+		// TODO: GO-2062 Need to refactor block size limiting process - either split block, or cut it
+		//size := b.Model().Size()
+		//if size > blockSizeLimit {
+		//	err = fmt.Errorf("size of block '%s' (%d) is above the limit of %d", b.Model().Id, size, blockSizeLimit)
+		//	return false
+		//}
+		return true
+	}); iErr != nil {
+		return iErr
+	}
+	if err != nil {
+		log.With("objectID", s.rootId).Errorf(err.Error())
+	}
+	return err
+}
+
+func (s *State) doCustomBlockNormalizations() (err error) {
 	for _, b := range s.blocks {
 		if n, ok := b.(Normalizable); ok {
-			if err := n.Normalize(s); err != nil {
-				return fmt.Errorf("custom normalization for block %s: %w", b.Model().Id, err)
+			if err = n.Normalize(s); err != nil {
+				return fmt.Errorf("failed to do custom normalization for block %s: %w", b.Model().Id, err)
 			}
 		}
 		if b.Model().Id == s.RootId() {
 			s.normalizeSmartBlock(b)
 		}
 	}
+	return nil
+}
 
-	// remove empty layouts
+func (s *State) normalizeLayout() {
 	s.removeEmptyLayoutBlocks(s.blocks)
 	if s.parent != nil {
 		s.removeEmptyLayoutBlocks(s.parent.blocks)
 	}
-	// normalize rows
+
 	for _, b := range s.blocks {
 		if layout := b.Model().GetLayout(); layout != nil {
 			s.normalizeLayoutRow(b)
 		}
 	}
-	if withLayouts {
-		return s.normalizeTree()
-	}
-	return
 }
 
 func (s *State) removeEmptyLayoutBlocks(blocks map[string]simple.Block) {
@@ -290,6 +319,44 @@ func (s *State) normalizeSmartBlock(b simple.Block) {
 			Smartblock: &model.BlockContentSmartblock{},
 		}
 	}
+}
+
+func shortenDetailsToLimit(objectID string, details map[string]*types.Value) {
+	for key, value := range details {
+		details[key] = shortenValueToLimit(objectID, key, value)
+	}
+}
+
+func shortenValueToLimit(objectID, key string, value *types.Value) *types.Value {
+	size := value.Size()
+	if size > detailSizeLimit {
+		log.With("objectID", objectID).Errorf("size of '%s' detail (%d) is above the limit of %d. Shortening it",
+			key, size, detailSizeLimit)
+		value, _ = shortenValueByN(value, size-detailSizeLimit)
+	}
+	return value
+}
+
+func shortenValueByN(value *types.Value, n int) (result *types.Value, left int) {
+	switch v := value.Kind.(type) {
+	case *types.Value_StringValue:
+		str := v.StringValue
+		if len(str) > n {
+			return pbtypes.String(str[:len(str)-n]), 0
+		}
+		return pbtypes.String(""), n - len(str)
+	case *types.Value_ListValue:
+		var newValue *types.Value
+		for i, valueItem := range v.ListValue.Values {
+			newValue, n = shortenValueByN(valueItem, n)
+			value.GetListValue().Values[i] = newValue
+			if n == 0 {
+				return value, 0
+			}
+		}
+		return value, n
+	}
+	return value, n
 }
 
 func isBlockEmpty(b simple.Block) bool {

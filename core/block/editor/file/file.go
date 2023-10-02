@@ -87,14 +87,14 @@ func (sf *sfile) Upload(ctx *session.Context, id string, source FileSource, isSy
 		source.GroupID = bson.NewObjectId().Hex()
 	}
 	s := sf.NewStateCtx(ctx).SetGroupId(source.GroupID)
-	if res := sf.upload(s, id, source, isSync); res.Err != nil {
+	if res := sf.upload(s, id, source, isSync, false); res.Err != nil {
 		return
 	}
 	return sf.Apply(s)
 }
 
 func (sf *sfile) UploadState(s *state.State, id string, source FileSource, isSync bool) (err error) {
-	if res := sf.upload(s, id, source, isSync); res.Err != nil {
+	if res := sf.upload(s, id, source, isSync, false); res.Err != nil {
 		return res.Err
 	}
 	return
@@ -136,7 +136,7 @@ func (sf *sfile) CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreate
 	if err = sf.upload(s, newId, FileSource{
 		Path: req.LocalPath,
 		Url:  req.Url,
-	}, false).Err; err != nil {
+	}, false, false).Err; err != nil {
 		return
 	}
 	if err = sf.Apply(s); err != nil {
@@ -145,13 +145,13 @@ func (sf *sfile) CreateAndUpload(ctx *session.Context, req pb.RpcBlockFileCreate
 	return
 }
 
-func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync bool) (res UploadResult) {
+func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync bool, imported bool) (res UploadResult) {
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
 		return UploadResult{Err: fmt.Errorf("not a file block")}
 	}
-	upl := sf.newUploader().SetBlock(f)
+	upl := sf.newUploader().SetBlock(f).SetImported(imported)
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {
@@ -208,7 +208,7 @@ func (sf *sfile) UploadFileWithHash(blockId string, source FileSource) (UploadRe
 		source.GroupID = bson.NewObjectId().Hex()
 	}
 	s := sf.NewState().SetGroupId(source.GroupID)
-	return sf.upload(s, blockId, source, true), sf.Apply(s)
+	return sf.upload(s, blockId, source, true, true), sf.Apply(s)
 }
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {

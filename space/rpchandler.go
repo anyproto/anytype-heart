@@ -16,6 +16,16 @@ type rpcHandler struct {
 	s *service
 }
 
+// nolint:revive
+func (r *rpcHandler) AclAddRecord(ctx context.Context, request *spacesyncproto.AclAddRecordRequest) (*spacesyncproto.AclAddRecordResponse, error) {
+	return nil, fmt.Errorf("nt implemented")
+}
+
+// nolint:revive
+func (r *rpcHandler) AclGetRecords(ctx context.Context, request *spacesyncproto.AclGetRecordsRequest) (*spacesyncproto.AclGetRecordsResponse, error) {
+	return nil, fmt.Errorf("nt implemented")
+}
+
 func (r *rpcHandler) ObjectSync(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
 	sp, err := r.s.GetSpace(ctx, req.SpaceId)
 	if err != nil {
@@ -105,14 +115,4 @@ func (r *rpcHandler) HeadSync(ctx context.Context, req *spacesyncproto.HeadSyncR
 
 func (r *rpcHandler) ObjectSyncStream(stream spacesyncproto.DRPCSpaceSync_ObjectSyncStreamStream) error {
 	return r.s.streamPool.ReadStream(stream)
-}
-
-// nolint:revive
-func (r *rpcHandler) AclAddRecord(_ context.Context, _ *spacesyncproto.AclAddRecordRequest) (*spacesyncproto.AclAddRecordResponse, error) {
-	return nil, fmt.Errorf("should not be called")
-}
-
-// nolint:revive
-func (r *rpcHandler) AclGetRecords(_ context.Context, _ *spacesyncproto.AclGetRecordsRequest) (*spacesyncproto.AclGetRecordsResponse, error) {
-	return nil, fmt.Errorf("should not be called")
 }

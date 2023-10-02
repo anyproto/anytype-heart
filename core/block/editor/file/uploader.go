@@ -61,6 +61,7 @@ type Uploader interface {
 	SetFile(path string) Uploader
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
+	SetImported(imported bool) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -114,6 +115,7 @@ type uploader struct {
 
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
+	imported        bool
 }
 
 type bufioSeekClose struct {
@@ -283,6 +285,11 @@ func (u *uploader) SetLastModifiedDate() Uploader {
 	return u
 }
 
+func (u *uploader) SetImported(imported bool) Uploader {
+	u.imported = imported
+	return u
+}
+
 func (u *uploader) setLastModifiedDate(path string) {
 	stat, err := os.Stat(path)
 	if err == nil {
@@ -362,6 +369,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithName(u.name),
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
+		files.WithImported(u.imported),
 	}
 
 	if len(u.opts) > 0 {

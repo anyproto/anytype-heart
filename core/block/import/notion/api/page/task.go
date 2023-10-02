@@ -25,12 +25,12 @@ import (
 type DataObject struct {
 	apiKey    string
 	mode      pb.RpcObjectImportRequestMode
-	request   *block.NotionImportContext
+	request   *api.NotionImportContext
 	ctx       context.Context
 	relations *property.PropertiesStore
 }
 
-func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, request *block.NotionImportContext, relations *property.PropertiesStore) *DataObject {
+func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRequestMode, request *api.NotionImportContext, relations *property.PropertiesStore) *DataObject {
 	return &DataObject{apiKey: apiKey, mode: mode, request: request, ctx: ctx, relations: relations}
 }
 
@@ -53,11 +53,10 @@ func (pt *Task) ID() string {
 
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
-	snapshot, subObjectsSnapshots, ce := pt.makeSnapshotFromPages(do)
-	if ce != nil {
-		if do.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return &Result{ce: ce}
-		}
+	allErrors := converter.NewError(do.mode)
+	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
+	if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+		return &Result{ce: allErrors}
 	}
 	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
 	resultSnapshots := make([]*converter.Snapshot, 0, 1+len(subObjectsSnapshots))
@@ -76,28 +75,27 @@ func (pt *Task) Execute(data interface{}) interface{} {
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
 		})
 	}
-	return &Result{snapshot: resultSnapshots, ce: ce}
+	return &Result{snapshot: resultSnapshots, ce: allErrors}
 }
 
-func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase, *converter.ConvertError) {
-	allErrors := converter.NewError()
+func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *converter.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
 	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
-		if object.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, allErrors
+		if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+			return nil, nil
 		}
 	}
-	object.request.Blocks = notionBlocks
-	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, pt.p.ID)
+	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
-	return snapshot, subObjectsSnapshots, nil
+	return snapshot, subObjectsSnapshots
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
-	details := pt.prepareDetails()
-	relationsSnapshots, relationLinks := pt.handlePageProperties(object, details)
+	details, relationLinks := pt.prepareDetails()
+	relationsSnapshots, notionRelationLinks := pt.handlePageProperties(object, details)
+	relationLinks = append(relationLinks, notionRelationLinks...)
 	addCoverDetail(pt.p, details)
 	return details, relationsSnapshots, relationLinks
 }
@@ -112,11 +110,14 @@ func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]
 	return snapshot
 }
 
-func (pt *Task) prepareDetails() map[string]*types.Value {
+func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink) {
 	details := make(map[string]*types.Value, 0)
+	var relationLinks []*model.RelationLink
 	details[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(pt.p.URL)
-	if pt.p.Icon != nil && pt.p.Icon.Emoji != nil {
-		details[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(*pt.p.Icon.Emoji)
+	if pt.p.Icon != nil {
+		if iconRelationLink := api.SetIcon(details, pt.p.Icon); iconRelationLink != nil {
+			relationLinks = append(relationLinks, iconRelationLink)
+		}
 	}
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(pt.p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
@@ -124,7 +125,8 @@ func (pt *Task) prepareDetails() map[string]*types.Value {
 	lastEditedTime := converter.ConvertStringToTime(pt.p.LastEditedTime)
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastEditedTime))
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(createdTime))
-	return details
+	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
+	return details, relationLinks
 }
 
 // handlePageProperties gets properties values by their ids from notion api
@@ -217,6 +219,9 @@ func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.O
 }
 
 func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
+	if name == "" {
+		name = property.UntitledProperty
+	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
@@ -230,7 +235,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 // linkRelationsIDWithAnytypeID take anytype ID based on page/database ID from Notin.
 // In property, we get id from Notion, so we somehow need to map this ID with anytype for correct Relation.
 // We use two maps notionPagesIdsToAnytype, notionDatabaseIdsToAnytype for this
-func (pt *Task) handleLinkRelationsIDWithAnytypeID(propObject property.Object, req *block.NotionImportContext) {
+func (pt *Task) handleLinkRelationsIDWithAnytypeID(propObject property.Object, req *api.NotionImportContext) {
 	if r, ok := propObject.(*property.RelationItem); ok {
 		for _, r := range r.Relation {
 			if anytypeID, ok := req.NotionPageIdsToAnytype[r.ID]; ok {

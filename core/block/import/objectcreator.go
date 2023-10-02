@@ -2,7 +2,6 @@ package importer
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strings"
 	"sync"
@@ -32,8 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-const relationsLimit = 10
 
 type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
@@ -366,7 +363,7 @@ func (oc *ObjectCreator) resetState(ctx *session.Context, newID string, st *stat
 		}
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
-			return fmt.Errorf("common operations is not allowed for this object")
+			return nil
 		}
 		err = commonOperations.FeaturedRelationAdd(ctx, bundle.RelationKeyType.String())
 		if err != nil {

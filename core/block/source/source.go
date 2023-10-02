@@ -34,6 +34,7 @@ const (
 	defaultDataType  = "1/s"
 	poolSize         = 4096
 	snappyLowerLimit = 64
+	changeSizeLimit  = 10 * 1024 * 1024
 )
 
 var (
@@ -43,6 +44,7 @@ var (
 
 	ErrObjectNotFound = errors.New("object not found")
 	ErrReadOnly       = errors.New("object is read only")
+	ErrBigChangeSize  = errors.New("change size is above the limit")
 )
 
 func MarshallChange(change *pb.Change) (result []byte, dataType string, err error) {
@@ -289,6 +291,12 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		return
 	}
 
+	if err = checkChangeSize(data, changeSizeLimit); err != nil {
+		log.With("objectID", params.State.RootId()).
+			Errorf("change size (%d bytes) is above the limit of %d bytes", len(data), changeSizeLimit)
+		return "", err
+	}
+
 	content := objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountService.Account().SignKey,
@@ -337,6 +345,14 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 	c.Content = params.Changes
 	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
 	return c
+}
+
+func checkChangeSize(data []byte, maxSize int) error {
+	log.Debugf("Change size is %d bytes", len(data))
+	if len(data) > maxSize {
+		return ErrBigChangeSize
+	}
+	return nil
 }
 
 func (s *source) ListIds() (ids []string, err error) {

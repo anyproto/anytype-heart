@@ -1,12 +1,18 @@
 # Anytype Heart
 Middleware library for Anytype, distributed as part of the Anytype clients.
-
+ 
 ## Docs
 - [Build instructions](docs/Build.md)
 - [Protobuf generation](docs/Protogen.md)
 - [Testing instructions](docs/Testing.md)
 - [Debug instructions](docs/Debug.md)
 - [Project architecture](docs/Architecture.md)
+- [Style guide](docs/Codestyle.md)
+- [Project workflows](docs/Flow.md)
+
+### CLI tools
+- [Usecase generator](docs/UsecaseGenerator.md)
+- [Export Archive unpacker](docs/ExportArchiveUnpacker.md)
 
 ## Contribution
 Thank you for your desire to develop Anytype together!

@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/filetime"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
@@ -39,7 +40,8 @@ func GetSourceDetail(fileName, importPath string) string {
 	return source.String()
 }
 
-func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
+func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
+	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
 	}
@@ -47,10 +49,12 @@ func GetCommonDetails(sourcePath, name, emoji string) *types.Struct {
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():           pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String(): pbtypes.String(sourcePath),
-		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
-		bundle.RelationKeyCreatedDate.String():    pbtypes.Int64(time.Now().Unix()), // this relation will be after used in the tree header
+		bundle.RelationKeyName.String():             pbtypes.String(name),
+		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sourcePath),
+		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
+		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
+		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
+		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 	}
 	return &types.Struct{Fields: fields}
 }

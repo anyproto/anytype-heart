@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -47,13 +48,13 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	pageID, apiKey string,
 	pageSize int64,
 	mode pb.RpcObjectImportRequestMode) ([]interface{}, *converter.ConvertError) {
-	ce := converter.NewError()
+	converterError := converter.NewError(mode)
 	allBlocks := make([]interface{}, 0)
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
-		ce.Add(err)
-		if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, ce
+		converterError.Add(err)
+		if converterError.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+			return nil, converterError
 		}
 	}
 	for _, b := range blocks {
@@ -62,23 +63,27 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 			allBlocks = append(allBlocks, b)
 			continue
 		}
+		var (
+			children []interface{}
+			childErr *converter.ConvertError
+		)
 		if cs.HasChild() {
-			children, err := s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
-			if err != nil {
-				ce.Merge(err)
+			children, childErr = s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)
+			if !childErr.IsEmpty() {
+				converterError.Merge(childErr)
+				if childErr.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+					return nil, childErr
+				}
 			}
-			if err != nil && mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-				return nil, ce
-			}
-			cs.SetChildren(children)
 		}
+		cs.SetChildren(children)
 		allBlocks = append(allBlocks, b)
 	}
 	return allBlocks, nil
 }
 
-func (s *Service) MapNotionBlocksToAnytype(req *NotionImportContext, pageID string) *MapResponse {
-	return MapBlocks(req, pageID)
+func (s *Service) MapNotionBlocksToAnytype(req *api.NotionImportContext, blocks []interface{}, pageID string) *MapResponse {
+	return MapBlocks(req, blocks, pageID)
 }
 
 func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, pagination int64) ([]interface{}, error) {
@@ -351,6 +356,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 			logger.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
+		cl.SetChildren([]interface{}{})
 		blocks = append(blocks, &cl)
 	case TypeColumn:
 		var cb ColumnBlock
@@ -392,7 +398,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	b, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		return Response{}, err
+		return Response{}, fmt.Errorf("GetBlocks: %s", err)
 	}
 	var objects Response
 	if res.StatusCode != http.StatusOK {
@@ -407,7 +413,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	err = json.Unmarshal(b, &objects)
 
 	if err != nil {
-		return Response{}, err
+		return Response{}, fmt.Errorf("GetBlocks: %s", err)
 	}
 	return objects, nil
 }

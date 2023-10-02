@@ -1,5 +1,5 @@
 export GOPRIVATE=github.com/anyproto
-export GOLANGCI_LINT_VERSION=v1.49.0
+export GOLANGCI_LINT_VERSION=v1.54.2
 export custom_network_file=./core/anytype/config/nodes/custom.yml
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
 
@@ -29,14 +29,14 @@ ifdef ANYENV
 	@echo "ANYENV is now deprecated. Use ANY_SYNC_NETWORK instead."
 	@exit 1;
 endif
-	@if [ -z "$(ANY_SYNC_NETWORK)" ]; then \
-    		echo "Using the default production Any Sync Network"; \
-    	elif [ ! -e "$(ANY_SYNC_NETWORK)" ]; then \
-    		echo "Network configuration file not found at $(ANY_SYNC_NETWORK)"; \
-    		exit 1; \
-    	else \
-    		echo "Using Any Sync Network configuration at $(ANY_SYNC_NETWORK)"; \
-    		cp $(ANY_SYNC_NETWORK) $(custom_network_file); \
+	@if [ -z "$$ANY_SYNC_NETWORK" ]; then \
+        echo "Using the default production Any Sync Network"; \
+    elif [ ! -e "$$ANY_SYNC_NETWORK" ]; then \
+        echo "Network configuration file not found at $$ANY_SYNC_NETWORK"; \
+        exit 1; \
+    else \
+        echo "Using Any Sync Network configuration at $$ANY_SYNC_NETWORK"; \
+        cp $$ANY_SYNC_NETWORK $(custom_network_file); \
     fi
 
 setup-go: setup-network-config
@@ -249,7 +249,7 @@ install-dev-js-addon: setup build-lib build-js-addon protos-js
 	@cp -r clientlibrary/jsaddon/build ../anytype-ts/
 	@cp -r dist/js/pb/* ../anytype-ts/dist/lib
 
-install-dev-js: build-js
+install-dev-js: setup-go build-server protos-js
 	@echo 'Installing JS-server (dev-mode)...'
 	@rm -f ../anytype-ts/dist/anytypeHelper
 
@@ -266,7 +266,7 @@ endif
 	@cp pkg/lib/bundle/internal*.json ../anytype-ts/dist/lib/json/generated
 
 build-js: setup-go build-server protos-js
-	@echo "Run 'make install-dev-js' instead if you want to build&install into ../anytype-ts"
+	@echo "Run 'make install-dev-js' instead if you want to build & install into ../anytype-ts"
 
 install-linter:
 	@go install github.com/daixiang0/gci@latest

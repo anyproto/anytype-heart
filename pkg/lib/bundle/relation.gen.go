@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "165040560b4a08b762713b5f5f4bdecb02432de64306c5b475421ffff0efa0c6"
+const RelationChecksum = "6a5d8e4c1369922dc5d8de797033027a0037ccb7a17379aac7c32d947be1652f"
 
 type RelationKey string
 
@@ -165,6 +165,7 @@ const (
 	RelationKeyLastChangeId              RelationKey = "lastChangeId"
 	RelationKeyStarred                   RelationKey = "starred"
 	RelationKeyDefaultTemplateId         RelationKey = "defaultTemplateId"
+	RelationKeyBacklinks                 RelationKey = "backlinks"
 )
 
 var (
@@ -294,7 +295,7 @@ var (
 			Id:               "_braudioArtist",
 			Key:              "audioArtist",
 			MaxCount:         1,
-			Name:             "Artist",
+			Name:             "Recording Artist",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -334,6 +335,20 @@ var (
 			Key:              "author",
 			Name:             "Author",
 			ObjectTypes:      []string{TypePrefix + "profile", TypePrefix + "contact"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyBacklinks: {
+
+			DataSource:       model.Relation_local,
+			Description:      "List of backlinks",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brbacklinks",
+			Key:              "backlinks",
+			MaxCount:         1,
+			Name:             "Backlinks",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

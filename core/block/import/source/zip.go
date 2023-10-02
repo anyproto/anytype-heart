@@ -7,48 +7,77 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
-type Zip struct{}
-
-func NewZip() *Zip {
-	return &Zip{}
+type Zip struct {
+	archiveReader *zip.ReadCloser
+	fileReaders   map[string]*zip.File
 }
 
-func (d *Zip) GetFileReaders(importPath string, expectedExt []string) (map[string]io.ReadCloser, error) {
-	r, err := zip.OpenReader(importPath)
+func NewZip() *Zip {
+	return &Zip{fileReaders: make(map[string]*zip.File, 0)}
+}
+
+func (z *Zip) Initialize(importPath string) error {
+	archiveReader, err := zip.OpenReader(importPath)
+	z.archiveReader = archiveReader
 	if err != nil {
-		return nil, err
+		return err
 	}
-	files := make(map[string]io.ReadCloser, 0)
-	zipName := strings.TrimSuffix(importPath, filepath.Ext(importPath))
-	for _, f := range r.File {
+	fileReaders := make(map[string]*zip.File, len(archiveReader.File))
+	for _, f := range archiveReader.File {
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
-		if f.FileInfo() != nil && f.FileInfo().IsDir() {
-			dir := NewDirectory()
-			fr, e := dir.GetFileReaders(f.Name, expectedExt)
-			if e != nil {
-				log.Errorf("failed to get files from directory, %s", e)
-			}
-			files = lo.Assign(files, fr)
-			continue
-		}
-		ext := filepath.Ext(f.Name)
-		if !isSupportedExtension(ext, expectedExt) {
-			log.Errorf("not expected extension")
-			continue
-		}
-		shortPath := filepath.Clean(f.Name)
-		// remove zip root folder if exists
-		shortPath = strings.TrimPrefix(shortPath, zipName+"/")
-		rc, err := f.Open()
-		if err != nil {
-			log.Errorf("failed to read file: %s", err.Error())
-			continue
-		}
-		files[shortPath] = rc
+		fileReaders[f.Name] = f
 	}
-	return files, nil
+	z.fileReaders = fileReaders
+	return nil
+}
+
+func (z *Zip) Iterate(callback func(fileName string, fileReader io.ReadCloser) bool) error {
+	for name, file := range z.fileReaders {
+		fileReader, err := file.Open()
+		if err != nil {
+			return oserror.TransformError(err)
+		}
+		isContinue := callback(name, fileReader)
+		fileReader.Close()
+		if !isContinue {
+			break
+		}
+	}
+	return nil
+}
+
+func (z *Zip) ProcessFile(fileName string, callback func(fileReader io.ReadCloser) error) error {
+	if file, ok := z.fileReaders[fileName]; ok {
+		fileReader, err := file.Open()
+		if err != nil {
+			return oserror.TransformError(err)
+		}
+		defer fileReader.Close()
+		if err = callback(fileReader); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (z *Zip) CountFilesWithGivenExtensions(extension []string) int {
+	var numberOfFiles int
+	for name := range z.fileReaders {
+		if lo.Contains(extension, filepath.Ext(name)) {
+			numberOfFiles++
+		}
+	}
+	return numberOfFiles
+}
+
+func (z *Zip) Close() {
+	if z.archiveReader != nil {
+		z.archiveReader.Close()
+	}
 }

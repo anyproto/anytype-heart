@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
@@ -14,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -251,6 +251,8 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 			Fields: make(map[string]*types.Value),
 		}
 	}
+	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
+	//set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
 	s.details = pbtypes.CopyStruct(det)
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value

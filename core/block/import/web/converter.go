@@ -32,7 +32,7 @@ func (*Converter) GetParser(url string) parsers.Parser {
 }
 
 func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
-	we := converter.NewError()
+	we := converter.NewError(0)
 	url, err := c.getParams(req.Params)
 	progress.SetTotal(1)
 	if err != nil {
@@ -71,5 +71,5 @@ func (p *Converter) getParams(params pb.IsRpcObjectImportRequestParams) (string,
 	if p, ok := params.(*pb.RpcObjectImportRequestParamsOfBookmarksParams); ok {
 		return p.BookmarksParams.GetUrl(), nil
 	}
-	return "", fmt.Errorf("PB: GetParams wrong parameters format")
+	return "", fmt.Errorf("PB: getParams wrong parameters format")
 }

@@ -16,9 +16,9 @@ jobs:
           echo $ndkVersion
           ln -sf $ANDROID_SDK_ROOT/ndk/$ndkVersion $ANDROID_NDK_ROOT
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.21
+          go-version: '~1.20.8'
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -43,7 +43,7 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
           path: |
@@ -147,7 +147,7 @@ jobs:
       - name: Compile ios lib
         run: |
           go install github.com/vektra/mockery/v2@v2.32.0
-          go install go.uber.org/mock/mockgen@latest
+          go install go.uber.org/mock/mockgen@v0.3.0
           make test-deps
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           sudo /usr/sbin/purge
@@ -193,9 +193,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.21
+          go-version: '~1.20.8'
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
@@ -238,7 +238,7 @@ jobs:
           tar xzf x86_64-linux-musl-native.tgz -C $HOME
           npm i -g node-gyp
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - uses: actions/cache@v3
         with:
           path: |

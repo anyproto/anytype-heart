@@ -15,7 +15,11 @@ var log = logging.Logger("import-source")
 var extensions = []string{".md", ".csv", ".txt", ".pb", ".json", ".html"}
 
 type Source interface {
-	GetFileReaders(importPath string, ext []string) (map[string]io.ReadCloser, error)
+	Initialize(importPath string) error
+	Iterate(callback func(fileName string, fileReader io.ReadCloser) bool) error
+	ProcessFile(fileName string, callback func(fileReader io.ReadCloser) error) error
+	CountFilesWithGivenExtensions(extensions []string) int
+	Close()
 }
 
 func GetSource(importPath string) Source {

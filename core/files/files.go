@@ -128,7 +128,7 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	}
 
 	nodeHash := node.Cid().String()
-	if err = s.fileIndexData(ctx, node, nodeHash); err != nil {
+	if err = s.fileIndexData(ctx, node, nodeHash, opts.Imported); err != nil {
 		return "", nil, err
 	}
 
@@ -139,7 +139,17 @@ func (s *service) fileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
+	err = s.storeFileSize(nodeHash)
+	if err != nil {
+		return "", nil, fmt.Errorf("store file size: %w", err)
+	}
+
 	return nodeHash, fileInfo, nil
+}
+
+func (s *service) storeFileSize(hash string) error {
+	_, err := s.fileSync.CalculateFileSize(context.Background(), hash)
+	return err
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
@@ -199,6 +209,22 @@ func (s *service) fileRestoreKeys(ctx context.Context, hash string) (map[string]
 	return fileKeys, nil
 }
 
+// fileAddNodeFromDirs has structure:
+/*
+- dir (outer)
+	- dir (dir1)
+		- dir (file1)
+			- meta
+			- content
+		- dir (file2)
+			- meta
+			- content
+	- dir (dir2)
+		- dir (file3)
+			- meta
+			- content
+	...
+*/
 func (s *service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.DirectoryList) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(s.dagService)
@@ -222,7 +248,6 @@ func (s *service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.Directo
 		if err != nil {
 			return nil, nil, err
 		}
-		// todo: pin?
 		err = s.dagService.Add(ctx, node)
 		if err != nil {
 			return nil, nil, err
@@ -239,7 +264,6 @@ func (s *service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.Directo
 	if err != nil {
 		return nil, nil, err
 	}
-	// todo: pin?
 	err = s.dagService.Add(ctx, node)
 	if err != nil {
 		return nil, nil, err
@@ -247,6 +271,17 @@ func (s *service) fileAddNodeFromDirs(ctx context.Context, dirs *storage.Directo
 	return node, keys, nil
 }
 
+// fileAddNodeFromFiles has structure:
+/*
+- dir (outer)
+	- dir (file1)
+		- meta
+		- content
+	- dir (file2)
+		- meta
+		- content
+	...
+*/
 func (s *service) fileAddNodeFromFiles(ctx context.Context, files []*storage.FileInfo) (ipld.Node, *storage.FileKeys, error) {
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer := uio.NewDirectory(s.dagService)
@@ -325,13 +360,13 @@ func (s *service) FileGetKeys(hash string) (*FileKeys, error) {
 }
 
 // fileIndexData walks a file data node, indexing file links
-func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash string) error {
+func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash string, imported bool) error {
 	for _, link := range inode.Links() {
 		nd, err := helpers.NodeAtLink(ctx, s.dagService, link)
 		if err != nil {
 			return err
 		}
-		err = s.fileIndexNode(ctx, nd, hash)
+		err = s.fileIndexNode(ctx, nd, hash, imported)
 		if err != nil {
 			return err
 		}
@@ -341,9 +376,17 @@ func (s *service) fileIndexData(ctx context.Context, inode ipld.Node, hash strin
 }
 
 // fileIndexNode walks a file node, indexing file links
-func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string) error {
+func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID string, imported bool) error {
 	if looksLikeFileNode(inode) {
-		return s.fileIndexLink(ctx, inode, fileID)
+		err := s.fileIndexLink(ctx, inode, fileID)
+		if err != nil {
+			return fmt.Errorf("index file %s link: %w", fileID, err)
+		}
+		err = s.addToSyncQueue(fileID, true, imported)
+		if err != nil {
+			return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
+		}
+		return nil
 	}
 
 	links := inode.Links()
@@ -358,12 +401,16 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, fileID str
 			return err
 		}
 	}
+	err := s.addToSyncQueue(fileID, true, imported)
+	if err != nil {
+		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
+	}
 
 	return nil
 }
 
 // fileIndexLink indexes a file link
-func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID string) error {
+func (s *service) fileIndexLink(_ context.Context, inode ipld.Node, fileID string) error {
 	dlink := schema.LinkByName(inode.Links(), ValidContentLinkNames)
 	if dlink == nil {
 		return ErrMissingContentLink
@@ -371,9 +418,6 @@ func (s *service) fileIndexLink(ctx context.Context, inode ipld.Node, fileID str
 	linkID := dlink.Cid.String()
 	if err := s.fileStore.AddTarget(linkID, fileID); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
-	}
-	if err := s.addToSyncQueue(fileID, true); err != nil {
-		return fmt.Errorf("add file %s to sync queue: %w", fileID, err)
 	}
 	return nil
 }
@@ -611,7 +655,14 @@ func (s *service) fileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	return fileInfo, nil
 }
 
-func (s *service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
+// fileNode has structure:
+/*
+- dir (outer)
+  	- dir
+  		- meta
+  		- content
+*/
+func (s *service) fileNode(ctx context.Context, file *storage.FileInfo, outerDir uio.Directory, link string) error {
 	file, err := s.fileStore.GetByHash(file.Hash)
 	if err != nil {
 		return err
@@ -639,7 +690,7 @@ func (s *service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 		return err
 	}
 
-	return helpers.AddLinkToDirectory(ctx, s.dagService, dir, link, node.Cid().String())
+	return helpers.AddLinkToDirectory(ctx, s.dagService, outerDir, link, node.Cid().String())
 }
 
 func (s *service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
@@ -784,10 +835,10 @@ func (s *service) fileIndexInfo(ctx context.Context, hash string, updateIfExists
 	return files, nil
 }
 
-func (s *service) addToSyncQueue(fileID string, uploadedByUser bool) error {
+func (s *service) addToSyncQueue(fileID string, uploadedByUser bool, imported bool) error {
 	spaceID := s.spaceService.AccountId()
 
-	if err := s.fileSync.AddFile(spaceID, fileID, uploadedByUser); err != nil {
+	if err := s.fileSync.AddFile(spaceID, fileID, uploadedByUser, imported); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	if _, err := s.syncStatusWatcher.Watch(fileID, nil); err != nil {
@@ -893,7 +944,7 @@ func (s *service) FileByHash(ctx context.Context, hash string) (File, error) {
 			}
 		}
 	}
-	if err := s.addToSyncQueue(hash, false); err != nil {
+	if err := s.addToSyncQueue(hash, false, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", hash, err)
 	}
 	fileIndex := fileList[0]

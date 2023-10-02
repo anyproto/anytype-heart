@@ -2,10 +2,12 @@ package collection
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -16,10 +18,12 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -207,6 +211,7 @@ func (s *Service) ObjectToCollection(id string) error {
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
+		setDefaultObjectTypeToViews(st)
 		st.SetObjectType(bundle.TypeKeyCollection.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
@@ -218,4 +223,36 @@ func (s *Service) ObjectToCollection(id string) error {
 	}
 
 	return nil
+}
+
+func setDefaultObjectTypeToViews(st *state.State) {
+	if !lo.Contains(st.ObjectTypes(), bundle.TypeKeySet.URL()) {
+		return
+	}
+
+	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
+	if len(setOfValue) == 0 || !strings.HasPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix) {
+		return
+	}
+
+	if isNotCreatableType(bundle.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+		return
+	}
+
+	dataviewBlock := st.Get(state.DataviewBlockID)
+	if dataviewBlock == nil {
+		return
+	}
+	content, ok := dataviewBlock.Model().Content.(*model.BlockContentOfDataview)
+	if !ok {
+		return
+	}
+
+	for _, view := range content.Dataview.Views {
+		view.DefaultObjectTypeId = setOfValue[0]
+	}
+}
+
+func isNotCreatableType(key bundle.TypeKey) bool {
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType, bundle.TypeKeySet, bundle.TypeKeyCollection), key)
 }

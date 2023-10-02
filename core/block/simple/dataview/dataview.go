@@ -179,6 +179,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.GroupBackgroundColors = view.GroupBackgroundColors
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
+	v.DefaultObjectTypeId = view.DefaultObjectTypeId
 
 	return nil
 }
@@ -200,6 +201,7 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	v.GroupBackgroundColors = view.GroupBackgroundColors
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
+	v.DefaultObjectTypeId = view.DefaultObjectTypeId
 
 	return nil
 }
@@ -212,10 +214,25 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	if l.content.TargetObjectId != "" {
 		ids = append(ids, l.content.TargetObjectId)
 	}
+
+	for _, view := range l.content.Views {
+		if view.DefaultObjectTypeId != "" {
+			ids = append(ids, view.DefaultObjectTypeId)
+		}
+		if view.DefaultTemplateId != "" {
+			ids = append(ids, view.DefaultTemplateId)
+		}
+	}
+
 	return ids
 }
 
 func (l *Dataview) HasSmartIds() bool {
+	for _, view := range l.content.Views {
+		if view.DefaultObjectTypeId != "" || view.DefaultTemplateId != "" {
+			return true
+		}
+	}
 	return len(l.content.RelationLinks) > 0 || l.content.TargetObjectId != ""
 }
 

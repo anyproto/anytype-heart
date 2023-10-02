@@ -22,6 +22,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -32,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/stretchr/testify/mock"
 )
 
 var ctx = context.Background()
@@ -49,7 +49,8 @@ func TestFileSync_AddFile(t *testing.T) {
 	spaceId := "space1"
 
 	fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
-
+	fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
+	fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
 	fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
 		{}, // We can use just empty struct here, because we don't use any fields
 	}, nil).AnyTimes()
@@ -66,7 +67,7 @@ func TestFileSync_AddFile(t *testing.T) {
 	// fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
 	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), spaceId).Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
 	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
-	require.NoError(t, fx.AddFile(spaceId, fileId, false))
+	require.NoError(t, fx.AddFile(spaceId, fileId, false, false))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
 

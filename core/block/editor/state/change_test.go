@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
@@ -345,16 +344,6 @@ func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
 
 		assertApplyingChanges(t, state, wantState, originalState)
 	})
-}
-
-func buildStateFromAST(root *Block) *State {
-	st := NewDocFromSnapshot("", &pb.ChangeSnapshot{
-		Data: &model.SmartBlockSnapshotBase{
-			Blocks: root.Build(),
-		},
-	}).(*State)
-	ApplyState(st, true)
-	return st.NewState()
 }
 
 func TestState_SetParent(t *testing.T) {
@@ -761,4 +750,15 @@ func newRemoveChange(ids ...string) *pb.ChangeContent {
 			},
 		},
 	}
+}
+
+// copy if testutil.BuildStateFromAST because of cyclic import
+func buildStateFromAST(root *Block) *State {
+	st := NewDocFromSnapshot("", &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks: root.Build(),
+		},
+	}).(*State)
+	ApplyState(st, true)
+	return st.NewState()
 }
