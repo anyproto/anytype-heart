@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -25,7 +24,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
@@ -62,10 +60,7 @@ type ObjectFactory struct {
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             spaceIndexer
-	spaceCore           spacecore.SpaceCoreService
-	objectCache         objectcache.Cache
-	personalIDProvider  personalIDProvider
-	installer           bundledObjectsInstaller
+	spaceService        spaceService
 	objectDeriver       objectDeriver
 }
 
@@ -75,8 +70,6 @@ func NewObjectFactory() *ObjectFactory {
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
-	f.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
-	f.objectCache = app.MustComponent[objectcache.Cache](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
@@ -93,9 +86,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.picker = app.MustComponent[getblock.ObjectGetter](a)
 	f.indexer = app.MustComponent[spaceIndexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
-	f.personalIDProvider = app.MustComponent[personalIDProvider](a)
-	f.installer = app.MustComponent[bundledObjectsInstaller](a)
 	f.objectDeriver = app.MustComponent[objectDeriver](a)
+	f.spaceService = app.MustComponent[spaceService](a)
 
 	return nil
 }
@@ -245,13 +237,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 	case coresb.SmartBlockTypeSpaceObject:
 		return newSpaceObject(
 			sb,
-			spaceObjectDeps{
-				cache:     f.objectCache,
-				installer: f.installer,
-				spaceCore: f.spaceCore,
-				provider:  f.personalIDProvider,
-				indexer:   f.indexer,
-			},
+			f.spaceService,
 		), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil

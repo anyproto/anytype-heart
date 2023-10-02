@@ -1,11 +1,21 @@
 package editor
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -13,18 +23,11 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"context"
-	"github.com/gogo/protobuf/types"
-	"github.com/anyproto/anytype-heart/core/block/migration"
-	"fmt"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/stext"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 )
 
 type Workspaces struct {
@@ -84,7 +87,7 @@ func NewWorkspace(
 }
 
 type objectDeriver interface {
-	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObject(ctx context.Context, spaceID string, params objectcache.TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 }
 
 func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
@@ -177,15 +180,18 @@ func (w *Workspaces) migrateSubObject(
 	if err != nil {
 		return "", fmt.Errorf("unmarshal unique key: %w", err)
 	}
-	sb, err := w.objectDeriver.DeriveTreeObjectWithUniqueKey(ctx, w.SpaceID(), uniqueKey, func(id string) *smartblock.InitContext {
-		st := state.NewDocWithUniqueKey(id, nil, uniqueKey).NewState()
-		st.SetDetails(details)
-		st.SetObjectTypeKey(typeKey)
-		return &smartblock.InitContext{
-			IsNewObject: true,
-			State:       st,
-			SpaceID:     w.SpaceID(),
-		}
+	sb, err := w.objectDeriver.DeriveTreeObject(ctx, w.SpaceID(), objectcache.TreeDerivationParams{
+		Key: uniqueKey,
+		InitFunc: func(id string) *smartblock.InitContext {
+			st := state.NewDocWithUniqueKey(id, nil, uniqueKey).NewState()
+			st.SetDetails(details)
+			st.SetObjectTypeKey(typeKey)
+			return &smartblock.InitContext{
+				IsNewObject: true,
+				State:       st,
+				SpaceID:     w.SpaceID(),
+			}
+		},
 	})
 	if err != nil {
 		return "", err

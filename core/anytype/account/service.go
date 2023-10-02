@@ -3,10 +3,6 @@ package account
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space"
 	"path/filepath"
 	"sync"
 
@@ -14,11 +10,15 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
@@ -124,7 +124,11 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 }
 
 func (s *service) getIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	return s.spaceService.DerivedIDs(ctx, spaceID)
+	sp, err := s.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return
+	}
+	return sp.DerivedIDs(), nil
 }
 
 func (s *service) getAnalyticsID(ctx context.Context) (string, error) {

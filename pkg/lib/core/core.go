@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -109,6 +110,9 @@ func (a *Anytype) AccountObjects() threads.DerivedSmartblockIds {
 }
 
 func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds {
+	if spaceID == addr.AnytypeMarketplaceWorkspace {
+		return threads.DerivedSmartblockIds{}
+	}
 	ids, err := a.derivedIDs.DerivedIDs(context.Background(), spaceID)
 	if err != nil {
 		log.Error("failed to get account objects", zap.Error(err))
