@@ -189,7 +189,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is a set by not creatable type", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeySet.URL(), bundle.TypeKeyCollection.URL())
+		st := generateState(bundle.TypeKeySet.URL(), bundle.TypeKeyObjectType.URL())
 
 		// when
 		setDefaultObjectTypeToViews(st)
