@@ -50,6 +50,10 @@ packages:
   github.com/anyproto/anytype-heart/space/spacecore:
     interfaces:
       SpaceCoreService:
+  github.com/anyproto/anytype-heart/space/techspace:
+    interfaces:
+      TechSpace:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       bundledObjectsInstaller:
+      isNewAccount:

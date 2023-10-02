@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"fmt"
 
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -49,7 +50,7 @@ func (s *service) createLoaderOrReturnInfo(ctx context.Context, spaceID string) 
 func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
+	fmt.Println("loadErr", loadErr)
 	switch loadErr {
 	case nil:
 	case spaceservice.ErrSpaceDeletionPending:

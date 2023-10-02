@@ -27,7 +27,7 @@ func newSpace(s *service, coreSpace *spacecore.AnySpace) *space {
 		AnySpace:               coreSpace,
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
-	go sp.mandatoryObjectsLoad(context.TODO())
+	go sp.mandatoryObjectsLoad(s.ctx)
 	return sp
 }
 

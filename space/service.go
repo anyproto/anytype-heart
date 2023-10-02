@@ -9,12 +9,12 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "client.space"
@@ -35,6 +35,11 @@ type bundledObjectsInstaller interface {
 	app.Component
 }
 
+type isNewAccount interface {
+	IsNewAccount() bool
+	app.Component
+}
+
 type SpaceService interface {
 	Create(ctx context.Context) (space Space, err error)
 	Get(ctx context.Context, id string) (space Space, err error)
@@ -49,8 +54,7 @@ type service struct {
 	spaceCore   spacecore.SpaceCoreService
 	provider    objectprovider.ObjectProvider
 	objectCache objectcache.Cache
-
-	techSpace *techSpace
+	techSpace   techspace.TechSpace
 
 	personalSpaceID string
 
@@ -64,8 +68,6 @@ type service struct {
 	ctxCancel context.CancelFunc
 
 	repKey uint64
-
-	wakeUpViewsCh chan struct{}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -74,7 +76,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectCache = app.MustComponent[objectcache.Cache](a)
 	installer := app.MustComponent[bundledObjectsInstaller](a)
 	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
-	s.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
+	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
+	s.techSpace = app.MustComponent[techspace.TechSpace](a)
 	s.loading = map[string]*loadingSpace{}
 	s.loaded = map[string]Space{}
 	return nil
@@ -84,27 +87,13 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Run(ctx context.Context) (err error) {
+func (s *service) Run(_ context.Context) (err error) {
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
-	s.personalSpaceID, err = s.spaceCore.DeriveID(ctx, spacecore.SpaceType)
+	s.personalSpaceID, err = s.spaceCore.DeriveID(s.ctx, spacecore.SpaceType)
 	if err != nil {
 		return
 	}
-
-	techSpaceCore, err := s.spaceCore.Derive(ctx, spacecore.TechSpaceType)
-	if err != nil {
-		return
-	}
-	s.techSpace = newTechSpace(s, techSpaceCore)
-
-	s.wakeUpViewsCh = make(chan struct{})
-	go func() {
-		defer close(s.wakeUpViewsCh)
-		if e := s.techSpace.wakeUpViews(s.ctx); e != nil {
-			log.Warn("wakeUpViews error", zap.Error(e))
-		}
-	}()
 
 	err = s.indexer.ReindexCommonObjects()
 	if err != nil {
@@ -112,9 +101,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 	}
 
 	if s.newAccount {
-		return s.createPersonalSpace(ctx)
+		return s.createPersonalSpace(s.ctx)
 	}
-	return s.loadPersonalSpace(ctx)
+	return s.loadPersonalSpace(s.ctx)
 }
 
 func (s *service) Create(ctx context.Context) (Space, error) {
@@ -179,7 +168,7 @@ func (s *service) OnViewCreated(spaceID string) {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
-		s.ctxCancel()
+		//s.ctxCancel()
 	}
 	return nil
 }

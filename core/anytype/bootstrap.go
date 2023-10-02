@@ -76,6 +76,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -242,6 +243,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory()).
+		Register(techspace.New()).
 		Register(space.New()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New())
