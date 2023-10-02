@@ -277,7 +277,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 				return
 			}
 			// file's hash is id
-			idxErr := i.reindexDoc(ctx, id)
+			idxErr := i.reindexDoc(ctx, spaceID, id)
 			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
 				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
 			}
