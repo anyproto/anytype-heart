@@ -24,8 +24,9 @@ type subObjectsMigration struct {
 	objectDeriver objectDeriver
 }
 
-func (m *subObjectsMigration) migrateSubObjects(_ *state.State) {
+func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 	m.iterateAllSubObjects(
+		st,
 		func(info smartblock.DocInfo) {
 			uniqueKeyRaw := pbtypes.GetString(info.Details, bundle.RelationKeyUniqueKey.String())
 			id, err := m.migrateSubObject(context.Background(), uniqueKeyRaw, info.Details, info.Type)
@@ -87,8 +88,7 @@ func collectionKeyToTypeKey(collKey string) (domain.TypeKey, bool) {
 	return "", false
 }
 
-func (m *subObjectsMigration) iterateAllSubObjects(proc func(smartblock.DocInfo)) {
-	st := m.workspace.NewState()
+func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(smartblock.DocInfo)) {
 	for typeKey, coll := range objectTypeToCollection {
 		collection := st.GetSubObjectCollection(coll)
 		if collection == nil {

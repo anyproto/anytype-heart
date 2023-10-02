@@ -83,6 +83,12 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	w.initTemplate(ctx)
 
+	subObjectMigration := subObjectsMigration{
+		workspace:     w,
+		objectDeriver: w.objectDeriver,
+	}
+	subObjectMigration.migrateSubObjects(ctx.State)
+
 	return nil
 }
 
@@ -119,16 +125,5 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 }
 
 func (w *Workspaces) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations([]migration.Migration{
-		{
-			Version: 1,
-			Proc: func(st *state.State) {
-				subObjectMigration := subObjectsMigration{
-					workspace:     w,
-					objectDeriver: w.objectDeriver,
-				}
-				subObjectMigration.migrateSubObjects(st)
-			},
-		},
-	})
+	return migration.MakeMigrations(nil)
 }
