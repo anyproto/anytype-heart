@@ -131,7 +131,7 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, spaceID, ids...)
 
 		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
 
@@ -210,7 +210,7 @@ func (i *indexer) ReindexCommonObjects() error {
 	if flags.bundledObjects {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
-		err := i.reindexIDs(ctx, metrics.ReindexTypeBundledObjects, ids)
+		err := i.reindexIDs(ctx, addr.AnytypeMarketplaceWorkspace, metrics.ReindexTypeBundledObjects, ids)
 		if err != nil {
 			return fmt.Errorf("reindex profile and missing object: %w", err)
 		}
@@ -286,12 +286,12 @@ func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, spaceID stri
 	if err != nil {
 		return err
 	}
-	return i.reindexIDs(ctx, reindexType, ids)
+	return i.reindexIDs(ctx, spaceID, reindexType, ids)
 }
 
-func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, ids []string) error {
+func (i *indexer) reindexIDs(ctx context.Context, spaceID string, reindexType metrics.ReindexType, ids []string) error {
 	start := time.Now()
-	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
+	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, spaceID, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
 	return nil
 }
@@ -335,20 +335,25 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (t
 		}
 	}
 
-	success = i.reindexIdsIgnoreErr(ctx, idsToReindex...)
+	success = i.reindexIdsIgnoreErr(ctx, spaceID, idsToReindex...)
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, id string) error {
-	err := block.DoContext(i.picker, ctx, id, func(sb smartblock.SmartBlock) error {
+func (i *indexer) reindexDoc(ctx context.Context, spaceID, id string) error {
+	// TODO: use special method for getting with id instead of this hack
+	err := i.storageService.BindSpaceID(spaceID, id)
+	if err != nil {
+		return err
+	}
+	err = block.DoContext(i.picker, ctx, id, func(sb smartblock.SmartBlock) error {
 		return i.Index(ctx, sb.GetDocInfo())
 	})
 	return err
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, spaceID string, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
-		err := i.reindexDoc(ctx, id)
+		err := i.reindexDoc(ctx, spaceID, id)
 		if err != nil {
 			log.With("objectID", id).Errorf("failed to reindex: %v", err)
 		} else {
