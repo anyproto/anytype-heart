@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -14,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 const CName = "client.space"
@@ -94,6 +94,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return
 	}
 	s.techSpace = newTechSpace(s, techSpaceCore)
+	go s.techSpace.wakeUpViews(s.ctx)
 
 	err = s.indexer.ReindexCommonObjects()
 	if err != nil {
@@ -158,11 +159,12 @@ func (s *service) DerivedIDs(ctx context.Context, spaceID string) (ids threads.D
 	return s.provider.DeriveObjectIDs(ctx, spaceID, sbTypes)
 }
 
-func (s *service) OnViewCreated(ctx context.Context, spaceID string) (info spaceinfo.SpaceInfo, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	info, _, err = s.createLoaderOrReturnInfo(ctx, spaceID)
-	return
+func (s *service) OnViewCreated(spaceID string) {
+	go func() {
+		if err := s.startLoad(s.ctx, spaceID); err != nil {
+			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
+		}
+	}()
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
