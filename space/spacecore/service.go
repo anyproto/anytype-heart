@@ -26,6 +26,8 @@ import (
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -33,7 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"go.uber.org/zap"
 )
 
 const (
@@ -54,7 +55,7 @@ type PoolManager interface {
 	StreamPeerPool() pool.Pool
 }
 
-//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anyproto/anytype-heart/space SpaceCoreService
+//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anyproto/anytype-heart/space/spacecore SpaceCoreService
 //go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anyproto/any-sync/commonspace Space
 type SpaceCoreService interface {
 	Create(ctx context.Context, replicationKey uint64) (*AnySpace, error)

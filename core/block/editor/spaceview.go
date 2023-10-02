@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"context"
 	"errors"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {
-	OnViewCreated(ctx context.Context, spaceID string) (info spaceinfo.SpaceInfo, err error)
+	OnViewCreated(spaceID string)
 }
 
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
@@ -45,11 +44,8 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	s.DisableLayouts()
-	info, err := s.spaceService.OnViewCreated(ctx.Ctx, spaceID)
-	if err != nil {
-		return
-	}
-	return s.setSpaceInfo(ctx.State, info)
+	s.spaceService.OnViewCreated(spaceID)
+	return
 }
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
