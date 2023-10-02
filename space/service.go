@@ -32,6 +32,7 @@ type spaceIndexer interface {
 
 type bundledObjectsInstaller interface {
 	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
+	app.Component
 }
 
 type SpaceService interface {
@@ -63,6 +64,8 @@ type service struct {
 	ctxCancel context.CancelFunc
 
 	repKey uint64
+
+	wakeUpViewsCh chan struct{}
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -94,7 +97,14 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return
 	}
 	s.techSpace = newTechSpace(s, techSpaceCore)
-	go s.techSpace.wakeUpViews(s.ctx)
+
+	s.wakeUpViewsCh = make(chan struct{})
+	go func() {
+		defer close(s.wakeUpViewsCh)
+		if e := s.techSpace.wakeUpViews(s.ctx); e != nil {
+			log.Warn("wakeUpViews error", zap.Error(e))
+		}
+	}()
 
 	err = s.indexer.ReindexCommonObjects()
 	if err != nil {

@@ -55,8 +55,6 @@ type PoolManager interface {
 	StreamPeerPool() pool.Pool
 }
 
-//go:generate mockgen -package mock_space -destination ./mock_space/service_mock.go github.com/anyproto/anytype-heart/space/spacecore SpaceCoreService
-//go:generate mockgen -package mock_space -destination ./mock_space/commonspace_space_mock.go github.com/anyproto/any-sync/commonspace Space
 type SpaceCoreService interface {
 	Create(ctx context.Context, replicationKey uint64) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)

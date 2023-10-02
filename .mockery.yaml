@@ -44,3 +44,12 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:
+  github.com/anyproto/anytype-heart/core/indexer:
+    interfaces:
+      Indexer:
+  github.com/anyproto/anytype-heart/space/spacecore:
+    interfaces:
+      SpaceCoreService:
+  github.com/anyproto/anytype-heart/space:
+    interfaces:
+      bundledObjectsInstaller:
