@@ -1,11 +1,6 @@
 package editor
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -22,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
@@ -37,7 +31,6 @@ type Workspaces struct {
 	stext.Text
 
 	DetailsModifier DetailsModifier
-	templateCloner  templateCloner
 	sourceService   source.Service
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
@@ -54,7 +47,6 @@ func NewWorkspace(
 	modifier DetailsModifier,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
-	templateCloner templateCloner,
 	config *config.Config,
 	eventSender event.Sender,
 	objectDeriver objectDeriver,
@@ -79,14 +71,9 @@ func NewWorkspace(
 		anytype:         anytype,
 		objectStore:     objectStore,
 		sourceService:   sourceService,
-		templateCloner:  templateCloner,
 		config:          config,
 		objectDeriver:   objectDeriver,
 	}
-}
-
-type objectDeriver interface {
-	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, err error)
 }
 
 func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
@@ -121,19 +108,6 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 	)
 }
 
-type templateCloner interface {
-	TemplateClone(spaceID string, id string) (templateID string, err error)
-}
-
-type WorkspaceParameters struct {
-	IsHighlighted bool
-	WorkspaceId   string
-}
-
-func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
-	return wp.IsHighlighted == other.IsHighlighted
-}
-
 func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	// TODO Maybe move init logic here?
 	return migration.Migration{
@@ -148,127 +122,13 @@ func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{
 		{
 			Version: 1,
-			Proc:    w.migrateSubObjects,
-		},
-	})
-}
-
-func (w *Workspaces) migrateSubObjects(_ *state.State) {
-	w.iterateAllSubObjects(
-		func(info smartblock.DocInfo) {
-			uniqueKeyRaw := pbtypes.GetString(info.Details, bundle.RelationKeyUniqueKey.String())
-			id, err := w.migrateSubObject(context.Background(), uniqueKeyRaw, info.Details, info.Type)
-			if err != nil {
-				log.Errorf("failed to index subobject %s: %s", info.Id, err)
-				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
-			} else {
-				log.With("objectId", id, "uniqueKey", uniqueKeyRaw).Warnf("migrated sub-object")
-			}
-		},
-	)
-}
-
-func (w *Workspaces) migrateSubObject(
-	ctx context.Context,
-	uniqueKeyRaw string,
-	details *types.Struct,
-	typeKey domain.TypeKey,
-) (id string, err error) {
-	uniqueKey, err := domain.UnmarshalUniqueKey(uniqueKeyRaw)
-	if err != nil {
-		return "", fmt.Errorf("unmarshal unique key: %w", err)
-	}
-	sb, err := w.objectDeriver.DeriveTreeObjectWithUniqueKey(ctx, w.SpaceID(), uniqueKey, func(id string) *smartblock.InitContext {
-		st := state.NewDocWithUniqueKey(id, nil, uniqueKey).NewState()
-		st.SetDetails(details)
-		st.SetObjectTypeKey(typeKey)
-		return &smartblock.InitContext{
-			IsNewObject: true,
-			State:       st,
-			SpaceID:     w.SpaceID(),
-		}
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return sb.Id(), nil
-}
-
-const (
-	collectionKeyRelationOptions = "opt"
-	collectionKeyRelations       = "rel"
-	collectionKeyObjectTypes     = "ot"
-)
-
-var objectTypeToCollection = map[domain.TypeKey]string{
-	bundle.TypeKeyObjectType:     collectionKeyObjectTypes,
-	bundle.TypeKeyRelation:       collectionKeyRelations,
-	bundle.TypeKeyRelationOption: collectionKeyRelationOptions,
-}
-
-func collectionKeyToTypeKey(collKey string) (domain.TypeKey, bool) {
-	for ot, v := range objectTypeToCollection {
-		if v == collKey {
-			return ot, true
-		}
-	}
-	return "", false
-}
-
-func (w *Workspaces) iterateAllSubObjects(proc func(smartblock.DocInfo)) {
-	st := w.NewState()
-	for typeKey, coll := range objectTypeToCollection {
-		collection := st.GetSubObjectCollection(coll)
-		if collection == nil {
-			continue
-		}
-
-		for subObjectId, subObjectStruct := range collection.GetFields() {
-			if v, ok := subObjectStruct.Kind.(*types.Value_StructValue); ok {
-				uk, err := w.getUniqueKey(coll, subObjectId)
-				if err != nil {
-					log.With("collection", coll).Errorf("subobject migration: failed to get uniqueKey: %s", err.Error())
-					continue
+			Proc: func(st *state.State) {
+				subObjectMigration := subObjectsMigration{
+					workspace:     w,
+					objectDeriver: w.objectDeriver,
 				}
-
-				details := v.StructValue
-				details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
-
-				proc(smartblock.DocInfo{
-					SpaceID:    w.SpaceID(),
-					Links:      nil,
-					FileHashes: nil,
-					Heads:      nil,
-					Type:       typeKey,
-					Details:    details,
-				})
-			} else {
-				log.Errorf("got invalid value for %s.%s:%t", coll, subObjectId, subObjectStruct.Kind)
-				continue
-			}
-		}
-	}
-	return
-}
-
-func (w *Workspaces) getUniqueKey(collection, key string) (domain.UniqueKey, error) {
-	typeKey, ok := collectionKeyToTypeKey(collection)
-	if !ok {
-		return nil, fmt.Errorf("unknown collection %s", collection)
-	}
-
-	var sbt smartblock2.SmartBlockType
-	switch typeKey {
-	case bundle.TypeKeyRelation:
-		sbt = smartblock2.SmartBlockTypeRelation
-	case bundle.TypeKeyObjectType:
-		sbt = smartblock2.SmartBlockTypeObjectType
-	case bundle.TypeKeyRelationOption:
-		sbt = smartblock2.SmartBlockTypeRelationOption
-	default:
-		return nil, fmt.Errorf("unknown type key %s", typeKey)
-	}
-
-	return domain.NewUniqueKey(sbt, key)
+				subObjectMigration.migrateSubObjects(st)
+			},
+		},
+	})
 }
