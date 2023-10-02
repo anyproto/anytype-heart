@@ -35,6 +35,7 @@ func (s *techSpace) wakeUpViews(ctx context.Context) (err error) {
 			return nil
 		})
 	}
+	s.techCore.TreeSyncer().StartSync()
 	return
 }
 
