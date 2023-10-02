@@ -18,9 +18,9 @@ import (
 
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
 	source "github.com/anyproto/anytype-heart/core/block/source"
-	domain "github.com/anyproto/anytype-heart/core/domain"
 	pb "github.com/anyproto/anytype-heart/pb"
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // MockService is a mock of Service interface.
@@ -62,18 +62,18 @@ func (mr *MockServiceMockRecorder) DetailsFromIdBasedSource(arg0 any) *gomock.Ca
 }
 
 // IDsListerBySmartblockType mocks base method.
-func (m *MockService) IDsListerBySmartblockType(arg0 string, arg1 smartblock.SmartBlockType) (source.IDsLister, error) {
+func (m *MockService) IDsListerBySmartblockType(arg0 smartblock.SmartBlockType) (source.IDsLister, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IDsListerBySmartblockType", arg0, arg1)
+	ret := m.ctrl.Call(m, "IDsListerBySmartblockType", arg0)
 	ret0, _ := ret[0].(source.IDsLister)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // IDsListerBySmartblockType indicates an expected call of IDsListerBySmartblockType.
-func (mr *MockServiceMockRecorder) IDsListerBySmartblockType(arg0, arg1 any) *gomock.Call {
+func (mr *MockServiceMockRecorder) IDsListerBySmartblockType(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IDsListerBySmartblockType", reflect.TypeOf((*MockService)(nil).IDsListerBySmartblockType), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IDsListerBySmartblockType", reflect.TypeOf((*MockService)(nil).IDsListerBySmartblockType), arg0)
 }
 
 // Init mocks base method.
@@ -120,7 +120,7 @@ func (mr *MockServiceMockRecorder) NewSource(arg0, arg1, arg2, arg3 any) *gomock
 }
 
 // NewStaticSource mocks base method.
-func (m *MockService) NewStaticSource(arg0 domain.FullID, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
+func (m *MockService) NewStaticSource(arg0 string, arg1 model.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewStaticSource", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(source.SourceWithType)
@@ -134,17 +134,15 @@ func (mr *MockServiceMockRecorder) NewStaticSource(arg0, arg1, arg2, arg3 any) *
 }
 
 // RegisterStaticSource mocks base method.
-func (m *MockService) RegisterStaticSource(arg0 source.Source) error {
+func (m *MockService) RegisterStaticSource(arg0 string, arg1 source.Source) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RegisterStaticSource", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "RegisterStaticSource", arg0, arg1)
 }
 
 // RegisterStaticSource indicates an expected call of RegisterStaticSource.
-func (mr *MockServiceMockRecorder) RegisterStaticSource(arg0 any) *gomock.Call {
+func (mr *MockServiceMockRecorder) RegisterStaticSource(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterStaticSource", reflect.TypeOf((*MockService)(nil).RegisterStaticSource), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterStaticSource", reflect.TypeOf((*MockService)(nil).RegisterStaticSource), arg0, arg1)
 }
 
 // RemoveStaticSource mocks base method.
@@ -282,25 +280,11 @@ func (mr *MockSourceMockRecorder) ReadOnly() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadOnly", reflect.TypeOf((*MockSource)(nil).ReadOnly))
 }
 
-// SpaceID mocks base method.
-func (m *MockSource) SpaceID() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SpaceID")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// SpaceID indicates an expected call of SpaceID.
-func (mr *MockSourceMockRecorder) SpaceID() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SpaceID", reflect.TypeOf((*MockSource)(nil).SpaceID))
-}
-
 // Type mocks base method.
-func (m *MockSource) Type() smartblock.SmartBlockType {
+func (m *MockSource) Type() model.SmartBlockType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Type")
-	ret0, _ := ret[0].(smartblock.SmartBlockType)
+	ret0, _ := ret[0].(model.SmartBlockType)
 	return ret0
 }
 

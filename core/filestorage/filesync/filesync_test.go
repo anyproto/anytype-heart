@@ -49,7 +49,8 @@ func TestFileSync_AddFile(t *testing.T) {
 	spaceId := "space1"
 
 	fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
-
+	fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
+	fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
 	fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
 		{}, // We can use just empty struct here, because we don't use any fields
 	}, nil).AnyTimes()

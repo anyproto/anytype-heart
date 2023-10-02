@@ -17,7 +17,6 @@ import (
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
 
-	domain "github.com/anyproto/anytype-heart/core/domain"
 	files "github.com/anyproto/anytype-heart/core/files"
 	pb "github.com/anyproto/anytype-heart/pb"
 	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -48,10 +47,10 @@ func (m *MockFileService) EXPECT() *MockFileServiceMockRecorder {
 }
 
 // FileAdd mocks base method.
-func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.File, error) {
+func (m *MockFileService) FileAdd(arg0 context.Context, arg1 ...files.AddOption) (files.File, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FileAdd", varargs...)
@@ -61,14 +60,14 @@ func (m *MockFileService) FileAdd(arg0 context.Context, arg1 string, arg2 ...fil
 }
 
 // FileAdd indicates an expected call of FileAdd.
-func (mr *MockFileServiceMockRecorder) FileAdd(arg0, arg1 any, arg2 ...any) *gomock.Call {
+func (mr *MockFileServiceMockRecorder) FileAdd(arg0 any, arg1 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileAdd", reflect.TypeOf((*MockFileService)(nil).FileAdd), varargs...)
 }
 
 // FileByHash mocks base method.
-func (m *MockFileService) FileByHash(arg0 context.Context, arg1 domain.FullID) (files.File, error) {
+func (m *MockFileService) FileByHash(arg0 context.Context, arg1 string) (files.File, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FileByHash", arg0, arg1)
 	ret0, _ := ret[0].(files.File)
@@ -83,7 +82,7 @@ func (mr *MockFileServiceMockRecorder) FileByHash(arg0, arg1 any) *gomock.Call {
 }
 
 // FileGetKeys mocks base method.
-func (m *MockFileService) FileGetKeys(arg0 domain.FullID) (*files.FileKeys, error) {
+func (m *MockFileService) FileGetKeys(arg0 string) (*files.FileKeys, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FileGetKeys", arg0)
 	ret0, _ := ret[0].(*files.FileKeys)
@@ -98,9 +97,9 @@ func (mr *MockFileServiceMockRecorder) FileGetKeys(arg0 any) *gomock.Call {
 }
 
 // FileListOffload mocks base method.
-func (m *MockFileService) FileListOffload(arg0 context.Context, arg1 []string, arg2 bool) (uint64, uint64, error) {
+func (m *MockFileService) FileListOffload(arg0 []string, arg1 bool) (uint64, uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FileListOffload", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "FileListOffload", arg0, arg1)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(uint64)
 	ret2, _ := ret[2].(error)
@@ -108,46 +107,46 @@ func (m *MockFileService) FileListOffload(arg0 context.Context, arg1 []string, a
 }
 
 // FileListOffload indicates an expected call of FileListOffload.
-func (mr *MockFileServiceMockRecorder) FileListOffload(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockFileServiceMockRecorder) FileListOffload(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileListOffload", reflect.TypeOf((*MockFileService)(nil).FileListOffload), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileListOffload", reflect.TypeOf((*MockFileService)(nil).FileListOffload), arg0, arg1)
 }
 
 // FileOffload mocks base method.
-func (m *MockFileService) FileOffload(arg0 context.Context, arg1 string, arg2 bool) (uint64, error) {
+func (m *MockFileService) FileOffload(arg0 string, arg1 bool) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FileOffload", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "FileOffload", arg0, arg1)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FileOffload indicates an expected call of FileOffload.
-func (mr *MockFileServiceMockRecorder) FileOffload(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockFileServiceMockRecorder) FileOffload(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileOffload", reflect.TypeOf((*MockFileService)(nil).FileOffload), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileOffload", reflect.TypeOf((*MockFileService)(nil).FileOffload), arg0, arg1)
 }
 
 // GetSpaceUsage mocks base method.
-func (m *MockFileService) GetSpaceUsage(arg0 context.Context, arg1 string) (*pb.RpcFileSpaceUsageResponseUsage, error) {
+func (m *MockFileService) GetSpaceUsage(arg0 context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSpaceUsage", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetSpaceUsage", arg0)
 	ret0, _ := ret[0].(*pb.RpcFileSpaceUsageResponseUsage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSpaceUsage indicates an expected call of GetSpaceUsage.
-func (mr *MockFileServiceMockRecorder) GetSpaceUsage(arg0, arg1 any) *gomock.Call {
+func (mr *MockFileServiceMockRecorder) GetSpaceUsage(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSpaceUsage", reflect.TypeOf((*MockFileService)(nil).GetSpaceUsage), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSpaceUsage", reflect.TypeOf((*MockFileService)(nil).GetSpaceUsage), arg0)
 }
 
 // ImageAdd mocks base method.
-func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...files.AddOption) (files.Image, error) {
+func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 ...files.AddOption) (files.Image, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{arg0, arg1}
-	for _, a := range arg2 {
+	varargs := []any{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "ImageAdd", varargs...)
@@ -157,14 +156,14 @@ func (m *MockFileService) ImageAdd(arg0 context.Context, arg1 string, arg2 ...fi
 }
 
 // ImageAdd indicates an expected call of ImageAdd.
-func (mr *MockFileServiceMockRecorder) ImageAdd(arg0, arg1 any, arg2 ...any) *gomock.Call {
+func (mr *MockFileServiceMockRecorder) ImageAdd(arg0 any, arg1 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{arg0, arg1}, arg2...)
+	varargs := append([]any{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageAdd", reflect.TypeOf((*MockFileService)(nil).ImageAdd), varargs...)
 }
 
 // ImageByHash mocks base method.
-func (m *MockFileService) ImageByHash(arg0 context.Context, arg1 domain.FullID) (files.Image, error) {
+func (m *MockFileService) ImageByHash(arg0 context.Context, arg1 string) (files.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageByHash", arg0, arg1)
 	ret0, _ := ret[0].(files.Image)
@@ -360,13 +359,12 @@ func (m *MockFile) EXPECT() *MockFileMockRecorder {
 }
 
 // Details mocks base method.
-func (m *MockFile) Details(arg0 context.Context) (*types.Struct, domain.TypeKey, error) {
+func (m *MockFile) Details(arg0 context.Context) (*types.Struct, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Details", arg0)
 	ret0, _ := ret[0].(*types.Struct)
-	ret1, _ := ret[1].(domain.TypeKey)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Details indicates an expected call of Details.

@@ -21,6 +21,7 @@ import (
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	schema "github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
 
 // MockObjectStore is a mock of ObjectStore interface.
@@ -145,19 +146,38 @@ func (mr *MockObjectStoreMockRecorder) GetAccountStatus() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountStatus", reflect.TypeOf((*MockObjectStore)(nil).GetAccountStatus))
 }
 
-// GetByIDs mocks base method.
-func (m *MockObjectStore) GetByIDs(arg0 string, arg1 []string) ([]*model.ObjectInfo, error) {
+// GetAggregatedOptions mocks base method.
+func (m *MockObjectStore) GetAggregatedOptions(arg0 string) ([]*model.RelationOption, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByIDs", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetAggregatedOptions", arg0)
+	ret0, _ := ret[0].([]*model.RelationOption)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAggregatedOptions indicates an expected call of GetAggregatedOptions.
+func (mr *MockObjectStoreMockRecorder) GetAggregatedOptions(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAggregatedOptions", reflect.TypeOf((*MockObjectStore)(nil).GetAggregatedOptions), arg0)
+}
+
+// GetByIDs mocks base method.
+func (m *MockObjectStore) GetByIDs(arg0 ...string) ([]*model.ObjectInfo, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetByIDs", varargs...)
 	ret0, _ := ret[0].([]*model.ObjectInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetByIDs indicates an expected call of GetByIDs.
-func (mr *MockObjectStoreMockRecorder) GetByIDs(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) GetByIDs(arg0 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByIDs", reflect.TypeOf((*MockObjectStore)(nil).GetByIDs), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByIDs", reflect.TypeOf((*MockObjectStore)(nil).GetByIDs), arg0...)
 }
 
 // GetChecksums mocks base method.
@@ -173,6 +193,21 @@ func (m *MockObjectStore) GetChecksums() (*model.ObjectStoreChecksums, error) {
 func (mr *MockObjectStoreMockRecorder) GetChecksums() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChecksums", reflect.TypeOf((*MockObjectStore)(nil).GetChecksums))
+}
+
+// GetCurrentWorkspaceID mocks base method.
+func (m *MockObjectStore) GetCurrentWorkspaceID() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCurrentWorkspaceID")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCurrentWorkspaceID indicates an expected call of GetCurrentWorkspaceID.
+func (mr *MockObjectStoreMockRecorder) GetCurrentWorkspaceID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentWorkspaceID", reflect.TypeOf((*MockObjectStore)(nil).GetCurrentWorkspaceID))
 }
 
 // GetDetails mocks base method.
@@ -220,6 +255,36 @@ func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).GetLastIndexedHeadsHash), arg0)
 }
 
+// GetObjectType mocks base method.
+func (m *MockObjectStore) GetObjectType(arg0 string) (*model.ObjectType, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetObjectType", arg0)
+	ret0, _ := ret[0].(*model.ObjectType)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetObjectType indicates an expected call of GetObjectType.
+func (mr *MockObjectStoreMockRecorder) GetObjectType(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectType", reflect.TypeOf((*MockObjectStore)(nil).GetObjectType), arg0)
+}
+
+// GetObjectTypes mocks base method.
+func (m *MockObjectStore) GetObjectTypes(arg0 []string) ([]*model.ObjectType, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetObjectTypes", arg0)
+	ret0, _ := ret[0].([]*model.ObjectType)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetObjectTypes indicates an expected call of GetObjectTypes.
+func (mr *MockObjectStoreMockRecorder) GetObjectTypes(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetObjectTypes", reflect.TypeOf((*MockObjectStore)(nil).GetObjectTypes), arg0)
+}
+
 // GetOutboundLinksByID mocks base method.
 func (m *MockObjectStore) GetOutboundLinksByID(arg0 string) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -235,19 +300,49 @@ func (mr *MockObjectStoreMockRecorder) GetOutboundLinksByID(arg0 any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOutboundLinksByID", reflect.TypeOf((*MockObjectStore)(nil).GetOutboundLinksByID), arg0)
 }
 
-// GetWithLinksInfoByID mocks base method.
-func (m *MockObjectStore) GetWithLinksInfoByID(arg0, arg1 string) (*model.ObjectInfoWithLinks, error) {
+// GetRelationByID mocks base method.
+func (m *MockObjectStore) GetRelationByID(arg0 string) (*model.Relation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWithLinksInfoByID", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetRelationByID", arg0)
+	ret0, _ := ret[0].(*model.Relation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationByID indicates an expected call of GetRelationByID.
+func (mr *MockObjectStoreMockRecorder) GetRelationByID(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationByID", reflect.TypeOf((*MockObjectStore)(nil).GetRelationByID), arg0)
+}
+
+// GetRelationByKey mocks base method.
+func (m *MockObjectStore) GetRelationByKey(arg0 string) (*model.Relation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationByKey", arg0)
+	ret0, _ := ret[0].(*model.Relation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationByKey indicates an expected call of GetRelationByKey.
+func (mr *MockObjectStoreMockRecorder) GetRelationByKey(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationByKey", reflect.TypeOf((*MockObjectStore)(nil).GetRelationByKey), arg0)
+}
+
+// GetWithLinksInfoByID mocks base method.
+func (m *MockObjectStore) GetWithLinksInfoByID(arg0 string) (*model.ObjectInfoWithLinks, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWithLinksInfoByID", arg0)
 	ret0, _ := ret[0].(*model.ObjectInfoWithLinks)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetWithLinksInfoByID indicates an expected call of GetWithLinksInfoByID.
-func (mr *MockObjectStoreMockRecorder) GetWithLinksInfoByID(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) GetWithLinksInfoByID(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithLinksInfoByID", reflect.TypeOf((*MockObjectStore)(nil).GetWithLinksInfoByID), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithLinksInfoByID", reflect.TypeOf((*MockObjectStore)(nil).GetWithLinksInfoByID), arg0)
 }
 
 // HasIDs mocks base method.
@@ -269,6 +364,21 @@ func (mr *MockObjectStoreMockRecorder) HasIDs(arg0 ...any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasIDs", reflect.TypeOf((*MockObjectStore)(nil).HasIDs), arg0...)
 }
 
+// HasObjectType mocks base method.
+func (m *MockObjectStore) HasObjectType(arg0 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasObjectType", arg0)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HasObjectType indicates an expected call of HasObjectType.
+func (mr *MockObjectStoreMockRecorder) HasObjectType(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasObjectType", reflect.TypeOf((*MockObjectStore)(nil).HasObjectType), arg0)
+}
+
 // Init mocks base method.
 func (m *MockObjectStore) Init(arg0 *app.App) error {
 	m.ctrl.T.Helper()
@@ -284,18 +394,18 @@ func (mr *MockObjectStoreMockRecorder) Init(arg0 any) *gomock.Call {
 }
 
 // List mocks base method.
-func (m *MockObjectStore) List(arg0 string) ([]*model.ObjectInfo, error) {
+func (m *MockObjectStore) List() ([]*model.ObjectInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0)
+	ret := m.ctrl.Call(m, "List")
 	ret0, _ := ret[0].([]*model.ObjectInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockObjectStoreMockRecorder) List(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) List() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockObjectStore)(nil).List), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockObjectStore)(nil).List))
 }
 
 // ListIDsFromFullTextQueue mocks base method.
@@ -343,9 +453,9 @@ func (mr *MockObjectStoreMockRecorder) Name() *gomock.Call {
 }
 
 // Query mocks base method.
-func (m *MockObjectStore) Query(arg0 database.Query) ([]database.Record, int, error) {
+func (m *MockObjectStore) Query(arg0 schema.Schema, arg1 database.Query) ([]database.Record, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Query", arg0)
+	ret := m.ctrl.Call(m, "Query", arg0, arg1)
 	ret0, _ := ret[0].([]database.Record)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -353,9 +463,9 @@ func (m *MockObjectStore) Query(arg0 database.Query) ([]database.Record, int, er
 }
 
 // Query indicates an expected call of Query.
-func (mr *MockObjectStoreMockRecorder) Query(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) Query(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockObjectStore)(nil).Query), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockObjectStore)(nil).Query), arg0, arg1)
 }
 
 // QueryByID mocks base method.
@@ -418,6 +528,20 @@ func (m *MockObjectStore) QueryRaw(arg0 *database.Filters, arg1, arg2 int) ([]da
 func (mr *MockObjectStoreMockRecorder) QueryRaw(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRaw", reflect.TypeOf((*MockObjectStore)(nil).QueryRaw), arg0, arg1, arg2)
+}
+
+// RemoveCurrentWorkspaceID mocks base method.
+func (m *MockObjectStore) RemoveCurrentWorkspaceID() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveCurrentWorkspaceID")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveCurrentWorkspaceID indicates an expected call of RemoveCurrentWorkspaceID.
+func (mr *MockObjectStoreMockRecorder) RemoveCurrentWorkspaceID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveCurrentWorkspaceID", reflect.TypeOf((*MockObjectStore)(nil).RemoveCurrentWorkspaceID))
 }
 
 // RemoveIDsFromFullTextQueue mocks base method.
@@ -486,6 +610,20 @@ func (m *MockObjectStore) SaveLastIndexedHeadsHash(arg0, arg1 string) error {
 func (mr *MockObjectStoreMockRecorder) SaveLastIndexedHeadsHash(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).SaveLastIndexedHeadsHash), arg0, arg1)
+}
+
+// SetCurrentWorkspaceID mocks base method.
+func (m *MockObjectStore) SetCurrentWorkspaceID(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetCurrentWorkspaceID", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetCurrentWorkspaceID indicates an expected call of SetCurrentWorkspaceID.
+func (mr *MockObjectStoreMockRecorder) SetCurrentWorkspaceID(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCurrentWorkspaceID", reflect.TypeOf((*MockObjectStore)(nil).SetCurrentWorkspaceID), arg0)
 }
 
 // SubscribeForAll mocks base method.

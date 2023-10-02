@@ -13,8 +13,6 @@ import (
 
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
-
-	session "github.com/anyproto/anytype-heart/core/session"
 )
 
 // MockDetailsModifier is a mock of DetailsModifier interface.
@@ -41,17 +39,17 @@ func (m *MockDetailsModifier) EXPECT() *MockDetailsModifierMockRecorder {
 }
 
 // ModifyDetails mocks base method.
-func (m *MockDetailsModifier) ModifyDetails(arg0 session.Context, arg1 string, arg2 func(*types.Struct) (*types.Struct, error)) error {
+func (m *MockDetailsModifier) ModifyDetails(arg0 string, arg1 func(*types.Struct) (*types.Struct, error)) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ModifyDetails", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ModifyDetails", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ModifyDetails indicates an expected call of ModifyDetails.
-func (mr *MockDetailsModifierMockRecorder) ModifyDetails(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockDetailsModifierMockRecorder) ModifyDetails(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModifyDetails", reflect.TypeOf((*MockDetailsModifier)(nil).ModifyDetails), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ModifyDetails", reflect.TypeOf((*MockDetailsModifier)(nil).ModifyDetails), arg0, arg1)
 }
 
 // ModifyLocalDetails mocks base method.

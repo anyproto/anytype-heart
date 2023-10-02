@@ -142,7 +142,17 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 		return "", nil, err
 	}
 
+	err = s.storeFileSize(nodeHash)
+	if err != nil {
+		return "", nil, fmt.Errorf("store file size: %w", err)
+	}
+
 	return nodeHash, fileInfo, nil
+}
+
+func (s *service) storeFileSize(hash string) error {
+	_, err := s.fileSync.CalculateFileSize(context.Background(), hash)
+	return err
 }
 
 // fileRestoreKeys restores file path=>key map from the IPFS DAG using the keys in the localStore
