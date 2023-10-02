@@ -215,7 +215,7 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 	var depRecords, subRecords []*types.Struct
 	subRecords = sub.getActiveRecords()
 
-	if sub.sortedSub.depSub != nil {
+	if sub.sortedSub.depSub != nil && !sub.sortedSub.disableDep {
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
