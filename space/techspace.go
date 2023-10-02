@@ -31,14 +31,14 @@ type techSpace struct {
 
 func (s *techSpace) wakeUpViews(ctx context.Context) (err error) {
 	for _, id := range s.techCore.StoredIds() {
-		_ = s.doSpaceView(ctx, id, func(spaceView *editor.SpaceView) error {
+		_ = s.doSpaceView(ctx, "", id, func(spaceView *editor.SpaceView) error {
 			return nil
 		})
 	}
 	return
 }
 
-func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (viewID string, err error) {
+func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (spaceView *editor.SpaceView, err error) {
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
 	if err != nil {
 		return
@@ -53,7 +53,11 @@ func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (viewID
 	if err != nil {
 		return
 	}
-	return obj.Id(), nil
+	spaceView, ok := obj.(*editor.SpaceView)
+	if !ok {
+		return nil, fmt.Errorf("smartblock not a spaceView")
+	}
+	return spaceView, nil
 }
 
 func (s *techSpace) DeriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
@@ -71,17 +75,25 @@ func (s *techSpace) DeriveSpaceViewID(ctx context.Context, spaceID string) (stri
 	return payload.RootRawChange.Id, nil
 }
 
-func (s *techSpace) doSpaceView(ctx context.Context, viewId string, apply func(spaceView *editor.SpaceView) error) (err error) {
+func (s *techSpace) getOrCreate(ctx context.Context, spaceID, viewID string) (*editor.SpaceView, error) {
 	obj, err := s.service.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: viewId,
+		ObjectID: viewID,
 		SpaceID:  s.techCore.Id(),
 	})
-	if err != nil {
-		return
+	if err != nil { // TODO: check specific error
+		return s.CreateSpaceView(ctx, spaceID)
 	}
 	spaceView, ok := obj.(*editor.SpaceView)
 	if !ok {
-		return fmt.Errorf("smartblock not a spaceView")
+		return nil, fmt.Errorf("smartblock not a spaceView")
+	}
+	return spaceView, nil
+}
+
+func (s *techSpace) doSpaceView(ctx context.Context, spaceID, viewID string, apply func(spaceView *editor.SpaceView) error) (err error) {
+	spaceView, err := s.getOrCreate(ctx, spaceID, viewID)
+	if err != nil {
+		return err
 	}
 	spaceView.Lock()
 	defer spaceView.Unlock()
@@ -104,7 +116,7 @@ func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err 
 		return nil
 	}
 	s.info[info.SpaceID] = info
-	return s.doSpaceView(ctx, info.ViewID, func(spaceView *editor.SpaceView) error {
+	return s.doSpaceView(ctx, info.SpaceID, info.ViewID, func(spaceView *editor.SpaceView) error {
 		return spaceView.SetSpaceInfo(info)
 	})
 }
