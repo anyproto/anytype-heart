@@ -171,6 +171,9 @@ func (h *history) Counters() (undo int32, redo int32) {
 
 func (h *history) SetCarriageState(state CarriageState) {
 	h.currentCarriageState = state
+	if h.pointer > 0 && h.actions[h.pointer-1].CarriageInfo.After.BlockID != state.BlockID {
+		h.actions[h.pointer-1].CarriageInfo.After = state
+	}
 }
 
 func (h *history) applyGroup(b Action) (ok bool) {

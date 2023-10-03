@@ -163,21 +163,10 @@ func TestHistory_Counters(t *testing.T) {
 }
 
 func TestHistory_SetCarriageInfo(t *testing.T) {
-	state1 := CarriageState{
-		BlockID:   "title",
-		RangeFrom: 1,
-		RangeTo:   2,
-	}
-	state2 := CarriageState{
-		BlockID:   "description",
-		RangeFrom: 5,
-		RangeTo:   5,
-	}
-	state3 := CarriageState{
-		BlockID:   "abracadabra",
-		RangeFrom: 3,
-		RangeTo:   8,
-	}
+	state1 := CarriageState{RangeFrom: 1, RangeTo: 2}
+	state2 := CarriageState{RangeFrom: 5, RangeTo: 5}
+	state3 := CarriageState{RangeFrom: 3, RangeTo: 8}
+
 	t.Run("no history - no carriage info returned", func(t *testing.T) {
 		// given
 		h := NewHistory(0)
@@ -224,9 +213,9 @@ func TestHistory_SetCarriageInfo(t *testing.T) {
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "3"})}})
 
 		action1, _ := h.Previous()
-		h.SetCarriageState(CarriageState{BlockID: "a"})
+		h.SetCarriageState(CarriageState{RangeFrom: 0})
 		action2, _ := h.Previous()
-		h.SetCarriageState(CarriageState{BlockID: "z"})
+		h.SetCarriageState(CarriageState{RangeTo: 23})
 		h.SetCarriageState(CarriageState{RangeTo: 150})
 		action3, _ := h.Next()
 		h.SetCarriageState(CarriageState{RangeFrom: 5})
