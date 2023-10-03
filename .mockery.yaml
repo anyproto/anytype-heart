@@ -41,6 +41,9 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/space:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:
