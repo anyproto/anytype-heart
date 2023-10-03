@@ -15,7 +15,7 @@ packages:
       Sender:
   github.com/anyproto/anytype-heart/core/block/getblock:
     interfaces:
-      Picker:
+      ObjectGetter:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
@@ -38,6 +38,7 @@ packages:
   github.com/anyproto/anytype-heart/core/system_object:
     interfaces:
       Service:
+      deriver:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:

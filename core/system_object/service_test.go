@@ -1,6 +1,7 @@
 package system_object
 
 import (
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -27,10 +28,12 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	coreService := mock_core.NewMockService(t)
+	deriver := mock_system_object.NewMockderiver(t)
 
 	a := new(app.App)
 	a.Register(objectStore)
 	a.Register(testutil.PrepareMock(a, coreService))
+	a.Register(testutil.PrepareMock(a, deriver))
 
 	s := New()
 	err := s.Init(a)

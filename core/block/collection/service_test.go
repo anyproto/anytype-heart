@@ -30,6 +30,10 @@ func (t *testPicker) GetObject(ctx context.Context, id string) (sb smartblock.Sm
 	return t.sb, nil
 }
 
+func (t *testPicker) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+	return t.sb, nil
+}
+
 func (t *testPicker) Init(a *app.App) error { return nil }
 
 func (t *testPicker) Name() string { return "" }

@@ -54,6 +54,7 @@ type Service interface {
 
 type deriver interface {
 	DeriveObjectID(ctx context.Context, spaceID string, uniqueKey domain.UniqueKey) (id string, err error)
+	app.Component
 }
 
 type service struct {

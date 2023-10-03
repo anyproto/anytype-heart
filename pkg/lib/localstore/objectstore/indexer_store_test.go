@@ -36,7 +36,7 @@ func TestIndexerChecksums(t *testing.T) {
 	t.Run("previous checksums are not found", func(t *testing.T) {
 		s := NewStoreFixture(t)
 
-		_, err := s.GetChecksums()
+		_, err := s.GetGlobalChecksums()
 		require.Error(t, err)
 	})
 
@@ -56,9 +56,9 @@ func TestIndexerChecksums(t *testing.T) {
 			FilestoreKeysForceReindexCounter: 6,
 		}
 
-		require.NoError(t, s.SaveChecksums(want))
+		require.NoError(t, s.SaveGlobalChecksums(want))
 
-		got, err := s.GetChecksums()
+		got, err := s.GetGlobalChecksums()
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
