@@ -1,6 +1,7 @@
 package undo
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -162,138 +163,80 @@ func TestHistory_Counters(t *testing.T) {
 }
 
 func TestHistory_SetCarriageInfo(t *testing.T) {
-	info := CarriageInfo{
-		CarriageBlockID: "title",
-		RangeFrom:       1,
-		RangeTo:         2,
+	state1 := CarriageState{
+		BlockID:   "title",
+		RangeFrom: 1,
+		RangeTo:   2,
 	}
-	t.Run("carriage info from initial state", func(t *testing.T) {
+	state2 := CarriageState{
+		BlockID:   "description",
+		RangeFrom: 5,
+		RangeTo:   5,
+	}
+	state3 := CarriageState{
+		BlockID:   "abracadabra",
+		RangeFrom: 3,
+		RangeTo:   8,
+	}
+	t.Run("no history - no carriage info returned", func(t *testing.T) {
 		// given
 		h := NewHistory(0)
 
 		// when
-		h.SetCarriageInfo(info)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		action, err := h.Previous()
+		h.SetCarriageState(state1)
+		actionPrev, errPrev := h.Previous()
+		actionNext, errNext := h.Next()
 
 		// then
-		assert.NoError(t, err)
-		assert.Equal(t, info, action.CarriageInfo)
+		assert.True(t, errors.Is(errPrev, ErrNoHistory))
+		assert.True(t, errors.Is(errNext, ErrNoHistory))
+		assert.Empty(t, actionNext)
+		assert.Empty(t, actionPrev)
 	})
-
-	t.Run("no initial carriage info", func(t *testing.T) {
+	t.Run("last carriage info is set to new action", func(t *testing.T) {
 		// given
 		h := NewHistory(0)
 
 		// when
+		h.SetCarriageState(state1)
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageState(state2)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		h.SetCarriageState(state3)
+
 		action, err := h.Previous()
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, CarriageInfo{}, action.CarriageInfo)
+		assert.Equal(t, state1, action.CarriageInfo.Before)
+		assert.Equal(t, state2, action.CarriageInfo.After)
 	})
-
-	t.Run("single undo", func(t *testing.T) {
-		//given
+	t.Run("carriage info in existing Actions is not modified on Undo/Redo", func(t *testing.T) {
+		// given
 		h := NewHistory(0)
 
 		// when
+		h.SetCarriageState(state1)
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.SetCarriageInfo(info)
+		h.SetCarriageState(state2)
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
-		action, err := h.Previous()
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, info, action.CarriageInfo)
-	})
-
-	t.Run("multiple undo", func(t *testing.T) {
-		//given
-		h := NewHistory(0)
-
-		// when
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
-		h.SetCarriageInfo(info)
+		h.SetCarriageState(state3)
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "3"})}})
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "4"})}})
-		_, err1 := h.Previous()
-		action, err2 := h.Previous()
 
-		// then
-		assert.NoError(t, err1)
-		assert.NoError(t, err2)
-		assert.Equal(t, info, action.CarriageInfo)
-	})
-
-	t.Run("single redo", func(t *testing.T) {
-		//given
-		h := NewHistory(0)
-
-		// when
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
-		h.SetCarriageInfo(info)
-		_, err1 := h.Previous()
-		action, err2 := h.Next()
-
-		// then
-		assert.NoError(t, err1)
-		assert.NoError(t, err2)
-		assert.Equal(t, info, action.CarriageInfo)
-	})
-
-	t.Run("multiple redo", func(t *testing.T) {
-		//given
-		h := NewHistory(0)
-
-		// when
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
-		h.SetCarriageInfo(info)
-		_, _ = h.Previous()
-		_, _ = h.Previous()
-		_, _ = h.Next()
-		action, err := h.Next()
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, info, action.CarriageInfo)
-	})
-
-	t.Run("real hard typing", func(t *testing.T) {
-		//given
-		h := NewHistory(0)
-		info1 := CarriageInfo{CarriageBlockID: "a", RangeFrom: 0, RangeTo: 0}
-		info2 := CarriageInfo{CarriageBlockID: "b", RangeFrom: 1, RangeTo: 1}
-		info3 := CarriageInfo{CarriageBlockID: "c", RangeFrom: 2, RangeTo: 9}
-		info4 := CarriageInfo{CarriageBlockID: "d", RangeFrom: 0, RangeTo: 5}
-		info5 := CarriageInfo{CarriageBlockID: "e", RangeFrom: 3, RangeTo: 3}
-
-		//when
-		h.SetCarriageInfo(info1)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.SetCarriageInfo(info2)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.SetCarriageInfo(info3)
 		action1, _ := h.Previous()
-		action2, _ := h.Next()
-		_, _ = h.Previous()
-		action3, _ := h.Previous()
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.SetCarriageInfo(info4)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.SetCarriageInfo(info5)
-		action4, _ := h.Previous()
-		action5, _ := h.Next()
+		h.SetCarriageState(CarriageState{BlockID: "a"})
+		action2, _ := h.Previous()
+		h.SetCarriageState(CarriageState{BlockID: "z"})
+		h.SetCarriageState(CarriageState{RangeTo: 150})
+		action3, _ := h.Next()
+		h.SetCarriageState(CarriageState{RangeFrom: 5})
 
 		// then
-		assert.Equal(t, info2, action1.CarriageInfo)
-		assert.Equal(t, info3, action2.CarriageInfo)
-		assert.Equal(t, info1, action3.CarriageInfo)
-		assert.Equal(t, info4, action4.CarriageInfo)
-		assert.Equal(t, info5, action5.CarriageInfo)
+		assert.Equal(t, state2, action1.CarriageInfo.Before)
+		assert.Equal(t, state3, action1.CarriageInfo.After)
+		assert.Equal(t, state1, action2.CarriageInfo.Before)
+		assert.Equal(t, state2, action2.CarriageInfo.After)
+		assert.Equal(t, state1, action3.CarriageInfo.Before)
+		assert.Equal(t, state2, action3.CarriageInfo.After)
 	})
 }
