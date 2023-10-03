@@ -612,10 +612,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 		ns.ApplyChangeIgnoreErr(model.Content...)
 		ns.AddFileKeys(model.FileKeys...)
 		_, _, err = state.ApplyStateFastOne(ns)
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	})
 	if err != nil {
 		return
