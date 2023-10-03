@@ -6,11 +6,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 )
 
 type ObjectGetter interface {
 	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
+	GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
 }
 
 func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
@@ -33,6 +35,23 @@ func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
 
 func DoContext[t any](p ObjectGetter, ctx context.Context, objectID string, apply func(sb t) error) error {
 	sb, err := p.GetObject(ctx, objectID)
+	if err != nil {
+		return err
+	}
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
+}
+
+func DoContextFullID[t any](p ObjectGetter, ctx context.Context, id domain.FullID, apply func(sb t) error) error {
+	sb, err := p.GetObjectByFullID(ctx, id)
 	if err != nil {
 		return err
 	}

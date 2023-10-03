@@ -143,14 +143,14 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	for _, o := range options {
 		o(opts)
 	}
-	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
-	if err != nil {
-		sbType = smartblock.SmartBlockTypePage
-	}
-	err = i.storageService.BindSpaceID(info.SpaceID, info.Id)
+	err := i.storageService.BindSpaceID(info.SpaceID, info.Id)
 	if err != nil {
 		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
 		return err
+	}
+	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
+	if err != nil {
+		sbType = smartblock.SmartBlockTypePage
 	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
@@ -287,14 +287,6 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			}
 		}(id)
 	}
-}
-
-func (i *indexer) getObjectInfo(ctx context.Context, id string) (info editorsb.DocInfo, err error) {
-	err = block.DoContext(i.picker, ctx, id, func(sb editorsb.SmartBlock) error {
-		info = sb.GetDocInfo()
-		return nil
-	})
-	return
 }
 
 func headsHash(heads []string) string {
