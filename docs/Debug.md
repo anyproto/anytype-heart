@@ -14,6 +14,9 @@ If you want to change the default port(9999):
 ## Useful tools for debug
 
 ### Debug server
+
+Firstly, build anytype-heart with build tag `-anydebug`
+
 Use env var ANYDEBUG=address to enable debugging HTTP server. For example: `ANYDEBUG=:6061` will start debug server on port 6061
 
 You can find all endpoints in `/debug` page. For example: http://localhost:6061/debug

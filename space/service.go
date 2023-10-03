@@ -2,6 +2,9 @@ package space
 
 import (
 	"context"
+	"errors"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -20,6 +23,8 @@ import (
 const CName = "client.space"
 
 var log = logger.NewNamed(CName)
+
+var ErrIncorrectSpaceID = errors.New("incorrect space id")
 
 func New() SpaceService {
 	return &service{}
@@ -91,6 +96,12 @@ func (s *service) Run(_ context.Context) (err error) {
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
 	s.personalSpaceID, err = s.spaceCore.DeriveID(s.ctx, spacecore.SpaceType)
+	if err != nil {
+		return
+	}
+
+	// TODO: move this logic to any-sync
+	s.repKey, err = getRepKey(s.personalSpaceID)
 	if err != nil {
 		return
 	}
@@ -171,4 +182,12 @@ func (s *service) Close(ctx context.Context) (err error) {
 		//s.ctxCancel()
 	}
 	return nil
+}
+
+func getRepKey(spaceID string) (uint64, error) {
+	sepIdx := strings.Index(spaceID, ".")
+	if sepIdx == -1 {
+		return 0, ErrIncorrectSpaceID
+	}
+	return strconv.ParseUint(spaceID[sepIdx+1:], 36, 64)
 }

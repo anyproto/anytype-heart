@@ -651,16 +651,13 @@ func (t *Text) FillSmartIds(ids []string) []string {
 	return ids
 }
 
-func (t *Text) ReplaceSmartIds(f func(id string) (newId string, replaced bool)) (anyReplaced bool) {
+func (t *Text) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
 	if t.content.Marks != nil {
 		for _, m := range t.content.Marks.Marks {
 			if (m.Type == model.BlockContentTextMark_Mention ||
 				m.Type == model.BlockContentTextMark_Object) && m.Param != "" {
-				newId, replaced := f(m.Param)
-				if replaced {
-					m.Param = newId
-					anyReplaced = true
-				}
+
+				m.Param = replacer(m.Param)
 			}
 		}
 	}

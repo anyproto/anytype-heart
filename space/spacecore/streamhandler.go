@@ -2,13 +2,13 @@ package spacecore
 
 import (
 	"errors"
-	"go.uber.org/zap"
 	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/objectsync"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"storj.io/drpc"
 )

@@ -211,6 +211,21 @@ func (mr *MockFileStoreMockRecorder) GetFileKeys(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileKeys", reflect.TypeOf((*MockFileStore)(nil).GetFileKeys), arg0)
 }
 
+// GetFileSize mocks base method.
+func (m *MockFileStore) GetFileSize(arg0 string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFileSize", arg0)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFileSize indicates an expected call of GetFileSize.
+func (mr *MockFileStoreMockRecorder) GetFileSize(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileSize", reflect.TypeOf((*MockFileStore)(nil).GetFileSize), arg0)
+}
+
 // GetSyncStatus mocks base method.
 func (m *MockFileStore) GetSyncStatus(arg0 string) (int, error) {
 	m.ctrl.T.Helper()
@@ -368,6 +383,20 @@ func (m *MockFileStore) SetChunksCount(arg0 string, arg1 int) error {
 func (mr *MockFileStoreMockRecorder) SetChunksCount(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetChunksCount", reflect.TypeOf((*MockFileStore)(nil).SetChunksCount), arg0, arg1)
+}
+
+// SetFileSize mocks base method.
+func (m *MockFileStore) SetFileSize(arg0 string, arg1 int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetFileSize", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetFileSize indicates an expected call of SetFileSize.
+func (mr *MockFileStoreMockRecorder) SetFileSize(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetFileSize", reflect.TypeOf((*MockFileStore)(nil).SetFileSize), arg0, arg1)
 }
 
 // SetIsFileImported mocks base method.
