@@ -25,7 +25,7 @@ import (
 type Template struct {
 	*Page
 
-	picker getblock.Picker
+	picker getblock.ObjectGetter
 }
 
 func NewTemplate(
