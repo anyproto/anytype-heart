@@ -2,7 +2,6 @@ package objectcache
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -70,12 +69,8 @@ func (c *objectCache) CreateTreeObjectWithPayload(ctx context.Context, spaceID s
 		ObjectID: payload.RootRawChange.Id,
 	}
 	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		return c.GetObject(ctx, id)
-	}
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-		err = fmt.Errorf("failed to put tree: %w", err)
-		return
+	if err != nil {
+		return nil, fmt.Errorf("put tree: %w", err)
 	}
 	if tr != nil {
 		tr.Close()
