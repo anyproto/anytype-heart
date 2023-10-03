@@ -178,7 +178,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-	return nil
+	return s.derivedIDsCache.Close()
 }
 
 func getRepKey(spaceID string) (uint64, error) {
