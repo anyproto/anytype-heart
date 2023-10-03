@@ -8860,6 +8860,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
 
 
 
