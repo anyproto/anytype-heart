@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -340,15 +341,12 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (t
 }
 
 func (i *indexer) reindexDoc(ctx context.Context, spaceID, id string) error {
-	// TODO: use special method for getting with id instead of this hack
-	err := i.storageService.BindSpaceID(spaceID, id)
-	if err != nil {
-		return err
-	}
-	err = block.DoContext(i.picker, ctx, id, func(sb smartblock.SmartBlock) error {
+	return block.DoContextFullID(i.picker, ctx, domain.FullID{
+		ObjectID: id,
+		SpaceID:  spaceID,
+	}, func(sb smartblock.SmartBlock) error {
 		return i.Index(ctx, sb.GetDocInfo())
 	})
-	return err
 }
 
 func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, spaceID string, ids ...string) (successfullyReindexed int) {

@@ -202,6 +202,10 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 	})
 }
 
+func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+	return s.objectCache.GetObject(ctx, id)
+}
+
 func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
