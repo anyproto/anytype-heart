@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -29,13 +28,27 @@ type dummySyncStatusWatcher struct{}
 func (w *dummySyncStatusWatcher) Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error) {
 	return false, nil
 }
+func (w *dummySyncStatusWatcher) Init(a *app.App) error { return nil }
+func (w *dummySyncStatusWatcher) Name() string          { return "dummySyncStatusWatcher" }
 
-func (w *dummySyncStatusWatcher) Init(a *app.App) error {
-	return nil
+type personalSpaceIdStub struct {
+	personalSpaceId string
 }
 
-func (w *dummySyncStatusWatcher) Name() string {
-	return "dummySyncStatusWatcher"
+func (s *personalSpaceIdStub) Name() string          { return "personalSpaceIdStub" }
+func (s *personalSpaceIdStub) Init(a *app.App) error { return nil }
+func (s *personalSpaceIdStub) PersonalSpaceID() string {
+	return s.personalSpaceId
+}
+
+type spaceResolverStub struct {
+	spaceId string
+}
+
+func (s *spaceResolverStub) Name() string          { return "spaceResolverStub" }
+func (s *spaceResolverStub) Init(a *app.App) error { return nil }
+func (s *spaceResolverStub) ResolveSpaceID(objectID string) (string, error) {
+	return s.spaceId, nil
 }
 
 func TestFileAdd(t *testing.T) {
@@ -50,8 +63,8 @@ func TestFileAdd(t *testing.T) {
 	fileSyncService := filesync.New()
 
 	spaceId := "space1"
-	spaceService := mock_space.NewMockService(t)
-	spaceService.EXPECT().AccountId().Return(spaceId).Maybe()
+	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: spaceId}
+	spaceIdResolver := &spaceResolverStub{spaceId: spaceId}
 
 	coreService := mock_core.NewMockService(t)
 	objectStore := objectstore.NewStoreFixture(t)
@@ -64,11 +77,12 @@ func TestFileAdd(t *testing.T) {
 	a.Register(filestore.New())
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
-	a.Register(testutil.PrepareRunnableMock(ctx, a, spaceService))
-	a.Register(testutil.PrepareRunnableMock(ctx, a, coreService))
+	a.Register(testutil.PrepareMock(a, coreService))
 	a.Register(testutil.PrepareMock(a, eventSender))
 	a.Register(blockStorage)
 	a.Register(objectStore)
+	a.Register(personalSpaceIdGetter)
+	a.Register(spaceIdResolver)
 	a.Register(&dummySyncStatusWatcher{})
 	a.Register(rpcStorage)
 	err := a.Start(ctx)
