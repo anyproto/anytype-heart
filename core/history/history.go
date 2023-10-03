@@ -119,14 +119,6 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		}
 		return vers
 	}
-	convert := func(_ *objecttree.Change, decrypted []byte) (any, error) {
-		ch := &pb.Change{}
-		err = proto.Unmarshal(decrypted, ch)
-		if err != nil {
-			return nil, err
-		}
-		return ch, nil
-	}
 
 	for len(resp) < limit {
 		tree, _, e := h.treeWithId(id, lastVersionId, includeLastId)
@@ -135,7 +127,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		}
 		var data []*pb.RpcHistoryVersion
 
-		e = tree.IterateFrom(tree.Root().Id, convert, func(c *objecttree.Change) (isContinue bool) {
+		e = tree.IterateFrom(tree.Root().Id, source.UnmarshallChange, func(c *objecttree.Change) (isContinue bool) {
 			data = append(data, &pb.RpcHistoryVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
