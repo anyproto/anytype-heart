@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -48,7 +49,10 @@ func TestFileAdd(t *testing.T) {
 
 	fileSyncService := filesync.New()
 
+	spaceId := "space1"
 	spaceService := mock_space.NewMockService(t)
+	spaceService.EXPECT().AccountId().Return(spaceId).Maybe()
+
 	coreService := mock_core.NewMockService(t)
 	objectStore := objectstore.NewStoreFixture(t)
 
@@ -75,18 +79,21 @@ func TestFileAdd(t *testing.T) {
 	require.NoError(t, err)
 	// End fixture
 
-	spaceID := "space1"
 	fileName := "myFile"
 	lastModifiedDate := time.Now()
 	buf := strings.NewReader("it's my favorite file")
+	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	opts := []AddOption{
 		WithName(fileName),
 		WithLastModifiedDate(lastModifiedDate.Unix()),
 		WithReader(buf),
 	}
-	got, err := s.FileAdd(context.Background(), spaceID, opts...)
+	got, err := s.FileAdd(context.Background(), spaceId, opts...)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, got.Hash())
+
+	// TODO Check that file is in RpcStore (Cloud Storage)
+	// TODO Check that file is in BlockStore (DAG)
 }

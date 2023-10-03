@@ -3,12 +3,13 @@ package filestorage
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"sync"
 )
 
 type inMemBlockStore struct {
