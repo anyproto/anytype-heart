@@ -331,11 +331,6 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 		}
 	}()
 
-	applyFlags := make([]smartblock.ApplyFlag, 0)
-	if req.BlockId == state.TitleBlockID || req.BlockId == state.DescriptionBlockID {
-		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
-	}
-
 	// TODO: GO-2062 Need to refactor text shortening, as it could cut string incorrectly
 	//if len(req.Text) > textSizeLimit {
 	//	log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)
@@ -346,6 +341,11 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 	ctx := session.NewChildContext(parentCtx)
 	s := t.newSetTextState(req.BlockId, ctx)
 	wasEmpty := s.IsEmpty(true)
+
+	applyFlags := make([]smartblock.ApplyFlag, 0)
+	if req.BlockId == state.TitleBlockID || req.BlockId == state.DescriptionBlockID || wasEmpty {
+		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
+	}
 
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
@@ -477,6 +477,9 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 }
 
 func (t *textImpl) isLastTextBlockChanged() (bool, error) {
+	if t.lastSetTextState == nil || t.lastSetTextId == "" {
+		return true, fmt.Errorf("last state about text block is not saved")
+	}
 	newTextBlock, err := getText(t.lastSetTextState, t.lastSetTextId)
 	if err != nil {
 		return true, err
