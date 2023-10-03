@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace"
 
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -20,11 +19,12 @@ type Space interface {
 	WaitMandatoryObjects(ctx context.Context) (err error)
 }
 
-func newSpace(s *service, coreSpace *spacecore.AnySpace) *space {
+func newSpace(s *service, coreSpace *spacecore.AnySpace, derivedIDs threads.DerivedSmartblockIds) *space {
 	sp := &space{
 		service:                s,
 		objectProvider:         s.provider,
 		AnySpace:               coreSpace,
+		derivedIDs:             derivedIDs,
 		loadMandatoryObjectsCh: make(chan struct{}),
 	}
 	go sp.mandatoryObjectsLoad(s.ctx)
@@ -45,19 +45,8 @@ type space struct {
 
 func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	defer close(s.loadMandatoryObjectsCh)
-	var sbTypes []coresb.SmartBlockType
-	if s.service.IsPersonal(s.Id()) {
-		sbTypes = threads.PersonalSpaceTypes
-	} else {
-		sbTypes = threads.SpaceTypes
-	}
-	ids, err := s.objectProvider.DeriveObjectIDs(ctx, s.Id(), sbTypes)
-	if err != nil {
-		s.loadMandatoryObjectsErr = err
-		return
-	}
-	s.derivedIDs = ids
-	s.loadMandatoryObjectsErr = s.objectProvider.LoadObjects(ctx, s.Id(), ids.IDs())
+
+	s.loadMandatoryObjectsErr = s.objectProvider.LoadObjects(ctx, s.Id(), s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}

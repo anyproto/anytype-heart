@@ -9,11 +9,11 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -73,6 +73,8 @@ type service struct {
 	ctxCancel context.CancelFunc
 
 	repKey uint64
+
+	derivedIDsCache ocache.OCache
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -85,6 +87,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.techSpace = app.MustComponent[techspace.TechSpace](a)
 	s.loading = map[string]*loadingSpace{}
 	s.loaded = map[string]Space{}
+	s.derivedIDsCache = ocache.New(s.loadDerivedIDs)
 	return nil
 }
 
@@ -134,7 +137,11 @@ func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error
 	if err != nil {
 		return nil, err
 	}
-	sp = newSpace(s, coreSpace)
+	derivedIDs, err := s.DerivedIDs(ctx, spaceID)
+	if err != nil {
+		return nil, err
+	}
+	sp = newSpace(s, coreSpace, derivedIDs)
 	return
 }
 
@@ -159,16 +166,6 @@ func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceID == id
 }
 
-func (s *service) DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	var sbTypes []coresb.SmartBlockType
-	if s.IsPersonal(spaceID) {
-		sbTypes = threads.PersonalSpaceTypes
-	} else {
-		sbTypes = threads.SpaceTypes
-	}
-	return s.provider.DeriveObjectIDs(ctx, spaceID, sbTypes)
-}
-
 func (s *service) OnViewCreated(spaceID string) {
 	go func() {
 		if err := s.startLoad(s.ctx, spaceID); err != nil {
@@ -179,9 +176,9 @@ func (s *service) OnViewCreated(spaceID string) {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
-		//s.ctxCancel()
+		s.ctxCancel()
 	}
-	return nil
+	return s.derivedIDsCache.Close()
 }
 
 func getRepKey(spaceID string) (uint64, error) {
