@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
-
 	"go.uber.org/zap"
 )
 
