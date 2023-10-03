@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 var ctx = context.Background()
@@ -110,15 +111,9 @@ func newFixture(t *testing.T) *fixture {
 	fx.fileStoreMock = fileStoreMock
 
 	spaceService := mock_space.NewMockService(t)
-	spaceService.EXPECT().Name().Return("space").Maybe()
-	spaceService.EXPECT().Init(gomock.Any()).Maybe()
-	spaceService.EXPECT().Run(gomock.Any()).Maybe()
 	spaceService.EXPECT().AccountId().Return("space1").Maybe()
-	spaceService.EXPECT().Close(gomock.Any()).Maybe()
 
 	sender := mock_event.NewMockSender(t)
-	sender.EXPECT().Name().Return("event")
-	sender.EXPECT().Init(mock.Anything).Return(nil)
 	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	fx.a.Register(fx.fileService).
@@ -127,8 +122,8 @@ func newFixture(t *testing.T) *fixture {
 		Register(mockRpcStoreService).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
-		Register(spaceService).
-		Register(sender)
+		Register(testutil.PrepareRunnableMock(ctx, fx.a, spaceService)).
+		Register(testutil.PrepareMock(fx.a, sender))
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }

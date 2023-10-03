@@ -36,6 +36,23 @@ func PrepareRunnableMock(ctx context.Context, a *app.App, mock app.Component) ap
 	call := result[0]
 	callAnyTimes(call)
 
+	result = callChainOfMethods(mockValue, []methodNameAndParams{
+		{
+			name:   "EXPECT",
+			params: nil,
+		},
+		{
+			name:   "Close",
+			params: []reflect.Value{reflect.ValueOf(ctx)},
+		},
+		{
+			name:   "Return",
+			params: []reflect.Value{reflect.Zero(reflect.TypeOf((*error)(nil)).Elem())},
+		},
+	})
+	call = result[0]
+	callAnyTimes(call)
+
 	return mock
 }
 
