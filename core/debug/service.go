@@ -55,26 +55,7 @@ func (d *debug) Init(a *app.App) (err error) {
 	d.block = a.MustComponent(block.CName).(*block.Service)
 	d.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 
-	if addr, ok := os.LookupEnv("ANYDEBUG"); ok && addr != "" {
-		r := chi.NewRouter()
-		a.IterateComponents(func(c app.Component) {
-			if d, ok := c.(Debuggable); ok {
-				fmt.Println("debug router registered for component: ", c.Name())
-				r.Route("/debug/"+c.Name(), d.DebugRouter)
-			}
-		})
-		routes := r.Routes()
-		r.Get("/debug", func(w http.ResponseWriter, req *http.Request) {
-			err := renderLinksList(w, "/", routes)
-			if err != nil {
-				logger.Error("failed to render links list", err)
-			}
-		})
-		d.server = &http.Server{
-			Addr:    addr,
-			Handler: r,
-		}
-	}
+	d.initHandlers(a)
 	return nil
 }
 

@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -24,15 +25,14 @@ import (
 )
 
 type collectionServiceMock struct {
-	updateCh chan []string
+	*mock_subscription.MockCollectionService
 }
 
-func (c *collectionServiceMock) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
-	return nil, c.updateCh, nil
+func (c *collectionServiceMock) Name() string {
+	return "collectionService"
 }
 
-func (c *collectionServiceMock) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
-}
+func (c *collectionServiceMock) Init(a *app.App) error { return nil }
 
 type fixture struct {
 	Service
@@ -42,6 +42,7 @@ type fixture struct {
 	systemObjectService *mock_system_object.MockService
 	sender              *mock_event.MockSender
 	events              []*pb.Event
+	collectionService   *collectionServiceMock
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -49,7 +50,6 @@ func newFixture(t *testing.T) *fixture {
 	a := new(app.App)
 	testMock.RegisterMockObjectStore(ctrl, a)
 	testMock.RegisterMockKanban(ctrl, a)
-	a.Register(&collectionServiceMock{})
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
@@ -57,12 +57,17 @@ func newFixture(t *testing.T) *fixture {
 
 	systemObjectService := mock_system_object.NewMockService(t)
 	a.Register(testutil.PrepareMock(a, systemObjectService))
+
+	collectionService := &collectionServiceMock{MockCollectionService: mock_subscription.NewMockCollectionService(t)}
+	a.Register(collectionService)
+
 	fx := &fixture{
 		Service:             New(),
 		a:                   a,
 		ctrl:                ctrl,
 		store:               a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
 		systemObjectService: systemObjectService,
+		collectionService:   collectionService,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)
