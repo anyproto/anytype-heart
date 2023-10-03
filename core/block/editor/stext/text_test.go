@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -457,6 +458,27 @@ func TestTextImpl_SetText(t *testing.T) {
 	//	assert.NoError(t, err)
 	//	assert.Equal(t, strings.Repeat("a", textSizeLimit), sb.NewState().Pick("1").Model().GetText().Text)
 	//})
+	t.Run("carriage state is saved in history", func(t *testing.T) {
+		//given
+		ctx := session.NewContext()
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlock("1", ""))
+		tb := NewText(sb, nil, nil)
+		carriageState := undo.CarriageState{BlockID: "1", RangeFrom: 2, RangeTo: 3}
+
+		//when
+		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+			BlockId:           carriageState.BlockID,
+			SelectedTextRange: &model.Range{From: carriageState.RangeFrom, To: carriageState.RangeTo},
+		})
+		tb.(*textImpl).History().Add(undo.Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		action, err := tb.(*textImpl).History().Previous()
+
+		//then
+		assert.NoError(t, err)
+		assert.Equal(t, carriageState, action.CarriageInfo.Before)
+	})
 }
 
 func setText(tb Text, ctx session.Context, req pb.RpcBlockTextSetTextRequest) error {

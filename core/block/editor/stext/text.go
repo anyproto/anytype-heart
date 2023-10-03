@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -346,6 +347,7 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 		if err = t.Apply(s); err != nil {
 			return
 		}
+		t.setCarriageInfo(req)
 		t.sendEvents(ctx)
 		return
 	}
@@ -358,7 +360,18 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 		}
 	}
 
+	t.setCarriageInfo(req)
 	return
+}
+
+func (t *textImpl) setCarriageInfo(req pb.RpcBlockTextSetTextRequest) {
+	if req.SelectedTextRange != nil {
+		t.History().SetCarriageState(undo.CarriageState{
+			BlockID:   req.BlockId,
+			RangeFrom: req.SelectedTextRange.From,
+			RangeTo:   req.SelectedTextRange.To,
+		})
+	}
 }
 
 func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextStyle, ids ...string) (err error) {

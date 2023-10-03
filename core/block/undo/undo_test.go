@@ -1,6 +1,7 @@
 package undo
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -160,4 +161,72 @@ func TestHistory_Counters(t *testing.T) {
 	uc, rc = h.Counters()
 	assert.Equal(t, int32(1), uc)
 	assert.Equal(t, int32(1), rc)
+}
+
+func TestHistory_SetCarriageInfo(t *testing.T) {
+	state1 := CarriageState{RangeFrom: 1, RangeTo: 2}
+	state2 := CarriageState{RangeFrom: 5, RangeTo: 5}
+	state3 := CarriageState{RangeFrom: 3, RangeTo: 8}
+
+	t.Run("no history - no carriage info returned", func(t *testing.T) {
+		// given
+		h := NewHistory(0)
+
+		// when
+		h.SetCarriageState(state1)
+		actionPrev, errPrev := h.Previous()
+		actionNext, errNext := h.Next()
+
+		// then
+		assert.True(t, errors.Is(errPrev, ErrNoHistory))
+		assert.True(t, errors.Is(errNext, ErrNoHistory))
+		assert.Empty(t, actionNext)
+		assert.Empty(t, actionPrev)
+	})
+	t.Run("last carriage info is set to new action", func(t *testing.T) {
+		// given
+		h := NewHistory(0)
+
+		// when
+		h.SetCarriageState(state1)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageState(state2)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		h.SetCarriageState(state3)
+
+		action, err := h.Previous()
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, state1, action.CarriageInfo.Before)
+		assert.Equal(t, state2, action.CarriageInfo.After)
+	})
+	t.Run("carriage info in existing Actions is not modified on Undo/Redo", func(t *testing.T) {
+		// given
+		h := NewHistory(0)
+
+		// when
+		h.SetCarriageState(state1)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+		h.SetCarriageState(state2)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		h.SetCarriageState(state3)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "3"})}})
+
+		action1, _ := h.Previous()
+		h.SetCarriageState(CarriageState{RangeFrom: 0})
+		action2, _ := h.Previous()
+		h.SetCarriageState(CarriageState{RangeTo: 23})
+		h.SetCarriageState(CarriageState{RangeTo: 150})
+		action3, _ := h.Next()
+		h.SetCarriageState(CarriageState{RangeFrom: 5})
+
+		// then
+		assert.Equal(t, state2, action1.CarriageInfo.Before)
+		assert.Equal(t, state3, action1.CarriageInfo.After)
+		assert.Equal(t, state1, action2.CarriageInfo.Before)
+		assert.Equal(t, state2, action2.CarriageInfo.After)
+		assert.Equal(t, state1, action3.CarriageInfo.Before)
+		assert.Equal(t, state2, action3.CarriageInfo.After)
+	})
 }

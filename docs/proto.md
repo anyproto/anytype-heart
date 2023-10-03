@@ -170,6 +170,10 @@
     - [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request)
     - [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response)
     - [Rpc.Block.Replace.Response.Error](#anytype-Rpc-Block-Replace-Response-Error)
+    - [Rpc.Block.SetCarriage](#anytype-Rpc-Block-SetCarriage)
+    - [Rpc.Block.SetCarriage.Request](#anytype-Rpc-Block-SetCarriage-Request)
+    - [Rpc.Block.SetCarriage.Response](#anytype-Rpc-Block-SetCarriage-Response)
+    - [Rpc.Block.SetCarriage.Response.Error](#anytype-Rpc-Block-SetCarriage-Response-Error)
     - [Rpc.Block.SetFields](#anytype-Rpc-Block-SetFields)
     - [Rpc.Block.SetFields.Request](#anytype-Rpc-Block-SetFields-Request)
     - [Rpc.Block.SetFields.Response](#anytype-Rpc-Block-SetFields-Response)
@@ -967,6 +971,7 @@
     - [Rpc.Block.Merge.Response.Error.Code](#anytype-Rpc-Block-Merge-Response-Error-Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype-Rpc-Block-Paste-Response-Error-Code)
     - [Rpc.Block.Replace.Response.Error.Code](#anytype-Rpc-Block-Replace-Response-Error-Code)
+    - [Rpc.Block.SetCarriage.Response.Error.Code](#anytype-Rpc-Block-SetCarriage-Response-Error-Code)
     - [Rpc.Block.SetFields.Response.Error.Code](#anytype-Rpc-Block-SetFields-Response-Error-Code)
     - [Rpc.Block.Split.Request.Mode](#anytype-Rpc-Block-Split-Request-Mode)
     - [Rpc.Block.Split.Response.Error.Code](#anytype-Rpc-Block-Split-Response-Error-Code)
@@ -1588,6 +1593,7 @@
 | BlockCut | [Rpc.Block.Cut.Request](#anytype-Rpc-Block-Cut-Request) | [Rpc.Block.Cut.Response](#anytype-Rpc-Block-Cut-Response) |  |
 | BlockSetFields | [Rpc.Block.SetFields.Request](#anytype-Rpc-Block-SetFields-Request) | [Rpc.Block.SetFields.Response](#anytype-Rpc-Block-SetFields-Response) |  |
 | BlockExport | [Rpc.Block.Export.Request](#anytype-Rpc-Block-Export-Request) | [Rpc.Block.Export.Response](#anytype-Rpc-Block-Export-Response) |  |
+| BlockSetCarriage | [Rpc.Block.SetCarriage.Request](#anytype-Rpc-Block-SetCarriage-Request) | [Rpc.Block.SetCarriage.Response](#anytype-Rpc-Block-SetCarriage-Response) |  |
 | BlockListDelete | [Rpc.Block.ListDelete.Request](#anytype-Rpc-Block-ListDelete-Request) | [Rpc.Block.ListDelete.Response](#anytype-Rpc-Block-ListDelete-Response) |  |
 | BlockListMoveToExistingObject | [Rpc.Block.ListMoveToExistingObject.Request](#anytype-Rpc-Block-ListMoveToExistingObject-Request) | [Rpc.Block.ListMoveToExistingObject.Response](#anytype-Rpc-Block-ListMoveToExistingObject-Response) |  |
 | BlockListMoveToNewObject | [Rpc.Block.ListMoveToNewObject.Request](#anytype-Rpc-Block-ListMoveToNewObject-Request) | [Rpc.Block.ListMoveToNewObject.Response](#anytype-Rpc-Block-ListMoveToNewObject-Response) |  |
@@ -4099,6 +4105,64 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Replace.Response.Error.Code](#anytype-Rpc-Block-Replace-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage"></a>
+
+### Rpc.Block.SetCarriage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Request"></a>
+
+### Rpc.Block.SetCarriage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Response"></a>
+
+### Rpc.Block.SetCarriage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.SetCarriage.Response.Error](#anytype-Rpc-Block-SetCarriage-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Response-Error"></a>
+
+### Rpc.Block.SetCarriage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.SetCarriage.Response.Error.Code](#anytype-Rpc-Block-SetCarriage-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -8253,6 +8317,7 @@ Get marks list in the selected range in text block.
 | blockId | [string](#string) |  |  |
 | text | [string](#string) |  |  |
 | marks | [model.Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks) |  |  |
+| selectedTextRange | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -11784,6 +11849,8 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | error | [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
+| blockId | [string](#string) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -12864,6 +12931,8 @@ DEPRECATED, GO-1926 |
 | error | [Rpc.Object.Undo.Response.Error](#anytype-Rpc-Object-Undo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
+| blockId | [string](#string) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -15656,6 +15725,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Response-Error-Code"></a>
+
+### Rpc.Block.SetCarriage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
