@@ -160,6 +160,14 @@ func (s *service) IsPersonal(id string) bool {
 }
 
 func (s *service) DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
+	if s.mu.TryLock() {
+		if sp, ok := s.loaded[spaceID]; ok {
+			s.mu.Unlock()
+			return sp.DerivedIDs(), nil
+		}
+		s.mu.Unlock()
+	}
+
 	var sbTypes []coresb.SmartBlockType
 	if s.IsPersonal(spaceID) {
 		sbTypes = threads.PersonalSpaceTypes
@@ -179,7 +187,7 @@ func (s *service) OnViewCreated(spaceID string) {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
-		//s.ctxCancel()
+		s.ctxCancel()
 	}
 	return nil
 }
