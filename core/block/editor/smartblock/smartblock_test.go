@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -418,7 +417,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		// then
 		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
 	})
-	t.Run("no flags removed when state is empty", func(t *testing.T) {
+	t.Run("EmptyDelete flag is not removed when state is empty", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", nil).(*state.State)
 		flags := defaultInternalFlags()
@@ -428,9 +427,9 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		assert.Len(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()), 3)
+		assert.Len(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()), 1)
 	})
-	t.Run("EmptyDelete flag is removed when title is not empty", func(t *testing.T) {
+	t.Run("all flags are removed when title is not empty", func(t *testing.T) {
 		// given
 		st := state.NewDoc("test", map[string]simple.Block{
 			"title": simple.New(&model.Block{Id: "title"}),
@@ -443,9 +442,7 @@ func Test_removeInternalFlags(t *testing.T) {
 		removeInternalFlags(st)
 
 		// then
-		remainingFlags := pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String())
-		assert.Len(t, remainingFlags, 2)
-		assert.False(t, lo.Contains(remainingFlags, int(model.InternalFlag_editorDeleteEmpty)))
+		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
 	})
 	t.Run("all flags are removed when state has non-empty text blocks", func(t *testing.T) {
 		// given
