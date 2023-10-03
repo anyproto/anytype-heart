@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -29,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -221,7 +223,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			}
 		}
 
-		i.indexLinkedFiles(ctx, info.SpaceID, info.FileHashes)
+		i.indexLinkedFiles(ctx, info)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -246,10 +248,13 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, info smartblock2.DocInfo) {
+	fileHashes := info.FileHashes
+	spaceID := info.SpaceID
 	if len(fileHashes) == 0 {
 		return
 	}
+	origin := pbtypes.GetFloat64(info.Details, bundle.RelationKeyOrigin.String())
 	existingIDs, err := i.store.HasIDs(fileHashes...)
 	if err != nil {
 		log.Errorf("failed to get existing file ids : %s", err.Error())
@@ -276,6 +281,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			if idxErr != nil {
 				log.With("id", id).Error(idxErr.Error())
 			}
+			i.setFileOrigin(id, origin) // for files from use cases, which are already loaded
 		}(id)
 	}
 }
@@ -286,6 +292,21 @@ func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock
 		return nil
 	})
 	return
+}
+
+func (i *indexer) setFileOrigin(hash string, origin float64) {
+	err := block.Do(i.picker, hash, func(b smartblock2.SmartBlock) error {
+		st := b.NewState()
+		if origin := pbtypes.Get(st.Details(), bundle.RelationKeyOrigin.String()); origin != nil {
+			return nil
+		}
+		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(origin))
+		return b.Apply(st)
+	})
+	if err != nil {
+		log.Errorf("failed to set file origin, %s", err)
+		return
+	}
 }
 
 func headsHash(heads []string) string {

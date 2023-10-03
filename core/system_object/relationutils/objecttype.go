@@ -50,5 +50,6 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
 		bundle.RelationKeySmartblockTypes.String():      pbtypes.IntList(sbTypes...),
 		bundle.RelationKeySpaceId.String():              pbtypes.String(addr.AnytypeMarketplaceWorkspace),
+		bundle.RelationKeyOrigin.String():               pbtypes.Float64(float64(model.ObjectOrigin_builtin)),
 	}}
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -40,8 +41,7 @@ type Profile struct {
 	eventSender event.Sender
 }
 
-func NewProfile(
-	sb smartblock.SmartBlock,
+func NewProfile(sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	systemObjectService system_object.Service,
 	fileBlockService file.BlockService,
@@ -52,6 +52,7 @@ func NewProfile(
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
 	eventSender event.Sender,
+	spaceService space.Service,
 ) *Profile {
 	f := file.NewFile(
 		sb,
@@ -60,6 +61,7 @@ func NewProfile(
 		tempDirProvider,
 		fileService,
 		picker,
+		spaceService,
 	)
 	return &Profile{
 		SmartBlock:    sb,

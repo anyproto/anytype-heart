@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "64b5e02c065cf350c881ecfa4f21c79594cf8e57eab960fda66b535d074f9d52"
+const RelationChecksum = "1d3e1fce3e1351ff46aedc2b3729b158d798e42d2ce04b07dac2f32c82164db3"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -156,6 +156,7 @@ const (
 	RelationKeyUniqueKey                 domain.RelationKey = "uniqueKey"
 	RelationKeyBacklinks                 domain.RelationKey = "backlinks"
 	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
+	RelationKeyOrigin                    domain.RelationKey = "origin"
 )
 
 var (
@@ -1311,6 +1312,19 @@ var (
 			Key:              "oldAnytypeID",
 			MaxCount:         1,
 			Name:             "Old Anytype ID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOrigin: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Source of objects in Anytype (clipboard, import)",
+			Format:           model.RelationFormat_number,
+			Id:               "_brorigin",
+			Key:              "origin",
+			MaxCount:         1,
+			Name:             "Origin",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

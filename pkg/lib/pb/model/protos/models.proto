@@ -777,6 +777,17 @@ enum RelationFormat {
 
 }
 
+enum ObjectOrigin {
+    user = 0;
+    clipboard = 1;
+    dragAndDrop = 2;
+    import = 3;
+    webClipper = 4;
+    sharingExtension = 5;
+    useCase = 6;
+    builtin = 7;
+}
+
 message RelationLink {
     string key = 1;
     RelationFormat format = 2;

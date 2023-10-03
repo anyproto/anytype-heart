@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func NewBundledObjectType(id string) (s Source) {
@@ -79,8 +80,8 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
+	s.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(model.ObjectOrigin_builtin)))
 	s.SetObjectTypeKey(bundle.TypeKeyObjectType)
-
 	return s, nil
 }
 

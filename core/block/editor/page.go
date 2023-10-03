@@ -23,6 +23,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -43,8 +44,7 @@ type Page struct {
 	systemObjectService system_object.Service
 }
 
-func NewPage(
-	sb smartblock.SmartBlock,
+func NewPage(sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
@@ -56,6 +56,7 @@ func NewPage(
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
 	eventSender event.Sender,
+	service space.Service,
 ) *Page {
 	f := file.NewFile(
 		sb,
@@ -64,6 +65,7 @@ func NewPage(
 		tempDirProvider,
 		fileService,
 		picker,
+		service,
 	)
 	return &Page{
 		SmartBlock:    sb,

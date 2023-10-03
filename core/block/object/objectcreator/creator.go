@@ -455,6 +455,7 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		templateID = v.GetTemplateId()
 	}
 
+	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Float64(float64(model.ObjectOrigin_user))
 	sbType := coresb.SmartBlockTypePage
 
 	switch objectTypeKey {

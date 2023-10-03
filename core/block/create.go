@@ -32,6 +32,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		}
 		objectTypeKeys = b.ObjectTypeKeys()
 		st, err = b.TemplateCreateFromObjectState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(model.ObjectOrigin_user)))
 		return err
 	}); err != nil {
 		return
@@ -74,6 +75,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 			return fmt.Errorf("get target object type id: %w", err)
 		}
 		st.SetDetailAndBundledRelation(bundle.RelationKeyTargetObjectType, pbtypes.String(targetObjectTypeID))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(model.ObjectOrigin_user)))
 		return nil
 	}); err != nil {
 		return
@@ -99,6 +101,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
+		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(model.ObjectOrigin_user)))
 		return nil
 	}); err != nil {
 		return

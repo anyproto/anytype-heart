@@ -21,10 +21,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -46,6 +49,7 @@ func NewUploader(
 	fileService files.Service,
 	provider core.TempDirProvider,
 	picker getblock.Picker,
+	spaceService space.Service,
 ) Uploader {
 	return &uploader{
 		spaceID:         spaceID,
@@ -53,6 +57,7 @@ func NewUploader(
 		picker:          picker,
 		fileService:     fileService,
 		tempDirProvider: provider,
+		spaceService:    spaceService,
 	}
 }
 
@@ -66,7 +71,7 @@ type Uploader interface {
 	SetFile(path string) Uploader
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
-	SetImported(imported bool) Uploader
+	SetOrigin(origin model.ObjectOrigin) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -107,6 +112,7 @@ func (ur UploadResult) ToBlock() file.Block {
 type uploader struct {
 	spaceID          string
 	service          BlockService
+	spaceService     space.Service
 	picker           getblock.Picker
 	block            file.Block
 	getReader        func(ctx context.Context) (*fileReader, error)
@@ -122,7 +128,7 @@ type uploader struct {
 
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
-	imported        bool
+	origin          model.ObjectOrigin
 }
 
 type bufioSeekClose struct {
@@ -292,8 +298,8 @@ func (u *uploader) SetLastModifiedDate() Uploader {
 	return u
 }
 
-func (u *uploader) SetImported(imported bool) Uploader {
-	u.imported = imported
+func (u *uploader) SetOrigin(origin model.ObjectOrigin) Uploader {
+	u.origin = origin
 	return u
 }
 
@@ -372,11 +378,15 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			u.fileStyle = model.BlockContentFile_Embed
 		}
 	}
+	var imported bool
+	if u.origin == model.ObjectOrigin_import {
+		imported = true
+	}
 	var opts = []files.AddOption{
 		files.WithName(u.name),
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
-		files.WithImported(u.imported),
+		files.WithImported(imported),
 	}
 
 	if len(u.opts) > 0 {
@@ -413,10 +423,17 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		}
 	}
 
+	err = u.spaceService.StoreSpaceID(result.Hash, u.spaceID)
+	if err != nil {
+		return
+	}
 	// Touch the file to activate indexing
-	derr := getblock.Do(u.picker, result.Hash, func(_ smartblock.SmartBlock) error {
-		return nil
+	derr := getblock.Do(u.picker, result.Hash, func(b smartblock.SmartBlock) error {
+		state := b.NewState()
+		state.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(u.origin)))
+		return b.Apply(state)
 	})
+
 	if derr != nil {
 		log.Errorf("can't touch file object %s: %s", result.Hash, derr)
 	}

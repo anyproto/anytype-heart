@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -61,6 +62,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Float64(float64(model.ObjectOrigin_builtin))
 
 	return details, nil
 }

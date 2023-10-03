@@ -22,7 +22,7 @@ func NewFileSyncer(
 	}
 }
 
-func (fs *FileSyncer) Sync(id string, b simple.Block) error {
+func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		return nil
 	}
@@ -44,7 +44,7 @@ func (fs *FileSyncer) Sync(id string, b simple.Block) error {
 			BlockId: b.Model().Id,
 		}
 	}
-	_, err := fs.service.UploadFileBlockWithHash(id, params)
+	_, err := fs.service.UploadFileBlockWithHash(id, params, origin)
 	if err != nil {
 		return fmt.Errorf("failed syncing file: %s", err)
 	}

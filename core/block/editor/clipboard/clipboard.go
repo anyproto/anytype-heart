@@ -510,7 +510,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes: fs.Data,
 			Path:  fs.LocalPath,
 			Name:  fs.Name,
-		}, false); err != nil {
+		}, false, model.ObjectOrigin_clipboard); err != nil {
 			return
 		}
 		blockIds = append(blockIds, b.Model().Id)

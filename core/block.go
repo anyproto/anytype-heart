@@ -184,7 +184,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			if err = bs.UploadBlockFile(nil, r, groupId); err != nil {
+			if err = bs.UploadBlockFile(nil, r, groupId, model.ObjectOrigin_clipboard); err != nil {
 				return err
 			}
 		}
@@ -267,7 +267,7 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.UploadBlockFile(nil, *req, "")
+		return bs.UploadBlockFile(nil, *req, "", model.ObjectOrigin_user)
 	})
 	if err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
@@ -957,7 +957,7 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.BookmarkFetch(ctx, *req)
+		return bs.BookmarkFetch(ctx, *req, model.ObjectOrigin_user)
 	})
 	if err != nil {
 		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)

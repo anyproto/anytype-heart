@@ -66,35 +66,20 @@ func NewCreator(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(
-	ctx context.Context,
-	spaceID string,
-	sn *converter.Snapshot,
-	oldIDtoNew map[string]string,
-	createPayloads map[string]treestorage.TreeStorageCreatePayload,
-	fileIDs []string,
-) (*types.Struct, string, error) {
+func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
+	oldIDtoNew := dataObject.oldIDtoNew
+	fileIDs := dataObject.fileIDs
+	ctx := dataObject.ctx
+	origin := dataObject.origin
+	spaceID := dataObject.spaceID
 
 	var err error
 	newID := oldIDtoNew[sn.Id]
 	oc.setRootBlock(snapshot, newID)
 
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
-	st.SetRootId(newID)
-	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
-	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
-	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
-	if lastModifiedDate == 0 {
-		if createdDate != 0 {
-			lastModifiedDate = createdDate
-		} else {
-			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
-			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
-			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
-		}
-	}
-	st.SetLastModified(lastModifiedDate, oc.core.ProfileID(spaceID))
+	oc.injectImportDetails(sn, st, origin, spaceID)
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -116,7 +101,7 @@ func (oc *ObjectCreator) Create(
 	// converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
 		if link.Format == model.RelationFormat_file {
-			filesToDelete = oc.relationSyncer.Sync(spaceID, st, link.Key)
+			filesToDelete = oc.relationSyncer.Sync(spaceID, st, link.Key, origin)
 		}
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
@@ -126,7 +111,7 @@ func (oc *ObjectCreator) Create(
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err.Error())
 	}
-	if payload := createPayloads[newID]; payload.RootRawChange != nil {
+	if payload := dataObject.createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
 			log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
@@ -141,7 +126,7 @@ func (oc *ObjectCreator) Create(
 
 	oc.setArchived(snapshot, newID)
 
-	syncErr := oc.syncFilesAndLinks(newID)
+	syncErr := oc.syncFilesAndLinks(newID, origin)
 	if syncErr != nil {
 		log.With(zap.String("object id", newID)).Errorf("failed to sync %s: %s", newID, syncErr)
 	}
@@ -151,6 +136,23 @@ func (oc *ObjectCreator) Create(
 
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType
+}
+
+func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, st *state.State, origin model.ObjectOrigin, spaceID string) {
+	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
+	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
+	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
+	if lastModifiedDate == 0 {
+		if createdDate != 0 {
+			lastModifiedDate = createdDate
+		} else {
+			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
+			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
+			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
+		}
+	}
+	st.SetLastModified(lastModifiedDate, oc.core.ProfileID(spaceID))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(origin)))
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -331,7 +333,7 @@ func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State) []
 	if pbtypes.GetInt64(st.Details(), bundle.RelationKeyCoverType.String()) != 1 {
 		return nil
 	}
-	filesToDelete := oc.relationSyncer.Sync(spaceID, st, bundle.RelationKeyCoverId.String())
+	filesToDelete := oc.relationSyncer.Sync(spaceID, st, bundle.RelationKeyCoverId.String(), 0)
 	return filesToDelete
 }
 
@@ -380,7 +382,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 	}
 }
 
-func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
+func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrigin) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
 	err := getblock.Do(oc.picker, newID, func(b sb.SmartBlock) error {
@@ -390,7 +392,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 			if s != nil {
 				// We can't run syncer here because it will cause a deadlock, so we defer this operation
 				tasks = append(tasks, func() error {
-					err := s.Sync(newID, bl)
+					err := s.Sync(newID, bl, origin)
 					if err != nil {
 						return err
 					}
