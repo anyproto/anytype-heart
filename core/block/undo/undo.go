@@ -34,7 +34,11 @@ type ObjectType struct {
 }
 
 type CarriageInfo struct {
-	CarriageBlockID    string
+	Before, After CarriageState
+}
+
+type CarriageState struct {
+	BlockID            string
 	RangeFrom, RangeTo int32
 }
 
@@ -91,7 +95,7 @@ type History interface {
 	Next() (Action, error)
 	Reset()
 	Counters() (undo int32, redo int32)
-	SetCarriageInfo(info CarriageInfo)
+	SetCarriageState(state CarriageState)
 }
 
 func NewHistory(limit int) History {
@@ -102,10 +106,10 @@ func NewHistory(limit int) History {
 }
 
 type history struct {
-	limit       int
-	actions     []Action
-	pointer     int
-	initialInfo CarriageInfo
+	limit                int
+	actions              []Action
+	pointer              int
+	currentCarriageState CarriageState
 }
 
 func (h *history) Add(a Action) {
@@ -127,22 +131,22 @@ func (h *history) Add(a Action) {
 		h.actions = h.actions[1:]
 		h.pointer--
 	}
+	h.actions[h.pointer-1].CarriageInfo.After = h.currentCarriageState
+	if h.pointer > 1 {
+		h.actions[h.pointer-1].CarriageInfo.Before = h.actions[h.pointer-2].CarriageInfo.After
+		return
+	}
+	h.actions[h.pointer-1].CarriageInfo.Before = h.currentCarriageState
 }
 
 func (h *history) Len() int {
 	return h.pointer
 }
 
-func (h *history) Previous() (action Action, err error) {
+func (h *history) Previous() (Action, error) {
 	if h.pointer > 0 {
 		h.pointer--
-		action = h.actions[h.pointer]
-		if h.pointer > 0 {
-			action.CarriageInfo = h.actions[h.pointer-1].CarriageInfo
-		} else {
-			action.CarriageInfo = h.initialInfo
-		}
-		return
+		return h.actions[h.pointer], nil
 	}
 	return Action{}, ErrNoHistory
 }
@@ -165,12 +169,8 @@ func (h *history) Counters() (undo int32, redo int32) {
 	return int32(h.pointer), int32(len(h.actions) - h.pointer)
 }
 
-func (h *history) SetCarriageInfo(info CarriageInfo) {
-	if h.pointer > 0 {
-		h.actions[h.pointer-1].CarriageInfo = info
-		return
-	}
-	h.initialInfo = info
+func (h *history) SetCarriageState(state CarriageState) {
+	h.currentCarriageState = state
 }
 
 func (h *history) applyGroup(b Action) (ok bool) {

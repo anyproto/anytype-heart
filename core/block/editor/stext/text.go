@@ -361,10 +361,10 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 
 func (t *textImpl) setCarriageInfo(req pb.RpcBlockTextSetTextRequest) {
 	if req.SelectedTextRange != nil {
-		t.History().SetCarriageInfo(undo.CarriageInfo{
-			CarriageBlockID: req.BlockId,
-			RangeFrom:       req.SelectedTextRange.From,
-			RangeTo:         req.SelectedTextRange.To,
+		t.History().SetCarriageState(undo.CarriageState{
+			BlockID:   req.BlockId,
+			RangeFrom: req.SelectedTextRange.From,
+			RangeTo:   req.SelectedTextRange.To,
 		})
 	}
 }

@@ -9,8 +9,13 @@ import (
 )
 
 type IHistory interface {
-	Undo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, carriageInfo undo.CarriageInfo, err error)
-	Redo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, carriageInfo undo.CarriageInfo, err error)
+	Undo(*session.Context) (info HistoryInfo, err error)
+	Redo(*session.Context) (info HistoryInfo, err error)
+}
+
+type HistoryInfo struct {
+	Counters      pb.RpcObjectUndoRedoCounter
+	CarriageState undo.CarriageState
 }
 
 func NewHistory(sb smartblock.SmartBlock) IHistory {
@@ -21,7 +26,7 @@ type history struct {
 	smartblock.SmartBlock
 }
 
-func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, carriageInfo undo.CarriageInfo, err error) {
+func (h *history) Undo(ctx *session.Context) (info HistoryInfo, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Previous()
 	if err != nil {
@@ -49,12 +54,12 @@ func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}
-	counters.Undo, counters.Redo = h.History().Counters()
-	carriageInfo = action.CarriageInfo
+	info.Counters.Undo, info.Counters.Redo = h.History().Counters()
+	info.CarriageState = action.CarriageInfo.Before
 	return
 }
 
-func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, carriageInfo undo.CarriageInfo, err error) {
+func (h *history) Redo(ctx *session.Context) (info HistoryInfo, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Next()
 	if err != nil {
@@ -81,7 +86,7 @@ func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}
-	counters.Undo, counters.Redo = h.History().Counters()
-	carriageInfo = action.CarriageInfo
+	info.Counters.Undo, info.Counters.Redo = h.History().Counters()
+	info.CarriageState = action.CarriageInfo.After
 	return
 }
