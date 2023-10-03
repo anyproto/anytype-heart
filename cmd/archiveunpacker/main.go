@@ -204,14 +204,17 @@ func createZipFromDirectory(input, output string) {
 			isProfile := strings.HasPrefix(info.Name(), constant.ProfileFile)
 
 			// assuming Snapshot is a protobuf message
-			var snapshot proto.Message = &pb.SnapshotWithType{}
+			var snapshot proto.Message = &pb.ChangeSnapshot{}
 			if isProfile {
 				snapshot = &pb.Profile{}
 			}
 
 			err = jsonpb.UnmarshalString(string(data), snapshot)
 			if err != nil {
-				return err
+				snapshot = &pb.SnapshotWithType{}
+				if err = jsonpb.UnmarshalString(string(data), snapshot); err != nil {
+					return err
+				}
 			}
 
 			pbData, err := proto.Marshal(snapshot)

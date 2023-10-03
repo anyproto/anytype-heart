@@ -99,13 +99,7 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 }
 
 func (w *WidgetObject) StateMigrations() migration.Migrations {
-	dataviewMigration := newDataviewMigrationFromOldIDs(w.SpaceID(), w.systemObjectService)
-	return migration.MakeMigrations([]migration.Migration{
-		{
-			Version: 2,
-			Proc:    dataviewMigration.migrate,
-		},
-	})
+	return migration.MakeMigrations(nil)
 }
 
 func (w *WidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {

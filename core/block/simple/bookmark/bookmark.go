@@ -176,6 +176,13 @@ func (b *Bookmark) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
+func (l *Bookmark) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if l.content.TargetObjectId != "" {
+		l.content.TargetObjectId = replacer(l.content.TargetObjectId)
+	}
+	return
+}
+
 func (b *Bookmark) FillSmartIds(ids []string) []string {
 	if b.content.TargetObjectId != "" {
 		ids = append(ids, b.content.TargetObjectId)

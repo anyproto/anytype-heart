@@ -114,6 +114,13 @@ func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	return
 }
 
+func (l *Link) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if l.content.TargetBlockId != "" {
+		l.content.TargetBlockId = replacer(l.content.TargetBlockId)
+	}
+	return
+}
+
 func (l *Link) FillSmartIds(ids []string) []string {
 	if l.content.TargetBlockId != "" {
 		ids = append(ids, l.content.TargetBlockId)

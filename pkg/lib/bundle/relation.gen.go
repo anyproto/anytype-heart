@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "c7541bd1957fc3c8b881288d5fcca1888165bcf46946b1e1522b46e6a93438ac"
+const RelationChecksum = "64b5e02c065cf350c881ecfa4f21c79594cf8e57eab960fda66b535d074f9d52"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -155,6 +155,7 @@ const (
 	RelationKeyDefaultTemplateId         domain.RelationKey = "defaultTemplateId"
 	RelationKeyUniqueKey                 domain.RelationKey = "uniqueKey"
 	RelationKeyBacklinks                 domain.RelationKey = "backlinks"
+	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
 )
 
 var (
@@ -1030,6 +1031,20 @@ var (
 			Key:              "isReadonly",
 			MaxCount:         1,
 			Name:             "Readonly",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsUninstalled: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Relation that indicates document has been uninstalled",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisUninstalled",
+			Key:              "isUninstalled",
+			MaxCount:         1,
+			Name:             "Is uninstalled",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -55,3 +55,6 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage:
     interfaces:
       FileStorage:
+  github.com/anyproto/anytype-heart/core/subscription:
+    interfaces:
+      CollectionService:

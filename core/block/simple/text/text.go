@@ -303,17 +303,18 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 	copyFrom := int32(0)
 	copyTo := int32(textutil.UTF16RuneCountString(copiedText.Text))
 
-	if rangeFrom < 0 || int(rangeFrom) > textutil.UTF16RuneCountString(t.content.Text) {
+	textLen := textutil.UTF16RuneCountString(t.content.Text)
+	if rangeFrom < 0 || int(rangeFrom) > textLen {
 		return caretPosition, fmt.Errorf("out of range: range.from is not correct: %d", rangeFrom)
 	}
-	if rangeTo < 0 || int(rangeTo) > textutil.UTF16RuneCountString(t.content.Text) {
+	if rangeTo < 0 || int(rangeTo) > textLen {
 		return caretPosition, fmt.Errorf("out of range: range.to is not correct: %d", rangeTo)
 	}
 	if rangeFrom > rangeTo {
 		return caretPosition, fmt.Errorf("out of range: range.from %d > range.to %d", rangeFrom, rangeTo)
 	}
 
-	if len(t.content.Text) == 0 || (rangeFrom == 0 && rangeTo == int32(len(t.content.Text))) {
+	if textLen == 0 || (rangeFrom == 0 && rangeTo == int32(textLen)) {
 		if !isPartOfBlock {
 			t.content.Style = copiedText.Style
 			t.content.Color = copiedText.Color
@@ -648,6 +649,19 @@ func (t *Text) FillSmartIds(ids []string) []string {
 		}
 	}
 	return ids
+}
+
+func (t *Text) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if t.content.Marks != nil {
+		for _, m := range t.content.Marks.Marks {
+			if (m.Type == model.BlockContentTextMark_Mention ||
+				m.Type == model.BlockContentTextMark_Object) && m.Param != "" {
+
+				m.Param = replacer(m.Param)
+			}
+		}
+	}
+	return
 }
 
 func (t *Text) HasSmartIds() bool {

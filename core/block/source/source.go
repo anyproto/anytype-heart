@@ -214,6 +214,15 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 
+	// This is temporary migration. We will move it to persistent migration later after several releases.
+	// The reason is to minimize the number of glitches for users of both old and new versions of Anytype.
+	// For example, if we persist this migration for Dataview block now, user will see "No query selected"
+	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
+	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
+	// compatibility. But in many cases we expect that users update object not so often as they just view them.
+	migration := newSubObjectsLinksMigration(s.spaceID, s.systemObjectService)
+	migration.migrate(st)
+
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {

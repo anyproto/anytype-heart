@@ -348,16 +348,6 @@ func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
 	})
 }
 
-func buildStateFromAST(root *Block) *State {
-	st := NewDocFromSnapshot("", &pb.ChangeSnapshot{
-		Data: &model.SmartBlockSnapshotBase{
-			Blocks: root.Build(),
-		},
-	}).(*State)
-	ApplyState(st, true)
-	return st.NewState()
-}
-
 func TestState_SetParent(t *testing.T) {
 	orig := NewDoc("root", nil).(*State)
 	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
@@ -762,4 +752,15 @@ func newRemoveChange(ids ...string) *pb.ChangeContent {
 			},
 		},
 	}
+}
+
+// copy if testutil.BuildStateFromAST because of cyclic import
+func buildStateFromAST(root *Block) *State {
+	st := NewDocFromSnapshot("", &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks: root.Build(),
+		},
+	}).(*State)
+	ApplyState(st, true)
+	return st.NewState()
 }

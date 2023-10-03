@@ -1,8 +1,5 @@
 # Anytype Heart
 Middleware library for Anytype, distributed as part of the Anytype clients.
-
-## ⚠️ Notice
-Current main branch doesn't work with the production any-sync nodes. For now, you can use [v0.28.1](https://github.com/anyproto/anytype-heart/releases/tag/v0.28.1). As soon as this notice will be removed this means it's ok to use the main branch.
  
 ## Docs
 - [Build instructions](docs/Build.md)
@@ -12,6 +9,10 @@ Current main branch doesn't work with the production any-sync nodes. For now, yo
 - [Project architecture](docs/Architecture.md)
 - [Style guide](docs/Codestyle.md)
 - [Project workflows](docs/Flow.md)
+
+### CLI tools
+- [Usecase generator](docs/UsecaseGenerator.md)
+- [Export Archive unpacker](docs/ExportArchiveUnpacker.md)
 
 ## Contribution
 Thank you for your desire to develop Anytype together!

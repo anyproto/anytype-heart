@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -30,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -144,9 +142,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-	if info.SpaceID == "" || pbtypes.GetString(info.State.CombinedDetails(), bundle.RelationKeySpaceId.String()) == "" {
-		log.Warnf("index spaceID is empty for object %s %v", info.Id, info.State.ObjectTypeKeys())
-	}
+
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
@@ -181,7 +177,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		}
 	}
 
-	details := info.State.CombinedDetails()
+	details := info.Details
 
 	indexSetTime := time.Now()
 	var hasError bool
@@ -209,9 +205,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
 					With("lastHashIsEmpty", lastIndexedHash == "").
 					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
-				// With("old", pbtypes.Sprint(oldDetails.Details)).
-				// With("new", pbtypes.Sprint(info.State.CombinedDetails())).
-				// With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
 
 				if opts.SkipIfHeadsNotChanged {
 					l.Warnf("details have changed, but heads are equal")
@@ -247,7 +240,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
 		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		RelationsCount:          len(info.State.PickRelationLinks()),
 		DetailsCount:            detailsCount,
 	})
 

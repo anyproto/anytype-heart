@@ -11069,6 +11069,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
+| collectionId | [string](#string) |  |  |
 
 
 
@@ -11127,6 +11128,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ImportExperience.Response.Error](#anytype-Rpc-Object-ImportExperience-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -11251,6 +11253,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ImportUseCase.Response.Error](#anytype-Rpc-Object-ImportUseCase-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -22898,6 +22901,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Workspace | 518 |  |
 | STRelation | 521 |  |
 | STType | 528 |  |
+| STRelationOption | 529 |  |
 | MissingObject | 519 |  |
 
 

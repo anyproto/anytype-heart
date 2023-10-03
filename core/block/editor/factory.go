@@ -38,13 +38,13 @@ type ObjectFactory struct {
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	sourceService       source.Service
 	tempDirProvider     core.TempDirProvider
-	templateCloner      templateCloner
 	fileService         files.Service
 	config              *config.Config
 	picker              getblock.Picker
 	eventSender         event.Sender
 	restrictionService  restriction.Service
 	indexer             smartblock.Indexer
+	objectDeriver       objectDeriver
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -60,7 +60,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.systemObjectService = app.MustComponent[system_object.Service](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
-	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
@@ -69,6 +68,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.picker = app.MustComponent[getblock.Picker](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
+	f.objectDeriver = app.MustComponent[objectDeriver](a)
 
 	return nil
 }
@@ -136,7 +136,8 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
-		coresb.SmartBlockTypeRelation:
+		coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeRelationOption:
 		return NewPage(
 			sb,
 			f.objectStore,
@@ -209,9 +210,9 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.detailsModifier,
 			f.sbtProvider,
 			f.layoutConverter,
-			f.templateCloner,
 			f.config,
 			f.eventSender,
+			f.objectDeriver,
 		), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil

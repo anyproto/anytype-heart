@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block"
+	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -73,36 +75,35 @@ func (i *indexer) runFullTextIndexer() {
 func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-	info, err := i.getObjectInfo(ctx, id)
-	if err != nil {
-		return ftDoc, fmt.Errorf("get object info: %w", err)
-	}
-	// TODO Parametrize with actual SpaceID: GO-1625
-	sbType, err := i.typeProvider.Type(i.spaceService.AccountId(), info.Id)
-	if err != nil {
-		sbType = smartblock.SmartBlockTypePage
-	}
-	indexDetails, _ := sbType.Indexable()
-	if !indexDetails {
-		return ftsearch.SearchDoc{}, nil
-	}
 
-	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
-		return
-	}
+	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
+		sbType, err := i.typeProvider.Type(sb.SpaceID(), id)
+		if err != nil {
+			sbType = smartblock.SmartBlockTypePage
+		}
+		indexDetails, _ := sbType.Indexable()
+		if !indexDetails {
+			return nil
+		}
 
-	title := pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String())
-	if info.State.ObjectTypeKey() == bundle.TypeKeyNote || title == "" {
-		title = info.State.Snippet()
-	}
+		if err = i.store.UpdateObjectSnippet(id, sb.Snippet()); err != nil {
+			return fmt.Errorf("update object snippet: %w", err)
+		}
 
-	spaceID := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeySpaceId.String())
-	ftDoc = ftsearch.SearchDoc{
-		Id:      id,
-		SpaceID: spaceID,
-		Title:   title,
-		Text:    info.State.SearchText(),
-	}
+		title := pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String())
+		if sb.ObjectTypeKey() == bundle.TypeKeyNote || title == "" {
+			title = sb.Snippet()
+		}
+
+		ftDoc = ftsearch.SearchDoc{
+			Id:      id,
+			SpaceID: sb.SpaceID(),
+			Title:   title,
+			Text:    sb.SearchText(),
+		}
+		return nil
+	})
+
 	return
 }
 

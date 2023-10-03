@@ -1,10 +1,12 @@
-## Use Case archives processing tool
+## Use Case archives generating tool
 
-To use Use Case archives processing tool build the program
+To use Use Case archives processing tool head to [cmd/usecasegenerator](../cmd/usecasegenerator), build the program
 `go build`
 and run it using
 `./archiveprocessor <path_to_archive>`
 command.
+
+Program accepts only one parameter - path to the archive containing exported objects from space.
 
 If all protobuf objects contain correct information, resulting archive would be written in **<path_to_archive>_new.zip** file in same directory.
 
@@ -19,6 +21,7 @@ then program provides you with error messages in the output along with the list 
 Incorrect data found by tool could be resolved two different ways:
 1. Via editor of the client and repetitive export of desired account
 2. Using rules engine
+3. Using Export Archive unpacker tool (see its [docs](ExportArchiveUnpacker.md))
 
 Rules are the actions that could be done upon such entities of smartblock as:
 - relation links
