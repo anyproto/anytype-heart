@@ -41,7 +41,6 @@ type Service interface {
 
 	GetObjectType(url string) (*model.ObjectType, error)
 	HasObjectType(id string) (bool, error)
-	GetObjectTypes(urls []string) (ots []*model.ObjectType, err error)
 
 	GetRelationByID(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (relation *model.Relation, err error)

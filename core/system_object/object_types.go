@@ -44,19 +44,6 @@ func (s *service) getRelationLinksForRecommendedRelations(details *types.Struct)
 	return relationLinks
 }
 
-func (s *service) GetObjectTypes(ids []string) (ots []*model.ObjectType, err error) {
-	ots = make([]*model.ObjectType, 0, len(ids))
-	for _, id := range ids {
-		ot, e := s.GetObjectType(id)
-		if e != nil {
-			err = e
-		} else {
-			ots = append(ots, ot)
-		}
-	}
-	return
-}
-
 func (s *service) GetObjectType(id string) (*model.ObjectType, error) {
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		return bundle.GetTypeByUrl(id)
