@@ -52,6 +52,7 @@ type techSpace struct {
 }
 
 func (s *techSpace) Init(a *app.App) (err error) {
+	s.info = make(map[string]spaceinfo.SpaceInfo)
 	s.objectCache = app.MustComponent[objectcache.Cache](a)
 	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
