@@ -6,6 +6,8 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"errors"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -24,16 +26,16 @@ type subObjectsMigration struct {
 	objectDeriver objectDeriver
 }
 
-func (m *subObjectsMigration) migrateSubObjects(_ *state.State) {
+func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 	m.iterateAllSubObjects(
+		st,
 		func(info smartblock.DocInfo) {
 			uniqueKeyRaw := pbtypes.GetString(info.Details, bundle.RelationKeyUniqueKey.String())
 			id, err := m.migrateSubObject(context.Background(), uniqueKeyRaw, info.Details, info.Type)
-			if err != nil {
-				log.Errorf("failed to index subobject %s: %s", info.Id, err)
-				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
-			} else {
+			if err == nil {
 				log.With("objectId", id, "uniqueKey", uniqueKeyRaw).Warnf("migrated sub-object")
+			} else if !errors.Is(err, treestorage.ErrTreeExists) {
+				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
 			}
 		},
 	)
@@ -87,8 +89,7 @@ func collectionKeyToTypeKey(collKey string) (domain.TypeKey, bool) {
 	return "", false
 }
 
-func (m *subObjectsMigration) iterateAllSubObjects(proc func(smartblock.DocInfo)) {
-	st := m.workspace.NewState()
+func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(smartblock.DocInfo)) {
 	for typeKey, coll := range objectTypeToCollection {
 		collection := st.GetSubObjectCollection(coll)
 		if collection == nil {

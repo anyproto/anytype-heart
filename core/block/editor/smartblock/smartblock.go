@@ -660,7 +660,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
 		}
 	}
-	sb.onApply(s)
+	sb.beforeStateApply(s)
 
 	if !keepInternalFlags {
 		removeInternalFlags(s)
@@ -1312,7 +1312,7 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 	}
 }
 
-func (sb *smartBlock) onApply(s *state.State) {
+func (sb *smartBlock) beforeStateApply(s *state.State) {
 	sb.setRestrictionsDetail(s)
 	sb.injectLinksDetails(s)
 }
@@ -1332,14 +1332,16 @@ func removeInternalFlags(s *state.State) {
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
-	var ints = make([]int, len(sb.Restrictions().Object))
-	for i, v := range sb.Restrictions().Object {
-		ints[i] = int(v)
+	rawRestrictions := make([]int, len(sb.Restrictions().Object))
+	for i, r := range sb.Restrictions().Object {
+		rawRestrictions[i] = int(r)
 	}
-	s.SetLocalDetail(bundle.RelationKeyRestrictions.String(), pbtypes.IntList(ints...))
+	s.SetLocalDetail(bundle.RelationKeyRestrictions.String(), pbtypes.IntList(rawRestrictions...))
 
 	// todo: verify this logic with clients
-	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil && sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
+	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
+		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
+
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, pbtypes.Bool(true))
 	}
 }
