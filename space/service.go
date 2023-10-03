@@ -137,7 +137,11 @@ func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error
 	if err != nil {
 		return nil, err
 	}
-	sp = newSpace(s, coreSpace)
+	derivedIDs, err := s.DerivedIDs(ctx, spaceID)
+	if err != nil {
+		return nil, err
+	}
+	sp = newSpace(s, coreSpace, derivedIDs)
 	return
 }
 
