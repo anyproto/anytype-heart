@@ -231,8 +231,8 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.eventSender,
 			f.objectDeriver,
 		), nil
-	case coresb.SmartBlockTypeSpaceObject:
-		return newSpaceObject(
+	case coresb.SmartBlockTypeSpaceView:
+		return newSpaceView(
 			sb,
 			f.spaceService,
 		), nil

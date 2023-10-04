@@ -24,7 +24,7 @@ func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey, spa
 		keyStr = key.InternalKey()
 	}
 	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType), Key: keyStr}
-	if sbType == coresb.SmartBlockTypeSpaceObject {
+	if sbType == coresb.SmartBlockTypeSpaceView {
 		mdl := &model.SpaceObjectHeader{SpaceID: spaceID}
 		marshalled, err := mdl.Marshal()
 		if err != nil {

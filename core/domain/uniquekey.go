@@ -19,7 +19,7 @@ var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
 	smartblock.SmartBlockTypeArchive:        "archive",
 	smartblock.SmartBlockTypeProfilePage:    "profile",
 	smartblock.SmartBlockTypeWidget:         "widget",
-	smartblock.SmartBlockTypeSpaceObject:    "spaceobject",
+	smartblock.SmartBlockTypeSpaceView:      "spaceview",
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.

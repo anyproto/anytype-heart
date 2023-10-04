@@ -89,7 +89,7 @@ func (s *techSpace) wakeUpViews() (err error) {
 }
 
 func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (spaceView *editor.SpaceView, err error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, "")
 	if err != nil {
 		return
 	}
@@ -111,7 +111,7 @@ func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (spaceV
 }
 
 func (s *techSpace) DeriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceObject, "")
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, "")
 	if err != nil {
 		return "", err
 	}

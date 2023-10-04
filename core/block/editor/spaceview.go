@@ -26,8 +26,8 @@ type SpaceView struct {
 	spaceService spaceService
 }
 
-// newSpaceObject creates a new SpaceView with given deps
-func newSpaceObject(sb smartblock.SmartBlock, spaceService spaceService) *SpaceView {
+// newSpaceView creates a new SpaceView with given deps
+func newSpaceView(sb smartblock.SmartBlock, spaceService spaceService) *SpaceView {
 	return &SpaceView{
 		SmartBlock:   sb,
 		spaceService: spaceService,

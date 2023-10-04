@@ -40,7 +40,7 @@ enum SmartBlockType {
     STRelation = 0x209;
     STType = 0x210;
     STRelationOption = 0x211;
-    SpaceObject = 0x212;
+    SpaceView = 0x212;
 
     MissingObject = 0x207;
 }

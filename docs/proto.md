@@ -22926,7 +22926,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STRelation | 521 |  |
 | STType | 528 |  |
 | STRelationOption | 529 |  |
-| SpaceObject | 530 |  |
+| SpaceView | 530 |  |
 | MissingObject | 519 |  |
 
 

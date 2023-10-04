@@ -121,7 +121,7 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 			smartblock2.SmartBlockTypeWorkspace,
 			smartblock2.SmartBlockTypeObjectType,
 			smartblock2.SmartBlockTypeRelation,
-			smartblock2.SmartBlockTypeSpaceObject,
+			smartblock2.SmartBlockTypeSpaceView,
 			smartblock2.SmartBlockTypeProfilePage,
 		}
 		ids, err := i.getIdsForTypes(
