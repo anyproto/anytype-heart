@@ -841,3 +841,22 @@ message ObjectView {
         int32 redo = 2;
     }
 }
+
+
+enum SpaceStatus {
+    // Unknown means the space is not loaded yet
+    Unknown = 0;
+    // Loading - the space in progress of loading
+    Loading = 1;
+    // Ok - the space loaded and available
+    Ok = 2;
+    // Missing - the space is missing
+    Missing = 3;
+    // Error - the space loading ended with an error
+    Error = 4;
+
+    // RemoteWaitingDeletion - network status is "waiting deletion"
+    RemoteWaitingDeletion = 5;
+    // RemoteDeleted - the space is deleted in the current network
+    RemoteDeleted = 6;
+}

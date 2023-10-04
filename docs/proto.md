@@ -1453,6 +1453,7 @@
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
     - [Restrictions.ObjectRestriction](#anytype-model-Restrictions-ObjectRestriction)
     - [SmartBlockType](#anytype-model-SmartBlockType)
+    - [SpaceStatus](#anytype-model-SpaceStatus)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -22927,6 +22928,23 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STRelationOption | 529 |  |
 | SpaceObject | 530 |  |
 | MissingObject | 519 |  |
+
+
+
+<a name="anytype-model-SpaceStatus"></a>
+
+### SpaceStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 | Unknown means the space is not loaded yet |
+| Loading | 1 | Loading - the space in progress of loading |
+| Ok | 2 | Ok - the space loaded and available |
+| Missing | 3 | Missing - the space is missing |
+| Error | 4 | Error - the space loading ended with an error |
+| RemoteWaitingDeletion | 5 | RemoteWaitingDeletion - network status is &#34;waiting deletion&#34; |
+| RemoteDeleted | 6 | RemoteDeleted - the space is deleted in the current network |
 
 
  
