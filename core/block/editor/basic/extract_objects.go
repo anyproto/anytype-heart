@@ -156,7 +156,7 @@ func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(nameText)
 	}
 
-	fields[bundle.RelationKeyOrigin.String()] = pbtypes.Float64(float64(model.ObjectOrigin_user))
+	fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(model.ObjectOrigin_user))
 	details := &types.Struct{Fields: fields}
 	return details
 }

@@ -152,7 +152,7 @@ func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, st *state.S
 		}
 	}
 	st.SetLastModified(lastModifiedDate, oc.core.ProfileID(spaceID))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(origin)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin)))
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {

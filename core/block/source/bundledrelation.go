@@ -62,7 +62,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Float64(float64(model.ObjectOrigin_builtin))
+	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(model.ObjectOrigin_builtin))
 
 	return details, nil
 }

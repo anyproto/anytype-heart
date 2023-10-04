@@ -151,7 +151,7 @@ func (b *sbookmark) updateBlock(_ session.Context, block bookmark.Block, apply f
 
 	content := block.GetContent()
 	details := block.ToDetails()
-	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Float64(float64(origin))
+	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
 	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), block.ToDetails(), func() *model.BlockContentBookmark {
 		return content
 	})

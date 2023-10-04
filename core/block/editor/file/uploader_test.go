@@ -4,6 +4,7 @@ package file_test
 
 import (
 	"context"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -179,8 +179,8 @@ func newFixture(t *testing.T) *uplFixture {
 	fx.fileService = testMock.NewMockFileService(fx.ctrl)
 	fx.blockService = NewMockBlockService(fx.ctrl)
 
-	fx.spaceService = mock_space.NewMockService(fx.ctrl)
-	fx.Uploader = file.NewUploader("space1", fx.blockService, fx.fileService, core.NewTempDirService(), picker, fx.spaceService)
+	fx.fileStore = filesync.NewMockFileStore(fx.ctrl)
+	fx.Uploader = file.NewUploader("space1", fx.blockService, fx.fileService, core.NewTempDirService(), picker, fx.fileStore)
 	fx.file = testMock.NewMockFile(fx.ctrl)
 	fx.file.EXPECT().Hash().Return("123").AnyTimes()
 	return fx
@@ -193,7 +193,7 @@ type uplFixture struct {
 	fileService  *testMock.MockFileService
 	ctrl         *gomock.Controller
 	picker       *mock_getblock.MockPicker
-	spaceService *mock_space.MockService
+	fileStore    *filesync.MockFileStore
 }
 
 func (fx *uplFixture) newImage(hash string) *testMock.MockImage {

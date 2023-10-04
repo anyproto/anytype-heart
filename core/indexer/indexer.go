@@ -254,7 +254,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, info smartblock2.DocInfo
 	if len(fileHashes) == 0 {
 		return
 	}
-	origin := pbtypes.GetFloat64(info.Details, bundle.RelationKeyOrigin.String())
+	origin := pbtypes.GetInt64(info.Details, bundle.RelationKeyOrigin.String())
 	existingIDs, err := i.store.HasIDs(fileHashes...)
 	if err != nil {
 		log.Errorf("failed to get existing file ids : %s", err.Error())
@@ -281,7 +281,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, info smartblock2.DocInfo
 			if idxErr != nil {
 				log.With("id", id).Error(idxErr.Error())
 			}
-			i.setFileOrigin(id, origin) // for files from use cases, which are already loaded
+			i.setFileOrigin(id, int(origin)) // for files from use cases, which are already loaded
 		}(id)
 	}
 }
@@ -294,13 +294,20 @@ func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock
 	return
 }
 
-func (i *indexer) setFileOrigin(hash string, origin float64) {
-	err := block.Do(i.picker, hash, func(b smartblock2.SmartBlock) error {
+func (i *indexer) setFileOrigin(hash string, origin int) {
+	fileOrigin, err := i.fileStore.GetFileOrigin(hash)
+	if err != nil {
+		log.Errorf("failed to get file origin, %s", err)
+		// if file doesn't have origin in file store, we use origin from objects, where file was uploaded
+		fileOrigin = origin
+	}
+	err = block.Do(i.picker, hash, func(b smartblock2.SmartBlock) error {
 		st := b.NewState()
+		// if file already has origin relation, we don't do anything
 		if origin := pbtypes.Get(st.Details(), bundle.RelationKeyOrigin.String()); origin != nil {
 			return nil
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(origin))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(fileOrigin)))
 		return b.Apply(st)
 	})
 	if err != nil {

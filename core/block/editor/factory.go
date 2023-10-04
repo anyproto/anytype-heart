@@ -20,9 +20,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 )
 
@@ -46,7 +46,7 @@ type ObjectFactory struct {
 	restrictionService  restriction.Service
 	indexer             smartblock.Indexer
 	objectDeriver       objectDeriver
-	spaceService        space.Service
+	fileStore           filestore.FileStore
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -71,7 +71,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.objectDeriver = app.MustComponent[objectDeriver](a)
-	f.spaceService = app.MustComponent[space.Service](a)
+	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	return nil
 }
 
@@ -153,7 +153,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.layoutConverter,
 			f.fileService,
 			f.eventSender,
-			f.spaceService,
+			f.fileStore,
 		), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(
@@ -184,7 +184,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.layoutConverter,
 			f.fileService,
 			f.eventSender,
-			f.spaceService,
+			f.fileStore,
 		), nil
 	case coresb.SmartBlockTypeFile:
 		return NewFiles(sb), nil

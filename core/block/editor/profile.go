@@ -21,9 +21,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -41,19 +41,7 @@ type Profile struct {
 	eventSender event.Sender
 }
 
-func NewProfile(sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
-	fileBlockService file.BlockService,
-	anytype core.Service,
-	picker getblock.Picker,
-	bookmarkService bookmark.BookmarkService,
-	tempDirProvider core.TempDirProvider,
-	layoutConverter converter.LayoutConverter,
-	fileService files.Service,
-	eventSender event.Sender,
-	spaceService space.Service,
-) *Profile {
+func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, systemObjectService system_object.Service, fileBlockService file.BlockService, anytype core.Service, picker getblock.Picker, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender, fileStore filestore.FileStore) *Profile {
 	f := file.NewFile(
 		sb,
 		fileBlockService,
@@ -61,7 +49,7 @@ func NewProfile(sb smartblock.SmartBlock,
 		tempDirProvider,
 		fileService,
 		picker,
-		spaceService,
+		fileStore,
 	)
 	return &Profile{
 		SmartBlock:    sb,

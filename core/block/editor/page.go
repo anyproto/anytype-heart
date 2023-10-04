@@ -21,9 +21,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -56,7 +56,7 @@ func NewPage(sb smartblock.SmartBlock,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
 	eventSender event.Sender,
-	service space.Service,
+	fileStore filestore.FileStore,
 ) *Page {
 	f := file.NewFile(
 		sb,
@@ -65,7 +65,7 @@ func NewPage(sb smartblock.SmartBlock,
 		tempDirProvider,
 		fileService,
 		picker,
-		service,
+		fileStore,
 	)
 	return &Page{
 		SmartBlock:    sb,

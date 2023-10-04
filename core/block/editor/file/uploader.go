@@ -21,13 +21,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	oserror "github.com/anyproto/anytype-heart/util/os"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -49,7 +47,7 @@ func NewUploader(
 	fileService files.Service,
 	provider core.TempDirProvider,
 	picker getblock.Picker,
-	spaceService space.Service,
+	fileStore filestore.FileStore,
 ) Uploader {
 	return &uploader{
 		spaceID:         spaceID,
@@ -57,7 +55,7 @@ func NewUploader(
 		picker:          picker,
 		fileService:     fileService,
 		tempDirProvider: provider,
-		spaceService:    spaceService,
+		fileStore:       fileStore,
 	}
 }
 
@@ -112,7 +110,7 @@ func (ur UploadResult) ToBlock() file.Block {
 type uploader struct {
 	spaceID          string
 	service          BlockService
-	spaceService     space.Service
+	fileStore        filestore.FileStore
 	picker           getblock.Picker
 	block            file.Block
 	getReader        func(ctx context.Context) (*fileReader, error)
@@ -423,17 +421,15 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		}
 	}
 
-	err = u.spaceService.StoreSpaceID(result.Hash, u.spaceID)
+	err = u.fileStore.SetFileOrigin(result.Hash, int(u.origin))
 	if err != nil {
-		return
+		log.Errorf("failed to set file origin %s: %s", result.Hash, err)
 	}
-	// Touch the file to activate indexing
-	derr := getblock.Do(u.picker, result.Hash, func(b smartblock.SmartBlock) error {
-		state := b.NewState()
-		state.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Float64(float64(u.origin)))
-		return b.Apply(state)
-	})
 
+	// Touch the file to activate indexing
+	derr := getblock.Do(u.picker, result.Hash, func(_ smartblock.SmartBlock) error {
+		return nil
+	})
 	if derr != nil {
 		log.Errorf("can't touch file object %s: %s", result.Hash, derr)
 	}
