@@ -63,8 +63,6 @@ func MarshallChange(change *pb.Change) (result []byte, dataType string, err erro
 
 	if n > snappyLowerLimit {
 		result = snappy.Encode(nil, data)
-		log.Debugf("change is shrunk by snappy from %d bytes to %d bytes. Space saving: %.2f%%",
-			len(data), len(result), 100*(1-float32(len(result))/float32(len(data))))
 		dataType = defaultDataType
 	} else {
 		result = bytes.Clone(data)
@@ -80,7 +78,7 @@ func UnmarshallChange(treeChange *objecttree.Change, data []byte) (result any, e
 		defer bytesPool.Put(buf)
 
 		n, dErr := snappy.DecodedLen(data)
-		buf = slices.Grow(buf, n)
+		buf = slices.Grow(buf, n)[:n]
 		var decoded []byte
 		decoded, err = snappy.Decode(buf, data)
 		if err == nil && dErr == nil {
