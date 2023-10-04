@@ -32,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/mock_space"
 )
 
 var ctx = context.Background()
@@ -83,6 +82,16 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	fx.waitEmptyQueue(t, time.Second*5)
 }
 
+type personalSpaceIdStub struct {
+	personalSpaceId string
+}
+
+func (s *personalSpaceIdStub) Name() string          { return "personalSpaceIdStub" }
+func (s *personalSpaceIdStub) Init(a *app.App) error { return nil }
+func (s *personalSpaceIdStub) PersonalSpaceID() string {
+	return s.personalSpaceId
+}
+
 func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
 		FileSync:    New(),
@@ -112,12 +121,7 @@ func newFixture(t *testing.T) *fixture {
 	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
 	fx.fileStoreMock = fileStoreMock
 
-	spaceService := mock_space.NewMockService(fx.ctrl)
-	spaceService.EXPECT().Name().Return("space").AnyTimes()
-	spaceService.EXPECT().Init(gomock.Any()).AnyTimes()
-	spaceService.EXPECT().Run(gomock.Any()).AnyTimes()
-	spaceService.EXPECT().AccountId().Return("space1").AnyTimes()
-	spaceService.EXPECT().Close(gomock.Any()).AnyTimes()
+	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: "space1"}
 
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
@@ -130,7 +134,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(mockRpcStoreService).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
-		Register(spaceService).
+		Register(personalSpaceIdGetter).
 		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx

@@ -6,122 +6,147 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 )
 
-func TestTreeSyncer(t *testing.T) {
+type fixture struct {
+	*treeSyncer
+
+	missingMock  *mock_objecttree.MockObjectTree
+	existingMock *mock_synctree.MockSyncTree
+	treeManager  *mock_treemanager.MockTreeManager
+}
+
+func newFixture(t *testing.T, spaceId string) *fixture {
 	ctrl := gomock.NewController(t)
-	managerMock := mock_treemanager.NewMockTreeManager(ctrl)
+	treeManager := mock_treemanager.NewMockTreeManager(ctrl)
+	missingMock := mock_objecttree.NewMockObjectTree(ctrl)
+	existingMock := mock_synctree.NewMockSyncTree(ctrl)
+
+	a := new(app.App)
+	a.Register(testutil.PrepareMock(a, treeManager))
+	syncer := NewTreeSyncer(spaceId)
+	err := syncer.Init(a)
+	require.NoError(t, err)
+
+	return &fixture{
+		treeSyncer:   syncer.(*treeSyncer),
+		missingMock:  missingMock,
+		existingMock: existingMock,
+		treeManager:  treeManager,
+	}
+}
+
+func TestTreeSyncer(t *testing.T) {
+
 	spaceId := "spaceId"
 	peerId := "peerId"
 	existingId := "existing"
 	missingId := "missing"
-	missingMock := mock_objecttree.NewMockObjectTree(ctrl)
-	existingMock := mock_synctree.NewMockSyncTree(ctrl)
 
 	t.Run("delayed sync", func(t *testing.T) {
-		syncer := NewTreeSyncer(spaceId)
-		syncer.Init()
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
-		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(missingMock, nil)
-		err := syncer.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
+		ctx := context.Background()
+		fx := newFixture(t, spaceId)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
+		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
 		require.NoError(t, err)
-		require.NotNil(t, syncer.requestPools[peerId])
-		require.NotNil(t, syncer.headPools[peerId])
+		require.NotNil(t, fx.requestPools[peerId])
+		require.NotNil(t, fx.headPools[peerId])
 
-		syncer.Run()
+		fx.StartSync()
 		time.Sleep(100 * time.Millisecond)
-		syncer.Close()
+		fx.Close(ctx)
 	})
 
 	t.Run("sync after run", func(t *testing.T) {
-		syncer := NewTreeSyncer(spaceId)
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
-		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(missingMock, nil)
-		syncer.Init()
-		syncer.Run()
-		err := syncer.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
+		ctx := context.Background()
+		fx := newFixture(t, spaceId)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
+		fx.StartSync()
+		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId})
 		require.NoError(t, err)
-		require.NotNil(t, syncer.requestPools[peerId])
-		require.NotNil(t, syncer.headPools[peerId])
+		require.NotNil(t, fx.requestPools[peerId])
+		require.NotNil(t, fx.headPools[peerId])
 
 		time.Sleep(100 * time.Millisecond)
-		syncer.Close()
+		fx.Close(ctx)
 	})
 
 	t.Run("sync same ids", func(t *testing.T) {
-		syncer := NewTreeSyncer(spaceId)
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
-		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(missingMock, nil)
-		syncer.Init()
-		syncer.Run()
-		err := syncer.SyncAll(context.Background(), peerId, []string{existingId, existingId}, []string{missingId, missingId, missingId})
+		ctx := context.Background()
+		fx := newFixture(t, spaceId)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).Return(fx.missingMock, nil)
+		fx.StartSync()
+		err := fx.SyncAll(context.Background(), peerId, []string{existingId, existingId}, []string{missingId, missingId, missingId})
 		require.NoError(t, err)
-		require.NotNil(t, syncer.requestPools[peerId])
-		require.NotNil(t, syncer.headPools[peerId])
+		require.NotNil(t, fx.requestPools[peerId])
+		require.NotNil(t, fx.headPools[peerId])
 
 		time.Sleep(100 * time.Millisecond)
-		syncer.Close()
+		fx.Close(ctx)
 	})
 
 	t.Run("sync concurrent ids", func(t *testing.T) {
+		ctx := context.Background()
 		ch := make(chan struct{}, 2)
-		syncer := NewTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 2, managerMock)
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(existingMock, nil)
-		existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId+"1").DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
+		fx := newFixture(t, spaceId)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), peerId).Return(nil)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId+"1").DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
 			<-ch
-			return missingMock, nil
+			return fx.missingMock, nil
 		})
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId+"2").DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId+"2").DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
 			<-ch
-			return missingMock, nil
+			return fx.missingMock, nil
 		})
-		syncer.Init()
-		syncer.Run()
-		err := syncer.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId + "1", missingId + "2"})
+		fx.StartSync()
+		err := fx.SyncAll(context.Background(), peerId, []string{existingId}, []string{missingId + "1", missingId + "2"})
 		require.NoError(t, err)
-		require.NotNil(t, syncer.requestPools[peerId])
-		require.NotNil(t, syncer.headPools[peerId])
+		require.NotNil(t, fx.requestPools[peerId])
+		require.NotNil(t, fx.headPools[peerId])
 		time.Sleep(100 * time.Millisecond)
-		syncer.Close()
+		fx.Close(ctx)
 		for i := 0; i < 2; i++ {
 			ch <- struct{}{}
 		}
 	})
 
 	t.Run("sync context cancel", func(t *testing.T) {
+		ctx := context.Background()
 		var events []string
-		syncer := NewTreeSyncer(spaceId, objectcache.ObjectLoadTimeout, 1, managerMock)
+		fx := newFixture(t, spaceId)
 		mutex := sync.Mutex{}
-		managerMock.EXPECT().GetTree(gomock.Any(), spaceId, missingId).DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, missingId).DoAndReturn(func(ctx context.Context, spaceId, treeId string) (objecttree.ObjectTree, error) {
 			<-ctx.Done()
 			mutex.Lock()
 			events = append(events, "after done")
 			mutex.Unlock()
-			return missingMock, nil
+			return fx.missingMock, nil
 		})
-		syncer.Init()
-		syncer.Run()
-		err := syncer.SyncAll(context.Background(), peerId, nil, []string{missingId})
+		fx.StartSync()
+		err := fx.SyncAll(context.Background(), peerId, nil, []string{missingId})
 		require.NoError(t, err)
-		require.NotNil(t, syncer.requestPools[peerId])
-		require.NotNil(t, syncer.headPools[peerId])
+		require.NotNil(t, fx.requestPools[peerId])
+		require.NotNil(t, fx.headPools[peerId])
 		time.Sleep(100 * time.Millisecond)
 		mutex.Lock()
 		events = append(events, "before close")
 		mutex.Unlock()
-		syncer.Close()
+		fx.Close(ctx)
 		time.Sleep(100 * time.Millisecond)
 		mutex.Lock()
 		require.Equal(t, []string{"before close", "after done"}, events)

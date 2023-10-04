@@ -80,7 +80,7 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 }
 
 func (t *treeSyncer) Init(a *app.App) (err error) {
-	t.treeManager = a.MustComponent(treemanager.CName).(treemanager.TreeManager)
+	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	return nil
 }
 
