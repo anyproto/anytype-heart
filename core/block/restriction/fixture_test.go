@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/require"
 
+	"context"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -33,7 +34,7 @@ func newFixture(t *testing.T) *fixture {
 	a := &app.App{}
 	a.Register(objectStore)
 	a.Register(sbtProvider)
-	a.Register(testutil.PrepareMock(a, systemObjectService))
+	a.Register(testutil.PrepareMock(context.Background(), a, systemObjectService))
 	s := New()
 	err := s.Init(a)
 	require.NoError(t, err)
