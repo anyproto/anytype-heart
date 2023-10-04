@@ -9,6 +9,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
@@ -68,10 +69,10 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	}
 	resultSnapshots = append(resultSnapshots, sn)
 	for _, objectsSnapshot := range subObjectsSnapshots {
-		id := pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyRelationKey.String())
+		sbType, id := pt.getSmartBlockTypeAndID(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &converter.Snapshot{
 			Id:       id,
-			SbType:   smartblock.SmartBlockTypeRelation,
+			SbType:   sbType,
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
 		})
 	}
@@ -295,6 +296,15 @@ func (pt *Task) setDetails(propObject property.Object, key string, details map[s
 	}
 	ds.SetDetail(key, details)
 	return nil
+}
+
+func (pt *Task) getSmartBlockTypeAndID(objectSnapshot *model.SmartBlockSnapshotBase) (smartblock.SmartBlockType, string) {
+	if lo.Contains(objectSnapshot.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
+		id := pbtypes.GetString(objectSnapshot.Details, bundle.RelationKeyId.String())
+		return smartblock.SmartBlockTypeRelationOption, id
+	}
+	id := pbtypes.GetString(objectSnapshot.Details, bundle.RelationKeyRelationKey.String())
+	return smartblock.SmartBlockTypeRelation, id
 }
 
 func handlePeopleItem(properties []interface{}, pr *property.PeopleItem) {

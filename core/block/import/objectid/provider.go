@@ -26,9 +26,10 @@ type Provider struct {
 
 func NewIDProvider(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDProvider {
 	p := &Provider{
-		objectStore: objectStore,
-		core:        core,
-		service:     service,
+		objectStore:                objectStore,
+		core:                       core,
+		service:                    service,
+		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
 	initializeProviders(objectStore, core, service, p)
 	return p

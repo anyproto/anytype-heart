@@ -31,14 +31,14 @@ func (e *ExistingObject) GetID(spaceID string, sn *converter.Snapshot, _ time.Ti
 	if id != "" {
 		return id, treestorage.TreeStorageCreatePayload{}, nil
 	}
-
 	if getExisting {
 		id = e.getExistingObject(spaceID, sn)
 		if id != "" {
 			return id, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
-	return "", treestorage.TreeStorageCreatePayload{}, nil
+	relationOption := e.getExistingRelationOption(sn)
+	return relationOption, treestorage.TreeStorageCreatePayload{}, nil
 }
 
 func (e *ExistingObject) getObjectByOldAnytypeID(spaceID string, sn *converter.Snapshot) (string, error) {
@@ -101,6 +101,34 @@ func (e *ExistingObject) getExistingObject(spaceID string, sn *converter.Snapsho
 			},
 		},
 	}, []sb.SmartBlockType{sn.SbType})
+	if err == nil && len(ids) > 0 {
+		return ids[0]
+	}
+	return ""
+}
+
+func (e *ExistingObject) getExistingRelationOption(snapshot *converter.Snapshot) string {
+	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyName.String(),
+				Value:       pbtypes.String(name),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyRelationKey.String(),
+				Value:       pbtypes.String(key),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyType.String(),
+				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			},
+		},
+	}, []sb.SmartBlockType{snapshot.SbType})
 	if err == nil && len(ids) > 0 {
 		return ids[0]
 	}
