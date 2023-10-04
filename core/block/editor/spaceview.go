@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -45,7 +46,7 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 	s.DisableLayouts()
 	s.spaceService.OnViewCreated(spaceID)
-	return
+	return s.setSpaceInfo(ctx.State, spaceinfo.SpaceInfo{})
 }
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -61,9 +62,8 @@ func (s *SpaceView) SetSpaceInfo(info spaceinfo.SpaceInfo) (err error) {
 }
 
 func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) (err error) {
-	// TODO: create relations and values emum mapping
-	st.SetLocalDetail("spaceStatusLocal", pbtypes.Int64(int64(info.LocalStatus)))
-	st.SetLocalDetail("spaceStatusRemote", pbtypes.Int64(int64(info.RemoteStatus)))
+	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
+	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
 	return
 }
 
