@@ -149,8 +149,8 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 		objectCache: mock_objectcache.NewMockCache(t),
 		techCore:    mock_commonspace.NewMockSpace(ctrl),
 	}
-	fx.a.Register(testutil.PrepareMock(fx.a, fx.spaceCore)).
-		Register(testutil.PrepareMock(fx.a, fx.objectCache)).
+	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.objectCache)).
 		Register(fx.TechSpace)
 
 	treeSyncer := mock_treesyncer.NewMockTreeSyncer(fx.ctrl)

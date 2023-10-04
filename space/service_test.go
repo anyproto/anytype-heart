@@ -55,12 +55,12 @@ func newFixture(t *testing.T, newAccount bool) *fixture {
 		personalSpace: mock_commonspace.NewMockSpace(ctrl),
 	}
 
-	fx.a.Register(testutil.PrepareMock(fx.a, fx.objectCache)).
-		Register(testutil.PrepareMock(fx.a, fx.indexer)).
-		Register(testutil.PrepareMock(fx.a, fx.spaceCore)).
-		Register(testutil.PrepareMock(fx.a, fx.installer)).
-		Register(testutil.PrepareMock(fx.a, fx.isNewAccount)).
-		Register(testutil.PrepareMock(fx.a, fx.techSpace)).
+	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.objectCache)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.indexer)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.installer)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.isNewAccount)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.techSpace)).
 		Register(fx.service)
 
 	fx.isNewAccount.EXPECT().IsNewAccount().Return(newAccount)

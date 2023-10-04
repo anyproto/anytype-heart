@@ -32,7 +32,7 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
 
 	a := new(app.App)
-	a.Register(testutil.PrepareMock(a, treeManager))
+	a.Register(testutil.PrepareMock(context.Background(), a, treeManager))
 	syncer := NewTreeSyncer(spaceId)
 	err := syncer.Init(a)
 	require.NoError(t, err)
