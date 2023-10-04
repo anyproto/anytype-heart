@@ -48,13 +48,13 @@ const CName = "importer"
 const workerPoolSize = 10
 
 type Import struct {
-	converters       map[string]converter.Converter
-	s                *block.Service
-	oc               Creator
-	idGetterProvider objectid.IdGetterProvider
-	tempDirProvider  core.TempDirProvider
-	sbtProvider      typeprovider.SmartBlockTypeProvider
-	fileSync         filesync.FileSync
+	converters      map[string]converter.Converter
+	s               *block.Service
+	oc              Creator
+	idProvider      objectid.IDProvider
+	tempDirProvider core.TempDirProvider
+	sbtProvider     typeprovider.SmartBlockTypeProvider
+	fileSync        filesync.FileSync
 	sync.Mutex
 }
 
@@ -85,7 +85,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	picker := app.MustComponent[getblock.Picker](a)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, picker))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.idGetterProvider = objectid.NewProvider(store, coreService, i.s)
+	i.idProvider = objectid.NewIDProvider(store, coreService, i.s)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore, picker)
@@ -356,9 +356,8 @@ func (i *Import) getObjectID(
 	} else {
 		createdTime = time.Now()
 	}
-	if idGetter, err := i.idGetterProvider.ProvideIdGetter(snapshot.SbType); err != nil {
-		return err
-	} else if id, payload, err = idGetter.GetID(spaceID, snapshot, createdTime, updateExisting); err != nil {
+	id, payload, err := i.idProvider.GetID(spaceID, snapshot, createdTime, updateExisting)
+	if err != nil {
 		return err
 	}
 	oldIDToNew[snapshot.Id] = id

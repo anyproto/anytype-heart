@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"

@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter/mock_converter"
 	"github.com/anyproto/anytype-heart/core/block/import/mock_importer"
 	"github.com/anyproto/anytype-heart/core/block/import/objectid/mock_objectid"
-	"github.com/anyproto/anytype-heart/core/block/import/objectid/testprovider"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
@@ -56,7 +55,7 @@ func Test_ImportSuccess(t *testing.T) {
 
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().SendImportEvents().Return().Times(1)
@@ -85,7 +84,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	creator := mock_importer.NewMockCreator(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
@@ -131,7 +130,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
@@ -177,7 +176,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
@@ -225,7 +224,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
@@ -253,7 +252,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().SendImportEvents().Return().Times(1)
@@ -299,7 +298,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 	creator := mock_importer.NewMockCreator(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
@@ -323,7 +322,7 @@ func Test_ListImports(t *testing.T) {
 	creator := mock_importer.NewMockCreator(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 	res, err := i.ListImports(&pb.RpcObjectImportListRequest{})
 
 	assert.Nil(t, err)
@@ -339,7 +338,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 
 	creator := mock_importer.NewMockCreator(t)
 	i.oc = creator
-	i.idGetterProvider = testprovider.NewTestProvider(mock_objectid.NewMockIDGetter(t))
+	i.idProvider = mock_objectid.NewMockIDGetter(t)
 	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
 		UpdateExistingObjects: true,
@@ -358,7 +357,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 	i.converters[web.Name] = web.NewConverter()
 	creator := mock_importer.NewMockCreator(t)
 	i.oc = creator
-	i.idGetterProvider = testprovider.NewTestProvider(mock_objectid.NewMockIDGetter(t))
+	i.idProvider = mock_objectid.NewMockIDGetter(t)
 	parser := parsers.NewMockParser(ctrl)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
 	parser.EXPECT().ParseUrl("http://example.com").Return(nil, errors.New("failed")).Times(1)
@@ -391,7 +390,7 @@ func Test_ImportWebSuccess(t *testing.T) {
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 	parser := parsers.NewMockParser(ctrl)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
 	parser.EXPECT().ParseUrl("http://example.com").Return(&model.SmartBlockSnapshotBase{Blocks: []*model.Block{&model.Block{
@@ -432,7 +431,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 	parser := parsers.NewMockParser(ctrl)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
 	parser.EXPECT().ParseUrl("http://example.com").Return(&model.SmartBlockSnapshotBase{Blocks: []*model.Block{&model.Block{
@@ -572,7 +571,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+	i.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
@@ -761,7 +760,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
 		idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expectedRootCollectionID, treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+		i.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().SendImportEvents().Return().Times(1)
@@ -807,7 +806,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
 		idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+		i.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
@@ -889,7 +888,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
 		idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idGetterProvider = testprovider.NewTestProvider(idGetter)
+		i.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)

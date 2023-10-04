@@ -13,20 +13,23 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
-type IdGetter interface {
-	GetID(spaceId string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error)
-}
-
-type IdGetterProvider interface {
-	ProvideIdGetter(smartBlock sb.SmartBlockType) (IdGetter, error)
+type IDProvider interface {
+	GetID(spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error)
 }
 
 type Provider struct {
-	idProviderBySmartBlockType map[sb.SmartBlockType]IdGetter
+	objectStore                objectstore.ObjectStore
+	core                       core.Service
+	service                    *block.Service
+	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
-func NewProvider(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) *Provider {
-	p := &Provider{idProviderBySmartBlockType: make(map[sb.SmartBlockType]IdGetter, 0)}
+func NewIDProvider(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDProvider {
+	p := &Provider{
+		objectStore: objectStore,
+		core:        core,
+		service:     service,
+	}
 	initializeProviders(objectStore, core, service, p)
 	return p
 }
@@ -45,9 +48,10 @@ func initializeProviders(objectStore objectstore.ObjectStore, core core.Service,
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
 }
 
-func (p *Provider) ProvideIdGetter(smartBlock sb.SmartBlockType) (IdGetter, error) {
-	if idGetter, ok := p.idProviderBySmartBlockType[smartBlock]; ok {
-		return idGetter, nil
+func (p *Provider) GetID(spaceId string, sn *converter.Snapshot, createdTime time.Time, getExisting bool,
+) (string, treestorage.TreeStorageCreatePayload, error) {
+	if idProvider, ok := p.idProviderBySmartBlockType[sn.SbType]; ok {
+		return idProvider.GetID(spaceId, sn, createdTime, getExisting)
 	}
-	return nil, fmt.Errorf("failed to get id provider, unsupported smartblock type to import: %s", smartBlock.String())
+	return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("unsupported smartblock to import")
 }
