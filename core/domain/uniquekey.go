@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
@@ -106,21 +104,4 @@ func GetTypeKeyFromRawUniqueKey(raw string) (TypeKey, error) {
 		return "", fmt.Errorf("wrong type of unique key %s", uk.SmartblockType().String())
 	}
 	return TypeKey(uk.InternalKey()), nil
-}
-
-// SubObjectIdToUniqueKey converts legacy subobject id to uniqueKey
-// if id is not supported subObjectId, it will return nil, false
-// suppose to be used only for migration and almost free to use
-func SubObjectIdToUniqueKey(id string) (uk UniqueKey, valid bool) {
-	if bson.IsObjectIdHex(id) {
-		// historically, we don't have the prefix for the options
-		// so we need to handled it this ugly way
-		id = smartBlockTypeToKey[smartblock.SmartBlockTypeRelationOption] + uniqueKeySeparator + id
-	}
-	uk, err := UnmarshalUniqueKey(id)
-	if err != nil {
-		return nil, false
-	}
-
-	return uk, true
 }

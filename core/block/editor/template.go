@@ -2,8 +2,6 @@ package editor
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
@@ -26,6 +24,8 @@ import (
 
 type Template struct {
 	*Page
+
+	picker getblock.Picker
 }
 
 func NewTemplate(
@@ -42,20 +42,23 @@ func NewTemplate(
 	fileService files.Service,
 	eventSender event.Sender,
 ) *Template {
-	return &Template{Page: NewPage(
-		sb,
-		objectStore,
-		anytype,
-		fileBlockService,
-		picker,
-		bookmarkService,
-		systemObjectService,
-		tempDirProvider,
-		sbtProvider,
-		layoutConverter,
-		fileService,
-		eventSender,
-	)}
+	return &Template{
+		Page: NewPage(
+			sb,
+			objectStore,
+			anytype,
+			fileBlockService,
+			picker,
+			bookmarkService,
+			systemObjectService,
+			tempDirProvider,
+			sbtProvider,
+			layoutConverter,
+			fileService,
+			eventSender,
+		),
+		picker: picker,
+	}
 }
 
 func (t *Template) Init(ctx *smartblock.InitContext) (err error) {
@@ -72,28 +75,27 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 	return migration.Compose(parent, migration.Migration{
 		Version: 1,
 		Proc: func(s *state.State) {
-			// TODO What is fixOt???
-			var fixOt bool
-			for _, ot := range t.ObjectTypeKeys() {
-				if strings.HasPrefix(string(ot), "&") {
-					fixOt = true
-					break
-				}
-			}
-
-			if t.Type() == coresb.SmartBlockTypeTemplate && (len(t.ObjectTypeKeys()) != 2 || fixOt) {
+			if t.Type() == coresb.SmartBlockTypeTemplate && (len(t.ObjectTypeKeys()) != 2) {
 				targetObjectTypeID := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
 				if targetObjectTypeID != "" {
-					targetObjectType, err := t.systemObjectService.GetObjectType(targetObjectTypeID)
+					typeKey, err := t.getTypeKeyById(targetObjectTypeID)
 					if err != nil {
-						log.Errorf("template createion state: failed to get target object type %s: %s", targetObjectTypeID, err)
-						return
+						log.Errorf("get target object type %s: %s", targetObjectTypeID, err)
 					}
-					s.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, domain.TypeKey(targetObjectType.Key)})
+					s.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, typeKey})
 				}
 			}
 		},
 	})
+}
+
+func (t *Template) getTypeKeyById(typeId string) (domain.TypeKey, error) {
+	var typeKey domain.TypeKey
+	err := getblock.Do(t.picker, typeId, func(sb smartblock.SmartBlock) error {
+		typeKey = domain.TypeKey(sb.UniqueKeyInternal())
+		return nil
+	})
+	return typeKey, err
 }
 
 // GetNewPageState returns state that can be safely used to create the new document
@@ -102,11 +104,11 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
 	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeID != "" {
-		objectType, err := t.systemObjectService.GetObjectType(objectTypeID)
+		typeKey, err := t.getTypeKeyById(objectTypeID)
 		if err != nil {
-			return nil, fmt.Errorf("get target object type: %w", err)
+			return nil, fmt.Errorf("get target object type %s: %s", objectTypeID, err)
 		}
-		st.SetObjectTypeKey(domain.TypeKey(objectType.Key))
+		st.SetObjectTypeKey(typeKey)
 	}
 	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
 	// clean-up local details from the template state

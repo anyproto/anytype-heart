@@ -8,18 +8,14 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
-	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/dgraph-io/badger/v3"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/mock"
@@ -27,12 +23,14 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 var ctx = context.Background()
@@ -49,7 +47,8 @@ func TestFileSync_AddFile(t *testing.T) {
 	spaceId := "space1"
 
 	fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
-
+	fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
+	fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
 	fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
 		{}, // We can use just empty struct here, because we don't use any fields
 	}, nil).AnyTimes()
@@ -111,26 +110,20 @@ func newFixture(t *testing.T) *fixture {
 	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
 	fx.fileStoreMock = fileStoreMock
 
-	spaceService := mock_space.NewMockService(fx.ctrl)
-	spaceService.EXPECT().Name().Return("space").AnyTimes()
-	spaceService.EXPECT().Init(gomock.Any()).AnyTimes()
-	spaceService.EXPECT().Run(gomock.Any()).AnyTimes()
-	spaceService.EXPECT().AccountId().Return("space1").AnyTimes()
-	spaceService.EXPECT().Close(gomock.Any()).AnyTimes()
+	spaceService := mock_space.NewMockService(t)
+	spaceService.EXPECT().AccountId().Return("space1").Maybe()
 
 	sender := mock_event.NewMockSender(t)
-	sender.EXPECT().Name().Return("event")
-	sender.EXPECT().Init(mock.Anything).Return(nil)
 	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	fx.a.Register(fx.fileService).
-		Register(&inMemBlockStore{data: map[string]blocks.Block{}}).
+		Register(filestorage.NewInMemory()).
 		Register(bp).
 		Register(mockRpcStoreService).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
-		Register(spaceService).
-		Register(sender)
+		Register(testutil.PrepareRunnableMock(ctx, fx.a, spaceService)).
+		Register(testutil.PrepareMock(fx.a, sender))
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }
@@ -163,74 +156,6 @@ func (f *fixture) Finish(t *testing.T) {
 	require.NoError(t, f.a.Close(ctx))
 }
 
-type inMemBlockStore struct {
-	data map[string]blocks.Block
-	mu   sync.Mutex
-}
-
-func (i *inMemBlockStore) Init(a *app.App) (err error) {
-	return
-}
-
-func (i *inMemBlockStore) Name() string {
-	return fileblockstore.CName
-}
-
-func (i *inMemBlockStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	if b := i.data[k.KeyString()]; b != nil {
-		return b, nil
-	}
-	return nil, fileprotoerr.ErrCIDNotFound
-}
-
-func (i *inMemBlockStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
-	var result = make(chan blocks.Block, len(ks))
-	defer close(result)
-	for _, k := range ks {
-		if b, err := i.Get(ctx, k); err == nil {
-			result <- b
-		}
-	}
-	return result
-}
-
-func (i *inMemBlockStore) Add(ctx context.Context, bs []blocks.Block) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	for _, b := range bs {
-		fmt.Println("add", b.Cid().String())
-		i.data[b.Cid().KeyString()] = b
-	}
-	return nil
-}
-
-func (i *inMemBlockStore) Delete(ctx context.Context, c cid.Cid) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	delete(i.data, c.KeyString())
-	return nil
-}
-
-func (i *inMemBlockStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
-	for _, k := range ks {
-		if _, e := i.Get(ctx, k); e == nil {
-			exists = append(exists, k)
-		}
-	}
-	return
-}
-
-func (i *inMemBlockStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
-	for _, b := range bs {
-		if _, e := i.Get(ctx, b.Cid()); e != nil {
-			notExists = append(notExists, b)
-		}
-	}
-	return
-}
-
 type badgerProvider struct {
 	db *badger.DB
 }
@@ -249,10 +174,6 @@ func (b *badgerProvider) Run(ctx context.Context) (err error) {
 
 func (b *badgerProvider) Close(ctx context.Context) (err error) {
 	return b.db.Close()
-}
-
-func (b *badgerProvider) LocalstoreDS() (datastore.DSTxnBatching, error) {
-	return nil, nil
 }
 
 func (b *badgerProvider) LocalStorage() (*badger.DB, error) {

@@ -49,7 +49,7 @@ type DetailsHandler interface {
 }
 
 type ObjectLinkReplacer interface {
-	ReplaceSmartIds(f func(id string) (newId string, replaced bool)) (anyReplaced bool)
+	ReplaceLinkIds(replacer func(oldId string) (newId string))
 }
 
 type EventMessage struct {

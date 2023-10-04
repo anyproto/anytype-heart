@@ -47,3 +47,9 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import:
     interfaces:
       Creator:
+  github.com/anyproto/anytype-heart/space:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/subscription:
+    interfaces:
+      CollectionService:
