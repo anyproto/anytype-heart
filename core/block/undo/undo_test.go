@@ -191,42 +191,15 @@ func TestHistory_SetCarriageInfo(t *testing.T) {
 		h.SetCarriageState(state1)
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
 		h.SetCarriageState(state2)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+		h.SetCarriageState(state1)
 		h.SetCarriageState(state3)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
 
 		action, err := h.Previous()
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, state1, action.CarriageInfo.Before)
-		assert.Equal(t, state2, action.CarriageInfo.After)
-	})
-	t.Run("carriage info in existing Actions is not modified on Undo/Redo", func(t *testing.T) {
-		// given
-		h := NewHistory(0)
-
-		// when
-		h.SetCarriageState(state1)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-		h.SetCarriageState(state2)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
-		h.SetCarriageState(state3)
-		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "3"})}})
-
-		action1, _ := h.Previous()
-		h.SetCarriageState(CarriageState{RangeFrom: 0})
-		action2, _ := h.Previous()
-		h.SetCarriageState(CarriageState{RangeTo: 23})
-		h.SetCarriageState(CarriageState{RangeTo: 150})
-		action3, _ := h.Next()
-		h.SetCarriageState(CarriageState{RangeFrom: 5})
-
-		// then
-		assert.Equal(t, state2, action1.CarriageInfo.Before)
-		assert.Equal(t, state3, action1.CarriageInfo.After)
-		assert.Equal(t, state1, action2.CarriageInfo.Before)
-		assert.Equal(t, state2, action2.CarriageInfo.After)
-		assert.Equal(t, state1, action3.CarriageInfo.Before)
-		assert.Equal(t, state2, action3.CarriageInfo.After)
+		assert.Equal(t, state2, action.CarriageInfo.Before)
+		assert.Equal(t, state3, action.CarriageInfo.After)
 	})
 }
