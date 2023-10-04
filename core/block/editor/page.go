@@ -193,13 +193,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	dataviewMigration := newDataviewMigrationFromOldIDs(p.SpaceID(), p.systemObjectService)
-	return migration.MakeMigrations([]migration.Migration{
-		{
-			Version: 2,
-			Proc:    dataviewMigration.migrate,
-		},
-	})
+	return migration.MakeMigrations(nil)
 }
 
 func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {

@@ -11,13 +11,14 @@ import (
 const uniqueKeySeparator = "-"
 
 var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
-	smartblock.SmartBlockTypeObjectType:  "ot",
-	smartblock.SmartBlockTypeRelation:    "rel",
-	smartblock.SmartBlockTypeWorkspace:   "ws",
-	smartblock.SmartBlockTypeHome:        "home",
-	smartblock.SmartBlockTypeArchive:     "archive",
-	smartblock.SmartBlockTypeProfilePage: "profile",
-	smartblock.SmartBlockTypeWidget:      "widget",
+	smartblock.SmartBlockTypeObjectType:     "ot",
+	smartblock.SmartBlockTypeRelation:       "rel",
+	smartblock.SmartBlockTypeRelationOption: "opt",
+	smartblock.SmartBlockTypeWorkspace:      "ws",
+	smartblock.SmartBlockTypeHome:           "home",
+	smartblock.SmartBlockTypeArchive:        "archive",
+	smartblock.SmartBlockTypeProfilePage:    "profile",
+	smartblock.SmartBlockTypeWidget:         "widget",
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.
@@ -79,6 +80,9 @@ func UnmarshalUniqueKey(raw string) (UniqueKey, error) {
 	var key string
 	if len(parts) == 2 {
 		key = parts[1]
+	}
+	if key == "" {
+		return nil, fmt.Errorf("invalid key format: empty key")
 	}
 	for sbt, sbtString := range smartBlockTypeToKey {
 		if sbtString == parts[0] {

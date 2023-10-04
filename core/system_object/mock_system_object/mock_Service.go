@@ -261,6 +261,60 @@ func (_c *MockService_GetObjectByUniqueKey_Call) RunAndReturn(run func(string, d
 	return _c
 }
 
+// GetObjectIdByUniqueKey provides a mock function with given fields: ctx, spaceId, key
+func (_m *MockService) GetObjectIdByUniqueKey(ctx context.Context, spaceId string, key domain.UniqueKey) (string, error) {
+	ret := _m.Called(ctx, spaceId, key)
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.UniqueKey) (string, error)); ok {
+		return rf(ctx, spaceId, key)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.UniqueKey) string); ok {
+		r0 = rf(ctx, spaceId, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, domain.UniqueKey) error); ok {
+		r1 = rf(ctx, spaceId, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetObjectIdByUniqueKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectIdByUniqueKey'
+type MockService_GetObjectIdByUniqueKey_Call struct {
+	*mock.Call
+}
+
+// GetObjectIdByUniqueKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - key domain.UniqueKey
+func (_e *MockService_Expecter) GetObjectIdByUniqueKey(ctx interface{}, spaceId interface{}, key interface{}) *MockService_GetObjectIdByUniqueKey_Call {
+	return &MockService_GetObjectIdByUniqueKey_Call{Call: _e.mock.On("GetObjectIdByUniqueKey", ctx, spaceId, key)}
+}
+
+func (_c *MockService_GetObjectIdByUniqueKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.UniqueKey)) *MockService_GetObjectIdByUniqueKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.UniqueKey))
+	})
+	return _c
+}
+
+func (_c *MockService_GetObjectIdByUniqueKey_Call) Return(id string, err error) *MockService_GetObjectIdByUniqueKey_Call {
+	_c.Call.Return(id, err)
+	return _c
+}
+
+func (_c *MockService_GetObjectIdByUniqueKey_Call) RunAndReturn(run func(context.Context, string, domain.UniqueKey) (string, error)) *MockService_GetObjectIdByUniqueKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetObjectType provides a mock function with given fields: url
 func (_m *MockService) GetObjectType(url string) (*model.ObjectType, error) {
 	ret := _m.Called(url)

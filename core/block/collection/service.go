@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
@@ -261,5 +261,5 @@ func setDefaultObjectTypeToViews(st *state.State) {
 }
 
 func isNotCreatableType(key domain.TypeKey) bool {
-	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType, bundle.TypeKeySet, bundle.TypeKeyCollection), key)
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType), key)
 }

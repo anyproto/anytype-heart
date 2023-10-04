@@ -31,8 +31,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 
 func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string) []string {
 	allFiles := fs.getFilesFromRelations(state, relationName)
-	allFilesHashes := make([]string, 0)
-	filesToDelete := make([]string, 0, len(allFiles))
+	var allFilesHashes, filesToDelete []string
 	for _, f := range allFiles {
 		if f == "" {
 			continue
@@ -94,11 +93,14 @@ func (fs *FileRelationSyncer) updateFileRelationsDetails(st *state.State, name s
 	if st.Details() == nil || st.Details().GetFields() == nil {
 		return
 	}
-	if st.Details().Fields[name].GetListValue() != nil && len(allFilesHashes) != 0 {
+	if st.Details().Fields[name].GetListValue() != nil {
 		st.SetDetail(name, pbtypes.StringList(allFilesHashes))
 	}
-
-	if st.Details().Fields[name].GetStringValue() != "" && len(allFilesHashes) != 0 {
-		st.SetDetail(name, pbtypes.String(allFilesHashes[0]))
+	hash := ""
+	if len(allFilesHashes) > 0 {
+		hash = allFilesHashes[0]
+	}
+	if st.Details().Fields[name].GetStringValue() != "" {
+		st.SetDetail(name, pbtypes.String(hash))
 	}
 }

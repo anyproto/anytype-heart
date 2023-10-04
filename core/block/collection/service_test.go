@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
@@ -196,7 +196,7 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is a set by not creatable type", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeySet, bundle.TypeKeyCollection.URL())
+		st := generateState(bundle.TypeKeySet, bundle.TypeKeyObjectType.URL())
 
 		// when
 		setDefaultObjectTypeToViews(st)

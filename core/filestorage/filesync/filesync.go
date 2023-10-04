@@ -44,6 +44,7 @@ type FileSync interface {
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
+	CalculateFileSize(ctx context.Context, spaceId string, fileID string) (int, error)
 	app.ComponentRunnable
 }
 
@@ -84,7 +85,7 @@ func New() FileSync {
 }
 
 func (f *fileSync) Init(a *app.App) (err error) {
-	f.dbProvider = a.MustComponent(datastore.CName).(datastore.Datastore)
+	f.dbProvider = app.MustComponent[datastore.Datastore](a)
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
