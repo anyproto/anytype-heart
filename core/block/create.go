@@ -30,7 +30,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 			return fmt.Errorf("can't make template from this obect type")
 		}
 		objectTypeKeys = b.ObjectTypeKeys()
-		st, err = b.TemplateCreateFromObjectState()
+		st, err = s.templateCreateFromObjectState(b)
 		return err
 	}); err != nil {
 		return
@@ -46,6 +46,23 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return
 	}
 	return
+}
+
+func (s *Service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*state.State, error) {
+	st := sb.NewState().Copy()
+	st.SetLocalDetails(nil)
+	targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), sb.SpaceID(), st.ObjectTypeKey())
+	if err != nil {
+		return nil, fmt.Errorf("get type id by key: %s", err)
+	}
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
+	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
+	for _, rel := range sb.Relations(st) {
+		if rel.DataSource == model.Relation_details && !rel.Hidden {
+			st.RemoveDetail(rel.Key)
+		}
+	}
+	return st, nil
 }
 
 func (s *Service) TemplateClone(spaceID string, id string) (templateID string, err error) {

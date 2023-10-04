@@ -18,8 +18,7 @@ import (
 
 type fixture struct {
 	Service
-	objectStoreMock         *mock_objectstore.MockObjectStore
-	systemObjectServiceMock *mock_system_object.MockService
+	objectStoreMock *mock_objectstore.MockObjectStore
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -39,9 +38,8 @@ func newFixture(t *testing.T) *fixture {
 	err := s.Init(a)
 	require.NoError(t, err)
 	return &fixture{
-		Service:                 s,
-		objectStoreMock:         objectStore,
-		systemObjectServiceMock: systemObjectService,
+		Service:         s,
+		objectStoreMock: objectStore,
 	}
 }
 
