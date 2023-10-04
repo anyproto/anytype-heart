@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -19,26 +20,31 @@ type IDProvider interface {
 
 type Provider struct {
 	objectStore                objectstore.ObjectStore
-	core                       core.Service
+	objectCache                objectcache.Cache
 	service                    *block.Service
+	core                       core.Service
 	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
-func NewIDProvider(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDProvider {
+func NewIDProvider(objectStore objectstore.ObjectStore,
+	objectCache objectcache.Cache,
+	service *block.Service,
+	core core.Service) IDProvider {
 	p := &Provider{
 		objectStore:                objectStore,
-		core:                       core,
+		objectCache:                objectCache,
 		service:                    service,
+		core:                       core,
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
-	initializeProviders(objectStore, core, service, p)
+	initializeProviders(objectStore, objectCache, service, p, core)
 	return p
 }
 
-func initializeProviders(objectStore objectstore.ObjectStore, core core.Service, service *block.Service, p *Provider) {
+func initializeProviders(objectStore objectstore.ObjectStore, cache objectcache.Cache, service *block.Service, p *Provider, core core.Service) {
 	existingObject := NewExistingObject(objectStore)
-	treeObject := NewTreeObject(existingObject, service)
-	derivedObject := NewDerivedObject(existingObject, objectStore, service)
+	treeObject := NewTreeObject(existingObject, cache)
+	derivedObject := NewDerivedObject(existingObject, objectStore, cache)
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeWorkspace] = NewWorkspace(core)
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeWidget] = NewWidget(core)
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeRelation] = derivedObject

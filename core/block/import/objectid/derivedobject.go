@@ -7,8 +7,9 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -18,11 +19,11 @@ import (
 type DerivedObject struct {
 	existingObject *ExistingObject
 	objectStore    objectstore.ObjectStore
-	service        *block.Service
+	cache          objectcache.Cache
 }
 
-func NewDerivedObject(existingObject *ExistingObject, objectStore objectstore.ObjectStore, service *block.Service) *DerivedObject {
-	return &DerivedObject{existingObject: existingObject, objectStore: objectStore, service: service}
+func NewDerivedObject(existingObject *ExistingObject, objectStore objectstore.ObjectStore, cache objectcache.Cache) *DerivedObject {
+	return &DerivedObject{existingObject: existingObject, objectStore: objectStore, cache: cache}
 }
 
 func (r *DerivedObject) GetID(spaceID string, sn *converter.Snapshot, createTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
@@ -42,7 +43,9 @@ func (r *DerivedObject) GetID(spaceID string, sn *converter.Snapshot, createTime
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get unique key: %w", err)
 		}
 	}
-	payload, err = r.service.DeriveTreeCreatePayload(context.Background(), spaceID, uk)
+	payload, err = r.cache.DeriveTreePayload(context.Background(), spaceID, payloadcreator.PayloadDerivationParams{
+		Key: uk,
+	})
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
 	}
