@@ -507,7 +507,8 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeWorkspace ||
 		sbType == smartblock.SmartBlockTypeWidget ||
 		sbType == smartblock.SmartBlockTypeObjectType ||
-		sbType == smartblock.SmartBlockTypeRelation
+		sbType == smartblock.SmartBlockTypeRelation ||
+		sbType == smartblock.SmartBlockTypeRelationOption
 }
 
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
