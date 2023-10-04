@@ -86,7 +86,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.idProvider = objectid.NewIDProvider(store, objectCache, i.s, coreService)
+	i.idProvider = objectid.NewIDProvider(store, objectCache, coreService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, objectCache, coreService, factory, store, relationSyncer, fileStore)

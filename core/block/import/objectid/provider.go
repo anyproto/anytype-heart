@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -21,27 +20,24 @@ type IDProvider interface {
 type Provider struct {
 	objectStore                objectstore.ObjectStore
 	objectCache                objectcache.Cache
-	service                    *block.Service
 	core                       core.Service
 	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
 func NewIDProvider(objectStore objectstore.ObjectStore,
 	objectCache objectcache.Cache,
-	service *block.Service,
 	core core.Service) IDProvider {
 	p := &Provider{
 		objectStore:                objectStore,
 		objectCache:                objectCache,
-		service:                    service,
 		core:                       core,
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
-	initializeProviders(objectStore, objectCache, service, p, core)
+	initializeProviders(objectStore, objectCache, p, core)
 	return p
 }
 
-func initializeProviders(objectStore objectstore.ObjectStore, cache objectcache.Cache, service *block.Service, p *Provider, core core.Service) {
+func initializeProviders(objectStore objectstore.ObjectStore, cache objectcache.Cache, p *Provider, core core.Service) {
 	existingObject := NewExistingObject(objectStore)
 	treeObject := NewTreeObject(existingObject, cache)
 	derivedObject := NewDerivedObject(existingObject, objectStore, cache)
@@ -55,10 +51,10 @@ func initializeProviders(objectStore objectstore.ObjectStore, cache objectcache.
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
 }
 
-func (p *Provider) GetID(spaceId string, sn *converter.Snapshot, createdTime time.Time, getExisting bool,
+func (p *Provider) GetID(spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool,
 ) (string, treestorage.TreeStorageCreatePayload, error) {
 	if idProvider, ok := p.idProviderBySmartBlockType[sn.SbType]; ok {
-		return idProvider.GetID(spaceId, sn, createdTime, getExisting)
+		return idProvider.GetID(spaceID, sn, createdTime, getExisting)
 	}
 	return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("unsupported smartblock to import")
 }
