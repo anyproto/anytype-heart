@@ -43,6 +43,10 @@ type CarriageState struct {
 	RangeFrom, RangeTo int32
 }
 
+func (cs CarriageState) IsEmpty() bool {
+	return cs.BlockID == "" && cs.RangeTo == 0 && cs.RangeFrom == 0
+}
+
 type Action struct {
 	Add           []simple.Block
 	Change        []Change
@@ -107,10 +111,10 @@ func NewHistory(limit int) History {
 }
 
 type history struct {
-	limit                int
-	actions              []Action
-	pointer              int
-	currentCarriageState CarriageState
+	limit                     int
+	actions                   []Action
+	pointer                   int
+	currentState, beforeState CarriageState
 }
 
 func (h *history) Add(a Action) {
@@ -125,6 +129,11 @@ func (h *history) Add(a Action) {
 	if len(h.actions) != h.pointer {
 		h.actions = h.actions[:h.pointer]
 	}
+
+	a.CarriageInfo.After = h.currentState
+	a.CarriageInfo.Before = h.beforeState
+	h.beforeState = CarriageState{}
+
 	h.actions = append(h.actions, a)
 	h.pointer = len(h.actions)
 	if h.pointer > h.limit {
@@ -132,12 +141,6 @@ func (h *history) Add(a Action) {
 		h.actions = h.actions[1:]
 		h.pointer--
 	}
-	h.actions[h.pointer-1].CarriageInfo.After = h.currentCarriageState
-	if h.pointer > 1 {
-		h.actions[h.pointer-1].CarriageInfo.Before = h.actions[h.pointer-2].CarriageInfo.After
-		return
-	}
-	h.actions[h.pointer-1].CarriageInfo.Before = h.currentCarriageState
 }
 
 func (h *history) Len() int {
@@ -171,7 +174,10 @@ func (h *history) Counters() (undo int32, redo int32) {
 }
 
 func (h *history) SetCarriageState(state CarriageState) {
-	h.currentCarriageState = state
+	h.currentState = state
+	if h.beforeState.IsEmpty() {
+		h.beforeState = state
+	}
 	if h.pointer > 0 && h.actions[h.pointer-1].CarriageInfo.After.BlockID != state.BlockID {
 		h.actions[h.pointer-1].CarriageInfo.After = state
 	}
