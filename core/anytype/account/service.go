@@ -102,6 +102,12 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
+	// TODO Temporary
+	personalIds, err := s.getIds(ctx, s.PersonalSpaceID())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get derived ids: %w", err)
+	}
+
 	ids, err := s.getIds(ctx, spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get derived ids: %w", err)
@@ -109,7 +115,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	return &model.AccountInfo{
 		HomeObjectId:           ids.Home,
 		ArchiveObjectId:        ids.Archive,
-		ProfileObjectId:        ids.Profile,
+		ProfileObjectId:        personalIds.Profile,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		AccountSpaceId:         spaceID,
 		WorkspaceObjectId:      ids.Workspace,
