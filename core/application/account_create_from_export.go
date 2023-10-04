@@ -14,13 +14,13 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -110,7 +110,7 @@ func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExp
 		return "", err
 	}
 
-	spaceID := app.MustComponent[space.Service](s.app).AccountId()
+	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	if err = s.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
 		return "", errors.Join(ErrBadInput, err)
 	}

@@ -236,6 +236,10 @@ func (c *Config) GetConfigPath() string {
 	return filepath.Join(c.RepoPath, ConfigFileName)
 }
 
+func (c *Config) IsNewAccount() bool {
+	return c.NewAccount
+}
+
 func getRandomPort() (int, error) {
 	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "64b5e02c065cf350c881ecfa4f21c79594cf8e57eab960fda66b535d074f9d52"
+const RelationChecksum = "b392af31cb9650cb80628467d57f6f993059adfb2e6119a51cad18c68af79ca0"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -156,6 +156,8 @@ const (
 	RelationKeyUniqueKey                 domain.RelationKey = "uniqueKey"
 	RelationKeyBacklinks                 domain.RelationKey = "backlinks"
 	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
+	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
+	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 )
 
 var (
@@ -1807,6 +1809,34 @@ var (
 			MaxCount:         1,
 			Name:             "SpaceID",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceLocalStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates the local status of space. Possible values: models.SpaceStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceLocalStatus",
+			Key:              "spaceLocalStatus",
+			MaxCount:         1,
+			Name:             "Space local status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceRemoteStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates the remote status of space. Possible values: models.SpaceStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceRemoteStatus",
+			Key:              "spaceRemoteStatus",
+			MaxCount:         1,
+			Name:             "Space remote status",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

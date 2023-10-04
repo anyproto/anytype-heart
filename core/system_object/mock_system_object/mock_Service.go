@@ -369,60 +369,6 @@ func (_c *MockService_GetObjectType_Call) RunAndReturn(run func(string) (*model.
 	return _c
 }
 
-// GetObjectTypes provides a mock function with given fields: urls
-func (_m *MockService) GetObjectTypes(urls []string) ([]*model.ObjectType, error) {
-	ret := _m.Called(urls)
-
-	var r0 []*model.ObjectType
-	var r1 error
-	if rf, ok := ret.Get(0).(func([]string) ([]*model.ObjectType, error)); ok {
-		return rf(urls)
-	}
-	if rf, ok := ret.Get(0).(func([]string) []*model.ObjectType); ok {
-		r0 = rf(urls)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.ObjectType)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func([]string) error); ok {
-		r1 = rf(urls)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_GetObjectTypes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectTypes'
-type MockService_GetObjectTypes_Call struct {
-	*mock.Call
-}
-
-// GetObjectTypes is a helper method to define mock.On call
-//   - urls []string
-func (_e *MockService_Expecter) GetObjectTypes(urls interface{}) *MockService_GetObjectTypes_Call {
-	return &MockService_GetObjectTypes_Call{Call: _e.mock.On("GetObjectTypes", urls)}
-}
-
-func (_c *MockService_GetObjectTypes_Call) Run(run func(urls []string)) *MockService_GetObjectTypes_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string))
-	})
-	return _c
-}
-
-func (_c *MockService_GetObjectTypes_Call) Return(ots []*model.ObjectType, err error) *MockService_GetObjectTypes_Call {
-	_c.Call.Return(ots, err)
-	return _c
-}
-
-func (_c *MockService_GetObjectTypes_Call) RunAndReturn(run func([]string) ([]*model.ObjectType, error)) *MockService_GetObjectTypes_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetRelationByID provides a mock function with given fields: id
 func (_m *MockService) GetRelationByID(id string) (*model.Relation, error) {
 	ret := _m.Called(id)

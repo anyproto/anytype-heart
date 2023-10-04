@@ -7,8 +7,23 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
+var (
+	PersonalSpaceTypes = []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeWidget,
+		smartblock.SmartBlockTypeWorkspace,
+		smartblock.SmartBlockTypeProfilePage,
+	}
+	SpaceTypes = []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeWidget,
+		smartblock.SmartBlockTypeWorkspace,
+	}
+)
+
 type DerivedSmartblockIds struct {
-	AccountOld      string
 	Workspace       string
 	Profile         string
 	Home            string
@@ -18,12 +33,26 @@ type DerivedSmartblockIds struct {
 	SystemRelations map[domain.RelationKey]string
 }
 
-func (d DerivedSmartblockIds) IsFilled() bool {
-	return d.Workspace != "" && d.Profile != "" && d.Home != "" && d.Archive != "" && d.Widgets != ""
+func (d DerivedSmartblockIds) IDs() []string {
+	allIds := []string{
+		d.Workspace,
+		d.Home,
+		d.Archive,
+		d.Widgets,
+	}
+	if d.Profile != "" {
+		allIds = append(allIds, d.Profile)
+	}
+	return allIds
 }
 
-func (d DerivedSmartblockIds) IsAccount(id string) bool {
-	return id == d.Workspace || id == d.AccountOld
+func (d DerivedSmartblockIds) IsFilled() bool {
+	for _, id := range d.IDs() {
+		if id == "" {
+			return false
+		}
+	}
+	return true
 }
 
 func (d DerivedSmartblockIds) HasID(sbt smartblock.SmartBlockType) bool {

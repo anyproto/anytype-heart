@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
@@ -56,7 +56,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(sbtProvider)
 
 	systemObjectService := mock_system_object.NewMockService(t)
-	a.Register(testutil.PrepareMock(a, systemObjectService))
+	a.Register(testutil.PrepareMock(context.Background(), a, systemObjectService))
 
 	collectionService := &collectionServiceMock{MockCollectionService: mock_subscription.NewMockCollectionService(t)}
 	a.Register(collectionService)
@@ -107,7 +107,7 @@ func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
 	systemObjectService := mock_system_object.NewMockService(t)
-	a.Register(testutil.PrepareMock(a, systemObjectService))
+	a.Register(testutil.PrepareMock(context.Background(), a, systemObjectService))
 	fx := &fixtureRealStore{
 		Service:                 New(),
 		a:                       a,

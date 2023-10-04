@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/pb"
@@ -36,7 +37,8 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
-		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceID, err := res.ResolveSpaceID(req.ObjectId)
 		if err != nil {
 			return fmt.Errorf("resolve spaceID: %w", err)
 		}
@@ -74,7 +76,8 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
-		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceID, err := res.ResolveSpaceID(req.ObjectId)
 		if err != nil {
 			return fmt.Errorf("resolve spaceID: %w", err)
 		}
@@ -105,7 +108,8 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 	}
 	return response(mw.doBlockService(func(bs *block.Service) (err error) {
 		hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
-		spaceID, err := bs.ResolveSpaceID(req.ObjectId)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceID, err := res.ResolveSpaceID(req.ObjectId)
 		if err != nil {
 			return fmt.Errorf("resolve spaceID: %w", err)
 		}

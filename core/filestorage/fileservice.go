@@ -23,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/space/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 const CName = fileblockstore.CName
