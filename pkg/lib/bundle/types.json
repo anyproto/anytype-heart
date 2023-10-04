@@ -298,14 +298,14 @@
     "description": "Workspace"
   },
   {
-    "id": "spaceObject",
+    "id": "spaceView",
     "name": "Space",
     "types": [
       "SpaceView"
     ],
     "emoji": "🌎",
     "hidden": true,
-    "layout": "spaceObject",
+    "layout": "spaceView",
     "relations": [
       "tag"
     ],

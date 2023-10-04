@@ -22810,7 +22810,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | audio | 15 |  |
 | video | 16 |  |
 | date | 17 |  |
-| spaceObject | 18 |  |
+| spaceView | 18 |  |
 | database | 20 | to be released later |
 
 

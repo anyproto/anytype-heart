@@ -51,8 +51,8 @@
     "name": "Space"
   },
   {
-    "id": "spaceObject",
-    "name": "SpaceObject"
+    "id": "spaceView",
+    "name": "Space View"
   },
   {
     "id": "image",
