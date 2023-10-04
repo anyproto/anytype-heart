@@ -130,11 +130,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 }
 
 func (s *service) getIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	sp, err := s.spaceService.Get(ctx, spaceID)
-	if err != nil {
-		return
-	}
-	return sp.DerivedIDs(), nil
+	return s.spaceService.DerivedIDs(ctx, spaceID)
 }
 
 func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
