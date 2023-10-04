@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-
 	mock "github.com/stretchr/testify/mock"
 
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"

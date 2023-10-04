@@ -6,11 +6,9 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-
-	editor "github.com/anyproto/anytype-heart/core/block/editor"
-
 	mock "github.com/stretchr/testify/mock"
 
+	editor "github.com/anyproto/anytype-heart/core/block/editor"
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
