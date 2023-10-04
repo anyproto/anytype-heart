@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path"
 	"sync"
 
@@ -13,13 +14,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -37,7 +39,7 @@ const relationsLimit = 10
 
 type ObjectCreator struct {
 	service        *block.Service
-	picker         getblock.Picker
+	objectCache    objectcache.Cache
 	core           core.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
@@ -47,12 +49,12 @@ type ObjectCreator struct {
 }
 
 func NewCreator(service *block.Service,
+	cache objectcache.Cache,
 	core core.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer syncer.RelationSyncer,
 	fileStore filestore.FileStore,
-	picker getblock.Picker,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
@@ -61,7 +63,7 @@ func NewCreator(service *block.Service,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
-		picker:         picker,
+		objectCache:    cache,
 	}
 }
 
@@ -196,23 +198,31 @@ func (oc *ObjectCreator) createNewObject(
 	st *state.State,
 	newID string,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
-	sb, err := oc.service.CreateTreeObjectWithPayload(ctx, spaceID, payload, func(id string) *sb.InitContext {
-		return &sb.InitContext{
+	var respDetails *types.Struct
+	sb, err := oc.objectCache.CreateTreeObjectWithPayload(ctx, spaceID, payload, func(id string) *smartblock.InitContext {
+		return &smartblock.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,
 			State:       st,
 			SpaceID:     spaceID,
 		}
 	})
-	if errors.Is(err, treestorage.ErrTreeExists) {
-		sb, err = oc.picker.PickBlock(ctx, newID)
-	}
-	if err != nil {
+	if err == nil {
+		respDetails = sb.Details()
+	} else if errors.Is(err, treestorage.ErrTreeExists) {
+		err = getblock.Do(oc.service, newID, func(sb smartblock.SmartBlock) error {
+			respDetails = sb.Details()
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("get existing object %s: %w", newID, err)
+		}
+	} else {
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
 		return nil, err
 	}
 	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
-	respDetails := sb.Details()
+
 	// update collection after we create it
 	if st.Store() != nil {
 		oc.updateLinksInCollections(st, oldIDtoNew, true)
@@ -337,7 +347,7 @@ func (oc *ObjectCreator) handleCoverRelation(spaceID string, st *state.State) []
 
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct {
 	var respDetails *types.Struct
-	err := getblock.Do(oc.picker, newID, func(b sb.SmartBlock) error {
+	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
@@ -383,7 +393,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 	tasks := make([]func() error, 0)
 	// todo: rewrite it in order not to create state with URLs inside links
-	err := getblock.Do(oc.picker, newID, func(b sb.SmartBlock) error {
+	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 		return st.Iterate(func(bl simple.Block) (isContinue bool) {
 			s := oc.syncFactory.GetSyncer(bl)
@@ -412,7 +422,7 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string) error {
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {
-	err := block.Do(oc.service, st.RootId(), func(b sb.SmartBlock) error {
+	err := block.Do(oc.service, st.RootId(), func(b smartblock.SmartBlock) error {
 		originalState := b.NewState()
 		var existedObjects []string
 		if !isNewCollection {

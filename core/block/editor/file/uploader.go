@@ -45,7 +45,7 @@ func NewUploader(
 	s BlockService,
 	fileService files.Service,
 	provider core.TempDirProvider,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 ) Uploader {
 	return &uploader{
 		spaceID:         spaceID,
@@ -107,7 +107,7 @@ func (ur UploadResult) ToBlock() file.Block {
 type uploader struct {
 	spaceID          string
 	service          BlockService
-	picker           getblock.Picker
+	picker           getblock.ObjectGetter
 	block            file.Block
 	getReader        func(ctx context.Context) (*fileReader, error)
 	name             string

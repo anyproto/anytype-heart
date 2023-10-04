@@ -14,10 +14,9 @@ import (
 	time "time"
 
 	treestorage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	converter "github.com/anyproto/anytype-heart/core/block/import/converter"
 	types "github.com/gogo/protobuf/types"
 	gomock "go.uber.org/mock/gomock"
-
-	converter "github.com/anyproto/anytype-heart/core/block/import/converter"
 )
 
 // MockCreator is a mock of Creator interface.

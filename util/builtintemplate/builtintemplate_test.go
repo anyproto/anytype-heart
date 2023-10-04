@@ -28,12 +28,13 @@ func Test_registerBuiltin(t *testing.T) {
 
 	builtInTemplates := New()
 
+	ctx := context.Background()
 	a := new(app.App)
-	a.Register(testutil.PrepareMock(a, sourceService))
+	a.Register(testutil.PrepareMock(ctx, a, sourceService))
 	a.Register(builtInTemplates)
 	a.Register(config.New())
-	a.Register(testutil.PrepareMock(a, objectStore))
-	a.Register(testutil.PrepareMock(a, systemObjectService))
+	a.Register(testutil.PrepareMock(ctx, a, objectStore))
+	a.Register(testutil.PrepareMock(ctx, a, systemObjectService))
 
 	err := builtInTemplates.Init(a)
 	assert.NoError(t, err)

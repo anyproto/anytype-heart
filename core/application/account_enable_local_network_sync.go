@@ -3,7 +3,7 @@ package application
 import (
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/space/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
 func (s *Service) EnableLocalNetworkSync() error {

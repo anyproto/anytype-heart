@@ -1,7 +1,7 @@
 //go:generate mockgen -package testMock -destination anytype_mock.go github.com/anyproto/anytype-heart/pkg/lib/core Service
 //go:generate mockgen -package testMock -destination objectstore_mock.go github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore ObjectStore
 //go:generate mockgen -package testMock -destination history_mock.go github.com/anyproto/anytype-heart/core/block/undo History
-//go:generate mockgen -package testMock -destination sbt_provider_mock.go github.com/anyproto/anytype-heart/space/typeprovider SmartBlockTypeProvider
+//go:generate mockgen -package testMock -destination sbt_provider_mock.go github.com/anyproto/anytype-heart/space/spacecore/typeprovider SmartBlockTypeProvider
 //go:generate mockgen -package testMock -destination file_service_mock.go -mock_names Service=MockFileService github.com/anyproto/anytype-heart/core/files Service,Image,File
 package testMock
 

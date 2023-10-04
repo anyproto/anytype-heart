@@ -2,14 +2,15 @@ package editor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
-	"errors"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -17,7 +18,7 @@ import (
 )
 
 type objectDeriver interface {
-	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObject(ctx context.Context, spaceID string, params objectcache.TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 }
 
 // Migrate legacy sub-objects to ordinary objects
@@ -51,15 +52,18 @@ func (m *subObjectsMigration) migrateSubObject(
 	if err != nil {
 		return "", fmt.Errorf("unmarshal unique key: %w", err)
 	}
-	sb, err := m.objectDeriver.DeriveTreeObjectWithUniqueKey(ctx, m.workspace.SpaceID(), uniqueKey, func(id string) *smartblock.InitContext {
-		st := state.NewDocWithUniqueKey(id, nil, uniqueKey).NewState()
-		st.SetDetails(details)
-		st.SetObjectTypeKey(typeKey)
-		return &smartblock.InitContext{
-			IsNewObject: true,
-			State:       st,
-			SpaceID:     m.workspace.SpaceID(),
-		}
+	sb, err := m.objectDeriver.DeriveTreeObject(ctx, m.workspace.SpaceID(), objectcache.TreeDerivationParams{
+		Key: uniqueKey,
+		InitFunc: func(id string) *smartblock.InitContext {
+			st := state.NewDocWithUniqueKey(id, nil, uniqueKey).NewState()
+			st.SetDetails(details)
+			st.SetObjectTypeKey(typeKey)
+			return &smartblock.InitContext{
+				IsNewObject: true,
+				State:       st,
+				SpaceID:     m.workspace.SpaceID(),
+			}
+		},
 	})
 	if err != nil {
 		return "", err

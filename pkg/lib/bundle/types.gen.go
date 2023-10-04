@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "8028c5cd83c93e95f8c9797c0c46a3a71e0f57e3540e0b5f156eb62bbc155e64"
+const TypeChecksum = "0b6ddb10a9e90cac620ea5490051c69dd77330c18f4067adf38dded3214692a9"
 const (
 	TypePrefix = "_ot"
 )
@@ -31,6 +31,7 @@ const (
 	TypeKeyObjectType     domain.TypeKey = "objectType"
 	TypeKeyRelationOption domain.TypeKey = "relationOption"
 	TypeKeySpace          domain.TypeKey = "space"
+	TypeKeySpaceView      domain.TypeKey = "spaceView"
 	TypeKeyTemplate       domain.TypeKey = "template"
 	TypeKeySet            domain.TypeKey = "set"
 	TypeKeyCollection     domain.TypeKey = "collection"
@@ -350,7 +351,7 @@ var (
 		},
 		TypeKeySpace: {
 
-			Description:   "Space for sharing",
+			Description:   "Workspace",
 			Hidden:        true,
 			IconEmoji:     "🌎",
 			Layout:        model.ObjectType_space,
@@ -359,6 +360,18 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Workspace},
 			Url:           TypePrefix + "space",
+		},
+		TypeKeySpaceView: {
+
+			Description:   "Space",
+			Hidden:        true,
+			IconEmoji:     "🌎",
+			Layout:        model.ObjectType_spaceView,
+			Name:          "Space",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_SpaceView},
+			Url:           TypePrefix + "spaceView",
 		},
 		TypeKeyTask: {
 

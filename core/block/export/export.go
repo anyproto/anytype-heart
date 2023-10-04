@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/converter/dot"
@@ -38,8 +39,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -59,13 +60,14 @@ type Export interface {
 
 type export struct {
 	blockService        *block.Service
-	picker              getblock.Picker
+	picker              getblock.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	coreService         core.Service
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
 	systemObjectService system_object.Service
-	spaceService        space.Service
+	spaceService        spacecore.SpaceCoreService
+	resolver            idresolver.Resolver
 }
 
 func New() Export {
@@ -77,10 +79,11 @@ func (e *export) Init(a *app.App) (err error) {
 	e.coreService = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
-	e.picker = app.MustComponent[getblock.Picker](a)
+	e.picker = app.MustComponent[getblock.ObjectGetter](a)
+	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.systemObjectService = app.MustComponent[system_object.Service](a)
-	e.spaceService = app.MustComponent[space.Service](a)
+	e.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	return
 }
 
@@ -375,7 +378,7 @@ func (e *export) saveFiles(ctx context.Context, b sb.SmartBlock, queue process.Q
 }
 
 func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err error) {
-	spaceID, err := e.spaceService.ResolveSpaceID(hash)
+	spaceID, err := e.resolver.ResolveSpaceID(hash)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}

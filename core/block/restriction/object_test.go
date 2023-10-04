@@ -3,18 +3,15 @@ package restriction
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO Use constructors instead for initializing restrictionHolder structures by hand. See givenObjectType and givenRelation
 func TestService_ObjectRestrictionsById(t *testing.T) {
 	rest := newFixture(t)
-	rest.systemObjectServiceMock.EXPECT().HasObjectType(mock.Anything).Return(false, nil)
 
 	assert.ErrorIs(t, rest.GetRestrictions(&restrictionHolder{
 		sbType:       coresb.SmartBlockTypeAnytypeProfile,
@@ -93,8 +90,6 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 // TODO Use constructors instead for initializing restrictionHolder structures by hand. See givenObjectType and givenRelation
 func TestTemplateRestriction(t *testing.T) {
 	rs := newFixture(t)
-	rs.systemObjectServiceMock.EXPECT().HasObjectType(bundle.TypeKeyPage.URL()).Return(false, nil)
-	rs.systemObjectServiceMock.EXPECT().HasObjectType(bundle.TypeKeyContact.URL()).Return(true, nil)
 
 	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
 		// id:         "cannot make template from Template smartblock type",
@@ -119,15 +114,6 @@ func TestTemplateRestriction(t *testing.T) {
 		sbType:       coresb.SmartBlockTypePage,
 		layout:       model.ObjectType_space,
 		objectTypeID: bundle.TypeKeySpace.URL(),
-	}).Object.Check(
-		model.Restrictions_Template,
-	), ErrRestricted)
-
-	assert.ErrorIs(t, rs.GetRestrictions(&restrictionHolder{
-		// id:         "cannot make template from object with objectType not added to space",
-		sbType:       coresb.SmartBlockTypePage,
-		layout:       model.ObjectType_basic,
-		objectTypeID: bundle.TypeKeyPage.URL(),
 	}).Object.Check(
 		model.Restrictions_Template,
 	), ErrRestricted)
