@@ -1030,10 +1030,9 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		ts.SetRootId(contextID)
 		ts.SetParent(orig)
 
-		fromLayout, _ := ts.Layout()
-		if toLayout, ok := orig.Layout(); ok {
-			ts.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
-			if err := s.layoutConverter.Convert(ts, fromLayout, toLayout); err != nil {
+		layout, found := orig.Layout()
+		if commonOperations, ok := b.(basic.CommonOperations); found && ok {
+			if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
 				return fmt.Errorf("convert layout: %w", err)
 			}
 		}
@@ -1046,6 +1045,7 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		flags := internalflag.NewFromState(orig)
 		flags.AddToState(ts)
 
+		// we provide KeepInternalFlags to allow further template applying and object type change
 		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
 }

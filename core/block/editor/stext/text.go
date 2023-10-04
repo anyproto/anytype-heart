@@ -275,11 +275,7 @@ func (t *textImpl) newSetTextState(blockId string, ctx session.Context) *state.S
 func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
 		applyFlags := []smartblock.ApplyFlag{smartblock.NoHooks}
-		textChanged, err := t.isLastTextBlockChanged()
-		if err != nil {
-			textChanged = true
-		}
-		if t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID || !textChanged {
+		if t.shouldKeepInternalFlags() {
 			applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
 		}
 
@@ -343,7 +339,7 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 	wasEmpty := s.IsEmpty(true)
 
 	applyFlags := make([]smartblock.ApplyFlag, 0)
-	if req.BlockId == state.TitleBlockID || req.BlockId == state.DescriptionBlockID || wasEmpty {
+	if t.shouldKeepInternalFlags() || wasEmpty {
 		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
 	}
 
@@ -487,6 +483,16 @@ func (t *textImpl) isLastTextBlockChanged() (bool, error) {
 	oldTextBlock := t.Pick(t.lastSetTextId)
 	messages, err := oldTextBlock.Diff(newTextBlock)
 	return len(messages) != 0, err
+}
+
+// shouldKeepInternalFlags is used to keep internal flags in case no change on general text blocks were made
+// We keep internal flags because we allow user to change object type and apply some template further
+func (t *textImpl) shouldKeepInternalFlags() bool {
+	textChanged, err := t.isLastTextBlockChanged()
+	if err != nil {
+		textChanged = true
+	}
+	return t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID || !textChanged
 }
 
 func getText(s *state.State, id string) (text.Block, error) {
