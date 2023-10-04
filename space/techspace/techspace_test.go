@@ -2,11 +2,15 @@ package techspace
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer/mock_treesyncer"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -17,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	space "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -30,6 +35,99 @@ func TestTechSpace_Init(t *testing.T) {
 	var initIDs = []string{"1", "2", "3"}
 	fx := newFixture(t, initIDs)
 	defer fx.finish(t)
+}
+
+func TestTechSpace_CreateSpaceView(t *testing.T) {
+	fx := newFixture(t, nil)
+	defer fx.finish(t)
+
+	spaceView := &editor.SpaceView{}
+	fx.objectCache.EXPECT().DeriveTreeObject(ctx, testTechSpaceId, mock.Anything).Return(spaceView, nil)
+
+	res, err := fx.CreateSpaceView(ctx, "new.space")
+	require.NoError(t, err)
+	assert.Equal(t, spaceView, res)
+}
+
+func TestTechSpace_DeriveSpaceViewID(t *testing.T) {
+	fx := newFixture(t, nil)
+	defer fx.finish(t)
+
+	payload := treestorage.TreeStorageCreatePayload{
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{
+			Id: "viewId",
+		},
+	}
+	fx.objectCache.EXPECT().DeriveTreePayload(ctx, testTechSpaceId, mock.Anything).Return(payload, nil)
+
+	res, err := fx.DeriveSpaceViewID(ctx, "new.space")
+	require.NoError(t, err)
+	assert.Equal(t, payload.RootRawChange.Id, res)
+}
+
+func TestTechSpace_SetInfo(t *testing.T) {
+	info := spaceinfo.SpaceInfo{
+		SpaceID: "1",
+		ViewID:  "2",
+	}
+	spaceView := &editor.SpaceView{SmartBlock: smarttest.New(info.ViewID)}
+
+	t.Run("existing spaceView", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(spaceView, nil)
+
+		require.NoError(t, fx.SetInfo(ctx, info))
+		assert.Equal(t, info, fx.GetInfo(info.SpaceID))
+	})
+
+	t.Run("create spaceView", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(nil, fmt.Errorf("no object"))
+		fx.objectCache.EXPECT().DeriveTreeObject(ctx, testTechSpaceId, mock.Anything).Return(spaceView, nil)
+
+		require.NoError(t, fx.SetInfo(ctx, info))
+		// second call with same info
+		require.NoError(t, fx.SetInfo(ctx, info))
+
+		assert.Equal(t, info, fx.GetInfo(info.SpaceID))
+	})
+}
+
+func TestTechSpace_SetStatuses(t *testing.T) {
+	info := spaceinfo.SpaceInfo{
+		SpaceID: "1",
+		ViewID:  "2",
+	}
+	spaceView := &editor.SpaceView{SmartBlock: smarttest.New(info.ViewID)}
+
+	t.Run("changed", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(spaceView, nil)
+		require.NoError(t, fx.SetInfo(ctx, info))
+
+		changedInfo := info
+		changedInfo.LocalStatus = spaceinfo.LocalStatusLoading
+		changedInfo.RemoteStatus = spaceinfo.RemoteStatusError
+
+		require.NoError(t, fx.SetStatuses(ctx, info.SpaceID, changedInfo.LocalStatus, changedInfo.RemoteStatus))
+		assert.Equal(t, changedInfo, fx.GetInfo(info.SpaceID))
+	})
+	t.Run("not changed", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(spaceView, nil)
+		require.NoError(t, fx.SetInfo(ctx, info))
+
+		require.NoError(t, fx.SetStatuses(ctx, info.SpaceID, info.LocalStatus, info.RemoteStatus))
+		assert.Equal(t, info, fx.GetInfo(info.SpaceID))
+	})
 }
 
 type fixture struct {

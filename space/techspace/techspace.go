@@ -47,8 +47,9 @@ type techSpace struct {
 	info map[string]spaceinfo.SpaceInfo
 	mu   sync.Mutex
 
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctx        context.Context
+	ctxCancel  context.CancelFunc
+	idsWakedUp chan struct{}
 }
 
 func (s *techSpace) Init(a *app.App) (err error) {
@@ -67,7 +68,9 @@ func (s *techSpace) Run(ctx context.Context) (err error) {
 	if s.techCore, err = s.spaceCoreService.Derive(ctx, spacecore.TechSpaceType); err != nil {
 		return
 	}
+	s.idsWakedUp = make(chan struct{})
 	go func() {
+		defer close(s.idsWakedUp)
 		if e := s.wakeUpViews(); e != nil {
 			log.Warn("wake up views error", zap.Error(e))
 		}
@@ -154,10 +157,22 @@ func (s *techSpace) SetStatuses(ctx context.Context, spaceID string, local space
 		s.mu.Unlock()
 		return fmt.Errorf("space info not found")
 	}
-	info.LocalStatus = local
-	info.RemoteStatus = remote
-	s.info[spaceID] = info
+	var isChanged bool
+	if info.LocalStatus != local {
+		info.LocalStatus = local
+		isChanged = true
+	}
+	if info.RemoteStatus != remote {
+		info.RemoteStatus = remote
+		isChanged = true
+	}
+	if isChanged {
+		s.info[spaceID] = info
+	}
 	s.mu.Unlock()
+	if !isChanged {
+		return
+	}
 	return s.doSpaceView(ctx, info.SpaceID, info.ViewID, func(spaceView *editor.SpaceView) error {
 		return spaceView.SetSpaceInfo(info)
 	})
@@ -185,5 +200,8 @@ func (s *techSpace) GetInfo(spaceID string) spaceinfo.SpaceInfo {
 
 func (s *techSpace) Close(ctx context.Context) (err error) {
 	s.ctxCancel()
+	if s.idsWakedUp != nil {
+		<-s.idsWakedUp
+	}
 	return
 }
