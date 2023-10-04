@@ -110,7 +110,7 @@ func (t *treeSyncer) StartSync() {
 	t.Lock()
 	defer t.Unlock()
 	t.isRunning = true
-	log.Info("starting request pool")
+	log.Info("starting request pool", zap.String("spaceId", t.spaceId))
 	for _, p := range t.requestPools {
 		p.run()
 	}
