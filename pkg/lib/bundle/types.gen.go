@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "f7544fb1aca4d4460ecb510329045fce0de8385fbd1aa733616c0d7acddaa1fd"
+const TypeChecksum = "8eabdd01ee6a7bc736da0707c54b456ced63594b2e804ec17233e5b6975692ff"
 const (
 	TypePrefix = "_ot"
 )
@@ -370,7 +370,7 @@ var (
 			Name:          "Space",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Types:         []model.SmartBlockType{model.SmartBlockType_SpaceObject},
+			Types:         []model.SmartBlockType{model.SmartBlockType_SpaceView},
 			Url:           TypePrefix + "spaceObject",
 		},
 		TypeKeyTask: {

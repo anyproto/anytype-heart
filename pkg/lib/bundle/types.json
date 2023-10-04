@@ -301,7 +301,7 @@
     "id": "spaceObject",
     "name": "Space",
     "types": [
-      "SpaceObject"
+      "SpaceView"
     ],
     "emoji": "🌎",
     "hidden": true,
