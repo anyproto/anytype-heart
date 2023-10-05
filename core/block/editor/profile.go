@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -125,7 +126,7 @@ func (p *Profile) updateObjects(info smartblock.ApplyInfo) (err error) {
 		}); err != nil {
 			log.Errorf("favorite: can't set detail to object: %v", err)
 		}
-	}(p.anytype.AccountId())
+	}(addr.IdentityPrefix + p.anytype.AccountId())
 	return nil
 }
 
