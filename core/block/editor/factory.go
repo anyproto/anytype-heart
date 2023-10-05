@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -120,6 +121,25 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	if ot != nil {
 		// using lock from object tree
 		sb.SetLocker(ot)
+	}
+
+	if migrator, ok := sb.(migration.Migrator); ok {
+		if tempMigrator, ok := sc.(migration.TempMigrator); ok {
+			tempMigrator.SetTemporaryMigration(func(s *state.State) error {
+				var initialVersion uint32
+				if initCtx.State != nil {
+					initialVersion = initCtx.State.MigrationVersion()
+				}
+				migs := migrator.StateMigrations()
+				for _, m := range migs.Migrations {
+					if m.Version > initialVersion {
+						m.Proc(s)
+						s.SetMigrationVersion(m.Version)
+					}
+				}
+				return nil
+			})
+		}
 	}
 
 	// we probably don't need any locks here, because the object is initialized synchronously

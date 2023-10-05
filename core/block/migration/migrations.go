@@ -12,6 +12,10 @@ type Migrator interface {
 	StateMigrations() Migrations
 }
 
+type TempMigrator interface {
+	SetTemporaryMigration(migration func(s *state.State) error)
+}
+
 type Migration struct {
 	Version uint32
 	Proc    func(s *state.State)
@@ -72,11 +76,11 @@ func RunMigrations(sb smartblock.SmartBlock, initCtx *smartblock.InitContext) {
 		}
 	}
 
-	migs := migrator.StateMigrations()
-	for _, m := range migs.Migrations {
-		if m.Version > initCtx.State.MigrationVersion() {
-			m.Proc(initCtx.State)
-			initCtx.State.SetMigrationVersion(m.Version)
-		}
-	}
+	// migs := migrator.StateMigrations()
+	// for _, m := range migs.Migrations {
+	// 	if m.Version > initCtx.State.MigrationVersion() {
+	// 		m.Proc(initCtx.State)
+	// 		initCtx.State.SetMigrationVersion(m.Version)
+	// 	}
+	// }
 }

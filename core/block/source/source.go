@@ -122,6 +122,8 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
+	temporaryMigration func(s *state.State) error
+
 	coreService         core.Service
 	fileService         files.Service
 	accountService      accountservice.Service
@@ -188,6 +190,10 @@ func (s *source) Type() smartblock.SmartBlockType {
 	return s.smartblockType
 }
 
+func (s *source) SetTemporaryMigration(migration func(s *state.State) error) {
+	s.temporaryMigration = migration
+}
+
 func (s *source) ReadDoc(_ context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	return s.readDoc(receiver)
 }
@@ -224,6 +230,14 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	migration.migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
+
+	if s.temporaryMigration != nil {
+		err = s.temporaryMigration(st)
+		if err != nil {
+			return nil, fmt.Errorf("run temproary migration: %w", err)
+		}
+	}
+
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
 		return
