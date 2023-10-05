@@ -153,6 +153,9 @@ func SmartblockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.MissingObject) {
 		return smartblock.SmartBlockTypeMissingObject, nil
 	}
+	if strings.HasPrefix(id, addr.IdentityPrefix) {
+		return smartblock.SmartBlockTypeIdentity, nil
+	}
 
 	c, err := cid.Decode(id)
 	if err != nil {

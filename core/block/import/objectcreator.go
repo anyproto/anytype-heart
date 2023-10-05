@@ -96,7 +96,8 @@ func (oc *ObjectCreator) Create(
 			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
 		}
 	}
-	st.SetLastModified(lastModifiedDate, oc.core.ProfileID(spaceID))
+
+	st.SetLastModified(lastModifiedDate, oc.core.AccountId())
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation

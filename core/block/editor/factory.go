@@ -154,6 +154,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeIdentity,
 		coresb.SmartBlockTypeRelationOption:
 		return NewPage(
 			sb,
@@ -189,6 +190,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		return NewProfile(
 			sb,
 			f.objectStore,
+			f.detailsModifier,
 			f.systemObjectService,
 			f.fileBlockService,
 			f.anytype,

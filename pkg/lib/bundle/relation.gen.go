@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b392af31cb9650cb80628467d57f6f993059adfb2e6119a51cad18c68af79ca0"
+const RelationChecksum = "be0056151d3648f1a69c250fc80240b7dfaeebb198788abe7cfe4b9dc37c2858"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -158,6 +158,7 @@ const (
 	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
+	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 )
 
 var (
@@ -885,6 +886,20 @@ var (
 			MaxCount:         1,
 			Name:             "Anytype ID",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIdentityProfileLink: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Link to the profile attached to Anytype Identity",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_bridentityProfileLink",
+			Key:              "identityProfileLink",
+			MaxCount:         1,
+			Name:             "Profile link",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

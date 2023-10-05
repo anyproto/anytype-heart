@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -238,7 +239,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	creator = s.coreService.PredefinedObjects(s.spaceID).Profile
+	creator = addr.IdentityPrefix + s.accountService.Account().SignKey.GetPublic().Account()
 	return
 }
 
@@ -507,7 +508,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 
 	if lastChange != nil && !st.IsTheHeaderChange() {
 		// todo: why do we don't need to set last modified for the header change?
-		st.SetLastModified(lastChange.Timestamp, profileId)
+		st.SetLastModified(lastChange.Timestamp, lastChange.Identity.Account())
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
@@ -581,7 +582,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 		return
 	}
 	if lastChange != nil && !st.IsTheHeaderChange() {
-		st.SetLastModified(lastChange.Timestamp, profileId)
+		st.SetLastModified(lastChange.Timestamp, lastChange.Identity.Account())
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return

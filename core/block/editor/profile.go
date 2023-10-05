@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 type Profile struct {
@@ -37,12 +38,14 @@ type Profile struct {
 	table.TableEditor
 	anytype core.Service
 
+	DetailsModifier
 	eventSender event.Sender
 }
 
 func NewProfile(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
+	modifier DetailsModifier,
 	systemObjectService system_object.Service,
 	fileBlockService file.BlockService,
 	anytype core.Service,
@@ -84,9 +87,10 @@ func NewProfile(
 			bookmarkService,
 			objectStore,
 		),
-		TableEditor: table.NewEditor(sb),
-		eventSender: eventSender,
-		anytype:     anytype,
+		TableEditor:     table.NewEditor(sb),
+		DetailsModifier: modifier,
+		eventSender:     eventSender,
+		anytype:         anytype,
 	}
 }
 
@@ -94,6 +98,8 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
+
+	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	return nil
 }
 
@@ -109,6 +115,18 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 				template.WithRequiredRelations())
 		},
 	}
+}
+
+func (p *Profile) updateObjects(info smartblock.ApplyInfo) (err error) {
+	go func(id string) {
+		// just wake up the identity object
+		if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			return current, nil
+		}); err != nil {
+			log.Errorf("favorite: can't set detail to object: %v", err)
+		}
+	}(p.anytype.AccountId())
+	return nil
 }
 
 func (p *Profile) StateMigrations() migration.Migrations {

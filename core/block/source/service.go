@@ -125,6 +125,8 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 		return NewBundledObjectType(id), nil
 	case smartblock.SmartBlockTypeBundledRelation:
 		return NewBundledRelation(id), nil
+	case smartblock.SmartBlockTypeIdentity:
+		return NewIdentity(s.account, s.objectStore, s.systemObjectService, s.spaceService, id), nil
 	}
 
 	s.mu.Lock()

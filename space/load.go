@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"fmt"
 
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -88,7 +89,13 @@ func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err e
 	}
 
 	// return loading error
-	err = s.loading[spaceID].loadErr
-	s.mu.Unlock()
+	if loadingStatus, ok := s.loading[spaceID]; !ok {
+		s.mu.Unlock()
+		err = fmt.Errorf("space is not loading: status %d", localStatus)
+		return
+	} else {
+		err = loadingStatus.loadErr
+		s.mu.Unlock()
+	}
 	return
 }

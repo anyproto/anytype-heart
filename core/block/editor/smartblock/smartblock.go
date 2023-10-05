@@ -10,6 +10,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
@@ -657,7 +659,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	sb.beforeStateApply(s)
 	// this one will be reverted in case we don't have any actual change being made
-	s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
+	s.SetLastModified(lastModified.Unix(), addr.IdentityPrefix+sb.coreService.AccountId())
 
 	beforeApplyStateTime := time.Now()
 

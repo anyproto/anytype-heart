@@ -22,6 +22,7 @@ const (
 	AnytypeMarketplaceWorkspace = "_anytype_marketplace"
 	VirtualPrefix               = "_virtual"
 	DatePrefix                  = "_date_"
+	IdentityPrefix              = "_id_"
 
 	MissingObject = "_missing_object"
 )
@@ -31,6 +32,7 @@ func IsBundledId(id string) bool {
 		strings.HasPrefix(id, BundledObjectTypeURLPrefix) ||
 		strings.HasPrefix(id, BundledTemplatesURLPrefix) ||
 		strings.HasPrefix(id, DatePrefix) ||
+		strings.HasPrefix(id, IdentityPrefix) ||
 		id == AnytypeMarketplaceWorkspace ||
 		id == MissingObject ||
 		id == AnytypeProfileId

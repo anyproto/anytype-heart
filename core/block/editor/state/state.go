@@ -1637,6 +1637,7 @@ func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
+// AddRelationLinks adds relation links to the state in case they are not already present
 func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 	relLinks := s.GetRelationLinks()
 	for _, l := range links {

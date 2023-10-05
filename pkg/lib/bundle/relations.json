@@ -1462,5 +1462,15 @@
     "name": "Space remote status",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Link to the profile attached to Anytype Identity",
+    "format": "object",
+    "hidden": true,
+    "key": "identityProfileLink",
+    "maxCount": 1,
+    "name": "Profile link",
+    "readonly": true,
+    "source": "derived"
   }
 ]
