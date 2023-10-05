@@ -2,6 +2,7 @@ package stext
 
 import (
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"sort"
 	"strings"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
-	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -254,9 +254,16 @@ func (t *textImpl) SetIcon(ctx session.Context, image string, emoji string, bloc
 	return t.Apply(s)
 }
 
-func (t *textImpl) newSetTextState(blockId string, ctx session.Context) *state.State {
+func (t *textImpl) newSetTextState(blockId string, selectedRange *model.Range, ctx session.Context) *state.State {
 	if t.lastSetTextState != nil && t.lastSetTextId == blockId {
 		return t.lastSetTextState
+	}
+	if selectedRange != nil {
+		t.History().SetCarriageBeforeState(undo.CarriageState{
+			BlockID:   blockId,
+			RangeFrom: selectedRange.From,
+			RangeTo:   selectedRange.To,
+		})
 	}
 	t.lastSetTextId = blockId
 	t.lastSetTextState = t.NewStateCtx(ctx)
@@ -324,14 +331,14 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 	}()
 
 	// TODO: GO-2062 Need to refactor text shortening, as it could cut string incorrectly
-	//if len(req.Text) > textSizeLimit {
+	// if len(req.Text) > textSizeLimit {
 	//	log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)
 	//	req.Text = req.Text[:textSizeLimit]
-	//}
+	// }
 
 	// We create new context to avoid sending events to the current session
 	ctx := session.NewChildContext(parentCtx)
-	s := t.newSetTextState(req.BlockId, ctx)
+	s := t.newSetTextState(req.BlockId, req.SelectedTextRange, ctx)
 	wasEmpty := s.IsEmpty(true)
 
 	tb, err := getText(s, req.BlockId)
@@ -347,7 +354,6 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 		if err = t.Apply(s); err != nil {
 			return
 		}
-		t.setCarriageInfo(req)
 		t.sendEvents(ctx)
 		return
 	}
@@ -360,18 +366,7 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 		}
 	}
 
-	t.setCarriageInfo(req)
 	return
-}
-
-func (t *textImpl) setCarriageInfo(req pb.RpcBlockTextSetTextRequest) {
-	if req.SelectedTextRange != nil {
-		t.History().SetCarriageState(undo.CarriageState{
-			BlockID:   req.BlockId,
-			RangeFrom: req.SelectedTextRange.From,
-			RangeTo:   req.SelectedTextRange.To,
-		})
-	}
 }
 
 func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextStyle, ids ...string) (err error) {

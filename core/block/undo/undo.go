@@ -101,6 +101,7 @@ type History interface {
 	Reset()
 	Counters() (undo int32, redo int32)
 	SetCarriageState(state CarriageState)
+	SetCarriageBeforeState(state CarriageState)
 }
 
 func NewHistory(limit int) History {
@@ -111,10 +112,10 @@ func NewHistory(limit int) History {
 }
 
 type history struct {
-	limit                     int
-	actions                   []Action
-	pointer                   int
-	currentState, beforeState CarriageState
+	limit                   int
+	actions                 []Action
+	pointer                 int
+	beforeState, afterState CarriageState
 }
 
 func (h *history) Add(a Action) {
@@ -130,7 +131,10 @@ func (h *history) Add(a Action) {
 		h.actions = h.actions[:h.pointer]
 	}
 
-	a.CarriageInfo.After = h.currentState
+	a.CarriageInfo.After = h.afterState
+	if h.beforeState.IsEmpty() {
+		h.beforeState = h.afterState
+	}
 	a.CarriageInfo.Before = h.beforeState
 	h.beforeState = CarriageState{}
 
@@ -174,13 +178,11 @@ func (h *history) Counters() (undo int32, redo int32) {
 }
 
 func (h *history) SetCarriageState(state CarriageState) {
-	h.currentState = state
-	if h.beforeState.IsEmpty() {
-		h.beforeState = state
-	}
-	if h.pointer > 0 && h.actions[h.pointer-1].CarriageInfo.After.BlockID != state.BlockID {
-		h.actions[h.pointer-1].CarriageInfo.After = state
-	}
+	h.afterState = state
+}
+
+func (h *history) SetCarriageBeforeState(state CarriageState) {
+	h.beforeState = state
 }
 
 func (h *history) applyGroup(b Action) (ok bool) {

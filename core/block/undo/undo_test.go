@@ -183,7 +183,7 @@ func TestHistory_SetCarriageInfo(t *testing.T) {
 		assert.Empty(t, actionNext)
 		assert.Empty(t, actionPrev)
 	})
-	t.Run("last carriage info is set to new action", func(t *testing.T) {
+	t.Run("last after carriage state is set to new action", func(t *testing.T) {
 		// given
 		h := NewHistory(0)
 
@@ -195,11 +195,28 @@ func TestHistory_SetCarriageInfo(t *testing.T) {
 		h.SetCarriageState(state3)
 		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
 
+		action1, err1 := h.Previous()
+		action2, err2 := h.Previous()
+
+		// then
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Equal(t, state3, action1.CarriageInfo.After)
+		assert.Equal(t, state1, action2.CarriageInfo.After)
+	})
+	t.Run("after carriage state is set if before state is empty", func(t *testing.T) {
+		// given
+		h := NewHistory(0)
+
+		// when
+		h.SetCarriageState(state1)
+		h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+
 		action, err := h.Previous()
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, state2, action.CarriageInfo.Before)
-		assert.Equal(t, state3, action.CarriageInfo.After)
+		assert.Equal(t, state1, action.CarriageInfo.Before)
+		assert.Equal(t, state1, action.CarriageInfo.After)
 	})
 }
