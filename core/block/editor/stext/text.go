@@ -2,7 +2,6 @@ package stext
 
 import (
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/block/undo"
 	"sort"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -254,18 +254,18 @@ func (t *textImpl) SetIcon(ctx session.Context, image string, emoji string, bloc
 	return t.Apply(s)
 }
 
-func (t *textImpl) newSetTextState(blockId string, selectedRange *model.Range, ctx session.Context) *state.State {
-	if t.lastSetTextState != nil && t.lastSetTextId == blockId {
+func (t *textImpl) newSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State {
+	if t.lastSetTextState != nil && t.lastSetTextId == blockID {
 		return t.lastSetTextState
 	}
 	if selectedRange != nil {
 		t.History().SetCarriageBeforeState(undo.CarriageState{
-			BlockID:   blockId,
+			BlockID:   blockID,
 			RangeFrom: selectedRange.From,
 			RangeTo:   selectedRange.To,
 		})
 	}
-	t.lastSetTextId = blockId
+	t.lastSetTextId = blockID
 	t.lastSetTextState = t.NewStateCtx(ctx)
 	go func() {
 		select {
