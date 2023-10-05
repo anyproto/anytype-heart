@@ -16,11 +16,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -150,9 +148,7 @@ func (b *sbookmark) updateBlock(_ session.Context, block bookmark.Block, apply f
 	}
 
 	content := block.GetContent()
-	details := block.ToDetails()
-	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
-	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), block.ToDetails(), func() *model.BlockContentBookmark {
+	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), block.ToDetails(origin), func() *model.BlockContentBookmark {
 		return content
 	})
 	if err != nil {

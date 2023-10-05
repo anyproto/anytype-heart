@@ -787,9 +787,9 @@ enum ObjectOrigin {
     clipboard = 1;
     dragAndDrop = 2;
     import = 3;
-    webClipper = 4;
+    webclipper = 4;
     sharingExtension = 5;
-    useCase = 6;
+    usecase = 6;
     builtin = 7;
 }
 

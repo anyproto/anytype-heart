@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -184,7 +185,8 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			if err = bs.UploadBlockFile(nil, r, groupId, model.ObjectOrigin_clipboard); err != nil {
+			dto := domain.BlockUploadRequestDTO{Origin: model.ObjectOrigin_clipboard, RpcBlockUploadRequest: r}
+			if err = bs.UploadBlockFile(nil, dto, groupId); err != nil {
 				return err
 			}
 		}
@@ -267,7 +269,8 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.UploadBlockFile(nil, *req, "", model.ObjectOrigin_user)
+		dto := domain.BlockUploadRequestDTO{Origin: model.ObjectOrigin_user, RpcBlockUploadRequest: *req}
+		return bs.UploadBlockFile(nil, dto, "")
 	})
 	if err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
@@ -957,7 +960,8 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.BookmarkFetch(ctx, *req, model.ObjectOrigin_user)
+		dto := domain.BookmarkFetchRequestDTO{Origin: model.ObjectOrigin_user, RpcBlockBookmarkFetchRequest: *req}
+		return bs.BookmarkFetch(ctx, dto)
 	})
 	if err != nil {
 		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)

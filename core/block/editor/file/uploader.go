@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -47,7 +46,6 @@ func NewUploader(
 	fileService files.Service,
 	provider core.TempDirProvider,
 	picker getblock.ObjectGetter,
-	fileStore filestore.FileStore,
 ) Uploader {
 	return &uploader{
 		spaceID:         spaceID,
@@ -55,7 +53,6 @@ func NewUploader(
 		picker:          picker,
 		fileService:     fileService,
 		tempDirProvider: provider,
-		fileStore:       fileStore,
 	}
 }
 
@@ -110,7 +107,6 @@ func (ur UploadResult) ToBlock() file.Block {
 type uploader struct {
 	spaceID          string
 	service          BlockService
-	fileStore        filestore.FileStore
 	picker           getblock.ObjectGetter
 	block            file.Block
 	getReader        func(ctx context.Context) (*fileReader, error)
@@ -376,15 +372,11 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			u.fileStyle = model.BlockContentFile_Embed
 		}
 	}
-	var imported bool
-	if u.origin == model.ObjectOrigin_import {
-		imported = true
-	}
 	var opts = []files.AddOption{
 		files.WithName(u.name),
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
-		files.WithImported(imported),
+		files.WithOrigin(u.origin),
 	}
 
 	if len(u.opts) > 0 {
@@ -419,11 +411,6 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.MIME = meta.Media
 			result.Size = meta.Size
 		}
-	}
-
-	err = u.fileStore.SetFileOrigin(result.Hash, int(u.origin))
-	if err != nil {
-		log.Errorf("failed to set file origin %s: %s", result.Hash, err)
 	}
 
 	// Touch the file to activate indexing

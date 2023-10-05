@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -71,8 +72,11 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		err  error
 	)
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
-		req := pb.RpcFileUploadRequest{Url: file}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, req, origin)
+		dto := domain.FileUploadRequestDTO{
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
+			Origin:               origin,
+		}
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, dto)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		}
@@ -81,8 +85,11 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		if err == nil {
 			return file
 		}
-		req := pb.RpcFileUploadRequest{LocalPath: file}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, req, origin)
+		dto := domain.FileUploadRequestDTO{
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
+			Origin:               origin,
+		}
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, dto)
 		if err != nil {
 			logger.Errorf("file uploading %s", err)
 		}

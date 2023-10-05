@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -43,7 +44,11 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
-	hash, err := is.service.UploadFile(context.Background(), spaceID, req, origin)
+	dto := domain.FileUploadRequestDTO{
+		RpcFileUploadRequest: req,
+		Origin:               origin,
+	}
+	hash, err := is.service.UploadFile(context.Background(), spaceID, dto)
 	if err != nil {
 		log.Errorf("failed uploading icon image file: %s", oserror.TransformError(err))
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
@@ -47,12 +48,13 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, err
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}
 	}
-
+	origin := s.getFileOrigin(id.ObjectID)
 	return &image{
 		spaceID:         id.SpaceID,
 		hash:            id.ObjectID,
 		variantsByWidth: variantsByWidth,
 		service:         s,
+		origin:          origin,
 	}, nil
 }
 
@@ -103,7 +105,7 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 	}
 
 	id := domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}
-	err = s.fileIndexData(ctx, node, id, opts.Imported)
+	err = s.fileIndexData(ctx, node, id, s.isImported(opts.Origin))
 	if err != nil {
 		return "", nil, err
 	}
@@ -123,5 +125,14 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 		return "", nil, fmt.Errorf("store file size: %w", err)
 	}
 
+	err = s.fileStore.SetFileOrigin(nodeHash, int(opts.Origin))
+	if err != nil {
+		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
+	}
+
 	return nodeHash, variantsByWidth, nil
+}
+
+func (s *service) isImported(origin model.ObjectOrigin) bool {
+	return origin == model.ObjectOrigin_import
 }

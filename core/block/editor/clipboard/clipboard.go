@@ -507,10 +507,11 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 		})
 		s.Add(b)
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes: fs.Data,
-			Path:  fs.LocalPath,
-			Name:  fs.Name,
-		}, false, model.ObjectOrigin_clipboard); err != nil {
+			Bytes:  fs.Data,
+			Path:   fs.LocalPath,
+			Name:   fs.Name,
+			Origin: model.ObjectOrigin_clipboard,
+		}, false); err != nil {
 			return
 		}
 		blockIds = append(blockIds, b.Model().Id)

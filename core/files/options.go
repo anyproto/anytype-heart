@@ -12,6 +12,7 @@ import (
 	ipfspath "github.com/ipfs/boxo/path"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
@@ -23,7 +24,7 @@ type AddOptions struct {
 	Name             string
 	LastModifiedDate int64
 	Plaintext        bool
-	Imported         bool
+	Origin           model.ObjectOrigin
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -44,9 +45,9 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 	}
 }
 
-func WithImported(imported bool) AddOption {
+func WithOrigin(origin model.ObjectOrigin) AddOption {
 	return func(args *AddOptions) {
-		args.Imported = imported
+		args.Origin = origin
 	}
 }
 

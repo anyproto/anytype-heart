@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -44,7 +45,11 @@ func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 			BlockId: b.Model().Id,
 		}
 	}
-	_, err := fs.service.UploadFileBlockWithHash(id, params, origin)
+	dto := domain.BlockUploadRequestDTO{
+		RpcBlockUploadRequest: params,
+		Origin:                origin,
+	}
+	_, err := fs.service.UploadFileBlockWithHash(id, dto)
 	if err != nil {
 		return fmt.Errorf("failed syncing file: %s", err)
 	}

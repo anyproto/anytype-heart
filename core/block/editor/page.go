@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -56,7 +55,6 @@ func NewPage(sb smartblock.SmartBlock,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
 	eventSender event.Sender,
-	fileStore filestore.FileStore,
 ) *Page {
 	f := file.NewFile(
 		sb,
@@ -65,7 +63,6 @@ func NewPage(sb smartblock.SmartBlock,
 		tempDirProvider,
 		fileService,
 		picker,
-		fileStore,
 	)
 	return &Page{
 		SmartBlock:    sb,
@@ -148,6 +145,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				template.WithRequiredRelations(),
 				template.WithLinkFieldsMigration,
 				template.WithCreatorRemovedFromFeaturedRelations,
+				template.WithOrigin,
 			}
 
 			switch layout {

@@ -108,6 +108,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
 	oc.setFileAsImported(st)
+	oc.setFileOrigin(st, origin)
 	var respDetails *types.Struct
 	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
 	if err != nil {
@@ -465,6 +466,26 @@ func (oc *ObjectCreator) setFileAsImported(st *state.State) {
 		err = oc.fileStore.SetIsFileImported(hash, true)
 		if err != nil {
 			log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
+		}
+	}
+}
+
+func (oc *ObjectCreator) setFileOrigin(st *state.State, origin model.ObjectOrigin) {
+	var fileHashes []string
+	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
+		if fh, ok := bl.(simple.FileHashes); ok {
+			fileHashes = fh.FillFileHashes(fileHashes)
+		}
+		return true
+	})
+	if err != nil {
+		log.Errorf("failed to collect file hashes in state, %s", err)
+	}
+
+	for _, hash := range fileHashes {
+		err = oc.fileStore.SetFileOrigin(hash, int(origin))
+		if err != nil {
+			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}
 	}
 }

@@ -55,8 +55,7 @@ func NewTemplate(
 			sbtProvider,
 			layoutConverter,
 			fileService,
-			eventSender,
-			nil),
+			eventSender),
 		picker: picker,
 	}
 }

@@ -39,6 +39,7 @@ type image struct {
 	spaceID         string
 	variantsByWidth map[int]*storage.FileInfo
 	service         *service
+	origin          int
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
@@ -154,6 +155,7 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		i.extractLastModifiedDate(ctx, imageExif),
 	)
 	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.hash)
+	commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(i.origin))
 
 	details := &types.Struct{
 		Fields: commonDetails,
@@ -219,7 +221,6 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistURL)
 		}
 	}
-
 	return details, nil
 }
 

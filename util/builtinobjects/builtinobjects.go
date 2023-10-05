@@ -278,7 +278,7 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path
 				Path:         []string{path},
 				NoCollection: true,
 			}},
-	}, model.ObjectOrigin_useCase); err != nil {
+	}, model.ObjectOrigin_usecase); err != nil {
 		return err
 	}
 

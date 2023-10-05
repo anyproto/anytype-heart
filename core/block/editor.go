@@ -443,23 +443,25 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 	})
 }
 
-func (s *Service) UploadBlockFile(ctx session.Context, req pb.RpcBlockUploadRequest, groupID string, origin model.ObjectOrigin) (err error) {
+func (s *Service) UploadBlockFile(ctx session.Context, req domain.BlockUploadRequestDTO, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: groupID,
-		}, false, origin)
+			Origin:  req.Origin,
+		}, false)
 		return err
 	})
 }
 
-func (s *Service) UploadBlockFileSync(ctx session.Context, req pb.RpcBlockUploadRequest, origin model.ObjectOrigin) (err error) {
+func (s *Service) UploadBlockFileSync(ctx session.Context, req domain.BlockUploadRequestDTO) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path: req.FilePath,
-			Url:  req.Url,
-		}, true, origin)
+			Path:   req.FilePath,
+			Url:    req.Url,
+			Origin: req.Origin,
+		}, true)
 		return err
 	})
 }
@@ -474,13 +476,13 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req pb.RpcFileUploadRequest, origin model.ObjectOrigin) (hash string, err error) {
-	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s, s.fileStore)
+func (s *Service) UploadFile(ctx context.Context, spaceID string, req domain.FileUploadRequestDTO) (hash string, err error) {
+	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
-	upl.SetOrigin(origin)
+	upl.SetOrigin(req.Origin)
 	upl.SetStyle(req.Style)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
@@ -514,14 +516,15 @@ func (s *Service) SetFileStyle(
 }
 
 func (s *Service) UploadFileBlockWithHash(
-	contextID string, req pb.RpcBlockUploadRequest, origin model.ObjectOrigin,
+	contextID string, req domain.BlockUploadRequestDTO,
 ) (hash string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: "",
-		}, origin)
+			Origin:  req.Origin,
+		})
 		if err != nil {
 			return err
 		}
@@ -552,15 +555,15 @@ func (s *Service) Redo(
 	return
 }
 
-func (s *Service) BookmarkFetch(ctx session.Context, req pb.RpcBlockBookmarkFetchRequest, origin model.ObjectOrigin) (err error) {
+func (s *Service) BookmarkFetch(ctx session.Context, req domain.BookmarkFetchRequestDTO) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, false, origin)
+		return b.Fetch(ctx, req.BlockId, req.Url, false, req.Origin)
 	})
 }
 
-func (s *Service) BookmarkFetchSync(ctx session.Context, req pb.RpcBlockBookmarkFetchRequest, origin model.ObjectOrigin) (err error) {
+func (s *Service) BookmarkFetchSync(ctx session.Context, req domain.BookmarkFetchRequestDTO) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, true, origin)
+		return b.Fetch(ctx, req.BlockId, req.Url, true, req.Origin)
 	})
 }
 

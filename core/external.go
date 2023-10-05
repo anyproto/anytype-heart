@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/unsplash"
@@ -73,11 +74,15 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	defer os.Remove(imagePath)
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(cctx, req.SpaceId, pb.RpcFileUploadRequest{
-			LocalPath: imagePath,
-			Type:      model.BlockContentFile_Image,
-			Style:     model.BlockContentFile_Embed,
-		}, model.ObjectOrigin_user)
+		dto := domain.FileUploadRequestDTO{
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{
+				LocalPath: imagePath,
+				Type:      model.BlockContentFile_Image,
+				Style:     model.BlockContentFile_Embed,
+			},
+			Origin: model.ObjectOrigin_user,
+		}
+		hash, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		if err != nil {
 			return err
 		}

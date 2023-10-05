@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -49,7 +48,6 @@ func NewFile(
 	tempDirProvider core.TempDirProvider,
 	fileService files.Service,
 	picker getblock.ObjectGetter,
-	fileStore filestore.FileStore,
 ) File {
 	return &sfile{
 		SmartBlock:        sb,
@@ -58,7 +56,6 @@ func NewFile(
 		fileService:       fileService,
 		picker:            picker,
 		predefinedObjects: idGetter,
-		fileStore:         fileStore,
 	}
 }
 
@@ -69,12 +66,12 @@ type BlockService interface {
 
 type File interface {
 	DropFiles(req pb.RpcFileDropRequest) (err error)
-	Upload(ctx session.Context, id string, source FileSource, isSync bool, origin model.ObjectOrigin) (err error)
-	UploadState(ctx session.Context, s *state.State, id string, source FileSource, isSync bool, origin model.ObjectOrigin) (err error)
+	Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error)
+	UploadState(ctx session.Context, s *state.State, id string, source FileSource, isSync bool) (err error)
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-	UploadFileWithHash(blockID string, source FileSource, originImport model.ObjectOrigin) (UploadResult, error)
+	UploadFileWithHash(blockID string, source FileSource) (UploadResult, error)
 	dropFilesHandler
 }
 
@@ -84,6 +81,7 @@ type FileSource struct {
 	Bytes   []byte
 	Name    string
 	GroupID string
+	Origin  model.ObjectOrigin
 }
 
 type sfile struct {
@@ -93,22 +91,21 @@ type sfile struct {
 	fileService       files.Service
 	picker            getblock.ObjectGetter
 	predefinedObjects PredefinedObjectsGetter
-	fileStore         filestore.FileStore
 }
 
-func (sf *sfile) Upload(ctx session.Context, id string, source FileSource, isSync bool, origin model.ObjectOrigin) (err error) {
+func (sf *sfile) Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error) {
 	if source.GroupID == "" {
 		source.GroupID = bson.NewObjectId().Hex()
 	}
 	s := sf.NewStateCtx(ctx).SetGroupId(source.GroupID)
-	if res := sf.upload(s, id, source, isSync, origin); res.Err != nil {
+	if res := sf.upload(s, id, source, isSync); res.Err != nil {
 		return
 	}
 	return sf.Apply(s)
 }
 
-func (sf *sfile) UploadState(_ session.Context, s *state.State, id string, source FileSource, isSync bool, origin model.ObjectOrigin) (err error) {
-	if res := sf.upload(s, id, source, isSync, origin); res.Err != nil {
+func (sf *sfile) UploadState(_ session.Context, s *state.State, id string, source FileSource, isSync bool) (err error) {
+	if res := sf.upload(s, id, source, isSync); res.Err != nil {
 		return res.Err
 	}
 	return
@@ -148,9 +145,10 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 		return
 	}
 	if err = sf.upload(s, newId, FileSource{
-		Path: req.LocalPath,
-		Url:  req.Url,
-	}, false, model.ObjectOrigin_user).Err; err != nil {
+		Path:   req.LocalPath,
+		Url:    req.Url,
+		Origin: model.ObjectOrigin_user,
+	}, false).Err; err != nil {
 		return
 	}
 	if err = sf.Apply(s); err != nil {
@@ -159,14 +157,14 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 	return
 }
 
-func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync bool, origin model.ObjectOrigin) (res UploadResult) {
+func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync bool) (res UploadResult) {
 	ctx := context.Background()
 	b := s.Get(id)
 	f, ok := b.(file.Block)
 	if !ok {
 		return UploadResult{Err: fmt.Errorf("not a file block")}
 	}
-	upl := sf.newUploader().SetBlock(f).SetOrigin(origin)
+	upl := sf.newUploader().SetBlock(f).SetOrigin(source.Origin)
 	if source.Path != "" {
 		upl.SetFile(source.Path)
 	} else if source.Url != "" {
@@ -187,7 +185,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 }
 
 func (sf *sfile) newUploader() Uploader {
-	return NewUploader(sf.SpaceID(), sf.fileSource, sf.fileService, sf.tempDirProvider, sf.picker, sf.fileStore)
+	return NewUploader(sf.SpaceID(), sf.fileSource, sf.fileService, sf.tempDirProvider, sf.picker)
 }
 
 func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
@@ -210,7 +208,6 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 		fileService:     sf.fileService,
 		tempDirProvider: sf.tempDirProvider,
 		picker:          sf.picker,
-		fileStore:       sf.fileStore,
 	}
 	if err = proc.Init(req.LocalFilePaths); err != nil {
 		return
@@ -221,12 +218,12 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	return
 }
 
-func (sf *sfile) UploadFileWithHash(blockID string, source FileSource, origin model.ObjectOrigin) (UploadResult, error) {
+func (sf *sfile) UploadFileWithHash(blockID string, source FileSource) (UploadResult, error) {
 	if source.GroupID == "" {
 		source.GroupID = bson.NewObjectId().Hex()
 	}
 	s := sf.NewState().SetGroupId(source.GroupID)
-	return sf.upload(s, blockID, source, true, origin), sf.Apply(s)
+	return sf.upload(s, blockID, source, true), sf.Apply(s)
 }
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
@@ -327,7 +324,6 @@ type dropFilesProcess struct {
 	id              string
 	spaceID         string
 	s               BlockService
-	fileStore       filestore.FileStore
 	picker          getblock.ObjectGetter
 	fileService     files.Service
 	tempDirProvider core.TempDirProvider
@@ -547,7 +543,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 }
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
-	upl := NewUploader(dp.spaceID, dp.s, dp.fileService, dp.tempDirProvider, dp.picker, dp.fileStore)
+	upl := NewUploader(dp.spaceID, dp.s, dp.fileService, dp.tempDirProvider, dp.picker)
 	res := upl.
 		SetName(f.name).
 		AutoType(true).

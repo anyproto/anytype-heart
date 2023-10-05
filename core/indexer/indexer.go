@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -31,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -257,13 +255,12 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, info smartblock2.DocInfo) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, info editorsb.DocInfo) {
 	fileHashes := info.FileHashes
 	spaceID := info.SpaceID
 	if len(fileHashes) == 0 {
 		return
 	}
-	origin := pbtypes.GetInt64(info.Details, bundle.RelationKeyOrigin.String())
 	existingIDs, err := i.store.HasIDs(fileHashes...)
 	if err != nil {
 		log.Errorf("failed to get existing file ids : %s", err.Error())
@@ -290,30 +287,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, info smartblock2.DocInfo
 			if idxErr != nil {
 				log.With("id", id).Error(idxErr.Error())
 			}
-			i.setFileOrigin(id, int(origin)) // for files from use cases, which are already loaded
 		}(id)
-	}
-}
-
-func (i *indexer) setFileOrigin(hash string, origin int) {
-	fileOrigin, err := i.fileStore.GetFileOrigin(hash)
-	if err != nil {
-		log.Errorf("failed to get file origin, %s", err)
-		// if file doesn't have origin in file store, we use origin from objects, where file was uploaded
-		fileOrigin = origin
-	}
-	err = block.Do(i.picker, hash, func(b smartblock2.SmartBlock) error {
-		st := b.NewState()
-		// if file already has origin relation, we don't do anything
-		if origin := pbtypes.Get(st.Details(), bundle.RelationKeyOrigin.String()); origin != nil {
-			return nil
-		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(fileOrigin)))
-		return b.Apply(st)
-	})
-	if err != nil {
-		log.Errorf("failed to set file origin, %s", err)
-		return
 	}
 }
 
