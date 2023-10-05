@@ -1,4 +1,4 @@
-//go:generate mockgen -package importer -destination mock.go github.com/anyproto/anytype-heart/core/block/import Creator,IDGetter
+//go:generate mockgen -package importer -exclude_interfaces Importer -self_package github.com/anyproto/anytype-heart/core/block/import -destination mock.go -source types.go
 package importer
 
 import (
