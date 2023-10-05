@@ -111,7 +111,7 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 		Id: t.objectTree.Id(),
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(source.UnmarshallChange, func(change *objecttree.Change) bool {
+	err = t.objectTree.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
 			return true
@@ -134,7 +134,7 @@ func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
 		return
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(source.UnmarshallChange, func(change *objecttree.Change) bool {
+	err = t.objectTree.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
 			return true

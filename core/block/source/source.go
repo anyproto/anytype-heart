@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	defaultDataType  = "1/s"
+	dataTypeSnappy   = "1/s"
 	poolSize         = 4096
 	snappyLowerLimit = 64
 	changeSizeLimit  = 10 * 1024 * 1024
@@ -50,7 +50,7 @@ var (
 	ErrBigChangeSize  = errors.New("change size is above the limit")
 )
 
-func MarshallChange(change *pb.Change) (result []byte, dataType string, err error) {
+func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
 	data := bytesPool.Get().([]byte)[:0]
 	defer bytesPool.Put(data)
 
@@ -63,7 +63,7 @@ func MarshallChange(change *pb.Change) (result []byte, dataType string, err erro
 
 	if n > snappyLowerLimit {
 		result = snappy.Encode(nil, data)
-		dataType = defaultDataType
+		dataType = dataTypeSnappy
 	} else {
 		result = bytes.Clone(data)
 	}
@@ -71,18 +71,20 @@ func MarshallChange(change *pb.Change) (result []byte, dataType string, err erro
 	return
 }
 
-func UnmarshallChange(treeChange *objecttree.Change, data []byte) (result any, err error) {
+func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, err error) {
 	change := &pb.Change{}
-	if treeChange.DataType == defaultDataType {
+	if treeChange.DataType == dataTypeSnappy {
 		buf := bytesPool.Get().([]byte)[:0]
 		defer bytesPool.Put(buf)
 
-		n, dErr := snappy.DecodedLen(data)
-		buf = slices.Grow(buf, n)[:n]
-		var decoded []byte
-		decoded, err = snappy.Decode(buf, data)
-		if err == nil && dErr == nil {
-			data = decoded
+		var n int
+		if n, err = snappy.DecodedLen(data); err == nil {
+			buf = slices.Grow(buf, n)[:n]
+			var decoded []byte
+			decoded, err = snappy.Decode(buf, data)
+			if err == nil {
+				data = decoded
+			}
 		}
 	}
 	if err = proto.Unmarshal(data, change); err == nil {
@@ -307,7 +309,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		params.Time = time.Now()
 	}
 	change := s.buildChange(params)
-	data, dataType, err := MarshallChange(change)
+	data, dataType, err := MarshalChange(change)
 	if err != nil {
 		return
 	}
@@ -316,18 +318,14 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 			Errorf("change size (%d bytes) is above the limit of %d bytes", len(data), changeSizeLimit)
 		return "", err
 	}
-	content := objecttree.SignableChangeContent{
+
+	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountService.Account().SignKey,
 		IsSnapshot:  change.Snapshot != nil,
 		IsEncrypted: true,
-	}
-
-	if dataType != "" {
-		content.DataType = dataType
-	}
-
-	addResult, err := s.ObjectTree.AddContent(context.Background(), content)
+		DataType:    dataType,
+	})
 	if err != nil {
 		return
 	}
@@ -435,7 +433,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 			}
 		}
 	}
-	err := s.ObjectTree.IterateRoot(UnmarshallChange, func(c *objecttree.Change) (isContinue bool) {
+	err := s.ObjectTree.IterateRoot(UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 		model, ok := c.Model.(*pb.Change)
 		if !ok {
 			return false
@@ -506,7 +504,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 	}
 
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId, UnmarshallChange,
+	err = ot.IterateFrom(startId, UnmarshalChange,
 		func(change *objecttree.Change) bool {
 			count++
 			lastChange = change
@@ -575,7 +573,7 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 	}
 
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId, UnmarshallChange, func(change *objecttree.Change) bool {
+	err = ot.IterateFrom(startId, UnmarshalChange, func(change *objecttree.Change) bool {
 		count++
 		lastChange = change
 		// that means that we are starting from tree root

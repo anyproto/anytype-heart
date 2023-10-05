@@ -127,7 +127,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 		}
 		var data []*pb.RpcHistoryVersion
 
-		e = tree.IterateFrom(tree.Root().Id, source.UnmarshallChange, func(c *objecttree.Change) (isContinue bool) {
+		e = tree.IterateFrom(tree.Root().Id, source.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 			data = append(data, &pb.RpcHistoryVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,

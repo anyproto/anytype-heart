@@ -23,7 +23,7 @@ func TestMarshallChange(t *testing.T) {
 		c := changeWithSmallTextUpdate()
 
 		//when
-		data, dt, err := MarshallChange(c)
+		data, dt, err := MarshalChange(c)
 
 		//then
 		assert.NoError(t, err)
@@ -36,12 +36,12 @@ func TestMarshallChange(t *testing.T) {
 		c := changeWithSetBigDetail(snappyLowerLimit)
 
 		//when
-		data, dt, err := MarshallChange(c)
+		data, dt, err := MarshalChange(c)
 
 		//then
 		assert.NoError(t, err)
 		assert.NotEmpty(t, data)
-		assert.Equal(t, defaultDataType, dt)
+		assert.Equal(t, dataTypeSnappy, dt)
 	})
 }
 
@@ -51,13 +51,13 @@ func TestUnmarshallChange(t *testing.T) {
 	t.Run("unmarshall small change", func(t *testing.T) {
 		//given
 		c := changeWithSmallTextUpdate()
-		data, dt, err := MarshallChange(c)
+		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Empty(t, dt)
 
 		//when
-		res, err := UnmarshallChange(&objecttree.Change{DataType: dt}, data)
+		res, err := UnmarshalChange(&objecttree.Change{DataType: dt}, data)
 
 		//then
 		assert.NoError(t, err)
@@ -67,13 +67,13 @@ func TestUnmarshallChange(t *testing.T) {
 	t.Run("unmarshall bigger change", func(t *testing.T) {
 		//given
 		c := changeWithSetBigDetail(snappyLowerLimit)
-		data, dt, err := MarshallChange(c)
+		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
-		require.Equal(t, defaultDataType, dt)
+		require.Equal(t, dataTypeSnappy, dt)
 
 		//when
-		res, err := UnmarshallChange(&objecttree.Change{DataType: dt}, data)
+		res, err := UnmarshalChange(&objecttree.Change{DataType: dt}, data)
 
 		//then
 		assert.NoError(t, err)
@@ -83,13 +83,13 @@ func TestUnmarshallChange(t *testing.T) {
 	t.Run("unmarshall plain change with invalid data type", func(t *testing.T) {
 		//given
 		c := changeWithSmallTextUpdate()
-		data, dt, err := MarshallChange(c)
+		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Empty(t, dt)
 
 		//when
-		res, err := UnmarshallChange(&objecttree.Change{DataType: invalidDataType}, data)
+		res, err := UnmarshalChange(&objecttree.Change{DataType: invalidDataType}, data)
 
 		//then
 		assert.NoError(t, err)
@@ -99,29 +99,45 @@ func TestUnmarshallChange(t *testing.T) {
 	t.Run("unmarshall plain change with encoded data type", func(t *testing.T) {
 		//given
 		c := changeWithSmallTextUpdate()
-		data, dt, err := MarshallChange(c)
+		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
 		require.Empty(t, dt)
 
 		//when
-		res, err := UnmarshallChange(&objecttree.Change{DataType: defaultDataType}, data)
+		res, err := UnmarshalChange(&objecttree.Change{DataType: dataTypeSnappy}, data)
 
 		//then
 		assert.NoError(t, err)
 		assert.Equal(t, c, res)
 	})
 
+	t.Run("unmarshall bigger change with empty data type", func(t *testing.T) {
+		//given
+		c := changeWithSetBigDetail(snappyLowerLimit)
+		data, dt, err := MarshalChange(c)
+		require.NoError(t, err)
+		require.NotEmpty(t, data)
+		require.Equal(t, dataTypeSnappy, dt)
+
+		//when
+		res, err := UnmarshalChange(&objecttree.Change{DataType: ""}, data)
+
+		//then
+		assert.Error(t, err)
+		assert.Nil(t, res)
+	})
+
 	t.Run("unmarshall encoded change with invalid data type", func(t *testing.T) {
 		//given
 		c := changeWithSetBigDetail(snappyLowerLimit)
-		data, dt, err := MarshallChange(c)
+		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 		require.NotEmpty(t, data)
-		require.Equal(t, defaultDataType, dt)
+		require.Equal(t, dataTypeSnappy, dt)
 
 		//when
-		res, err := UnmarshallChange(&objecttree.Change{DataType: invalidDataType}, data)
+		res, err := UnmarshalChange(&objecttree.Change{DataType: invalidDataType}, data)
 
 		//then
 		assert.Error(t, err)
@@ -154,32 +170,32 @@ func BenchmarkMarshallChange_SmallTextUpdate(b *testing.B) {
 }
 
 func BenchmarkUnmarshallChange_CreateBigBlock(b *testing.B) {
-	data, dt, _ := MarshallChange(changeWithCreateBigBlock())
+	data, dt, _ := MarshalChange(changeWithCreateBigBlock())
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
 }
 
 func BenchmarkUnmarshallChange_SetBigDetail(b *testing.B) {
-	data, dt, _ := MarshallChange(changeWithSetBigDetail(len(text)))
+	data, dt, _ := MarshalChange(changeWithSetBigDetail(len(text)))
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
 }
 
 func BenchmarkUnmarshallChange_SetSmallDetail(b *testing.B) {
-	data, dt, _ := MarshallChange(changeWithSetSmallDetail())
+	data, dt, _ := MarshalChange(changeWithSetSmallDetail())
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
 }
 
 func BenchmarkUnmarshallChange_BigSnapshot(b *testing.B) {
-	data, dt, _ := MarshallChange(changeWithBigSnapshot())
+	data, dt, _ := MarshalChange(changeWithBigSnapshot())
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
 }
 
 func BenchmarkUnmarshallChange_BlockUpdate(b *testing.B) {
-	data, dt, _ := MarshallChange(changeWithBlockUpdate())
+	data, dt, _ := MarshalChange(changeWithBlockUpdate())
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
 }
 
 func BenchmarkUnmarshallChange_SmallTextUpdate(b *testing.B) {
-	data, dt, _ := MarshallChange(changeWithSmallTextUpdate())
+	data, dt, _ := MarshalChange(changeWithSmallTextUpdate())
 	benchmarkUnmarshallChange(&objecttree.Change{DataType: dt}, data, b)
 }
 
@@ -193,13 +209,13 @@ func randStr(txt string) string {
 
 func benchmarkMarshallChange(c *pb.Change, b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		_, _, _ = MarshallChange(c)
+		_, _, _ = MarshalChange(c)
 	}
 }
 
 func benchmarkUnmarshallChange(c *objecttree.Change, data []byte, b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, _ = UnmarshallChange(c, data)
+		_, _ = UnmarshalChange(c, data)
 	}
 }
 
