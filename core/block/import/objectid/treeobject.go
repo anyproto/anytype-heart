@@ -12,24 +12,24 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 )
 
-type TreeObject struct {
-	existingObject *ExistingObject
+type treeObject struct {
+	existingObject *existingObject
 	objectCache    objectcache.Cache
 }
 
-func NewTreeObject(existingObject *ExistingObject, objectCache objectcache.Cache) *TreeObject {
-	return &TreeObject{existingObject: existingObject, objectCache: objectCache}
+func newTreeObject(existingObject *existingObject, objectCache objectcache.Cache) *treeObject {
+	return &treeObject{existingObject: existingObject, objectCache: objectCache}
 }
 
-func (t *TreeObject) GetID(spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
-	id, payload, err := t.existingObject.GetID(spaceID, sn, createdTime, getExisting)
+func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+	id, payload, err := t.existingObject.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
 	if id != "" {
 		return id, payload, nil
 	}
-	payload, err = t.objectCache.CreateTreePayload(context.Background(), spaceID, payloadcreator.PayloadCreationParams{
+	payload, err = t.objectCache.CreateTreePayload(ctx, spaceID, payloadcreator.PayloadCreationParams{
 		Time:           createdTime,
 		SmartblockType: sn.SbType,
 	})

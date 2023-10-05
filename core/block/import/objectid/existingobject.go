@@ -1,6 +1,7 @@
 package objectid
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -15,15 +16,15 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type ExistingObject struct {
+type existingObject struct {
 	objectStore objectstore.ObjectStore
 }
 
-func NewExistingObject(objectStore objectstore.ObjectStore) *ExistingObject {
-	return &ExistingObject{objectStore: objectStore}
+func newExistingObject(objectStore objectstore.ObjectStore) *existingObject {
+	return &existingObject{objectStore: objectStore}
 }
 
-func (e *ExistingObject) GetID(spaceID string, sn *converter.Snapshot, _ time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *converter.Snapshot, _ time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	id, err := e.getObjectByOldAnytypeID(spaceID, sn)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get object by old anytype id: %w", err)
@@ -41,7 +42,7 @@ func (e *ExistingObject) GetID(spaceID string, sn *converter.Snapshot, _ time.Ti
 	return relationOption, treestorage.TreeStorageCreatePayload{}, nil
 }
 
-func (e *ExistingObject) getObjectByOldAnytypeID(spaceID string, sn *converter.Snapshot) (string, error) {
+func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *converter.Snapshot) (string, error) {
 	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
 
 	// Check for imported objects
@@ -85,7 +86,7 @@ func (e *ExistingObject) getObjectByOldAnytypeID(spaceID string, sn *converter.S
 	return "", err
 }
 
-func (e *ExistingObject) getExistingObject(spaceID string, sn *converter.Snapshot) string {
+func (e *existingObject) getExistingObject(spaceID string, sn *converter.Snapshot) string {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -107,7 +108,7 @@ func (e *ExistingObject) getExistingObject(spaceID string, sn *converter.Snapsho
 	return ""
 }
 
-func (e *ExistingObject) getExistingRelationOption(snapshot *converter.Snapshot) string {
+func (e *existingObject) getExistingRelationOption(snapshot *converter.Snapshot) string {
 	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
 	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
 	ids, _, err := e.objectStore.QueryObjectIDs(database.Query{

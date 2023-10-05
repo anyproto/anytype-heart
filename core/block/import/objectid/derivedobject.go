@@ -16,18 +16,18 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type DerivedObject struct {
-	existingObject *ExistingObject
+type derivedObject struct {
+	existingObject *existingObject
 	objectStore    objectstore.ObjectStore
 	cache          objectcache.Cache
 }
 
-func NewDerivedObject(existingObject *ExistingObject, objectStore objectstore.ObjectStore, cache objectcache.Cache) *DerivedObject {
-	return &DerivedObject{existingObject: existingObject, objectStore: objectStore, cache: cache}
+func newDerivedObject(existingObject *existingObject, objectStore objectstore.ObjectStore, cache objectcache.Cache) *derivedObject {
+	return &derivedObject{existingObject: existingObject, objectStore: objectStore, cache: cache}
 }
 
-func (r *DerivedObject) GetID(spaceID string, sn *converter.Snapshot, createTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
-	id, payload, err := r.existingObject.GetID(spaceID, sn, createTime, getExisting)
+func (r *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+	id, payload, err := r.existingObject.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -43,7 +43,7 @@ func (r *DerivedObject) GetID(spaceID string, sn *converter.Snapshot, createTime
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get unique key: %w", err)
 		}
 	}
-	payload, err = r.cache.DeriveTreePayload(context.Background(), spaceID, payloadcreator.PayloadDerivationParams{
+	payload, err = r.cache.DeriveTreePayload(ctx, spaceID, payloadcreator.PayloadDerivationParams{
 		Key: uk,
 	})
 	if err != nil {

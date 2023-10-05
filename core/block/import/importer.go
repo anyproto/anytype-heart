@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -66,8 +67,9 @@ func New() Importer {
 }
 
 func (i *Import) Init(a *app.App) (err error) {
-	i.s = a.MustComponent(block.CName).(*block.Service)
-	coreService := a.MustComponent(core.CName).(core.Service)
+	i.s = app.MustComponent[*block.Service](a)
+	coreService := app.MustComponent[core.Service](a)
+	spaceService := app.MustComponent[space.SpaceService](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{
@@ -83,15 +85,15 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 	objectCache := app.MustComponent[objectcache.Cache](a)
-	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
+	resolver := app.MustComponent[idresolver.Resolver](a)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.idProvider = objectid.NewIDProvider(store, objectCache, coreService)
+	i.idProvider = objectid.NewIDProvider(store, objectCache, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objectCache, coreService, factory, store, relationSyncer, fileStore)
+	i.oc = NewCreator(i.s, objectCache, spaceService, factory, store, relationSyncer, fileStore)
 	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	i.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
+	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
@@ -357,7 +359,7 @@ func (i *Import) getObjectID(
 	} else {
 		createdTime = time.Now()
 	}
-	id, payload, err := i.idProvider.GetID(spaceID, snapshot, createdTime, updateExisting)
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, createdTime, updateExisting)
 	if err != nil {
 		return err
 	}

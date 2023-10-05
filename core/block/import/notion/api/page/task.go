@@ -69,9 +69,9 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	}
 	resultSnapshots = append(resultSnapshots, sn)
 	for _, objectsSnapshot := range subObjectsSnapshots {
-		sbType, id := pt.getSmartBlockTypeAndID(objectsSnapshot)
+		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &converter.Snapshot{
-			Id:       id,
+			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
 			SbType:   sbType,
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
 		})
@@ -235,6 +235,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 		return details
 	}
 	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	return details
 }
 
@@ -298,13 +299,11 @@ func (pt *Task) setDetails(propObject property.Object, key string, details map[s
 	return nil
 }
 
-func (pt *Task) getSmartBlockTypeAndID(objectSnapshot *model.SmartBlockSnapshotBase) (smartblock.SmartBlockType, string) {
+func (pt *Task) getSmartBlockTypeAndID(objectSnapshot *model.SmartBlockSnapshotBase) smartblock.SmartBlockType {
 	if lo.Contains(objectSnapshot.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
-		id := pbtypes.GetString(objectSnapshot.Details, bundle.RelationKeyId.String())
-		return smartblock.SmartBlockTypeRelationOption, id
+		return smartblock.SmartBlockTypeRelationOption
 	}
-	id := pbtypes.GetString(objectSnapshot.Details, bundle.RelationKeyRelationKey.String())
-	return smartblock.SmartBlockTypeRelation, id
+	return smartblock.SmartBlockTypeRelation
 }
 
 func handlePeopleItem(properties []interface{}, pr *property.PeopleItem) {
@@ -489,6 +488,7 @@ func getDetailsForRelationOption(name, rel string) *types.Struct {
 		return details
 	}
 	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	return details
 }
 

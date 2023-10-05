@@ -3,6 +3,7 @@
 package mock_objectid
 
 import (
+	"context"
 	time "time"
 
 	treestorage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -25,7 +26,7 @@ func (_m *MockIDGetter) EXPECT() *MockIDGetter_Expecter {
 }
 
 // GetID provides a mock function with given fields: spaceID, sn, createdTime, getExisting
-func (_m *MockIDGetter) GetID(spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (_m *MockIDGetter) GetIDAndPayload(ctx context.Context, spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	ret := _m.Called(spaceID, sn, createdTime, getExisting)
 
 	var r0 string
@@ -55,7 +56,7 @@ func (_m *MockIDGetter) GetID(spaceID string, sn *converter.Snapshot, createdTim
 	return r0, r1, r2
 }
 
-// MockIDGetter_GetID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetID'
+// MockIDGetter_GetID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIDAndPayload'
 type MockIDGetter_GetID_Call struct {
 	*mock.Call
 }
@@ -66,7 +67,7 @@ type MockIDGetter_GetID_Call struct {
 //   - createdTime time.Time
 //   - getExisting bool
 func (_e *MockIDGetter_Expecter) GetID(spaceID interface{}, sn interface{}, createdTime interface{}, getExisting interface{}) *MockIDGetter_GetID_Call {
-	return &MockIDGetter_GetID_Call{Call: _e.mock.On("GetID", spaceID, sn, createdTime, getExisting)}
+	return &MockIDGetter_GetID_Call{Call: _e.mock.On("GetIDAndPayload", spaceID, sn, createdTime, getExisting)}
 }
 
 func (_c *MockIDGetter_GetID_Call) Run(run func(spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool)) *MockIDGetter_GetID_Call {

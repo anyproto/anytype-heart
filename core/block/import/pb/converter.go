@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -324,15 +323,6 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 	return id, nil
 }
 
-// getIDForSubObject preserves original id from snapshot for relations and object types
-func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
-	originalID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	if strings.HasPrefix(originalID, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(originalID, addr.RelationKeyToIdPrefix) {
-		return originalID
-	}
-	return id
-}
-
 func (p *Pb) getIDForUserProfile(spaceID string, mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	if objectID == profileID && isMigration {
@@ -437,7 +427,8 @@ func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
 		return key != bundle.RelationKeyIsFavorite.String() &&
 			key != bundle.RelationKeyIsArchived.String() &&
 			key != bundle.RelationKeyCreatedDate.String() &&
-			key != bundle.RelationKeyLastModifiedDate.String()
+			key != bundle.RelationKeyLastModifiedDate.String() &&
+			key != bundle.RelationKeyUniqueKey.String()
 	})
 
 	for _, snapshot := range snapshots {
