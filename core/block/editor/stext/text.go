@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -253,11 +254,18 @@ func (t *textImpl) SetIcon(ctx session.Context, image string, emoji string, bloc
 	return t.Apply(s)
 }
 
-func (t *textImpl) newSetTextState(blockId string, ctx session.Context) *state.State {
-	if t.lastSetTextState != nil && t.lastSetTextId == blockId {
+func (t *textImpl) newSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State {
+	if t.lastSetTextState != nil && t.lastSetTextId == blockID {
 		return t.lastSetTextState
 	}
-	t.lastSetTextId = blockId
+	if selectedRange != nil {
+		t.History().SetCarriageBeforeState(undo.CarriageState{
+			BlockID:   blockID,
+			RangeFrom: selectedRange.From,
+			RangeTo:   selectedRange.To,
+		})
+	}
+	t.lastSetTextId = blockID
 	t.lastSetTextState = t.NewStateCtx(ctx)
 	go func() {
 		select {
@@ -328,14 +336,14 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 	}()
 
 	// TODO: GO-2062 Need to refactor text shortening, as it could cut string incorrectly
-	//if len(req.Text) > textSizeLimit {
+	// if len(req.Text) > textSizeLimit {
 	//	log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)
 	//	req.Text = req.Text[:textSizeLimit]
-	//}
+	// }
 
 	// We create new context to avoid sending events to the current session
 	ctx := session.NewChildContext(parentCtx)
-	s := t.newSetTextState(req.BlockId, ctx)
+	s := t.newSetTextState(req.BlockId, req.SelectedTextRange, ctx)
 	wasEmpty := s.IsEmpty(true)
 
 	applyFlags := make([]smartblock.ApplyFlag, 0)

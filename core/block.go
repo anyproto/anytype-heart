@@ -7,8 +7,10 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -255,6 +257,30 @@ func (mw *Middleware) BlockExport(cctx context.Context, req *pb.RpcBlockExportRe
 	}
 
 	return response(pb.RpcBlockExportResponseError_NULL, path, nil)
+}
+
+func (mw *Middleware) BlockSetCarriage(_ context.Context, req *pb.RpcBlockSetCarriageRequest) *pb.RpcBlockSetCarriageResponse {
+	response := func(code pb.RpcBlockSetCarriageResponseErrorCode, err error) *pb.RpcBlockSetCarriageResponse {
+		m := &pb.RpcBlockSetCarriageResponse{Error: &pb.RpcBlockSetCarriageResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return block.Do(bs, req.ContextId, func(sb smartblock.SmartBlock) error {
+			sb.History().SetCarriageState(undo.CarriageState{
+				BlockID:   req.BlockId,
+				RangeFrom: req.Range.From,
+				RangeTo:   req.Range.To,
+			})
+			return nil
+		})
+	})
+	if err != nil {
+		return response(pb.RpcBlockSetCarriageResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockSetCarriageResponseError_NULL, err)
 }
 
 func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse {
