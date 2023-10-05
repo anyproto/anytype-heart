@@ -23,7 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -105,7 +105,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := BlockBySource(s.SpaceID(), d.sbtProvider, d.systemObjectService, source)
+	dvContent, _, err := BlockBySource(d.SpaceID(), d.sbtProvider, d.systemObjectService, source)
 	if err != nil {
 		return
 	}
@@ -130,7 +130,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.systemObjectService.FetchRelationByKey(s.SpaceID(), key)
+		relation, err2 := d.systemObjectService.FetchRelationByKey(d.SpaceID(), key)
 		if err2 != nil {
 			return err2
 		}

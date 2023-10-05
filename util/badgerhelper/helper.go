@@ -56,6 +56,8 @@ func marshalValue(value any) ([]byte, error) {
 			return proto.Marshal(v)
 		case string:
 			return []byte(v), nil
+		case []byte:
+			return v, nil
 		default:
 			return nil, fmt.Errorf("unsupported type %T", v)
 		}

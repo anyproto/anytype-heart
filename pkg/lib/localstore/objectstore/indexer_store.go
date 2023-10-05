@@ -33,14 +33,25 @@ func (s *dsObjectStore) RemoveIDsFromFullTextQueue(ids []string) {
 	}
 }
 
-func (s *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
+func (s *dsObjectStore) GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error) {
+	return badgerhelper.GetValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
+		checksums := &model.ObjectStoreChecksums{}
+		return checksums, proto.Unmarshal(raw, checksums)
+	})
+}
+
+func (s *dsObjectStore) SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error) {
+	return badgerhelper.SetValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), checksums)
+}
+
+func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
 	return badgerhelper.GetValue(s.db, bundledChecksums.Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
 		checksums := &model.ObjectStoreChecksums{}
 		return checksums, proto.Unmarshal(raw, checksums)
 	})
 }
 
-func (s *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (err error) {
+func (s *dsObjectStore) SaveGlobalChecksums(checksums *model.ObjectStoreChecksums) (err error) {
 	return badgerhelper.SetValue(s.db, bundledChecksums.Bytes(), checksums)
 }
 

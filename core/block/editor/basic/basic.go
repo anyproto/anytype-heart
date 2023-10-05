@@ -374,7 +374,7 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, systemObjectService syst
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := systemObjectService.FetchRelationByKey(s.SpaceID(), req.RelationKey)
+	rel, err := systemObjectService.FetchRelationByKey(bs.SpaceID(), req.RelationKey)
 	if err != nil {
 		return
 	}

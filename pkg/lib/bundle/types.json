@@ -295,7 +295,21 @@
     "relations": [
       "tag"
     ],
-    "description": "Space for sharing"
+    "description": "Workspace"
+  },
+  {
+    "id": "spaceView",
+    "name": "Space",
+    "types": [
+      "SpaceView"
+    ],
+    "emoji": "🌎",
+    "hidden": true,
+    "layout": "spaceView",
+    "relations": [
+      "tag"
+    ],
+    "description": "Space"
   },
   {
     "id": "template",

@@ -125,7 +125,6 @@ type SmartBlock interface {
 	AddRelationLinks(ctx session.Context, relationIds ...string) (err error)
 	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error)
-	TemplateCreateFromObjectState() (*state.State, error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetIsDeleted()
 	IsDeleted() bool
@@ -863,7 +862,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.systemObjectService.FetchRelationByKeys(s.SpaceID(), relationKeys...)
+	relations, err := sb.systemObjectService.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -978,23 +977,6 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 		}
 	}
 	return sb.Apply(s)
-}
-
-func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
-	st := sb.NewState().Copy()
-	st.SetLocalDetails(nil)
-	targetObjectTypeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), st.SpaceID(), st.ObjectTypeKey())
-	if err != nil {
-		return nil, fmt.Errorf("get type id by key: %s", err)
-	}
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
-	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
-	for _, rel := range sb.Relations(st) {
-		if rel.DataSource == model.Relation_details && !rel.Hidden {
-			st.RemoveDetail(rel.Key)
-		}
-	}
-	return st, nil
 }
 
 func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []string) (err error) {

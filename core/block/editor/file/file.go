@@ -47,7 +47,7 @@ func NewFile(
 	idGetter PredefinedObjectsGetter,
 	tempDirProvider core.TempDirProvider,
 	fileService files.Service,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 ) File {
 	return &sfile{
 		SmartBlock:        sb,
@@ -88,7 +88,7 @@ type sfile struct {
 	fileSource        BlockService
 	tempDirProvider   core.TempDirProvider
 	fileService       files.Service
-	picker            getblock.Picker
+	picker            getblock.ObjectGetter
 	predefinedObjects PredefinedObjectsGetter
 }
 
@@ -322,7 +322,7 @@ type dropFilesProcess struct {
 	id              string
 	spaceID         string
 	s               BlockService
-	picker          getblock.Picker
+	picker          getblock.ObjectGetter
 	fileService     files.Service
 	tempDirProvider core.TempDirProvider
 	root            *dropFileEntry

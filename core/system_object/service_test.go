@@ -1,12 +1,14 @@
 package system_object
 
 import (
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"context"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -27,10 +29,13 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	coreService := mock_core.NewMockService(t)
+	deriver := mock_system_object.NewMockderiver(t)
 
+	ctx := context.Background()
 	a := new(app.App)
 	a.Register(objectStore)
-	a.Register(testutil.PrepareMock(a, coreService))
+	a.Register(testutil.PrepareMock(ctx, a, coreService))
+	a.Register(testutil.PrepareMock(ctx, a, deriver))
 
 	s := New()
 	err := s.Init(a)
