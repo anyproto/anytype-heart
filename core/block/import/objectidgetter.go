@@ -9,8 +9,8 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -41,10 +41,10 @@ type ObjectIDGetter struct {
 	objectStore   objectstore.ObjectStore
 	core          core.Service
 	createPayload map[string]treestorage.TreeStorageCreatePayload
-	service       *block.Service
+	service       payloadcreator.PayloadCreator
 }
 
-func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDGetter {
+func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service payloadcreator.PayloadCreator) IDGetter {
 	return &ObjectIDGetter{
 		objectStore: objectStore,
 		service:     service,
@@ -85,17 +85,26 @@ func (ou *ObjectIDGetter) Get(
 
 	var payload treestorage.TreeStorageCreatePayload
 	if sbType == sb.SmartBlockTypeRelation || sbType == sb.SmartBlockTypeObjectType {
-		id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 		uk, err := domain.UnmarshalUniqueKey(id)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, err
+			id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+			uk, err = domain.UnmarshalUniqueKey(id)
+			if err != nil {
+				return "", treestorage.TreeStorageCreatePayload{}, err
+			}
 		}
-		payload, err = ou.service.DeriveTreeCreatePayload(context.Background(), spaceID, uk)
+		payload, err = ou.service.DeriveTreePayload(context.Background(), spaceID, payloadcreator.PayloadDerivationParams{
+			Key: uk,
+		})
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
 		}
 	} else {
-		payload, err = ou.service.CreateTreePayload(context.Background(), spaceID, sbType, createdTime)
+		payload, err = ou.service.CreateTreePayload(context.Background(), spaceID, payloadcreator.PayloadCreationParams{
+			Time:           createdTime,
+			SmartblockType: sbType,
+		})
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create tree payload: %w", err)
 		}

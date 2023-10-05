@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
@@ -66,14 +67,16 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientserver"
-	"github.com/anyproto/anytype-heart/space/credentialprovider"
-	"github.com/anyproto/anytype-heart/space/localdiscovery"
-	"github.com/anyproto/anytype-heart/space/peermanager"
-	"github.com/anyproto/anytype-heart/space/peerstore"
-	"github.com/anyproto/anytype-heart/space/storage"
-	"github.com/anyproto/anytype-heart/space/syncstatusprovider"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
+	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -199,11 +202,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
 		Register(rpcstore.New()).
-		Register(space.New()).
 		Register(filestore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
+		Register(spacecore.New()).
+		Register(idresolver.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
@@ -239,6 +243,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory()).
+		Register(techspace.New()).
+		Register(space.New()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New())
 }

@@ -75,7 +75,6 @@ func (i *indexer) runFullTextIndexer() {
 func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
-
 	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
 		sbType, err := i.typeProvider.Type(sb.SpaceID(), id)
 		if err != nil {

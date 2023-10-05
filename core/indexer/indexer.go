@@ -10,25 +10,26 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -46,8 +47,10 @@ func New() Indexer {
 
 type Indexer interface {
 	ForceFTIndex()
-	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
-	EnsurePreinstalledObjects(spaceID string) error
+	StartFullTextIndex() error
+	ReindexCommonObjects() error
+	ReindexSpace(spaceID string) error
+	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -64,20 +67,19 @@ type objectCreator interface {
 	) (ids []string, objects []*types.Struct, err error)
 }
 
-type syncStarter interface {
-	StartSync()
+type personalIDProvider interface {
+	PersonalSpaceID() string
 }
 
 type indexer struct {
-	store         objectstore.ObjectStore
-	fileStore     filestore.FileStore
-	anytype       core.Service
-	source        source.Service
-	picker        block.Picker
-	ftsearch      ftsearch.FTSearch
-	objectCreator objectCreator
-	syncStarter   syncStarter
-	fileService   files.Service
+	store          objectstore.ObjectStore
+	fileStore      filestore.FileStore
+	source         source.Service
+	picker         block.ObjectGetter
+	ftsearch       ftsearch.FTSearch
+	storageService storage.ClientStorage
+	objectCreator  objectCreator
+	fileService    files.Service
 
 	quit       chan struct{}
 	btHash     Hasher
@@ -85,25 +87,28 @@ type indexer struct {
 	forceFt    chan struct{}
 
 	typeProvider typeprovider.SmartBlockTypeProvider
-	spaceService space.Service
+	spaceCore    spacecore.SpaceCoreService
+	provider     personalIDProvider
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
+
+	flags reindexFlags
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
-	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.objectCreator = app.MustComponent[objectCreator](a)
-	i.syncStarter = app.MustComponent[syncStarter](a)
-	i.picker = app.MustComponent[block.Picker](a)
-	i.spaceService = app.MustComponent[space.Service](a)
+	i.picker = app.MustComponent[block.ObjectGetter](a)
+	i.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
@@ -115,12 +120,12 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run(context.Context) (err error) {
+	return i.StartFullTextIndex()
+}
+
+func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
-	}
-	err = i.reindexIfNeeded()
-	if err != nil {
-		return err
 	}
 	go i.ftLoop()
 	return
@@ -131,18 +136,22 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
-	opts := &smartblock2.IndexOptions{}
+	opts := &editorsb.IndexOptions{}
 	for _, o := range options {
 		o(opts)
+	}
+	err := i.storageService.BindSpaceID(info.SpaceID, info.Id)
+	if err != nil {
+		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
+		return err
 	}
 	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
@@ -262,13 +271,13 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			if ok {
 				return
 			}
-			storeErr := i.spaceService.StoreSpaceID(id, spaceID)
-			if storeErr != nil {
-				log.With("id", id).Errorf("failed to store space id: %v", storeErr)
+			err := i.storageService.BindSpaceID(spaceID, id)
+			if err != nil {
+				log.Error("failed to bind space id", zap.Error(err), zap.String("id", id))
 				return
 			}
 			// file's hash is id
-			idxErr := i.reindexDoc(ctx, id)
+			idxErr := i.reindexDoc(ctx, spaceID, id)
 			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
 				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
 			}
@@ -278,14 +287,6 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			}
 		}(id)
 	}
-}
-
-func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock2.DocInfo, err error) {
-	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
-		info = sb.GetDocInfo()
-		return nil
-	})
-	return
 }
 
 func headsHash(heads []string) string {

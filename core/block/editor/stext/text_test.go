@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -543,5 +544,104 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		secondBlockId := sb.Doc.Pick("test").Model().ChildrenIds[1]
 		assert.NotEqual(t, "2", secondBlockId)
 		assert.Equal(t, "link name", sb.Doc.Pick(secondBlockId).Model().GetText().Text)
+	})
+}
+
+func TestTextImpl_shouldKeepInternalFlags(t *testing.T) {
+	text := "text"
+	rootID := "root"
+	blockID := "block"
+
+	t.Run("text is not changed", func(t *testing.T) {
+		// given
+		ctx := session.NewContext()
+		sb := smarttest.New(rootID)
+		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
+			AddBlock(newTextBlock(blockID, text))
+		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		tb := NewText(sb, nil, nil)
+
+		// when
+		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+			ContextId: rootID,
+			BlockId:   blockID,
+			Text:      text,
+		})
+		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+
+		// then
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Len(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()), 3)
+	})
+
+	t.Run("text is changed", func(t *testing.T) {
+		// given
+		ctx := session.NewContext()
+		sb := smarttest.New(rootID)
+		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
+			AddBlock(newTextBlock(blockID, text))
+		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		tb := NewText(sb, nil, nil)
+
+		// when
+		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+			ContextId: rootID,
+			BlockId:   blockID,
+			Text:      text + " is changed",
+		})
+		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+
+		// then
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Empty(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()))
+	})
+
+	t.Run("marks are changed", func(t *testing.T) {
+		// given
+		ctx := session.NewContext()
+		sb := smarttest.New(rootID)
+		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{blockID}})).
+			AddBlock(newTextBlock(blockID, text))
+		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		tb := NewText(sb, nil, nil)
+
+		// when
+		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+			ContextId: rootID,
+			BlockId:   blockID,
+			Text:      text,
+			Marks:     &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{{Type: model.BlockContentTextMark_Bold}}},
+		})
+		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+
+		// then
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Empty(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()))
+	})
+
+	t.Run("title is changed", func(t *testing.T) {
+		// given
+		ctx := session.NewContext()
+		sb := smarttest.New(rootID)
+		sb.AddBlock(simple.New(&model.Block{Id: rootID, ChildrenIds: []string{template.TitleBlockId}})).
+			AddBlock(newTextBlock(template.TitleBlockId, text))
+		_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{Key: bundle.RelationKeyInternalFlags.String(), Value: pbtypes.IntList(0, 1, 2)}}, false)
+		tb := NewText(sb, nil, nil)
+
+		// when
+		err1 := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
+			ContextId: rootID,
+			BlockId:   template.TitleBlockId,
+			Text:      text + " is changed",
+		})
+		err2 := tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
+
+		// then
+		assert.NoError(t, err1)
+		assert.NoError(t, err2)
+		assert.Len(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()), 3)
 	})
 }

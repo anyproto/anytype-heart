@@ -28,8 +28,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -137,7 +137,7 @@ type sourceDeps struct {
 
 	coreService         core.Service
 	accountService      accountservice.Service
-	spaceService        space.Service
+	spaceService        spacecore.SpaceCoreService
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
 	systemObjectService system_object.Service
@@ -179,7 +179,7 @@ type source struct {
 	coreService         core.Service
 	fileService         files.Service
 	accountService      accountservice.Service
-	spaceService        space.Service
+	spaceService        spacecore.SpaceCoreService
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	systemObjectService system_object.Service
 }
@@ -379,7 +379,7 @@ func checkChangeSize(data []byte, maxSize int) error {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.spaceService.GetSpace(context.Background(), s.spaceID)
+	spc, err := s.spaceService.Get(context.Background(), s.spaceID)
 	if err != nil {
 		return
 	}

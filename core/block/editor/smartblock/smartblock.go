@@ -58,6 +58,7 @@ const (
 	NoHooks
 	DoSnapshot
 	SkipIfNoChanges
+	KeepInternalFlags
 )
 
 type Hook int
@@ -125,7 +126,6 @@ type SmartBlock interface {
 	AddRelationLinks(ctx session.Context, relationIds ...string) (err error)
 	AddRelationLinksToState(s *state.State, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error)
-	TemplateCreateFromObjectState() (*state.State, error)
 	SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetIsDeleted()
 	IsDeleted() bool
@@ -613,6 +613,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		checkRestrictions = true
 		hooks             = true
 		skipIfNoChanges   = false
+		keepInternalFlags = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -628,6 +629,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			hooks = false
 		case SkipIfNoChanges:
 			skipIfNoChanges = true
+		case KeepInternalFlags:
+			keepInternalFlags = true
 		}
 	}
 
@@ -657,6 +660,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 	sb.beforeStateApply(s)
+
+	if !keepInternalFlags {
+		removeInternalFlags(s)
+	}
+
 	// this one will be reverted in case we don't have any actual change being made
 	s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 
@@ -863,7 +871,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.systemObjectService.FetchRelationByKeys(s.SpaceID(), relationKeys...)
+	relations, err := sb.systemObjectService.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -978,23 +986,6 @@ func (sb *smartBlock) SetVerticalAlign(ctx session.Context, align model.BlockVer
 		}
 	}
 	return sb.Apply(s)
-}
-
-func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
-	st := sb.NewState().Copy()
-	st.SetLocalDetails(nil)
-	targetObjectTypeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), st.SpaceID(), st.ObjectTypeKey())
-	if err != nil {
-		return nil, fmt.Errorf("get type id by key: %s", err)
-	}
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
-	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
-	for _, rel := range sb.Relations(st) {
-		if rel.DataSource == model.Relation_details && !rel.Hidden {
-			st.RemoveDetail(rel.Key)
-		}
-	}
-	return st, nil
 }
 
 func (sb *smartBlock) RemoveExtraRelations(ctx session.Context, relationIds []string) (err error) {
@@ -1304,22 +1295,22 @@ func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
 }
 
 func (sb *smartBlock) beforeStateApply(s *state.State) {
+	sb.setRestrictionsDetail(s)
+	sb.injectLinksDetails(s)
+}
+
+func removeInternalFlags(s *state.State) {
 	flags := internalflag.NewFromState(s)
 
 	// Run empty check only if any of these flags are present
-	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) {
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) || flags.Has(model.InternalFlag_editorSelectTemplate) {
 		if !s.IsEmpty(true) {
 			flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		}
-		if !s.IsEmpty(false) {
-			flags.Remove(model.InternalFlag_editorSelectType)
-		}
-
+		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.Remove(model.InternalFlag_editorSelectTemplate)
 		flags.AddToState(s)
 	}
-
-	sb.setRestrictionsDetail(s)
-	sb.injectLinksDetails(s)
 }
 
 func (sb *smartBlock) setRestrictionsDetail(s *state.State) {

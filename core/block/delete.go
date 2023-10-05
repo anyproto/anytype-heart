@@ -18,7 +18,7 @@ import (
 )
 
 func (s *Service) DeleteObject(objectID string) (err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(objectID)
+	spaceID, err := s.resolver.ResolveSpaceID(objectID)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -70,7 +70,8 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 		})
 	default:
 		var space commonspace.Space
-		space, err = s.spaceService.GetSpace(context.Background(), spaceID)
+		// TODO: [MR] should we do this via spaceService instead?
+		space, err = s.spaceCore.Get(context.Background(), spaceID)
 		if err != nil {
 			return
 		}

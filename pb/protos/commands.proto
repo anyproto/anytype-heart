@@ -5376,6 +5376,7 @@ message Rpc {
 
         message SpaceSummary {
             message Request {
+                string spaceId = 1;
             }
 
             message Response {

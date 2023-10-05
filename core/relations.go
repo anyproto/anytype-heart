@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
@@ -68,7 +69,8 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		spaceId, err := bs.ResolveSpaceID(req.ObjectTypeUrl)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceId, err := res.ResolveSpaceID(req.ObjectTypeUrl)
 		if err != nil {
 			return err
 		}

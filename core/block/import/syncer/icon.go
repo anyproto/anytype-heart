@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -20,12 +20,12 @@ import (
 var log = logging.Logger("import")
 
 type IconSyncer struct {
-	service *block.Service
-	picker  getblock.Picker
+	service  *block.Service
+	resolver idresolver.Resolver
 }
 
-func NewIconSyncer(service *block.Service, picker getblock.Picker) *IconSyncer {
-	return &IconSyncer{service: service, picker: picker}
+func NewIconSyncer(service *block.Service, resolver idresolver.Resolver) *IconSyncer {
+	return &IconSyncer{service: service, resolver: resolver}
 }
 
 func (is *IconSyncer) Sync(id string, b simple.Block) error {
@@ -38,7 +38,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block) error {
 	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
 		req = pb.RpcFileUploadRequest{Url: icon}
 	}
-	spaceID, err := is.service.ResolveSpaceID(id)
+	spaceID, err := is.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -47,7 +47,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block) error {
 		log.Errorf("failed uploading icon image file: %s", oserror.TransformError(err))
 	}
 
-	err = getblock.Do(is.picker, id, func(sb smartblock.SmartBlock) error {
+	err = block.Do(is.service, id, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
 		upErr := updater.Update(nil, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = hash

@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/ipfs/go-cid"
 
-	"github.com/anyproto/anytype-heart/space/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 type rpcHandler struct {

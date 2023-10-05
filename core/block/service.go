@@ -24,7 +24,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/history"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -48,7 +50,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/mutex"
@@ -64,11 +67,13 @@ import (
 const (
 	CName           = "block-service"
 	linkObjectShare = "anytype://object/share?"
+	BlankTemplateID = "blank"
 )
 
 var (
-	ErrUnexpectedBlockType = errors.New("unexpected block type")
-	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
+	ErrUnexpectedBlockType   = errors.New("unexpected block type")
+	ErrUnknownObjectType     = fmt.Errorf("unknown object type")
+	ErrObjectNotFoundByOldID = fmt.Errorf("failed to find template by Source Object id")
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -102,7 +107,6 @@ type objectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 }
-
 type DetailsGetter interface {
 	GetDetails() *types.Struct
 }
@@ -112,34 +116,27 @@ type InternalFlagsGetter interface {
 type TemplateIDGetter interface {
 	GetTemplateId() string
 }
-
-type indexer interface {
-	EnsurePreinstalledObjects(spaceID string) error
-}
-
 type builtinObjects interface {
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type Service struct {
-	anytype             core.Service
-	syncStatus          syncstatus.Service
-	eventSender         event.Sender
-	linkPreview         linkpreview.LinkPreview
-	process             process.Service
-	app                 *app.App
-	source              source.Service
-	objectStore         objectstore.ObjectStore
-	restriction         restriction.Service
-	bookmark            bookmarksvc.Service
-	systemObjectService system_object.Service
-	objectCache         objectcache.Cache
-
-	indexer indexer
-
-	objectCreator objectCreator
-
-	spaceService         space.Service
+	anytype              core.Service
+	syncStatus           syncstatus.Service
+	eventSender          event.Sender
+	linkPreview          linkpreview.LinkPreview
+	process              process.Service
+	app                  *app.App
+	source               source.Service
+	objectStore          objectstore.ObjectStore
+	restriction          restriction.Service
+	bookmark             bookmarksvc.Service
+	systemObjectService  system_object.Service
+	objectCache          objectcache.Cache
+	objectCreator        objectCreator
+	resolver             idresolver.Resolver
+	spaceService         space.SpaceService
+	spaceCore            spacecore.SpaceCoreService
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
@@ -175,18 +172,19 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
-	s.spaceService = a.MustComponent(space.CName).(space.Service)
+	s.spaceService = a.MustComponent(space.CName).(space.SpaceService)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectCache = app.MustComponent[objectcache.Cache](a)
+	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
+	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 
-	s.indexer = app.MustComponent[indexer](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.app = a
 	return
@@ -196,12 +194,23 @@ func (s *Service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *Service) PickBlock(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	return s.objectCache.PickBlock(ctx, objectID)
+func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	if err != nil {
+		return nil, err
+	}
+	return s.objectCache.GetObject(ctx, domain.FullID{
+		ObjectID: objectID,
+		SpaceID:  spaceID,
+	})
+}
+
+func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+	return s.objectCache.GetObject(ctx, id)
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
@@ -218,7 +227,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges); err != nil {
+		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 		}
 		afterApplyTime := time.Now()
@@ -355,7 +364,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uniqueKey)
+			id, err := s.objectCache.DeriveObjectID(ctx, spaceID, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -375,7 +384,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.anytype.DeriveObjectId(ctx, spaceID, uniqueKey)
+			id, err := s.objectCache.DeriveObjectID(ctx, spaceID, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -614,60 +623,19 @@ func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 }
 
 func (s *Service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
-	return "", nil
+	panic("should be removed")
 }
 
 func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
-	return nil, nil
+	panic("should be removed")
 }
 
 func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
-	panic("is not implemented")
-	// workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	// return Do(s,ctx, workspaceId, func(b smartblock.SmartBlock) error {
-	//	workspace, ok := b.(*editor.Workspaces)
-	//	if !ok {
-	//		return fmt.Errorf("incorrect object with workspace id")
-	//	}
-	//	return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
-	// })
+	panic("should be removed")
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
-	return "", fmt.Errorf("not implemented")
-	// workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	// if err == core.ErrObjectDoesNotBelongToWorkspace {
-	//	workspaceId = s.Anytype().AccountObjects().Account
-	// }
-	// var key string
-	// var addrs []string
-	// err = Do(s,ctx, workspaceId, func(b smartblock.SmartBlock) error {
-	//	workspace, ok := b.(*editor.Workspaces)
-	//	if !ok {
-	//		return fmt.Errorf("incorrect object with workspace id")
-	//	}
-	//	key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
-	//	return err
-	// })
-	// if err != nil {
-	//	return "", err
-	// }
-	// payload := &model.ThreadDeeplinkPayload{
-	//	Key:   key,
-	//	Addrs: addrs,
-	// }
-	// marshalledPayload, err := proto.Marshal(payload)
-	// if err != nil {
-	//	return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
-	// }
-	// encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
-	//
-	// params := url.Values{}
-	// params.Add("id", req.ObjectId)
-	// params.Add("payload", encodedPayload)
-	// encoded := params.Encode()
-	//
-	// return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
+	panic("should be removed")
 }
 
 func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSetIsArchivedRequest) error {
@@ -740,7 +708,7 @@ func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, is
 func (s *Service) partitionObjectIDsBySpaceID(objectIDs []string) (map[string][]string, error) {
 	res := map[string][]string{}
 	for _, objectID := range objectIDs {
-		spaceID, err := s.spaceService.ResolveSpaceID(objectID)
+		spaceID, err := s.resolver.ResolveSpaceID(objectID)
 		if err != nil {
 			return nil, fmt.Errorf("resolve spaceID: %w", err)
 		}
@@ -794,7 +762,7 @@ func (s *Service) objectLinksCollectionModify(collectionId string, objectId stri
 }
 
 func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error) {
-	spaceID, err := s.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -802,7 +770,7 @@ func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err e
 }
 
 func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
-	spaceID, err := s.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -892,7 +860,7 @@ func (s *Service) ObjectsDuplicate(ctx context.Context, ids []string) (newIds []
 }
 
 func (s *Service) DeleteArchivedObject(id string) (err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -984,16 +952,15 @@ func (s *Service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *Service) ResolveSpaceID(objectID string) (spaceID string, err error) {
-	return s.spaceService.ResolveSpaceID(objectID)
-}
-
-func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
+func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, err error) {
+	if templateID == BlankTemplateID || templateID == "" {
+		return s.BlankTemplateState(), nil
+	}
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
 		} else {
-			return fmt.Errorf("not a template")
+			return fmt.Errorf("object '%s' is not a template", templateID)
 		}
 		return nil
 	}); err != nil {
@@ -1003,7 +970,7 @@ func (s *Service) StateFromTemplate(templateID string, name string) (st *state.S
 }
 
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, err := s.PickBlock(context.Background(), id)
+	sb, err := s.GetObject(context.Background(), id)
 	if err != nil {
 		return err
 	}
@@ -1014,35 +981,35 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
 }
 
-func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
-	return Do(s, contextId, func(b smartblock.SmartBlock) error {
+func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
+	return Do(s, contextID, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		name := pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String())
-		ts, err := s.StateFromTemplate(templateId, name)
+		ts, err := s.StateFromTemplate(templateID, "")
 		if err != nil {
 			return err
 		}
-		ts.SetRootId(contextId)
+		ts.SetRootId(contextID)
 		ts.SetParent(orig)
 
-		fromLayout, _ := orig.Layout()
-		if toLayout, ok := orig.Layout(); ok {
-			if err := s.layoutConverter.Convert(ts, fromLayout, toLayout); err != nil {
-				return fmt.Errorf("convert layout: %w", err)
+		layout, found := orig.Layout()
+		if found {
+			if commonOperations, ok := b.(basic.CommonOperations); ok {
+				if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
+					return fmt.Errorf("convert layout: %w", err)
+				}
 			}
 		}
 
 		ts.BlocksInit(ts)
+
 		objType := ts.ObjectTypeKey()
-		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectTypeKey(objType)
 
-		flags := internalflag.NewFromState(ts)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorSelectTemplate)
+		flags := internalflag.NewFromState(orig)
 		flags.AddToState(ts)
 
-		return b.Apply(ts, smartblock.NoRestrictions)
+		// we provide KeepInternalFlags to allow further template applying and object type change
+		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
 }
 
@@ -1053,7 +1020,7 @@ func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 }
 
 func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(req.ContextId)
+	spaceID, err := s.resolver.ResolveSpaceID(req.ContextId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -1071,7 +1038,7 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 }
 
 func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -1118,4 +1085,16 @@ func (s *Service) GetLogFields() []zap.Field {
 		fields = append(fields, zap.Bool("predefined_object_was_missing", true))
 	}
 	return fields
+}
+
+func (s *Service) BlankTemplateState() (st *state.State) {
+	st = state.NewDoc(BlankTemplateID, nil).NewState()
+	template.InitTemplate(st, template.WithEmpty,
+		template.WithDefaultFeaturedRelations,
+		template.WithFeaturedRelations,
+		template.WithRequiredRelations(),
+		template.WithTitle,
+		template.WithDescription,
+	)
+	return
 }

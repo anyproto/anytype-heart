@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -49,18 +49,18 @@ type History interface {
 
 type history struct {
 	a                   core.Service
-	picker              block.Picker
+	picker              block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	systemObjectService system_object.Service
-	spaceService        space.Service
+	spaceService        spacecore.SpaceCoreService
 }
 
 func (h *history) Init(a *app.App) (err error) {
 	h.a = a.MustComponent(core.CName).(core.Service)
-	h.picker = app.MustComponent[block.Picker](a)
+	h.picker = app.MustComponent[block.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
-	h.spaceService = a.MustComponent(space.CName).(space.Service)
+	h.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
 	return
 }
 
@@ -184,7 +184,7 @@ func (h *history) SetVersion(id domain.FullID, versionId string) (err error) {
 }
 
 func (h *history) treeWithId(id domain.FullID, beforeId string, includeBeforeId bool) (ht objecttree.HistoryTree, sbt smartblock.SmartBlockType, err error) {
-	spc, err := h.spaceService.GetSpace(context.Background(), id.SpaceID)
+	spc, err := h.spaceService.Get(context.Background(), id.SpaceID)
 	if err != nil {
 		return
 	}

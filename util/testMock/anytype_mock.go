@@ -71,51 +71,6 @@ func (mr *MockServiceMockRecorder) Close(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockService)(nil).Close), arg0)
 }
 
-// DeriveObjectId mocks base method.
-func (m *MockService) DeriveObjectId(arg0 context.Context, arg1 string, arg2 domain.UniqueKey) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeriveObjectId", arg0, arg1, arg2)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DeriveObjectId indicates an expected call of DeriveObjectId.
-func (mr *MockServiceMockRecorder) DeriveObjectId(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeriveObjectId", reflect.TypeOf((*MockService)(nil).DeriveObjectId), arg0, arg1, arg2)
-}
-
-// DerivePredefinedObjects mocks base method.
-func (m *MockService) DerivePredefinedObjects(arg0 context.Context, arg1 string, arg2 bool) (threads.DerivedSmartblockIds, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DerivePredefinedObjects", arg0, arg1, arg2)
-	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DerivePredefinedObjects indicates an expected call of DerivePredefinedObjects.
-func (mr *MockServiceMockRecorder) DerivePredefinedObjects(arg0, arg1, arg2 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DerivePredefinedObjects", reflect.TypeOf((*MockService)(nil).DerivePredefinedObjects), arg0, arg1, arg2)
-}
-
-// EnsurePredefinedBlocks mocks base method.
-func (m *MockService) EnsurePredefinedBlocks(arg0 context.Context, arg1 string) (threads.DerivedSmartblockIds, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnsurePredefinedBlocks", arg0, arg1)
-	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// EnsurePredefinedBlocks indicates an expected call of EnsurePredefinedBlocks.
-func (mr *MockServiceMockRecorder) EnsurePredefinedBlocks(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsurePredefinedBlocks", reflect.TypeOf((*MockService)(nil).EnsurePredefinedBlocks), arg0, arg1)
-}
-
 // GetSystemRelationID mocks base method.
 func (m *MockService) GetSystemRelationID(arg0 string, arg1 domain.RelationKey) string {
 	m.ctrl.T.Helper()

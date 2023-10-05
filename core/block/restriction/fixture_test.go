@@ -1,6 +1,7 @@
 package restriction
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,14 +13,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
 	Service
-	objectStoreMock         *mock_objectstore.MockObjectStore
-	systemObjectServiceMock *mock_system_object.MockService
+	objectStoreMock *mock_objectstore.MockObjectStore
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -34,14 +34,13 @@ func newFixture(t *testing.T) *fixture {
 	a := &app.App{}
 	a.Register(objectStore)
 	a.Register(sbtProvider)
-	a.Register(testutil.PrepareMock(a, systemObjectService))
+	a.Register(testutil.PrepareMock(context.Background(), a, systemObjectService))
 	s := New()
 	err := s.Init(a)
 	require.NoError(t, err)
 	return &fixture{
-		Service:                 s,
-		objectStoreMock:         objectStore,
-		systemObjectServiceMock: systemObjectService,
+		Service:         s,
+		objectStoreMock: objectStore,
 	}
 }
 

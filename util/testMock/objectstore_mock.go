@@ -161,18 +161,18 @@ func (mr *MockObjectStoreMockRecorder) GetByIDs(arg0, arg1 any) *gomock.Call {
 }
 
 // GetChecksums mocks base method.
-func (m *MockObjectStore) GetChecksums() (*model.ObjectStoreChecksums, error) {
+func (m *MockObjectStore) GetChecksums(arg0 string) (*model.ObjectStoreChecksums, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetChecksums")
+	ret := m.ctrl.Call(m, "GetChecksums", arg0)
 	ret0, _ := ret[0].(*model.ObjectStoreChecksums)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetChecksums indicates an expected call of GetChecksums.
-func (mr *MockObjectStoreMockRecorder) GetChecksums() *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) GetChecksums(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChecksums", reflect.TypeOf((*MockObjectStore)(nil).GetChecksums))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChecksums", reflect.TypeOf((*MockObjectStore)(nil).GetChecksums), arg0)
 }
 
 // GetDetails mocks base method.
@@ -188,6 +188,21 @@ func (m *MockObjectStore) GetDetails(arg0 string) (*model.ObjectDetails, error) 
 func (mr *MockObjectStoreMockRecorder) GetDetails(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDetails", reflect.TypeOf((*MockObjectStore)(nil).GetDetails), arg0)
+}
+
+// GetGlobalChecksums mocks base method.
+func (m *MockObjectStore) GetGlobalChecksums() (*model.ObjectStoreChecksums, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGlobalChecksums")
+	ret0, _ := ret[0].(*model.ObjectStoreChecksums)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGlobalChecksums indicates an expected call of GetGlobalChecksums.
+func (mr *MockObjectStoreMockRecorder) GetGlobalChecksums() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGlobalChecksums", reflect.TypeOf((*MockObjectStore)(nil).GetGlobalChecksums))
 }
 
 // GetInboundLinksByID mocks base method.
@@ -461,17 +476,31 @@ func (mr *MockObjectStoreMockRecorder) SaveAccountStatus(arg0 any) *gomock.Call 
 }
 
 // SaveChecksums mocks base method.
-func (m *MockObjectStore) SaveChecksums(arg0 *model.ObjectStoreChecksums) error {
+func (m *MockObjectStore) SaveChecksums(arg0 string, arg1 *model.ObjectStoreChecksums) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveChecksums", arg0)
+	ret := m.ctrl.Call(m, "SaveChecksums", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveChecksums indicates an expected call of SaveChecksums.
-func (mr *MockObjectStoreMockRecorder) SaveChecksums(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) SaveChecksums(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveChecksums", reflect.TypeOf((*MockObjectStore)(nil).SaveChecksums), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveChecksums", reflect.TypeOf((*MockObjectStore)(nil).SaveChecksums), arg0, arg1)
+}
+
+// SaveGlobalChecksums mocks base method.
+func (m *MockObjectStore) SaveGlobalChecksums(arg0 *model.ObjectStoreChecksums) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveGlobalChecksums", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveGlobalChecksums indicates an expected call of SaveGlobalChecksums.
+func (mr *MockObjectStoreMockRecorder) SaveGlobalChecksums(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGlobalChecksums", reflect.TypeOf((*MockObjectStore)(nil).SaveGlobalChecksums), arg0)
 }
 
 // SaveLastIndexedHeadsHash mocks base method.
