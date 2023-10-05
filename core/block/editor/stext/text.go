@@ -480,7 +480,7 @@ func (t *textImpl) isLastTextBlockChanged() (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	oldTextBlock := t.Pick(t.lastSetTextId)
+	oldTextBlock := t.lastSetTextState.PickOrigin(t.lastSetTextId)
 	messages, err := oldTextBlock.Diff(newTextBlock)
 	return len(messages) != 0, err
 }

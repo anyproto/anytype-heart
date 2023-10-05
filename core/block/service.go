@@ -992,9 +992,11 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 		ts.SetParent(orig)
 
 		layout, found := orig.Layout()
-		if commonOperations, ok := b.(basic.CommonOperations); found && ok {
-			if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
-				return fmt.Errorf("convert layout: %w", err)
+		if found {
+			if commonOperations, ok := b.(basic.CommonOperations); ok {
+				if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
+					return fmt.Errorf("convert layout: %w", err)
+				}
 			}
 		}
 
