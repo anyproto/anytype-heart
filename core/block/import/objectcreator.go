@@ -97,7 +97,7 @@ func (oc *ObjectCreator) Create(
 		}
 	}
 
-	st.SetLastModified(lastModifiedDate, oc.core.AccountId())
+	st.SetLastModified(lastModifiedDate, addr.IdentityPrefix+oc.core.AccountId())
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
