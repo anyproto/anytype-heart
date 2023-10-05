@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -217,7 +218,7 @@ func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err error) {
-	var sendEvent, addHistory, checkRestrictions, hooks = true, true, true, true
+	var sendEvent, addHistory, checkRestrictions, hooks, keepInternalFlags = true, true, true, true, false
 
 	for _, f := range flags {
 		switch f {
@@ -229,6 +230,8 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 			checkRestrictions = false
 		case smartblock.NoHooks:
 			hooks = false
+		case smartblock.KeepInternalFlags:
+			keepInternalFlags = true
 		}
 	}
 
@@ -236,6 +239,10 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 		if err = s.CheckRestrictions(); err != nil {
 			return
 		}
+	}
+
+	if !keepInternalFlags {
+		s.RemoveDetail(bundle.RelationKeyInternalFlags.String())
 	}
 
 	msgs, act, err := state.ApplyState(s, true)

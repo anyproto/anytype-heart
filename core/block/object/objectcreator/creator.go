@@ -95,7 +95,7 @@ func (c *Creator) Name() (name string) {
 
 // TODO Temporarily
 type BlockService interface {
-	StateFromTemplate(templateID string, name string) (st *state.State, err error)
+	StateFromTemplate(templateID, name string) (st *state.State, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
@@ -495,6 +495,10 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		return c.createRelationOption(ctx, spaceID, details)
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
+	}
+
+	if templateID == block.BlankTemplateID {
+		templateID = ""
 	}
 
 	return c.CreateSmartBlockFromTemplate(ctx, spaceID, sbType, []domain.TypeKey{objectTypeKey}, details, templateID)
