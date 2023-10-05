@@ -77,7 +77,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/textileio/go-ds-badger3 v0.1.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	github.com/vektra/mockery/v2 v2.34.1
+	github.com/vektra/mockery/v2 v2.35.1
 	github.com/yuin/goldmark v1.5.6
 	go.uber.org/mock v0.3.0
 	go.uber.org/multierr v1.11.0
@@ -166,7 +166,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.5 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
-	github.com/huandu/xstrings v1.0.0 // indirect
+	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/imdario/mergo v0.3.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
