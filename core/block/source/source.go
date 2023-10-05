@@ -309,7 +309,12 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		params.Time = time.Now()
 	}
 	change := s.buildChange(params)
-	data, dataType, err := MarshalChange(change)
+
+	// TODO: GO-2151 Need to enable snappy compression when all clients will be able to decode snappy
+	// data, dataType, err := MarshalChange(change)
+	dataType := ""
+	data, err := change.Marshal()
+
 	if err != nil {
 		return
 	}
