@@ -111,6 +111,22 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID stri
 	return c.CreateSmartBlockFromState(ctx, spaceID, sbType, objectTypeKeys, details, createState)
 }
 
+func objectTypeKeyToSmartblockType(typeKey domain.TypeKey) (coresb.SmartBlockType, error) {
+	// TODO Add validation for types that user can't create
+	switch typeKey {
+	case bundle.TypeKeyObjectType:
+		return coresb.SmartBlockTypeObjectType, nil
+	case bundle.TypeKeyRelation:
+		return coresb.SmartBlockTypeRelation, nil
+	case bundle.TypeKeyRelationOption:
+		return coresb.SmartBlockTypeRelationOption, nil
+	case bundle.TypeKeyTemplate:
+		return coresb.SmartBlockTypeTemplate, nil
+	default:
+		return coresb.SmartBlockTypePage, nil
+	}
+}
+
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
 func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
