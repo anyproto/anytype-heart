@@ -85,10 +85,14 @@ func (ou *ObjectIDGetter) Get(
 
 	var payload treestorage.TreeStorageCreatePayload
 	if sbType == sb.SmartBlockTypeRelation || sbType == sb.SmartBlockTypeObjectType {
-		id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 		uk, err := domain.UnmarshalUniqueKey(id)
 		if err != nil {
-			return "", treestorage.TreeStorageCreatePayload{}, err
+			id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+			uk, err = domain.UnmarshalUniqueKey(id)
+			if err != nil {
+				return "", treestorage.TreeStorageCreatePayload{}, err
+			}
 		}
 		payload, err = ou.service.DeriveTreePayload(context.Background(), spaceID, payloadcreator.PayloadDerivationParams{
 			Key: uk,

@@ -508,7 +508,10 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeTemplate ||
 		sbType == smartblock.SmartBlockTypeDate ||
 		sbType == smartblock.SmartBlockTypeWorkspace ||
-		sbType == smartblock.SmartBlockTypeWidget
+		sbType == smartblock.SmartBlockTypeWidget ||
+		sbType == smartblock.SmartBlockTypeObjectType ||
+		sbType == smartblock.SmartBlockTypeRelation ||
+		sbType == smartblock.SmartBlockTypeRelationOption
 }
 
 func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
