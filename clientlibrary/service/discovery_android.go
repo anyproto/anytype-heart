@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/space/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
 type AndroidDiscoveryProxy interface {

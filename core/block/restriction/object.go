@@ -1,7 +1,6 @@
 package restriction
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
@@ -210,13 +209,6 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 			r = ObjectRestrictions{}
 		}
 	}
-
-	if !errors.Is(r.Check(model.Restrictions_Template), ErrRestricted) {
-		if ok, err := s.systemObjectService.HasObjectType(rh.ObjectTypeID()); err != nil || !ok {
-			r = append(r, model.Restrictions_Template)
-		}
-	}
-
 	return
 }
 

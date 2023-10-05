@@ -46,7 +46,7 @@ func NewProfile(
 	systemObjectService system_object.Service,
 	fileBlockService file.BlockService,
 	anytype core.Service,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 	bookmarkService bookmark.BookmarkService,
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,

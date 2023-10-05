@@ -26,7 +26,11 @@ type testPicker struct {
 	sb smartblock.SmartBlock
 }
 
-func (t *testPicker) PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+func (t *testPicker) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+	return t.sb, nil
+}
+
+func (t *testPicker) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	return t.sb, nil
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -28,7 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -49,7 +50,8 @@ type Service interface {
 
 type Creator struct {
 	blockService        BlockService
-	blockPicker         block.Picker
+	objectCache         objectcache.Cache
+	blockPicker         block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	collectionService   CollectionService
 	systemObjectService system_object.Service
@@ -72,7 +74,8 @@ func NewCreator() *Creator {
 
 func (c *Creator) Init(a *app.App) (err error) {
 	c.blockService = a.MustComponent(block.CName).(BlockService)
-	c.blockPicker = a.MustComponent(block.CName).(block.Picker)
+	c.objectCache = a.MustComponent(objectcache.CName).(objectcache.Cache)
+	c.blockPicker = a.MustComponent(block.CName).(block.ObjectGetter)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
@@ -93,8 +96,6 @@ func (c *Creator) Name() (name string) {
 // TODO Temporarily
 type BlockService interface {
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
-	CreateTreeObject(ctx context.Context, spaceID string, tp coresb.SmartBlockType, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, err error)
-	DeriveTreeObjectWithUniqueKey(ctx context.Context, spaceID string, key domain.UniqueKey, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
@@ -168,12 +169,19 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 		if err != nil {
 			return "", nil, err
 		}
-		sb, err = c.blockService.DeriveTreeObjectWithUniqueKey(ctx, spaceID, uk, initFunc)
+		sb, err = c.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+			Key:      uk,
+			InitFunc: initFunc,
+		})
 		if err != nil {
 			return "", nil, err
 		}
 	} else {
-		sb, err = c.blockService.CreateTreeObject(ctx, spaceID, sbType, initFunc)
+		sb, err = c.objectCache.CreateTreeObject(ctx, spaceID, objectcache.TreeCreationParams{
+			Time:           time.Now(),
+			SmartblockType: sbType,
+			InitFunc:       initFunc,
+		})
 		if err != nil {
 			return
 		}
@@ -306,7 +314,7 @@ func (w *Creator) createRelationOption(ctx context.Context, spaceID string, deta
 	} else if pbtypes.GetString(details, "name") == "" {
 		return "", nil, fmt.Errorf("name is empty")
 	} else if pbtypes.GetString(details, bundle.RelationKeyRelationKey.String()) == "" {
-		return "", nil, fmt.Errorf("invalid relation key: unknown enum")
+		return "", nil, fmt.Errorf("invalid relation Key: unknown enum")
 	}
 
 	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeRelationOption, details)
@@ -350,9 +358,9 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	for _, relKey := range recommendedRelationKeys {
 		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to create unique key: %w", err)
+			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
 		}
-		id, err := w.coreService.DeriveObjectId(ctx, spaceID, uk)
+		id, err := w.objectCache.DeriveObjectID(ctx, spaceID, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}

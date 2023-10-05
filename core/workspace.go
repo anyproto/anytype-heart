@@ -44,7 +44,7 @@ func (mw *Middleware) WorkspaceInfo(cctx context.Context, req *pb.RpcWorkspaceIn
 		}
 		return m
 	}
-
+	// TODO: [MR] this should probably be related only to account
 	info, err := getService[account.Service](mw).GetInfo(cctx, req.SpaceId)
 	if err != nil {
 		return response(info, pb.RpcWorkspaceInfoResponseError_UNKNOWN_ERROR, err)

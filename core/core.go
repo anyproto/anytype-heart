@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space"
 	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 
@@ -64,13 +63,6 @@ func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
-func (mw *Middleware) getAccountService() (a space.Service, err error) {
-	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent(space.CName).(space.Service), nil
-	}
-	return nil, ErrNotLoggedIn
-}
-
 func (mw *Middleware) doBlockService(f func(bs *block.Service) error) (err error) {
 	bs, err := mw.getBlockService()
 	if err != nil {
@@ -97,14 +89,6 @@ func requireApp(a *app.App) {
 	if a == nil {
 		panic(ErrNotLoggedIn)
 	}
-}
-
-func (mw *Middleware) doAccountService(f func(a space.Service) error) (err error) {
-	bs, err := mw.getAccountService()
-	if err != nil {
-		return
-	}
-	return f(bs)
 }
 
 func (mw *Middleware) GetAnytype() core.Service {
