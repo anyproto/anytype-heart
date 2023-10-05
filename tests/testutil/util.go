@@ -3,10 +3,12 @@ package testutil
 import (
 	"reflect"
 
+	"context"
 	"github.com/anyproto/any-sync/app"
+	mock2 "github.com/stretchr/testify/mock"
 )
 
-func PrepareMock(a *app.App, mock app.Component) app.Component {
+func PrepareMock(ctx context.Context, a *app.App, mock app.Component) app.Component {
 	mockValue := reflect.ValueOf(mock)
 	mockName := mockValue.Type().String()
 
@@ -44,6 +46,41 @@ func PrepareMock(a *app.App, mock app.Component) app.Component {
 	call = result[0]
 	callAnyTimes(call)
 
+	if _, ok := mock.(app.ComponentRunnable); ok {
+		result = callChainOfMethods(mockValue, []methodNameAndParams{
+			{
+				name:   "EXPECT",
+				params: nil,
+			},
+			{
+				name:   "Run",
+				params: []reflect.Value{reflect.ValueOf(ctx)},
+			},
+			{
+				name:   "Return",
+				params: []reflect.Value{reflect.Zero(reflect.TypeOf((*error)(nil)).Elem())},
+			},
+		})
+		call = result[0]
+		callAnyTimes(call)
+
+		result = callChainOfMethods(mockValue, []methodNameAndParams{
+			{
+				name:   "EXPECT",
+				params: nil,
+			},
+			{
+				name:   "Close",
+				params: []reflect.Value{reflect.ValueOf(mock2.Anything)},
+			},
+			{
+				name:   "Return",
+				params: []reflect.Value{reflect.Zero(reflect.TypeOf((*error)(nil)).Elem())},
+			},
+		})
+		call = result[0]
+		callAnyTimes(call)
+	}
 	return mock
 }
 

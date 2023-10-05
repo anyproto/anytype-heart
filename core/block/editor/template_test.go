@@ -32,7 +32,6 @@ func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string)
 	objectStore := testMock.NewMockObjectStore(ctrl)
 
 	systemObjectService := mock_system_object.NewMockService(t)
-	systemObjectService.EXPECT().GetObjectTypes(mock.Anything).Return(nil, nil).Maybe()
 	templ := &Template{
 		Page: &Page{
 			SmartBlock:          sb,

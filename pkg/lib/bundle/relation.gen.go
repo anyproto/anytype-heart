@@ -157,6 +157,8 @@ const (
 	RelationKeyBacklinks                 domain.RelationKey = "backlinks"
 	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
 	RelationKeyOrigin                    domain.RelationKey = "origin"
+	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
+	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 )
 
 var (
@@ -1821,6 +1823,34 @@ var (
 			MaxCount:         1,
 			Name:             "SpaceID",
 			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceLocalStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates the local status of space. Possible values: models.SpaceStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceLocalStatus",
+			Key:              "spaceLocalStatus",
+			MaxCount:         1,
+			Name:             "Space local status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceRemoteStatus: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates the remote status of space. Possible values: models.SpaceStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceRemoteStatus",
+			Key:              "spaceRemoteStatus",
+			MaxCount:         1,
+			Name:             "Space remote status",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

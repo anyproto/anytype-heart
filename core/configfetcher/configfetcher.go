@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 var log = logging.Logger("anytype-mw-configfetcher")
@@ -47,6 +47,10 @@ type ConfigFetcher interface {
 	Refetch()
 }
 
+type personalSpaceIDGetter interface {
+	PersonalSpaceID() string
+}
+
 type configFetcher struct {
 	store         objectstore.ObjectStore
 	eventSender   event.Sender
@@ -55,7 +59,8 @@ type configFetcher struct {
 
 	periodicSync periodicsync.PeriodicSync
 	client       coordinatorclient.CoordinatorClient
-	spaceService space.Service
+	spaceService spacecore.SpaceCoreService
+	account      personalSpaceIDGetter
 	wallet       wallet.Wallet
 	lastStatus   model.AccountStatusType
 }
@@ -91,7 +96,8 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.eventSender = a.MustComponent(event.CName).(event.Sender)
 	c.periodicSync = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
-	c.spaceService = a.MustComponent(space.CName).(space.Service)
+	c.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
+	c.account = app.MustComponent[personalSpaceIDGetter](a)
 	c.fetched = make(chan struct{})
 	return nil
 }
@@ -106,9 +112,10 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 			close(c.fetched)
 		})
 	}()
-	res, err := c.client.StatusCheck(ctx, c.spaceService.AccountId())
+	personalSpaceID := c.account.PersonalSpaceID()
+	res, err := c.client.StatusCheck(ctx, personalSpaceID)
 	if err == coordinatorproto.ErrSpaceNotExists {
-		sp, cErr := c.spaceService.GetSpace(ctx, c.spaceService.AccountId())
+		sp, cErr := c.spaceService.Get(ctx, personalSpaceID)
 		if cErr != nil {
 			return cErr
 		}

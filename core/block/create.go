@@ -6,7 +6,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -31,14 +30,14 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 			return fmt.Errorf("can't make template from this obect type")
 		}
 		objectTypeKeys = b.ObjectTypeKeys()
-		st, err = b.TemplateCreateFromObjectState()
+		st, err = s.templateCreateFromObjectState(b)
 		st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(model.ObjectOrigin_user)))
 		return err
 	}); err != nil {
 		return
 	}
 
-	spaceID, err := s.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -48,6 +47,23 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return
 	}
 	return
+}
+
+func (s *Service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*state.State, error) {
+	st := sb.NewState().Copy()
+	st.SetLocalDetails(nil)
+	targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), sb.SpaceID(), st.ObjectTypeKey())
+	if err != nil {
+		return nil, fmt.Errorf("get type id by key: %s", err)
+	}
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
+	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
+	for _, rel := range sb.Relations(st) {
+		if rel.DataSource == model.Relation_details && !rel.Hidden {
+			st.RemoveDetail(rel.Key)
+		}
+	}
+	return st, nil
 }
 
 func (s *Service) TemplateClone(spaceID string, id string) (templateID string, err error) {
@@ -107,7 +123,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		return
 	}
 
-	spaceID, err := s.spaceService.ResolveSpaceID(id)
+	spaceID, err := s.resolver.ResolveSpaceID(id)
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
@@ -149,39 +165,11 @@ func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, obje
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {
-	spc, err := s.spaceService.CreateSpace(ctx)
+	newSpace, err := s.spaceService.Create(ctx)
 	if err != nil {
-		return "", fmt.Errorf("create space: %w", err)
+		return "", fmt.Errorf("error creating space: %w", err)
 	}
-
-	predefinedObjectIDs, err := s.anytype.DerivePredefinedObjects(ctx, spc.Id(), true)
-	if err != nil {
-		// TODO Delete space?
-		return "", fmt.Errorf("derive workspace object for space %s: %w", spc.Id(), err)
-	}
-
-	err = DoStateAsync(s, s.anytype.AccountObjects().Workspace, func(st *state.State, b *editor.Workspaces) error {
-		spaces := pbtypes.CopyVal(st.Store().GetFields()["spaces"])
-		if spaces == nil {
-			spaces = pbtypes.Struct(&types.Struct{
-				Fields: map[string]*types.Value{
-					spc.Id(): pbtypes.String(predefinedObjectIDs.Workspace),
-				},
-			})
-		} else {
-			spaces.GetStructValue().Fields[spc.Id()] = pbtypes.String(predefinedObjectIDs.Workspace)
-		}
-		st.SetInStore([]string{"spaces"}, spaces)
-		return nil
-	})
-	if err != nil {
-		return "", fmt.Errorf("add space to account space: %w", err)
-	}
-
-	err = s.indexer.EnsurePreinstalledObjects(spc.Id())
-	if err != nil {
-		return "", fmt.Errorf("reindex space %s: %w", spc.Id(), err)
-	}
+	predefinedObjectIDs := newSpace.DerivedIDs()
 
 	err = Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
@@ -194,14 +182,13 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {
-		return "", fmt.Errorf("set details for space %s: %w", spc.Id(), err)
+		return "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
-
-	_, err = s.builtinObjectService.CreateObjectsForUseCase(nil, spc.Id(), req.UseCase)
+	_, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
 	if err != nil {
 		return "", fmt.Errorf("import use-case: %w", err)
 	}
-	return spc.Id(), err
+	return newSpace.Id(), err
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block

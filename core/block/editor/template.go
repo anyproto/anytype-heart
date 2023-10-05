@@ -19,14 +19,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Template struct {
 	*Page
 
-	picker getblock.Picker
+	picker getblock.ObjectGetter
 }
 
 func NewTemplate(
@@ -34,7 +34,7 @@ func NewTemplate(
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 	bookmarkService bookmark.BookmarkService,
 	systemObjectService system_object.Service,
 	tempDirProvider core.TempDirProvider,

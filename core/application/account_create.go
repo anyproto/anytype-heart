@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -87,7 +86,7 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
 	newAcc.Name = req.Name
 
-	spaceID := app.MustComponent[space.Service](s.app).AccountId()
+	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	var err error
 	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
 	if err != nil {

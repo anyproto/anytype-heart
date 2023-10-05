@@ -1,10 +1,12 @@
 package editor
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -23,10 +25,23 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-editor")
+
+type spaceIndexer interface {
+	smartblock.Indexer
+	ReindexSpace(spaceID string) error
+}
+
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
+type bundledObjectsInstaller interface {
+	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
+}
 
 type ObjectFactory struct {
 	anytype             core.Service
@@ -41,10 +56,11 @@ type ObjectFactory struct {
 	tempDirProvider     core.TempDirProvider
 	fileService         files.Service
 	config              *config.Config
-	picker              getblock.Picker
+	picker              getblock.ObjectGetter
 	eventSender         event.Sender
 	restrictionService  restriction.Service
-	indexer             smartblock.Indexer
+	indexer             spaceIndexer
+	spaceService        spaceService
 	objectDeriver       objectDeriver
 	fileStore           filestore.FileStore
 }
@@ -67,11 +83,13 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.picker = app.MustComponent[getblock.Picker](a)
-	f.indexer = app.MustComponent[smartblock.Indexer](a)
+	f.picker = app.MustComponent[getblock.ObjectGetter](a)
+	f.indexer = app.MustComponent[spaceIndexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.objectDeriver = app.MustComponent[objectDeriver](a)
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
+	f.spaceService = app.MustComponent[spaceService](a)
+
 	return nil
 }
 
@@ -217,6 +235,11 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.config,
 			f.eventSender,
 			f.objectDeriver,
+		), nil
+	case coresb.SmartBlockTypeSpaceView:
+		return newSpaceView(
+			sb,
+			f.spaceService,
 		), nil
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil

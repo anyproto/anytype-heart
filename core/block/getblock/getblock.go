@@ -7,13 +7,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 )
 
-type Picker interface {
-	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
+type ObjectGetter interface {
+	GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 }
 
-func Do[t any](p Picker, objectID string, apply func(sb t) error) error {
+func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
 	ctx := context.Background()
-	sb, err := p.PickBlock(ctx, objectID)
+	sb, err := p.GetObject(ctx, objectID)
 	if err != nil {
 		return err
 	}

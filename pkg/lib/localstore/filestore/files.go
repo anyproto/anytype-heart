@@ -115,7 +115,7 @@ func New() FileStore {
 }
 
 func (ls *dsFileStore) Init(a *app.App) (err error) {
-	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
+	ls.dsIface = app.MustComponent[datastore.Datastore](a)
 	return nil
 }
 

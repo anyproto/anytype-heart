@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/space/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 var ctx = context.Background()

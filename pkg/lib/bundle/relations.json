@@ -1452,5 +1452,25 @@
     "name": "Origin",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Relation that indicates the local status of space. Possible values: models.SpaceStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceLocalStatus",
+    "maxCount": 1,
+    "name": "Space local status",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Relation that indicates the remote status of space. Possible values: models.SpaceStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceRemoteStatus",
+    "maxCount": 1,
+    "name": "Space remote status",
+    "readonly": true,
+    "source": "derived"
   }
 ]

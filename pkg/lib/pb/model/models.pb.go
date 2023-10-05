@@ -45,6 +45,7 @@ const (
 	SmartBlockType_STRelation        SmartBlockType = 521
 	SmartBlockType_STType            SmartBlockType = 528
 	SmartBlockType_STRelationOption  SmartBlockType = 529
+	SmartBlockType_SpaceView         SmartBlockType = 530
 	SmartBlockType_MissingObject     SmartBlockType = 519
 )
 
@@ -67,6 +68,7 @@ var SmartBlockType_name = map[int32]string{
 	521: "STRelation",
 	528: "STType",
 	529: "STRelationOption",
+	530: "SpaceView",
 	519: "MissingObject",
 }
 
@@ -89,6 +91,7 @@ var SmartBlockType_value = map[string]int32{
 	"STRelation":        521,
 	"STType":            528,
 	"STRelationOption":  529,
+	"SpaceView":         530,
 	"MissingObject":     519,
 }
 
@@ -160,6 +163,53 @@ func (x RelationFormat) String() string {
 
 func (RelationFormat) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_98a910b73321e591, []int{1}
+}
+
+type SpaceStatus int32
+
+const (
+	// Unknown means the space is not loaded yet
+	SpaceStatus_Unknown SpaceStatus = 0
+	// Loading - the space in progress of loading
+	SpaceStatus_Loading SpaceStatus = 1
+	// Ok - the space loaded and available
+	SpaceStatus_Ok SpaceStatus = 2
+	// Missing - the space is missing
+	SpaceStatus_Missing SpaceStatus = 3
+	// Error - the space loading ended with an error
+	SpaceStatus_Error SpaceStatus = 4
+	// RemoteWaitingDeletion - network status is "waiting deletion"
+	SpaceStatus_RemoteWaitingDeletion SpaceStatus = 5
+	// RemoteDeleted - the space is deleted in the current network
+	SpaceStatus_RemoteDeleted SpaceStatus = 6
+)
+
+var SpaceStatus_name = map[int32]string{
+	0: "Unknown",
+	1: "Loading",
+	2: "Ok",
+	3: "Missing",
+	4: "Error",
+	5: "RemoteWaitingDeletion",
+	6: "RemoteDeleted",
+}
+
+var SpaceStatus_value = map[string]int32{
+	"Unknown":               0,
+	"Loading":               1,
+	"Ok":                    2,
+	"Missing":               3,
+	"Error":                 4,
+	"RemoteWaitingDeletion": 5,
+	"RemoteDeleted":         6,
+}
+
+func (x SpaceStatus) String() string {
+	return proto.EnumName(SpaceStatus_name, int32(x))
+}
+
+func (SpaceStatus) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{2}
 }
 
 type ObjectOrigin int32
@@ -1226,6 +1276,7 @@ const (
 	ObjectType_audio               ObjectTypeLayout = 15
 	ObjectType_video               ObjectTypeLayout = 16
 	ObjectType_date                ObjectTypeLayout = 17
+	ObjectType_spaceView           ObjectTypeLayout = 18
 	ObjectType_database            ObjectTypeLayout = 20
 )
 
@@ -1248,6 +1299,7 @@ var ObjectTypeLayout_name = map[int32]string{
 	15: "audio",
 	16: "video",
 	17: "date",
+	18: "spaceView",
 	20: "database",
 }
 
@@ -1270,6 +1322,7 @@ var ObjectTypeLayout_value = map[string]int32{
 	"audio":               15,
 	"video":               16,
 	"date":                17,
+	"spaceView":           18,
 	"database":            20,
 }
 
@@ -1278,7 +1331,7 @@ func (x ObjectTypeLayout) String() string {
 }
 
 func (ObjectTypeLayout) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{8, 0}
+	return fileDescriptor_98a910b73321e591, []int{9, 0}
 }
 
 type RelationScope int32
@@ -1312,7 +1365,7 @@ func (x RelationScope) String() string {
 }
 
 func (RelationScope) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{11, 0}
+	return fileDescriptor_98a910b73321e591, []int{12, 0}
 }
 
 type RelationDataSource int32
@@ -1343,7 +1396,7 @@ func (x RelationDataSource) String() string {
 }
 
 func (RelationDataSource) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{11, 1}
+	return fileDescriptor_98a910b73321e591, []int{12, 1}
 }
 
 // Use such a weird construction due to the issue with imported repeated enum type
@@ -1376,7 +1429,7 @@ func (x InternalFlagValue) String() string {
 }
 
 func (InternalFlagValue) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{15, 0}
+	return fileDescriptor_98a910b73321e591, []int{16, 0}
 }
 
 type SmartBlockSnapshotBase struct {
@@ -4719,6 +4772,7 @@ var xxx_messageInfo_Object proto.InternalMessageInfo
 type ObjectChangePayload struct {
 	SmartBlockType SmartBlockType `protobuf:"varint,1,opt,name=smartBlockType,proto3,enum=anytype.model.SmartBlockType" json:"smartBlockType,omitempty"`
 	Key            string         `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Data           []byte         `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 }
 
 func (m *ObjectChangePayload) Reset()         { *m = ObjectChangePayload{} }
@@ -4768,6 +4822,57 @@ func (m *ObjectChangePayload) GetKey() string {
 	return ""
 }
 
+func (m *ObjectChangePayload) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+type SpaceObjectHeader struct {
+	SpaceID string `protobuf:"bytes,1,opt,name=spaceID,proto3" json:"spaceID,omitempty"`
+}
+
+func (m *SpaceObjectHeader) Reset()         { *m = SpaceObjectHeader{} }
+func (m *SpaceObjectHeader) String() string { return proto.CompactTextString(m) }
+func (*SpaceObjectHeader) ProtoMessage()    {}
+func (*SpaceObjectHeader) Descriptor() ([]byte, []int) {
+	return fileDescriptor_98a910b73321e591, []int{8}
+}
+func (m *SpaceObjectHeader) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SpaceObjectHeader) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SpaceObjectHeader.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *SpaceObjectHeader) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SpaceObjectHeader.Merge(m, src)
+}
+func (m *SpaceObjectHeader) XXX_Size() int {
+	return m.Size()
+}
+func (m *SpaceObjectHeader) XXX_DiscardUnknown() {
+	xxx_messageInfo_SpaceObjectHeader.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SpaceObjectHeader proto.InternalMessageInfo
+
+func (m *SpaceObjectHeader) GetSpaceID() string {
+	if m != nil {
+		return m.SpaceID
+	}
+	return ""
+}
+
 type ObjectType struct {
 	Url                string           `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
 	Name               string           `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
@@ -4787,7 +4892,7 @@ func (m *ObjectType) Reset()         { *m = ObjectType{} }
 func (m *ObjectType) String() string { return proto.CompactTextString(m) }
 func (*ObjectType) ProtoMessage()    {}
 func (*ObjectType) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{8}
+	return fileDescriptor_98a910b73321e591, []int{9}
 }
 func (m *ObjectType) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4910,7 +5015,7 @@ func (m *Layout) Reset()         { *m = Layout{} }
 func (m *Layout) String() string { return proto.CompactTextString(m) }
 func (*Layout) ProtoMessage()    {}
 func (*Layout) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{9}
+	return fileDescriptor_98a910b73321e591, []int{10}
 }
 func (m *Layout) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -4969,7 +5074,7 @@ func (m *RelationWithValue) Reset()         { *m = RelationWithValue{} }
 func (m *RelationWithValue) String() string { return proto.CompactTextString(m) }
 func (*RelationWithValue) ProtoMessage()    {}
 func (*RelationWithValue) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{10}
+	return fileDescriptor_98a910b73321e591, []int{11}
 }
 func (m *RelationWithValue) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5040,7 +5145,7 @@ func (m *Relation) Reset()         { *m = Relation{} }
 func (m *Relation) String() string { return proto.CompactTextString(m) }
 func (*Relation) ProtoMessage()    {}
 func (*Relation) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{11}
+	return fileDescriptor_98a910b73321e591, []int{12}
 }
 func (m *Relation) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5193,7 +5298,7 @@ func (m *RelationOption) Reset()         { *m = RelationOption{} }
 func (m *RelationOption) String() string { return proto.CompactTextString(m) }
 func (*RelationOption) ProtoMessage()    {}
 func (*RelationOption) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{11, 0}
+	return fileDescriptor_98a910b73321e591, []int{12, 0}
 }
 func (m *RelationOption) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5259,7 +5364,7 @@ func (m *RelationLink) Reset()         { *m = RelationLink{} }
 func (m *RelationLink) String() string { return proto.CompactTextString(m) }
 func (*RelationLink) ProtoMessage()    {}
 func (*RelationLink) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{12}
+	return fileDescriptor_98a910b73321e591, []int{13}
 }
 func (m *RelationLink) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5310,7 +5415,7 @@ func (m *Relations) Reset()         { *m = Relations{} }
 func (m *Relations) String() string { return proto.CompactTextString(m) }
 func (*Relations) ProtoMessage()    {}
 func (*Relations) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{13}
+	return fileDescriptor_98a910b73321e591, []int{14}
 }
 func (m *Relations) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5354,7 +5459,7 @@ func (m *RelationOptions) Reset()         { *m = RelationOptions{} }
 func (m *RelationOptions) String() string { return proto.CompactTextString(m) }
 func (*RelationOptions) ProtoMessage()    {}
 func (*RelationOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{14}
+	return fileDescriptor_98a910b73321e591, []int{15}
 }
 func (m *RelationOptions) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5398,7 +5503,7 @@ func (m *InternalFlag) Reset()         { *m = InternalFlag{} }
 func (m *InternalFlag) String() string { return proto.CompactTextString(m) }
 func (*InternalFlag) ProtoMessage()    {}
 func (*InternalFlag) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{15}
+	return fileDescriptor_98a910b73321e591, []int{16}
 }
 func (m *InternalFlag) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5451,7 +5556,7 @@ func (m *ObjectView) Reset()         { *m = ObjectView{} }
 func (m *ObjectView) String() string { return proto.CompactTextString(m) }
 func (*ObjectView) ProtoMessage()    {}
 func (*ObjectView) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{16}
+	return fileDescriptor_98a910b73321e591, []int{17}
 }
 func (m *ObjectView) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5546,7 +5651,7 @@ func (m *ObjectViewDetailsSet) Reset()         { *m = ObjectViewDetailsSet{} }
 func (m *ObjectViewDetailsSet) String() string { return proto.CompactTextString(m) }
 func (*ObjectViewDetailsSet) ProtoMessage()    {}
 func (*ObjectViewDetailsSet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{16, 0}
+	return fileDescriptor_98a910b73321e591, []int{17, 0}
 }
 func (m *ObjectViewDetailsSet) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5605,7 +5710,7 @@ func (m *ObjectViewRelationWithValuePerObject) Reset()         { *m = ObjectView
 func (m *ObjectViewRelationWithValuePerObject) String() string { return proto.CompactTextString(m) }
 func (*ObjectViewRelationWithValuePerObject) ProtoMessage()    {}
 func (*ObjectViewRelationWithValuePerObject) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{16, 1}
+	return fileDescriptor_98a910b73321e591, []int{17, 1}
 }
 func (m *ObjectViewRelationWithValuePerObject) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5657,7 +5762,7 @@ func (m *ObjectViewHistorySize) Reset()         { *m = ObjectViewHistorySize{} }
 func (m *ObjectViewHistorySize) String() string { return proto.CompactTextString(m) }
 func (*ObjectViewHistorySize) ProtoMessage()    {}
 func (*ObjectViewHistorySize) Descriptor() ([]byte, []int) {
-	return fileDescriptor_98a910b73321e591, []int{16, 2}
+	return fileDescriptor_98a910b73321e591, []int{17, 2}
 }
 func (m *ObjectViewHistorySize) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -5704,6 +5809,7 @@ func init() {
 	proto.RegisterEnum("anytype.model.SmartBlockType", SmartBlockType_name, SmartBlockType_value)
 	proto.RegisterEnum("anytype.model.RelationFormat", RelationFormat_name, RelationFormat_value)
 	proto.RegisterEnum("anytype.model.ObjectOrigin", ObjectOrigin_name, ObjectOrigin_value)
+	proto.RegisterEnum("anytype.model.SpaceStatus", SpaceStatus_name, SpaceStatus_value)
 	proto.RegisterEnum("anytype.model.BlockPosition", BlockPosition_name, BlockPosition_value)
 	proto.RegisterEnum("anytype.model.BlockAlign", BlockAlign_name, BlockAlign_value)
 	proto.RegisterEnum("anytype.model.BlockVerticalAlign", BlockVerticalAlign_name, BlockVerticalAlign_value)
@@ -5783,6 +5889,7 @@ func init() {
 	proto.RegisterType((*RestrictionsDataviewRestrictions)(nil), "anytype.model.Restrictions.DataviewRestrictions")
 	proto.RegisterType((*Object)(nil), "anytype.model.Object")
 	proto.RegisterType((*ObjectChangePayload)(nil), "anytype.model.Object.ChangePayload")
+	proto.RegisterType((*SpaceObjectHeader)(nil), "anytype.model.SpaceObjectHeader")
 	proto.RegisterType((*ObjectType)(nil), "anytype.model.ObjectType")
 	proto.RegisterType((*Layout)(nil), "anytype.model.Layout")
 	proto.RegisterType((*RelationWithValue)(nil), "anytype.model.RelationWithValue")
@@ -9101,6 +9208,13 @@ func (m *ObjectChangePayload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Data) > 0 {
+		i -= len(m.Data)
+		copy(dAtA[i:], m.Data)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Data)))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if len(m.Key) > 0 {
 		i -= len(m.Key)
 		copy(dAtA[i:], m.Key)
@@ -9112,6 +9226,36 @@ func (m *ObjectChangePayload) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i = encodeVarintModels(dAtA, i, uint64(m.SmartBlockType))
 		i--
 		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SpaceObjectHeader) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SpaceObjectHeader) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *SpaceObjectHeader) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.SpaceID) > 0 {
+		i -= len(m.SpaceID)
+		copy(dAtA[i:], m.SpaceID)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.SpaceID)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -11295,6 +11439,23 @@ func (m *ObjectChangePayload) Size() (n int) {
 		n += 1 + sovModels(uint64(m.SmartBlockType))
 	}
 	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	l = len(m.Data)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	return n
+}
+
+func (m *SpaceObjectHeader) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.SpaceID)
 	if l > 0 {
 		n += 1 + l + sovModels(uint64(l))
 	}
@@ -19456,6 +19617,122 @@ func (m *ObjectChangePayload) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Data = append(m.Data[:0], dAtA[iNdEx:postIndex]...)
+			if m.Data == nil {
+				m.Data = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipModels(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthModels
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SpaceObjectHeader) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowModels
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SpaceObjectHeader: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SpaceObjectHeader: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpaceID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SpaceID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

@@ -8,18 +8,13 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
-	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/dgraph-io/badger/v3"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/mock"
@@ -27,12 +22,12 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/space/mock_space"
 )
 
 var ctx = context.Background()
@@ -83,6 +78,16 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	fx.waitEmptyQueue(t, time.Second*5)
 }
 
+type personalSpaceIdStub struct {
+	personalSpaceId string
+}
+
+func (s *personalSpaceIdStub) Name() string          { return "personalSpaceIdStub" }
+func (s *personalSpaceIdStub) Init(a *app.App) error { return nil }
+func (s *personalSpaceIdStub) PersonalSpaceID() string {
+	return s.personalSpaceId
+}
+
 func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
 		FileSync:    New(),
@@ -90,12 +95,6 @@ func newFixture(t *testing.T) *fixture {
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),
 	}
-	var err error
-	bp := &badgerProvider{}
-	fx.tmpDir, err = os.MkdirTemp("", "*")
-	require.NoError(t, err)
-	bp.db, err = badger.Open(badger.DefaultOptions(fx.tmpDir))
-	require.NoError(t, err)
 
 	fx.rpcStore = mock_rpcstore.NewMockRpcStore(fx.ctrl)
 	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), "space1").Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
@@ -112,12 +111,7 @@ func newFixture(t *testing.T) *fixture {
 	fileStoreMock.EXPECT().Close(gomock.Any()).AnyTimes()
 	fx.fileStoreMock = fileStoreMock
 
-	spaceService := mock_space.NewMockService(fx.ctrl)
-	spaceService.EXPECT().Name().Return("space").AnyTimes()
-	spaceService.EXPECT().Init(gomock.Any()).AnyTimes()
-	spaceService.EXPECT().Run(gomock.Any()).AnyTimes()
-	spaceService.EXPECT().AccountId().Return("space1").AnyTimes()
-	spaceService.EXPECT().Close(gomock.Any()).AnyTimes()
+	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: "space1"}
 
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
@@ -125,12 +119,12 @@ func newFixture(t *testing.T) *fixture {
 	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	fx.a.Register(fx.fileService).
-		Register(&inMemBlockStore{data: map[string]blocks.Block{}}).
-		Register(bp).
+		Register(filestorage.NewInMemory()).
+		Register(datastore.NewInMemory()).
 		Register(mockRpcStoreService).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
-		Register(spaceService).
+		Register(personalSpaceIdGetter).
 		Register(sender)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
@@ -162,104 +156,4 @@ func (f *fixture) waitEmptyQueue(t *testing.T, timeout time.Duration) {
 func (f *fixture) Finish(t *testing.T) {
 	defer os.RemoveAll(f.tmpDir)
 	require.NoError(t, f.a.Close(ctx))
-}
-
-type inMemBlockStore struct {
-	data map[string]blocks.Block
-	mu   sync.Mutex
-}
-
-func (i *inMemBlockStore) Init(a *app.App) (err error) {
-	return
-}
-
-func (i *inMemBlockStore) Name() string {
-	return fileblockstore.CName
-}
-
-func (i *inMemBlockStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	if b := i.data[k.KeyString()]; b != nil {
-		return b, nil
-	}
-	return nil, fileprotoerr.ErrCIDNotFound
-}
-
-func (i *inMemBlockStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
-	var result = make(chan blocks.Block, len(ks))
-	defer close(result)
-	for _, k := range ks {
-		if b, err := i.Get(ctx, k); err == nil {
-			result <- b
-		}
-	}
-	return result
-}
-
-func (i *inMemBlockStore) Add(ctx context.Context, bs []blocks.Block) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	for _, b := range bs {
-		fmt.Println("add", b.Cid().String())
-		i.data[b.Cid().KeyString()] = b
-	}
-	return nil
-}
-
-func (i *inMemBlockStore) Delete(ctx context.Context, c cid.Cid) error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	delete(i.data, c.KeyString())
-	return nil
-}
-
-func (i *inMemBlockStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
-	for _, k := range ks {
-		if _, e := i.Get(ctx, k); e == nil {
-			exists = append(exists, k)
-		}
-	}
-	return
-}
-
-func (i *inMemBlockStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
-	for _, b := range bs {
-		if _, e := i.Get(ctx, b.Cid()); e != nil {
-			notExists = append(notExists, b)
-		}
-	}
-	return
-}
-
-type badgerProvider struct {
-	db *badger.DB
-}
-
-func (b *badgerProvider) Init(a *app.App) (err error) {
-	return nil
-}
-
-func (b *badgerProvider) Name() (name string) {
-	return datastore.CName
-}
-
-func (b *badgerProvider) Run(ctx context.Context) (err error) {
-	return nil
-}
-
-func (b *badgerProvider) Close(ctx context.Context) (err error) {
-	return b.db.Close()
-}
-
-func (b *badgerProvider) LocalstoreDS() (datastore.DSTxnBatching, error) {
-	return nil, nil
-}
-
-func (b *badgerProvider) LocalStorage() (*badger.DB, error) {
-	return b.db, nil
-}
-
-func (b *badgerProvider) SpaceStorage() (*badger.DB, error) {
-	return b.db, nil
 }

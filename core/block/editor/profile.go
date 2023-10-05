@@ -41,7 +41,7 @@ type Profile struct {
 	eventSender event.Sender
 }
 
-func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, systemObjectService system_object.Service, fileBlockService file.BlockService, anytype core.Service, picker getblock.Picker, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender, fileStore filestore.FileStore) *Profile {
+func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, systemObjectService system_object.Service, fileBlockService file.BlockService, anytype core.Service, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender, fileStore filestore.FileStore) *Profile {
 	f := file.NewFile(
 		sb,
 		fileBlockService,

@@ -24,7 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -48,7 +48,7 @@ func NewPage(sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 	bookmarkService bookmark.BookmarkService,
 	systemObjectService system_object.Service,
 	tempDirProvider core.TempDirProvider,
@@ -126,7 +126,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				if err != nil {
 					log.Errorf("failed to create unique key: %v", err)
 				} else {
-					otype, err := p.systemObjectService.GetObjectByUniqueKey(s.SpaceID(), uk)
+					otype, err := p.systemObjectService.GetObjectByUniqueKey(p.SpaceID(), uk)
 					if err != nil {
 						log.Errorf("failed to get object by unique key: %v", err)
 					} else {

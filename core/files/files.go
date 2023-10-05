@@ -23,6 +23,7 @@ import (
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
@@ -40,7 +41,6 @@ import (
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -75,7 +75,7 @@ type service struct {
 	commonFile        fileservice.FileService
 	fileSync          filesync.FileSync
 	dagService        ipld.DAGService
-	spaceService      space.Service
+	resolver          idresolver.Resolver
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
 	objectStore       objectstore.ObjectStore
@@ -87,14 +87,14 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.fileStore = a.MustComponent("filestore").(filestore.FileStore)
-	s.commonFile = a.MustComponent(fileservice.CName).(fileservice.FileService)
-	s.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
-	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.coreService = a.MustComponent(core.CName).(core.Service)
+	s.fileStore = app.MustComponent[filestore.FileStore](a)
+	s.commonFile = app.MustComponent[fileservice.FileService](a)
+	s.fileSync = app.MustComponent[filesync.FileSync](a)
+	s.coreService = app.MustComponent[core.Service](a)
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
+	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.syncStatusWatcher = app.MustComponent[SyncStatusWatcher](a)
 	return nil

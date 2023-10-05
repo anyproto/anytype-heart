@@ -28,7 +28,7 @@ var log = logging.Logger("bookmark")
 
 func NewBookmark(
 	sb smartblock.SmartBlock,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 	bookmarkSvc BookmarkService,
 	objectStore objectstore.ObjectStore,
 ) Bookmark {
@@ -53,7 +53,7 @@ type BookmarkService interface {
 
 type sbookmark struct {
 	smartblock.SmartBlock
-	picker      getblock.Picker
+	picker      getblock.ObjectGetter
 	bookmarkSvc BookmarkService
 	objectStore objectstore.ObjectStore
 }
