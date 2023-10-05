@@ -101,7 +101,7 @@ type BlockService interface {
 
 func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
-	if templateID != "" && templateID != block.BlankTemplateID {
+	if templateID != "" {
 		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 			return
 		}
@@ -495,6 +495,10 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		return c.createRelationOption(ctx, spaceID, details)
 	case bundle.TypeKeyTemplate:
 		sbType = coresb.SmartBlockTypeTemplate
+	}
+
+	if templateID == block.BlankTemplateID {
+		templateID = ""
 	}
 
 	return c.CreateSmartBlockFromTemplate(ctx, spaceID, sbType, []domain.TypeKey{objectTypeKey}, details, templateID)
