@@ -1002,7 +1002,7 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 
 		ts.BlocksInit(ts)
 
-		objType := ts.ObjectTypeKey()
+		objType := orig.ObjectTypeKey()
 		ts.SetObjectTypeKey(objType)
 
 		flags := internalflag.NewFromState(orig)
