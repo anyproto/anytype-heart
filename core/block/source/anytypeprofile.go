@@ -8,11 +8,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+// TODO Is it used?
 func NewAnytypeProfile(id string) (s Source) {
 	return &anytypeProfile{
 		id: id,
@@ -35,8 +37,12 @@ func (v *anytypeProfile) Id() string {
 	return v.id
 }
 
-func (v *anytypeProfile) Type() model.SmartBlockType {
-	return model.SmartBlockType_AnytypeProfile
+func (v *anytypeProfile) SpaceID() string {
+	return addr.AnytypeMarketplaceWorkspace
+}
+
+func (v *anytypeProfile) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeAnytypeProfile
 }
 
 func (v *anytypeProfile) getDetails() (p *types.Struct) {
@@ -58,17 +64,14 @@ func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, e
 	d := v.getDetails()
 
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyProfile.URL())
+
+	// todo: add object type
+	// s.SetObjectTypeKey(v.coreService.PredefinedObjects(v.spaceID).SystemTypes[bundle.TypeKeyDate])
 	return s, nil
 }
 
-func (v *anytypeProfile) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	s := &state.State{}
-	d := v.getDetails()
-
-	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyProfile.URL())
-	return s, nil
+func (v *anytypeProfile) ReadMeta(ctx context.Context, r ChangeReceiver) (doc state.Doc, err error) {
+	return v.ReadDoc(ctx, r, false)
 }
 
 func (v *anytypeProfile) Close() (err error) {

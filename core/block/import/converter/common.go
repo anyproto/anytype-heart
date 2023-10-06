@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/filetime"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
@@ -40,6 +41,7 @@ func GetSourceDetail(fileName, importPath string) string {
 }
 
 func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
+	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
 	}
@@ -47,11 +49,12 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():           pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String(): pbtypes.String(sourcePath),
-		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
-		bundle.RelationKeyCreatedDate.String():    pbtypes.Int64(time.Now().Unix()), // this relation will be after used in the tree header
-		bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(layout)),
+		bundle.RelationKeyName.String():             pbtypes.String(name),
+		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sourcePath),
+		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
+		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
+		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
+		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 	}
 	return &types.Struct{Fields: fields}
 }
@@ -88,12 +91,7 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 		for _, filter := range view.GetFilters() {
 			updateObjectIDsInFilter(filter, oldIDtoNew)
 		}
-		for _, relation := range view.Relations {
-			relationID := addr.RelationKeyToIdPrefix + relation.Key
-			if newID, ok := oldIDtoNew[relationID]; ok && newID != relationID {
-				updateRelationID(block.(dataview.Block), relation, view, newID)
-			}
-		}
+
 		if view.DefaultTemplateId != "" {
 			view.DefaultTemplateId = oldIDtoNew[view.DefaultTemplateId]
 		}
@@ -111,26 +109,6 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 				group.ObjectIds[i] = newId
 			}
 		}
-	}
-}
-
-func updateRelationID(db dataview.Block, relation *model.BlockContentDataviewRelation, view *model.BlockContentDataviewView, newID string) {
-	oldKey := relation.Key
-	err := db.RemoveViewRelations(view.Id, []string{oldKey})
-	if err != nil {
-		log.Error("failed to remove relation from view, %s", err.Error())
-		return
-	}
-	relation.Key = strings.TrimPrefix(newID, addr.RelationKeyToIdPrefix)
-	err = db.AddViewRelation(view.Id, relation)
-	if err != nil {
-		log.Error("failed to add new relations from view, %s", err.Error())
-		return
-	}
-	if relationLink, ok := lo.Find(db.Model().GetDataview().GetRelationLinks(), func(relationLink *model.RelationLink) bool {
-		return relationLink.Key == oldKey
-	}); ok {
-		relationLink.Key = relation.Key
 	}
 }
 
@@ -192,7 +170,7 @@ func handleLinkBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 
 func isBundledObjects(targetObjectID string) bool {
 	ot, err := bundle.TypeKeyFromUrl(targetObjectID)
-	if err == nil && bundle.HasObjectType(ot.String()) {
+	if err == nil && bundle.HasObjectTypeByKey(ot) {
 		return true
 	}
 	rel, err := pbtypes.RelationIdToKey(targetObjectID)
@@ -245,6 +223,7 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, f
 			// featured relations have incorrect IDs
 			continue
 		}
+		// For example, RelationKeySetOf is handled here
 		handleObjectRelation(st, oldIDtoNew, v, k, filesIDs)
 	}
 }
@@ -281,12 +260,13 @@ func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]strin
 	return objectsIDs
 }
 
-func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
-	objectType := st.ObjectType()
-	if newType, ok := oldIDtoNew[objectType]; ok {
-		st.SetObjectType(newType)
-	}
-}
+// TODO Fix this
+// func UpdateObjectType(oldIDtoNew map[string]string, st *state.State) {
+// 	objectType := st.ObjectTypeKey()
+// 	if newType, ok := oldIDtoNew[objectType]; ok {
+// 		st.SetObjectTypeKey(newType)
+// 	}
+// }
 
 func replaceChunks(s string, oldToNew map[string]string) []string {
 	var result []string

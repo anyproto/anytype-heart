@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -20,26 +19,42 @@ type GroupTag struct {
 	Records []database.Record
 }
 
-func (t *GroupTag) InitGroups(f *database.Filters) error {
-	filterTag := filter.Not{Filter: filter.Empty{Key: t.Key}}
+func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
+	spaceFilter := database.FilterEq{
+		Key:   bundle.RelationKeySpaceId.String(),
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: pbtypes.String(spaceID),
+	}
+
+	filterTag := database.FiltersAnd{
+		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
+	}
+	if spaceID != "" {
+		filterTag = append(filterTag, spaceFilter)
+	}
+
 	if f == nil {
 		f = &database.Filters{FilterObj: filterTag}
 	} else {
-		f.FilterObj = filter.AndFilters{f.FilterObj, filterTag}
+		f.FilterObj = database.FiltersAnd{f.FilterObj, filterTag}
 	}
 
-	f.FilterObj = filter.OrFilters{f.FilterObj, filter.AndFilters{
-		filter.Eq{
+	relationOptionFilter := database.FiltersAnd{
+		database.FilterEq{
 			Key:   bundle.RelationKeyRelationKey.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: pbtypes.String(t.Key),
 		},
-		filter.Eq{
-			Key:   bundle.RelationKeyType.String(),
+		database.FilterEq{
+			Key:   bundle.RelationKeyLayout.String(),
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			Value: pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
-	}}
+	}
+	if spaceID != "" {
+		relationOptionFilter = append(relationOptionFilter, spaceFilter)
+	}
+	f.FilterObj = database.FiltersOr{f.FilterObj, relationOptionFilter}
 
 	records, err := t.store.QueryRaw(f, 0, 0)
 	if err != nil {

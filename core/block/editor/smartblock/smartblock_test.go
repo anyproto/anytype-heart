@@ -16,14 +16,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/anyproto/anytype-heart/util/testMock/mockRelation"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
 
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -36,42 +41,42 @@ func TestSmartBlock_Init(t *testing.T) {
 	id := "one"
 	fx := newFixture(t)
 	defer fx.tearDown()
-	fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
 	fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
 	fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
 	fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
-	fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
 	// when
-	fx.init([]*model.Block{{Id: id}})
+	fx.init(t, []*model.Block{{Id: id}})
 
 	// then
-	assert.Equal(t, id, fx.sb.RootId())
+	assert.Equal(t, id, fx.RootId())
 }
 
 func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.at.EXPECT().ProfileID("space1").Return("profile1")
+		fx.at.EXPECT().PredefinedObjects("space1").Return(threads.DerivedSmartblockIds{})
 		defer fx.tearDown()
-		fx.at.EXPECT().PredefinedBlocks()
-		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
 		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
 		fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
-		fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
+		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 
-		fx.init([]*model.Block{{Id: "1"}})
-		s := fx.sb.NewState()
+		fx.init(t, []*model.Block{{Id: "1"}})
+		s := fx.NewState()
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
-		fx.source.EXPECT().ReadOnly()
+		fx.source.EXPECT().ReadOnly().Return(false)
 		var event *pb.Event
-		fx.sb.SetEventFunc(func(e *pb.Event) {
+		ctx := session.NewContext()
+		fx.RegisterSession(ctx)
+		fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Run(func(token string, e *pb.Event) {
 			event = e
 		})
 		fx.source.EXPECT().Heads()
@@ -79,11 +84,11 @@ func TestSmartBlock_Apply(t *testing.T) {
 		fx.indexer.EXPECT().Index(gomock.Any(), gomock.Any())
 
 		// when
-		err := fx.sb.Apply(s)
+		err := fx.Apply(s)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, 1, fx.sb.History().Len())
+		assert.Equal(t, 1, fx.History().Len())
 		assert.NotNil(t, event)
 	})
 
@@ -94,19 +99,18 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
 		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
 		fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
-		fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
-		fx.init([]*model.Block{
+		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
+		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
 			{Id: "title"},
 			{Id: "2"},
 		})
-		st := fx.sb.NewState()
+		st := fx.NewState()
 
 		// when
 		err := st.SetAlign(model.Block_AlignRight, "2", "3")
@@ -120,19 +124,18 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		defer fx.tearDown()
-		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).AnyTimes()
 		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
 		}, nil)
 		fx.store.EXPECT().GetInboundLinksByID(gomock.Any()).AnyTimes()
 		fx.store.EXPECT().UpdatePendingLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
-		fx.restrict.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
-		fx.init([]*model.Block{
+		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
+		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
 			{Id: "title"},
 			{Id: "2"},
 		})
-		st := fx.sb.NewState()
+		st := fx.NewState()
 
 		// when
 		err := st.SetAlign(model.Block_AlignRight)
@@ -162,7 +165,7 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{Details: details}, nil)
 
 		// when
-		detailsFromStore, err := fx.sb.getDetailsFromStore()
+		detailsFromStore, err := fx.getDetailsFromStore()
 
 		// then
 		assert.NoError(t, err)
@@ -177,7 +180,7 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		fx.store.EXPECT().GetDetails(id).Return(nil, nil)
 
 		// when
-		details, err := fx.sb.getDetailsFromStore()
+		details, err := fx.getDetailsFromStore()
 
 		// then
 		assert.NoError(t, err)
@@ -198,108 +201,11 @@ func TestSmartBlock_getDetailsFromStore(t *testing.T) {
 		fx.store.EXPECT().GetDetails(id).Return(details, someErr)
 
 		// when
-		detailsFromStore, err := fx.sb.getDetailsFromStore()
+		detailsFromStore, err := fx.getDetailsFromStore()
 
 		// then
 		assert.True(t, errors.Is(err, someErr))
 		assert.Nil(t, detailsFromStore)
-	})
-}
-
-func TestSmartBlock_injectWorkspaceID(t *testing.T) {
-	wID := "space"
-	id := "id"
-
-	t.Run("workspaceID is already set", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		defer fx.tearDown()
-		fx.source.EXPECT().Id().Times(0)
-		fx.at.EXPECT().GetWorkspaceIdForObject(gomock.Any()).Times(0)
-		s := &state.State{}
-		s.SetLocalDetails(&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyWorkspaceId.String(): pbtypes.String(wID),
-		}})
-
-		// when
-		fx.sb.injectWorkspaceID(s)
-
-		// then
-		assert.Equal(t, wID, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()))
-	})
-
-	t.Run("set workspaceID from core service", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		defer fx.tearDown()
-		fx.source.EXPECT().Id().Return(id)
-		fx.at.EXPECT().GetWorkspaceIdForObject(id).Return(wID, nil)
-		s := &state.State{}
-
-		// when
-		fx.sb.injectWorkspaceID(s)
-
-		// then
-		assert.Equal(t, wID, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String()))
-		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyWorkspaceId.String()))
-	})
-
-	t.Run("object is deleted, so it does not belong to workspace", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		defer fx.tearDown()
-		fx.source.EXPECT().Id().Return(id).Times(1)
-		fx.at.EXPECT().GetWorkspaceIdForObject(id).Return("", core.ErrObjectDoesNotBelongToWorkspace)
-		s := &state.State{}
-		s.SetLocalDetails(&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true),
-		}})
-
-		// when
-		fx.sb.injectWorkspaceID(s)
-
-		// then
-		spaceID, found := s.LocalDetails().Fields[bundle.RelationKeyWorkspaceId.String()]
-		assert.Nil(t, spaceID)
-		assert.False(t, found)
-		assert.Nil(t, s.GetRelationLinks())
-	})
-
-	t.Run("object is deleted, but core returned other error", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		defer fx.tearDown()
-		fx.source.EXPECT().Id().Return(id).Times(2)
-		fx.at.EXPECT().GetWorkspaceIdForObject(id).Return("", errors.New("some error from core"))
-		s := &state.State{}
-		s.SetLocalDetails(&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true),
-		}})
-
-		// when
-		fx.sb.injectWorkspaceID(s)
-
-		// then
-		spaceID, found := s.LocalDetails().Fields[bundle.RelationKeyWorkspaceId.String()]
-		assert.Nil(t, spaceID)
-		assert.False(t, found)
-		assert.Nil(t, s.GetRelationLinks())
-	})
-
-	t.Run("failure on retrieving workspaceID from core service", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		defer fx.tearDown()
-		fx.source.EXPECT().Id().Return(id).Times(1)
-		fx.at.EXPECT().GetWorkspaceIdForObject(id).Return("", errors.New("some error from core"))
-		s := &state.State{}
-
-		// when
-		fx.sb.injectWorkspaceID(s)
-
-		// then
-		assert.Nil(t, s.LocalDetails())
-		assert.Nil(t, s.GetRelationLinks())
 	})
 }
 
@@ -319,7 +225,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		}}
 
 		// when
-		fx.sb.updateBackLinks(details)
+		fx.updateBackLinks(details)
 
 		// then
 		assert.Equal(t, newBackLinks, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
@@ -334,7 +240,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
 		// when
-		fx.sb.updateBackLinks(details)
+		fx.updateBackLinks(details)
 
 		// then
 		assert.NotNil(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()))
@@ -350,7 +256,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
 		// when
-		fx.sb.updateBackLinks(details)
+		fx.updateBackLinks(details)
 
 		// then
 		assert.Len(t, pbtypes.GetStringList(details, bundle.RelationKeyBacklinks.String()), 0)
@@ -365,7 +271,7 @@ func TestSmartBlock_injectBackLinks(t *testing.T) {
 		details := &types.Struct{Fields: make(map[string]*types.Value)}
 
 		// when
-		fx.sb.updateBackLinks(details)
+		fx.updateBackLinks(details)
 
 		// then
 		assert.Zero(t, len(details.Fields))
@@ -382,11 +288,11 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		fx.source.EXPECT().Id().Return(id)
 		var hasPendingDetails bool
 		details := &types.Struct{Fields: map[string]*types.Value{}}
-		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).Return(nil).
+		fx.store.EXPECT().UpdatePendingLocalDetails(id, gomock.Any()).
 			Do(func(id string, f func(*types.Struct) (*types.Struct, error)) { hasPendingDetails = false })
 
 		// when
-		_, result := fx.sb.appendPendingDetails(details)
+		_, result := fx.appendPendingDetails(details)
 
 		// then
 		assert.Equal(t, hasPendingDetails, result)
@@ -404,7 +310,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		})
 
 		// when
-		got, _ := fx.sb.appendPendingDetails(details)
+		got, _ := fx.appendPendingDetails(details)
 
 		// then
 		assert.Len(t, got.Fields, 1)
@@ -419,7 +325,7 @@ func TestSmartBlock_updatePendingDetails(t *testing.T) {
 		details := &types.Struct{}
 
 		// when
-		_, hasPendingDetails := fx.sb.appendPendingDetails(details)
+		_, hasPendingDetails := fx.appendPendingDetails(details)
 
 		// then
 		assert.False(t, hasPendingDetails)
@@ -455,7 +361,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		s := &state.State{}
 
 		// when
-		err := fx.sb.injectCreationInfo(s)
+		err := fx.injectCreationInfo(s)
 
 		// then
 		assert.NoError(t, err)
@@ -499,56 +405,112 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 	})
 }
 
+func Test_removeInternalFlags(t *testing.T) {
+	t.Run("no flags - no changes", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", nil).(*state.State)
+		st.SetDetail(bundle.RelationKeyInternalFlags.String(), pbtypes.IntList())
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+	})
+	t.Run("EmptyDelete flag is not removed when state is empty", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", nil).(*state.State)
+		flags := defaultInternalFlags()
+		flags.AddToState(st)
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Len(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()), 1)
+	})
+	t.Run("all flags are removed when title is not empty", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", map[string]simple.Block{
+			"title": simple.New(&model.Block{Id: "title"}),
+		}).(*state.State)
+		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("some name"))
+		flags := defaultInternalFlags()
+		flags.AddToState(st)
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+	})
+	t.Run("all flags are removed when state has non-empty text blocks", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", map[string]simple.Block{
+			"test": simple.New(&model.Block{Id: "test", ChildrenIds: []string{"text"}}),
+			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "some text"},
+			}}),
+		}).(*state.State)
+		flags := defaultInternalFlags()
+		flags.AddToState(st)
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+	})
+}
+
 type fixture struct {
-	t        *testing.T
-	ctrl     *gomock.Controller
-	source   *mockSource.MockSource
-	at       *testMock.MockService
-	store    *testMock.MockObjectStore
-	restrict *mock_restriction.MockService
-	indexer  *MockIndexer
-	sb       *smartBlock
+	ctrl               *gomock.Controller
+	source             *mockSource.MockSource
+	at                 *mock_core.MockService
+	store              *testMock.MockObjectStore
+	restrictionService *mock_restriction.MockService
+	indexer            *MockIndexer
+	eventSender        *mock_event.MockSender
+
+	*smartBlock
 }
 
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 
-	coreService := testMock.NewMockService(ctrl)
-	coreService.EXPECT().ProfileID().Return("").AnyTimes()
+	coreService := mock_core.NewMockService(t)
 
 	source := mockSource.NewMockSource(ctrl)
-	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
+	source.EXPECT().Type().AnyTimes().Return(smartblock.SmartBlockTypePage)
+	source.EXPECT().SpaceID().Return("space1").AnyTimes()
 
 	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetObjectType(gomock.Any()).AnyTimes()
 	objectStore.EXPECT().Name().Return(objectstore.CName).AnyTimes()
 
 	indexer := NewMockIndexer(ctrl)
 	indexer.EXPECT().Name().Return("indexer").AnyTimes()
 
 	restrictionService := mock_restriction.NewMockService(t)
+	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{}).Maybe()
 
-	relationService := mockRelation.NewMockService(ctrl)
+	systemObjectService := mock_system_object.NewMockService(t)
+	systemObjectService.EXPECT().GetObjectType(mock.Anything).Return(&model.ObjectType{}, nil).Maybe()
 
 	fileService := testMock.NewMockFileService(ctrl)
 
+	sender := mock_event.NewMockSender(t)
+
+	sb := New(coreService, fileService, restrictionService, objectStore, systemObjectService, indexer, sender).(*smartBlock)
+	sb.source = source
 	return &fixture{
-		sb: &smartBlock{
-			source:             source,
-			coreService:        coreService,
-			fileService:        fileService,
-			restrictionService: restrictionService,
-			objectStore:        objectStore,
-			relationService:    relationService,
-			indexer:            indexer,
-		},
-		t:        t,
-		at:       coreService,
-		ctrl:     ctrl,
-		store:    objectStore,
-		source:   source,
-		restrict: restrictionService,
-		indexer:  indexer,
+		smartBlock:         sb,
+		at:                 coreService,
+		ctrl:               ctrl,
+		store:              objectStore,
+		source:             source,
+		restrictionService: restrictionService,
+		indexer:            indexer,
+		eventSender:        sender,
 	}
 }
 
@@ -556,18 +518,22 @@ func (fx *fixture) tearDown() {
 	fx.ctrl.Finish()
 }
 
-func (fx *fixture) init(blocks []*model.Block) {
+func (fx *fixture) init(t *testing.T, blocks []*model.Block) {
 	id := blocks[0].Id
 	bm := make(map[string]simple.Block)
 	for _, b := range blocks {
 		bm[b.Id] = simple.New(b)
 	}
 	doc := state.NewDoc(id, bm)
-	fx.source.EXPECT().ReadDoc(context.Background(), gomock.Any(), false).Return(doc, nil)
+	fx.source.EXPECT().ReadDoc(gomock.Any(), gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.sb.Init(&InitContext{Source: fx.source})
-	require.NoError(fx.t, err)
+	err := fx.Init(&InitContext{
+		Ctx:     context.Background(),
+		SpaceID: "space1",
+		Source:  fx.source,
+	})
+	require.NoError(t, err)
 }
 
 type creationInfoProvider struct {
@@ -581,7 +547,8 @@ func (p *creationInfoProvider) GetCreationInfo() (creator string, createdDate in
 }
 
 func (p *creationInfoProvider) Id() string                                { return "" }
-func (p *creationInfoProvider) Type() model.SmartBlockType                { return 0 }
+func (p *creationInfoProvider) SpaceID() string                           { return "" }
+func (p *creationInfoProvider) Type() smartblock.SmartBlockType           { return 0 }
 func (p *creationInfoProvider) Heads() []string                           { return nil }
 func (p *creationInfoProvider) GetFileKeysSnapshot() []*pb.ChangeFileKeys { return nil }
 func (p *creationInfoProvider) ReadOnly() bool                            { return false }
@@ -591,4 +558,11 @@ func (p *creationInfoProvider) ReadDoc(_ context.Context, _ source.ChangeReceive
 }
 func (p *creationInfoProvider) PushChange(_ source.PushChangeParams) (id string, err error) {
 	return "", nil
+}
+
+func defaultInternalFlags() (flags internalflag.Set) {
+	flags.Add(model.InternalFlag_editorDeleteEmpty)
+	flags.Add(model.InternalFlag_editorSelectType)
+	flags.Add(model.InternalFlag_editorSelectTemplate)
+	return
 }

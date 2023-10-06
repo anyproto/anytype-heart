@@ -1,10 +1,11 @@
 package simple
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type BlockCreator = func(m *model.Block) Block
@@ -45,6 +46,10 @@ type DetailsHandler interface {
 	DetailsInit(s DetailsService)
 	// will call for applying block data to details
 	ApplyToDetails(prev Block, s DetailsService) (ok bool, err error)
+}
+
+type ObjectLinkReplacer interface {
+	ReplaceLinkIds(replacer func(oldId string) (newId string))
 }
 
 type EventMessage struct {

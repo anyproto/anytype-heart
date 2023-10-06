@@ -3,6 +3,7 @@ package pb
 import (
 	"archive/zip"
 	"bufio"
+	"context"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -43,7 +44,7 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	p := &Pb{}
 
 	zipPath := wr.Path()
-	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+	res, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path: []string{zipPath},
 		}},
@@ -53,18 +54,17 @@ func Test_GetSnapshotsSuccess(t *testing.T) {
 	}, process.NewProgress(pb.ModelProcess_Import))
 
 	assert.Nil(t, ce)
-	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 2)
 
 	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
 	assert.NotEmpty(t, res.Snapshots[1].Snapshot.Data.ObjectTypes)
-	assert.Equal(t, res.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+	assert.Equal(t, res.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 }
 
 func Test_GetSnapshotsFailedReadZip(t *testing.T) {
 	p := &Pb{}
 
-	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+	_, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path: []string{"not exist.zip"},
 		}},
@@ -91,7 +91,7 @@ func Test_GetSnapshotsFailedToGetSnapshot(t *testing.T) {
 
 	p := &Pb{}
 
-	_, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+	_, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path: []string{wr.Path()},
 		}},
@@ -109,7 +109,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 
 	paths := []string{"testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb", "testdata/test.pb"}
 	// ALL_OR_NOTHING mode
-	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+	res, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path: paths,
 		}},
@@ -122,7 +122,7 @@ func Test_GetSnapshotsFailedToGetSnapshotForTwoFiles(t *testing.T) {
 	assert.Nil(t, res)
 
 	// IGNORE_ERRORS mode
-	res, ce = p.GetSnapshots(&pb.RpcObjectImportRequest{
+	res, ce = p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path: paths,
 		}},
@@ -141,7 +141,7 @@ func Test_GetSnapshotsWithoutRootCollection(t *testing.T) {
 	p := &Pb{}
 
 	path := "testdata/bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb"
-	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+	res, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path:         []string{path},
 			NoCollection: true,
@@ -178,7 +178,7 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 	p := &Pb{}
 
 	zipPath := wr.Path()
-	res, ce := p.GetSnapshots(&pb.RpcObjectImportRequest{
+	res, ce := p.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{
 			Path: []string{zipPath},
 		}},

@@ -17,6 +17,7 @@ import (
 	"github.com/h2non/filetype"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -40,12 +41,16 @@ func init() {
 }
 
 func NewUploader(
+	spaceID string,
 	s BlockService,
 	fileService files.Service,
 	provider core.TempDirProvider,
+	picker getblock.ObjectGetter,
 ) Uploader {
 	return &uploader{
+		spaceID:         spaceID,
 		service:         s,
+		picker:          picker,
 		fileService:     fileService,
 		tempDirProvider: provider,
 	}
@@ -67,7 +72,7 @@ type Uploader interface {
 	AsyncUpdates(smartBlockId string) Uploader
 
 	Upload(ctx context.Context) (result UploadResult)
-	UploadAsync(todo context.Context) (ch chan UploadResult)
+	UploadAsync(ctx context.Context) (ch chan UploadResult)
 }
 type UploadResult struct {
 	Name string
@@ -100,7 +105,9 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
+	spaceID          string
 	service          BlockService
+	picker           getblock.ObjectGetter
 	block            file.Block
 	getReader        func(ctx context.Context) (*fileReader, error)
 	name             string
@@ -377,7 +384,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.fileService.ImageAdd(ctx, opts...)
+		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			log.Infof("can't add file '%s' as image: add as file", u.name)
 			e = nil
@@ -388,13 +395,13 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			return
 		}
 		result.Hash = im.Hash()
-		orig, _ := im.GetOriginalFile(context.TODO())
+		orig, _ := im.GetOriginalFile(ctx)
 		if orig != nil {
 			result.MIME = orig.Meta().Media
 			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx, opts...)
+		fl, e := u.fileService.FileAdd(ctx, u.spaceID, opts...)
 		if e != nil {
 			err = e
 			return
@@ -407,7 +414,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	// Touch the file to activate indexing
-	derr := u.service.Do(result.Hash, func(_ smartblock.SmartBlock) error {
+	derr := getblock.Do(u.picker, result.Hash, func(_ smartblock.SmartBlock) error {
 		return nil
 	})
 	if derr != nil {
@@ -456,7 +463,7 @@ func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
 
 func (u *uploader) updateBlock() {
 	if u.smartBlockID != "" && u.block != nil {
-		err := u.service.DoFile(u.smartBlockID, func(f File) error {
+		err := getblock.Do(u.picker, u.smartBlockID, func(f File) error {
 			return f.UpdateFile(u.block.Model().Id, u.groupID, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil

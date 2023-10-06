@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/space"
 )
 
 type linkedFilesSummary struct {
@@ -19,7 +18,6 @@ type linkedFilesSummary struct {
 }
 
 type linkedFilesWatcher struct {
-	spaceService       space.Service
 	fileStatusRegistry *fileStatusRegistry
 
 	sync.Mutex
@@ -28,13 +26,11 @@ type linkedFilesWatcher struct {
 }
 
 func newLinkedFilesWatcher(
-	spaceService space.Service,
 	fileStatusRegistry *fileStatusRegistry,
 ) *linkedFilesWatcher {
 	return &linkedFilesWatcher{
 		linkedFilesSummaries: make(map[string]linkedFilesSummary),
 		linkedFilesCloseCh:   make(map[string]chan struct{}),
-		spaceService:         spaceService,
 		fileStatusRegistry:   fileStatusRegistry,
 	}
 }
@@ -55,7 +51,7 @@ func (w *linkedFilesWatcher) GetLinkedFilesSummary(parentObjectID string) linked
 	return w.linkedFilesSummaries[parentObjectID]
 }
 
-func (w *linkedFilesWatcher) WatchLinkedFiles(parentObjectID string, filesGetter func() []string) {
+func (w *linkedFilesWatcher) WatchLinkedFiles(spaceID string, parentObjectID string, filesGetter func() []string) {
 	if filesGetter == nil {
 		return
 	}
@@ -70,26 +66,26 @@ func (w *linkedFilesWatcher) WatchLinkedFiles(parentObjectID string, filesGetter
 	w.Unlock()
 
 	go func() {
-		w.updateLinkedFilesSummary(parentObjectID, filesGetter)
+		w.updateLinkedFilesSummary(spaceID, parentObjectID, filesGetter)
 		ticker := time.NewTicker(5 * time.Second)
 		for {
 			select {
 			case <-closeCh:
 				return
 			case <-ticker.C:
-				w.updateLinkedFilesSummary(parentObjectID, filesGetter)
+				w.updateLinkedFilesSummary(spaceID, parentObjectID, filesGetter)
 			}
 		}
 	}()
 }
 
-func (w *linkedFilesWatcher) updateLinkedFilesSummary(parentObjectID string, filesGetter func() []string) {
+func (w *linkedFilesWatcher) updateLinkedFilesSummary(spaceID string, parentObjectID string, filesGetter func() []string) {
 	// TODO Cache linked files list?
 	fileIDs := filesGetter()
 
 	var pinStatus pb.EventStatusThreadCafePinStatus
 	for _, fileID := range fileIDs {
-		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), w.spaceService.AccountId(), fileID)
+		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), spaceID, fileID)
 		if errors.Is(err, domain.ErrFileNotFound) {
 			continue
 		}

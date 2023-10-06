@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -53,11 +52,10 @@ func (pt *Task) ID() string {
 
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
-	snapshot, subObjectsSnapshots, ce := pt.makeSnapshotFromPages(do)
-	if ce != nil {
-		if do.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return &Result{ce: ce}
-		}
+	allErrors := converter.NewError(do.mode)
+	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
+	if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+		return &Result{ce: allErrors}
 	}
 	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
 	resultSnapshots := make([]*converter.Snapshot, 0, 1+len(subObjectsSnapshots))
@@ -76,22 +74,21 @@ func (pt *Task) Execute(data interface{}) interface{} {
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
 		})
 	}
-	return &Result{snapshot: resultSnapshots, ce: ce}
+	return &Result{snapshot: resultSnapshots, ce: allErrors}
 }
 
-func (pt *Task) makeSnapshotFromPages(object *DataObject) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase, *converter.ConvertError) {
-	allErrors := converter.NewError()
+func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *converter.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
 	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
 		allErrors.Merge(blocksAndChildrenErr)
-		if object.mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
-			return nil, nil, allErrors
+		if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
+			return nil, nil
 		}
 	}
 	resp := pt.blockService.MapNotionBlocksToAnytype(object.request, notionBlocks, pt.p.ID)
 	snapshot := pt.provideSnapshot(resp.Blocks, details, relationLinks)
-	return snapshot, subObjectsSnapshots, nil
+	return snapshot, subObjectsSnapshots
 }
 
 func (pt *Task) provideDetails(object *DataObject) (map[string]*types.Value, []*model.SmartBlockSnapshotBase, []*model.RelationLink) {
@@ -106,7 +103,7 @@ func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        notionBlocks,
 		Details:       &types.Struct{Fields: details},
-		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
+		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
 		RelationLinks: relationLinks,
 	}
 	return snapshot
@@ -205,7 +202,7 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 	details := pt.getRelationDetails(key, name, propObject)
 	rel := &model.SmartBlockSnapshotBase{
 		Details:     details,
-		ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
+		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
 	}
 	return rel, key
 }
@@ -221,10 +218,12 @@ func (pt *Task) provideRelationOptionsSnapshots(id string, propObject property.O
 }
 
 func (pt *Task) getRelationDetails(key string, name string, propObject property.Object) *types.Struct {
+	if name == "" {
+		name = property.UntitledProperty
+	}
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
@@ -454,7 +453,7 @@ func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *mod
 	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
 	optSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     details,
-		ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
+		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
 	}
 	return details, optSnapshot
 }

@@ -15,9 +15,11 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/netutil"
 )
@@ -43,8 +45,14 @@ type Gateway interface {
 	app.ComponentStatable
 }
 
+type spaceIDResolver interface {
+	ResolveSpaceID(objectID string) (spaceID string, err error)
+}
+
 type gateway struct {
 	fileService     files.Service
+	resolver        idresolver.Resolver
+	objectStore     objectstore.ObjectStore
 	server          *http.Server
 	listener        net.Listener
 	handler         *http.ServeMux
@@ -85,6 +93,8 @@ func GatewayAddr() string {
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
+	g.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
+	g.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -246,7 +256,15 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	parts := strings.Split(fileHashAndPath, "/")
 	fileHash := parts[0]
 
-	file, err := g.fileService.FileByHash(ctx, fileHash)
+	spaceID, err := g.resolver.ResolveSpaceID(fileHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: fileHash,
+	}
+	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get file by hash: %s", err)
 	}
@@ -294,7 +312,15 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	imageHash := urlParts[2]
 	query := r.URL.Query()
 
-	image, err := g.fileService.ImageByHash(ctx, imageHash)
+	spaceID, err := g.resolver.ResolveSpaceID(imageHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: imageHash,
+	}
+	image, err := g.fileService.ImageByHash(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get image by hash: %w", err)
 	}

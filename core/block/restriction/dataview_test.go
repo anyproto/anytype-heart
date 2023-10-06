@@ -1,40 +1,52 @@
 package restriction
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestService_DataviewRestrictions(t *testing.T) {
-	rest := New()
-	assert.True(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.TypeKeyAudio.URL(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_objectType,
-	}).Dataview.Equal(DataviewRestrictions{
-		model.RestrictionsDataviewRestrictions{
-			BlockId:      DataviewBlockId,
-			Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
-		},
-	}))
+	s := newFixture(t)
 
-	assert.Nil(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.TypeKeyContact.URL(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_objectType,
-	}).Dataview)
+	t.Run("internal types have restrictions", func(t *testing.T) {
+		for _, typeKey := range bundle.InternalTypes {
+			restrictions := s.GetRestrictions(givenObjectType(typeKey))
+			assert.Equal(t,
+				DataviewRestrictions{
+					model.RestrictionsDataviewRestrictions{
+						BlockId:      DataviewBlockId,
+						Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
+					},
+				},
+				restrictions.Dataview)
+		}
+	})
 
-	assert.Nil(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeyType.URL(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_relation,
-	}).Dataview)
+	t.Run("non-internal types have no restrictions", func(t *testing.T) {
+		restrictions := s.GetRestrictions(givenObjectType(bundle.TypeKeyContact))
+		assert.Nil(t, restrictions.Dataview)
+	})
 
-	assert.Nil(t, rest.GetRestrictions(&restrictionHolder{
-		id:     bundle.RelationKeySizeInBytes.URL(),
-		tp:     model.SmartBlockType_SubObject,
-		layout: model.ObjectType_relation,
-	}).Dataview)
+	t.Run("relations don't have restrictions", func(t *testing.T) {
+		restrictions := s.GetRestrictions(givenRelation(bundle.RelationKeyId))
+		assert.Nil(t, restrictions.Dataview)
+	})
+
+	t.Run("ordinary objects don't have restrictions", func(t *testing.T) {
+		objectTypeID := "derivedFrom(page)"
+		restrictions := s.GetRestrictions(
+			newRestrictionHolder(
+				smartblock.SmartBlockTypePage,
+				model.ObjectType_basic,
+				nil,
+				objectTypeID,
+			),
+		)
+		assert.Equal(t, dvRestrictNo, restrictions.Dataview)
+	})
 }

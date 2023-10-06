@@ -1,22 +1,24 @@
 package converter
 
 import (
+	"context"
 	"fmt"
-	"strings"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/any-sync/app"
+	"golang.org/x/exp/slices"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -29,8 +31,9 @@ type LayoutConverter interface {
 }
 
 type layoutConverter struct {
-	objectStore objectstore.ObjectStore
-	sbtProvider typeprovider.SmartBlockTypeProvider
+	objectStore         objectstore.ObjectStore
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	systemObjectService system_object.Service
 }
 
 func NewLayoutConverter() LayoutConverter {
@@ -40,6 +43,7 @@ func NewLayoutConverter() LayoutConverter {
 func (c *layoutConverter) Init(a *app.App) error {
 	c.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	return nil
 }
 
@@ -115,7 +119,7 @@ func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
 		template.WithDescription,
-		template.WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
+		template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),
 	)
 	return nil
 }
@@ -139,12 +143,15 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
 	if len(source) == 0 {
-		source = []string{DefaultSetSource.URL()}
+		defaultTypeID, err := c.systemObjectService.GetTypeIdByKey(context.Background(), st.SpaceID(), DefaultSetSource)
+		if err != nil {
+			return fmt.Errorf("get default type id: %w", err)
+		}
+		source = []string{defaultTypeID}
 	}
-
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, _, err := dataview.DataviewBlockBySource(c.sbtProvider, c.objectStore, source)
+	dvBlock, _, err := dataview.BlockBySource(st.SpaceID(), c.sbtProvider, c.systemObjectService, source)
 	if err != nil {
 		return err
 	}
@@ -166,13 +173,14 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 		return fmt.Errorf("dataview block is not found")
 	}
 	details := st.Details()
-	typesFromSet := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	setSourceIds := pbtypes.GetStringList(details, bundle.RelationKeySetOf.String())
+	spaceId := st.SpaceID()
 
 	c.removeRelationSetOf(st)
 
 	dvBlock.Model().GetDataview().IsCollection = true
 
-	ids, err := c.listIDsFromSet(typesFromSet)
+	ids, err := c.listIDsFromSet(spaceId, setSourceIds)
 	if err != nil {
 		return err
 	}
@@ -180,14 +188,16 @@ func (c *layoutConverter) fromSetToCollection(st *state.State) error {
 	return nil
 }
 
-func (c *layoutConverter) listIDsFromSet(typesFromSet []string) ([]string, error) {
-	filters := generateFilters(typesFromSet)
+func (c *layoutConverter) listIDsFromSet(spaceID string, typesFromSet []string) ([]string, error) {
+	filters, err := c.generateFilters(spaceID, typesFromSet)
+	if err != nil {
+		return nil, fmt.Errorf("generate filters: %w", err)
+	}
 	if len(filters) == 0 {
 		return []string{}, nil
 	}
 
 	records, _, err := c.objectStore.Query(
-		nil,
 		database.Query{
 			Filters: filters,
 		},
@@ -278,27 +288,37 @@ func getFirstTextBlock(st *state.State) (simple.Block, error) {
 	return res, nil
 }
 
-func generateFilters(typesAndRelations []string) []*model.BlockContentDataviewFilter {
+func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]*model.BlockContentDataviewFilter, error) {
 	var filters []*model.BlockContentDataviewFilter
-	types, relations := separate(typesAndRelations)
-	filters = appendTypesFilter(types, filters)
-	filters = appendRelationFilters(relations, filters)
-	return filters
+	m, err := c.sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
+	if err != nil {
+		return nil, fmt.Errorf("partition ids by sb type: %w", err)
+	}
+	filters = c.appendTypesFilter(m[coresb.SmartBlockTypeObjectType], filters)
+	filters, err = c.appendRelationFilters(m[coresb.SmartBlockTypeRelation], filters)
+	if err != nil {
+		return nil, fmt.Errorf("append relation filters: %w", err)
+	}
+	return filters, nil
 }
 
-func appendRelationFilters(rels []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
-	if len(rels) != 0 {
-		for _, rel := range rels {
+func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
+	if len(relationIDs) != 0 {
+		for _, relationID := range relationIDs {
+			relation, err := c.systemObjectService.GetRelationByID(relationID)
+			if err != nil {
+				return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
+			}
 			filters = append(filters, &model.BlockContentDataviewFilter{
-				RelationKey: rel,
+				RelationKey: relation.Key,
 				Condition:   model.BlockContentDataviewFilter_Exists,
 			})
 		}
 	}
-	return filters
+	return filters, nil
 }
 
-func appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+func (c *layoutConverter) appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
 	if len(types) != 0 {
 		filters = append(filters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeyType.String(),
@@ -307,15 +327,4 @@ func appendTypesFilter(types []string, filters []*model.BlockContentDataviewFilt
 		})
 	}
 	return filters
-}
-
-func separate(typesAndRels []string) (types []string, rels []string) {
-	for _, id := range typesAndRels {
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			types = append(types, id)
-		} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
-			rels = append(rels, strings.TrimPrefix(id, addr.RelationKeyToIdPrefix))
-		}
-	}
-	return
 }

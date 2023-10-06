@@ -6,7 +6,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -16,16 +17,17 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, order filter.Order, limit, offset int) *sortedSub {
+func (s *service) newSortedSub(id string, keys []string, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
-		id:     id,
-		keys:   keys,
-		filter: filter,
-		order:  order,
-		cache:  s.cache,
-		ds:     s.ds,
-		limit:  limit,
-		offset: offset,
+		id:          id,
+		keys:        keys,
+		filter:      filter,
+		order:       order,
+		cache:       s.cache,
+		ds:          s.ds,
+		limit:       limit,
+		offset:      offset,
+		objectStore: s.objectStore,
 	}
 	return sub
 }
@@ -33,8 +35,8 @@ func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, o
 type sortedSub struct {
 	id     string
 	keys   []string
-	filter filter.Filter
-	order  filter.Order
+	filter database.Filter
+	order  database.Order
 
 	afterId, beforeId string
 	limit, offset     int
@@ -55,6 +57,14 @@ type sortedSub struct {
 
 	cache *cache
 	ds    *dependencyService
+
+	// for nested subscriptions
+	objectStore objectstore.ObjectStore
+	// parent is used to run onChange callback when any child subscriptions receive changes
+	parent       *sortedSub
+	parentFilter *database.FilterNestedIn
+	// nested is used to close child subscriptions when parent is closed
+	nested []*sortedSub
 }
 
 func (s *sortedSub) init(entries []*entry) (err error) {
@@ -181,6 +191,21 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 
+	if s.parent != nil {
+		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
+		if err != nil {
+			panic(err)
+		}
+
+		var idsForParentFilter []string
+		s.iterateActive(func(e *entry) {
+			idsForParentFilter = append(idsForParentFilter, e.id)
+		})
+		s.parentFilter.IDs = idsForParentFilter
+
+		ctx.entries = append(ctx.entries, parentEntries...)
+		s.parent.onChange(ctx)
+	}
 }
 
 func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
@@ -356,5 +381,8 @@ func (s *sortedSub) close() {
 	}
 	if s.depSub != nil {
 		s.depSub.close()
+	}
+	for _, child := range s.nested {
+		child.close()
 	}
 }

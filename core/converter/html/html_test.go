@@ -18,69 +18,69 @@ func TestHTML_Convert(t *testing.T) {
 		s := state.NewDoc("root", map[string]simple.Block{
 			"root": simple.New(&model.Block{}),
 		}).(*state.State)
-		assert.Empty(t, NewHTMLConverter(nil, s).Convert())
+		assert.Empty(t, NewHTMLConverter("space1", nil, s).Convert())
 	})
 
 	t.Run("markup", func(t *testing.T) {
-		//given
+		// given
 		doc := givenMarkup()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(markupExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("lists", func(t *testing.T) {
-		//given
+		// given
 		doc := givenLists()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(listExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("lists in lists", func(t *testing.T) {
-		//given
+		// given
 		doc := givenListsInLists()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(listInListExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("intersection of marks", func(t *testing.T) {
-		//given
+		// given
 		doc := givenIntersectMarks()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(intersectMarksExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
 	})
 
 	t.Run("columns", func(t *testing.T) {
-		//given
+		// given
 		doc := givenColumns()
 
-		//when
+		// when
 		html := convertHtml(doc)
 
-		//then
+		// then
 		expected := givenTrimmedString(columnsExpectation)
 
 		assert.Equal(t, expected, givenTrimmedString(html))
@@ -88,7 +88,7 @@ func TestHTML_Convert(t *testing.T) {
 }
 
 func convertHtml(s *state.State) string {
-	return NewHTMLConverter(nil, s).Convert()
+	return NewHTMLConverter("space1", nil, s).Convert()
 }
 
 func givenMarkup() *state.State {

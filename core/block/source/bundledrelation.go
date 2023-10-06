@@ -8,21 +8,25 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func NewBundledRelation(id string) (s Source) {
 	return &bundledRelation{
-		id: id,
+		id:     id,
+		relKey: domain.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)),
 	}
 }
 
 type bundledRelation struct {
-	id string
+	id     string
+	relKey domain.RelationKey
 }
 
 func (v *bundledRelation) ReadOnly() bool {
@@ -33,8 +37,12 @@ func (v *bundledRelation) Id() string {
 	return v.id
 }
 
-func (v *bundledRelation) Type() model.SmartBlockType {
-	return model.SmartBlockType_BundledRelation
+func (v *bundledRelation) SpaceID() string {
+	return addr.AnytypeMarketplaceWorkspace
+}
+
+func (v *bundledRelation) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeBundledRelation
 }
 
 func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
@@ -42,13 +50,14 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 		return nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}
 
-	rel, err := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
+	rel, err := bundle.GetRelation(domain.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
 	if err != nil {
 		return nil, err
 	}
 	rel.Creator = addr.AnytypeProfileId
-	details := bundle.GetDetailsForRelation(true, rel)
-	details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
+	wrapperRelation := relationutils.Relation{Relation: rel}
+	details := wrapperRelation.ToStruct() // bundle.GetDetailsForBundledRelation(rel)
+	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(addr.AnytypeMarketplaceWorkspace)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
@@ -57,21 +66,23 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 }
 
 func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	s := state.NewDoc(v.id, nil).(*state.State)
+	// we use STRelation instead of BundledRelation for a reason we want to have the same prefix
+	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, v.relKey.String())
+	if err != nil {
+		return nil, err
+	}
 
+	s := state.NewDocWithUniqueKey(v.id, nil, uk).(*state.State)
 	d, err := v.getDetails(v.id)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range d.Fields {
-		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
+		s.SetDetailAndBundledRelation(domain.RelationKey(k), v)
 	}
-	s.SetObjectType(bundle.TypeKeyRelation.BundledURL())
+	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil
-}
-
-func (v *bundledRelation) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	return v.ReadDoc(ctx, nil, false)
 }
 
 func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {

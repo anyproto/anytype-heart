@@ -19,8 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -36,9 +36,9 @@ var (
 )
 
 type Clipboard interface {
-	Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
-	Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
-	Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
+	Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
+	Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error)
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
@@ -46,27 +46,27 @@ func NewClipboard(
 	sb smartblock.SmartBlock,
 	file file.File,
 	tempDirProvider core.TempDirProvider,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	fileService files.Service,
 ) Clipboard {
 	return &clipboard{
-		SmartBlock:      sb,
-		file:            file,
-		tempDirProvider: tempDirProvider,
-		relationService: relationService,
-		fileService:     fileService,
+		SmartBlock:          sb,
+		file:                file,
+		tempDirProvider:     tempDirProvider,
+		systemObjectService: systemObjectService,
+		fileService:         fileService,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file            file.File
-	tempDirProvider core.TempDirProvider
-	relationService relation.Service
-	fileService     files.Service
+	file                file.File
+	tempDirProvider     core.TempDirProvider
+	systemObjectService system_object.Service
+	fileService         files.Service
 }
 
-func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	caretPosition = -1
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
@@ -90,7 +90,7 @@ func (cb *clipboard) Paste(ctx *session.Context, req *pb.RpcBlockPasteRequest, g
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
 }
 
-func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	anySlot = req.Blocks
 	textSlot = ""
 	htmlSlot = ""
@@ -135,19 +135,19 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.fileService, s).Convert()
+		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
 		textSlot = cutBlock.GetText().Text
 		anySlot = cb.stateToBlocks(s)
 		return textSlot, htmlSlot, anySlot, nil
 	}
 
 	// scenario: ordinary copy
-	htmlSlot = html.NewHTMLConverter(cb.fileService, s).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
 }
 
-func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewStateCtx(ctx)
 	textSlot = ""
 
@@ -203,7 +203,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
 		cbs.Set(simple.New(cutBlock))
-		htmlSlot = html.NewHTMLConverter(cb.fileService, cbs).Convert()
+		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, cbs).Convert()
 
 		return textSlot, htmlSlot, anySlot, cb.Apply(s)
 	}
@@ -216,7 +216,7 @@ func (cb *clipboard) Cut(ctx *session.Context, req pb.RpcBlockCutRequest) (textS
 	}
 	textSlot = renderText(state)
 
-	htmlSlot = html.NewHTMLConverter(cb.fileService, state).Convert()
+	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, state).Convert()
 	anySlot = req.Blocks
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
@@ -266,7 +266,7 @@ func assertBlocks(stateBlocks []*model.Block, requestBlocks []*model.Block) (map
 
 func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err error) {
 	s := cb.blocksToState(req.Blocks)
-	htmlData := html.NewHTMLConverter(cb.fileService, s).Export()
+	htmlData := html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Export()
 
 	dir := cb.tempDirProvider.TempDir()
 	fileName := "export-" + cb.Id() + ".html"
@@ -280,7 +280,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 	return filePath, nil
 }
 
-func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteHtml(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	blocks, _, err := anymark.HTMLToBlocks([]byte(req.HtmlSlot))
 
 	if err != nil {
@@ -305,7 +305,7 @@ func (cb *clipboard) pasteHtml(ctx *session.Context, req *pb.RpcBlockPasteReques
 	return cb.pasteAny(ctx, req, groupId)
 }
 
-func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
+func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	if len(req.TextSlot) == 0 {
 		return blockIds, uploadArr, caretPosition, isSameBlockCaret, nil
 	}
@@ -336,7 +336,7 @@ func (cb *clipboard) pasteText(ctx *session.Context, req *pb.RpcBlockPasteReques
 	return cb.pasteAny(ctx, req, groupId)
 }
 
-func (cb *clipboard) pasteRawText(ctx *session.Context, req *pb.RpcBlockPasteRequest, textArr []string, groupId string) ([]string, []pb.RpcBlockUploadRequest, int32, bool, error) {
+func (cb *clipboard) pasteRawText(ctx session.Context, req *pb.RpcBlockPasteRequest, textArr []string, groupId string) ([]string, []pb.RpcBlockUploadRequest, int32, bool, error) {
 	req.AnySlot = make([]*model.Block, 0, len(textArr))
 	for _, text := range textArr {
 		if text != "" {
@@ -356,7 +356,7 @@ type duplicatable interface {
 }
 
 func (cb *clipboard) pasteAny(
-	ctx *session.Context, req *pb.RpcBlockPasteRequest, groupID string,
+	ctx session.Context, req *pb.RpcBlockPasteRequest, groupID string,
 ) (
 	blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error,
 ) {
@@ -494,7 +494,7 @@ func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
 	return result
 }
 
-func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
+func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteRequest) (blockIds []string, err error) {
 	s := cb.NewStateCtx(ctx)
 	for _, fs := range req.FileSlot {
 		b := simple.New(&model.Block{
@@ -506,7 +506,7 @@ func (cb *clipboard) pasteFiles(ctx *session.Context, req *pb.RpcBlockPasteReque
 			},
 		})
 		s.Add(b)
-		if err = cb.file.UploadState(s, b.Model().Id, file.FileSource{
+		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
 			Bytes: fs.Data,
 			Path:  fs.LocalPath,
 			Name:  fs.Name,
@@ -553,7 +553,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	for k := range relationKeys {
 		relationKeysList = append(relationKeysList, k)
 	}
-	relations, err := cb.relationService.FetchKeys(relationKeysList...)
+	relations, err := cb.systemObjectService.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
 	if err != nil {
 		return fmt.Errorf("failed to fetch relation keys of dataview: %v", err)
 	}

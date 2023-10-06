@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func (s *Service) SetWidgetBlockTargetId(ctx *session.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) error {
+func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) error {
 	return Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewStateCtx(ctx)
 		root := st.Get(req.BlockId)
@@ -27,7 +27,7 @@ func (s *Service) SetWidgetBlockTargetId(ctx *session.Context, req *pb.RpcBlockW
 	})
 }
 
-func (s *Service) SetWidgetBlockLayout(ctx *session.Context, req *pb.RpcBlockWidgetSetLayoutRequest) error {
+func (s *Service) SetWidgetBlockLayout(ctx session.Context, req *pb.RpcBlockWidgetSetLayoutRequest) error {
 	return Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
@@ -38,7 +38,7 @@ func (s *Service) SetWidgetBlockLayout(ctx *session.Context, req *pb.RpcBlockWid
 	})
 }
 
-func (s *Service) SetWidgetBlockLimit(ctx *session.Context, req *pb.RpcBlockWidgetSetLimitRequest) error {
+func (s *Service) SetWidgetBlockLimit(ctx session.Context, req *pb.RpcBlockWidgetSetLimitRequest) error {
 	return Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {
@@ -49,7 +49,7 @@ func (s *Service) SetWidgetBlockLimit(ctx *session.Context, req *pb.RpcBlockWidg
 	})
 }
 
-func (s *Service) SetWidgetBlockViewId(ctx *session.Context, req *pb.RpcBlockWidgetSetViewIdRequest) error {
+func (s *Service) SetWidgetBlockViewId(ctx session.Context, req *pb.RpcBlockWidgetSetViewIdRequest) error {
 	return Do(s, req.ContextId, func(b basic.Updatable) error {
 		return b.Update(ctx, func(b simple.Block) error {
 			if wc, ok := b.Model().Content.(*model.BlockContentOfWidget); ok {

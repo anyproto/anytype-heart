@@ -7,7 +7,7 @@ type reindexFlags struct {
 	removeAllIndexedObjects bool
 	bundledRelations        bool
 	eraseIndexes            bool
-	threadObjects           bool
+	objects                 bool
 	fileObjects             bool
 	fulltext                bool
 	bundledTemplates        bool
@@ -20,7 +20,7 @@ func (f *reindexFlags) any() bool {
 		f.removeAllIndexedObjects ||
 		f.bundledRelations ||
 		f.eraseIndexes ||
-		f.threadObjects ||
+		f.objects ||
 		f.fileObjects ||
 		f.fulltext ||
 		f.bundledTemplates ||
@@ -33,7 +33,7 @@ func (f *reindexFlags) enableAll() {
 	f.removeAllIndexedObjects = true
 	f.bundledRelations = true
 	f.eraseIndexes = true
-	f.threadObjects = true
+	f.objects = true
 	f.fileObjects = true
 	f.fulltext = true
 	f.bundledTemplates = true

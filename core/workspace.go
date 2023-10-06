@@ -5,13 +5,15 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
 	response := func(workspaceId string, code pb.RpcWorkspaceCreateResponseErrorCode, err error) *pb.RpcWorkspaceCreateResponse {
-		m := &pb.RpcWorkspaceCreateResponse{WorkspaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
+		m := &pb.RpcWorkspaceCreateResponse{SpaceId: workspaceId, Error: &pb.RpcWorkspaceCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -21,7 +23,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 
 	var workspaceId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		workspaceId, err = bs.CreateWorkspace(req)
+		workspaceId, err = bs.CreateWorkspace(cctx, req)
 		return
 	})
 	if err != nil {
@@ -29,6 +31,25 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 	}
 
 	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
+}
+
+func (mw *Middleware) WorkspaceInfo(cctx context.Context, req *pb.RpcWorkspaceInfoRequest) *pb.RpcWorkspaceInfoResponse {
+	response := func(info *model.AccountInfo, code pb.RpcWorkspaceInfoResponseErrorCode, err error) *pb.RpcWorkspaceInfoResponse {
+		m := &pb.RpcWorkspaceInfoResponse{
+			Info:  info,
+			Error: &pb.RpcWorkspaceInfoResponseError{Code: code},
+		}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	// TODO: [MR] this should probably be related only to account
+	info, err := getService[account.Service](mw).GetInfo(cctx, req.SpaceId)
+	if err != nil {
+		return response(info, pb.RpcWorkspaceInfoResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(info, pb.RpcWorkspaceInfoResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceSetIsHighlighted(cctx context.Context, req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {
@@ -116,6 +137,7 @@ func (mw *Middleware) WorkspaceGetCurrent(cctx context.Context, req *pb.RpcWorks
 	return response(workspaceId, pb.RpcWorkspaceGetCurrentResponseError_NULL, nil)
 }
 
+// WorkspaceObjectListAdd is unused
 func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWorkspaceObjectListAddRequest) *pb.RpcWorkspaceObjectListAddResponse {
 	response := func(ids []string, code pb.RpcWorkspaceObjectListAddResponseErrorCode, err error) *pb.RpcWorkspaceObjectListAddResponse {
 		m := &pb.RpcWorkspaceObjectListAddResponse{ObjectIds: ids, Error: &pb.RpcWorkspaceObjectListAddResponseError{Code: code}}
@@ -131,7 +153,7 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		ids, _, err = bs.AddSubObjectsToWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account)
+		ids, _, err = bs.InstallBundledObjects(cctx, req.SpaceId, req.ObjectIds)
 		return
 	})
 
@@ -158,7 +180,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, details, err = bs.AddSubObjectToWorkspace(req.ObjectId, mw.GetAnytype().PredefinedBlocks().Account)
+		id, details, err = bs.InstallBundledObject(cctx, req.SpaceId, req.ObjectId)
 		return
 	})
 
@@ -179,18 +201,11 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 		return m
 	}
 
-	var (
-		ids []string
-	)
-
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.RemoveSubObjectsInWorkspace(req.ObjectIds, mw.GetAnytype().PredefinedBlocks().Account, true)
-		return
+		return bs.DeleteArchivedObjects(req.ObjectIds)
 	})
-
 	if err != nil {
-		return response(ids, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, err)
+		return response([]string{}, pb.RpcWorkspaceObjectListRemoveResponseError_UNKNOWN_ERROR, err)
 	}
-
-	return response(ids, pb.RpcWorkspaceObjectListRemoveResponseError_NULL, nil)
+	return response(req.ObjectIds, 0, nil)
 }

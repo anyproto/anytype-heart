@@ -30,11 +30,6 @@
     - [Change.StoreSliceUpdate.Add](#anytype-Change-StoreSliceUpdate-Add)
     - [Change.StoreSliceUpdate.Move](#anytype-Change-StoreSliceUpdate-Move)
     - [Change.StoreSliceUpdate.Remove](#anytype-Change-StoreSliceUpdate-Remove)
-    - [Change._RelationAdd](#anytype-Change-_RelationAdd)
-    - [Change._RelationRemove](#anytype-Change-_RelationRemove)
-    - [Change._RelationUpdate](#anytype-Change-_RelationUpdate)
-    - [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict)
-    - [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes)
   
 - [pb/protos/commands.proto](#pb_protos_commands-proto)
     - [Empty](#anytype-Empty)
@@ -175,6 +170,10 @@
     - [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request)
     - [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response)
     - [Rpc.Block.Replace.Response.Error](#anytype-Rpc-Block-Replace-Response-Error)
+    - [Rpc.Block.SetCarriage](#anytype-Rpc-Block-SetCarriage)
+    - [Rpc.Block.SetCarriage.Request](#anytype-Rpc-Block-SetCarriage-Request)
+    - [Rpc.Block.SetCarriage.Response](#anytype-Rpc-Block-SetCarriage-Response)
+    - [Rpc.Block.SetCarriage.Response.Error](#anytype-Rpc-Block-SetCarriage-Response-Error)
     - [Rpc.Block.SetFields](#anytype-Rpc-Block-SetFields)
     - [Rpc.Block.SetFields.Request](#anytype-Rpc-Block-SetFields-Request)
     - [Rpc.Block.SetFields.Response](#anytype-Rpc-Block-SetFields-Response)
@@ -653,6 +652,10 @@
     - [Rpc.Object.Import.Request.TxtParams](#anytype-Rpc-Object-Import-Request-TxtParams)
     - [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response)
     - [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error)
+    - [Rpc.Object.ImportExperience](#anytype-Rpc-Object-ImportExperience)
+    - [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request)
+    - [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response)
+    - [Rpc.Object.ImportExperience.Response.Error](#anytype-Rpc-Object-ImportExperience-Response-Error)
     - [Rpc.Object.ImportList](#anytype-Rpc-Object-ImportList)
     - [Rpc.Object.ImportList.ImportResponse](#anytype-Rpc-Object-ImportList-ImportResponse)
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
@@ -908,6 +911,10 @@
     - [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request)
     - [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response)
     - [Rpc.Workspace.GetCurrent.Response.Error](#anytype-Rpc-Workspace-GetCurrent-Response-Error)
+    - [Rpc.Workspace.Info](#anytype-Rpc-Workspace-Info)
+    - [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request)
+    - [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response)
+    - [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error)
     - [Rpc.Workspace.Object](#anytype-Rpc-Workspace-Object)
     - [Rpc.Workspace.Object.Add](#anytype-Rpc-Workspace-Object-Add)
     - [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request)
@@ -964,6 +971,7 @@
     - [Rpc.Block.Merge.Response.Error.Code](#anytype-Rpc-Block-Merge-Response-Error-Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype-Rpc-Block-Paste-Response-Error-Code)
     - [Rpc.Block.Replace.Response.Error.Code](#anytype-Rpc-Block-Replace-Response-Error-Code)
+    - [Rpc.Block.SetCarriage.Response.Error.Code](#anytype-Rpc-Block-SetCarriage-Response-Error-Code)
     - [Rpc.Block.SetFields.Response.Error.Code](#anytype-Rpc-Block-SetFields-Response-Error-Code)
     - [Rpc.Block.Split.Request.Mode](#anytype-Rpc-Block-Split-Request-Mode)
     - [Rpc.Block.Split.Response.Error.Code](#anytype-Rpc-Block-Split-Response-Error-Code)
@@ -1081,6 +1089,7 @@
     - [Rpc.Object.Import.Request.Mode](#anytype-Rpc-Object-Import-Request-Mode)
     - [Rpc.Object.Import.Request.Type](#anytype-Rpc-Object-Import-Request-Type)
     - [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code)
+    - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
     - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase)
@@ -1144,6 +1153,7 @@
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype-Rpc-Workspace-GetAll-Response-Error-Code)
     - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype-Rpc-Workspace-GetCurrent-Response-Error-Code)
+    - [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code)
     - [Rpc.Workspace.Object.Add.Response.Error.Code](#anytype-Rpc-Workspace-Object-Add-Response-Error-Code)
     - [Rpc.Workspace.Object.ListAdd.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code)
     - [Rpc.Workspace.Object.ListRemove.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code)
@@ -1412,6 +1422,7 @@
     - [Restrictions](#anytype-model-Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
+    - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -1447,6 +1458,7 @@
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
     - [Restrictions.ObjectRestriction](#anytype-model-Restrictions-ObjectRestriction)
     - [SmartBlockType](#anytype-model-SmartBlockType)
+    - [SpaceStatus](#anytype-model-SpaceStatus)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -1481,6 +1493,7 @@
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
+| WorkspaceInfo | [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request) | [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response) |  |
 | WorkspaceObjectAdd | [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request) | [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response) |  |
 | WorkspaceObjectListAdd | [Rpc.Workspace.Object.ListAdd.Request](#anytype-Rpc-Workspace-Object-ListAdd-Request) | [Rpc.Workspace.Object.ListAdd.Response](#anytype-Rpc-Workspace-Object-ListAdd-Response) |  |
 | WorkspaceObjectListRemove | [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request) | [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response) |  |
@@ -1537,6 +1550,7 @@
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
+| ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
 | ObjectCollectionAdd | [Rpc.ObjectCollection.Add.Request](#anytype-Rpc-ObjectCollection-Add-Request) | [Rpc.ObjectCollection.Add.Response](#anytype-Rpc-ObjectCollection-Add-Response) | Collections *** |
 | ObjectCollectionRemove | [Rpc.ObjectCollection.Remove.Request](#anytype-Rpc-ObjectCollection-Remove-Request) | [Rpc.ObjectCollection.Remove.Response](#anytype-Rpc-ObjectCollection-Remove-Response) |  |
 | ObjectCollectionSort | [Rpc.ObjectCollection.Sort.Request](#anytype-Rpc-ObjectCollection-Sort-Request) | [Rpc.ObjectCollection.Sort.Response](#anytype-Rpc-ObjectCollection-Sort-Response) |  |
@@ -1581,6 +1595,7 @@
 | BlockCut | [Rpc.Block.Cut.Request](#anytype-Rpc-Block-Cut-Request) | [Rpc.Block.Cut.Response](#anytype-Rpc-Block-Cut-Response) |  |
 | BlockSetFields | [Rpc.Block.SetFields.Request](#anytype-Rpc-Block-SetFields-Request) | [Rpc.Block.SetFields.Response](#anytype-Rpc-Block-SetFields-Response) |  |
 | BlockExport | [Rpc.Block.Export.Request](#anytype-Rpc-Block-Export-Request) | [Rpc.Block.Export.Response](#anytype-Rpc-Block-Export-Response) |  |
+| BlockSetCarriage | [Rpc.Block.SetCarriage.Request](#anytype-Rpc-Block-SetCarriage-Request) | [Rpc.Block.SetCarriage.Response](#anytype-Rpc-Block-SetCarriage-Response) |  |
 | BlockListDelete | [Rpc.Block.ListDelete.Request](#anytype-Rpc-Block-ListDelete-Request) | [Rpc.Block.ListDelete.Response](#anytype-Rpc-Block-ListDelete-Response) |  |
 | BlockListMoveToExistingObject | [Rpc.Block.ListMoveToExistingObject.Request](#anytype-Rpc-Block-ListMoveToExistingObject-Request) | [Rpc.Block.ListMoveToExistingObject.Response](#anytype-Rpc-Block-ListMoveToExistingObject-Response) |  |
 | BlockListMoveToNewObject | [Rpc.Block.ListMoveToNewObject.Request](#anytype-Rpc-Block-ListMoveToNewObject-Request) | [Rpc.Block.ListMoveToNewObject.Response](#anytype-Rpc-Block-ListMoveToNewObject-Response) |  |
@@ -1802,9 +1817,6 @@ the element of change tree used to store and internal apply smartBlock history
 | relationRemove | [Change.RelationRemove](#anytype-Change-RelationRemove) |  |  |
 | detailsSet | [Change.DetailsSet](#anytype-Change-DetailsSet) |  |  |
 | detailsUnset | [Change.DetailsUnset](#anytype-Change-DetailsUnset) |  |  |
-| old_relationAdd | [Change._RelationAdd](#anytype-Change-_RelationAdd) |  | deprecated |
-| old_relationRemove | [Change._RelationRemove](#anytype-Change-_RelationRemove) |  |  |
-| old_relationUpdate | [Change._RelationUpdate](#anytype-Change-_RelationUpdate) |  |  |
 | objectTypeAdd | [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd) |  |  |
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove) |  |  |
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
@@ -1888,6 +1900,7 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -1903,6 +1916,7 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 
@@ -2062,87 +2076,6 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationAdd"></a>
-
-### Change._RelationAdd
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relation | [model.Relation](#anytype-model-Relation) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationRemove"></a>
-
-### Change._RelationRemove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate"></a>
-
-### Change._RelationUpdate
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| format | [model.RelationFormat](#anytype-model-RelationFormat) |  |  |
-| name | [string](#string) |  |  |
-| defaultValue | [google.protobuf.Value](#google-protobuf-Value) |  |  |
-| objectTypes | [Change._RelationUpdate.ObjectTypes](#anytype-Change-_RelationUpdate-ObjectTypes) |  |  |
-| multi | [bool](#bool) |  |  |
-| selectDict | [Change._RelationUpdate.Dict](#anytype-Change-_RelationUpdate-Dict) |  |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate-Dict"></a>
-
-### Change._RelationUpdate.Dict
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| dict | [model.Relation.Option](#anytype-model-Relation-Option) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Change-_RelationUpdate-ObjectTypes"></a>
-
-### Change._RelationUpdate.ObjectTypes
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypes | [string](#string) | repeated |  |
 
 
 
@@ -3335,7 +3268,7 @@ common simple block command
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
-| objectType | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -4181,6 +4114,64 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype-Rpc-Block-SetCarriage"></a>
+
+### Rpc.Block.SetCarriage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Request"></a>
+
+### Rpc.Block.SetCarriage.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Response"></a>
+
+### Rpc.Block.SetCarriage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.SetCarriage.Response.Error](#anytype-Rpc-Block-SetCarriage-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Response-Error"></a>
+
+### Rpc.Block.SetCarriage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.SetCarriage.Response.Error.Code](#anytype-Rpc-Block-SetCarriage-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Block-SetFields"></a>
 
 ### Rpc.Block.SetFields
@@ -4523,6 +4514,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -6619,6 +6611,8 @@ set the current active view (persisted only within a session)
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | new object details |
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| spaceId | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
@@ -8325,6 +8319,7 @@ Get marks list in the selected range in text block.
 | blockId | [string](#string) |  |  |
 | text | [string](#string) |  |  |
 | marks | [model.Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks) |  |  |
+| selectedTextRange | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -8765,6 +8760,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) |  | the path where export files will place |
 | docIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -8928,6 +8924,11 @@ Get marks list in the selected range in text block.
 
 ### Rpc.Debug.SpaceSummary.Request
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -9470,6 +9471,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
 
 
 
@@ -9544,6 +9550,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
@@ -10346,6 +10353,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | templateId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -10405,6 +10414,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10464,6 +10474,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10522,6 +10533,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10581,6 +10593,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10642,6 +10655,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | if omitted the name of page will be the same with object type |
 | templateId | [string](#string) |  | optional template id for creating from template |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -10779,6 +10793,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
@@ -10842,6 +10857,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | subId | [string](#string) |  |  |
 | relationKey | [string](#string) |  |  |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
@@ -10970,6 +10986,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | notionParams | [Rpc.Object.Import.Request.NotionParams](#anytype-Rpc-Object-Import-Request-NotionParams) |  |  |
 | bookmarksParams | [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams) |  | for internal use |
 | markdownParams | [Rpc.Object.Import.Request.MarkdownParams](#anytype-Rpc-Object-Import-Request-MarkdownParams) |  |  |
@@ -11124,6 +11141,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Import.Response.Error](#anytype-Rpc-Object-Import-Response-Error) |  |  |
+| collectionId | [string](#string) |  |  |
 
 
 
@@ -11139,6 +11157,65 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Import.Response.Error.Code](#anytype-Rpc-Object-Import-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience"></a>
+
+### Rpc.Object.ImportExperience
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience-Request"></a>
+
+### Rpc.Object.ImportExperience.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| source | [string](#string) |  |  |
+| isLocal | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience-Response"></a>
+
+### Rpc.Object.ImportExperience.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportExperience.Response.Error](#anytype-Rpc-Object-ImportExperience-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportExperience-Response-Error"></a>
+
+### Rpc.Object.ImportExperience.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11231,6 +11308,7 @@ DEPRECATED, GO-1926 |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  |  |
 
 
@@ -11402,6 +11480,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | path | [string](#string) |  | the path where export files will place |
 | objectIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
 | format | [Rpc.Object.ListExport.Format](#anytype-Rpc-Object-ListExport-Format) |  | export format |
@@ -11583,7 +11662,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectIds | [string](#string) | repeated |  |
-| objectTypeId | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -11777,6 +11856,8 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | error | [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
+| blockId | [string](#string) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -12216,7 +12297,6 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.SetIsArchived.Response.Error](#anytype-Rpc-Object-SetIsArchived-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -12374,7 +12454,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| objectTypeUrl | [string](#string) |  |  |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -12858,6 +12938,8 @@ DEPRECATED, GO-1926 |
 | error | [Rpc.Object.Undo.Response.Error](#anytype-Rpc-Object-Undo-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 | counters | [Rpc.Object.UndoRedoCounter](#anytype-Rpc-Object-UndoRedoCounter) |  |  |
+| blockId | [string](#string) |  |  |
+| range | [model.Range](#anytype-model-Range) |  |  |
 
 
 
@@ -13851,6 +13933,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of template block for cloning |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -13964,7 +14047,7 @@ Available undo/redo operations
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectType | [string](#string) |  | id of desired object type |
+| objectTypeUniqueKey | [string](#string) |  |  |
 
 
 
@@ -14090,6 +14173,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | pictureId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -14594,7 +14678,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
+| useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
 
 
 
@@ -14610,7 +14695,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Workspace.Create.Response.Error](#anytype-Rpc-Workspace-Create-Response-Error) |  |  |
-| workspaceId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -14796,6 +14881,63 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Info"></a>
+
+### Rpc.Workspace.Info
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Request"></a>
+
+### Rpc.Workspace.Info.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Response"></a>
+
+### Rpc.Workspace.Info.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error) |  |  |
+| info | [model.Account.Info](#anytype-model-Account-Info) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Response-Error"></a>
+
+### Rpc.Workspace.Info.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Workspace-Object"></a>
 
 ### Rpc.Workspace.Object
@@ -14824,6 +14966,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | objectId | [string](#string) |  |  |
 
 
@@ -14882,6 +15025,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
 | objectIds | [string](#string) | repeated |  |
 
 
@@ -15588,6 +15732,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Block-SetCarriage-Response-Error-Code"></a>
+
+### Rpc.Block.SetCarriage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -17129,6 +17286,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-ImportExperience-Response-Error-Code"></a>
+
+### Rpc.Object.ImportExperience.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-ImportList-ImportResponse-Type"></a>
 
 ### Rpc.Object.ImportList.ImportResponse.Type
@@ -17164,11 +17334,12 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| SKIP | 0 |  |
-| PERSONAL_PROJECTS | 1 |  |
-| KNOWLEDGE_BASE | 2 |  |
-| NOTES_DIARY | 3 |  |
-| STRATEGIC_WRITING | 4 |  |
+| EMPTY | 0 |  |
+| SKIP | 1 |  |
+| PERSONAL_PROJECTS | 2 |  |
+| KNOWLEDGE_BASE | 3 |  |
+| NOTES_DIARY | 4 |  |
+| STRATEGIC_WRITING | 5 |  |
 
 
 
@@ -17966,6 +18137,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Workspace-Info-Response-Error-Code"></a>
+
+### Rpc.Workspace.Info.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -21260,7 +21444,8 @@ Avatar of a user&#39;s account. It could be an image or color
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | deviceId | [string](#string) |  |  |
-| accountSpaceId | [string](#string) |  | marketplace template id |
+| accountSpaceId | [string](#string) |  |  |
+| workspaceObjectId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
@@ -21959,6 +22144,8 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | smartBlockType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
+| key | [string](#string) |  |  |
+| data | [bytes](#bytes) |  |  |
 
 
 
@@ -21984,6 +22171,7 @@ Used to decode block meta only, without the content itself
 | types | [SmartBlockType](#anytype-model-SmartBlockType) | repeated |  |
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 | installedByDefault | [bool](#bool) |  |  |
+| key | [string](#string) |  | name of objectType (can be localized for bundled types) |
 
 
 
@@ -22242,6 +22430,22 @@ stored |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
+| key | [string](#string) |  | this field is not passing to the crdt changes and can be only set in the snapshot |
+
+
+
+
+
+
+<a name="anytype-model-SpaceObjectHeader"></a>
+
+### SpaceObjectHeader
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceID | [string](#string) |  |  |
 
 
 
@@ -22685,6 +22889,10 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | relationOptionsList | 12 |  |
 | relationOption | 13 |  |
 | collection | 14 |  |
+| audio | 15 |  |
+| video | 16 |  |
+| date | 17 |  |
+| spaceView | 18 |  |
 | database | 20 | to be released later |
 
 
@@ -22793,11 +23001,32 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | BundledTemplate | 289 |  |
 | BundledRelation | 512 | DEPRECATED |
 | SubObject | 513 |  |
-| BundledObjectType | 514 |  |
+| BundledObjectType | 514 | DEPRECATED |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | Workspace | 518 |  |
+| STRelation | 521 |  |
+| STType | 528 |  |
+| STRelationOption | 529 |  |
+| SpaceView | 530 |  |
 | MissingObject | 519 |  |
+
+
+
+<a name="anytype-model-SpaceStatus"></a>
+
+### SpaceStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 | Unknown means the space is not loaded yet |
+| Loading | 1 | Loading - the space in progress of loading |
+| Ok | 2 | Ok - the space loaded and available |
+| Missing | 3 | Missing - the space is missing |
+| Error | 4 | Error - the space loading ended with an error |
+| RemoteWaitingDeletion | 5 | RemoteWaitingDeletion - network status is &#34;waiting deletion&#34; |
+| RemoteDeleted | 6 | RemoteDeleted - the space is deleted in the current network |
 
 
  

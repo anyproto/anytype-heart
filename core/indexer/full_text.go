@@ -5,11 +5,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block"
+	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+var (
+	ftIndexInterval         = 10 * time.Second
+	ftIndexForceMinInterval = time.Second * 10
 )
 
 func (i *indexer) ForceFTIndex() {
@@ -23,12 +30,9 @@ func (i *indexer) ftLoop() {
 	ticker := time.NewTicker(ftIndexInterval)
 	i.runFullTextIndexer()
 	var lastForceIndex time.Time
-	i.mu.Lock()
-	quit := i.quit
-	i.mu.Unlock()
 	for {
 		select {
-		case <-quit:
+		case <-i.quit:
 			return
 		case <-ticker.C:
 			i.runFullTextIndexer()
@@ -71,33 +75,34 @@ func (i *indexer) runFullTextIndexer() {
 func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, err error) {
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
+	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
+		sbType, err := i.typeProvider.Type(sb.SpaceID(), id)
+		if err != nil {
+			sbType = smartblock.SmartBlockTypePage
+		}
+		indexDetails, _ := sbType.Indexable()
+		if !indexDetails {
+			return nil
+		}
 
-	info, err := i.getObjectInfo(ctx, id)
-	if err != nil {
-		return ftDoc, fmt.Errorf("get object info: %w", err)
-	}
-	sbType, err := i.typeProvider.Type(info.Id)
-	if err != nil {
-		sbType = smartblock.SmartBlockTypePage
-	}
-	indexDetails, _ := sbType.Indexable()
-	if !indexDetails {
-		return ftsearch.SearchDoc{}, nil
-	}
+		if err = i.store.UpdateObjectSnippet(id, sb.Snippet()); err != nil {
+			return fmt.Errorf("update object snippet: %w", err)
+		}
 
-	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
-		return
-	}
+		title := pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String())
+		if sb.ObjectTypeKey() == bundle.TypeKeyNote || title == "" {
+			title = sb.Snippet()
+		}
 
-	title := pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String())
-	if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
-		title = info.State.Snippet()
-	}
-	ftDoc = ftsearch.SearchDoc{
-		Id:    id,
-		Title: title,
-		Text:  info.State.SearchText(),
-	}
+		ftDoc = ftsearch.SearchDoc{
+			Id:      id,
+			SpaceID: sb.SpaceID(),
+			Title:   title,
+			Text:    sb.SearchText(),
+		}
+		return nil
+	})
+
 	return
 }
 

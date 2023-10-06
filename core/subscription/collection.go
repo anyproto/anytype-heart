@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -116,7 +115,7 @@ func (c *collectionObserver) updateIDs(ids []string) {
 	}
 }
 
-func (c *collectionObserver) FilterObject(g filter.Getter) bool {
+func (c *collectionObserver) FilterObject(g database.Getter) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	id := g.Get(bundle.RelationKeyId.String()).GetStringValue()
@@ -162,7 +161,7 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
-func (s *service) newCollectionSub(id string, collectionID string, keys []string, flt filter.Filter, order filter.Order, limit, offset int) (*collectionSub, error) {
+func (s *service) newCollectionSub(id string, collectionID string, keys []string, flt database.Filter, order database.Order, limit, offset int) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(collectionID, id)
 	if err != nil {
 		return nil, err
@@ -170,7 +169,7 @@ func (s *service) newCollectionSub(id string, collectionID string, keys []string
 	if flt == nil {
 		flt = obs
 	} else {
-		flt = filter.AndFilters{obs, flt}
+		flt = database.FiltersAnd{obs, flt}
 	}
 
 	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)

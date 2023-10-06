@@ -15,7 +15,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/space"
 )
 
 type fileWithSpace struct {
@@ -28,16 +27,20 @@ type fileStatus struct {
 	updatedAt time.Time
 }
 
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
 type fileWatcher struct {
 	filesToWatchLock *sync.Mutex
 	filesToWatch     map[fileWithSpace]struct{}
 
-	dbProvider   datastore.Datastore
-	badger       *badger.DB
-	spaceService space.Service
-	registry     *fileStatusRegistry
-	updateCh     chan fileWithSpace
-	closeCh      chan struct{}
+	dbProvider datastore.Datastore
+	badger     *badger.DB
+	provider   personalIDProvider
+	registry   *fileStatusRegistry
+	updateCh   chan fileWithSpace
+	closeCh    chan struct{}
 
 	updateReceiver syncstatus.UpdateReceiver
 
@@ -45,7 +48,7 @@ type fileWatcher struct {
 }
 
 func newFileWatcher(
-	spaceService space.Service,
+	provider personalIDProvider,
 	dbProvider datastore.Datastore,
 	registry *fileStatusRegistry,
 	updateReceiver syncstatus.UpdateReceiver,
@@ -60,7 +63,7 @@ func newFileWatcher(
 		updateReceiver:   updateReceiver,
 		registry:         registry,
 		dbProvider:       dbProvider,
-		spaceService:     spaceService,
+		provider:         provider,
 	}
 	return watcher
 }
@@ -69,6 +72,7 @@ const filesToWatchPrefix = "/files_to_watch/"
 
 func (s *fileWatcher) loadFilesToWatch() error {
 	return s.badger.View(func(txn *badger.Txn) error {
+		defaultSpaceID := s.provider.PersonalSpaceID()
 		iter := txn.NewIterator(badger.IteratorOptions{
 			Prefix: []byte(filesToWatchPrefix),
 		})
@@ -77,8 +81,20 @@ func (s *fileWatcher) loadFilesToWatch() error {
 		for iter.Rewind(); iter.Valid(); iter.Next() {
 			it := iter.Item()
 			fileID := bytes.TrimPrefix(it.Key(), []byte(filesToWatchPrefix))
-			s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: s.spaceService.AccountId()}] = struct{}{}
+			spaceID, err := it.ValueCopy(nil)
+			if err != nil {
+				return fmt.Errorf("failed to copy spaceID value from badger for '%s'", fileID)
+			}
+			if len(spaceID) != 0 {
+				s.filesToWatch[fileWithSpace{fileID: string(fileID), spaceID: string(spaceID)}] = struct{}{}
+			} else {
+				err = s.Watch(defaultSpaceID, string(fileID))
+				if err != nil {
+					log.Errorf("failed to migrate files in space store: %v", err)
+				}
+			}
 		}
+
 		return nil
 	})
 }
@@ -95,8 +111,7 @@ func (s *fileWatcher) init() error {
 }
 
 func (s *fileWatcher) run() error {
-	err := s.loadFilesToWatch()
-	if err != nil {
+	if err := s.loadFilesToWatch(); err != nil {
 		return fmt.Errorf("load files to watch: %w", err)
 	}
 
@@ -241,7 +256,7 @@ func (s *fileWatcher) Watch(spaceID, fileID string) error {
 	if _, ok := s.filesToWatch[key]; !ok {
 		s.filesToWatch[key] = struct{}{}
 		err := s.badger.Update(func(txn *badger.Txn) error {
-			return txn.Set([]byte(filesToWatchPrefix+key.fileID), nil)
+			return txn.Set([]byte(filesToWatchPrefix+key.fileID), []byte(key.spaceID))
 		})
 		if err != nil {
 			return fmt.Errorf("add file to watch store: %w", err)

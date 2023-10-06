@@ -8,6 +8,7 @@ const (
 	TagNameProperty               = "Tag"
 	TagNamePropertyToReplace      = "Tags"
 	TagNamePropertyToReplaceLower = "tags"
+	UntitledProperty              = "Untitled"
 )
 
 func IsPropertyMatchTagRelation(tags string, hasTag bool) bool {

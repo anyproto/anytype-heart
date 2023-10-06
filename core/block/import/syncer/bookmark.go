@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -17,7 +16,7 @@ func NewBookmarkSyncer(service *block.Service) *BookmarkSyncer {
 	return &BookmarkSyncer{service: service}
 }
 
-func (bs *BookmarkSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
+func (bs *BookmarkSyncer) Sync(id string, b simple.Block) error {
 	if b.Model().GetBookmark().TargetObjectId != "" {
 		return nil
 	}
@@ -25,7 +24,7 @@ func (bs *BookmarkSyncer) Sync(ctx *session.Context, id string, b simple.Block) 
 		return nil
 	}
 
-	err := bs.service.BookmarkFetch(ctx, pb.RpcBlockBookmarkFetchRequest{
+	err := bs.service.BookmarkFetch(nil, pb.RpcBlockBookmarkFetchRequest{
 		ContextId: id,
 		BlockId:   b.Model().GetId(),
 		Url:       b.Model().GetBookmark().Url,

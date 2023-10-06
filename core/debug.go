@@ -30,7 +30,7 @@ func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeReques
 	}
 
 	dbg := app.MustComponent(debug.CName).(debug.Debug)
-	filename, err := dbg.DumpTree(req.TreeId, req.Path, !req.Unanonymized, req.GenerateSvg)
+	filename, err := dbg.DumpTree(cctx, req.TreeId, req.Path, !req.Unanonymized, req.GenerateSvg)
 	return response(err, filename)
 }
 
@@ -59,7 +59,7 @@ func (mw *Middleware) DebugTreeHeads(cctx context.Context, req *pb.RpcDebugTreeH
 	}
 
 	dbg := app.MustComponent(debug.CName).(debug.Debug)
-	treeInfo, err := dbg.TreeHeads(req.TreeId)
+	treeInfo, err := dbg.TreeHeads(cctx, req.TreeId)
 	if err != nil {
 		return response(err, debug.TreeInfo{})
 	}
@@ -94,7 +94,7 @@ func (mw *Middleware) DebugSpaceSummary(cctx context.Context, req *pb.RpcDebugSp
 		return response(ErrNotLoggedIn, debug.SpaceSummary{})
 	}
 	dbg := app.MustComponent(debug.CName).(debug.Debug)
-	spaceSummary, err := dbg.SpaceSummary()
+	spaceSummary, err := dbg.SpaceSummary(cctx, req.SpaceId)
 	if err != nil {
 		return response(err, debug.SpaceSummary{})
 	}
@@ -140,8 +140,8 @@ func (mw *Middleware) DebugExportLocalstore(cctx context.Context, req *pb.RpcDeb
 		err  error
 	)
 	err = mw.doBlockService(func(s *block.Service) error {
-		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
-		path, err = dbg.DumpLocalstore(req.DocIds, req.Path)
+		dbg := mw.applicationService.GetApp().MustComponent(debug.CName).(debug.Debug)
+		path, err = dbg.DumpLocalstore(cctx, req.SpaceId, req.DocIds, req.Path)
 		return err
 	})
 	return response(path, err)

@@ -1,106 +1,88 @@
 package session
 
-import "github.com/anyproto/anytype-heart/pb"
+import (
+	"github.com/anyproto/anytype-heart/pb"
+)
 
-func NewContext(opts ...ContextOption) *Context {
-	ctx := &Context{}
+type Context interface {
+	ID() string
+	ObjectID() string
+	TraceID() string
+	SetMessages(smartBlockId string, msgs []*pb.EventMessage)
+	GetMessages() []*pb.EventMessage
+	GetResponseEvent() *pb.ResponseEvent
+}
+
+type sessionContext struct {
+	smartBlockId string
+	traceId      string
+	messages     []*pb.EventMessage
+	sessionToken string
+}
+
+func NewContext(opts ...ContextOption) Context {
+	ctx := &sessionContext{}
 	for _, apply := range opts {
 		apply(ctx)
 	}
 	return ctx
 }
 
-type ContextOption func(ctx *Context)
-
-func WithSendEvent(se func(e *pb.Event)) ContextOption {
-	return func(ctx *Context) {
-		ctx.sendEvent = se
+// NewChildContext creates a new child context. The child context has empty messages
+func NewChildContext(parent Context) Context {
+	child := &sessionContext{
+		smartBlockId: parent.ObjectID(),
+		traceId:      parent.TraceID(),
+		sessionToken: parent.ID(),
 	}
+	return child
 }
 
-func WithSession(token string, sender Sender) ContextOption {
-	return func(ctx *Context) {
+type ContextOption func(ctx *sessionContext)
+
+func WithSession(token string) ContextOption {
+	return func(ctx *sessionContext) {
 		ctx.sessionToken = token
-		ctx.sessionSender = sender
 	}
 }
 
 func WithTraceId(traceId string) ContextOption {
-	return func(ctx *Context) {
+	return func(ctx *sessionContext) {
 		ctx.traceId = traceId
 	}
-}
-
-func NewChildContext(parent *Context) *Context {
-	if parent == nil {
-		return NewContext()
-	}
-	return &Context{
-		smartBlockId:  parent.smartBlockId,
-		traceId:       parent.traceId,
-		sendEvent:     parent.sendEvent,
-		sessionSender: parent.sessionSender,
-		sessionToken:  parent.sessionToken,
-	}
-}
-
-type Sender interface {
-	SendSession(token string, e *pb.Event)
 }
 
 type Closer interface {
 	CloseSession(token string)
 }
 
-type Context struct {
-	smartBlockId  string
-	traceId       string
-	messages      []*pb.EventMessage
-	sendEvent     func(e *pb.Event)
-	sessionSender Sender
-	sessionToken  string
+func (ctx *sessionContext) ID() string {
+	return ctx.sessionToken
 }
 
-func (ctx *Context) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
+func (ctx *sessionContext) ObjectID() string {
+	return ctx.smartBlockId
+}
+
+func (ctx *sessionContext) TraceID() string {
+	return ctx.traceId
+}
+
+func (ctx *sessionContext) AddMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = append(ctx.messages, msgs...)
-	if ctx.sendEvent != nil {
-		ctx.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: smartBlockId,
-			Initiator: nil,
-		})
-	}
 }
 
-func (ctx *Context) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
+func (ctx *sessionContext) SetMessages(smartBlockId string, msgs []*pb.EventMessage) {
 	ctx.smartBlockId = smartBlockId
 	ctx.messages = msgs
-	if ctx.sendEvent != nil {
-		ctx.sendEvent(&pb.Event{
-			Messages:  msgs,
-			ContextId: smartBlockId,
-			Initiator: nil,
-		})
-	}
 }
 
-func (ctx *Context) GetMessages() []*pb.EventMessage {
+func (ctx *sessionContext) GetMessages() []*pb.EventMessage {
 	return ctx.messages
 }
 
-func (ctx *Context) SendToOtherSessions(msgs []*pb.EventMessage) {
-	if ctx.sessionSender != nil {
-		ctx.sessionSender.SendSession(ctx.sessionToken, &pb.Event{
-			Messages:  msgs,
-			ContextId: ctx.smartBlockId,
-			Initiator: nil,
-		})
-	}
-}
-
-func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {
-	ctx.SendToOtherSessions(ctx.messages)
+func (ctx *sessionContext) GetResponseEvent() *pb.ResponseEvent {
 	return &pb.ResponseEvent{
 		Messages:  ctx.messages,
 		ContextId: ctx.smartBlockId,

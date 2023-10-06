@@ -2,7 +2,6 @@ package dataview
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -13,20 +12,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -37,23 +34,23 @@ var log = logging.Logger("anytype-mw-editor-dataview")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
-	SetSource(ctx *session.Context, blockId string, source []string) (err error)
+	SetSource(ctx session.Context, blockId string, source []string) (err error)
 
 	// GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 	GetDataview(blockID string) (*model.BlockContentDataview, error)
 
-	DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error
-	SetActiveView(ctx *session.Context, blockId string, activeViewId string, limit int, offset int) error
-	CreateView(ctx *session.Context, blockID string,
+	DeleteView(ctx session.Context, blockId string, viewId string, showEvent bool) error
+	SetActiveView(ctx session.Context, blockId string, activeViewId string, limit int, offset int) error
+	CreateView(ctx session.Context, blockID string,
 		view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error)
-	SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) error
-	AddRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
-	DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error
-	UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
-	UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
-	UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
-	DataviewMoveObjectsInView(ctx *session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error
+	SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) error
+	AddRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
+	DeleteRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error
+	UpdateView(ctx session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error
+	UpdateViewGroupOrder(ctx session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
+	UpdateViewObjectOrder(ctx session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error
+	DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error
 
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
@@ -62,15 +59,15 @@ func NewDataview(
 	sb smartblock.SmartBlock,
 	anytype core.Service,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 ) Dataview {
 	dv := &sdataview{
-		SmartBlock:      sb,
-		anytype:         anytype,
-		objectStore:     objectStore,
-		relationService: relationService,
-		sbtProvider:     sbtProvider,
+		SmartBlock:          sb,
+		anytype:             anytype,
+		objectStore:         objectStore,
+		systemObjectService: systemObjectService,
+		sbtProvider:         sbtProvider,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv
@@ -78,17 +75,17 @@ func NewDataview(
 
 type sdataview struct {
 	smartblock.SmartBlock
-	anytype         core.Service
-	objectStore     objectstore.ObjectStore
-	relationService relation.Service
-	sbtProvider     typeprovider.SmartBlockTypeProvider
+	anytype             core.Service
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
 	return getDataviewBlock(s, blockID)
 }
 
-func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []string) (err error) {
+func (d *sdataview) SetSource(ctx session.Context, blockId string, source []string) (err error) {
 	s := d.NewStateCtx(ctx)
 	if blockId == "" {
 		blockId = template.DataviewBlockId
@@ -98,7 +95,7 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 	if e != nil && blockId != template.DataviewBlockId {
 		return e
 	}
-	if block != nil && slice.UnsortedEquals(block.GetSource(), source) {
+	if block != nil && slice.UnsortedEqual(block.GetSource(), source) {
 		return
 	}
 
@@ -108,7 +105,7 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := DataviewBlockBySource(d.sbtProvider, d.objectStore, source)
+	dvContent, _, err := BlockBySource(d.SpaceID(), d.sbtProvider, d.systemObjectService, source)
 	if err != nil {
 		return
 	}
@@ -126,14 +123,14 @@ func (d *sdataview) SetSource(ctx *session.Context, blockId string, source []str
 	return d.Apply(s, smartblock.NoRestrictions)
 }
 
-func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationKeys []string, showEvent bool) error {
+func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.relationService.FetchKey(key)
+		relation, err2 := d.systemObjectService.FetchRelationByKey(d.SpaceID(), key)
 		if err2 != nil {
 			return err2
 		}
@@ -146,7 +143,7 @@ func (d *sdataview) AddRelations(ctx *session.Context, blockId string, relationK
 	}
 }
 
-func (d *sdataview) DeleteRelations(ctx *session.Context, blockId string, relationIds []string, showEvent bool) error {
+func (d *sdataview) DeleteRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -185,7 +182,7 @@ func (d *sdataview) GetDataview(blockID string) (*model.BlockContentDataview, er
 	return tb.Model().GetDataview(), nil
 }
 
-func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId string, showEvent bool) error {
+func (d *sdataview) DeleteView(ctx session.Context, blockId string, viewId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -205,7 +202,7 @@ func (d *sdataview) DeleteView(ctx *session.Context, blockId string, viewId stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) UpdateView(ctx *session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error {
+func (d *sdataview) UpdateView(ctx session.Context, blockID string, viewID string, view *model.BlockContentDataviewView, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(s, blockID)
 	if err != nil {
@@ -222,7 +219,7 @@ func (d *sdataview) UpdateView(ctx *session.Context, blockID string, viewID stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-func (d *sdataview) SetActiveView(ctx *session.Context, id string, activeViewId string, limit int, offset int) error {
+func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId string, limit int, offset int) error {
 	s := d.NewStateCtx(ctx)
 
 	dvBlock, err := getDataviewBlock(s, id)
@@ -239,7 +236,7 @@ func (d *sdataview) SetActiveView(ctx *session.Context, id string, activeViewId 
 	return d.Apply(s)
 }
 
-func (d *sdataview) SetViewPosition(ctx *session.Context, blockId string, viewId string, position uint32) (err error) {
+func (d *sdataview) SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) (err error) {
 	s := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -280,7 +277,7 @@ func (d *sdataview) SetViewPosition(ctx *session.Context, blockId string, viewId
 	return d.Apply(s)
 }
 
-func (d *sdataview) CreateView(ctx *session.Context, id string,
+func (d *sdataview) CreateView(ctx session.Context, id string,
 	view model.BlockContentDataviewView, source []string) (*model.BlockContentDataviewView, error) {
 	view.Id = uuid.New().String()
 	s := d.NewStateCtx(ctx)
@@ -303,22 +300,6 @@ func (d *sdataview) CreateView(ctx *session.Context, id string,
 		// todo: set depends on the view type
 		view.Sorts = defaultLastModifiedDateSort()
 	}
-
-	sbType, err := d.sbtProvider.Type(d.Id())
-	if err != nil {
-		return nil, err
-	}
-	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.anytype.PredefinedBlocks().Account {
-		view.Filters = []*model.BlockContentDataviewFilter{{
-			RelationKey: bundle.RelationKeyWorkspaceId.String(),
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(d.Id()),
-		}, {
-			RelationKey: bundle.RelationKeyId.String(),
-			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       pbtypes.String(d.Id()),
-		}}
-	}
 	tb.AddView(view)
 	return &view, d.Apply(s)
 }
@@ -333,7 +314,7 @@ func defaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
 	}
 }
 
-func (d *sdataview) UpdateViewGroupOrder(ctx *session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
+func (d *sdataview) UpdateViewGroupOrder(ctx session.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, blockId)
 	if err != nil {
@@ -345,7 +326,7 @@ func (d *sdataview) UpdateViewGroupOrder(ctx *session.Context, blockId string, o
 	return d.Apply(st)
 }
 
-func (d *sdataview) UpdateViewObjectOrder(ctx *session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error {
+func (d *sdataview) UpdateViewObjectOrder(ctx session.Context, blockId string, orders []*model.BlockContentDataviewObjectOrder) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, blockId)
 	if err != nil {
@@ -357,7 +338,7 @@ func (d *sdataview) UpdateViewObjectOrder(ctx *session.Context, blockId string, 
 	return d.Apply(st)
 }
 
-func (d *sdataview) DataviewMoveObjectsInView(ctx *session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error {
+func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBlockDataviewObjectOrderMoveRequest) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, req.BlockId)
 	if err != nil {
@@ -371,84 +352,56 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx *session.Context, req *pb.RpcB
 	return d.Apply(st)
 }
 
-func SchemaBySources(sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, store objectstore.ObjectStore, optionalRelations []*model.RelationLink) (schema.Schema, error) {
-	var hasRelations, hasType bool
+func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, systemObjectService system_object.Service) (database.Schema, error) {
+	var relationFound, typeFound bool
 
 	for _, source := range sources {
-		sbt, err := sbtProvider.Type(source)
+		sbt, err := sbtProvider.Type(spaceID, source)
 		if err != nil {
 			return nil, err
 		}
 
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		if sbt == smartblock2.SmartBlockTypeBundledObjectType {
-			if hasRelations {
+		if sbt == smartblock2.SmartBlockTypeObjectType {
+			if relationFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			if hasType {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains more than one object type")
 			}
-			hasType = true
+			typeFound = true
 		}
 
-		if strings.HasPrefix(source, addr.RelationKeyToIdPrefix) {
-			if hasType {
+		if sbt == smartblock2.SmartBlockTypeRelation {
+			if typeFound {
 				return nil, fmt.Errorf("dataview source contains both type and relation")
 			}
-			hasRelations = true
-		}
-
-		if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
-			if hasRelations {
-				return nil, fmt.Errorf("dataview source contains both type and relation")
-			}
-			hasType = true
+			relationFound = true
 		}
 	}
-	if hasType {
-		objectType, err := store.GetObjectType(sources[0])
+	if typeFound {
+		objectType, err := systemObjectService.GetObjectType(sources[0])
 		if err != nil {
 			return nil, err
 		}
-		sch := schema.NewByType(objectType, optionalRelations)
+		sch := database.NewByType(objectType)
 		return sch, nil
 	}
 
-	if hasRelations {
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		ids, _, err := store.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyRecommendedRelations.String(),
-					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       pbtypes.StringList(sources),
-				},
-			},
-		}, []smartblock2.SmartBlockType{
-			smartblock2.SmartBlockTypeBundledObjectType,
-		})
-		if err != nil {
-			return nil, err
-		}
-
+	if relationFound {
 		var relations []*model.RelationLink
 		for _, relId := range sources {
-			rel, err := store.GetRelationByID(relId)
+			rel, err := systemObjectService.GetRelationByID(relId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get relation %s: %s", relId, err.Error())
 			}
 
 			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
 		}
-		sch := schema.NewByRelations(ids, relations, optionalRelations)
+		sch := database.NewByRelations(relations)
 		return sch, nil
 	}
 
 	return nil, fmt.Errorf("relation or type not found")
-}
-
-func (d *sdataview) getSchema(dvBlock dataview.Block, source []string) (schema.Schema, error) {
-	return SchemaBySources(d.sbtProvider, source, d.objectStore, dvBlock.Model().GetDataview().RelationLinks)
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -463,14 +416,15 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	if !dvChanged {
 		return
 	}
-	var restrictedSources = []string{
-		bundle.TypeKeyFile.URL(),
-		bundle.TypeKeyImage.URL(),
-		bundle.TypeKeyVideo.URL(),
-		bundle.TypeKeyAudio.URL(),
-		bundle.TypeKeyObjectType.URL(),
-		bundle.TypeKeySet.URL(),
-		bundle.TypeKeyRelation.URL(),
+	systemTypeIDs := d.anytype.PredefinedObjects(d.SpaceID()).SystemTypes
+	restrictedSources := []string{
+		systemTypeIDs[bundle.TypeKeyFile],
+		systemTypeIDs[bundle.TypeKeyImage],
+		systemTypeIDs[bundle.TypeKeyVideo],
+		systemTypeIDs[bundle.TypeKeyAudio],
+		systemTypeIDs[bundle.TypeKeyObjectType],
+		systemTypeIDs[bundle.TypeKeySet],
+		systemTypeIDs[bundle.TypeKeyRelation],
 	}
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]
@@ -580,8 +534,8 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func DataviewBlockBySource(sbtProvider typeprovider.SmartBlockTypeProvider, store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
-	if schema, err = SchemaBySources(sbtProvider, source, store, nil); err != nil {
+func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, systemObjectService system_object.Service, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
+	if schema, err = SchemaBySources(spaceID, sbtProvider, source, systemObjectService); err != nil {
 		return
 	}
 

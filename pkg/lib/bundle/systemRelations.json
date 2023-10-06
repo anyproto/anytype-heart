@@ -21,6 +21,7 @@
   "featuredRelations",
   "isFavorite",
   "workspaceId",
+  "spaceId",
   "links",
   "internalFlags",
   "restrictions",
@@ -60,5 +61,6 @@
   "sourceFilePath",
   "fileSyncStatus",
   "defaultTemplateId",
+  "uniqueKey",
   "backlinks"
 ]

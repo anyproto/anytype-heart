@@ -2,15 +2,16 @@ package importer
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -27,7 +28,7 @@ type CreateSubObjectRequest struct {
 }
 
 func (c CreateSubObjectRequest) GetDetails() *types.Struct {
-	sbt := bundle.TypeKey(c.subObjectType).String()
+	sbt := domain.TypeKey(c.subObjectType).String()
 	detailsType := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyType.String(): pbtypes.String(sbt),
@@ -40,10 +41,10 @@ type ObjectIDGetter struct {
 	objectStore   objectstore.ObjectStore
 	core          core.Service
 	createPayload map[string]treestorage.TreeStorageCreatePayload
-	service       *block.Service
+	service       payloadcreator.PayloadCreator
 }
 
-func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service *block.Service) IDGetter {
+func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service payloadcreator.PayloadCreator) IDGetter {
 	return &ObjectIDGetter{
 		objectStore: objectStore,
 		service:     service,
@@ -51,55 +52,101 @@ func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, s
 	}
 }
 
-func (ou *ObjectIDGetter) Get(ctx *session.Context,
+func (ou *ObjectIDGetter) Get(
+	spaceID string,
 	sn *converter.Snapshot,
 	createdTime time.Time,
-	getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+	getExisting bool,
+) (string, treestorage.TreeStorageCreatePayload, error) {
 	sbType := sn.SbType
 	if sbType == sb.SmartBlockTypeWorkspace {
-		workspaceID, wErr := ou.core.GetWorkspaceIdForObject(sn.Id)
-		if wErr == nil {
-			return workspaceID, treestorage.TreeStorageCreatePayload{}, nil
-		}
+		workspaceID := ou.core.PredefinedObjects(spaceID).Workspace
+		return workspaceID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 	if sbType == sb.SmartBlockTypeWidget {
-		widgetID := ou.core.PredefinedBlocks().Widgets
+		widgetID := ou.core.PredefinedObjects(spaceID).Widgets
 		return widgetID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
-	id, err := ou.getObjectByOldAnytypeID(sn, sbType)
-	if id != "" {
-		return id, treestorage.TreeStorageCreatePayload{}, err
+	id, err := ou.getObjectByOldAnytypeID(spaceID, sn, sbType)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get object by old anytype id: %w", err)
 	}
-	if sbType == sb.SmartBlockTypeSubObject {
-		id = ou.getSubObjectID(sn)
-		return id, treestorage.TreeStorageCreatePayload{}, err
+	if id != "" {
+		return id, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
 	if getExisting || sbType == sb.SmartBlockTypeProfilePage {
-		id = ou.getExistingObject(sn)
+		id = ou.getExistingObject(spaceID, sn)
 		if id != "" {
 			return id, treestorage.TreeStorageCreatePayload{}, nil
 		}
 	}
 
-	cctx := context.Background()
-
-	payload, err := ou.service.CreateTreePayload(cctx, sbType, createdTime)
-	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
+	var payload treestorage.TreeStorageCreatePayload
+	if sbType == sb.SmartBlockTypeRelation || sbType == sb.SmartBlockTypeObjectType {
+		id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+		uk, err := domain.UnmarshalUniqueKey(id)
+		if err != nil {
+			id := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
+			uk, err = domain.UnmarshalUniqueKey(id)
+			if err != nil {
+				return "", treestorage.TreeStorageCreatePayload{}, err
+			}
+		}
+		payload, err = ou.service.DeriveTreePayload(context.Background(), spaceID, payloadcreator.PayloadDerivationParams{
+			Key: uk,
+		})
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
+		}
+	} else {
+		payload, err = ou.service.CreateTreePayload(context.Background(), spaceID, payloadcreator.PayloadCreationParams{
+			Time:           createdTime,
+			SmartblockType: sbType,
+		})
+		if err != nil {
+			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create tree payload: %w", err)
+		}
 	}
+
 	return payload.RootRawChange.Id, payload, nil
 }
 
-func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
+func (ou *ObjectIDGetter) getObjectByOldAnytypeID(spaceID string, sn *converter.Snapshot, sbType sb.SmartBlockType) (string, error) {
 	oldAnytypeID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyOldAnytypeID.String())
+
+	// Check for imported objects
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
 				Value:       pbtypes.String(oldAnytypeID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	}, []sb.SmartBlockType{sbType})
+	if err == nil && len(ids) > 0 {
+		return ids[0], nil
+	}
+
+	// Check for derived objects
+	ids, _, err = ou.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Value:       pbtypes.String(oldAnytypeID), // Old id equals to unique key
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	}, []sb.SmartBlockType{sbType})
@@ -108,40 +155,6 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(sn *converter.Snapshot, sbType
 	}
 
 	return "", err
-}
-
-func (ou *ObjectIDGetter) getSubObjectID(sn *converter.Snapshot) string {
-	ids, err := ou.getAlreadyExistingSubObject(sn)
-	if err == nil && len(ids) > 0 {
-		return ids[0]
-	}
-
-	id := ou.createSubObject(sn)
-	return id
-}
-
-func (ou *ObjectIDGetter) createSubObject(sn *converter.Snapshot) string {
-	ot := sn.Snapshot.Data.ObjectTypes
-	var (
-		objects *types.Struct
-		id      string
-	)
-	ou.cleanupSubObjectID(sn)
-	so := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceObject.String())
-	if so != "" &&
-		!bundle.HasRelation(strings.TrimPrefix(so, addr.BundledRelationURLPrefix)) &&
-		!bundle.HasObjectType(strings.TrimPrefix(so, addr.BundledObjectTypeURLPrefix)) {
-		// remove sourceObject in case we have removed it from the library
-		delete(sn.Snapshot.Data.Details.Fields, bundle.RelationKeySourceObject.String())
-	}
-
-	req := &CreateSubObjectRequest{subObjectType: ot[0], details: sn.Snapshot.Data.Details}
-	id, objects, err := ou.service.CreateObject(req, "")
-	if err != nil {
-		id = sn.Id
-	}
-	sn.Snapshot.Data.Details = pbtypes.StructMerge(sn.Snapshot.Data.Details, objects, false)
-	return id
 }
 
 func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
@@ -153,100 +166,7 @@ func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
 	return ""
 }
 
-func (ou *ObjectIDGetter) getAlreadyExistingSubObject(snapshot *converter.Snapshot) ([]string, error) {
-	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
-
-	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(id),
-			},
-		},
-	}, []sb.SmartBlockType{snapshot.SbType})
-	var subObjectType string
-	if len(snapshot.Snapshot.Data.GetObjectTypes()) != 0 {
-		subObjectType = snapshot.Snapshot.Data.GetObjectTypes()[0]
-	}
-	if len(ids) == 0 && subObjectType == bundle.TypeKeyRelation.URL() {
-		return ou.getExistingRelation(snapshot)
-	}
-	if len(ids) == 0 && subObjectType == bundle.TypeKeyRelationOption.URL() {
-		return ou.getExistingRelationOption(snapshot)
-	}
-	return ids, err
-}
-
-// nolint: dupl
-func (ou *ObjectIDGetter) getExistingRelation(snapshot *converter.Snapshot) ([]string, error) {
-	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-	format := pbtypes.GetFloat64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
-	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName.String(),
-				Value:       pbtypes.String(name),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationFormat.String(),
-				Value:       pbtypes.Float64(format),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelation.URL()),
-			},
-		},
-	}, []sb.SmartBlockType{snapshot.SbType})
-	return ids, err
-}
-
-// nolint: dupl
-func (ou *ObjectIDGetter) getExistingRelationOption(snapshot *converter.Snapshot) ([]string, error) {
-	name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-	key := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName.String(),
-				Value:       pbtypes.String(name),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Value:       pbtypes.String(key),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyType.String(),
-				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
-			},
-		},
-	}, []sb.SmartBlockType{snapshot.SbType})
-	return ids, err
-}
-
-func (ou *ObjectIDGetter) cleanupSubObjectID(sn *converter.Snapshot) {
-	subID := sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-	if subID == "" && (strings.HasPrefix(sn.Id, addr.RelationKeyToIdPrefix) || strings.HasPrefix(sn.Id, addr.ObjectTypeKeyToIdPrefix)) {
-		// preserve id for the case of relation or object type
-		subID = sn.Id
-	}
-	subID = ou.removePrefixesFromSubID(subID)
-	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(subID)
-}
-
-func (ou *ObjectIDGetter) removePrefixesFromSubID(subID string) string {
-	subID = strings.TrimPrefix(subID, addr.RelationKeyToIdPrefix)
-	subID = strings.TrimPrefix(subID, addr.ObjectTypeKeyToIdPrefix)
-	return subID
-}
-
-func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
+func (ou *ObjectIDGetter) getExistingObject(spaceID string, sn *converter.Snapshot) string {
 	source := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceFilePath.String())
 	ids, _, err := ou.objectStore.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -255,13 +175,19 @@ func (ou *ObjectIDGetter) getExistingObject(sn *converter.Snapshot) string {
 				RelationKey: bundle.RelationKeySourceFilePath.String(),
 				Value:       pbtypes.String(source),
 			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
+			},
 		},
 	}, []sb.SmartBlockType{sn.SbType})
 	if err == nil && len(ids) > 0 {
 		return ids[0]
 	}
+
 	id := sn.Id
-	records, _, err := ou.objectStore.Query(nil, database.Query{
+	records, _, err := ou.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,

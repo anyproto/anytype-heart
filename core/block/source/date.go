@@ -12,20 +12,23 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(id string, coreService core.Service) (s Source) {
+func NewDate(spaceID string, id string, coreService core.Service) (s Source) {
 	return &date{
 		id:          id,
+		spaceID:     spaceID,
 		coreService: coreService,
 	}
 }
 
 type date struct {
 	id          string
+	spaceID     string
 	t           time.Time
 	coreService core.Service
 }
@@ -42,22 +45,26 @@ func (v *date) Id() string {
 	return v.id
 }
 
-func (v *date) Type() model.SmartBlockType {
-	return model.SmartBlockType_Date
+func (v *date) SpaceID() string {
+	return v.spaceID
+}
+
+func (v *date) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeDate
 }
 
 func (v *date) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(v.t.Format("Mon Jan  2 2006")),
-		bundle.RelationKeyId.String():          pbtypes.String(v.id),
-		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
-		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
-		bundle.RelationKeySetOf.String():       pbtypes.String(bundle.RelationKeyLinks.URL()),
-		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyDate.URL()),
-		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_set)),
-		bundle.RelationKeyIconEmoji.String():   pbtypes.String("📅"),
-		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.coreService.PredefinedBlocks().Account),
+		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyId.String():         pbtypes.String(v.id),
+		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
+		bundle.RelationKeySetOf.String():      pbtypes.String(v.coreService.GetSystemRelationID(v.spaceID, bundle.RelationKeyLinks)),
+		bundle.RelationKeyType.String():       pbtypes.String(v.coreService.GetSystemTypeID(v.spaceID, bundle.TypeKeyDate)),
+		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
+		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
+		bundle.RelationKeySpaceId.String():    pbtypes.String(v.spaceID),
 	}}
 }
 
@@ -85,7 +92,6 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	d := v.getDetails()
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source: []string{bundle.RelationKeyType.URL()},
 			RelationLinks: []*model.RelationLink{
 				{
 					Key:    bundle.RelationKeyName.String(),
@@ -136,19 +142,7 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 		template.WithAllBlocksEditsRestricted,
 	)
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyDate.URL())
-	return s, nil
-}
-
-func (v *date) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	if err = v.parseId(); err != nil {
-		return
-	}
-	s := &state.State{}
-	d := v.getDetails()
-
-	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyDate.URL())
+	s.SetObjectTypeKey(bundle.TypeKeyDate)
 	return s, nil
 }
 
@@ -169,5 +163,5 @@ func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (s *date) GetCreationInfo() (creator string, createdDate int64, err error) {
-	return s.coreService.ProfileID(), 0, nil
+	return s.coreService.ProfileID(s.spaceID), 0, nil
 }

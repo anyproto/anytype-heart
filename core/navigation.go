@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,10 +34,8 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 
 		return m
 	}
-	mw.m.RLock()
-	defer mw.m.RUnlock()
 
-	if mw.app == nil {
+	if mw.applicationService.GetApp() == nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
@@ -52,8 +51,13 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return filtered
 	}
 
-	store := app.MustComponent[objectstore.ObjectStore](mw.app)
-	page, err := store.GetWithLinksInfoByID(req.ObjectId)
+	resolver := getService[idresolver.Resolver](mw)
+	store := app.MustComponent[objectstore.ObjectStore](mw.applicationService.GetApp())
+	spaceID, err := resolver.ResolveSpaceID(req.ObjectId)
+	if err != nil {
+		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("resolve spaceID: %w", err))
+	}
+	page, err := store.GetWithLinksInfoByID(spaceID, req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}
@@ -73,7 +77,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 			m.Details = newDetails
 		}
 		return m
@@ -85,7 +89,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(req, "")
+		id, newDetails, err = bs.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req, req.ObjectTypeUniqueKey)
 		return err
 	})
 	if err != nil {

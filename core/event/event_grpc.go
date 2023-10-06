@@ -6,12 +6,13 @@ package event
 import (
 	"sync"
 
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/status"
 	"google.golang.org/grpc/codes"
+
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pb/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 var log = logging.Logger("anytype-grpc")
@@ -45,37 +46,58 @@ func (es *GrpcSender) Name() (name string) {
 	return CName
 }
 
-func (es *GrpcSender) Send(event *pb.Event) {
-	es.broadcast(nil, event)
-}
-
-// SendSession broadcasts the event from current session. Do not broadcast to the current session
-func (es *GrpcSender) SendSession(token string, event *pb.Event) {
-	es.broadcast(&token, event)
-}
-
-// broadcast to all servers except server registered by ignoreSession token
-func (es *GrpcSender) broadcast(ignoreSession *string, event *pb.Event) {
+func (es *GrpcSender) IsActive(token string) bool {
 	es.ServerMutex.RLock()
 	defer es.ServerMutex.RUnlock()
 
-	for id, s := range es.Servers {
-		if ignoreSession != nil && *ignoreSession == id {
-			continue
-		}
-		go func(s SessionServer, id string) {
-			err := s.Server.Send(event)
-			if err != nil {
-				if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
-					es.shutdownCh <- id
-				}
-				log.Errorf("failed to send event: %s", err.Error())
+	_, ok := es.Servers[token]
+	return ok
+}
+
+func (es *GrpcSender) SendToSession(token string, event *pb.Event) {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	if s, ok := es.Servers[token]; ok {
+		es.sendEvent(s, event)
+	}
+}
+
+func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
+	go func() {
+		err := server.Server.Send(event)
+		if err != nil {
+			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+				es.shutdownCh <- server.Token
 			}
-		}(s, id)
+			log.With("session", server.Token).Errorf("failed to send event: %s", err)
+		}
+	}()
+}
+
+func (es *GrpcSender) Broadcast(event *pb.Event) {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	for _, s := range es.Servers {
+		es.sendEvent(s, event)
+	}
+}
+
+// BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
+func (es *GrpcSender) BroadcastToOtherSessions(token string, event *pb.Event) {
+	es.ServerMutex.RLock()
+	defer es.ServerMutex.RUnlock()
+
+	for _, s := range es.Servers {
+		if s.Token != token {
+			es.sendEvent(s, event)
+		}
 	}
 }
 
 type SessionServer struct {
+	Token  string
 	Done   chan struct{}
 	Server service.ClientCommands_ListenSessionEventsServer
 }
@@ -88,6 +110,7 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 		es.Servers = map[string]SessionServer{}
 	}
 	srv := SessionServer{
+		Token:  token,
 		Done:   make(chan struct{}),
 		Server: server,
 	}

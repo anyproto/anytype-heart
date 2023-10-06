@@ -10,7 +10,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -34,13 +35,13 @@ func NewDashboard(
 	sb smartblock.SmartBlock,
 	detailsModifier DetailsModifier,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	anytype core.Service,
 	layoutConverter converter.LayoutConverter,
 ) *Dashboard {
 	return &Dashboard{
 		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb, objectStore, relationService, layoutConverter),
+		AllOperations:   basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: detailsModifier,
 		objectStore:     objectStore,
@@ -54,7 +55,6 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	p.DisableLayouts()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-
 	return p.updateObjects(smartblock.ApplyInfo{})
 
 }
@@ -64,11 +64,11 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 		Version: 1,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
-				template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}, model.ObjectType_dashboard),
+				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyDashboard}, model.ObjectType_dashboard),
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),
-				template.WithNoRootLink(p.anytype.PredefinedBlocks().Archive),
+				template.WithNoRootLink(p.anytype.PredefinedObjects(p.SpaceID()).Archive),
 				template.WithRequiredRelations(),
 				template.WithNoDuplicateLinks(),
 			)
@@ -80,18 +80,23 @@ func (p *Dashboard) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
+func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	favoritedIds, err := p.GetIds()
 	if err != nil {
 		return
 	}
 
-	records, _, err := p.objectStore.Query(nil, database.Query{
+	records, _, err := p.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyIsFavorite.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Bool(true),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(p.SpaceID()),
 			},
 		},
 	})

@@ -1,21 +1,63 @@
 dir: "{{.InterfaceDir}}/mock_{{.PackageName}}"
-testonly: True
+#testonly: True
 with-expecter: True
 all: False
 outpkg: "mock_{{.PackageName}}"
 packages:
-  github.com/anyproto/anytype-heart/space/typeprovider:
+  github.com/anyproto/anytype-heart/space/spacecore/typeprovider:
     interfaces:
       SmartBlockTypeProvider:
   github.com/anyproto/anytype-heart/core/wallet:
     interfaces:
       Wallet:
-  github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
-    interfaces:
-      ObjectStore:
   github.com/anyproto/anytype-heart/core/event:
     interfaces:
       Sender:
+  github.com/anyproto/anytype-heart/core/block/getblock:
+    interfaces:
+      ObjectGetter:
+  github.com/anyproto/anytype-heart/pkg/lib/core:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/block/import/converter:
+    interfaces:
+      Converter:
+  github.com/anyproto/anytype-heart/pkg/lib/database:
+    interfaces:
+      ObjectStore:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
+  github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore:
+    interfaces:
+      ObjectStore:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/system_object:
+    interfaces:
+      Service:
+      deriver:
+  github.com/anyproto/anytype-heart/core/filestorage/filesync:
+    interfaces:
+      FileSync:
+  github.com/anyproto/anytype-heart/core/subscription:
+    interfaces:
+      CollectionService:
+  github.com/anyproto/anytype-heart/core/block/object/objectcache:
+    interfaces:
+      Cache:
+  github.com/anyproto/anytype-heart/core/indexer:
+    interfaces:
+      Indexer:
+  github.com/anyproto/anytype-heart/space/spacecore:
+    interfaces:
+      SpaceCoreService:
+  github.com/anyproto/anytype-heart/space/techspace:
+    interfaces:
+      TechSpace:
+  github.com/anyproto/anytype-heart/space:
+    interfaces:
+      bundledObjectsInstaller:
+      isNewAccount:

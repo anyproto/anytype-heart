@@ -15,11 +15,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/space"
 )
 
 const CName = "filesync"
@@ -30,7 +30,6 @@ var loopTimeout = time.Minute
 
 var errReachedLimit = fmt.Errorf("file upload limit has been reached")
 
-//go:generate mockgen -package mock_filesync -destination ./mock_filesync/filesync_mock.go github.com/anyproto/anytype-heart/core/filestorage/filesync FileSync
 type FileSync interface {
 	AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error)
 	OnUpload(func(spaceID, fileID string) error)
@@ -39,12 +38,12 @@ type FileSync interface {
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)
 	SyncStatus() (ss SyncStatus, err error)
-	FetchChunksCount(ctx context.Context, node ipld.Node) (int, error)
 	HasUpload(spaceId, fileId string) (ok bool, err error)
 	IsFileUploadLimited(spaceId, fileId string) (ok bool, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
 	SendImportEvents()
 	ClearImportEvents()
+	CalculateFileSize(ctx context.Context, spaceId string, fileID string) (int, error)
 	app.ComponentRunnable
 }
 
@@ -54,23 +53,27 @@ type QueueInfo struct {
 	RemovingQueue  []*QueueItem
 }
 
+type personalSpaceIDGetter interface {
+	PersonalSpaceID() string
+}
+
 type SyncStatus struct {
 	QueueLen int
 }
 
 type fileSync struct {
-	dbProvider   datastore.Datastore
-	rpcStore     rpcstore.RpcStore
-	queue        *fileSyncStore
-	loopCtx      context.Context
-	loopCancel   context.CancelFunc
-	uploadPingCh chan struct{}
-	removePingCh chan struct{}
-	dagService   ipld.DAGService
-	fileStore    filestore.FileStore
-	sendEvent    func(event *pb.Event)
-	onUpload     func(spaceID, fileID string) error
-	spaceService space.Service
+	dbProvider       datastore.Datastore
+	rpcStore         rpcstore.RpcStore
+	queue            *fileSyncStore
+	loopCtx          context.Context
+	loopCancel       context.CancelFunc
+	uploadPingCh     chan struct{}
+	removePingCh     chan struct{}
+	dagService       ipld.DAGService
+	fileStore        filestore.FileStore
+	eventSender      event.Sender
+	onUpload         func(spaceID, fileID string) error
+	personalIDGetter personalSpaceIDGetter
 
 	spaceStatsLock    sync.Mutex
 	spaceStats        map[string]SpaceStat
@@ -85,15 +88,19 @@ func New() FileSync {
 }
 
 func (f *fileSync) Init(a *app.App) (err error) {
-	f.dbProvider = a.MustComponent(datastore.CName).(datastore.Datastore)
+	f.dbProvider = app.MustComponent[datastore.Datastore](a)
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service).NewStore()
 	f.dagService = a.MustComponent(fileservice.CName).(fileservice.FileService).DAGService()
 	f.fileStore = app.MustComponent[filestore.FileStore](a)
-	f.spaceService = app.MustComponent[space.Service](a)
-	f.sendEvent = app.MustComponent[event.Sender](a).Send
+	f.personalIDGetter = app.MustComponent[personalSpaceIDGetter](a)
+	f.eventSender = app.MustComponent[event.Sender](a)
 	f.removePingCh = make(chan struct{})
 	f.uploadPingCh = make(chan struct{})
 	return
+}
+
+func (s *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
+	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
 
 func (f *fileSync) OnUpload(callback func(spaceID, fileID string) error) {
@@ -124,7 +131,8 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 
 func (f *fileSync) precacheSpaceStats() {
 	// TODO multi-spaces: init for each space: GO-1681
-	spaceID := f.spaceService.AccountId()
+	// TODO: [MR] adapt to multi-spaces
+	spaceID := f.personalIDGetter.PersonalSpaceID()
 	_, err := f.SpaceStat(context.Background(), spaceID)
 	if err != nil {
 		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
@@ -132,7 +140,7 @@ func (f *fileSync) precacheSpaceStats() {
 			SpaceId:    spaceID,
 			BytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
-		log.Error("can't init space stats", zap.String("spaceID", f.spaceService.AccountId()), zap.Error(err))
+		log.Error("can't init space stats", zap.String("spaceID", f.personalIDGetter.PersonalSpaceID()), zap.Error(err))
 	}
 }
 

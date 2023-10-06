@@ -14,8 +14,8 @@ const (
 
 	SmartBlockTypePage              = SmartBlockType(model.SmartBlockType_Page)
 	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
-	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)    // deprecated, used for favorites until we move it to collection
-	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive) // deprecated, used for favorites until we move it to collection
+	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)
+	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive)
 	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File)
 	SmartBlockTypeTemplate          = SmartBlockType(model.SmartBlockType_Template)
 	SmartBlockTypeBundledTemplate   = SmartBlockType(model.SmartBlockType_BundledTemplate)
@@ -26,12 +26,20 @@ const (
 	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeWorkspace         = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget            = SmartBlockType(model.SmartBlockType_Widget)
-	SmartBlockTypeMissingObject     = SmartBlockType(model.SmartBlockType_MissingObject)
+	SmartBlockTypeRelation          = SmartBlockType(model.SmartBlockType_STRelation)
+	SmartBlockTypeObjectType        = SmartBlockType(model.SmartBlockType_STType)
+	SmartBlockTypeSpaceView         = SmartBlockType(model.SmartBlockType_SpaceView)
+	SmartBlockTypeRelationOption    = SmartBlockType(model.SmartBlockType_STRelationOption)
+
+	SmartBlockTypeMissingObject = SmartBlockType(model.SmartBlockType_MissingObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
 
-// Panics in case of incorrect sb type!
+func (sbt SmartBlockType) String() string {
+	return sbt.ToProto().String()
+}
+
 func (sbt SmartBlockType) ToProto() model.SmartBlockType {
 	return model.SmartBlockType(sbt)
 }

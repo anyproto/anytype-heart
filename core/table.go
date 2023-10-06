@@ -14,7 +14,7 @@ func (mw *Middleware) BlockTableCreate(cctx context.Context, req *pb.RpcBlockTab
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -36,7 +36,7 @@ func (mw *Middleware) BlockTableRowCreate(cctx context.Context, req *pb.RpcBlock
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -58,7 +58,7 @@ func (mw *Middleware) BlockTableColumnCreate(cctx context.Context, req *pb.RpcBl
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -80,7 +80,7 @@ func (mw *Middleware) BlockTableRowDelete(cctx context.Context, req *pb.RpcBlock
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -102,7 +102,7 @@ func (mw *Middleware) BlockTableColumnDelete(cctx context.Context, req *pb.RpcBl
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -124,7 +124,7 @@ func (mw *Middleware) BlockTableColumnMove(cctx context.Context, req *pb.RpcBloc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -146,7 +146,7 @@ func (mw *Middleware) BlockTableRowDuplicate(cctx context.Context, req *pb.RpcBl
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -168,7 +168,7 @@ func (mw *Middleware) BlockTableColumnDuplicate(cctx context.Context, req *pb.Rp
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -190,7 +190,7 @@ func (mw *Middleware) BlockTableExpand(cctx context.Context, req *pb.RpcBlockTab
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -212,7 +212,7 @@ func (mw *Middleware) BlockTableRowListFill(cctx context.Context, req *pb.RpcBlo
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -234,7 +234,7 @@ func (mw *Middleware) BlockTableRowListClean(cctx context.Context, req *pb.RpcBl
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -256,7 +256,7 @@ func (mw *Middleware) BlockTableSort(cctx context.Context, req *pb.RpcBlockTable
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -278,7 +278,7 @@ func (mw *Middleware) BlockTableColumnListFill(cctx context.Context, req *pb.Rpc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -300,7 +300,7 @@ func (mw *Middleware) BlockTableRowSetHeader(cctx context.Context, req *pb.RpcBl
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}

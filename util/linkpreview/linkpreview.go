@@ -3,20 +3,20 @@ package linkpreview
 import (
 	"bytes"
 	"context"
-	"github.com/anyproto/anytype-heart/util/text"
-	"github.com/go-shiori/go-readability"
 	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/anyproto/anytype-heart/util/uri"
 	"github.com/anyproto/any-sync/app"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/go-shiori/go-readability"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/otiai10/opengraph/v2"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/text"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const CName = "linkpreview"

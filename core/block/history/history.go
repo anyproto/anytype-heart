@@ -13,7 +13,8 @@ func ResetToVersion(sb smartblock.SmartBlock, st *state.State) error {
 		return fmt.Errorf("resetting smartblock to version: %w", err)
 	}
 	migration.RunMigrations(sb, &smartblock.InitContext{
-		State: sb.NewState(),
+		State:   sb.NewState(),
+		SpaceID: sb.SpaceID(),
 	})
 	return nil
 }

@@ -40,6 +40,7 @@ var log = logging.Logger("ftsearch")
 type SearchDoc struct {
 	//nolint:all
 	Id           string
+	SpaceID      string
 	Title        string
 	TitleNoTerms string
 	Text         string
@@ -54,7 +55,7 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	BatchIndex(docs []SearchDoc) (err error)
-	Search(query string) (results []string, err error)
+	Search(spaceID, query string) (results []string, err error)
 	Has(id string) (exists bool, err error)
 	Delete(id string) error
 	DocCount() (uint64, error)
@@ -139,7 +140,7 @@ func (f *ftSearch) BatchIndex(docs []SearchDoc) (err error) {
 	return f.index.Batch(b)
 }
 
-func (f *ftSearch) Search(qry string) (results []string, err error) {
+func (f *ftSearch) Search(spaceID, qry string) (results []string, err error) {
 	qry = strings.ToLower(qry)
 	qry = strings.TrimSpace(qry)
 	terms := f.getTerms(qry)
@@ -157,7 +158,7 @@ func (f *ftSearch) Search(qry string) (results []string, err error) {
 		)
 	}
 
-	return f.doSearch(queries)
+	return f.doSearch(spaceID, queries)
 }
 
 func (f *ftSearch) getTerms(qry string) []string {
@@ -174,12 +175,18 @@ func (f *ftSearch) getTerms(qry string) []string {
 	return terms
 }
 
-func (f *ftSearch) doSearch(queries []query.Query) (results []string, err error) {
-	searchRequest := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(queries...))
+func (f *ftSearch) doSearch(spaceID string, queries []query.Query) (results []string, err error) {
+	var rootQuery query.Query = bleve.NewDisjunctionQuery(queries...)
+	if spaceID != "" {
+		spaceQuery := bleve.NewMatchQuery(spaceID)
+		spaceQuery.SetField("SpaceID")
+		rootQuery = bleve.NewConjunctionQuery(rootQuery, spaceQuery)
+	}
+
+	searchRequest := bleve.NewSearchRequest(rootQuery)
 	searchRequest.Size = 100
 	searchRequest.Explain = true
 	searchResult, err := f.index.Search(searchRequest)
-
 	if err != nil {
 		return
 	}

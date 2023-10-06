@@ -27,7 +27,7 @@ func (mw *Middleware) UnsplashSearch(cctx context.Context, req *pb.RpcUnsplashSe
 		}
 		return m
 	}
-	un := mw.app.Component(unsplash.CName).(unsplash.Unsplash)
+	un := mw.applicationService.GetApp().Component(unsplash.CName).(unsplash.Unsplash)
 	if un == nil {
 		return response(nil, fmt.Errorf("node not started"))
 	}
@@ -62,7 +62,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	}
 
 	var hash string
-	un := mw.app.Component(unsplash.CName).(unsplash.Unsplash)
+	un := mw.applicationService.GetApp().Component(unsplash.CName).(unsplash.Unsplash)
 	if un == nil {
 		return response("", fmt.Errorf("node not started"))
 	}
@@ -73,7 +73,7 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	defer os.Remove(imagePath)
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(pb.RpcFileUploadRequest{
+		hash, err = bs.UploadFile(cctx, req.SpaceId, pb.RpcFileUploadRequest{
 			LocalPath: imagePath,
 			Type:      model.BlockContentFile_Image,
 			Style:     model.BlockContentFile_Embed,

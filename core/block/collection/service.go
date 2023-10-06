@@ -14,7 +14,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -30,11 +32,11 @@ import (
 var log = logging.Logger("collection-service")
 
 type Service struct {
-	lock        *sync.RWMutex
-	collections map[string]map[string]chan []string
-
-	picker      block.Picker
-	objectStore objectstore.ObjectStore
+	lock                *sync.RWMutex
+	collections         map[string]map[string]chan []string
+	systemObjectService system_object.Service
+	picker              block.ObjectGetter
+	objectStore         objectstore.ObjectStore
 }
 
 func New() *Service {
@@ -45,8 +47,9 @@ func New() *Service {
 }
 
 func (s *Service) Init(a *app.App) (err error) {
-	s.picker = app.MustComponent[block.Picker](a)
+	s.picker = app.MustComponent[block.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.systemObjectService = app.MustComponent[system_object.Service](a)
 	return nil
 }
 
@@ -54,7 +57,11 @@ func (s *Service) Name() string {
 	return "collection"
 }
 
-func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddRequest) error {
+func (s *Service) CollectionType() string {
+	return "collection"
+}
+
+func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		toAdd := slice.Difference(req.ObjectIds, col)
 		pos := slice.FindPos(col, req.AfterId)
@@ -67,7 +74,7 @@ func (s *Service) Add(ctx *session.Context, req *pb.RpcObjectCollectionAddReques
 	})
 }
 
-func (s *Service) Remove(ctx *session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
+func (s *Service) Remove(ctx session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		col = slice.Filter(col, func(id string) bool {
 			return slice.FindPos(req.ObjectIds, id) == -1
@@ -76,7 +83,7 @@ func (s *Service) Remove(ctx *session.Context, req *pb.RpcObjectCollectionRemove
 	})
 }
 
-func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequest) error {
+func (s *Service) Sort(ctx session.Context, req *pb.RpcObjectCollectionSortRequest) error {
 	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
 		exist := map[string]struct{}{}
 		for _, id := range col {
@@ -93,7 +100,7 @@ func (s *Service) Sort(ctx *session.Context, req *pb.RpcObjectCollectionSortRequ
 	})
 }
 
-func (s *Service) updateCollection(ctx *session.Context, contextID string, modifier func(src []string) []string) error {
+func (s *Service) updateCollection(ctx session.Context, contextID string, modifier func(src []string) []string) error {
 	return block.DoStateCtx(s.picker, ctx, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
 		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
@@ -147,7 +154,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 		col = map[string]chan []string{}
 		s.collections[collectionID] = col
 	}
-	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoStateAsync(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
@@ -211,8 +218,8 @@ func (s *Service) ObjectToCollection(id string) error {
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
+		st.SetObjectTypeKey(bundle.TypeKeyCollection)
 		setDefaultObjectTypeToViews(st)
-		st.SetObjectType(bundle.TypeKeyCollection.URL())
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)
@@ -226,7 +233,7 @@ func (s *Service) ObjectToCollection(id string) error {
 }
 
 func setDefaultObjectTypeToViews(st *state.State) {
-	if !lo.Contains(st.ObjectTypes(), bundle.TypeKeySet.URL()) {
+	if !lo.Contains(st.ObjectTypeKeys(), bundle.TypeKeySet) {
 		return
 	}
 
@@ -235,7 +242,7 @@ func setDefaultObjectTypeToViews(st *state.State) {
 		return
 	}
 
-	if isNotCreatableType(bundle.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+	if isNotCreatableType(domain.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
 		return
 	}
 
@@ -253,6 +260,6 @@ func setDefaultObjectTypeToViews(st *state.State) {
 	}
 }
 
-func isNotCreatableType(key bundle.TypeKey) bool {
-	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType, bundle.TypeKeySet, bundle.TypeKeyCollection), key)
+func isNotCreatableType(key domain.TypeKey) bool {
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType), key)
 }

@@ -3,7 +3,6 @@ package subscription
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -15,16 +14,16 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -43,7 +42,7 @@ type Service interface {
 	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
-	SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
+	SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
 	SubscriptionIDs() []string
@@ -71,11 +70,12 @@ type service struct {
 	subscriptions map[string]subscription
 	recBatch      *mb.MB
 
-	objectStore       objectstore.ObjectStore
-	kanban            kanban.Service
-	collectionService CollectionService
-	sbtProvider       typeprovider.SmartBlockTypeProvider
-	sendEvent         func(e *pb.Event)
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
+	kanban              kanban.Service
+	collectionService   CollectionService
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	eventSender         event.Sender
 
 	m      sync.Mutex
 	ctxBuf *opCtx
@@ -88,9 +88,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.kanban = a.MustComponent(kanban.CName).(kanban.Service)
 	s.recBatch = mb.New(0)
-	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	s.eventSender = a.MustComponent(event.CName).(event.Sender)
+	s.systemObjectService = app.MustComponent[system_object.Service](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
@@ -107,6 +108,21 @@ func (s *service) Run(context.Context) (err error) {
 	return
 }
 
+func spaceIdFromFilters(filters []*model.BlockContentDataviewFilter) (spaceId string, err error) {
+	for _, f := range filters {
+		// todo: this doesn't support IN filters
+		if f.Condition != model.BlockContentDataviewFilter_Equal {
+			continue
+		}
+		if f.RelationKey == bundle.RelationKeySpaceId.String() {
+			spaceId = f.Value.GetStringValue()
+			return
+		}
+	}
+	err = fmt.Errorf("spaceId not found")
+	return
+}
+
 func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
@@ -118,17 +134,21 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 		Limit:   int(req.Limit),
 	}
 
-	f, err := database.NewFilters(q, nil, s.objectStore)
+	f, err := database.NewFilters(q, s.objectStore)
 	if err != nil {
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		spaceId, err := spaceIdFromFilters(req.Filters)
+		if err != nil {
+			return nil, fmt.Errorf("source set but can't get spaceId from filters: %w", err)
+		}
+		sourceFilter, err := s.filtersFromSource(spaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
-		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
+		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
 	}
 
 	s.m.Lock()
@@ -160,19 +180,32 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 		sub.forceSubIds = filterDepIds
 	}
 
-	records, err := s.objectStore.QueryRaw(f, 0, 0)
-	if err != nil {
-		return nil, fmt.Errorf("objectStore query error: %v", err)
-	}
-	entries := make([]*entry, 0, len(records))
-	for _, r := range records {
-		entries = append(entries, &entry{
-			id:   pbtypes.GetString(r.Details, "id"),
-			data: r.Details,
+	if withNested, ok := f.FilterObj.(database.WithNestedFilter); ok {
+		var nestedCount int
+		err := withNested.IterateNestedFilters(func(nestedFilter database.Filter) error {
+			nestedCount++
+			f, ok := nestedFilter.(*database.FilterNestedIn)
+			if ok {
+				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []string{"id"}, f.FilterForNestedObjects, nil, 0, 0)
+				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.FilterForNestedObjects}, childSub)
+				if err != nil {
+					return fmt.Errorf("init nested sub %s entries: %w", childSub.id, err)
+				}
+				sub.nested = append(sub.nested, childSub)
+				childSub.parent = sub
+				childSub.parentFilter = f
+				s.subscriptions[childSub.id] = childSub
+			}
+			return nil
 		})
+		if err != nil {
+			return nil, fmt.Errorf("iterate nested filters: %w", err)
+		}
 	}
-	if err = sub.init(entries); err != nil {
-		return nil, fmt.Errorf("subscription init error: %v", err)
+
+	err := initSubEntries(s.objectStore, f, sub)
+	if err != nil {
+		return nil, fmt.Errorf("init sub entries: %w", err)
 	}
 	s.subscriptions[sub.id] = sub
 	prev, next := sub.counters()
@@ -196,6 +229,32 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 	}, nil
 }
 
+func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, sub *sortedSub) error {
+	entries, err := queryEntries(objectStore, f)
+	if err != nil {
+		return err
+	}
+	if err = sub.init(entries); err != nil {
+		return fmt.Errorf("subscription init error: %v", err)
+	}
+	return nil
+}
+
+func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*entry, error) {
+	records, err := objectStore.QueryRaw(f, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("objectStore query error: %v", err)
+	}
+	entries := make([]*entry, 0, len(records))
+	for _, r := range records {
+		entries = append(entries, &entry{
+			id:   pbtypes.GetString(r.Details, "id"),
+			data: r.Details,
+		})
+	}
+	return entries, nil
+}
+
 func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest, f *database.Filters, filterDepIds []string) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	sub, err := s.newCollectionSub(req.SubId, req.CollectionId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if err != nil {
@@ -215,7 +274,7 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 	var depRecords, subRecords []*types.Struct
 	subRecords = sub.getActiveRecords()
 
-	if sub.sortedSub.depSub != nil {
+	if sub.sortedSub.depSub != nil && !sub.sortedSub.disableDep {
 		depRecords = sub.sortedSub.depSub.getActiveRecords()
 	}
 
@@ -272,7 +331,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	}, nil
 }
 
-func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSubscribeRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	subId := ""
 
 	s.m.Lock()
@@ -282,17 +341,17 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		Filters: req.Filters,
 	}
 
-	flt, err := database.NewFilters(q, nil, s.objectStore)
+	flt, err := database.NewFilters(q, s.objectStore)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
-		flt.FilterObj = filter.AndFilters{flt.FilterObj, sourceFilter}
+		flt.FilterObj = database.FiltersAnd{flt.FilterObj, sourceFilter}
 	}
 
 	var colObserver *collectionObserver
@@ -307,16 +366,16 @@ func (s *service) SubscribeGroups(req pb.RpcObjectGroupsSubscribeRequest) (*pb.R
 		if flt.FilterObj == nil {
 			flt.FilterObj = colObserver
 		} else {
-			flt.FilterObj = filter.AndFilters{colObserver, flt.FilterObj}
+			flt.FilterObj = database.FiltersAnd{colObserver, flt.FilterObj}
 		}
 	}
 
-	grouper, err := s.kanban.Grouper(req.RelationKey)
+	grouper, err := s.kanban.Grouper(req.SpaceId, req.RelationKey)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := grouper.InitGroups(flt); err != nil {
+	if err := grouper.InitGroups(req.SpaceId, flt); err != nil {
 		return nil, err
 	}
 
@@ -456,49 +515,30 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	dur := time.Since(st)
 
 	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
-	s.sendEvent(event)
+	s.eventSender.Broadcast(event)
 	return dur
 }
 
-func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
-	var objTypeIds, relTypeKeys []string
-
-	for _, source := range sources {
-		if source == "" {
-			continue
-		}
-		sbt, err := s.sbtProvider.Type(source)
-		if err != nil {
-			return nil, err
-		}
-		// todo: fix a bug here. we will get subobject type here so we can't depend on smartblock type
-		if sbt == smartblock.SmartBlockTypeBundledObjectType {
-			objTypeIds = append(objTypeIds, source)
-		} else {
-			if strings.HasPrefix(source, addr.ObjectTypeKeyToIdPrefix) {
-				objTypeIds = append(objTypeIds, source)
-				continue
-			}
-			relKey, err := pbtypes.RelationIdToKey(source)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get relation key from id %s: %s", source, err.Error())
-			}
-			relTypeKeys = append(relTypeKeys, relKey)
-		}
+func (s *service) filtersFromSource(spaceID string, sources []string) (database.Filter, error) {
+	idsByType, err := s.sbtProvider.PartitionIDsByType(spaceID, sources)
+	if err != nil {
+		return nil, err
 	}
-
-	var relTypeFilter filter.OrFilters
-
-	if len(objTypeIds) > 0 {
-		relTypeFilter = append(relTypeFilter, filter.In{
+	var relTypeFilter database.FiltersOr
+	if len(idsByType[smartblock.SmartBlockTypeObjectType]) > 0 {
+		relTypeFilter = append(relTypeFilter, database.FilterIn{
 			Key:   bundle.RelationKeyType.String(),
-			Value: pbtypes.StringList(objTypeIds).GetListValue(),
+			Value: pbtypes.StringList(idsByType[smartblock.SmartBlockTypeObjectType]).GetListValue(),
 		})
 	}
 
-	for _, key := range relTypeKeys {
-		relTypeFilter = append(relTypeFilter, filter.Exists{
-			Key: key,
+	for _, relationID := range idsByType[smartblock.SmartBlockTypeRelation] {
+		relationDetails, err := s.objectStore.GetDetails(relationID)
+		if err != nil {
+			return nil, fmt.Errorf("get relation %s details: %w", relationDetails, err)
+		}
+		relTypeFilter = append(relTypeFilter, database.FilterExists{
+			Key: pbtypes.GetString(relationDetails.Details, bundle.RelationKeyRelationKey.String()),
 		})
 	}
 	return relTypeFilter, nil

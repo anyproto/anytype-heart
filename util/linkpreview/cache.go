@@ -2,9 +2,10 @@ package linkpreview
 
 import (
 	"context"
-	"github.com/golang/groupcache/lru"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/golang/groupcache/lru"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 

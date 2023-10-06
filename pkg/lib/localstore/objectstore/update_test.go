@@ -18,19 +18,19 @@ import (
 
 func TestUpdateObjectDetails(t *testing.T) {
 	t.Run("with nil field expect error", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectDetails("id1", &types.Struct{})
 		require.Error(t, err)
 	})
 
 	t.Run("with empty details expect just id detail is written", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectDetails("id1", &types.Struct{Fields: map[string]*types.Value{}})
 		require.NoError(t, err)
 
-		want := makeDetails(testObject{
+		want := makeDetails(TestObject{
 			bundle.RelationKeyId: pbtypes.String("id1"),
 		})
 		got, err := s.GetDetails("id1")
@@ -39,14 +39,14 @@ func TestUpdateObjectDetails(t *testing.T) {
 	})
 
 	t.Run("with no id in details expect id is added on write", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
-		err := s.UpdateObjectDetails("id1", makeDetails(testObject{
+		err := s.UpdateObjectDetails("id1", makeDetails(TestObject{
 			bundle.RelationKeyName: pbtypes.String("some name"),
 		}))
 		require.NoError(t, err)
 
-		want := makeDetails(testObject{
+		want := makeDetails(TestObject{
 			bundle.RelationKeyId:   pbtypes.String("id1"),
 			bundle.RelationKeyName: pbtypes.String("some name"),
 		})
@@ -56,7 +56,7 @@ func TestUpdateObjectDetails(t *testing.T) {
 	})
 
 	t.Run("with no existing details try to write nil details and expect nothing is changed", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectDetails("id1", nil)
 		require.NoError(t, err)
@@ -67,9 +67,9 @@ func TestUpdateObjectDetails(t *testing.T) {
 	})
 
 	t.Run("with existing details write nil details and expect nothing is changed", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		obj := makeObjectWithName("id1", "foo")
-		s.addObjects(t, []testObject{obj})
+		s.AddObjects(t, []TestObject{obj})
 
 		err := s.UpdateObjectDetails("id1", nil)
 		require.NoError(t, err)
@@ -80,18 +80,18 @@ func TestUpdateObjectDetails(t *testing.T) {
 	})
 
 	t.Run("with write same details expect error", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		obj := makeObjectWithName("id1", "foo")
-		s.addObjects(t, []testObject{obj})
+		s.AddObjects(t, []TestObject{obj})
 
 		err := s.UpdateObjectDetails("id1", makeDetails(obj))
 		require.Equal(t, ErrDetailsNotChanged, err)
 	})
 
 	t.Run("with updated details just store them", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		obj := makeObjectWithName("id1", "foo")
-		s.addObjects(t, []testObject{obj})
+		s.AddObjects(t, []TestObject{obj})
 
 		newObj := makeObjectWithNameAndDescription("id1", "foo", "bar")
 		err := s.UpdateObjectDetails("id1", makeDetails(newObj))
@@ -105,8 +105,8 @@ func TestUpdateObjectDetails(t *testing.T) {
 
 func TestSendUpdatesToSubscriptions(t *testing.T) {
 	t.Run("with details are not changed expect no updates are sent", func(t *testing.T) {
-		s := newStoreFixture(t)
-		s.addObjects(t, []testObject{makeObjectWithName("id1", "foo")})
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "foo")})
 
 		s.SubscribeForAll(func(rec database.Record) {
 			require.Fail(t, "unexpected call")
@@ -117,7 +117,7 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 	})
 
 	t.Run("with new details", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		obj := makeObjectWithName("id1", "foo")
 
 		var called int
@@ -126,13 +126,13 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 			assert.Equal(t, makeDetails(obj), rec.Details)
 		})
 
-		s.addObjects(t, []testObject{obj})
+		s.AddObjects(t, []TestObject{obj})
 		assert.Equal(t, 1, called)
 	})
 
 	t.Run("with updated details", func(t *testing.T) {
-		s := newStoreFixture(t)
-		s.addObjects(t, []testObject{makeObjectWithName("id1", "foo")})
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "foo")})
 
 		updatedObj := makeObjectWithNameAndDescription("id1", "foobar", "bar")
 		var called int
@@ -141,14 +141,14 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 			assert.Equal(t, makeDetails(updatedObj), rec.Details)
 		})
 
-		s.addObjects(t, []testObject{updatedObj})
+		s.AddObjects(t, []TestObject{updatedObj})
 		assert.Equal(t, 1, called)
 	})
 }
 
 func TestUpdatePendingLocalDetails(t *testing.T) {
 	t.Run("with error in process function expect previous details are not touched", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		s.givenPendingLocalDetails(t)
 
 		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
@@ -160,7 +160,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 	})
 
 	t.Run("with empty pending details", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		s.givenPendingLocalDetails(t)
 
@@ -168,7 +168,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 	})
 
 	t.Run("with nil result of process function expect delete pending details", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 		s.givenPendingLocalDetails(t)
 
 		err := s.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
@@ -184,7 +184,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 	})
 
 	t.Run("with parallel updates expect that transaction conflicts are resolved: last write wins", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		var lastOpenedDate int64
 		var wg sync.WaitGroup
@@ -217,7 +217,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 	})
 }
 
-func (fx *storeFixture) givenPendingLocalDetails(t *testing.T) {
+func (fx *StoreFixture) givenPendingLocalDetails(t *testing.T) {
 	err := fx.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
 		details.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
 		return details, nil
@@ -225,7 +225,7 @@ func (fx *storeFixture) givenPendingLocalDetails(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func (fx *storeFixture) assertPendingLocalDetails(t *testing.T) {
+func (fx *StoreFixture) assertPendingLocalDetails(t *testing.T) {
 	err := fx.UpdatePendingLocalDetails("id1", func(details *types.Struct) (*types.Struct, error) {
 		assert.Equal(t, &types.Struct{
 			Fields: map[string]*types.Value{
@@ -241,7 +241,7 @@ func (fx *storeFixture) assertPendingLocalDetails(t *testing.T) {
 
 func TestUpdateObjectLinks(t *testing.T) {
 	t.Run("with no links added", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectLinks("id1", []string{})
 		require.NoError(t, err)
@@ -252,7 +252,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 	})
 
 	t.Run("with some links added", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		err := s.UpdateObjectLinks("id1", []string{"id2", "id3"})
 		require.NoError(t, err)
@@ -263,7 +263,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 	})
 
 	t.Run("with some existing links, add new links", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		s.givenExistingLinks(t)
 
@@ -276,7 +276,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 	})
 
 	t.Run("with some existing links, remove links", func(t *testing.T) {
-		s := newStoreFixture(t)
+		s := NewStoreFixture(t)
 
 		s.givenExistingLinks(t)
 
@@ -289,7 +289,7 @@ func TestUpdateObjectLinks(t *testing.T) {
 	})
 }
 
-func (fx *storeFixture) assertInboundLinks(t *testing.T, id string, links []string) {
+func (fx *StoreFixture) assertInboundLinks(t *testing.T, id string, links []string) {
 	in, err := fx.GetInboundLinksByID(id)
 	assert.NoError(t, err)
 	if len(links) == 0 {
@@ -299,7 +299,7 @@ func (fx *storeFixture) assertInboundLinks(t *testing.T, id string, links []stri
 	assert.Equal(t, links, in)
 }
 
-func (fx *storeFixture) assertOutboundLinks(t *testing.T, id string, links []string) {
+func (fx *StoreFixture) assertOutboundLinks(t *testing.T, id string, links []string) {
 	out, err := fx.GetOutboundLinksByID(id)
 	assert.NoError(t, err)
 	if len(links) == 0 {
@@ -309,7 +309,7 @@ func (fx *storeFixture) assertOutboundLinks(t *testing.T, id string, links []str
 	assert.Equal(t, links, out)
 }
 
-func (fx *storeFixture) givenExistingLinks(t *testing.T) {
+func (fx *StoreFixture) givenExistingLinks(t *testing.T) {
 	err := fx.UpdateObjectLinks("id1", []string{"id2"})
 	require.NoError(t, err)
 

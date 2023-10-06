@@ -9,11 +9,10 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -35,20 +34,6 @@ type Query struct {
 	Sorts    []*model.BlockContentDataviewSort   // order results. apply hierarchically
 	Limit    int                                 // maximum number of results
 	Offset   int                                 // skip given number of results
-}
-
-func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
-	qq.Limit = q.Limit
-	qq.Offset = q.Offset
-	f, err := NewFilters(q, sch, nil)
-	if err != nil {
-		return
-	}
-	qq.Filters = []query.Filter{f}
-	if f.hasOrders() {
-		qq.Orders = []query.Order{f}
-	}
-	return
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
@@ -81,35 +66,42 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{bundle.TypeKeySpace.URL()})})
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.Float64(float64(model.ObjectType_space))})
 	}
 	return filters
 }
 
-func NewFilters(qry Query, schema schema.Schema, store filter.OptionsGetter) (filters *Filters, err error) {
+func NewFilters(qry Query, store ObjectStore) (filters *Filters, err error) {
+	// spaceID could be empty
+	spaceID := getSpaceIDFromFilters(qry.Filters)
 	qry.Filters = injectDefaultFilters(qry.Filters)
 	filters = new(Filters)
 
-	filterObj, dateKeys, qryFilters := applySchema(nil, schema, filters.dateKeys, qry.Filters)
-	qry.Filters = qryFilters
-	filters.dateKeys = dateKeys
-
-	filterObj, err = compose(qry.Filters, store, filterObj)
+	filterObj, err := compose(qry.Filters, store)
 	if err != nil {
 		return
 	}
 
 	filters.FilterObj = filterObj
-	filters.Order = extractOrder(qry.Sorts, store)
+	filters.Order = extractOrder(spaceID, qry.Sorts, store)
 	return
+}
+
+func getSpaceIDFromFilters(filters []*model.BlockContentDataviewFilter) string {
+	for _, f := range filters {
+		if f.RelationKey == bundle.RelationKeySpaceId.String() {
+			return f.Value.GetStringValue()
+		}
+	}
+	return ""
 }
 
 func compose(
 	filters []*model.BlockContentDataviewFilter,
-	store filter.OptionsGetter,
-	filterObj filter.AndFilters,
-) (filter.AndFilters, error) {
-	qryFilter, err := filter.MakeAndFilter(filters, store)
+	store ObjectStore,
+) (FiltersAnd, error) {
+	var filterObj FiltersAnd
+	qryFilter, err := MakeFiltersAnd(filters, store)
 	if err != nil {
 		return nil, err
 	}
@@ -120,61 +112,13 @@ func compose(
 	return filterObj, nil
 }
 
-func applySchema(
-	relations []*model.BlockContentDataviewRelation,
-	schema schema.Schema,
-	dateKeys []string,
-	filters []*model.BlockContentDataviewFilter,
-) (filter.AndFilters, []string, []*model.BlockContentDataviewFilter) {
-	mainFilter := filter.AndFilters{}
-	if schema != nil {
-		dateKeys = extractDateRelationKeys(relations, schema, dateKeys)
-		filters = applyFilterDateOnlyWhenExactDate(filters, dateKeys)
-		mainFilter = appendSchemaFilters(schema, mainFilter)
-	}
-	return mainFilter, dateKeys, filters
-}
-
-func appendSchemaFilters(schema schema.Schema, mainFilter filter.AndFilters) filter.AndFilters {
-	if schemaFilter := schema.Filters(); schemaFilter != nil {
-		mainFilter = append(mainFilter, schemaFilter)
-	}
-	return mainFilter
-}
-
-func applyFilterDateOnlyWhenExactDate(
-	filters []*model.BlockContentDataviewFilter,
-	dateKeys []string,
-) []*model.BlockContentDataviewFilter {
-	for _, filtr := range filters {
-		if lo.Contains(dateKeys, filtr.RelationKey) && filtr.QuickOption == model.BlockContentDataviewFilter_ExactDate {
-			filtr.Value = dateOnly(filtr.Value)
-		}
-	}
-	return filters
-}
-
-func extractDateRelationKeys(
-	relations []*model.BlockContentDataviewRelation,
-	schema schema.Schema,
-	dateKeys []string,
-) []string {
-	for _, relationLink := range schema.ListRelations() {
-		if relationLink.Format == model.RelationFormat_date {
-			if relation := getRelationByKey(relations, relationLink.Key); relation == nil || !relation.DateIncludeTime {
-				dateKeys = append(dateKeys, relationLink.Key)
-			}
-		}
-	}
-	return dateKeys
-}
-
-func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsGetter) filter.SetOrder {
+func extractOrder(spaceID string, sorts []*model.BlockContentDataviewSort, store ObjectStore) SetOrder {
 	if len(sorts) > 0 {
-		order := filter.SetOrder{}
+		order := SetOrder{}
 		for _, sort := range sorts {
 
-			keyOrder := &filter.KeyOrder{
+			keyOrder := &KeyOrder{
+				SpaceID:        spaceID,
 				Key:            sort.RelationKey,
 				Type:           sort.Type,
 				EmptyLast:      sort.RelationKey == bundle.RelationKeyName.String(),
@@ -190,9 +134,9 @@ func extractOrder(sorts []*model.BlockContentDataviewSort, store filter.OptionsG
 	return nil
 }
 
-func appendCustomOrder(sort *model.BlockContentDataviewSort, order filter.SetOrder, keyOrder *filter.KeyOrder) filter.SetOrder {
+func appendCustomOrder(sort *model.BlockContentDataviewSort, order SetOrder, keyOrder *KeyOrder) SetOrder {
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
-		order = append(order, filter.NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
+		order = append(order, NewCustomOrder(sort.RelationKey, sort.CustomOrder, *keyOrder))
 	} else {
 		order = append(order, keyOrder)
 	}
@@ -233,8 +177,8 @@ func (f sortGetter) Get(key string) *types.Value {
 }
 
 type Filters struct {
-	FilterObj filter.Filter
-	Order     filter.Order
+	FilterObj Filter
+	Order     Order
 	dateKeys  []string
 }
 
@@ -262,11 +206,11 @@ func (f *Filters) Compare(a, b query.Entry) int {
 	return f.Order.Compare(ag, bg)
 }
 
-func (f *Filters) unmarshalFilter(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalFilter(e query.Entry) Getter {
 	return filterGetter{dateKeys: f.dateKeys, curEl: f.unmarshal(e)}
 }
 
-func (f *Filters) unmarshalSort(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalSort(e query.Entry) Getter {
 	return sortGetter{curEl: f.unmarshal(e)}
 }
 
@@ -308,11 +252,33 @@ func dateOnly(v *types.Value) *types.Value {
 	return &types.Value{Kind: &types.Value_NullValue{}}
 }
 
-func getRelationByKey(relations []*model.BlockContentDataviewRelation, key string) *model.BlockContentDataviewRelation {
-	for _, relation := range relations {
-		if relation.Key == key {
-			return relation
-		}
+// ListRelationOptions returns options for specific relation
+func ListRelationOptions(store ObjectStore, spaceID string, relationKey string) (options []*model.RelationOption, err error) {
+	filters := []*model.BlockContentDataviewFilter{
+		{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyRelationKey.String(),
+			Value:       pbtypes.String(relationKey),
+		},
+		{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyLayout.String(),
+			Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+		},
 	}
-	return nil
+	if spaceID != "" {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeySpaceId.String(),
+			Value:       pbtypes.String(spaceID),
+		})
+	}
+	records, _, err := store.Query(Query{
+		Filters: filters,
+	})
+
+	for _, rec := range records {
+		options = append(options, relationutils.OptionFromStruct(rec.Details).RelationOption)
+	}
+	return
 }

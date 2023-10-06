@@ -10,21 +10,19 @@ import (
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/app/testapp"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -44,22 +42,29 @@ func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
-	app := testapp.New()
-	defer app.Close(context.Background())
+	a := new(app.App)
 	tp := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	tp.EXPECT().Name().Return("mock_typeprovider")
-	tp.EXPECT().Init(mock.Anything).Return(nil)
-	tp.EXPECT().Type("rel-tag").Return(smartblock.SmartBlockTypeSubObject, nil)
+	tp.EXPECT().Name().Return("typeprovider")
+	tp.EXPECT().Init(a).Return(nil)
+
+	systemObjectService := mock_system_object.NewMockService(t)
+	systemObjectService.EXPECT().Name().Return("relation")
+	systemObjectService.EXPECT().Init(a).Return(nil)
+
+	relationWithFormatTag := &relationutils.Relation{&model.Relation{Format: model.RelationFormat_tag}}
+	systemObjectService.EXPECT().FetchRelationByKey("", "tag").Return(relationWithFormatTag, nil)
+
 	ds := objectstore.New()
 	kanbanSrv := New()
-	err := app.With(quicSetter{}).
-		With(&config.DefaultConfig).
-		With(tp).
-		With(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
-		With(clientds.New()).
-		With(ftsearch.New()).
-		With(ds).
-		With(kanbanSrv).
+	err := a.Register(quicSetter{}).
+		Register(&config.DefaultConfig).
+		Register(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
+		Register(clientds.New()).
+		Register(ftsearch.New()).
+		Register(ds).
+		Register(kanbanSrv).
+		Register(tp).
+		Register(systemObjectService).
 		Start(context.Background())
 	require.NoError(t, err)
 
@@ -69,6 +74,7 @@ func Test_GrouperTags(t *testing.T) {
 			"relationKey":    pbtypes.String("tag"),
 			"relationFormat": pbtypes.Int64(int64(model.RelationFormat_tag)),
 			"type":           pbtypes.String(bundle.TypeKeyRelation.URL()),
+			"layout":         pbtypes.Int64(int64(model.ObjectType_relation)),
 		},
 	}))
 
@@ -81,6 +87,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag1),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 
@@ -89,6 +96,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag2),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 	require.NoError(t, ds.UpdateObjectDetails(idTag3, &types.Struct{
@@ -96,6 +104,7 @@ func Test_GrouperTags(t *testing.T) {
 			"id":          pbtypes.String(idTag3),
 			"relationKey": pbtypes.String("tag"),
 			"type":        pbtypes.String(bundle.TypeKeyRelationOption.URL()),
+			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
 
@@ -127,16 +136,16 @@ func Test_GrouperTags(t *testing.T) {
 	}}))
 	require.NoError(t, ds.UpdateObjectSnippet(id1, "s4"))
 
-	grouper, err := kanbanSrv.Grouper("tag")
+	grouper, err := kanbanSrv.Grouper("", "tag")
 	require.NoError(t, err)
-	err = grouper.InitGroups(nil)
+	err = grouper.InitGroups("", nil)
 	require.NoError(t, err)
 	groups, err := grouper.MakeDataViewGroups()
 	require.NoError(t, err)
 	require.Len(t, groups, 6)
 
-	f := &database.Filters{FilterObj: filter.Eq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
-	err = grouper.InitGroups(f)
+	f := &database.Filters{FilterObj: database.FilterEq{Key: "name", Cond: 1, Value: pbtypes.String("three")}}
+	err = grouper.InitGroups("", f)
 	require.NoError(t, err)
 	groups, err = grouper.MakeDataViewGroups()
 	require.NoError(t, err)

@@ -2,8 +2,8 @@ package html
 
 import (
 	"archive/zip"
+	"context"
 	"errors"
-	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -28,7 +29,7 @@ func (p *MockTempDirProvider) TempDir() string {
 func TestHTML_GetSnapshots(t *testing.T) {
 	h := &HTML{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := h.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
 			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
 		},
@@ -44,7 +45,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 
 	assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
 	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
-	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
 	assert.NotEmpty(t, err)
 	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), cv.ErrNoObjectsToImport))
@@ -56,9 +57,10 @@ func TestHTML_provideFileName(t *testing.T) {
 		h := &HTML{}
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
 
 		// when
-		newFileName, _, err := cv.ProvideFileName("http://example.com", nil, currentDir, h.tempDirProvider)
+		newFileName, _, err := cv.ProvideFileName("http://example.com", source, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -69,11 +71,12 @@ func TestHTML_provideFileName(t *testing.T) {
 		h := &HTML{}
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
 
 		// when
 		absPath, err := filepath.Abs("testdata/test")
 		assert.Nil(t, err)
-		newFileName, _, err := cv.ProvideFileName(absPath, nil, currentDir, h.tempDirProvider)
+		newFileName, _, err := cv.ProvideFileName(absPath, source, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -84,9 +87,10 @@ func TestHTML_provideFileName(t *testing.T) {
 		h := &HTML{}
 		currentDir, err := os.Getwd()
 		assert.Nil(t, err)
+		source := source.GetSource(currentDir)
 
 		// when
-		newFileName, _, err := cv.ProvideFileName("testdata/test", nil, currentDir, h.tempDirProvider)
+		newFileName, _, err := cv.ProvideFileName("testdata/test", source, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -98,12 +102,14 @@ func TestHTML_provideFileName(t *testing.T) {
 		// given
 		h := HTML{}
 		h.tempDirProvider = &MockTempDirProvider{}
-		filesFromArchive, testFileName, archiveName := prepareArchivedFiles(t)
+		testFileName, archiveName := prepareArchivedFiles(t)
 		defer os.Remove(archiveName)
-		defer filesFromArchive[testFileName].Close()
+		source := source.GetSource(archiveName)
+		err := source.Initialize(archiveName)
+		assert.Nil(t, err)
 
 		// when
-		newFileName, _, err := cv.ProvideFileName(testFileName, filesFromArchive, archiveName, h.tempDirProvider)
+		newFileName, _, err := cv.ProvideFileName(testFileName, source, archiveName, h.tempDirProvider)
 		defer os.Remove(newFileName)
 
 		// then
@@ -114,9 +120,10 @@ func TestHTML_provideFileName(t *testing.T) {
 	t.Run("file doesn't exist - not change original path", func(t *testing.T) {
 		// given
 		h := HTML{}
+		source := source.GetSource("test")
 
 		// when
-		newFileName, _, err := cv.ProvideFileName("test", nil, "imported path", h.tempDirProvider)
+		newFileName, _, err := cv.ProvideFileName("test", source, "imported path", h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -124,7 +131,7 @@ func TestHTML_provideFileName(t *testing.T) {
 	})
 }
 
-func prepareArchivedFiles(t *testing.T) (map[string]io.ReadCloser, string, string) {
+func prepareArchivedFiles(t *testing.T) (string, string) {
 	// create test archive
 	archiveName := filepath.Join(".", strconv.FormatInt(rand.Int63(), 10)+".zip")
 	file, err := os.Create(archiveName)
@@ -142,13 +149,6 @@ func prepareArchivedFiles(t *testing.T) (map[string]io.ReadCloser, string, strin
 	reader, err := zip.OpenReader(archiveName)
 	assert.Nil(t, err)
 
-	// get test file reader from archive
 	assert.Len(t, reader.File, 1)
-	testFile := reader.File[0]
-	rc, err := testFile.Open()
-	assert.Nil(t, err)
-
-	// fill map with files from archive
-	filesFromArchive := map[string]io.ReadCloser{testFileName: rc}
-	return filesFromArchive, testFileName, archiveName
+	return testFileName, archiveName
 }

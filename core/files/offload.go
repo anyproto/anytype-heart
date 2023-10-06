@@ -8,16 +8,25 @@ import (
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
-func (s *service) FileOffload(fileID string, includeNotPinned bool) (totalSize uint64, err error) {
-	if err := s.checkIfPinned(fileID, includeNotPinned); err != nil {
+func (s *service) FileOffload(ctx context.Context, fileID string, includeNotPinned bool) (totalSize uint64, err error) {
+	spaceID, err := s.resolver.ResolveSpaceID(fileID)
+	if err != nil {
+		return 0, fmt.Errorf("resolve spaceID for file %s: %w", fileID, err)
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: fileID,
+	}
+	if err := s.checkIfPinned(id.ObjectID, includeNotPinned); err != nil {
 		return 0, err
 	}
 
-	return s.fileOffload(fileID)
+	return s.fileOffload(ctx, id)
 }
 
 func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
@@ -25,7 +34,7 @@ func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
 		return nil
 	}
 
-	isPinned, err := s.isFilePinned(fileID)
+	isPinned, err := s.isFilePinnedOrDeleted(fileID)
 	if err != nil {
 		return fmt.Errorf("check if file is pinned: %w", err)
 	}
@@ -35,24 +44,32 @@ func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
 	return nil
 }
 
-func (s *service) isFilePinned(fileID string) (bool, error) {
-	stat, err := s.fileSync.FileStat(context.Background(), s.spaceService.AccountId(), fileID)
-	if err != nil {
-		return false, fmt.Errorf("file stat %s: %w", fileID, err)
+func (s *service) isFilePinnedOrDeleted(fileID string) (bool, error) {
+	status, err := s.fileStore.GetSyncStatus(fileID)
+	if err != nil && err != localstore.ErrNotFound {
+		return false, fmt.Errorf("get sync status for file %s: %w", fileID, err)
 	}
-
-	return stat.UploadedChunksCount == stat.TotalChunksCount, nil
+	if status == int(syncstatus.StatusSynced) {
+		return true, nil
+	}
+	isDeleted, err := s.isFileDeleted(fileID)
+	if err != nil {
+		log.With("fileID", fileID).Errorf("failed to check if file is deleted: %s", err)
+		return false, nil
+	}
+	return isDeleted, nil
 }
 
-func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
-	log.With("fileID", hash).Info("offload file")
-	totalSize, cids, err := s.getAllExistingFileBlocksCids(hash)
+func (s *service) fileOffload(ctx context.Context, id domain.FullID) (totalSize uint64, err error) {
+	log.With("fileID", id.ObjectID).Info("offload file")
+	totalSize, cids, err := s.getAllExistingFileBlocksCids(ctx, id)
 	if err != nil {
 		return 0, err
 	}
 
+	dagService := s.dagServiceForSpace(id.SpaceID)
 	for _, c := range cids {
-		err = s.commonFile.DAGService().Remove(context.Background(), c)
+		err = dagService.Remove(context.Background(), c)
 		if err != nil {
 			// no need to check for cid not exists
 			return 0, err
@@ -62,7 +79,7 @@ func (s *service) fileOffload(hash string) (totalSize uint64, err error) {
 	return totalSize, nil
 }
 
-func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
+func (s *service) FileListOffload(ctx context.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
 	if len(fileIDs) == 0 {
 		fileIDs, err = s.fileStore.ListTargets()
 		if err != nil {
@@ -78,7 +95,15 @@ func (s *service) FileListOffload(fileIDs []string, includeNotPinned bool) (tota
 	}
 
 	for _, fileID := range fileIDs {
-		bytesRemoved, err := s.fileOffload(fileID)
+		spaceID, err := s.resolver.ResolveSpaceID(fileID)
+		if err != nil {
+			return 0, 0, fmt.Errorf("resolve spaceID for file %s: %w", fileID, err)
+		}
+		id := domain.FullID{
+			ObjectID: fileID,
+			SpaceID:  spaceID,
+		}
+		bytesRemoved, err := s.fileOffload(ctx, id)
 		if err != nil {
 			log.Errorf("failed to offload file %s: %s", fileID, err.Error())
 			continue
@@ -102,32 +127,24 @@ func (s *service) isFileDeleted(fileID string) (bool, error) {
 func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {
 	var result []string
 	for _, fileID := range fileIDs {
-		status, err := s.fileStore.GetSyncStatus(fileID)
-		if err != nil && err != localstore.ErrNotFound {
-			return nil, fmt.Errorf("get sync status for file %s: %w", fileID, err)
-		}
-		if status == int(syncstatus.StatusSynced) {
-			result = append(result, fileID)
-			continue
-		}
-		isDeleted, err := s.isFileDeleted(fileID)
+		ok, err := s.isFilePinnedOrDeleted(fileID)
 		if err != nil {
-			log.With("fileID", fileID).Errorf("failed to check if file is deleted: %s", err)
-			continue
+			return nil, fmt.Errorf("check if file is pinned: %w", err)
 		}
-		if isDeleted {
+		if ok {
 			result = append(result, fileID)
 		}
 	}
 	return result, nil
 }
 
-func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
+func (s *service) getAllExistingFileBlocksCids(ctx context.Context, id domain.FullID) (totalSize uint64, cids []cid.Cid, err error) {
 	var getCidsLinksRecursively func(c cid.Cid) (err error)
+	dagService := s.dagServiceForSpace(id.SpaceID)
 
 	var visitedMap = make(map[string]struct{})
 	getCidsLinksRecursively = func(c cid.Cid) (err error) {
-		if exists, err := s.commonFile.HasCid(context.Background(), c); err != nil {
+		if exists, err := s.hasCid(ctx, id.SpaceID, c); err != nil {
 			return err
 		} else if !exists {
 			// double-check the blockstore, if we don't have the block - we have not yet downloaded it
@@ -139,7 +156,7 @@ func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 		// here we can be sure that the block is loaded to the blockstore, so 1s should be more than enough
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		ctx = context.WithValue(ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
-		n, err := s.commonFile.DAGService().Get(ctx, c)
+		n, err := dagService.Get(ctx, c)
 		if err != nil {
 			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
 		}
@@ -165,7 +182,7 @@ func (s *service) getAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 		return
 	}
 
-	c, err := cid.Parse(hash)
+	c, err := cid.Parse(id.ObjectID)
 	if err != nil {
 		return 0, nil, err
 	}

@@ -31,6 +31,9 @@ linters-settings:
     statements: 100
   lll:
     line-length: 120
+  gocritic:
+    disabled-checks:
+      - ifElseChain
   misspell:
     locale: US
     ignore-words:

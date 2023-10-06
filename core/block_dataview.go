@@ -9,6 +9,7 @@ import (
 )
 
 func (mw *Middleware) BlockDataviewRelationListAvailable(cctx context.Context, req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcBlockDataviewRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcBlockDataviewRelationListAvailableResponse {
 		m := &pb.RpcBlockDataviewRelationListAvailableResponse{Relations: relations, Error: &pb.RpcBlockDataviewRelationListAvailableResponseError{Code: code}}
 		if err != nil {
@@ -22,7 +23,7 @@ func (mw *Middleware) BlockDataviewRelationListAvailable(cctx context.Context, r
 	)
 
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		relations, err = bs.GetAggregatedRelations(*req)
+		relations, err = bs.GetAggregatedRelations(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -39,7 +40,7 @@ func (mw *Middleware) BlockDataviewGroupOrderUpdate(cctx context.Context, req *p
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -59,7 +60,7 @@ func (mw *Middleware) BlockDataviewObjectOrderUpdate(cctx context.Context, req *
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -79,7 +80,7 @@ func (mw *Middleware) BlockDataviewObjectOrderMove(cctx context.Context, req *pb
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -109,7 +110,7 @@ func (mw *Middleware) BlockDataviewCreateFromExistingObject(cctx context.Context
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 
 		return m
@@ -139,7 +140,7 @@ func (mw *Middleware) BlockDataviewViewUpdate(cctx context.Context, req *pb.RpcB
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -159,7 +160,7 @@ func (mw *Middleware) BlockDataviewViewCreate(cctx context.Context, req *pb.RpcB
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -181,7 +182,7 @@ func (mw *Middleware) BlockDataviewViewDelete(cctx context.Context, req *pb.RpcB
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -201,7 +202,7 @@ func (mw *Middleware) BlockDataviewViewSetActive(cctx context.Context, req *pb.R
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -221,7 +222,7 @@ func (mw *Middleware) BlockDataviewViewSetPosition(cctx context.Context, req *pb
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -242,7 +243,7 @@ func (mw *Middleware) BlockDataviewRelationAdd(cctx context.Context, req *pb.Rpc
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -263,7 +264,7 @@ func (mw *Middleware) BlockDataviewRelationDelete(cctx context.Context, req *pb.
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}
@@ -288,7 +289,7 @@ func (mw *Middleware) BlockDataviewSetSource(cctx context.Context, req *pb.RpcBl
 			r.Error.Code = pb.RpcBlockDataviewSetSourceResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -312,7 +313,7 @@ func (mw *Middleware) BlockDataviewFilterAdd(cctx context.Context, req *pb.RpcBl
 			r.Error.Code = pb.RpcBlockDataviewFilterAddResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -336,7 +337,7 @@ func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.Rp
 			r.Error.Code = pb.RpcBlockDataviewFilterRemoveResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -360,7 +361,7 @@ func (mw *Middleware) BlockDataviewFilterReplace(cctx context.Context, req *pb.R
 			r.Error.Code = pb.RpcBlockDataviewFilterReplaceResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -384,7 +385,7 @@ func (mw *Middleware) BlockDataviewFilterSort(cctx context.Context, req *pb.RpcB
 			r.Error.Code = pb.RpcBlockDataviewFilterSortResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -408,7 +409,7 @@ func (mw *Middleware) BlockDataviewSortAdd(cctx context.Context, req *pb.RpcBloc
 			r.Error.Code = pb.RpcBlockDataviewSortAddResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -432,7 +433,7 @@ func (mw *Middleware) BlockDataviewSortRemove(cctx context.Context, req *pb.RpcB
 			r.Error.Code = pb.RpcBlockDataviewSortRemoveResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -456,7 +457,7 @@ func (mw *Middleware) BlockDataviewSortReplace(cctx context.Context, req *pb.Rpc
 			r.Error.Code = pb.RpcBlockDataviewSortReplaceResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -480,7 +481,7 @@ func (mw *Middleware) BlockDataviewSortSort(cctx context.Context, req *pb.RpcBlo
 			r.Error.Code = pb.RpcBlockDataviewSortSortResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -504,7 +505,7 @@ func (mw *Middleware) BlockDataviewViewRelationAdd(cctx context.Context, req *pb
 			r.Error.Code = pb.RpcBlockDataviewViewRelationAddResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -528,7 +529,7 @@ func (mw *Middleware) BlockDataviewViewRelationRemove(cctx context.Context, req 
 			r.Error.Code = pb.RpcBlockDataviewViewRelationRemoveResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -552,7 +553,7 @@ func (mw *Middleware) BlockDataviewViewRelationReplace(cctx context.Context, req
 			r.Error.Code = pb.RpcBlockDataviewViewRelationReplaceResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}
@@ -576,7 +577,7 @@ func (mw *Middleware) BlockDataviewViewRelationSort(cctx context.Context, req *p
 			r.Error.Code = pb.RpcBlockDataviewViewRelationSortResponseError_UNKNOWN_ERROR
 			r.Error.Description = err.Error()
 		} else {
-			r.Event = ctx.GetResponseEvent()
+			r.Event = mw.getResponseEvent(ctx)
 		}
 		return r
 	}

@@ -1,49 +1,66 @@
 package editor
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-editor")
 
-type ObjectFactory struct {
-	anytype              core.Service
-	bookmarkBlockService bookmark.BlockService
-	bookmarkService      bookmark.BookmarkService
-	detailsModifier      DetailsModifier
-	fileBlockService     file.BlockService
-	layoutConverter      converter.LayoutConverter
-	objectStore          objectstore.ObjectStore
-	relationService      relation.Service
-	sbtProvider          typeprovider.SmartBlockTypeProvider
-	sendEvent            func(e *pb.Event)
-	sourceService        source.Service
-	tempDirProvider      core.TempDirProvider
-	templateCloner       templateCloner
-	fileService          files.Service
-	config               *config.Config
+type spaceIndexer interface {
+	smartblock.Indexer
+	ReindexSpace(spaceID string) error
+}
 
-	subObjectFactory subObjectFactory
+type personalIDProvider interface {
+	PersonalSpaceID() string
+}
+
+type bundledObjectsInstaller interface {
+	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
+}
+
+type ObjectFactory struct {
+	anytype             core.Service
+	bookmarkService     bookmark.BookmarkService
+	detailsModifier     DetailsModifier
+	fileBlockService    file.BlockService
+	layoutConverter     converter.LayoutConverter
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	sourceService       source.Service
+	tempDirProvider     core.TempDirProvider
+	fileService         files.Service
+	config              *config.Config
+	picker              getblock.ObjectGetter
+	eventSender         event.Sender
+	restrictionService  restriction.Service
+	indexer             spaceIndexer
+	spaceService        spaceService
+	objectDeriver       objectDeriver
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -52,34 +69,23 @@ func NewObjectFactory() *ObjectFactory {
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
-	f.bookmarkBlockService = app.MustComponent[bookmark.BlockService](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	f.relationService = app.MustComponent[relation.Service](a)
+	f.systemObjectService = app.MustComponent[system_object.Service](a)
+	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
-	f.sendEvent = app.MustComponent[event.Sender](a).Send
-	f.templateCloner = app.MustComponent[templateCloner](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-
-	f.subObjectFactory = subObjectFactory{
-		coreService:        f.anytype,
-		fileBlockService:   f.fileBlockService,
-		fileService:        f.fileService,
-		indexer:            app.MustComponent[smartblock.Indexer](a),
-		layoutConverter:    f.layoutConverter,
-		objectStore:        f.objectStore,
-		relationService:    f.relationService,
-		restrictionService: app.MustComponent[restriction.Service](a),
-		sbtProvider:        f.sbtProvider,
-		sourceService:      f.sourceService,
-		tempDirProvider:    f.tempDirProvider,
-	}
+	f.picker = app.MustComponent[getblock.ObjectGetter](a)
+	f.indexer = app.MustComponent[spaceIndexer](a)
+	f.eventSender = app.MustComponent[event.Sender](a)
+	f.objectDeriver = app.MustComponent[objectDeriver](a)
+	f.spaceService = app.MustComponent[spaceService](a)
 
 	return nil
 }
@@ -112,19 +118,11 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	}
 
 	if ot != nil {
-		setter, ok := sb.Inner().(smartblock.LockerSetter)
-		if !ok {
-			err = fmt.Errorf("should be able to provide lock from the outside")
-			return
-		}
 		// using lock from object tree
-		setter.SetLocker(ot)
+		sb.SetLocker(ot)
 	}
 
 	// we probably don't need any locks here, because the object is initialized synchronously
-	if initCtx == nil {
-		initCtx = &smartblock.InitContext{}
-	}
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
 	if err != nil {
@@ -132,104 +130,117 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	}
 
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
-
+	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
-func (f *ObjectFactory) New(sbType model.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb := f.subObjectFactory.produceSmartblock()
+func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
+	return smartblock.New(
+		f.anytype,
+		f.fileService,
+		f.restrictionService,
+		f.objectStore,
+		f.systemObjectService,
+		f.indexer,
+		f.eventSender,
+	)
+}
+
+func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock, error) {
+	sb := f.produceSmartblock()
 	switch sbType {
-	case model.SmartBlockType_Page, model.SmartBlockType_Date, model.SmartBlockType_BundledRelation, model.SmartBlockType_BundledObjectType:
+	case coresb.SmartBlockTypePage,
+		coresb.SmartBlockTypeDate,
+		coresb.SmartBlockTypeBundledRelation,
+		coresb.SmartBlockTypeBundledObjectType,
+		coresb.SmartBlockTypeObjectType,
+		coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeRelationOption:
 		return NewPage(
 			sb,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
-			f.bookmarkBlockService,
+			f.picker,
 			f.bookmarkService,
-			f.relationService,
+			f.systemObjectService,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
 			f.fileService,
+			f.eventSender,
 		), nil
-	case model.SmartBlockType_Archive:
+	case coresb.SmartBlockTypeArchive:
 		return NewArchive(
 			sb,
 			f.detailsModifier,
 			f.objectStore,
 		), nil
-	case model.SmartBlockType_Home:
+	case coresb.SmartBlockTypeHome:
 		return NewDashboard(
 			sb,
 			f.detailsModifier,
 			f.objectStore,
-			f.relationService,
+			f.systemObjectService,
 			f.anytype,
 			f.layoutConverter,
 		), nil
-	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
+	case coresb.SmartBlockTypeProfilePage,
+		coresb.SmartBlockTypeAnytypeProfile:
 		return NewProfile(
 			sb,
 			f.objectStore,
-			f.relationService,
+			f.systemObjectService,
 			f.fileBlockService,
-			f.bookmarkBlockService,
+			f.anytype,
+			f.picker,
 			f.bookmarkService,
-			f.sendEvent,
 			f.tempDirProvider,
 			f.layoutConverter,
 			f.fileService,
+			f.eventSender,
 		), nil
-	case model.SmartBlockType_File:
+	case coresb.SmartBlockTypeFile:
 		return NewFiles(sb), nil
-	case model.SmartBlockType_Template:
+	case coresb.SmartBlockTypeTemplate,
+		coresb.SmartBlockTypeBundledTemplate:
 		return NewTemplate(
 			sb,
 			f.objectStore,
 			f.anytype,
 			f.fileBlockService,
-			f.bookmarkBlockService,
+			f.picker,
 			f.bookmarkService,
-			f.relationService,
+			f.systemObjectService,
 			f.tempDirProvider,
 			f.sbtProvider,
 			f.layoutConverter,
 			f.fileService,
+			f.eventSender,
 		), nil
-	case model.SmartBlockType_BundledTemplate:
-		return NewTemplate(
-			sb,
-			f.objectStore,
-			f.anytype,
-			f.fileBlockService,
-			f.bookmarkBlockService,
-			f.bookmarkService,
-			f.relationService,
-			f.tempDirProvider,
-			f.sbtProvider,
-			f.layoutConverter,
-			f.fileService,
-		), nil
-	case model.SmartBlockType_Workspace:
+	case coresb.SmartBlockTypeWorkspace:
 		return NewWorkspace(
 			sb,
 			f.objectStore,
 			f.anytype,
-			f.relationService,
+			f.systemObjectService,
 			f.sourceService,
 			f.detailsModifier,
 			f.sbtProvider,
 			f.layoutConverter,
-			f.subObjectFactory,
-			f.templateCloner,
 			f.config,
+			f.eventSender,
+			f.objectDeriver,
 		), nil
-	case model.SmartBlockType_MissingObject:
+	case coresb.SmartBlockTypeSpaceView:
+		return newSpaceView(
+			sb,
+			f.spaceService,
+		), nil
+	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
-	case model.SmartBlockType_Widget:
-		return NewWidgetObject(sb, f.objectStore, f.relationService, f.layoutConverter), nil
-	case model.SmartBlockType_SubObject:
+	case coresb.SmartBlockTypeWidget:
+		return NewWidgetObject(sb, f.objectStore, f.systemObjectService, f.layoutConverter), nil
+	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)

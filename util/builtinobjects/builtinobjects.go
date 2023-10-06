@@ -3,9 +3,10 @@ package builtinobjects
 import (
 	"archive/zip"
 	"bytes"
-	_ "embed"
+	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -25,7 +27,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+
+	_ "embed"
 )
 
 const (
@@ -117,16 +122,18 @@ var (
 type BuiltinObjects interface {
 	app.Component
 
-	CreateObjectsForUseCase(*session.Context, pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-	InjectMigrationDashboard() error
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error)
+	InjectMigrationDashboard(spaceID string) error
 }
 
 type builtinObjects struct {
-	service        *block.Service
-	coreService    core.Service
-	importer       importer.Importer
-	store          objectstore.ObjectStore
-	tempDirService core.TempDirProvider
+	service             *block.Service
+	coreService         core.Service
+	importer            importer.Importer
+	store               objectstore.ObjectStore
+	tempDirService      core.TempDirProvider
+	systemObjectService system_object.Service
 }
 
 func New() BuiltinObjects {
@@ -139,6 +146,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
+	b.systemObjectService = app.MustComponent[system_object.Service](a)
 	return
 }
 
@@ -147,8 +155,14 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) CreateObjectsForUseCase(
-	ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase,
+	ctx session.Context,
+	spaceID string,
+	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
+	if useCase == pb.RpcObjectImportUseCaseRequest_EMPTY {
+		return pb.RpcObjectImportUseCaseResponseError_NULL, err
+	}
+
 	start := time.Now()
 
 	archive, found := archives[useCase]
@@ -157,7 +171,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 			fmt.Errorf("failed to import builtinObjects: invalid Use Case value: %v", useCase)
 	}
 
-	if err = b.inject(ctx, useCase, archive); err != nil {
+	if err = b.inject(ctx, spaceID, useCase, archive); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
 			fmt.Errorf("failed to import builtinObjects for Use Case %s: %s",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err.Error())
@@ -171,17 +185,62 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) InjectMigrationDashboard() error {
-	return b.inject(nil, migrationUseCase, migrationDashboardZip)
+func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error) {
+	if isLocal {
+		return b.importArchive(ctx, spaceID, source)
+	}
+	// nolint: gosec
+	resp, err := http.Get(source)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to fetch experience from '%s': not OK status code: %s", source, resp.Status)
+	}
+	defer func() {
+		if err = resp.Body.Close(); err != nil {
+			log.Errorf("failed to close response bode while downloading experience from '%s': %v", source, err)
+		}
+	}()
+
+	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	out, err := os.Create(path)
+	if err != nil {
+		return oserror.TransformError(err)
+	}
+	defer func() {
+		if err = out.Close(); err != nil {
+			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", source, err)
+		}
+		if err = os.Remove(path); err != nil {
+			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(err))
+		}
+	}()
+
+	if _, err = io.Copy(out, resp.Body); err != nil {
+		return err
+	}
+
+	if err = b.importArchive(ctx, spaceID, path); err != nil {
+		return err
+	}
+
+	// TODO: handleMyHomepage support
+
+	return nil
 }
 
-func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
+func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
+	return b.inject(nil, spaceID, migrationUseCase, migrationDashboardZip)
+}
+
+func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
 	}
 
-	if err = b.importArchive(ctx, path); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
 		return err
 	}
 
@@ -195,19 +254,20 @@ func (b *builtinObjects) inject(ctx *session.Context, useCase pb.RpcObjectImport
 		}
 	}
 
-	newID, err := b.getNewObjectID(oldID)
+	newID, err := b.getNewSpaceDashboardId(spaceID, oldID)
 	if err != nil {
 		log.Errorf("Failed to get new id of space dashboard object: %s", err.Error())
 		return nil
 	}
 
-	b.handleSpaceDashboard(newID)
-	b.createWidgets(ctx, useCase)
+	b.handleSpaceDashboard(spaceID, newID)
+	b.createWidgets(ctx, spaceID, useCase)
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string) (err error) {
 	if _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
+		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
@@ -223,7 +283,7 @@ func (b *builtinObjects) importArchive(ctx *session.Context, path string) (err e
 	}
 
 	if err = os.Remove(path); err != nil {
-		log.Errorf("failed to remove temporary file %s: %s", path, err.Error())
+		log.Errorf("failed to remove temporary file: %s", err.Error())
 	}
 
 	return nil
@@ -264,13 +324,18 @@ func (b *builtinObjects) getOldSpaceDashboardId(archive []byte) (id string, err 
 	return profile.SpaceDashboardId, nil
 }
 
-func (b *builtinObjects) getNewObjectID(oldID string) (id string, err error) {
+func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (id string, err error) {
 	ids, _, err := b.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
 				Value:       pbtypes.String(oldID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	}, nil)
@@ -280,9 +345,9 @@ func (b *builtinObjects) getNewObjectID(oldID string) (id string, err error) {
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(id string) {
+func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: b.coreService.PredefinedBlocks().Account,
+		ContextId: b.coreService.PredefinedObjects(spaceID).Workspace,
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -294,15 +359,15 @@ func (b *builtinObjects) handleSpaceDashboard(id string) {
 	}
 }
 
-func (b *builtinObjects) createWidgets(ctx *session.Context, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
-	widgetObjectID := b.coreService.PredefinedBlocks().Widgets
+	widgetObjectID := b.coreService.PredefinedObjects(spaceID).Widgets
 
 	if err = block.DoStateCtx(b.service, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
-				objectID, err = b.getNewObjectID(objectID)
+				objectID, err = b.getNewObjectID(spaceID, objectID)
 				if err != nil {
 					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
 					continue
@@ -328,7 +393,7 @@ func (b *builtinObjects) createWidgets(ctx *session.Context, useCase pb.RpcObjec
 				request.ViewId = param.viewID
 			}
 			if _, err = w.CreateBlock(s, request); err != nil {
-				return err
+				log.Errorf("Failed to make Widget blocks: %v", err)
 			}
 		}
 		return nil
@@ -336,4 +401,25 @@ func (b *builtinObjects) createWidgets(ctx *session.Context, useCase pb.RpcObjec
 		log.Errorf("failed to create widget blocks for useCase '%s': %v",
 			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
 	}
+}
+
+func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
+	ids, _, err := b.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyOldAnytypeID.String(),
+				Value:       pbtypes.String(oldID),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	}, nil)
+	if err == nil && len(ids) > 0 {
+		return ids[0], nil
+	}
+	return "", err
 }

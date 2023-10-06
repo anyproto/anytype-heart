@@ -20,6 +20,7 @@ service ClientCommands {
     // Workspace
     // ***
     rpc WorkspaceCreate (anytype.Rpc.Workspace.Create.Request) returns (anytype.Rpc.Workspace.Create.Response);
+    rpc WorkspaceInfo (anytype.Rpc.Workspace.Info.Request) returns (anytype.Rpc.Workspace.Info.Response);
     rpc WorkspaceObjectAdd (anytype.Rpc.Workspace.Object.Add.Request) returns (anytype.Rpc.Workspace.Object.Add.Response);
     rpc WorkspaceObjectListAdd (anytype.Rpc.Workspace.Object.ListAdd.Request) returns (anytype.Rpc.Workspace.Object.ListAdd.Response);
     rpc WorkspaceObjectListRemove (anytype.Rpc.Workspace.Object.ListRemove.Request) returns (anytype.Rpc.Workspace.Object.ListRemove.Response);
@@ -87,6 +88,7 @@ service ClientCommands {
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
     rpc ObjectImportUseCase (anytype.Rpc.Object.ImportUseCase.Request) returns (anytype.Rpc.Object.ImportUseCase.Response);
+    rpc ObjectImportExperience (anytype.Rpc.Object.ImportExperience.Request) returns (anytype.Rpc.Object.ImportExperience.Response);
 
     // Collections
     // ***
@@ -156,6 +158,8 @@ service ClientCommands {
     rpc BlockCut (anytype.Rpc.Block.Cut.Request) returns (anytype.Rpc.Block.Cut.Response);
     rpc BlockSetFields (anytype.Rpc.Block.SetFields.Request) returns (anytype.Rpc.Block.SetFields.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
+    rpc BlockSetCarriage (anytype.Rpc.Block.SetCarriage.Request) returns (anytype.Rpc.Block.SetCarriage.Response);
+
 
     rpc BlockListDelete (anytype.Rpc.Block.ListDelete.Request) returns (anytype.Rpc.Block.ListDelete.Response);
     rpc BlockListMoveToExistingObject (anytype.Rpc.Block.ListMoveToExistingObject.Request) returns (anytype.Rpc.Block.ListMoveToExistingObject.Response);

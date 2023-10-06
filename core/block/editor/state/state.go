@@ -9,15 +9,13 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
-	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -51,22 +49,23 @@ var DetailsFileFields = [...]string{bundle.RelationKeyCoverId.String(), bundle.R
 type Doc interface {
 	RootId() string
 	NewState() *State
-	NewStateCtx(ctx *session.Context) *State
+	NewStateCtx(ctx session.Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
 	Details() *types.Struct
 	CombinedDetails() *types.Struct
 	LocalDetails() *types.Struct
 
-	OldExtraRelations() []*model.Relation
 	GetRelationLinks() pbtypes.RelationLinks
 
-	ObjectTypes() []string
-	ObjectType() string
+	ObjectTypeKeys() []domain.TypeKey
+	ObjectTypeKey() domain.TypeKey
 	Layout() (model.ObjectTypeLayout, bool)
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
+	UniqueKeyInternal() string
+
 	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
@@ -81,36 +80,45 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
-	// todo: this fires debug logs regarding objectType
-	s.InjectDerivedDetails()
+	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
+	return s
+}
+
+func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key domain.UniqueKey) Doc {
+	if blocks == nil {
+		blocks = make(map[string]simple.Block)
+	}
+	s := &State{
+		rootId:            rootId,
+		blocks:            blocks,
+		uniqueKeyInternal: key.InternalKey(),
+	}
 	return s
 }
 
 type State struct {
-	ctx           *session.Context
-	parent        *State
-	blocks        map[string]simple.Block
-	rootId        string
-	newIds        []string
-	changeId      string
-	changes       []*pb.ChangeContent
-	fileKeys      []pb.ChangeFileKeys
-	details       *types.Struct
-	localDetails  *types.Struct
-	relationLinks pbtypes.RelationLinks
+	ctx    session.Context
+	parent *State
+	blocks map[string]simple.Block
+	rootId string
+	// uniqueKeyInternal is used together with smartblock type for the ID derivation
+	// which will be unique and reproducible within the same space
+	uniqueKeyInternal string
+	newIds            []string
+	changeId          string
+	changes           []*pb.ChangeContent
+	fileKeys          []pb.ChangeFileKeys
+	details           *types.Struct
+	localDetails      *types.Struct
+	relationLinks     pbtypes.RelationLinks
 
 	migrationVersion uint32
-
-	// deprecated, used for migration
-	extraRelations              []*model.Relation
-	aggregatedOptionsByRelation map[string][]*model.RelationOption // deprecated, used for migration
 
 	store                   *types.Struct
 	storeKeyRemoved         map[string]struct{}
 	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
-	objectTypes          []string
-	objectTypesToMigrate []string
+	objectTypeKeys []domain.TypeKey // here we store object type keys, not IDs
 
 	changesStructureIgnoreIds []string
 
@@ -148,14 +156,14 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
 }
 
-func (s *State) NewStateCtx(ctx *session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion}
+func (s *State) NewStateCtx(ctx session.Context) *State {
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
 }
 
-func (s *State) Context() *session.Context {
+func (s *State) Context() session.Context {
 	return s.ctx
 }
 
@@ -166,6 +174,10 @@ func (s *State) SetGroupId(groupId string) *State {
 
 func (s *State) GroupId() string {
 	return s.groupId
+}
+
+func (s *State) SpaceID() string {
+	return pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String())
 }
 
 func (s *State) Add(b simple.Block) (ok bool) {
@@ -417,8 +429,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		detailsChanged bool
 	)
 
-	// apply snippet
 	if s.parent != nil {
+		s.parent.uniqueKeyInternal = s.uniqueKeyInternal
+
+		// apply snippet
 		if s.Snippet() != s.parent.Snippet() {
 			s.SetLocalDetail(bundle.RelationKeySnippet.String(), pbtypes.String(s.Snippet()))
 		}
@@ -595,30 +609,20 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
-	if s.parent != nil && s.objectTypes != nil {
-		prev := s.parent.ObjectTypes()
-		if !slice.UnsortedEquals(prev, s.objectTypes) {
-			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypes()}
-			s.parent.objectTypes = s.objectTypes
+	if s.parent != nil && s.objectTypeKeys != nil {
+		prev := s.parent.ObjectTypeKeys()
+		if !slice.UnsortedEqual(prev, s.objectTypeKeys) {
+			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypeKeys()}
+			s.parent.objectTypeKeys = s.objectTypeKeys
 		}
 	}
 
-	if s.parent != nil && s.objectTypesToMigrate != nil {
-		prev := s.parent.ObjectTypesToMigrate()
-		if !slice.UnsortedEquals(prev, s.objectTypesToMigrate) {
-			s.parent.objectTypesToMigrate = s.objectTypesToMigrate
-		}
-	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 
 	if s.parent != nil && s.relationLinks != nil {
 		s.parent.relationLinks = s.relationLinks
-	}
-
-	if s.parent != nil && s.extraRelations != nil {
-		s.parent.extraRelations = s.extraRelations
 	}
 
 	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
@@ -680,12 +684,10 @@ func (s *State) intermediateApply() {
 		s.parent.relationLinks = s.relationLinks
 	}
 
-	if s.objectTypes != nil {
-		s.parent.objectTypes = s.objectTypes
+	if s.objectTypeKeys != nil {
+		s.parent.objectTypeKeys = s.objectTypeKeys
 	}
-	if s.objectTypesToMigrate != nil {
-		s.parent.objectTypesToMigrate = s.objectTypesToMigrate
-	}
+
 	if s.store != nil {
 		s.parent.store = s.store
 	}
@@ -780,7 +782,7 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 func (s *State) StringDebug() string {
 	buf := bytes.NewBuffer(nil)
 	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
-	fmt.Fprintf(buf, "ObjectTypes: %v\n", s.ObjectTypes())
+	fmt.Fprintf(buf, "ObjectTypeKeys: %v\n", s.ObjectTypeKeys())
 	fmt.Fprintf(buf, "Relations:\n")
 	for _, rel := range s.relationLinks {
 		fmt.Fprintf(buf, "\t%v\n", rel)
@@ -826,7 +828,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 }
 
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
-func (s *State) SetDetailAndBundledRelation(key bundle.RelationKey, value *types.Value) {
+func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value *types.Value) {
 	s.AddBundledRelations(key)
 	s.SetDetail(key.String(), value)
 	return
@@ -944,35 +946,21 @@ func (s *State) StoreChangeIdForPath(path string) string {
 	return m[path]
 }
 
-func (s *State) SetObjectType(objectType string) *State {
-	return s.SetObjectTypes([]string{objectType})
+type ObjectTypePair struct {
+	ID  string
+	Key domain.TypeKey
 }
 
-func (s *State) SetObjectTypes(objectTypes []string) *State {
-	s.objectTypes = objectTypes
-	// todo: we lost the second type here, so it becomes inconsistent with the objectTypes in the state
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
+// SetObjectTypeKey sets the object type key. Smartblocks derive Type relation from it.
+func (s *State) SetObjectTypeKey(objectTypeKey domain.TypeKey) *State {
+	return s.SetObjectTypeKeys([]domain.TypeKey{objectTypeKey})
+}
+
+// SetObjectTypeKeys sets the object type keys. Smartblocks derive Type relation from it.
+func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
+	s.objectTypeKeys = objectTypeKeys
+	// we don't set it in the localDetails here
 	return s
-}
-
-func (s *State) SetObjectTypesToMigrate(objectTypes []string) *State {
-	s.objectTypesToMigrate = objectTypes
-	return s
-}
-
-func (s *State) InjectDerivedDetails() {
-	id := s.RootId()
-	if id != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
-	}
-	if ot := s.ObjectType(); ot != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
-	}
-
-	snippet := s.Snippet()
-	if snippet != "" || s.LocalDetails() != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(snippet))
-	}
 }
 
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
@@ -983,7 +971,7 @@ func (s *State) InjectLocalDetails(localDetails *types.Struct) {
 		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
 			continue
 		}
-		s.SetDetailAndBundledRelation(bundle.RelationKey(key), v)
+		s.SetDetailAndBundledRelation(domain.RelationKey(key), v)
 	}
 }
 
@@ -993,14 +981,6 @@ func (s *State) LocalDetails() *types.Struct {
 	}
 
 	return s.localDetails
-}
-
-func (s *State) AggregatedOptionsByRelation() map[string][]*model.RelationOption {
-	if s.aggregatedOptionsByRelation == nil && s.parent != nil {
-		return s.parent.AggregatedOptionsByRelation()
-	}
-
-	return s.aggregatedOptionsByRelation
 }
 
 func (s *State) CombinedDetails() *types.Struct {
@@ -1024,33 +1004,25 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-func (s *State) OldExtraRelations() []*model.Relation {
-	if s.extraRelations == nil && s.parent != nil {
-		return s.parent.OldExtraRelations()
+// ObjectTypeKeys returns the object types keys of the object
+// in order to get object type id you need to derive it for the space
+func (s *State) ObjectTypeKeys() []domain.TypeKey {
+	if s.objectTypeKeys == nil && s.parent != nil {
+		return s.parent.ObjectTypeKeys()
 	}
-	return s.extraRelations
+	return s.objectTypeKeys
 }
 
-func (s *State) ObjectTypes() []string {
-	if s.objectTypes == nil && s.parent != nil {
-		return s.parent.ObjectTypes()
-	}
-	return s.objectTypes
-}
-
-func (s *State) ObjectTypesToMigrate() []string {
-	if s.objectTypes == nil && s.parent != nil {
-		return s.parent.ObjectTypesToMigrate()
-	}
-	return s.objectTypesToMigrate
-}
-
-// ObjectType returns only the first objectType and produce warning in case the state has more than 1 object type
+// ObjectTypeKey returns only the first objectType key and produce warning in case the state has more than 1 object type
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
-func (s *State) ObjectType() string {
-	objTypes := s.ObjectTypes()
+func (s *State) ObjectTypeKey() domain.TypeKey {
+	objTypes := s.ObjectTypeKeys()
 	if len(objTypes) == 0 && !s.noObjectType {
-		log.Debugf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
+		log.Debugf("object %s (%s) has %d object types instead of 1",
+			s.RootId(),
+			pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()),
+			len(objTypes),
+		)
 	}
 
 	if len(objTypes) > 0 {
@@ -1176,105 +1148,6 @@ func (s *State) SetParent(parent *State) {
 	s.parent = parent
 }
 
-func (s *State) DepSmartIds(blocks, details, relations, objTypes, creatorModifierWorkspace bool) (ids []string) {
-	if blocks {
-		err := s.Iterate(func(b simple.Block) (isContinue bool) {
-			if ls, ok := b.(linkSource); ok {
-				ids = ls.FillSmartIds(ids)
-			}
-			return true
-		})
-		if err != nil {
-			log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
-		}
-	}
-
-	if objTypes {
-		for _, ot := range s.ObjectTypes() {
-			if ot == "" { // TODO is it possible?
-				log.Errorf("sb %s has empty ot", s.RootId())
-				continue
-			}
-			ids = append(ids, ot)
-		}
-	}
-
-	var det *types.Struct
-	if details {
-		det = s.CombinedDetails()
-	}
-
-	for _, rel := range s.GetRelationLinks() {
-		// do not index local dates such as lastOpened/lastModified
-		if relations {
-			ids = append(ids, addr.RelationKeyToIdPrefix+rel.Key)
-		}
-
-		if !details {
-			continue
-		}
-
-		// handle corner cases first for specific formats
-		if rel.Format == model.RelationFormat_date &&
-			!slices.Contains(bundle.LocalRelationsKeys, rel.Key) &&
-			!slices.Contains(bundle.DerivedRelationsKeys, rel.Key) {
-			relInt := pbtypes.GetInt64(det, rel.Key)
-			if relInt > 0 {
-				t := time.Unix(relInt, 0)
-				t = t.In(time.UTC)
-				ids = append(ids, addr.TimeToID(t))
-			}
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyCreator.String() ||
-			rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
-			rel.Key == bundle.RelationKeyWorkspaceId.String() {
-			if creatorModifierWorkspace {
-				v := pbtypes.GetString(det, rel.Key)
-				ids = append(ids, v)
-			}
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyId.String() ||
-			rel.Key == bundle.RelationKeyLinks.String() ||
-			rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
-			rel.Key == bundle.RelationKeyFeaturedRelations.String() {
-			continue
-		}
-
-		if rel.Key == bundle.RelationKeyCoverId.String() {
-			v := pbtypes.GetString(det, rel.Key)
-			_, err := cid.Decode(v)
-			if err != nil {
-				// this is an exception cause coverId can contains not a file hash but color
-				continue
-			}
-			ids = append(ids, v)
-		}
-
-		if rel.Format != model.RelationFormat_object &&
-			rel.Format != model.RelationFormat_file &&
-			rel.Format != model.RelationFormat_status &&
-			rel.Format != model.RelationFormat_tag {
-			continue
-		}
-
-		// add all object relation values as dependents
-		for _, targetID := range pbtypes.GetStringList(det, rel.Key) {
-			if targetID == "" {
-				continue
-			}
-
-			ids = append(ids, targetID)
-		}
-	}
-
-	ids = lo.Uniq(ids)
-	return
-}
-
 func (s *State) Validate() (err error) {
 	var (
 		err2        error
@@ -1349,11 +1222,8 @@ func (s *State) Copy() *State {
 		blocks[b.Model().Id] = b.Copy()
 		return true
 	})
-	objTypes := make([]string, len(s.ObjectTypes()))
-	copy(objTypes, s.ObjectTypes())
-
-	objTypesToMigrate := make([]string, len(s.ObjectTypesToMigrate()))
-	copy(objTypesToMigrate, s.ObjectTypesToMigrate())
+	objTypes := make([]domain.TypeKey, len(s.ObjectTypeKeys()))
+	copy(objTypes, s.ObjectTypeKeys())
 
 	storeKeyRemoved := s.StoreKeysRemoved()
 	storeKeyRemovedCopy := make(map[string]struct{}, len(storeKeyRemoved))
@@ -1367,14 +1237,13 @@ func (s *State) Copy() *State {
 		details:                 pbtypes.CopyStruct(s.Details()),
 		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
 		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
-		extraRelations:          pbtypes.CopyRelations(s.OldExtraRelations()),
-		objectTypes:             objTypes,
-		objectTypesToMigrate:    objTypesToMigrate,
+		objectTypeKeys:          objTypes,
 		noObjectType:            s.noObjectType,
 		migrationVersion:        s.migrationVersion,
 		store:                   pbtypes.CopyStruct(s.Store()),
 		storeLastChangeIdByPath: s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
 		storeKeyRemoved:         storeKeyRemovedCopy,
+		uniqueKeyInternal:       s.uniqueKeyInternal,
 	}
 	return copy
 }
@@ -1585,7 +1454,7 @@ func (s *State) setInStore(path []string, value *types.Value) (changed bool) {
 		changed = oldval.Compare(value) != 0
 		store.Fields[path[len(path)-1]] = value
 		s.setStoreChangeId(pathJoined, s.changeId)
-		// in case we have previously removed this key
+		// in case we have previously removed this uniqueKeyInternal
 		delete(s.storeKeyRemoved, pathJoined)
 		return
 	}
@@ -1764,7 +1633,7 @@ func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 	return 0, false
 }
 
-func (s *State) SetContext(context *session.Context) {
+func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
@@ -1898,7 +1767,7 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
+func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 	links := make([]*model.RelationLink, 0, len(keys))
 	for _, key := range keys {
 		rel := bundle.MustGetRelation(key)
@@ -1907,7 +1776,8 @@ func (s *State) AddBundledRelations(keys ...bundle.RelationKey) {
 	s.AddRelationLinks(links...)
 }
 
-type linkSource interface {
-	FillSmartIds(ids []string) []string
-	HasSmartIds() bool
+// UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation
+// which will be unique and reproducible within the same space
+func (s *State) UniqueKeyInternal() string {
+	return s.uniqueKeyInternal
 }

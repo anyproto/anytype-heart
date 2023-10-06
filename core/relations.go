@@ -10,10 +10,12 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -32,8 +34,8 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	store := app.MustComponent[objectstore.ObjectStore](mw.app)
-	objType, err := store.GetObjectType(req.ObjectTypeUrl)
+	systemObjectService := app.MustComponent[system_object.Service](mw.applicationService.GetApp())
+	objType, err := systemObjectService.GetObjectType(req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -46,6 +48,7 @@ func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcOb
 }
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectTypeRelationAddResponseErrorCode, err error) *pb.RpcObjectTypeRelationAddResponse {
 		m := &pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: code}}
 		if err != nil {
@@ -53,6 +56,8 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 		}
 		return m
 	}
+
+	systemObjectService := getService[system_object.Service](mw)
 
 	at := mw.GetAnytype()
 	if at == nil {
@@ -64,10 +69,21 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceId, err := res.ResolveSpaceID(req.ObjectTypeUrl)
+		if err != nil {
+			return err
+		}
+
+		err = bs.ModifyDetails(ctx, req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
+
 			for _, relKey := range req.RelationKeys {
-				relId := addr.RelationKeyToIdPrefix + relKey
+				relId, err := systemObjectService.GetRelationIdByKey(cctx, spaceId, domain.RelationKey(relKey))
+				if err != nil {
+					return nil, err
+				}
+
 				if slice.FindPos(list, relId) == -1 {
 					list = append(list, relId)
 				}
@@ -91,6 +107,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectTypeRelationRemoveResponseErrorCode, err error) *pb.RpcObjectTypeRelationRemoveResponse {
 		m := &pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: code}}
 		if err != nil {
@@ -109,7 +126,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
+		err = bs.ModifyDetails(ctx, req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 			for _, relKey := range req.RelationKeys {
 				relId := addr.RelationKeyToIdPrefix + relKey
@@ -150,7 +167,7 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyObjectType)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyObjectType)
 		return err
 	})
 	if err != nil {
@@ -167,7 +184,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
-			m.Event = ctx.GetResponseEvent()
+			m.Event = mw.getResponseEvent(ctx)
 			m.Details = newDetails
 		}
 		return m
@@ -186,7 +203,7 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 			req.Details.Fields = map[string]*types.Value{}
 		}
 		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeySet)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeySet)
 		return err
 	})
 	if err != nil {
@@ -225,7 +242,7 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyRelation)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyRelation)
 		return err
 	})
 	if err != nil {
@@ -259,7 +276,7 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 	)
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		id, newDetails, err = bs.CreateObject(req, bundle.TypeKeyRelationOption)
+		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyRelationOption)
 		return err
 	})
 	return response(id, newDetails, err)

@@ -9,6 +9,7 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -17,7 +18,7 @@ import (
 // TODO Move residual file methods here
 
 // TODO Extract to a new service FileDownloader
-func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
+func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadRequest) (string, error) {
 	if req.Path == "" {
 		req.Path = s.tempDirProvider.TempDir() + string(os.PathSeparator) + "anytype-download"
 	}
@@ -80,14 +81,22 @@ func (s *Service) DownloadFile(req *pb.RpcFileDownloadRequest) (string, error) {
 }
 
 func (s *Service) getFileOrLargestImage(ctx context.Context, hash string) (files.File, error) {
-	image, err := s.fileService.ImageByHash(ctx, hash)
+	spaceID, err := s.resolver.ResolveSpaceID(hash)
 	if err != nil {
-		return s.fileService.FileByHash(ctx, hash)
+		return nil, fmt.Errorf("resolve spaceID: %w", err)
+	}
+	id := domain.FullID{
+		SpaceID:  spaceID,
+		ObjectID: hash,
+	}
+	image, err := s.fileService.ImageByHash(ctx, id)
+	if err != nil {
+		return s.fileService.FileByHash(ctx, id)
 	}
 
 	f, err := image.GetOriginalFile(ctx)
 	if err != nil {
-		return s.fileService.FileByHash(ctx, hash)
+		return s.fileService.FileByHash(ctx, id)
 	}
 
 	return f, nil
