@@ -1,58 +1,22 @@
+//go:build !gomobile
+
 package profiler
 
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/base64"
 	"fmt"
 	"runtime"
 	"runtime/pprof"
 	"time"
-
-	"github.com/anyproto/any-sync/app"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("profiler")
-
-type Service interface {
-	app.ComponentRunnable
-}
-
 const (
-	highMemoryUsageThreshold = 1024 * 1024 * 1024 // 1 Gb
+	highMemoryUsageThreshold = 1024 * 1024 // 1 Gb
 	maxProfiles              = 3
 	growthFactor             = 1.5
 )
-
-type service struct {
-	closeCh chan struct{}
-
-	timesHighMemoryUsageDetected int
-	previousHighMemoryDetected   uint64
-}
-
-func New() Service {
-	return &service{
-		closeCh: make(chan struct{}),
-	}
-}
-
-func (s *service) Init(a *app.App) (err error) {
-	return nil
-}
-
-func (s *service) Name() (name string) {
-	return "profiler"
-}
-
-func (s *service) Run(ctx context.Context) (err error) {
-	go s.run()
-
-	return nil
-}
 
 func (s *service) run() {
 	ticker := time.NewTicker(time.Minute)
@@ -101,6 +65,7 @@ func (s *service) detect() (stop bool, err error) {
 		}
 		gzipWriter.Close()
 
+		// To extract profile from logged string use `base64 -d | gzip -d`
 		log.With("sysMemory", s.previousHighMemoryDetected, "profile", base64.StdEncoding.EncodeToString(buf.Bytes())).Error("high memory usage detected, logging memory profile")
 		s.timesHighMemoryUsageDetected++
 
@@ -110,9 +75,4 @@ func (s *service) detect() (stop bool, err error) {
 	}
 
 	return false, nil
-}
-
-func (s *service) Close(ctx context.Context) (err error) {
-	close(s.closeCh)
-	return nil
 }
