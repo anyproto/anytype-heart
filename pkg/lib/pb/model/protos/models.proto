@@ -583,6 +583,7 @@ message Account {
         string deviceId = 8;
         string accountSpaceId = 9;
         string workspaceObjectId = 12;
+        string techSpaceId = 13;
         string widgetsId = 10;
 
         string gatewayUrl = 101; // gateway url for fetching static files
