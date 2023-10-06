@@ -621,25 +621,7 @@ func (e *export) getRelatedDerivedObjects(objects []database.Record) []database.
 			}
 		}
 		objectType := pbtypes.GetString(details, bundle.RelationKeyType.String())
-		objectTypeDetails, _, err := e.objectStore.Query(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(objectType),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-			},
-		})
+		objectTypeDetails, err := e.objectStore.QueryByID([]string{objectType})
 		if err != nil {
 			continue
 		}
