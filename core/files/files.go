@@ -147,7 +147,7 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 		return "", nil, fmt.Errorf("store file size: %w", err)
 	}
 
-	err = s.fileStore.SetFileOrigin(nodeHash, int(opts.Origin))
+	err = s.fileStore.SetFileOrigin(nodeHash, opts.Origin)
 	if err != nil {
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
@@ -1010,10 +1010,10 @@ func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOpt
 	return f, nil
 }
 
-func (s *service) getFileOrigin(hash string) int {
+func (s *service) getFileOrigin(hash string) *int {
 	fileOrigin, err := s.fileStore.GetFileOrigin(hash)
 	if err != nil {
-		log.Errorf("failed to get file origin, %s", err)
+		return nil
 	}
-	return fileOrigin
+	return &fileOrigin
 }

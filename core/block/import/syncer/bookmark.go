@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -26,13 +25,13 @@ func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOri
 		return nil
 	}
 
-	dto := domain.BookmarkFetchRequest{
+	dto := block.BookmarkFetchRequest{
 		RpcBlockBookmarkFetchRequest: pb.RpcBlockBookmarkFetchRequest{
 			ContextId: id,
 			BlockId:   b.Model().GetId(),
 			Url:       b.Model().GetBookmark().Url,
 		},
-		Origin: origin,
+		Origin: &origin,
 	}
 	err := bs.service.BookmarkFetch(nil, dto)
 	if err != nil {

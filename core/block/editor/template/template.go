@@ -664,10 +664,3 @@ var WithBookmarkBlocks = func(s *state.State) {
 		return
 	}
 }
-
-var WithOrigin = func(s *state.State) {
-	if pbtypes.HasField(s.Details(), bundle.RelationKeyOrigin.String()) {
-		return
-	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(model.ObjectOrigin_user)))
-}

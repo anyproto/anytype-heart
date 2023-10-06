@@ -33,6 +33,21 @@ import (
 
 var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
+type FileUploadRequest struct {
+	pb.RpcFileUploadRequest
+	Origin *model.ObjectOrigin
+}
+
+type UploadRequest struct {
+	pb.RpcBlockUploadRequest
+	Origin *model.ObjectOrigin
+}
+
+type BookmarkFetchRequest struct {
+	pb.RpcBlockBookmarkFetchRequest
+	Origin *model.ObjectOrigin
+}
+
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
 	return Do(s, id, func(b basic.CommonOperations) error {
 		return b.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
@@ -443,7 +458,7 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 	})
 }
 
-func (s *Service) UploadBlockFile(ctx session.Context, req domain.BlockUploadRequest, groupID string) (err error) {
+func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
@@ -455,7 +470,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req domain.BlockUploadReq
 	})
 }
 
-func (s *Service) UploadBlockFileSync(ctx session.Context, req domain.BlockUploadRequest) (err error) {
+func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
@@ -476,7 +491,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req domain.FileUploadRequest) (hash string, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUploadRequest) (hash string, err error) {
 	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -516,7 +531,7 @@ func (s *Service) SetFileStyle(
 }
 
 func (s *Service) UploadFileBlockWithHash(
-	contextID string, req domain.BlockUploadRequest,
+	contextID string, req UploadRequest,
 ) (hash string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
@@ -555,19 +570,19 @@ func (s *Service) Redo(
 	return
 }
 
-func (s *Service) BookmarkFetch(ctx session.Context, req domain.BookmarkFetchRequest) (err error) {
+func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		return b.Fetch(ctx, req.BlockId, req.Url, false, req.Origin)
 	})
 }
 
-func (s *Service) BookmarkFetchSync(ctx session.Context, req domain.BookmarkFetchRequest) (err error) {
+func (s *Service) BookmarkFetchSync(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		return b.Fetch(ctx, req.BlockId, req.Url, true, req.Origin)
 	})
 }
 
-func (s *Service) BookmarkCreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequest) (id string, err error) {
+func (s *Service) BookmarkCreateAndFetch(ctx session.Context, req bookmark.CreateAndFetchRequest) (id string, err error) {
 	err = Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		id, err = b.CreateAndFetch(ctx, req)
 		return err

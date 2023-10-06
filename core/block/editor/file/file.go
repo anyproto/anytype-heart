@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/objectorigin"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -81,7 +82,7 @@ type FileSource struct {
 	Bytes   []byte
 	Name    string
 	GroupID string
-	Origin  model.ObjectOrigin
+	Origin  *model.ObjectOrigin
 }
 
 type sfile struct {
@@ -547,7 +548,7 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 		SetName(f.name).
 		AutoType(true).
 		SetFile(f.path).
-		SetOrigin(model.ObjectOrigin_dragAndDrop).
+		SetOrigin(objectorigin.Ptr(model.ObjectOrigin_dragAndDrop)).
 		Upload(context.Background())
 
 	if res.Err != nil {

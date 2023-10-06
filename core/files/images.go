@@ -125,7 +125,7 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 		return "", nil, fmt.Errorf("store file size: %w", err)
 	}
 
-	err = s.fileStore.SetFileOrigin(nodeHash, int(opts.Origin))
+	err = s.fileStore.SetFileOrigin(nodeHash, opts.Origin)
 	if err != nil {
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
@@ -133,6 +133,9 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 	return nodeHash, variantsByWidth, nil
 }
 
-func (s *service) isImported(origin model.ObjectOrigin) bool {
-	return origin == model.ObjectOrigin_import
+func (s *service) isImported(origin *model.ObjectOrigin) bool {
+	if origin == nil {
+		return false
+	}
+	return *origin == model.ObjectOrigin_import
 }

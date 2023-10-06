@@ -783,14 +783,13 @@ enum RelationFormat {
 }
 
 enum ObjectOrigin {
-    user = 0;
-    clipboard = 1;
-    dragAndDrop = 2;
-    import = 3;
-    webclipper = 4;
-    sharingExtension = 5;
-    usecase = 6;
-    builtin = 7;
+    clipboard = 0;
+    dragAndDrop = 1;
+    import = 2;
+    webclipper = 3;
+    sharingExtension = 4;
+    usecase = 5;
+    builtin = 6;
 }
 
 message RelationLink {

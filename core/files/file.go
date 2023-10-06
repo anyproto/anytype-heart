@@ -32,7 +32,7 @@ type file struct {
 	hash    string
 	info    *storage.FileInfo
 	node    *service
-	origin  int
+	origin  *int
 }
 
 type FileMeta struct {
@@ -93,8 +93,8 @@ func (f *file) Details(ctx context.Context) (*types.Struct, domain.TypeKey, erro
 	commonDetails[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(meta.Size))
 	commonDetails[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(meta.Added.Unix()))
 
-	if f.origin != 0 {
-		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(f.origin))
+	if f.origin != nil {
+		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(*f.origin))
 	}
 
 	t := &types.Struct{

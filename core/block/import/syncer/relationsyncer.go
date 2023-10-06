@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -72,9 +71,9 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		err  error
 	)
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
-		dto := domain.FileUploadRequest{
+		dto := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
-			Origin:               origin,
+			Origin:               &origin,
 		}
 		hash, err = fs.service.UploadFile(context.Background(), spaceID, dto)
 		if err != nil {
@@ -85,9 +84,9 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		if err == nil {
 			return file
 		}
-		dto := domain.FileUploadRequest{
+		dto := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
-			Origin:               origin,
+			Origin:               &origin,
 		}
 		hash, err = fs.service.UploadFile(context.Background(), spaceID, dto)
 		if err != nil {

@@ -24,7 +24,7 @@ type AddOptions struct {
 	Name             string
 	LastModifiedDate int64
 	Plaintext        bool
-	Origin           model.ObjectOrigin
+	Origin           *model.ObjectOrigin
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -45,7 +45,7 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 	}
 }
 
-func WithOrigin(origin model.ObjectOrigin) AddOption {
+func WithOrigin(origin *model.ObjectOrigin) AddOption {
 	return func(args *AddOptions) {
 		args.Origin = origin
 	}

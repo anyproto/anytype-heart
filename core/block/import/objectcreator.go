@@ -483,7 +483,7 @@ func (oc *ObjectCreator) setFileOrigin(st *state.State, origin model.ObjectOrigi
 	}
 
 	for _, hash := range fileHashes {
-		err = oc.fileStore.SetFileOrigin(hash, int(origin))
+		err = oc.fileStore.SetFileOrigin(hash, &origin)
 		if err != nil {
 			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}
