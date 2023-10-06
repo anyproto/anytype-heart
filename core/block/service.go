@@ -884,53 +884,43 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *Service) RemoveListOption(ctx session.Context, optIds []string, checkInObjects bool) error {
-	// TODO Resolve spaces for each ID
-	return fmt.Errorf("have to be fixed")
-	// var workspace *editor.Workspaces
-	// if err := Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
-	// 	var ok bool
-	// 	if workspace, ok = b.(*editor.Workspaces); !ok {
-	// 		return fmt.Errorf("incorrect object with workspace id")
-	// 	}
-	// 	return nil
-	// }); err != nil {
-	// 	return err
-	// }
-	//
-	// for _, id := range optIds {
-	// 	if checkInObjects {
-	// 		opt, err := workspace.Open(id)
-	// 		if err != nil {
-	// 			return fmt.Errorf("workspace open: %w", err)
-	// 		}
-	// 		relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
-	//
-	// 		q := database.Query{
-	// 			Filters: []*model.BlockContentDataviewFilter{
-	// 				{
-	// 					Condition:   model.BlockContentDataviewFilter_Equal,
-	// 					RelationKey: relKey,
-	// 					Value:       pbtypes.String(opt.Id()),
-	// 				},
-	// 			},
-	// 		}
-	// 		records, _, err := s.objectStore.Query(nil, q)
-	// 		if err != nil {
-	// 			return nil
-	// 		}
-	//
-	// 		if len(records) > 0 {
-	// 			return ErrOptionUsedByOtherObjects
-	// 		}
-	// 	}
-	//
-	// 	if err := s.DeleteObject(ctx, id); err != nil {
-	// 		return err
-	// 	}
-	// }
-	//
-	// return nil
+func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) error {
+	for _, id := range optionIds {
+		if checkInObjects {
+			err := Do(s, id, func(b smartblock.SmartBlock) error {
+				st := b.NewState()
+				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+
+				records, _, err := s.objectStore.Query(database.Query{
+					Filters: []*model.BlockContentDataviewFilter{
+						{
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							RelationKey: relKey,
+							Value:       pbtypes.String(id),
+						},
+					},
+				})
+				if err != nil {
+					return fmt.Errorf("query dependent objects: %w", err)
+				}
+
+				if len(records) > 0 {
+					return ErrOptionUsedByOtherObjects
+				}
+
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("check option usage: %w", err)
+			}
+		}
+
+		if err := s.DeleteObject(id); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // TODO: remove proxy
@@ -1002,7 +992,7 @@ func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
 
 		ts.BlocksInit(ts)
 
-		objType := ts.ObjectTypeKey()
+		objType := orig.ObjectTypeKey()
 		ts.SetObjectTypeKey(objType)
 
 		flags := internalflag.NewFromState(orig)

@@ -34,6 +34,19 @@ type ObjectType struct {
 	Before, After []domain.TypeKey
 }
 
+type CarriageInfo struct {
+	Before, After CarriageState
+}
+
+type CarriageState struct {
+	BlockID            string
+	RangeFrom, RangeTo int32
+}
+
+func (cs CarriageState) IsEmpty() bool {
+	return cs.BlockID == "" && cs.RangeTo == 0 && cs.RangeFrom == 0
+}
+
 type Action struct {
 	Add           []simple.Block
 	Change        []Change
@@ -42,6 +55,7 @@ type Action struct {
 	RelationLinks *RelationLinks
 	Group         string
 	ObjectTypes   *ObjectType
+	CarriageInfo  CarriageInfo
 }
 
 func (a Action) IsEmpty() bool {
@@ -86,6 +100,8 @@ type History interface {
 	Next() (Action, error)
 	Reset()
 	Counters() (undo int32, redo int32)
+	SetCarriageState(state CarriageState)
+	SetCarriageBeforeState(state CarriageState)
 }
 
 func NewHistory(limit int) History {
@@ -96,9 +112,10 @@ func NewHistory(limit int) History {
 }
 
 type history struct {
-	limit   int
-	actions []Action
-	pointer int
+	limit                   int
+	actions                 []Action
+	pointer                 int
+	beforeState, afterState CarriageState
 }
 
 func (h *history) Add(a Action) {
@@ -113,6 +130,14 @@ func (h *history) Add(a Action) {
 	if len(h.actions) != h.pointer {
 		h.actions = h.actions[:h.pointer]
 	}
+
+	a.CarriageInfo.After = h.afterState
+	if h.beforeState.IsEmpty() {
+		h.beforeState = h.afterState
+	}
+	a.CarriageInfo.Before = h.beforeState
+	h.beforeState = CarriageState{}
+
 	h.actions = append(h.actions, a)
 	h.pointer = len(h.actions)
 	if h.pointer > h.limit {
@@ -150,6 +175,14 @@ func (h *history) Reset() {
 
 func (h *history) Counters() (undo int32, redo int32) {
 	return int32(h.pointer), int32(len(h.actions) - h.pointer)
+}
+
+func (h *history) SetCarriageState(state CarriageState) {
+	h.afterState = state
+}
+
+func (h *history) SetCarriageBeforeState(state CarriageState) {
+	h.beforeState = state
 }
 
 func (h *history) applyGroup(b Action) (ok bool) {
