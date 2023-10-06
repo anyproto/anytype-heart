@@ -536,99 +536,128 @@ func (e *export) getRelatedDerivedObjects(objects []database.Record) []database.
 	for _, object := range objects {
 		details := object.Details
 		for key, value := range details.Fields {
-			uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
-			if err != nil {
+			relation := e.getRelation(key)
+			if relation == nil {
 				continue
 			}
-			relation, _, err := e.objectStore.Query(database.Query{
-				Filters: []*model.BlockContentDataviewFilter{
-					{
-						RelationKey: bundle.RelationKeyUniqueKey.String(),
-						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String(uniqueKey.Marshal()),
-					},
-					{
-						RelationKey: bundle.RelationKeyIsArchived.String(),
-						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Bool(false),
-					},
-					{
-						RelationKey: bundle.RelationKeyIsDeleted.String(),
-						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.Bool(false),
-					},
-				},
-			})
-			if err != nil {
-				continue
-			}
-			if len(relation) == 0 {
-				continue
-			}
-			if relationKey := relation[0].Get(bundle.RelationKeyRelationKey.String()); relationKey != nil {
-				if !bundle.HasRelation(relationKey.GetStringValue()) {
-					derivedObjects = lo.Union(derivedObjects, []database.Record{relation[0]})
-				}
-			}
-			format := relation[0].Get(bundle.RelationKeyRelationFormat.String()).GetNumberValue()
+			derivedObjects = e.addRelationToDerivedObjects(relation, derivedObjects)
+			format := relation.Get(bundle.RelationKeyRelationFormat.String()).GetNumberValue()
 			if format == float64(model.RelationFormat_tag) || format == float64(model.RelationFormat_status) {
-				var filter *model.BlockContentDataviewFilter
-				if value.GetStringValue() != "" {
-					uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, value.GetStringValue())
-					if err != nil {
-						continue
-					}
-					filter = &model.BlockContentDataviewFilter{
-						RelationKey: bundle.RelationKeyUniqueKey.String(),
-						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       pbtypes.String(uniqueKey.Marshal()),
-					}
-				}
-				if value.GetListValue() != nil && len(value.GetListValue().Values) != 0 {
-					ids := make([]string, 0, len(value.GetListValue().Values))
-					for _, v := range value.GetListValue().Values {
-						uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, v.GetStringValue())
-						if err != nil {
-							continue
-						}
-						ids = append(ids, uniqueKey.Marshal())
-					}
-					filter = &model.BlockContentDataviewFilter{
-						RelationKey: bundle.RelationKeyUniqueKey.String(),
-						Condition:   model.BlockContentDataviewFilter_In,
-						Value:       pbtypes.StringList(ids),
-					}
-				}
-				relationOptions, _, err := e.objectStore.Query(database.Query{
-					Filters: []*model.BlockContentDataviewFilter{
-						filter,
-						{
-							RelationKey: bundle.RelationKeyIsArchived.String(),
-							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.Bool(false),
-						},
-						{
-							RelationKey: bundle.RelationKeyIsDeleted.String(),
-							Condition:   model.BlockContentDataviewFilter_Equal,
-							Value:       pbtypes.Bool(false),
-						},
-					},
-				})
-				if err != nil {
-					continue
-				}
+				relationOptions := e.getRelationOptions(value)
 				derivedObjects = lo.Union(derivedObjects, relationOptions)
 			}
 		}
-		objectType := pbtypes.GetString(details, bundle.RelationKeyType.String())
-		objectTypeDetails, err := e.objectStore.QueryByID([]string{objectType})
-		if err != nil {
-			continue
-		}
-		if len(objectTypeDetails) == 0 {
-			continue
-		}
+		objectTypeDetails := e.getObjectType(details)
 		derivedObjects = lo.Union(derivedObjects, objectTypeDetails)
 	}
 	return derivedObjects
+}
+
+func (e *export) getRelation(key string) *database.Record {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
+	if err != nil {
+		return nil
+	}
+	relation, _, err := e.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(uniqueKey.Marshal()),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	})
+	if err != nil {
+		return nil
+	}
+	if len(relation) == 0 {
+		return nil
+	}
+	return &relation[0]
+}
+
+func (e *export) addRelationToDerivedObjects(relation *database.Record, derivedObjects []database.Record) []database.Record {
+	if relationKey := relation.Get(bundle.RelationKeyRelationKey.String()); relationKey != nil {
+		if !bundle.HasRelation(relationKey.GetStringValue()) {
+			derivedObjects = lo.Union(derivedObjects, []database.Record{*relation})
+		}
+	}
+	return derivedObjects
+}
+
+func (e *export) getRelationOptions(relationOptions *types.Value) []database.Record {
+	var filter *model.BlockContentDataviewFilter
+	if relationOptions.GetStringValue() != "" {
+		filter = e.getFilterForStringOption(relationOptions, filter)
+	}
+	if relationOptions.GetListValue() != nil && len(relationOptions.GetListValue().Values) != 0 {
+		filter = e.getFilterForOptionsList(relationOptions, filter)
+	}
+	if filter == nil {
+		return nil
+	}
+	relationOptionsDetails, _, err := e.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			filter,
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	})
+	if err != nil {
+		return nil
+	}
+	return relationOptionsDetails
+}
+
+func (e *export) getFilterForOptionsList(relationOptions *types.Value, filter *model.BlockContentDataviewFilter) *model.BlockContentDataviewFilter {
+	ids := make([]string, 0, len(relationOptions.GetListValue().Values))
+	for _, id := range relationOptions.GetListValue().Values {
+		ids = append(ids, id.GetStringValue())
+	}
+	filter = &model.BlockContentDataviewFilter{
+		RelationKey: bundle.RelationKeyId.String(),
+		Condition:   model.BlockContentDataviewFilter_In,
+		Value:       pbtypes.StringList(ids),
+	}
+	return filter
+}
+
+func (e *export) getFilterForStringOption(value *types.Value, filter *model.BlockContentDataviewFilter) *model.BlockContentDataviewFilter {
+	id := value.GetStringValue()
+	filter = &model.BlockContentDataviewFilter{
+		RelationKey: bundle.RelationKeyId.String(),
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       pbtypes.String(id),
+	}
+	return filter
+}
+
+func (e *export) getObjectType(details *types.Struct) []database.Record {
+	objectType := pbtypes.GetString(details, bundle.RelationKeyType.String())
+	objectTypeDetails, err := e.objectStore.QueryByID([]string{objectType})
+	if err != nil {
+		return nil
+	}
+	if len(objectTypeDetails) == 0 {
+		return nil
+	}
+	return objectTypeDetails
 }
