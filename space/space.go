@@ -13,7 +13,6 @@ import (
 
 type Space interface {
 	commonspace.Space
-	ViewID() string
 	DerivedIDs() threads.DerivedSmartblockIds
 
 	WaitMandatoryObjects(ctx context.Context) (err error)
@@ -66,10 +65,6 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
 	<-s.loadMandatoryObjectsCh
 	return s.derivedIDs
-}
-
-func (s *space) ViewID() string {
-	return s.status.ViewID
 }
 
 func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {

@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"fmt"
 
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -10,65 +11,76 @@ import (
 func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	info, loaderCreated, err := s.createLoaderOrReturnInfo(ctx, spaceID)
+
+	status := s.getStatus(spaceID)
+
+	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
+		return nil
+	}
+
+	exists, err := s.techSpace.SpaceViewExists(ctx, spaceID)
 	if err != nil {
 		return
 	}
-	if loaderCreated {
-		err = s.techSpace.SetInfo(ctx, info)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
-func (s *service) createLoaderOrReturnInfo(ctx context.Context, spaceID string) (info spaceinfo.SpaceInfo, loaderCreated bool, err error) {
-	currentInfo := s.techSpace.GetInfo(spaceID)
-
-	if currentInfo.LocalStatus != spaceinfo.LocalStatusUnknown {
-		// loading already started
-		return currentInfo, false, nil
+	if !exists {
+		return ErrSpaceNotExists
 	}
 
-	viewID, err := s.techSpace.DeriveSpaceViewID(ctx, spaceID)
-	if err != nil {
-		return
-	}
-
-	info = spaceinfo.SpaceInfo{
+	info := spaceinfo.SpaceInfo{
 		SpaceID:     spaceID,
-		ViewID:      viewID,
 		LocalStatus: spaceinfo.LocalStatusLoading,
 	}
+	if err = s.setStatus(ctx, info); err != nil {
+		return
+	}
 	s.loading[spaceID] = newLoadingSpace(s.ctx, s.open, spaceID, s.onLoad)
-	loaderCreated = true
 	return
 }
 
 func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	switch loadErr {
 	case nil:
 	case spaceservice.ErrSpaceDeletionPending:
-		return s.techSpace.SetStatuses(s.ctx, spaceID, spaceinfo.LocalStatusMissing, spaceinfo.RemoteStatusWaitingDeletion)
+		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+			SpaceID:      spaceID,
+			LocalStatus:  spaceinfo.LocalStatusMissing,
+			RemoteStatus: spaceinfo.RemoteStatusWaitingDeletion,
+		})
 	case spaceservice.ErrSpaceIsDeleted:
-		return s.techSpace.SetStatuses(s.ctx, spaceID, spaceinfo.LocalStatusMissing, spaceinfo.RemoteStatusDeleted)
+		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+			SpaceID:      spaceID,
+			LocalStatus:  spaceinfo.LocalStatusMissing,
+			RemoteStatus: spaceinfo.RemoteStatusDeleted,
+		})
 	default:
-		return s.techSpace.SetStatuses(s.ctx, spaceID, spaceinfo.LocalStatusMissing, spaceinfo.RemoteStatusError)
+		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+			SpaceID:      spaceID,
+			LocalStatus:  spaceinfo.LocalStatusMissing,
+			RemoteStatus: spaceinfo.RemoteStatusError,
+		})
 	}
+
 	s.loaded[spaceID] = sp
 
 	// TODO: check remote status
-	return s.techSpace.SetStatuses(s.ctx, spaceID, spaceinfo.LocalStatusOk, spaceinfo.RemoteStatusUnknown)
+	return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+		SpaceID:      spaceID,
+		LocalStatus:  spaceinfo.LocalStatusOk,
+		RemoteStatus: spaceinfo.RemoteStatusUnknown,
+	})
 }
 
 func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err error) {
 	s.mu.Lock()
-	localStatus := s.techSpace.GetInfo(spaceID).LocalStatus
+	status := s.getStatus(spaceID)
 
-	if localStatus == spaceinfo.LocalStatusLoading {
+	switch status.LocalStatus {
+	case spaceinfo.LocalStatusUnknown:
+		return nil, fmt.Errorf("waitLoad for an unknown space")
+	case spaceinfo.LocalStatusLoading:
 		// loading in progress, wait channel and retry
 		waitCh := s.loading[spaceID].loadCh
 		s.mu.Unlock()
@@ -78,17 +90,14 @@ func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err e
 		case <-waitCh:
 		}
 		return s.waitLoad(ctx, spaceID)
-	}
-
-	if localStatus == spaceinfo.LocalStatusOk {
-		// space is loaded just return it
+	case spaceinfo.LocalStatusMissing:
+		// local missing status means the loader ended with an error
+		err = s.loading[spaceID].loadErr
+	case spaceinfo.LocalStatusOk:
 		sp = s.loaded[spaceID]
-		s.mu.Unlock()
-		return
+	default:
+		err = fmt.Errorf("undefined space status: %v", status.LocalStatus)
 	}
-
-	// return loading error
-	err = s.loading[spaceID].loadErr
 	s.mu.Unlock()
 	return
 }

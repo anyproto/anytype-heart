@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
@@ -24,7 +25,10 @@ const CName = "client.space"
 
 var log = logger.NewNamed(CName)
 
-var ErrIncorrectSpaceID = errors.New("incorrect space id")
+var (
+	ErrIncorrectSpaceID = errors.New("incorrect space id")
+	ErrSpaceNotExists   = errors.New("space not exists")
+)
 
 func New() SpaceService {
 	return &service{}
@@ -65,16 +69,18 @@ type service struct {
 
 	newAccount bool
 
-	loading map[string]*loadingSpace
-	loaded  map[string]Space
-	mu      sync.Mutex
+	statuses map[string]spaceinfo.SpaceInfo
+	loading  map[string]*loadingSpace
+	loaded   map[string]Space
+
+	mu sync.Mutex
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	repKey uint64
-
 	derivedIDsCache ocache.OCache
+
+	repKey uint64
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -85,8 +91,11 @@ func (s *service) Init(a *app.App) (err error) {
 	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.techSpace = app.MustComponent[techspace.TechSpace](a)
+
+	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
 	s.loaded = map[string]Space{}
+
 	s.derivedIDsCache = ocache.New(s.loadDerivedIDs)
 	return nil
 }
@@ -129,6 +138,9 @@ func (s *service) Create(ctx context.Context) (Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
+	if err = s.startLoad(ctx, spaceID); err != nil {
+		return nil, err
+	}
 	return s.waitLoad(ctx, spaceID)
 }
 
@@ -151,6 +163,12 @@ func (s *service) createPersonalSpace(ctx context.Context) (err error) {
 		return
 	}
 	_, err = s.create(ctx, coreSpace)
+	if err == nil {
+		return
+	}
+	if errors.Is(err, techspace.ErrSpaceViewExists) {
+		return s.loadPersonalSpace(ctx)
+	}
 	return
 }
 
