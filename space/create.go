@@ -10,9 +10,6 @@ import (
 )
 
 func (s *service) create(ctx context.Context, coreSpace *spacecore.AnySpace) (Space, error) {
-	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id()); err != nil {
-		return nil, err
-	}
 
 	var sbTypes []coresb.SmartBlockType
 	if s.IsPersonal(coreSpace.Id()) {
@@ -29,6 +26,10 @@ func (s *service) create(ctx context.Context, coreSpace *spacecore.AnySpace) (Sp
 	err = s.provider.CreateMandatoryObjects(ctx, coreSpace.Id(), sbTypes)
 	if err != nil {
 		return nil, fmt.Errorf("CreateMandatoryObjects error: %v; spaceId: %v", err, coreSpace.Id())
+	}
+
+	if err = s.techSpace.SpaceViewCreate(ctx, coreSpace.Id()); err != nil {
+		return nil, err
 	}
 
 	// load
