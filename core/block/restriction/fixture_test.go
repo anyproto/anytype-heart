@@ -1,13 +1,13 @@
 package restriction
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/require"
 
-	"context"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"

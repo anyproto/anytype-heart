@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -66,11 +67,13 @@ import (
 const (
 	CName           = "block-service"
 	linkObjectShare = "anytype://object/share?"
+	BlankTemplateID = "blank"
 )
 
 var (
-	ErrUnexpectedBlockType = errors.New("unexpected block type")
-	ErrUnknownObjectType   = fmt.Errorf("unknown object type")
+	ErrUnexpectedBlockType   = errors.New("unexpected block type")
+	ErrUnknownObjectType     = fmt.Errorf("unknown object type")
+	ErrObjectNotFoundByOldID = fmt.Errorf("failed to find template by Source Object id")
 )
 
 var log = logging.Logger("anytype-mw-service")
@@ -224,7 +227,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges); err != nil {
+		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 		}
 		afterApplyTime := time.Now()
@@ -881,53 +884,43 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *Service) RemoveListOption(ctx session.Context, optIds []string, checkInObjects bool) error {
-	// TODO Resolve spaces for each ID
-	return fmt.Errorf("have to be fixed")
-	// var workspace *editor.Workspaces
-	// if err := Do(s, s.anytype.PredefinedObjects(ctx.SpaceID()).Account, func(b smartblock.SmartBlock) error {
-	// 	var ok bool
-	// 	if workspace, ok = b.(*editor.Workspaces); !ok {
-	// 		return fmt.Errorf("incorrect object with workspace id")
-	// 	}
-	// 	return nil
-	// }); err != nil {
-	// 	return err
-	// }
-	//
-	// for _, id := range optIds {
-	// 	if checkInObjects {
-	// 		opt, err := workspace.Open(id)
-	// 		if err != nil {
-	// 			return fmt.Errorf("workspace open: %w", err)
-	// 		}
-	// 		relKey := pbtypes.GetString(opt.Details(), bundle.RelationKeyRelationKey.String())
-	//
-	// 		q := database.Query{
-	// 			Filters: []*model.BlockContentDataviewFilter{
-	// 				{
-	// 					Condition:   model.BlockContentDataviewFilter_Equal,
-	// 					RelationKey: relKey,
-	// 					Value:       pbtypes.String(opt.Id()),
-	// 				},
-	// 			},
-	// 		}
-	// 		records, _, err := s.objectStore.Query(nil, q)
-	// 		if err != nil {
-	// 			return nil
-	// 		}
-	//
-	// 		if len(records) > 0 {
-	// 			return ErrOptionUsedByOtherObjects
-	// 		}
-	// 	}
-	//
-	// 	if err := s.DeleteObject(ctx, id); err != nil {
-	// 		return err
-	// 	}
-	// }
-	//
-	// return nil
+func (s *Service) RemoveListOption(optionIds []string, checkInObjects bool) error {
+	for _, id := range optionIds {
+		if checkInObjects {
+			err := Do(s, id, func(b smartblock.SmartBlock) error {
+				st := b.NewState()
+				relKey := pbtypes.GetString(st.Details(), bundle.RelationKeyRelationKey.String())
+
+				records, _, err := s.objectStore.Query(database.Query{
+					Filters: []*model.BlockContentDataviewFilter{
+						{
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							RelationKey: relKey,
+							Value:       pbtypes.String(id),
+						},
+					},
+				})
+				if err != nil {
+					return fmt.Errorf("query dependent objects: %w", err)
+				}
+
+				if len(records) > 0 {
+					return ErrOptionUsedByOtherObjects
+				}
+
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("check option usage: %w", err)
+			}
+		}
+
+		if err := s.DeleteObject(id); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // TODO: remove proxy
@@ -949,12 +942,15 @@ func (s *Service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *Service) StateFromTemplate(templateID string, name string) (st *state.State, err error) {
+func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, err error) {
+	if templateID == BlankTemplateID || templateID == "" {
+		return s.BlankTemplateState(), nil
+	}
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = tmpl.GetNewPageState(name)
 		} else {
-			return fmt.Errorf("not a template")
+			return fmt.Errorf("object '%s' is not a template", templateID)
 		}
 		return nil
 	}); err != nil {
@@ -975,35 +971,35 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
 }
 
-func (s *Service) ObjectApplyTemplate(contextId, templateId string) error {
-	return Do(s, contextId, func(b smartblock.SmartBlock) error {
+func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
+	return Do(s, contextID, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		name := pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String())
-		ts, err := s.StateFromTemplate(templateId, name)
+		ts, err := s.StateFromTemplate(templateID, "")
 		if err != nil {
 			return err
 		}
-		ts.SetRootId(contextId)
+		ts.SetRootId(contextID)
 		ts.SetParent(orig)
 
-		fromLayout, _ := orig.Layout()
-		if toLayout, ok := orig.Layout(); ok {
-			if err := s.layoutConverter.Convert(ts, fromLayout, toLayout); err != nil {
-				return fmt.Errorf("convert layout: %w", err)
+		layout, found := orig.Layout()
+		if found {
+			if commonOperations, ok := b.(basic.CommonOperations); ok {
+				if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
+					return fmt.Errorf("convert layout: %w", err)
+				}
 			}
 		}
 
 		ts.BlocksInit(ts)
-		objType := ts.ObjectTypeKey()
-		// StateFromTemplate returns state without the localdetails, so they will be taken from the orig state
+
+		objType := orig.ObjectTypeKey()
 		ts.SetObjectTypeKey(objType)
 
-		flags := internalflag.NewFromState(ts)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorSelectTemplate)
+		flags := internalflag.NewFromState(orig)
 		flags.AddToState(ts)
 
-		return b.Apply(ts, smartblock.NoRestrictions)
+		// we provide KeepInternalFlags to allow further template applying and object type change
+		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
 }
 
@@ -1079,4 +1075,16 @@ func (s *Service) GetLogFields() []zap.Field {
 		fields = append(fields, zap.Bool("predefined_object_was_missing", true))
 	}
 	return fields
+}
+
+func (s *Service) BlankTemplateState() (st *state.State) {
+	st = state.NewDoc(BlankTemplateID, nil).NewState()
+	template.InitTemplate(st, template.WithEmpty,
+		template.WithDefaultFeaturedRelations,
+		template.WithFeaturedRelations,
+		template.WithRequiredRelations(),
+		template.WithTitle,
+		template.WithDescription,
+	)
+	return
 }
