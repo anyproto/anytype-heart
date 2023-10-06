@@ -19,3 +19,8 @@ type BookmarkFetchRequestDTO struct {
 	pb.RpcBlockBookmarkFetchRequest
 	Origin model.ObjectOrigin
 }
+
+type BookmarkCreateAndFetchRequestDTO struct {
+	pb.RpcBlockBookmarkCreateAndFetchRequest
+	Origin model.ObjectOrigin
+}

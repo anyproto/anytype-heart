@@ -986,7 +986,7 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		dto := domain.BookmarkFetchRequestDTO{Origin: model.ObjectOrigin_user, RpcBlockBookmarkFetchRequest: *req}
+		dto := domain.BookmarkFetchRequestDTO{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkFetchRequest: *req}
 		return bs.BookmarkFetch(ctx, dto)
 	})
 	if err != nil {
@@ -1008,7 +1008,8 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 	}
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, err = bs.BookmarkCreateAndFetch(ctx, *req)
+		dto := domain.BookmarkCreateAndFetchRequestDTO{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkCreateAndFetchRequest: *req}
+		id, err = bs.BookmarkCreateAndFetch(ctx, dto)
 		return
 	})
 	if err != nil {

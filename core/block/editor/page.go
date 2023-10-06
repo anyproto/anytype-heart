@@ -145,7 +145,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				template.WithRequiredRelations(),
 				template.WithLinkFieldsMigration,
 				template.WithCreatorRemovedFromFeaturedRelations,
-				template.WithOrigin,
 			}
 
 			switch layout {

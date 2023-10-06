@@ -567,9 +567,7 @@ func (s *Service) BookmarkFetchSync(ctx session.Context, req domain.BookmarkFetc
 	})
 }
 
-func (s *Service) BookmarkCreateAndFetch(
-	ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest,
-) (id string, err error) {
+func (s *Service) BookmarkCreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequestDTO) (id string, err error) {
 	err = Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		id, err = b.CreateAndFetch(ctx, req)
 		return err

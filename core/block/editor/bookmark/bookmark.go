@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -40,7 +40,7 @@ func NewBookmark(
 
 type Bookmark interface {
 	Fetch(ctx session.Context, id string, url string, isSync bool, origin model.ObjectOrigin) (err error)
-	CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
+	CreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequestDTO) (newID string, err error)
 	UpdateBookmark(ctx session.Context, id, groupID string, apply func(b bookmark.Block) error, origin model.ObjectOrigin) (err error)
 }
 
@@ -102,7 +102,7 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 	return err
 }
 
-func (b *sbookmark) CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
+func (b *sbookmark) CreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequestDTO) (newID string, err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfBookmark{
@@ -112,11 +112,11 @@ func (b *sbookmark) CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkC
 		},
 	})
 	s.Add(nb)
-	newId = nb.Model().Id
-	if err = s.InsertTo(req.TargetId, req.Position, newId); err != nil {
+	newID = nb.Model().Id
+	if err = s.InsertTo(req.TargetId, req.Position, newID); err != nil {
 		return
 	}
-	if err = b.fetch(ctx, s, newId, req.Url, false, model.ObjectOrigin_user); err != nil {
+	if err = b.fetch(ctx, s, newID, req.Url, false, req.Origin); err != nil {
 		return
 	}
 	if err = b.Apply(s); err != nil {
