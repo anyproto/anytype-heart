@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -112,14 +111,7 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 		Id: t.objectTree.Id(),
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(func(_ *objecttree.Change, decrypted []byte) (any, error) {
-		ch := &pb.Change{}
-		err := proto.Unmarshal(decrypted, ch)
-		if err != nil {
-			return nil, err
-		}
-		return ch, nil
-	}, func(change *objecttree.Change) bool {
+	err = t.objectTree.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
 			return true
@@ -142,14 +134,7 @@ func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
 		return
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(func(_ *objecttree.Change, decrypted []byte) (any, error) {
-		ch := &pb.Change{}
-		err := proto.Unmarshal(decrypted, ch)
-		if err != nil {
-			return nil, err
-		}
-		return ch, nil
-	}, func(change *objecttree.Change) bool {
+	err = t.objectTree.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
 			return true

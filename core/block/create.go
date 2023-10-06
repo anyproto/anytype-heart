@@ -115,6 +115,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
+		st.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(id))
 		return nil
 	}); err != nil {
 		return
