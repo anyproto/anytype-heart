@@ -428,6 +428,7 @@ func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
 			key != bundle.RelationKeyIsArchived.String() &&
 			key != bundle.RelationKeyCreatedDate.String() &&
 			key != bundle.RelationKeyLastModifiedDate.String() &&
+			key != bundle.RelationKeyId.String() &&
 			key != bundle.RelationKeyUniqueKey.String()
 	})
 

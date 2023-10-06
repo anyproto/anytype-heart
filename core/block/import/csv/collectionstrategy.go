@@ -181,7 +181,7 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 		logger.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
-	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	return details
 }
 
