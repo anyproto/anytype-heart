@@ -533,29 +533,33 @@ func (e *export) cleanupFile(wr writer) {
 
 func (e *export) getRelatedDerivedObjects(objects []database.Record) []database.Record {
 	var derivedObjects []database.Record
+
 	for _, object := range objects {
-		details := object.Details
-		for key, value := range details.Fields {
-			relation := e.getRelation(key)
-			if relation == nil {
-				continue
-			}
-			derivedObjects = e.addRelationToDerivedObjects(relation, derivedObjects)
-			format := relation.Get(bundle.RelationKeyRelationFormat.String()).GetNumberValue()
-			if format == float64(model.RelationFormat_tag) || format == float64(model.RelationFormat_status) {
-				relationOptions := e.getRelationOptions(value)
-				derivedObjects = lo.Union(derivedObjects, relationOptions)
-			}
-		}
-		objectTypeDetails := e.getObjectType(details)
-		derivedObjects = lo.Union(derivedObjects, objectTypeDetails)
+		derivedObjects = e.processObject(object, derivedObjects)
 	}
+
+	return derivedObjects
+}
+
+func (e *export) processObject(object database.Record, derivedObjects []database.Record) []database.Record {
+	details := object.Details
+	for key, value := range details.Fields {
+		relation := e.getRelation(key)
+		if relation != nil {
+			derivedObjects = e.addRelationAndOptions(relation, value, derivedObjects)
+		}
+	}
+
+	objectTypeDetails := e.getObjectType(details)
+	derivedObjects = lo.Union(derivedObjects, objectTypeDetails)
+
 	return derivedObjects
 }
 
 func (e *export) getRelation(key string) *database.Record {
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
+		log.Errorf("failed to get relation unique key %s: %s", key, err)
 		return nil
 	}
 	relation, _, err := e.objectStore.Query(database.Query{
@@ -578,6 +582,7 @@ func (e *export) getRelation(key string) *database.Record {
 		},
 	})
 	if err != nil {
+		log.Errorf("failed to query relation %s: %s", key, err)
 		return nil
 	}
 	if len(relation) == 0 {
@@ -586,7 +591,18 @@ func (e *export) getRelation(key string) *database.Record {
 	return &relation[0]
 }
 
-func (e *export) addRelationToDerivedObjects(relation *database.Record, derivedObjects []database.Record) []database.Record {
+func (e *export) addRelationAndOptions(relation *database.Record, value *types.Value, derivedObjects []database.Record) []database.Record {
+	derivedObjects = e.addRelation(relation, derivedObjects)
+	format := relation.Get(bundle.RelationKeyRelationFormat.String()).GetNumberValue()
+	if format == float64(model.RelationFormat_tag) || format == float64(model.RelationFormat_status) {
+		relationOptions := e.getRelationOptions(value)
+		derivedObjects = lo.Union(derivedObjects, relationOptions)
+	}
+
+	return derivedObjects
+}
+
+func (e *export) addRelation(relation *database.Record, derivedObjects []database.Record) []database.Record {
 	if relationKey := relation.Get(bundle.RelationKeyRelationKey.String()); relationKey != nil {
 		if !bundle.HasRelation(relationKey.GetStringValue()) {
 			derivedObjects = lo.Union(derivedObjects, []database.Record{*relation})
@@ -622,6 +638,7 @@ func (e *export) getRelationOptions(relationOptions *types.Value) []database.Rec
 		},
 	})
 	if err != nil {
+		log.Errorf("failed to query relation options: %s", err)
 		return nil
 	}
 	return relationOptionsDetails
@@ -654,6 +671,7 @@ func (e *export) getObjectType(details *types.Struct) []database.Record {
 	objectType := pbtypes.GetString(details, bundle.RelationKeyType.String())
 	objectTypeDetails, err := e.objectStore.QueryByID([]string{objectType})
 	if err != nil {
+		log.Errorf("failed to query objects type id %s: %s", objectType, err)
 		return nil
 	}
 	if len(objectTypeDetails) == 0 {
