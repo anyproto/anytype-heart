@@ -15,6 +15,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -104,7 +105,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.SpaceId, req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
+	docs, err := e.docsForExport(req.SpaceId, req.ObjectIds, req.IncludeNested, req.IncludeArchived, isAnyblockExport(req.Format))
 	if err != nil {
 		return
 	}
@@ -186,8 +187,8 @@ func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, wr writer, 
 	return zipName, succeed, nil
 }
 
-func isProtobufExport(format pb.RpcObjectListExportFormat) bool {
-	return format == pb.RpcObjectListExport_Protobuf
+func isAnyblockExport(format pb.RpcObjectListExportFormat) bool {
+	return format == pb.RpcObjectListExport_Protobuf || format == pb.RpcObjectListExport_JSON
 }
 
 func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bool, includeArchived bool, isProtobuf bool) (docs map[string]*types.Struct, err error) {
@@ -236,7 +237,13 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 			e.getNested(spaceID, id, docs)
 		}
 	}
-	return docs, err
+
+	derivedObjects := e.getRelatedDerivedObjects(res)
+	for _, do := range derivedObjects {
+		id := pbtypes.GetString(do.Details, bundle.RelationKeyId.String())
+		docs[id] = do.Details
+	}
+	return docs, nil
 }
 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
@@ -522,4 +529,124 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 func (e *export) cleanupFile(wr writer) {
 	wr.Close()
 	os.Remove(wr.Path())
+}
+
+func (e *export) getRelatedDerivedObjects(objects []database.Record) []database.Record {
+	var derivedObjects []database.Record
+	for _, object := range objects {
+		details := object.Details
+		for key, value := range details.Fields {
+			uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
+			if err != nil {
+				continue
+			}
+			relation, _, err := e.objectStore.Query(database.Query{
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyUniqueKey.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(uniqueKey.Marshal()),
+					},
+					{
+						RelationKey: bundle.RelationKeyIsArchived.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Bool(false),
+					},
+					{
+						RelationKey: bundle.RelationKeyIsDeleted.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Bool(false),
+					},
+				},
+			})
+			if err != nil {
+				continue
+			}
+			if len(relation) == 0 {
+				continue
+			}
+			if relationKey := relation[0].Get(bundle.RelationKeyRelationKey.String()); relationKey != nil {
+				if !bundle.HasRelation(relationKey.GetStringValue()) {
+					derivedObjects = lo.Union(derivedObjects, []database.Record{relation[0]})
+				}
+			}
+			format := relation[0].Get(bundle.RelationKeyRelationFormat.String()).GetNumberValue()
+			if format == float64(model.RelationFormat_tag) || format == float64(model.RelationFormat_status) {
+				var filter *model.BlockContentDataviewFilter
+				if value.GetStringValue() != "" {
+					uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, value.GetStringValue())
+					if err != nil {
+						continue
+					}
+					filter = &model.BlockContentDataviewFilter{
+						RelationKey: bundle.RelationKeyUniqueKey.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(uniqueKey.Marshal()),
+					}
+				}
+				if value.GetListValue() != nil && len(value.GetListValue().Values) != 0 {
+					ids := make([]string, 0, len(value.GetListValue().Values))
+					for _, v := range value.GetListValue().Values {
+						uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, v.GetStringValue())
+						if err != nil {
+							continue
+						}
+						ids = append(ids, uniqueKey.Marshal())
+					}
+					filter = &model.BlockContentDataviewFilter{
+						RelationKey: bundle.RelationKeyUniqueKey.String(),
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       pbtypes.StringList(ids),
+					}
+				}
+				relationOptions, _, err := e.objectStore.Query(database.Query{
+					Filters: []*model.BlockContentDataviewFilter{
+						filter,
+						{
+							RelationKey: bundle.RelationKeyIsArchived.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.Bool(false),
+						},
+						{
+							RelationKey: bundle.RelationKeyIsDeleted.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.Bool(false),
+						},
+					},
+				})
+				if err != nil {
+					continue
+				}
+				derivedObjects = lo.Union(derivedObjects, relationOptions)
+			}
+		}
+		objectType := pbtypes.GetString(details, bundle.RelationKeyType.String())
+		objectTypeDetails, _, err := e.objectStore.Query(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(objectType),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+			},
+		})
+		if err != nil {
+			continue
+		}
+		if len(objectTypeDetails) == 0 {
+			continue
+		}
+		derivedObjects = lo.Union(derivedObjects, objectTypeDetails)
+	}
+	return derivedObjects
 }
