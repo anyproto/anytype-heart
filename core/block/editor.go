@@ -443,7 +443,7 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 	})
 }
 
-func (s *Service) UploadBlockFile(ctx session.Context, req domain.BlockUploadRequestDTO, groupID string) (err error) {
+func (s *Service) UploadBlockFile(ctx session.Context, req domain.BlockUploadRequest, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
@@ -455,7 +455,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req domain.BlockUploadReq
 	})
 }
 
-func (s *Service) UploadBlockFileSync(ctx session.Context, req domain.BlockUploadRequestDTO) (err error) {
+func (s *Service) UploadBlockFileSync(ctx session.Context, req domain.BlockUploadRequest) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
@@ -476,7 +476,7 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req domain.FileUploadRequestDTO) (hash string, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceID string, req domain.FileUploadRequest) (hash string, err error) {
 	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -516,7 +516,7 @@ func (s *Service) SetFileStyle(
 }
 
 func (s *Service) UploadFileBlockWithHash(
-	contextID string, req domain.BlockUploadRequestDTO,
+	contextID string, req domain.BlockUploadRequest,
 ) (hash string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
@@ -555,19 +555,19 @@ func (s *Service) Redo(
 	return
 }
 
-func (s *Service) BookmarkFetch(ctx session.Context, req domain.BookmarkFetchRequestDTO) (err error) {
+func (s *Service) BookmarkFetch(ctx session.Context, req domain.BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		return b.Fetch(ctx, req.BlockId, req.Url, false, req.Origin)
 	})
 }
 
-func (s *Service) BookmarkFetchSync(ctx session.Context, req domain.BookmarkFetchRequestDTO) (err error) {
+func (s *Service) BookmarkFetchSync(ctx session.Context, req domain.BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		return b.Fetch(ctx, req.BlockId, req.Url, true, req.Origin)
 	})
 }
 
-func (s *Service) BookmarkCreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequestDTO) (id string, err error) {
+func (s *Service) BookmarkCreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequest) (id string, err error) {
 	err = Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		id, err = b.CreateAndFetch(ctx, req)
 		return err

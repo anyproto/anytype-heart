@@ -5,22 +5,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type BlockUploadRequestDTO struct {
+type BlockUploadRequest struct {
 	pb.RpcBlockUploadRequest
 	Origin model.ObjectOrigin
 }
 
-type FileUploadRequestDTO struct {
+type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
 	Origin model.ObjectOrigin
 }
 
-type BookmarkFetchRequestDTO struct {
+type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
 	Origin model.ObjectOrigin
 }
 
-type BookmarkCreateAndFetchRequestDTO struct {
+type BookmarkCreateAndFetchRequest struct {
 	pb.RpcBlockBookmarkCreateAndFetchRequest
 	Origin model.ObjectOrigin
 }

@@ -145,9 +145,8 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 		return
 	}
 	if err = sf.upload(s, newId, FileSource{
-		Path:   req.LocalPath,
-		Url:    req.Url,
-		Origin: model.ObjectOrigin_user,
+		Path: req.LocalPath,
+		Url:  req.Url,
 	}, false).Err; err != nil {
 		return
 	}

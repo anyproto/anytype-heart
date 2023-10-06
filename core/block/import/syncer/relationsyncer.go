@@ -72,7 +72,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		err  error
 	)
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
-		dto := domain.FileUploadRequestDTO{
+		dto := domain.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
 			Origin:               origin,
 		}
@@ -85,7 +85,7 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		if err == nil {
 			return file
 		}
-		dto := domain.FileUploadRequestDTO{
+		dto := domain.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
 			Origin:               origin,
 		}

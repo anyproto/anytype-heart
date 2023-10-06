@@ -176,7 +176,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		res := &converter.Response{
 			Snapshots: sn,
 		}
-		i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_user)
+		i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
 		}

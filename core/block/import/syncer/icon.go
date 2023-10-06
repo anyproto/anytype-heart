@@ -44,7 +44,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
-	dto := domain.FileUploadRequestDTO{
+	dto := domain.FileUploadRequest{
 		RpcFileUploadRequest: req,
 		Origin:               origin,
 	}

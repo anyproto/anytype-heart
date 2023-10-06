@@ -26,7 +26,7 @@ func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOri
 		return nil
 	}
 
-	dto := domain.BookmarkFetchRequestDTO{
+	dto := domain.BookmarkFetchRequest{
 		RpcBlockBookmarkFetchRequest: pb.RpcBlockBookmarkFetchRequest{
 			ContextId: id,
 			BlockId:   b.Model().GetId(),

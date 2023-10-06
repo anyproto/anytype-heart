@@ -40,7 +40,7 @@ func NewBookmark(
 
 type Bookmark interface {
 	Fetch(ctx session.Context, id string, url string, isSync bool, origin model.ObjectOrigin) (err error)
-	CreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequestDTO) (newID string, err error)
+	CreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequest) (newID string, err error)
 	UpdateBookmark(ctx session.Context, id, groupID string, apply func(b bookmark.Block) error, origin model.ObjectOrigin) (err error)
 }
 
@@ -102,7 +102,7 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 	return err
 }
 
-func (b *sbookmark) CreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequestDTO) (newID string, err error) {
+func (b *sbookmark) CreateAndFetch(ctx session.Context, req domain.BookmarkCreateAndFetchRequest) (newID string, err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	nb := simple.New(&model.Block{
 		Content: &model.BlockContentOfBookmark{

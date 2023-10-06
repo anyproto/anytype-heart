@@ -542,14 +542,16 @@ func (m *dsFileStore) SetFileSize(hash string, status int) error {
 }
 
 func (ls *dsFileStore) SetFileOrigin(hash string, origin int) error {
+	if origin == 0 {
+		return nil
+	}
 	key := fileOrigin.ChildString(hash)
 	return ls.setInt(key, origin)
 }
 
 func (ls *dsFileStore) GetFileOrigin(hash string) (int, error) {
 	key := fileOrigin.ChildString(hash)
-	origin, err := ls.getInt(key)
-	return origin, err
+	return ls.getInt(key)
 }
 
 func (ls *dsFileStore) Close(ctx context.Context) (err error) {

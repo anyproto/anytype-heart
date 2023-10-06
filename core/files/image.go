@@ -155,7 +155,10 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		i.extractLastModifiedDate(ctx, imageExif),
 	)
 	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.hash)
-	commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(i.origin))
+
+	if i.origin != 0 {
+		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(i.origin))
+	}
 
 	details := &types.Struct{
 		Fields: commonDetails,

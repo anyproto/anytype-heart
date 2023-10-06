@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
@@ -111,10 +110,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var hash string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		dto := domain.FileUploadRequestDTO{
-			RpcFileUploadRequest: *req,
-			Origin:               model.ObjectOrigin_user,
-		}
+		dto := domain.FileUploadRequest{RpcFileUploadRequest: *req}
 		hash, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		return
 	})

@@ -109,12 +109,11 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
-		dto := domain.FileUploadRequestDTO{
+		dto := domain.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
 				Type:      model.BlockContentFile_Image,
 			},
-			Origin: model.ObjectOrigin_user,
 		}
 		hash, err := bs.UploadFile(context.Background(), spaceID, dto)
 		if err != nil {

@@ -187,7 +187,7 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			dto := domain.BlockUploadRequestDTO{Origin: model.ObjectOrigin_clipboard, RpcBlockUploadRequest: r}
+			dto := domain.BlockUploadRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockUploadRequest: r}
 			if err = bs.UploadBlockFile(nil, dto, groupId); err != nil {
 				return err
 			}
@@ -295,7 +295,7 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		dto := domain.BlockUploadRequestDTO{Origin: model.ObjectOrigin_user, RpcBlockUploadRequest: *req}
+		dto := domain.BlockUploadRequest{RpcBlockUploadRequest: *req}
 		return bs.UploadBlockFile(nil, dto, "")
 	})
 	if err != nil {
@@ -986,7 +986,7 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		dto := domain.BookmarkFetchRequestDTO{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkFetchRequest: *req}
+		dto := domain.BookmarkFetchRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkFetchRequest: *req}
 		return bs.BookmarkFetch(ctx, dto)
 	})
 	if err != nil {
@@ -1008,7 +1008,7 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 	}
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		dto := domain.BookmarkCreateAndFetchRequestDTO{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkCreateAndFetchRequest: *req}
+		dto := domain.BookmarkCreateAndFetchRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkCreateAndFetchRequest: *req}
 		id, err = bs.BookmarkCreateAndFetch(ctx, dto)
 		return
 	})

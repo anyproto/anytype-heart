@@ -45,7 +45,7 @@ func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 			BlockId: b.Model().Id,
 		}
 	}
-	dto := domain.BlockUploadRequestDTO{
+	dto := domain.BlockUploadRequest{
 		RpcBlockUploadRequest: params,
 		Origin:                origin,
 	}
