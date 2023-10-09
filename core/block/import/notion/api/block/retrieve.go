@@ -121,6 +121,8 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 	return blocks, nil
 }
 
+// TODO DRY logging: return ([]interface{}, error) and log that error later
+//
 //nolint:funlen
 func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 	blocks := make([]interface{}, 0)

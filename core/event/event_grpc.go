@@ -70,7 +70,7 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				es.shutdownCh <- server.Token
 			}
-			log.With("session", server.Token).Errorf("failed to send event: %s", err)
+			log.Errorf("failed to send event: %s", err)
 		}
 	}()
 }
