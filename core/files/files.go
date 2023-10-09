@@ -187,7 +187,6 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullID) (map[st
 
 				l := schema.LinkByName(innerLinks, ValidContentLinkNames)
 				if l == nil {
-					log.Errorf("con")
 					continue
 				}
 

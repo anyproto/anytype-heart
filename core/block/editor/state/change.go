@@ -496,7 +496,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockSetRestrictions:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
-			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)
+			log.Errorf("unexpected event - can't convert to changes: %T", msg.Msg.GetValue())
 		}
 	}
 	var cb = &changeBuilder{changes: s.changes}
