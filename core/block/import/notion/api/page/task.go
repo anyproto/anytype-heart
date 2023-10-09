@@ -260,7 +260,7 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, propObject 
 				apiKey,
 				propObject.GetPropertyType(),
 			); err != nil {
-			return fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+			return fmt.Errorf("failed to get paginated property, %s, %w", propObject.GetPropertyType(), err)
 		}
 		pt.handlePaginatedProperties(propObject, properties)
 	}

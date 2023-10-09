@@ -30,7 +30,7 @@ func (bs *BookmarkSyncer) Sync(id string, b simple.Block) error {
 		Url:       b.Model().GetBookmark().Url,
 	})
 	if err != nil {
-		return fmt.Errorf("failed syncing bookmark: %s", err)
+		return fmt.Errorf("failed syncing bookmark: %w", err)
 	}
 	return nil
 }

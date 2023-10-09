@@ -824,7 +824,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 
 			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceID, id.ObjectID, id.ObjectID+"/"+index.Name, key)
 			if err != nil {
-				return nil, fmt.Errorf("fileInfoFromPath error: %s", err)
+				return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 			}
 			files = append(files, fileIndex)
 		} else {
@@ -836,7 +836,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 
 				fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceID, id.ObjectID, id.ObjectID+"/"+index.Name+"/"+link.Name, key)
 				if err != nil {
-					return nil, fmt.Errorf("fileInfoFromPath error: %s", err)
+					return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 				}
 				files = append(files, fileIndex)
 			}

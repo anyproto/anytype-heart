@@ -108,7 +108,7 @@ retry:
 				}
 				retryReason = netErr.Error()
 			} else {
-				return nil, fmt.Errorf("http error: %s", err)
+				return nil, fmt.Errorf("http error: %w", err)
 			}
 		} else if res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500 {
 			e := GetRetryAfterError(res.Header)

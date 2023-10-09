@@ -80,7 +80,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 	if opts.Media == "" {
 		data, err := ioutil.ReadAll(io.LimitReader(opts.Reader, 512))
 		if err != nil && err != io.EOF {
-			return fmt.Errorf("failed to get first 512 bytes to detect content-type: %s", err)
+			return fmt.Errorf("failed to get first 512 bytes to detect content-type: %w", err)
 		}
 
 		_, err = opts.Reader.Seek(0, io.SeekStart)

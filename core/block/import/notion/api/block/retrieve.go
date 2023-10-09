@@ -380,7 +380,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, url, nil)
 
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	query := req.URL.Query()
 
@@ -393,14 +393,14 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	req.URL.RawQuery = query.Encode()
 	res, err := s.client.DoWithRetry(endpoint, 0, req)
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	defer res.Body.Close()
 
 	b, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	var objects Response
 	if res.StatusCode != http.StatusOK {
@@ -415,7 +415,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	err = json.Unmarshal(b, &objects)
 
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	return objects, nil
 }

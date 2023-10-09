@@ -59,7 +59,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	}()
 	db, pages, err := n.search.Search(ctx, apiKey, pageSize)
 	if err != nil {
-		ce.Add(fmt.Errorf("failed to get pages and databases %s", err))
+		ce.Add(fmt.Errorf("failed to get pages and databases %w", err))
 
 		// always add this error because it's mean that we need to return error to user, even in case IGNORE_ERRORS is turned on
 		// see shouldReturnError

@@ -350,7 +350,7 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 	merr := multierror.Error{}
 	for _, ev := range update.Events {
 		if err := s.applyEvent(ev); err != nil {
-			merr.Errors = append(merr.Errors, fmt.Errorf("failed to apply event %T: %s", ev.Value, err))
+			merr.Errors = append(merr.Errors, fmt.Errorf("failed to apply event %T: %w", ev.Value, err))
 		}
 	}
 	return merr.ErrorOrNil()

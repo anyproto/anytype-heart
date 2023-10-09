@@ -146,7 +146,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 		}
 		sourceFilter, err := s.filtersFromSource(spaceId, req.Source)
 		if err != nil {
-			return nil, fmt.Errorf("can't make filter from source: %v", err)
+			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
 		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
 	}
@@ -235,7 +235,7 @@ func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, su
 		return err
 	}
 	if err = sub.init(entries); err != nil {
-		return fmt.Errorf("subscription init error: %v", err)
+		return fmt.Errorf("subscription init error: %w", err)
 	}
 	return nil
 }
@@ -243,7 +243,7 @@ func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, su
 func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*entry, error) {
 	records, err := objectStore.QueryRaw(f, 0, 0)
 	if err != nil {
-		return nil, fmt.Errorf("objectStore query error: %v", err)
+		return nil, fmt.Errorf("objectStore query error: %w", err)
 	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
@@ -266,7 +266,7 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 		sub.sortedSub.forceSubIds = filterDepIds
 	}
 	if err := sub.init(nil); err != nil {
-		return nil, fmt.Errorf("subscription init error: %v", err)
+		return nil, fmt.Errorf("subscription init error: %w", err)
 	}
 	s.subscriptions[sub.sortedSub.id] = sub
 	prev, next := sub.counters()
@@ -349,7 +349,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	if len(req.Source) > 0 {
 		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
 		if err != nil {
-			return nil, fmt.Errorf("can't make filter from source: %v", err)
+			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
 		flt.FilterObj = database.FiltersAnd{flt.FilterObj, sourceFilter}
 	}

@@ -170,12 +170,12 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 
 		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, request, nil)
 		if err != nil {
-			return nil, fmt.Errorf("GetPropertyObject: %s", err)
+			return nil, fmt.Errorf("GetPropertyObject: %w", err)
 		}
 		res, err := s.client.DoWithRetry(endpoint, 0, req)
 
 		if err != nil {
-			return nil, fmt.Errorf("GetPropertyObject: %s", err)
+			return nil, fmt.Errorf("GetPropertyObject: %w", err)
 		}
 		defer res.Body.Close()
 

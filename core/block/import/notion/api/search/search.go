@@ -55,18 +55,18 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 		err := json.NewEncoder(body).Encode(&Option{PageSize: pageSize, StartCursor: startCursor})
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+			return nil, nil, fmt.Errorf("ListDatabases: %w", err)
 		}
 
 		req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodPost, endpoint, body)
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+			return nil, nil, fmt.Errorf("ListDatabases: %w", err)
 		}
 		res, err := s.client.DoWithRetry(endpoint, 3, req)
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+			return nil, nil, fmt.Errorf("ListDatabases: %w", err)
 		}
 		defer res.Body.Close()
 
@@ -93,24 +93,24 @@ func (s *Service) Search(ctx context.Context, apiKey string, pageSize int64) ([]
 			if o.(map[string]interface{})["object"] == database.ObjectType {
 				db, err := json.Marshal(o)
 				if err != nil {
-					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+					return nil, nil, fmt.Errorf("ListDatabases: %w", err)
 				}
 				d := database.Database{}
 				err = json.Unmarshal(db, &d)
 				if err != nil {
-					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+					return nil, nil, fmt.Errorf("ListDatabases: %w", err)
 				}
 				resultDatabases = append(resultDatabases, d)
 			}
 			if o.(map[string]interface{})["object"] == page.ObjectType {
 				pg, err := json.Marshal(o)
 				if err != nil {
-					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+					return nil, nil, fmt.Errorf("ListDatabases: %w", err)
 				}
 				p := page.Page{}
 				err = json.Unmarshal(pg, &p)
 				if err != nil {
-					return nil, nil, fmt.Errorf("ListDatabases: %s", err)
+					return nil, nil, fmt.Errorf("ListDatabases: %w", err)
 				}
 				resultPages = append(resultPages, p)
 			}

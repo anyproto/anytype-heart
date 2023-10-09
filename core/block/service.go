@@ -954,7 +954,7 @@ func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, e
 		}
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("can't apply template: %v", err)
+		return nil, fmt.Errorf("can't apply template: %w", err)
 	}
 	return
 }

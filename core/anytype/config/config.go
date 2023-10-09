@@ -144,13 +144,13 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		var confRequired ConfigRequired
 		err := GetFileConfig(c.GetConfigPath(), &confRequired)
 		if err != nil {
-			return fmt.Errorf("failed to get config from file: %s", err)
+			return fmt.Errorf("failed to get config from file: %w", err)
 		}
 
 		writeConfig := func() error {
 			err = WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 			if err != nil {
-				return fmt.Errorf("failed to save required configuration to the cfg file: %s", err)
+				return fmt.Errorf("failed to save required configuration to the cfg file: %w", err)
 			}
 			return nil
 		}
@@ -290,11 +290,11 @@ func (c *Config) GetNodeConf() (conf nodeconf.Configuration) {
 		log.Warnf("any sync network nodes configuration is overridden by the env var ANY_SYNC_NETWORK")
 		var err error
 		if nodesConfYmlBytes, err = os.ReadFile(networkConfigPath); err != nil {
-			panic(fmt.Errorf("load network configuration failed: %v", err))
+			panic(fmt.Errorf("load network configuration failed: %w", err))
 		}
 	}
 	if err := yaml.Unmarshal(nodesConfYmlBytes, &conf); err != nil {
-		panic(fmt.Errorf("unable to parse node config: %v", err))
+		panic(fmt.Errorf("unable to parse node config: %w", err))
 	}
 	return
 }
