@@ -2,7 +2,10 @@ package logging
 
 import (
 	"errors"
+	"net"
+	"net/url"
 	"os"
+	"strings"
 
 	"go.uber.org/zap"
 )
@@ -70,11 +73,35 @@ func cleanupArgs(args []interface{}) {
 	}
 }
 
-func cleanupError(err error) error {
-	var pathErr *os.PathError
-	if errors.As(err, &pathErr) {
-		pathErr.Path = "<masked file path>"
-		return pathErr
+func cleanUpCase[T error](result string, originalErr error, proc func(T)) string {
+	var wrappedErr T
+	if errors.As(originalErr, &wrappedErr) {
+		prevWrappedString := wrappedErr.Error()
+		proc(wrappedErr)
+		result = strings.Replace(result, prevWrappedString, wrappedErr.Error(), 1)
 	}
-	return err
+	return result
+}
+
+func cleanupError(err error) error {
+	if err == nil {
+		return nil
+	}
+	result := err.Error()
+
+	result = cleanUpCase(result, err, func(pathErr *os.PathError) {
+		pathErr.Path = "<masked file path>"
+	})
+	result = cleanUpCase(result, err, func(urlErr *url.Error) {
+		urlErr.URL = "<masked url>"
+	})
+	result = cleanUpCase(result, err, func(dnsErr *net.DNSError) {
+		if dnsErr.Name != "" {
+			dnsErr.Name = "<masked host name>"
+		}
+		if dnsErr.Server != "" {
+			dnsErr.Server = "<masked dns server>"
+		}
+	})
+	return errors.New(result)
 }

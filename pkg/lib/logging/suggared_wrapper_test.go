@@ -2,6 +2,8 @@ package logging
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"testing"
 
@@ -50,4 +52,42 @@ func TestCleanupArgs(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 
+	t.Run("wrapped os.PathError", func(t *testing.T) {
+		err := &os.PathError{
+			Op:   "open",
+			Path: "/home/user/secret folder/secret file.txt",
+			Err:  fmt.Errorf("severe error"),
+		}
+		in := []interface{}{
+			123,
+			fmt.Errorf("wrapped: %w", err),
+		}
+		cleanupArgs(in)
+
+		got := fmt.Sprintf("trial %d: uploading file: %s", in...)
+
+		want := "trial 123: uploading file: wrapped: open <masked file path>: severe error"
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("nested wrapped errors", func(t *testing.T) {
+		err := &url.Error{
+			Op:  "get",
+			URL: "secretaffairs.com/foo/bar",
+			Err: &net.DNSError{
+				Name:   "secretaffairs.com",
+				Err:    "resolve",
+				Server: "1.1.1.1",
+			},
+		}
+		in := []interface{}{
+			fmt.Errorf("wrapped: %w", err),
+		}
+		cleanupArgs(in)
+
+		got := fmt.Sprintf("error %s", in...)
+
+		want := "error wrapped: get \"<masked url>\": lookup <masked host name> on <masked dns server>: resolve"
+		assert.Equal(t, want, got)
+	})
 }
