@@ -38,7 +38,11 @@ linters-settings:
     locale: US
     ignore-words:
       - commonspace
-
+  errorlint:
+    errorf: true
+    errorf-multi: true
+    asserts: false
+    comparison: true
 linters:
   disable-all: true
   enable:
@@ -63,6 +67,7 @@ linters:
     - govet
 #    - typecheck
     - unconvert
+    - errorlint
   max-issues-per-linter: 0
   max-same-issues: 0
 
