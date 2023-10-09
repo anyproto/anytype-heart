@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -234,7 +235,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
-		log.With("path", r.URL.Path).Errorf("error getting file: %s", err)
+		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting file: %s", err)
 		if errors.Is(err, domain.ErrFileNotFound) {
 			http.NotFound(w, r)
 			return
@@ -289,7 +290,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 
 	file, reader, err := g.getImage(ctx, r)
 	if err != nil {
-		log.With("path", r.URL.Path).Errorf("error getting image: %s", err)
+		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting image: %s", err)
 		if errors.Is(err, domain.ErrFileNotFound) {
 			http.NotFound(w, r)
 			return
@@ -344,4 +345,20 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 
 	reader, err := file.Reader(ctx)
 	return file, reader, err
+}
+
+func cleanUpPathForLogging(input string) string {
+	parts := strings.SplitN(strings.TrimPrefix(input, "/"), "/", 2)
+	if len(parts) < 2 {
+		return input
+	}
+
+	// Don't mask CIDs
+	_, err := cid.Parse(parts[1])
+	if err == nil {
+		return input
+	}
+
+	parts[1] = "<masked invalid path>"
+	return "/" + strings.Join(parts, "/")
 }
