@@ -13,15 +13,6 @@ linters-settings:
     check-blank: true
   errchkjson:
     report-no-exported: true
-  gci:
-    sections:
-      - standard                       
-      - default                       
-      - prefix(github.com/anyproto/anytype-heart)
-      - blank                          
-      - dot                           
-    skip-generated: false
-    custom-order: true
   goimports:
     local-prefixes: github.com/anyproto/anytype-heart
   govet:
@@ -29,8 +20,6 @@ linters-settings:
   funlen:
     lines: 120
     statements: 100
-  lll:
-    line-length: 120
   gocritic:
     disabled-checks:
       - ifElseChain
@@ -38,20 +27,21 @@ linters-settings:
     locale: US
     ignore-words:
       - commonspace
+  revive:
+    rules:
+      - name: var-naming
+        severity: warning
+        disabled: true
 
 linters:
   disable-all: true
   enable:
-    - dupl
-    - gci
     - gocritic
     - gofmt
     - goimports
     - gosec
-    - interfacebloat
     - importas
     - ineffassign
-#    - lll
     - misspell
     - nestif
     - prealloc
@@ -61,7 +51,6 @@ linters:
     - funlen
     - gosimple
     - govet
-#    - typecheck
     - unconvert
   max-issues-per-linter: 0
   max-same-issues: 0
