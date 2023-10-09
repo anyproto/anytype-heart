@@ -58,13 +58,21 @@ type migration struct {
 	migrationKey  ds.Key
 }
 
+type loggerWrapper struct {
+	*logging.Sugared
+}
+
+func (l loggerWrapper) Warningf(template string, args ...interface{}) {
+	l.Warnf(template, args...)
+}
+
 func init() {
 
 	// used to store all objects tree changes + some metadata
 	DefaultConfig.Spacestore.MemTableSize = 16 * 1024 * 1024     // Memtable saves all values below value threshold + write ahead log, actual file size is 2x the amount, the size is preallocated
 	DefaultConfig.Spacestore.ValueLogFileSize = 64 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
 	DefaultConfig.Spacestore.ValueThreshold = 1024 * 128         // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
-	DefaultConfig.Spacestore.Logger = logging.LWrapper{logging.Logger("store.spacestore")}
+	DefaultConfig.Spacestore.Logger = loggerWrapper{logging.Logger("store.spacestore")}
 	DefaultConfig.Spacestore.SyncWrites = false
 	DefaultConfig.Spacestore.WithCompression(0) // disable compression
 
@@ -72,7 +80,7 @@ func init() {
 	DefaultConfig.Localstore.MemTableSize = 64 * 1024 * 1024
 	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
 	DefaultConfig.Localstore.ValueThreshold = 1024 * 1024        // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
-	DefaultConfig.Localstore.Logger = logging.LWrapper{logging.Logger("store.localstore")}
+	DefaultConfig.Localstore.Logger = loggerWrapper{logging.Logger("store.localstore")}
 	DefaultConfig.Localstore.SyncWrites = false
 	DefaultConfig.Localstore.WithCompression(0) // disable compression
 
