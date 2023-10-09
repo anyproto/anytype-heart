@@ -535,7 +535,7 @@ func (s *service) filtersFromSource(spaceID string, sources []string) (database.
 	for _, relationID := range idsByType[smartblock.SmartBlockTypeRelation] {
 		relationDetails, err := s.objectStore.GetDetails(relationID)
 		if err != nil {
-			return nil, fmt.Errorf("get relation %s details: %w", relationDetails, err)
+			return nil, fmt.Errorf("get relation %s details: %w", relationID, err)
 		}
 		relTypeFilter = append(relTypeFilter, database.FilterExists{
 			Key: pbtypes.GetString(relationDetails.Details, bundle.RelationKeyRelationKey.String()),

@@ -238,23 +238,23 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 	client := http.DefaultClient
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to download file from unsplash: %s", err)
+		return "", fmt.Errorf("failed to download file from unsplash: %w", err)
 	}
 	defer resp.Body.Close()
 	tmpfile, err := ioutil.TempFile(l.tempDirProvider.TempDir(), picture.ID)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %s", err)
+		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	_, _ = io.Copy(tmpfile, resp.Body)
 	tmpfile.Close()
 
 	err = injectIntoExif(tmpfile.Name(), picture.Artist, picture.ArtistURL, picture.Description)
 	if err != nil {
-		return "", fmt.Errorf("failed to inject exif: %s", err)
+		return "", fmt.Errorf("failed to inject exif: %w", err)
 	}
 	p, err := filepath.Abs(tmpfile.Name())
 	if err != nil {
-		return "", fmt.Errorf("failed to inject exif: %s", err)
+		return "", fmt.Errorf("failed to inject exif: %w", err)
 	}
 
 	go func(cl *unsplash.Unsplash) {
@@ -276,7 +276,7 @@ func injectIntoExif(filePath, artistName, artistUrl, description string) error {
 	jmp := jpegstructure.NewJpegMediaParser()
 	intfc, err := jmp.ParseFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to open file to read exif: %s", err)
+		return fmt.Errorf("failed to open file to read exif: %w", err)
 	}
 	sl := intfc.(*jpegstructure.SegmentList)
 	rootIb, err := sl.ConstructExifBuilder()
@@ -295,11 +295,11 @@ func injectIntoExif(filePath, artistName, artistUrl, description string) error {
 	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0755)
 	defer f.Close()
 	if err != nil {
-		return fmt.Errorf("failed to open file to write exif: %s", err)
+		return fmt.Errorf("failed to open file to write exif: %w", err)
 	}
 	err = sl.Write(f)
 	if err != nil {
-		return fmt.Errorf("failed to write exif: %s", err)
+		return fmt.Errorf("failed to write exif: %w", err)
 	}
 	return nil
 }

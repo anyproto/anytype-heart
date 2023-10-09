@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,8 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
 const (
@@ -195,7 +194,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch experience from '%s': not OK status code: %s", source, resp.Status)
+		return fmt.Errorf("failed to fetch experience: not OK status code: %s", resp.Status)
 	}
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
@@ -237,7 +236,7 @@ func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
 func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
-		return fmt.Errorf("failed to save use case archive to temporary file: %s", err)
+		return fmt.Errorf("failed to save use case archive to temporary file: %w", err)
 	}
 
 	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
