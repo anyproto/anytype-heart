@@ -21,7 +21,7 @@ var (
 	ErrorNotionUnavailable = errors.New("unavailable")
 )
 
-var logger = logging.Logger("notion-ping")
+var log = logging.Logger("notion-ping")
 
 const (
 	endpoint = "/users?page_size=1"
@@ -42,12 +42,12 @@ func NewPingService(client *client.Client) *Service {
 func (s *Service) Ping(ctx context.Context, apiKey string) error {
 	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, endpoint, nil)
 	if err != nil {
-		logger.With(zap.String("method", "PrepareRequest")).Error(err)
+		log.With(zap.String("method", "PrepareRequest")).Error(err)
 		return errors.Wrap(ErrorInternal, fmt.Sprintf("ping: %s", err.Error()))
 	}
 	res, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		logger.With(zap.String("method", "Do")).Error(err)
+		log.With(zap.String("method", "Do")).Error(err)
 		return errors.Wrap(ErrorInternal, fmt.Sprintf("ping: %s", err.Error()))
 	}
 	defer res.Body.Close()
@@ -55,7 +55,7 @@ func (s *Service) Ping(ctx context.Context, apiKey string) error {
 	b, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		logger.With(zap.String("method", "ioutil.ReadAll")).Error(err)
+		log.With(zap.String("method", "ioutil.ReadAll")).Error(err)
 		return errors.Wrap(ErrorInternal, err.Error())
 	}
 	if res.StatusCode != http.StatusOK {
