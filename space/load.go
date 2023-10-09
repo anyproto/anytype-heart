@@ -33,7 +33,7 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	if err = s.setStatus(ctx, info); err != nil {
 		return
 	}
-	s.loading[spaceID] = newLoadingSpace(s.ctx, s.open, spaceID, s.onLoad)
+	s.loading[spaceID] = newLoadingSpace(s.ctx, spaceID, s)
 	return
 }
 
