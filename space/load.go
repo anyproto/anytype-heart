@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
@@ -41,15 +42,15 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	switch loadErr {
-	case nil:
-	case spaceservice.ErrSpaceDeletionPending:
+	switch {
+	case loadErr == nil:
+	case errors.Is(loadErr, spaceservice.ErrSpaceDeletionPending):
 		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
 			SpaceID:      spaceID,
 			LocalStatus:  spaceinfo.LocalStatusMissing,
 			RemoteStatus: spaceinfo.RemoteStatusWaitingDeletion,
 		})
-	case spaceservice.ErrSpaceIsDeleted:
+	case errors.Is(loadErr, spaceservice.ErrSpaceIsDeleted):
 		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
 			SpaceID:      spaceID,
 			LocalStatus:  spaceinfo.LocalStatusMissing,

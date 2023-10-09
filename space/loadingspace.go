@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -64,7 +65,7 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 
 func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 	sp, err := ls.spaceServiceProvider.open(ctx, ls.ID)
-	if err == spacesyncproto.ErrSpaceMissing {
+	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 		return false
 	}
 	if err == nil {
