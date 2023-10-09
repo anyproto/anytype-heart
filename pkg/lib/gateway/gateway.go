@@ -201,7 +201,7 @@ func (g *gateway) stopServer() error {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(0))
 		defer cancel()
 		if err := g.server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
-			log.Errorf("gateway stop error: %s", err.Error())
+			log.Errorf("gateway stop error: %s", err)
 		}
 		if err := g.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			return err

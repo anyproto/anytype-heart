@@ -404,7 +404,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 			if !bs.HasRelation(s, r) {
 				err = bs.addRelationLink(r, s)
 				if err != nil {
-					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %s", r, err.Error())
+					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %s", r, err)
 				}
 			}
 		}

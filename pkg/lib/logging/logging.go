@@ -55,7 +55,7 @@ func LevelsFromStr(s string) (levels []logger.NamedLevel) {
 
 		_, err := zap.ParseAtomicLevel(value)
 		if err != nil {
-			fmt.Printf("Can't parse log level %s: %s\n", parts[0], err.Error())
+			fmt.Printf("Can't parse log level %s: %s\n", parts[0], err)
 			continue
 		}
 		levels = append(levels, logger.NamedLevel{Name: key, Level: value})

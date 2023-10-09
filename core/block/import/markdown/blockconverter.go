@@ -233,7 +233,7 @@ func (m *mdConverter) createBlocksFromFile(shortPath string, f io.ReadCloser, fi
 		}
 		files[shortPath].ParsedBlocks, _, err = anymark.MarkdownToBlocks(b, filepath.Dir(shortPath), nil)
 		if err != nil {
-			log.Errorf("failed to read blocks: %s", err.Error())
+			log.Errorf("failed to read blocks: %s", err)
 		}
 	}
 	return nil

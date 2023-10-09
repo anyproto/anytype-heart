@@ -33,9 +33,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
 
-	//nolint: gosec
+	// nolint: gosec
 	_ "net/http/pprof"
-	//nolint: gosec
+	// nolint: gosec
 	_ "net/http/pprof"
 )
 
@@ -166,7 +166,7 @@ func main() {
 
 		cfg, err := jaegercfg.FromEnv()
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Fatal(err)
 		}
 		if cfg.ServiceName == "" {
 			cfg.ServiceName = "mw"
@@ -174,7 +174,7 @@ func main() {
 		// Initialize tracer with a logger and a metrics factory
 		tracer, closer, err := cfg.NewTracer(jaegercfg.Logger(jLogger))
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Fatal(err)
 		}
 		defer closer.Close()
 
@@ -249,7 +249,7 @@ func main() {
 		sig := <-signalChan
 		if shouldSaveStack(sig) {
 			if err = mw.SaveGoroutinesStack(""); err != nil {
-				log.Errorf("failed to save stack of goroutines: %s", err.Error())
+				log.Errorf("failed to save stack of goroutines: %s", err)
 			}
 			continue
 		}

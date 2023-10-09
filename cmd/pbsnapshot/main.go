@@ -21,7 +21,7 @@ func main() {
 		for _, path := range os.Args[1:] {
 			s, err := decodeFile(path)
 			if err != nil {
-				fmt.Printf("failed to decode %s: %s\n", path, err.Error())
+				fmt.Printf("failed to decode %s: %s\n", path, err)
 				continue
 			}
 			fmt.Println(path + ":")

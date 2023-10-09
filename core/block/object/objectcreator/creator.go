@@ -428,7 +428,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 
 			_, err := w.blockService.TemplateClone(spaceID, id)
 			if err != nil {
-				log.Errorf("failed to clone template %s: %s", id, err.Error())
+				log.Errorf("failed to clone template %s: %s", id, err)
 			}
 		}
 	}()

@@ -144,13 +144,13 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		var confRequired ConfigRequired
 		err := GetFileConfig(c.GetConfigPath(), &confRequired)
 		if err != nil {
-			return fmt.Errorf("failed to get config from file: %s", err.Error())
+			return fmt.Errorf("failed to get config from file: %s", err)
 		}
 
 		writeConfig := func() error {
 			err = WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
 			if err != nil {
-				return fmt.Errorf("failed to save required configuration to the cfg file: %s", err.Error())
+				return fmt.Errorf("failed to save required configuration to the cfg file: %s", err)
 			}
 			return nil
 		}
@@ -169,7 +169,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 			port, err := getRandomPort()
 			if err != nil {
 				port = 4006
-				log.Errorf("failed to get random port for gateway, go with the default %d: %s", port, err.Error())
+				log.Errorf("failed to get random port for gateway, go with the default %d: %s", port, err)
 			}
 
 			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)

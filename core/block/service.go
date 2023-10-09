@@ -228,7 +228,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags); err != nil {
-			log.Errorf("failed to update lastOpenedDate: %s", err.Error())
+			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
 		afterApplyTime := time.Now()
 		if obj, err = ob.Show(); err != nil {
@@ -249,7 +249,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 			}, smartblock.HookOnClose)
 		}
 		if err != nil && err != treestorage.ErrUnknownTreeId {
-			log.Errorf("failed to watch status for object %s: %s", id, err.Error())
+			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
 
 		sbType, err := s.sbtProvider.Type(spaceID, id)
@@ -1056,7 +1056,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	err = s.DeleteObject(id)
 	if err != nil {
 		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())
+		log.Errorf("failed to delete object after conversion to bookmark: %s", err)
 		err = nil
 	}
 

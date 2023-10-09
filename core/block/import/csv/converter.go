@@ -115,7 +115,7 @@ func (c *CSV) getSnapshotsFromFiles(req *pb.RpcObjectImportRequest,
 	defer importSource.Close()
 	err := importSource.Initialize(importPath)
 	if err != nil {
-		allErrors.Add(fmt.Errorf("failed to extract files: %s", err.Error()))
+		allErrors.Add(fmt.Errorf("failed to extract files: %s", err))
 		if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
 			return nil
 		}

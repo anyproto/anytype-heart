@@ -58,7 +58,7 @@ func node(name, blob string) *storage.Node {
 	err := jsonpb.UnmarshalString(blob, &node)
 	if err != nil {
 		// this is a predefined schema and must unmarshal properly
-		log.Fatalf("failed to unmarshal %s schema: %s", name, err.Error())
+		log.Fatalf("failed to unmarshal %s schema: %s", name, err)
 		return nil
 	}
 

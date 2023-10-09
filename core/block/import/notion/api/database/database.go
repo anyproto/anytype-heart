@@ -178,7 +178,7 @@ func (ds *Service) handleNameProperty(databaseProperty property.DatabaseProperty
 	}
 	err := converter.ReplaceRelationsInDataView(st, relationLinks)
 	if err != nil {
-		logger.Errorf("failed to add relation to notion database, %s", err.Error())
+		logger.Errorf("failed to add relation to notion database, %s", err)
 	}
 	return nil
 }
@@ -204,14 +204,14 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	if relationKey == bundle.RelationKeyTag.String() {
 		err := converter.ReplaceRelationsInDataView(st, relationLinks)
 		if err != nil {
-			logger.Errorf("failed to make tag relation not hidden in notion database, %s", err.Error())
+			logger.Errorf("failed to make tag relation not hidden in notion database, %s", err)
 		}
 		return sn
 	}
 	st.AddRelationLinks(relationLinks)
 	err := converter.AddRelationsToDataView(st, relationLinks)
 	if err != nil {
-		logger.Errorf("failed to add relation to notion database, %s", err.Error())
+		logger.Errorf("failed to add relation to notion database, %s", err)
 	}
 	return sn
 }

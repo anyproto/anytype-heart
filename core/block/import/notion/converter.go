@@ -81,7 +81,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	notionImportContext := api.NewNotionImportContext()
 	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if dbErr != nil {
-		log.With("err", dbErr.Error()).Warnf("import from notion db failed")
+		log.With("err", dbErr).Warnf("import from notion db failed")
 		ce.Merge(dbErr)
 	}
 	if ce.ShouldAbortImport(0, req.Type) {
@@ -90,7 +90,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 
 	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, relations, progress)
 	if pgErr != nil {
-		log.With("err", pgErr.Error()).Warnf("import from notion pages failed")
+		log.With("err", pgErr).Warnf("import from notion pages failed")
 		ce.Merge(pgErr)
 	}
 	if ce.ShouldAbortImport(0, req.Type) {

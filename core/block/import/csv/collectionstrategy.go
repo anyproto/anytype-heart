@@ -271,7 +271,7 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *st
 			Format: relation.Format,
 		})
 		if err != nil {
-			logger.Errorf("failed to add relations to dataview, %s", err.Error())
+			logger.Errorf("failed to add relations to dataview, %s", err)
 		}
 	}
 	return c.provideCollectionSnapshots(details, st, p)

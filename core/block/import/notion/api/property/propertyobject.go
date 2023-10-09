@@ -114,12 +114,12 @@ func getPropertyObject(v interface{}) Object {
 		}
 		b, err := json.Marshal(rawProperty)
 		if err != nil {
-			logger.Errorf("failed to get notion properties, error: %s", err.Error())
+			logger.Errorf("failed to get notion properties, error: %s", err)
 			return nil
 		}
 
 		if err = json.Unmarshal(b, &p); err != nil {
-			logger.Errorf("failed to get notion properties, error: %s", err.Error())
+			logger.Errorf("failed to get notion properties, error: %s", err)
 			return nil
 		}
 

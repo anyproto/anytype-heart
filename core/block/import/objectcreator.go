@@ -105,7 +105,7 @@ func (oc *ObjectCreator) Create(
 	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
-		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
+		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
@@ -125,12 +125,12 @@ func (oc *ObjectCreator) Create(
 	var respDetails *types.Struct
 	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
 	if err != nil {
-		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err.Error())
+		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
 	if payload := createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
-			log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
+			log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 			return nil, "", err
 		}
 	} else {
@@ -217,7 +217,7 @@ func (oc *ObjectCreator) createNewObject(
 			return nil, fmt.Errorf("get existing object %s: %w", newID, err)
 		}
 	} else {
-		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
+		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 		return nil, err
 	}
 	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
@@ -331,7 +331,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 			return nil
 		})
 		if err != nil {
-			log.Errorf("failed to set spaceDashBoardID, %s", err.Error())
+			log.Errorf("failed to set spaceDashBoardID, %s", err)
 		}
 	}
 }
@@ -349,7 +349,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
 		}
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
@@ -357,13 +357,13 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 		}
 		err = commonOperations.FeaturedRelationAdd(nil, bundle.RelationKeyType.String())
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err)
 		}
 		respDetails = b.CombinedDetails()
 		return nil
 	})
 	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err.Error())
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err)
 	}
 	return respDetails
 }
@@ -373,7 +373,7 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 	if isFavorite {
 		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}
 	}
 }
@@ -384,7 +384,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {
 			log.With(zap.String("object id", newID)).
-				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
+				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)
 		}
 	}
 }

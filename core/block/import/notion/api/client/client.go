@@ -71,6 +71,7 @@ func GetRetryAfterError(h http.Header) *ErrRateLimited {
 	return &ErrRateLimited{RetryAfterSeconds: retryAfter}
 }
 
+// TODO Review this method!
 // DoWithRetry retries in case of network error, 429 and >500 response codes
 // in case retry-after header is available it uses it, otherwise gradually increase the delay
 // can be canceled with the request's timeout
