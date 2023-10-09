@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -93,7 +92,7 @@ func (oc *ObjectCreator) Create(
 		} else {
 			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
 			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
-			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
+			log.With("objectID", sn.Id).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
 		}
 	}
 	st.SetLastModified(lastModifiedDate, oc.core.ProfileID(spaceID))

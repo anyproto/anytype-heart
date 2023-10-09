@@ -201,7 +201,7 @@ func (s *service) FetchBookmarkContent(spaceID string, url string) ContentFuture
 		}
 		updaters, err := s.ContentUpdaters(spaceID, url)
 		if err != nil {
-			log.Errorf("fetch bookmark content %s: %s", url, err)
+			log.Errorf("fetch bookmark content: %s", err)
 		}
 		for upd := range updaters {
 			upd(content)
@@ -227,7 +227,7 @@ func (s *service) ContentUpdaters(spaceID string, url string) (chan func(content
 			c.Url = url
 		}
 		close(updaters)
-		return updaters, fmt.Errorf("bookmark: can't fetch link %s: %w", url, err)
+		return updaters, fmt.Errorf("bookmark: can't fetch link: %w", err)
 	}
 
 	updaters <- func(c *model.BlockContentBookmark) {
@@ -252,7 +252,7 @@ func (s *service) ContentUpdaters(spaceID string, url string) (chan func(content
 			defer wg.Done()
 			hash, err := loadImage(spaceID, s.fileService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
 			if err != nil {
-				log.Errorf("can't load image url %s: %s", data.ImageUrl, err)
+				log.Errorf("load image: %s", err)
 				return
 			}
 			updaters <- func(c *model.BlockContentBookmark) {
@@ -266,7 +266,7 @@ func (s *service) ContentUpdaters(spaceID string, url string) (chan func(content
 			defer wg.Done()
 			hash, err := loadImage(spaceID, s.fileService, s.tempDirService.TempDir(), "", data.FaviconUrl)
 			if err != nil {
-				log.Errorf("can't load favicon url %s: %s", data.FaviconUrl, err)
+				log.Errorf("load favicon: %s", err)
 				return
 			}
 			updaters <- func(c *model.BlockContentBookmark) {
@@ -319,7 +319,7 @@ func loadImage(spaceID string, fileService files.Service, tempDir string, title,
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
+		return "", fmt.Errorf("download image: %s", resp.Status)
 	}
 
 	tmpFile, err := ioutil.TempFile(tempDir, "anytype_downloaded_file_*")

@@ -239,7 +239,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 		}
 	}
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	//set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
+	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
 	s.details = pbtypes.CopyStruct(det)
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
@@ -414,7 +414,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 				b1, _ = msg.Msg.Marshal()
 				b2, _ = msgs[i-1].Msg.Marshal()
 				if bytes.Equal(b1, b2) {
-					log.With("objectID", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
+					log.With("objectID", s.rootId).Errorf("duplicate change: %T", msg.Msg.GetValue())
 				}
 			}
 		}
