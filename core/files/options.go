@@ -90,7 +90,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 
 		t, err := filetype.Match(data)
 		if err != nil {
-			log.Warnf("filetype failed to match for %s: %s", opts.Name, err)
+			log.Warnf("filetype failed to match: %s", err)
 			opts.Media = http.DetectContentType(data)
 		} else {
 			opts.Media = t.MIME.Value
