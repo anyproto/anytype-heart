@@ -65,6 +65,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.3.1
 	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multihash v0.2.3
+	github.com/oleiade/reflections v1.0.2-0.20230111144201-738780176063
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/otiai10/copy v1.14.0
 	github.com/otiai10/opengraph/v2 v2.1.0

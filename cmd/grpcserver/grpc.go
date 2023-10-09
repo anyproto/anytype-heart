@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	//nolint: gosec
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"reflect"
 	"strconv"
 	"syscall"
 	"time"
@@ -20,6 +23,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
+	"github.com/oleiade/reflections"
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
@@ -32,11 +36,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
-
-	//nolint: gosec
-	_ "net/http/pprof"
-	//nolint: gosec
-	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -270,8 +269,28 @@ func appendInterceptor(
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (resp interface{}, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				if rerr, ok := r.(error); ok && rerr == core.ErrNotLoggedIn {
+					resp = onNotLoggedInError(resp, rerr)
+				} else {
+					resp = onDefaultError(mw, r, resp)
+				}
+			}
+		}()
 
 		resp, err = handler(ctx, req)
+		errorField, _ := reflections.GetField(resp, "Error")
+		if !reflect.ValueOf(errorField).IsNil() {
+			codeField, _ := reflections.GetField(errorField, "Code")
+			codeValue := reflect.ValueOf(codeField)
+			if codeValue.Kind() == reflect.Int32 {
+				errorCode := codeValue.Int()
+				if errorCode > 0 {
+					fmt.Println("code", int32(errorCode))
+				}
+			}
+		}
 		return resp, err
 	})
 }
