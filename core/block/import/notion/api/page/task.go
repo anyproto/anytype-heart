@@ -138,7 +138,7 @@ func (pt *Task) handlePageProperties(object *DataObject, details map[string]*typ
 	for name, prop := range pt.p.Properties {
 		relation, relationLink, err := pt.retrieveRelation(object, name, prop, details, hasTag, tagExist)
 		if err != nil {
-			logger.With("method", "handlePageProperties").Error(err)
+			log.With("method", "handlePageProperties").Error(err)
 			continue
 		}
 		relationsSnapshots = append(relationsSnapshots, relation...)

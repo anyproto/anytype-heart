@@ -11,10 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/database"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
-
-var logger = logging.Logger("notion-search")
 
 const (
 	endpoint = "/search"

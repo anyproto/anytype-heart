@@ -89,21 +89,21 @@ func getDatabasePropertyHandler(v interface{}) DatabasePropertyHandler {
 		case PropertyConfigUniqueID:
 			p = &DatabaseUnique{}
 		default:
-			logger.Errorf("failed to get notion properties: unsupported property type: %s", rawProperty["type"].(string))
+			log.Errorf("failed to get notion properties: unsupported property type: %s", rawProperty["type"].(string))
 			return nil
 		}
 		b, err := json.Marshal(rawProperty)
 		if err != nil {
-			logger.Errorf("failed to get notion properties, error: %s", err)
+			log.Errorf("failed to get notion properties, error: %s", err)
 			return nil
 		}
 
 		if err = json.Unmarshal(b, &p); err != nil {
-			logger.Errorf("failed to get notion properties, error: %s", err)
+			log.Errorf("failed to get notion properties, error: %s", err)
 			return nil
 		}
 	default:
-		logger.Errorf("failed to get notion properties: unsupported property format %T", v)
+		log.Errorf("failed to get notion properties: unsupported property format %T", v)
 		return nil
 	}
 	return p

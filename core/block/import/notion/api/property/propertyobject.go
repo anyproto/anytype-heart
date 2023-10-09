@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var logger = logging.Logger("notion-property-retriever")
+var log = logging.Logger("notion-property-retriever")
 
 const endpoint = "/pages/%s/properties/%s"
 
@@ -109,22 +109,22 @@ func getPropertyObject(v interface{}) Object {
 		case PropertyConfigUniqueID:
 			p = &UniqueIDItem{}
 		default:
-			logger.Errorf("failed to get notion properties: unsupported property type: %s", rawProperty["type"].(string))
+			log.Errorf("failed to get notion properties: unsupported property type: %s", rawProperty["type"].(string))
 			return nil
 		}
 		b, err := json.Marshal(rawProperty)
 		if err != nil {
-			logger.Errorf("failed to get notion properties, error: %s", err)
+			log.Errorf("failed to get notion properties, error: %s", err)
 			return nil
 		}
 
 		if err = json.Unmarshal(b, &p); err != nil {
-			logger.Errorf("failed to get notion properties, error: %s", err)
+			log.Errorf("failed to get notion properties, error: %s", err)
 			return nil
 		}
 
 	default:
-		logger.Errorf("failed to get notion properties: unsupported property format %T", v)
+		log.Errorf("failed to get notion properties: unsupported property format %T", v)
 		return nil
 	}
 	return p
@@ -200,14 +200,14 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 		for _, v := range result {
 			buffer, err := json.Marshal(v)
 			if err != nil {
-				logger.Errorf("GetPropertyObject: failed to marshal: %s", err)
+				log.Errorf("GetPropertyObject: failed to marshal: %s", err)
 				continue
 			}
 			if propertyType == PropertyConfigTypeTitle {
 				p := TitleObject{}
 				err = json.Unmarshal(buffer, &p)
 				if err != nil {
-					logger.Errorf("GetPropertyObject: failed to marshal TitleItem: %s", err)
+					log.Errorf("GetPropertyObject: failed to marshal TitleItem: %s", err)
 					continue
 				}
 				properties = append(properties, &p.Title)
@@ -216,7 +216,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 				p := RichTextObject{}
 				err = json.Unmarshal(buffer, &p)
 				if err != nil {
-					logger.Errorf("GetPropertyObject: failed to marshal RichTextItem: %s", err)
+					log.Errorf("GetPropertyObject: failed to marshal RichTextItem: %s", err)
 					continue
 				}
 				properties = append(properties, &p.RichText)
@@ -225,7 +225,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 				p := RelationObject{}
 				err = json.Unmarshal(buffer, &p)
 				if err != nil {
-					logger.Errorf("GetPropertyObject: failed to marshal RelationItem: %s", err)
+					log.Errorf("GetPropertyObject: failed to marshal RelationItem: %s", err)
 					continue
 				}
 				properties = append(properties, &p.Relation)
@@ -234,7 +234,7 @@ func (s *Service) GetPropertyObject(ctx context.Context,
 				p := PeopleObject{}
 				err = json.Unmarshal(buffer, &p)
 				if err != nil {
-					logger.Errorf("GetPropertyObject: failed to marshal PeopleItem: %s", err)
+					log.Errorf("GetPropertyObject: failed to marshal PeopleItem: %s", err)
 					continue
 				}
 

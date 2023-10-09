@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var logger = logging.Logger("notion-api-client")
+var log = logging.Logger("notion-api-client")
 
 const (
 	notionURL  = "https://api.notion.com/v1"
@@ -82,7 +82,7 @@ func (c *Client) DoWithRetry(loggerInfo string, maxAttempts int, req *http.Reque
 		attempt = 0
 		body    []byte
 	)
-	lg := logger.With("info", loggerInfo)
+	lg := log.With("info", loggerInfo)
 	if req.Body != nil {
 		var err error
 		body, err = io.ReadAll(req.Body)

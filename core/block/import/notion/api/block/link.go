@@ -299,14 +299,14 @@ func getTargetBlock(importContext *api.NotionImportContext, pageIDToName, notion
 			return targetBlockID, nil
 		} else {
 			err = fmt.Errorf("%s '%s'", objectNotFoundMessage, title)
-			logger.With("notionID", hashText(id)).With("title", hashText(title)).Errorf("getTargetBlock: anytype id not found")
+			log.With("notionID", hashText(id)).With("title", hashText(title)).Errorf("getTargetBlock: anytype id not found")
 		}
 	} else if len(idsWithGivenName) > 1 {
 		err = fmt.Errorf("%s '%s'", ambiguousPageMessage, title)
-		logger.With("title", hashText(title)).With("options", len(idsWithGivenName)).Warnf("getTargetBlock: ambligious page title")
+		log.With("title", hashText(title)).With("options", len(idsWithGivenName)).Warnf("getTargetBlock: ambligious page title")
 	} else {
 		err = fmt.Errorf("%s '%s'", pageNotFoundMessage, title)
-		logger.With("title", hashText(title)).Errorf("getTargetBlock: target not found")
+		log.With("title", hashText(title)).Errorf("getTargetBlock: target not found")
 	}
 
 	return targetBlockID, err

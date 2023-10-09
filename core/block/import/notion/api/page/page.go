@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var logger = logging.Logger("notion-page")
+var log = logging.Logger("notion-page")
 
 const (
 	ObjectType     = "page"
