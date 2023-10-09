@@ -49,6 +49,7 @@ type Indexer interface {
 	ForceFTIndex()
 	StartFullTextIndex() error
 	ReindexCommonObjects() error
+	RemoveIndexes(spaceID string) error
 	ReindexSpace(spaceID string) error
 	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
 	app.ComponentRunnable

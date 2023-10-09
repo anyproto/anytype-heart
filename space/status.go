@@ -2,9 +2,15 @@ package space
 
 import (
 	"context"
+	"time"
 
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
+
+type DeletionStatus struct {
+	Status       spaceinfo.RemoteStatus
+	DeletionDate time.Time
+}
 
 func (s *service) getStatus(spaceId string) spaceinfo.SpaceInfo {
 	return s.statuses[spaceId]

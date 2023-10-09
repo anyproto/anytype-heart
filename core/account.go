@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -96,14 +97,27 @@ func (mw *Middleware) AccountMove(cctx context.Context, req *pb.RpcAccountMoveRe
 }
 
 func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
-	status, err := mw.applicationService.AccountDelete(cctx, req)
+	status, err := mw.applicationService.AccountDelete(cctx)
 	code := mapErrorCode(err,
-		errToCode(application.ErrAccountIsAlreadyDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
-		errToCode(application.ErrAccountIsActive, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE),
+		errToCode(space.ErrSpaceDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
 	)
 	return &pb.RpcAccountDeleteResponse{
 		Status: status,
 		Error: &pb.RpcAccountDeleteResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountRevertDeletion(cctx context.Context, req *pb.RpcAccountRevertDeletionRequest) *pb.RpcAccountRevertDeletionResponse {
+	status, err := mw.applicationService.AccountRevertDeletion(cctx)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceIsActive, pb.RpcAccountRevertDeletionResponseError_ACCOUNT_IS_ACTIVE),
+	)
+	return &pb.RpcAccountRevertDeletionResponse{
+		Status: status,
+		Error: &pb.RpcAccountRevertDeletionResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

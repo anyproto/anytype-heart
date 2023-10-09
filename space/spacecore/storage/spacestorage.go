@@ -19,6 +19,7 @@ type spaceStorage struct {
 	keys            spaceKeys
 	aclStorage      liststorage.ListStorage
 	header          *spacesyncproto.RawSpaceHeaderWithId
+	service         *storageService
 }
 
 func (s *spaceStorage) Run(_ context.Context) (err error) {
@@ -33,7 +34,7 @@ func (s *spaceStorage) Name() (name string) {
 	return spacestorage.CName
 }
 
-func newSpaceStorage(objDb *badger.DB, spaceId string) (store spacestorage.SpaceStorage, err error) {
+func newSpaceStorage(objDb *badger.DB, spaceId string, service *storageService) (store spacestorage.SpaceStorage, err error) {
 	keys := newSpaceKeys(spaceId)
 	err = objDb.View(func(txn *badger.Txn) error {
 		header, err := getTxn(txn, keys.HeaderKey())
@@ -55,6 +56,7 @@ func newSpaceStorage(objDb *badger.DB, spaceId string) (store spacestorage.Space
 			spaceSettingsId: string(spaceSettingsId),
 			objDb:           objDb,
 			keys:            keys,
+			service:         service,
 			header: &spacesyncproto.RawSpaceHeaderWithId{
 				RawHeader: header,
 				Id:        spaceId,
@@ -239,5 +241,6 @@ func (s *spaceStorage) TreeDeletedStatus(id string) (status string, err error) {
 }
 
 func (s *spaceStorage) Close(_ context.Context) (err error) {
+	s.service.unlockSpaceStorage(s.spaceId)
 	return nil
 }

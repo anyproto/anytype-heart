@@ -26,8 +26,11 @@ const CName = "client.space"
 var log = logger.NewNamed(CName)
 
 var (
-	ErrIncorrectSpaceID = errors.New("incorrect space id")
-	ErrSpaceNotExists   = errors.New("space not exists")
+	ErrIncorrectSpaceID     = errors.New("incorrect space id")
+	ErrSpaceNotExists       = errors.New("space not exists")
+	ErrSpaceDeleted         = errors.New("space deleted")
+	ErrSpaceDeletionPending = errors.New("space deletion pending")
+	ErrSpaceIsActive        = errors.New("space is active")
 )
 
 func New() SpaceService {
@@ -37,6 +40,7 @@ func New() SpaceService {
 type spaceIndexer interface {
 	ReindexCommonObjects() error
 	ReindexSpace(spaceID string) error
+	RemoveIndexes(spaceID string) error
 }
 
 type bundledObjectsInstaller interface {
@@ -52,7 +56,14 @@ type isNewAccount interface {
 type SpaceService interface {
 	Create(ctx context.Context) (space Space, err error)
 	Get(ctx context.Context, id string) (space Space, err error)
-
+	// Delete should change status on coordinator and change status on tech space
+	Delete(ctx context.Context, id string) (delStatus DeletionStatus, err error)
+	// RevertDeletion should change status on coordinator and change status on tech space
+	RevertDeletion(ctx context.Context, id string) (err error)
+	// Offload should clear the storage from details of space
+	// also we should provide for Offload upper method in middleware to clean up files (?)
+	Offload(ctx context.Context, id string) (err error)
+	Download(ctx context.Context, id string) (err error)
 	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
 
 	app.ComponentRunnable
@@ -129,6 +140,50 @@ func (s *service) Run(_ context.Context) (err error) {
 	return s.loadPersonalSpace(s.ctx)
 }
 
+func (s *service) Delete(ctx context.Context, id string) (delStatus DeletionStatus, err error) {
+	curStatus := s.getStatus(id)
+	// TODO: add time for deletion
+	networkStatus, err := s.spaceCore.Delete(ctx, id)
+	if err != nil {
+		return
+	}
+	err = s.setStatus(ctx, spaceinfo.SpaceInfo{
+		SpaceID:      id,
+		LocalStatus:  curStatus.LocalStatus,
+		RemoteStatus: spaceinfo.RemoteStatusWaitingDeletion,
+	})
+	if err != nil {
+		return
+	}
+	delStatus = DeletionStatus{
+		Status:       spaceinfo.RemoteStatusWaitingDeletion,
+		DeletionDate: networkStatus.DeletionDate,
+	}
+	return
+}
+
+func (s *service) RevertDeletion(ctx context.Context, id string) (err error) {
+	curStatus := s.getStatus(id)
+	err = s.spaceCore.RevertDeletion(ctx, id)
+	if err != nil {
+		return
+	}
+	return s.setStatus(ctx, spaceinfo.SpaceInfo{
+		SpaceID:      id,
+		LocalStatus:  curStatus.LocalStatus,
+		RemoteStatus: spaceinfo.RemoteStatusOk,
+	})
+}
+
+func (s *service) Offload(ctx context.Context, id string) (err error) {
+
+}
+
+func (s *service) Download(ctx context.Context, id string) (err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *service) Create(ctx context.Context) (Space, error) {
 	coreSpace, err := s.spaceCore.Create(ctx, s.repKey)
 	if err != nil {
@@ -138,6 +193,7 @@ func (s *service) Create(ctx context.Context) (Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
+	// problem start loading in case we just randomly get it from somewhere
 	if err = s.startLoad(ctx, spaceID); err != nil {
 		return nil, err
 	}
@@ -185,6 +241,9 @@ func (s *service) IsPersonal(id string) bool {
 }
 
 func (s *service) OnViewCreated(spaceID string) {
+	// 1. check current status, so put more stuff into onviewcreated
+	// 2. on the basis of this status decide if we want to do anything with the space
+	// [3. if it is a personal spaceID then we should try to delete all the spaces on the infra(?)]
 	go func() {
 		if err := s.startLoad(s.ctx, spaceID); err != nil {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))

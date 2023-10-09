@@ -104,6 +104,10 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	return flags, nil
 }
 
+func (i *indexer) RemoveIndexes(spaceID string) (err error) {
+	panic("not implemented")
+}
+
 func (i *indexer) ReindexSpace(spaceID string) (err error) {
 	flags, err := i.buildFlags(spaceID)
 	if err != nil {

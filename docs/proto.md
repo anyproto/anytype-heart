@@ -67,6 +67,10 @@
     - [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request)
     - [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error)
+    - [Rpc.Account.RevertDeletion](#anytype-Rpc-Account-RevertDeletion)
+    - [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request)
+    - [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response)
+    - [Rpc.Account.RevertDeletion.Response.Error](#anytype-Rpc-Account-RevertDeletion-Response-Error)
     - [Rpc.Account.Select](#anytype-Rpc-Account-Select)
     - [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request)
     - [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response)
@@ -841,6 +845,19 @@
     - [Rpc.Relation.Options.Request](#anytype-Rpc-Relation-Options-Request)
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
     - [Rpc.Relation.Options.Response.Error](#anytype-Rpc-Relation-Options-Response-Error)
+    - [Rpc.Space](#anytype-Rpc-Space)
+    - [Rpc.Space.Delete](#anytype-Rpc-Space-Delete)
+    - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
+    - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
+    - [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error)
+    - [Rpc.Space.Download](#anytype-Rpc-Space-Download)
+    - [Rpc.Space.Download.Request](#anytype-Rpc-Space-Download-Request)
+    - [Rpc.Space.Download.Response](#anytype-Rpc-Space-Download-Response)
+    - [Rpc.Space.Download.Response.Error](#anytype-Rpc-Space-Download-Response-Error)
+    - [Rpc.Space.Offload](#anytype-Rpc-Space-Offload)
+    - [Rpc.Space.Offload.Request](#anytype-Rpc-Space-Offload-Request)
+    - [Rpc.Space.Offload.Response](#anytype-Rpc-Space-Offload-Response)
+    - [Rpc.Space.Offload.Response.Error](#anytype-Rpc-Space-Offload-Response-Error)
     - [Rpc.Template](#anytype-Rpc-Template)
     - [Rpc.Template.Clone](#anytype-Rpc-Template-Clone)
     - [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request)
@@ -946,6 +963,7 @@
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
+    - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
     - [Rpc.App.GetVersion.Response.Error.Code](#anytype-Rpc-App-GetVersion-Response-Error-Code)
@@ -1137,6 +1155,9 @@
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
+    - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
+    - [Rpc.Space.Download.Response.Error.Code](#anytype-Rpc-Space-Download-Response-Error-Code)
+    - [Rpc.Space.Offload.Response.Error.Code](#anytype-Rpc-Space-Offload-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.CreateFromObjectType.Response.Error.Code](#anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code)
@@ -1505,12 +1526,16 @@
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
+| AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
 | AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | AccountConfigUpdate | [Rpc.Account.ConfigUpdate.Request](#anytype-Rpc-Account-ConfigUpdate-Request) | [Rpc.Account.ConfigUpdate.Response](#anytype-Rpc-Account-ConfigUpdate-Response) |  |
 | AccountRecoverFromLegacyExport | [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request) | [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response) |  |
+| SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
+| SpaceOffload | [Rpc.Space.Offload.Request](#anytype-Rpc-Space-Offload-Request) | [Rpc.Space.Offload.Response](#anytype-Rpc-Space-Offload-Response) |  |
+| SpaceDownload | [Rpc.Space.Download.Request](#anytype-Rpc-Space-Download-Request) | [Rpc.Space.Download.Response](#anytype-Rpc-Space-Download-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -2285,11 +2310,6 @@ Middleware-to-front-end response for an account creation request, that can conta
 
 
 
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| revert | [bool](#bool) |  |  |
-
-
 
 
 
@@ -2567,6 +2587,63 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion"></a>
+
+### Rpc.Account.RevertDeletion
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Request"></a>
+
+### Rpc.Account.RevertDeletion.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Response"></a>
+
+### Rpc.Account.RevertDeletion.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.RevertDeletion.Response.Error](#anytype-Rpc-Account-RevertDeletion-Response-Error) |  |  |
+| status | [model.Account.Status](#anytype-model-Account-Status) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Response-Error"></a>
+
+### Rpc.Account.RevertDeletion.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -13904,6 +13981,185 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space"></a>
+
+### Rpc.Space
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Delete"></a>
+
+### Rpc.Space.Delete
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Delete-Request"></a>
+
+### Rpc.Space.Delete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Delete-Response"></a>
+
+### Rpc.Space.Delete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error) |  |  |
+| timestamp | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Delete-Response-Error"></a>
+
+### Rpc.Space.Delete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Download"></a>
+
+### Rpc.Space.Download
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Download-Request"></a>
+
+### Rpc.Space.Download.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Download-Response"></a>
+
+### Rpc.Space.Download.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.Download.Response.Error](#anytype-Rpc-Space-Download-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Download-Response-Error"></a>
+
+### Rpc.Space.Download.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.Download.Response.Error.Code](#anytype-Rpc-Space-Download-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Offload"></a>
+
+### Rpc.Space.Offload
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Offload-Request"></a>
+
+### Rpc.Space.Offload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Offload-Response"></a>
+
+### Rpc.Space.Offload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.Offload.Response.Error](#anytype-Rpc-Space-Offload-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-Offload-Response-Error"></a>
+
+### Rpc.Space.Offload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.Offload.Response.Error.Code](#anytype-Rpc-Space-Offload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Template"></a>
 
 ### Rpc.Template
@@ -15330,11 +15586,10 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| NULL | 0 | No error; |
-| UNKNOWN_ERROR | 1 | Any other errors |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
-| ACCOUNT_IS_ACTIVE | 102 |  |
 
 
 
@@ -15396,6 +15651,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | DIFFERENT_ACCOUNT | 3 |  |
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Response-Error-Code"></a>
+
+### Rpc.Account.RevertDeletion.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error; |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_ACTIVE | 102 |  |
 
 
 
@@ -17925,6 +18194,43 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Space-Delete-Response-Error-Code"></a>
+
+### Rpc.Space.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| NO_SUCH_SPACE | 1 |  |
+| SPACE_IS_DELETED | 2 |  |
+
+
+
+<a name="anytype-Rpc-Space-Download-Response-Error-Code"></a>
+
+### Rpc.Space.Download.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| NO_SUCH_SPACE | 1 |  |
+
+
+
+<a name="anytype-Rpc-Space-Offload-Response-Error-Code"></a>
+
+### Rpc.Space.Offload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| NO_SUCH_SPACE | 1 |  |
 
 
 

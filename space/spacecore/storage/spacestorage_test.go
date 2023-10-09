@@ -75,7 +75,7 @@ func TestSpaceStorage_NewAndCreateTree(t *testing.T) {
 
 	fx.open(t)
 	defer fx.stop(t)
-	store, err = newSpaceStorage(fx.db, payload.SpaceHeaderWithId.Id)
+	store, err = newSpaceStorage(fx.db, payload.SpaceHeaderWithId.Id, nil)
 	require.NoError(t, err)
 	testSpace(t, store, payload)
 
