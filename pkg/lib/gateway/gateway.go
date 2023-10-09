@@ -267,7 +267,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	}
 	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get file by hash: %s", err)
+		return nil, nil, fmt.Errorf("get file by hash: %w", err)
 	}
 
 	reader, err := file.Reader(ctx)

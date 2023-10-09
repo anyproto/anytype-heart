@@ -122,7 +122,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	var exifData []byte
 	exifData, err = getExifData(r)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get exif data %s", err)
+		return nil, fmt.Errorf("failed to get exif data %w", err)
 	}
 
 	_, err = r.Seek(0, io.SeekStart)
@@ -136,7 +136,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	if exifData != nil {
 		orientation, err = getJpegOrientation(exifData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get jpeg orientation: %s", err)
+			return nil, fmt.Errorf("failed to get jpeg orientation: %w", err)
 		}
 		_, err = r.Seek(0, io.SeekStart)
 		if err != nil {
@@ -152,7 +152,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 
 		img = reverseOrientation(img, orientation)
 		if err != nil {
-			err = fmt.Errorf("failed to fix img orientation: %s", err)
+			err = fmt.Errorf("failed to fix img orientation: %w", err)
 			return nil, err
 		}
 		imgConfig.Width, imgConfig.Height = img.Bounds().Max.X, img.Bounds().Max.Y
@@ -376,7 +376,7 @@ func patchReaderRemoveExif(r io.ReadSeeker) (io.Reader, error) {
 	buff := bytes.NewBuffer(make([]byte, 0, size))
 	intfc, err := jmp.Parse(r, int(size))
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file to read exif: %s", err)
+		return nil, fmt.Errorf("failed to open file to read exif: %w", err)
 	}
 	sl := intfc.(*jpegstructure.SegmentList)
 

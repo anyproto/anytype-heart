@@ -172,7 +172,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 
 	if err = b.inject(ctx, spaceID, useCase, archive); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
-			fmt.Errorf("failed to import builtinObjects for Use Case %s: %s",
+			fmt.Errorf("failed to import builtinObjects for Use Case %s: %w",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
 	}
 
