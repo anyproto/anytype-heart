@@ -407,37 +407,25 @@ func (s *Service) InstallBundledObjects(
 		return nil, nil, fmt.Errorf("reinstall bundled objects: %w", err)
 	}
 
-	// todo: replace this func to the universal space to space copy
-	existingObjects, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIds),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceID),
-			},
-		},
-	})
-	var existingObjectMap = make(map[string]struct{})
-	for _, existingObject := range existingObjects {
-		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
+	existingObjectMap, err := s.listInstalledBundledObjects(spaceID, sourceObjectIds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list existing bundled objects: %w", err)
 	}
 
 	for _, sourceObjectId := range sourceObjectIds {
-		if _, ok := existingObjectMap[sourceObjectId]; ok {
-			continue
-		}
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
-			d, err := s.prepareDetailsForInstallingObject(ctx, spaceID, b.CombinedDetails())
+			bundledDetails := b.CombinedDetails()
+			rawUniqueKey := pbtypes.GetString(bundledDetails, bundle.RelationKeyUniqueKey.String())
+			if _, exists := existingObjectMap[rawUniqueKey]; exists {
+				return nil
+			}
+
+			d, err := s.prepareDetailsForInstallingObject(ctx, spaceID, bundledDetails)
 			if err != nil {
 				return err
 			}
 
-			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
+			uk, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 			if err != nil {
 				return err
 			}
@@ -489,13 +477,57 @@ func (s *Service) InstallBundledObjects(
 	return
 }
 
-func (s *Service) reinstallBundledObjects(spaceID string, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
+func (s *Service) listInstalledBundledObjects(spaceId string, bundledIds []string) (map[string]struct{}, error) {
+	rawUniqueKeys := convertBundledIdsToRawUniqueKeys(bundledIds)
+	existingObjects, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(rawUniqueKeys),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	existingObjectMap := make(map[string]struct{}, len(existingObjects))
+	for _, existingObject := range existingObjects {
+		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeyUniqueKey.String())] = struct{}{}
+	}
+	return existingObjectMap, nil
+}
+
+func convertBundledIdsToRawUniqueKeys(bundledIds []string) []string {
+	uniqueKeys := make([]string, 0, len(bundledIds))
+	for _, id := range bundledIds {
+		typeKey, err := bundle.TypeKeyFromUrl(id)
+		if err == nil {
+			uniqueKeys = append(uniqueKeys, domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, typeKey.String()).Marshal())
+			continue
+		}
+		relationKey, err := bundle.RelationKeyFromID(id)
+		if err == nil {
+			uniqueKeys = append(uniqueKeys, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, relationKey.String()).Marshal())
+			continue
+		}
+	}
+	return uniqueKeys
+}
+
+func (s *Service) reinstallBundledObjects(spaceID string, bundledIds []string) ([]string, []*types.Struct, error) {
+	rawUniqueKeys := convertBundledIdsToRawUniqueKeys(bundledIds)
 	uninstalledObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				RelationKey: bundle.RelationKeySourceObject.String(),
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(sourceObjectIDs),
+				Value:       pbtypes.StringList(rawUniqueKeys),
 			},
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
@@ -530,8 +562,8 @@ func (s *Service) reinstallBundledObjects(spaceID string, sourceObjectIDs []stri
 			return sb.Apply(st)
 		})
 		if err != nil {
-			sourceObjectID := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
-			return nil, nil, fmt.Errorf("reinstall object %s (source object: %s): %w", id, sourceObjectID, err)
+			rawUniqueKey := pbtypes.GetString(rec.Details, bundle.RelationKeyUniqueKey.String())
+			return nil, nil, fmt.Errorf("reinstall object %s (unique key: %s): %w", id, rawUniqueKey, err)
 		}
 
 	}
