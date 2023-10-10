@@ -37,13 +37,15 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Install patched gox
         run: |
-          mkdir -p $GOPATH/src/github.com/mitchellh
-          cd $GOPATH/src/github.com/mitchellh
-          git clone https://github.com/aslakhellesoy/gox
-          cd gox
-          git fetch
-          git checkout db6184738b77fbd5089e5fa1112177f391c91b24
-          go install github.com/mitchellh/gox
+          if [ ! -d "$GOPATH/src/github.com/mitchellh" ]; then
+            mkdir -p "$GOPATH/src/github.com/mitchellh"
+            cd "$GOPATH/src/github.com/mitchellh"
+            git clone https://github.com/aslakhellesoy/gox
+            cd gox
+            git fetch
+            git checkout db6184738b77fbd5089e5fa1112177f391c91b24
+            go install github.com/mitchellh/gox
+          fi
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
@@ -216,6 +218,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build_linux:
+    if: github.event_name == 'push'
     runs-on: ubuntu-22.04
     steps:
       - name: Install Go
