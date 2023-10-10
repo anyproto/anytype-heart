@@ -89,10 +89,9 @@ func (s *techSpace) wakeUpViews() {
 		}
 
 		s.mu.Lock()
-		spaceId := s.techCore.Id()
 		if _, err := s.objectCache.GetObject(s.ctx, domain.FullID{
 			ObjectID: id,
-			SpaceID:  spaceId,
+			SpaceID:  s.techCore.Id(),
 		}); err != nil {
 			log.Warn("wakeUp views: get object error", zap.String("objectId", id), zap.Error(err))
 		}

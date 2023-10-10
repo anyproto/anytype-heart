@@ -26,8 +26,8 @@ const CName = "client.space"
 var log = logger.NewNamed(CName)
 
 var (
-	ErrIncorrectSpaceID   = errors.New("incorrect space id")
-	ErrSpaceViewNotExists = errors.New("space view not exists")
+	ErrIncorrectSpaceID = errors.New("incorrect space id")
+	ErrSpaceNotExists   = errors.New("space not exists")
 )
 
 func New() SpaceService {
@@ -175,7 +175,7 @@ func (s *service) createPersonalSpace(ctx context.Context) (err error) {
 func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
 	err = s.startLoad(ctx, s.personalSpaceID)
 	// This could happen for old accounts
-	if errors.Is(err, ErrSpaceViewNotExists) {
+	if errors.Is(err, ErrSpaceNotExists) {
 		err = s.techSpace.SpaceViewCreate(ctx, s.personalSpaceID)
 		if err != nil {
 			return err
