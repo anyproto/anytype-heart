@@ -24,7 +24,7 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 		return
 	}
 	if !exists {
-		return ErrSpaceNotExists
+		return ErrSpaceViewNotExists
 	}
 
 	info := spaceinfo.SpaceInfo{
