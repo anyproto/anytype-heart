@@ -14,14 +14,13 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
-
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	files "github.com/anyproto/anytype-heart/core/files"
 	pb "github.com/anyproto/anytype-heart/pb"
 	mill "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockFileService is a mock of Service interface.
