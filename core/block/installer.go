@@ -10,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -99,6 +98,14 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	return details, nil
 }
 
+type createRequest struct {
+	details *types.Struct
+}
+
+func (r createRequest) GetDetails() *types.Struct {
+	return r.details
+}
+
 func (s *Service) InstallBundledObjects(
 	ctx context.Context,
 	spaceID string,
@@ -116,55 +123,39 @@ func (s *Service) InstallBundledObjects(
 
 	for _, sourceObjectId := range sourceObjectIds {
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
+			// CombinedDetails returns copy of details, so we can use it safely
 			bundledDetails := b.CombinedDetails()
 			rawUniqueKey := pbtypes.GetString(bundledDetails, bundle.RelationKeyUniqueKey.String())
+			uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
+			if err != nil {
+				return err
+			}
 			if _, exists := existingObjectMap[rawUniqueKey]; exists {
 				return nil
 			}
 
-			d, err := s.prepareDetailsForInstallingObject(ctx, spaceID, bundledDetails)
+			details, err := s.prepareDetailsForInstallingObject(ctx, spaceID, bundledDetails)
 			if err != nil {
 				return err
 			}
-
-			uk, err := domain.UnmarshalUniqueKey(rawUniqueKey)
-			if err != nil {
-				return err
-			}
-
-			// create via the state directly, because we have cyclic dependencies and we want to avoid typeId resolving from the details
-			st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
-			st.SetDetails(d)
 
 			var objectTypeKey domain.TypeKey
-			if uk.SmartblockType() == coresb.SmartBlockTypeRelation {
+			if uniqueKey.SmartblockType() == coresb.SmartBlockTypeRelation {
 				objectTypeKey = bundle.TypeKeyRelation
-			} else if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
+			} else if uniqueKey.SmartblockType() == coresb.SmartBlockTypeObjectType {
 				objectTypeKey = bundle.TypeKeyObjectType
 			} else {
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
-			id, object, err := s.objectCreator.CreateSmartBlockFromState(
-				ctx,
-				spaceID,
-				uk.SmartblockType(),
-				[]domain.TypeKey{objectTypeKey},
-				nil,
-				st,
-			)
+			req := createRequest{
+				details: details,
+			}
+			id, object, err := s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
 			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				// we don't want to stop adding other objects
 				log.Errorf("error while block create: %v", err)
 				return nil
-			}
-
-			if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
-				installingObjectTypeKey := domain.TypeKey(uk.InternalKey())
-				err = s.installTemplatesForObjectType(spaceID, installingObjectTypeKey)
-				if err != nil {
-					log.With("spaceID", spaceID, "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
-				}
 			}
 
 			ids = append(ids, id)
@@ -271,83 +262,4 @@ func (s *Service) reinstallBundledObjects(spaceID string, bundledIds []string) (
 	}
 
 	return ids, objects, nil
-}
-
-func (s *Service) installTemplatesForObjectType(spaceID string, typeKey domain.TypeKey) error {
-	bundledTemplates, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeKey.BundledURL()),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("query bundled templates: %w", err)
-	}
-
-	installedTemplatesIDs, err := s.listInstalledTemplatesForType(spaceID, typeKey)
-	if err != nil {
-		return fmt.Errorf("list installed templates: %w", err)
-	}
-
-	for _, record := range bundledTemplates {
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-		if _, exists := installedTemplatesIDs[id]; exists {
-			continue
-		}
-
-		_, err := s.TemplateClone(spaceID, id)
-		if err != nil {
-			return fmt.Errorf("clone template: %w", err)
-		}
-	}
-	return nil
-}
-
-func (s *Service) listInstalledTemplatesForType(spaceID string, typeKey domain.TypeKey) (map[string]struct{}, error) {
-	templateTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("get template type id by key: %w", err)
-	}
-	targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, typeKey)
-	if err != nil {
-		return nil, fmt.Errorf("get type id by key: %w", err)
-	}
-	alreadyInstalledTemplates, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeID),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(targetObjectTypeID),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceID),
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
-	}
-	existingTemplatesMap := map[string]struct{}{}
-	for _, rec := range alreadyInstalledTemplates {
-		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
-		if sourceObject != "" {
-			existingTemplatesMap[sourceObject] = struct{}{}
-		}
-	}
-	return existingTemplatesMap, nil
 }

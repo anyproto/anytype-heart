@@ -3,7 +3,6 @@ package importer
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -16,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -155,15 +153,6 @@ func (ou *ObjectIDGetter) getObjectByOldAnytypeID(spaceID string, sn *converter.
 	}
 
 	return "", err
-}
-
-func (ou *ObjectIDGetter) getIDBySourceObject(sn *converter.Snapshot) string {
-	so := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeySourceObject.String())
-	if strings.HasPrefix(so, addr.BundledObjectTypeURLPrefix) ||
-		strings.HasPrefix(so, addr.BundledRelationURLPrefix) {
-		return sn.Id
-	}
-	return ""
 }
 
 func (ou *ObjectIDGetter) getExistingObject(spaceID string, sn *converter.Snapshot) string {

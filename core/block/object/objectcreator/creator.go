@@ -244,7 +244,7 @@ func (c *Creator) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCre
 	return c.bookmark.CreateBookmarkObject(ctx, req.SpaceId, req.Details, res)
 }
 
-func (w *Creator) createRelation(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
+func (c *Creator) createRelation(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create relation: no data")
 	}
@@ -287,10 +287,10 @@ func (w *Creator) createRelation(ctx context.Context, spaceID string, details *t
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []domain.TypeKey{bundle.TypeKeyRelation}, nil, createState)
+	return c.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelation, []domain.TypeKey{bundle.TypeKeyRelation}, nil, createState)
 }
 
-func (w *Creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
+func (c *Creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create option: no data")
 	}
@@ -314,10 +314,10 @@ func (w *Creator) createRelationOption(ctx context.Context, spaceID string, deta
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelationOption, []domain.TypeKey{bundle.TypeKeyRelationOption}, nil, createState)
+	return c.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeRelationOption, []domain.TypeKey{bundle.TypeKeyRelationOption}, nil, createState)
 }
 
-func (w *Creator) createObjectType(ctx context.Context, spaceID string, details *types.Struct) (id string, newDetails *types.Struct, err error) {
+func (c *Creator) createObjectType(ctx context.Context, spaceID string, details *types.Struct) (id string, newDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
@@ -327,7 +327,6 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
-	key := uniqueKey.InternalKey()
 
 	object := pbtypes.CopyStruct(details)
 	rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
@@ -346,7 +345,7 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
 		}
-		id, err := w.objectCache.DeriveObjectID(ctx, spaceID, uk)
+		id, err := c.objectCache.DeriveObjectID(ctx, spaceID, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}
@@ -360,7 +359,24 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	if details.GetFields() == nil {
 		details.Fields = map[string]*types.Value{}
 	}
-	bundledTemplates, _, err := w.objectStore.Query(database.Query{
+
+	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
+	createState.SetDetails(object)
+	id, newDetails, err = c.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, []domain.TypeKey{bundle.TypeKeyObjectType}, nil, createState)
+	if err != nil {
+		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
+	}
+
+	installingObjectTypeKey := domain.TypeKey(uniqueKey.InternalKey())
+	err = c.installTemplatesForObjectType(spaceID, installingObjectTypeKey)
+	if err != nil {
+		log.With("spaceID", spaceID, "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
+	}
+	return id, newDetails, nil
+}
+
+func (c *Creator) installTemplatesForObjectType(spaceID string, typeKey domain.TypeKey) error {
+	bundledTemplates, _, err := c.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
@@ -370,58 +386,72 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix + key),
+				Value:       pbtypes.String(typeKey.BundledURL()),
 			},
 		},
 	})
 	if err != nil {
-		return "", nil, fmt.Errorf("query bundled templates: %w", err)
+		return fmt.Errorf("query bundled templates: %w", err)
 	}
 
-	alreadyInstalledTemplates, _, err := w.objectStore.Query(database.Query{
+	installedTemplatesIDs, err := c.listInstalledTemplatesForType(spaceID, typeKey)
+	if err != nil {
+		return fmt.Errorf("list installed templates: %w", err)
+	}
+
+	for _, record := range bundledTemplates {
+		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		if _, exists := installedTemplatesIDs[id]; exists {
+			continue
+		}
+
+		_, err := c.blockService.TemplateClone(spaceID, id)
+		if err != nil {
+			return fmt.Errorf("clone template: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *Creator) listInstalledTemplatesForType(spaceID string, typeKey domain.TypeKey) (map[string]struct{}, error) {
+	templateTypeID, err := c.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("get template type id by key: %w", err)
+	}
+	targetObjectTypeID, err := c.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, typeKey)
+	if err != nil {
+		return nil, fmt.Errorf("get type id by key: %w", err)
+	}
+	alreadyInstalledTemplates, _, err := c.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(w.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyTemplate)),
+				Value:       pbtypes.String(templateTypeID),
 			},
 			{
 				RelationKey: bundle.RelationKeyTargetObjectType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       object.Fields[bundle.RelationKeyType.String()],
+				Value:       pbtypes.String(targetObjectTypeID),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceID),
 			},
 		},
 	})
 	if err != nil {
-		return
+		return nil, fmt.Errorf("query: %w", err)
 	}
-
-	var existingTemplatesMap = map[string]struct{}{}
+	existingTemplatesMap := map[string]struct{}{}
 	for _, rec := range alreadyInstalledTemplates {
 		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
 		if sourceObject != "" {
 			existingTemplatesMap[sourceObject] = struct{}{}
 		}
 	}
-
-	go func() {
-		// todo: remove this dirty hack to avoid lock
-		for _, record := range bundledTemplates {
-			id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-			if _, exists := existingTemplatesMap[id]; exists {
-				continue
-			}
-
-			_, err := w.blockService.TemplateClone(spaceID, id)
-			if err != nil {
-				log.Errorf("failed to clone template %s: %s", id, err.Error())
-			}
-		}
-	}()
-
-	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
-	createState.SetDetails(object)
-	return w.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeObjectType, []domain.TypeKey{bundle.TypeKeyObjectType}, nil, createState)
+	return existingTemplatesMap, nil
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct) (domain.UniqueKey, error) {
