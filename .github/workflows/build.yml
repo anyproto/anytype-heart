@@ -106,6 +106,7 @@ jobs:
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
+        if: github.event.inputs.alpha_version == ''
       - name: Make JS protos
         run: |
           make protos-js
