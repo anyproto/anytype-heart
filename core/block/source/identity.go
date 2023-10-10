@@ -88,23 +88,31 @@ func (v *identity) addRelationLinks(details *types.Struct, st *state.State) erro
 }
 
 func (v *identity) getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Struct {
-	name := pbtypes.Get(details, bundle.RelationKeyName.String())
-	image := pbtypes.Get(details, bundle.RelationKeyIconImage.String())
-	iconOption := pbtypes.Get(details, bundle.RelationKeyIconOption.String())
-	profileId := pbtypes.Get(details, bundle.RelationKeyId.String())
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():                name,
-		bundle.RelationKeyIconImage.String():           image,
-		bundle.RelationKeyIconOption.String():          iconOption,
+	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	image := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
+	profileId := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	d := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():                pbtypes.String(name),
 		bundle.RelationKeyId.String():                  pbtypes.String(id),
 		bundle.RelationKeyIsReadonly.String():          pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String():          pbtypes.Bool(false),
 		bundle.RelationKeyIsHidden.String():            pbtypes.Bool(false),
 		bundle.RelationKeySpaceId.String():             pbtypes.String(spaceId),
 		bundle.RelationKeyType.String():                pbtypes.String(bundle.TypeKeyObjectType.BundledURL()), // todo: we dont
-		bundle.RelationKeyIdentityProfileLink.String(): profileId,
+		bundle.RelationKeyIdentityProfileLink.String(): pbtypes.String(profileId),
 		bundle.RelationKeyLayout.String():              pbtypes.Float64(float64(model.ObjectType_profile)),
 	}}
+
+	if image != "" {
+		d.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(image)
+	}
+
+	iconOption := pbtypes.Get(details, bundle.RelationKeyIconOption.String())
+	if iconOption != nil {
+		d.Fields[bundle.RelationKeyIconOption.String()] = iconOption
+	}
+
+	return d
 }
 
 func (v *identity) init(ctx context.Context) error {
@@ -173,6 +181,11 @@ func (v *identity) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty b
 	s.Add(profileLinkRel)
 	if len(records) > 0 {
 		details := v.getDetailsFromProfile(v.id, techSpaceId, records[0].Details)
+		for k, v := range details.Fields {
+			if v == nil {
+				panic(fmt.Sprintf("field %s is nil", k))
+			}
+		}
 		s.SetDetails(details)
 		err = v.addRelationLinks(details, s)
 		if err != nil {
