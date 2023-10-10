@@ -223,7 +223,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.objectStore,
 			f.anytype,
 			f.systemObjectService,
-			f.sourceService,
+			f.spaceService,
 			f.detailsModifier,
 			f.sbtProvider,
 			f.layoutConverter,
