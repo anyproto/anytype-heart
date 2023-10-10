@@ -173,9 +173,22 @@ func (s *service) createPersonalSpace(ctx context.Context) (err error) {
 }
 
 func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
-	if err = s.startLoad(ctx, s.personalSpaceID); err != nil {
+	err = s.startLoad(ctx, s.personalSpaceID)
+	// This could happen for old accounts
+	if errors.Is(err, ErrSpaceNotExists) {
+		err = s.techSpace.SpaceViewCreate(ctx, s.personalSpaceID)
+		if err != nil {
+			return err
+		}
+		err = s.startLoad(ctx, s.personalSpaceID)
+		if err != nil {
+			return err
+		}
+	}
+	if err != nil {
 		return
 	}
+
 	_, err = s.waitLoad(ctx, s.personalSpaceID)
 	return err
 }
