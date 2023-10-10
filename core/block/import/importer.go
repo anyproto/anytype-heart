@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -390,7 +390,7 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(errors.Wrap(converter.ErrCancel, err.Error()))
+			allErrors.Add(fmt.Errorf("%w: %w", converter.ErrCancel, err))
 			pool.Stop()
 			return nil
 		}

@@ -2,6 +2,7 @@ package pb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/exp/rand"
 

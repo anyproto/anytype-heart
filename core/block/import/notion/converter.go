@@ -64,7 +64,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 		// always add this error because it's mean that we need to return error to user, even in case IGNORE_ERRORS is turned on
 		// see shouldReturnError
 		ce.Add(converter.ErrFailedToReceiveListOfObjects)
-		log.With("err", ce.Error()).With("pages", len(pages)).With("dbs", len(db)).Error("import from notion failed")
+		log.With("error", ce.Error()).With("pages", len(pages)).With("dbs", len(db)).Error("import from notion failed")
 		return nil, ce
 	}
 	log.With("pages", len(pages)).With("dbs", len(db)).Warnf("import from notion started")
@@ -81,7 +81,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	notionImportContext := api.NewNotionImportContext()
 	dbSnapshots, relations, dbErr := n.dbService.GetDatabase(context.TODO(), req.Mode, db, progress, notionImportContext)
 	if dbErr != nil {
-		log.With("err", dbErr).Warnf("import from notion db failed")
+		log.With("error", dbErr).Warnf("import from notion db failed")
 		ce.Merge(dbErr)
 	}
 	if ce.ShouldAbortImport(0, req.Type) {
@@ -90,7 +90,7 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 
 	pgSnapshots, pgErr := n.pgService.GetPages(ctx, apiKey, req.Mode, pages, notionImportContext, relations, progress)
 	if pgErr != nil {
-		log.With("err", pgErr).Warnf("import from notion pages failed")
+		log.With("error", pgErr).Warnf("import from notion pages failed")
 		ce.Merge(pgErr)
 	}
 	if ce.ShouldAbortImport(0, req.Type) {
