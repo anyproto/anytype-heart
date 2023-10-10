@@ -35,6 +35,7 @@ type ClientStorage interface {
 	AllSpaceIds() (ids []string, err error)
 	GetSpaceID(objectID string) (spaceID string, err error)
 	BindSpaceID(spaceID, objectID string) (err error)
+	DeleteSpaceStorage(ctx context.Context, spaceId string) error
 }
 
 func New() ClientStorage {
@@ -74,6 +75,16 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store
 		}
 	}
 	return
+}
+
+func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
+	err := s.waitLock(ctx, spaceId, func() error {
+		return s.deleteSpace(spaceId)
+	})
+	if err == nil {
+		s.unlockSpaceStorage(spaceId)
+	}
+	return err
 }
 
 func (s *storageService) SpaceExists(id string) bool {
@@ -158,16 +169,6 @@ func (s *storageService) waitLock(ctx context.Context, id string, action func() 
 		}
 	}
 	return
-}
-
-func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
-	err := s.waitLock(ctx, spaceId, func() error {
-		return s.deleteSpace(spaceId)
-	})
-	if err == nil {
-		s.unlockSpaceStorage(spaceId)
-	}
-	return err
 }
 
 func (s *storageService) deleteSpace(spaceId string) (err error) {

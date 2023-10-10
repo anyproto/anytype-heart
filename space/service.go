@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -56,12 +57,8 @@ type isNewAccount interface {
 type SpaceService interface {
 	Create(ctx context.Context) (space Space, err error)
 	Get(ctx context.Context, id string) (space Space, err error)
-	// Delete should change status on coordinator and change status on tech space
 	Delete(ctx context.Context, id string) (delStatus DeletionStatus, err error)
-	// RevertDeletion should change status on coordinator and change status on tech space
 	RevertDeletion(ctx context.Context, id string) (err error)
-	// Offload should clear the storage from details of space
-	// also we should provide for Offload upper method in middleware to clean up files (?)
 	Offload(ctx context.Context, id string) (err error)
 	Download(ctx context.Context, id string) (err error)
 	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
@@ -70,19 +67,21 @@ type SpaceService interface {
 }
 
 type service struct {
-	indexer     spaceIndexer
-	spaceCore   spacecore.SpaceCoreService
-	provider    objectprovider.ObjectProvider
-	objectCache objectcache.Cache
-	techSpace   techspace.TechSpace
+	indexer        spaceIndexer
+	spaceCore      spacecore.SpaceCoreService
+	provider       objectprovider.ObjectProvider
+	objectCache    objectcache.Cache
+	techSpace      techspace.TechSpace
+	storageService storage.ClientStorage
 
 	personalSpaceID string
 
 	newAccount bool
 
-	statuses map[string]spaceinfo.SpaceInfo
-	loading  map[string]*loadingSpace
-	loaded   map[string]Space
+	statuses   map[string]spaceinfo.SpaceInfo
+	loading    map[string]*loadingSpace
+	loaded     map[string]Space
+	offloading map[string]*offloadingSpace
 
 	mu sync.Mutex
 
@@ -102,9 +101,12 @@ func (s *service) Init(a *app.App) (err error) {
 	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.techSpace = app.MustComponent[techspace.TechSpace](a)
+	s.storageService = app.MustComponent[storage.ClientStorage](a)
 
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
+	s.offloading = map[string]*offloadingSpace{}
+
 	s.loaded = map[string]Space{}
 
 	s.derivedIDsCache = ocache.New(s.loadDerivedIDs)
@@ -176,7 +178,20 @@ func (s *service) RevertDeletion(ctx context.Context, id string) (err error) {
 }
 
 func (s *service) Offload(ctx context.Context, id string) (err error) {
-
+	// TODO: move to offloading space
+	sp, err := s.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	err = sp.Close()
+	if err != nil {
+		return
+	}
+	err = s.storageService.DeleteSpaceStorage(ctx, id)
+	if err != nil {
+		return
+	}
+	return s.indexer.RemoveIndexes(id)
 }
 
 func (s *service) Download(ctx context.Context, id string) (err error) {
@@ -193,7 +208,6 @@ func (s *service) Create(ctx context.Context) (Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
-	// problem start loading in case we just randomly get it from somewhere
 	if err = s.startLoad(ctx, spaceID); err != nil {
 		return nil, err
 	}
@@ -241,9 +255,6 @@ func (s *service) IsPersonal(id string) bool {
 }
 
 func (s *service) OnViewCreated(spaceID string) {
-	// 1. check current status, so put more stuff into onviewcreated
-	// 2. on the basis of this status decide if we want to do anything with the space
-	// [3. if it is a personal spaceID then we should try to delete all the spaces on the infra(?)]
 	go func() {
 		if err := s.startLoad(s.ctx, spaceID); err != nil {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))

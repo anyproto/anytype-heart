@@ -5,10 +5,11 @@ import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 type LocalStatus int
 
 const (
-	LocalStatusUnknown = LocalStatus(model.SpaceStatus_Unknown)
-	LocalStatusLoading = LocalStatus(model.SpaceStatus_Loading)
-	LocalStatusOk      = LocalStatus(model.SpaceStatus_Ok)
-	LocalStatusMissing = LocalStatus(model.SpaceStatus_Missing)
+	LocalStatusUnknown   = LocalStatus(model.SpaceStatus_Unknown)
+	LocalStatusLoading   = LocalStatus(model.SpaceStatus_Loading)
+	LocalStatusOk        = LocalStatus(model.SpaceStatus_Ok)
+	LocalStatusMissing   = LocalStatus(model.SpaceStatus_Missing)
+	LocalStatusOffloaded = LocalStatus(model.SpaceStatus_Offloaded)
 )
 
 type RemoteStatus int
