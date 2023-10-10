@@ -302,15 +302,31 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 	}
 
 	if snapshot.SbType == model.SmartBlockType_SubObject {
+		details := snapshot.Snapshot.Data.Details
+		originalId := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		var sourceObjectId string
 		// migrate old sub objects into real objects
-		if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_objectType.String() {
+		if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyObjectType.URL() {
 			snapshot.SbType = model.SmartBlockType_STType
-		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relation.String() {
+			typeKey, err := bundle.TypeKeyFromUrl(originalId)
+			if err == nil {
+				sourceObjectId = typeKey.BundledURL()
+			}
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelation.URL() {
 			snapshot.SbType = model.SmartBlockType_STRelation
-		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relationOption.String() {
-			snapshot.SbType = model.SmartBlockType_Page
+			relationKey, err := bundle.RelationKeyFromID(originalId)
+			if err == nil {
+				sourceObjectId = relationKey.BundledURL()
+			}
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelationOption.URL() {
+			snapshot.SbType = model.SmartBlockType_STRelationOption
 		} else {
 			return "", fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
+		}
+		if sourceObjectId != "" {
+			if pbtypes.GetString(details, bundle.RelationKeySourceObject.String()) == "" {
+				details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
+			}
 		}
 	}
 
