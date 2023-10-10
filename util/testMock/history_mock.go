@@ -11,9 +11,8 @@ package testMock
 import (
 	reflect "reflect"
 
-	gomock "go.uber.org/mock/gomock"
-
 	undo "github.com/anyproto/anytype-heart/core/block/undo"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockHistory is a mock of History interface.
