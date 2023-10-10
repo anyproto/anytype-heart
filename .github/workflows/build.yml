@@ -43,15 +43,14 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Install patched gox
         run: |
-          if [ ! -d "$GOPATH/src/github.com/mitchellh" ]; then
-            mkdir -p "$GOPATH/src/github.com/mitchellh"
-            cd "$GOPATH/src/github.com/mitchellh"
-            git clone https://github.com/aslakhellesoy/gox
-            cd gox
-            git fetch
-            git checkout db6184738b77fbd5089e5fa1112177f391c91b24
-            go install github.com/mitchellh/gox
-          fi
+          mkdir -p "$GOPATH/src/github.com/mitchellh"
+          cd "$GOPATH/src/github.com/mitchellh"
+          git clone https://github.com/aslakhellesoy/gox
+          cd gox
+          git fetch
+          git checkout db6184738b77fbd5089e5fa1112177f391c91b24
+          go install github.com/mitchellh/gox
+        if: github.event.inputs.run-on-runner != "self-hosted"
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
@@ -61,6 +60,7 @@ jobs:
           brew tap filosottile/musl-cross
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
+        if: github.event.inputs.run-on-runner != "self-hosted"
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
