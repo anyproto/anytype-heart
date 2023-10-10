@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: validate agent
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && ("${{ github.event.inputs.run-on-runner }}" != "self-hosted" || "${{ github.event.inputs.alpha_version }}" == "") ]]; then
             echo "Invalid runner"
             exit 1
           fi
@@ -114,6 +114,7 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+        if: github.event.inputs.alpha_version == ''
       - name: Add system relations/types jsons
         run: |
           mkdir -p json/
@@ -129,6 +130,7 @@ jobs:
             protobuf
           if-no-files-found: error
           retention-days: 1
+        if: github.event.inputs.alpha_version == ''
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
@@ -139,6 +141,7 @@ jobs:
           zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
+        if: github.event.inputs.alpha_version == ''
       - name: Pack server unix
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
@@ -149,6 +152,7 @@ jobs:
           tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
+        if: github.event.inputs.alpha_version == ''
       - name: Make swift protos
         run: |
           mkdir -p .release
