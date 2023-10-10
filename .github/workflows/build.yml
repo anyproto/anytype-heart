@@ -82,6 +82,7 @@ jobs:
             VERSION=${GITHUB_REF##*/}
           fi
           echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
@@ -179,7 +180,6 @@ jobs:
           make test-deps
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
           gtar --exclude ".*" -czvf ios_framework.tar.gz Lib.xcframework protobuf json
-          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           gradle publish
           mv ios_framework.tar.gz .release/ios_framework_${VERSION}.tar.gz
         env:
