@@ -2,15 +2,17 @@ package anonymize
 
 import (
 	"bytes"
-	"github.com/anyproto/anytype-heart/util/text"
 	"math/rand"
 	"unicode"
 
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
+	"github.com/anyproto/anytype-heart/util/text"
 )
 
 func Change(ch *pb.Change) (res *pb.Change) {
@@ -23,7 +25,7 @@ func Change(ch *pb.Change) (res *pb.Change) {
 			b.Content = Block(b).Content
 		}
 		for _, er := range sh.Data.ExtraRelations {
-			if _, err := bundle.GetRelation(bundle.RelationKey(er.Key)); err != nil {
+			if _, err := bundle.GetRelation(domain.RelationKey(er.Key)); err != nil {
 				er.Name = Text(er.Name)
 				er.Description = Text(er.Description)
 			}
@@ -185,7 +187,7 @@ func StructValue(in *types.Value) (res *types.Value) {
 
 func Relation(r *model.Relation) (res *model.Relation) {
 	res = pbtypes.CopyRelation(r)
-	if _, err := bundle.GetRelation(bundle.RelationKey(res.Key)); err != nil {
+	if _, err := bundle.GetRelation(domain.RelationKey(res.Key)); err != nil {
 		res.Name = Text(res.Name)
 		res.Description = Text(res.Description)
 		for _, so := range res.SelectDict {

@@ -2,6 +2,9 @@ package link
 
 import (
 	"fmt"
+
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pb"
@@ -10,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/text"
-	"github.com/gogo/protobuf/types"
 )
 
 func init() {
@@ -108,6 +110,13 @@ func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetLink{BlockSetLink: changes}}})
+	}
+	return
+}
+
+func (l *Link) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if l.content.TargetBlockId != "" {
+		l.content.TargetBlockId = replacer(l.content.TargetBlockId)
 	}
 	return
 }

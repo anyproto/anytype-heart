@@ -1,15 +1,15 @@
 package database
 
 import (
-	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
+	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 

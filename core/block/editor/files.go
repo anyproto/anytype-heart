@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -42,7 +43,7 @@ func detectFileType(mime string) model.BlockContentFileType {
 	return model.BlockContentFile_File
 }
 
-func (p *Files) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) error {
+func (p *Files) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) error {
 	st := p.NewStateCtx(ctx)
 	det := pbtypes.CopyStruct(st.Details())
 	for _, d := range details {
@@ -55,7 +56,7 @@ func (p *Files) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetai
 }
 
 func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.Source.Type() != model.SmartBlockType_File {
+	if ctx.Source.Type() != coresb.SmartBlockTypeFile {
 		return fmt.Errorf("source type should be a file")
 	}
 
@@ -171,7 +172,6 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyFile.URL()}, model.ObjectType_file),
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,

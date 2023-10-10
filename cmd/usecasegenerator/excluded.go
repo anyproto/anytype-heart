@@ -1,12 +1,13 @@
 package main
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
+	_ "embed"
 )
 
 //go:embed excluded.json

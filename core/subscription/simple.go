@@ -1,8 +1,9 @@
 package subscription
 
 import (
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub {

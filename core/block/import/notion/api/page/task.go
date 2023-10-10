@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -104,7 +103,7 @@ func (pt *Task) provideSnapshot(notionBlocks []*model.Block, details map[string]
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:        notionBlocks,
 		Details:       &types.Struct{Fields: details},
-		ObjectTypes:   []string{bundle.TypeKeyPage.URL()},
+		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
 		RelationLinks: relationLinks,
 	}
 	return snapshot
@@ -203,7 +202,7 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 	details := pt.getRelationDetails(key, name, propObject)
 	rel := &model.SmartBlockSnapshotBase{
 		Details:     details,
-		ObjectTypes: []string{bundle.TypeKeyRelation.URL()},
+		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
 	}
 	return rel, key
 }
@@ -225,7 +224,6 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyRelationFormat.String()] = pbtypes.Float64(float64(propObject.GetFormat()))
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(addr.RelationKeyToIdPrefix + key)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
@@ -455,7 +453,7 @@ func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *mod
 	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
 	optSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     details,
-		ObjectTypes: []string{bundle.TypeKeyRelationOption.URL()},
+		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
 	}
 	return details, optSnapshot
 }

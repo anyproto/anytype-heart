@@ -2,25 +2,29 @@ package basic
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/testMock"
-	"go.uber.org/mock/gomock"
 	"testing"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
 type testExtractObjects struct {
@@ -31,7 +35,7 @@ func (t testExtractObjects) Add(object *smarttest.SmartTest) {
 	t.objects[object.Id()] = object
 }
 
-func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, _ []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	id = bson.NewObjectId().Hex()
 	object := smarttest.New(id)
 	t.objects[id] = object
@@ -41,8 +45,6 @@ func (t testExtractObjects) CreateSmartBlockFromState(ctx context.Context, sbTyp
 
 	return id, nil, nil
 }
-
-func (t testExtractObjects) InjectWorkspaceID(details *types.Struct, objectID string) {}
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
 	got := slice.Difference(a, b)
@@ -185,12 +187,12 @@ func TestExtractObjects(t *testing.T) {
 			ts.Add(sb)
 
 			req := pb.RpcBlockListConvertToObjectsRequest{
-				ContextId:  "test",
-				BlockIds:   tc.blockIds,
-				ObjectType: bundle.TypeKeyNote.URL(),
+				ContextId:           "test",
+				BlockIds:            tc.blockIds,
+				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, nil, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, fixture.systemObjectService, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string
@@ -211,36 +213,45 @@ func TestExtractObjects(t *testing.T) {
 	}
 
 	t.Run("do not add relation name - when creating note", func(t *testing.T) {
-		fields := createTargetObjectDetails("whatever type", "whatever name", model.ObjectType_note).Fields
+		fields := createTargetObjectDetails("whatever name", model.ObjectType_note).Fields
 
 		assert.NotContains(t, fields, bundle.RelationKeyName.String())
 	})
 
 	t.Run("add relation name - when creating not note", func(t *testing.T) {
-		fields := createTargetObjectDetails("whatever type", "whatever name", model.ObjectType_basic).Fields
+		fields := createTargetObjectDetails("whatever name", model.ObjectType_basic).Fields
 
 		assert.Contains(t, fields, bundle.RelationKeyName.String())
 	})
 }
 
 type fixture struct {
-	t     *testing.T
-	ctrl  *gomock.Controller
-	store *testMock.MockObjectStore
+	t                   *testing.T
+	ctrl                *gomock.Controller
+	store               *testMock.MockObjectStore
+	systemObjectService *mock_system_object.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().
-		GetObjectType(gomock.Any()).
-		AnyTimes().
-		Return(&model.ObjectType{Layout: model.ObjectType_basic}, nil)
+
+	objectTypeDetails := &model.ObjectDetails{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyLayout.String(): pbtypes.String(model.ObjectType_basic.String()),
+			},
+		},
+	}
+
+	systemObjectService := mock_system_object.NewMockService(t)
+	systemObjectService.EXPECT().GetObjectByUniqueKey(mock.Anything, mock.Anything).Return(objectTypeDetails, nil).Maybe()
 
 	return &fixture{
-		t:     t,
-		ctrl:  ctrl,
-		store: objectStore,
+		t:                   t,
+		ctrl:                ctrl,
+		store:               objectStore,
+		systemObjectService: systemObjectService,
 	}
 }
 

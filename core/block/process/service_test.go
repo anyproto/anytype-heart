@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/app/testapp"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func TestService_Add(t *testing.T) {
 	var events = make(chan *pb.Event, 20)
-	s := NewTest(func(e *pb.Event) {
+	s := NewTest(t, func(e *pb.Event) {
 		events <- e
 	})
 
@@ -37,7 +39,7 @@ func TestService_Add(t *testing.T) {
 
 func TestService_Cancel(t *testing.T) {
 	var events = make(chan *pb.Event, 20)
-	s := NewTest(func(e *pb.Event) {
+	s := NewTest(t, func(e *pb.Event) {
 		events <- e
 	})
 
@@ -88,12 +90,19 @@ func (t *testProcess) Done() chan struct{} {
 	return t.done
 }
 
-func NewTest(se func(e *pb.Event)) Service {
+func NewTest(t *testing.T, broadcast func(e *pb.Event)) Service {
 	s := New()
 	a := new(app.App)
-	a.Register(&testapp.EventSender{
-		F: se,
-	}).Register(s)
+	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Name().Return("")
+	sender.EXPECT().Init(mock.Anything).Return(nil)
+	if broadcast == nil {
+		broadcast = func(e *pb.Event) {
+			t.Log(e)
+		}
+	}
+	sender.EXPECT().Broadcast(mock.Anything).Run(broadcast).Maybe()
+	a.Register(sender).Register(s)
 	a.Start(context.Background())
 	return s
 }

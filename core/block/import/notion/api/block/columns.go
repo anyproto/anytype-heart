@@ -3,9 +3,8 @@ package block
 import (
 	"strings"
 
-	"github.com/samber/lo"
-
 	"github.com/globalsign/mgo/bson"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/simple"

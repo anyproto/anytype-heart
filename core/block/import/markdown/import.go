@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"context"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -60,7 +61,7 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	paths := m.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
@@ -391,7 +392,7 @@ func (m *Markdown) createSnapshots(files map[string]*FileInfo,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 				Blocks:      file.ParsedBlocks,
 				Details:     details[name],
-				ObjectTypes: []string{bundle.TypeKeyPage.URL()},
+				ObjectTypes: []string{bundle.TypeKeyPage.String()},
 			}},
 		})
 	}

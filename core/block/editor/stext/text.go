@@ -13,6 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -27,23 +29,25 @@ const textSizeLimit = 64 * 1024
 var setTextApplyInterval = time.Second * 3
 
 type Text interface {
-	UpdateTextBlocks(ctx *session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
-	Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
-	Merge(ctx *session.Context, firstId, secondId string) (err error)
-	SetMark(ctx *session.Context, mark *model.BlockContentTextMark, blockIds ...string) error
-	SetIcon(ctx *session.Context, image, emoji string, blockIds ...string) error
-	SetText(ctx *session.Context, req pb.RpcBlockTextSetTextRequest) (err error)
-	TurnInto(ctx *session.Context, style model.BlockContentTextStyle, ids ...string) error
+	UpdateTextBlocks(ctx session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
+	Split(ctx session.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
+	Merge(ctx session.Context, firstId, secondId string) (err error)
+	SetMark(ctx session.Context, mark *model.BlockContentTextMark, blockIds ...string) error
+	SetIcon(ctx session.Context, image, emoji string, blockIds ...string) error
+	SetText(ctx session.Context, req pb.RpcBlockTextSetTextRequest) (err error)
+	TurnInto(ctx session.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
 func NewText(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
+	eventSender event.Sender,
 ) Text {
 	t := &textImpl{
 		SmartBlock:     sb,
 		objectStore:    objectStore,
 		setTextFlushed: make(chan struct{}),
+		eventSender:    eventSender,
 	}
 
 	t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose, smartblock.HookOnBlockClose)
@@ -55,13 +59,14 @@ var log = logging.Logger("anytype-mw-smartblock")
 type textImpl struct {
 	smartblock.SmartBlock
 	objectStore objectstore.ObjectStore
+	eventSender event.Sender
 
 	lastSetTextId    string
 	lastSetTextState *state.State
 	setTextFlushed   chan struct{}
 }
 
-func (t *textImpl) UpdateTextBlocks(ctx *session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error {
+func (t *textImpl) UpdateTextBlocks(ctx session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error {
 	s := t.NewStateCtx(ctx)
 	for _, id := range ids {
 		tb, err := getText(s, id)
@@ -78,7 +83,7 @@ func (t *textImpl) UpdateTextBlocks(ctx *session.Context, ids []string, showEven
 	return t.Apply(s, smartblock.NoEvent)
 }
 
-func (t *textImpl) Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
+func (t *textImpl) Split(ctx session.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
 	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, req.BlockId)
@@ -165,7 +170,7 @@ func (t *textImpl) Split(ctx *session.Context, req pb.RpcBlockSplitRequest) (new
 	return
 }
 
-func (t *textImpl) Merge(ctx *session.Context, firstId, secondId string) (err error) {
+func (t *textImpl) Merge(ctx session.Context, firstId, secondId string) (err error) {
 	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 
@@ -206,7 +211,7 @@ func (t *textImpl) Merge(ctx *session.Context, firstId, secondId string) (err er
 	return
 }
 
-func (t *textImpl) SetMark(ctx *session.Context, mark *model.BlockContentTextMark, blockIds ...string) (err error) {
+func (t *textImpl) SetMark(ctx session.Context, mark *model.BlockContentTextMark, blockIds ...string) (err error) {
 	s := t.NewStateCtx(ctx)
 	var reverse = true
 	for _, id := range blockIds {
@@ -234,7 +239,7 @@ func (t *textImpl) SetMark(ctx *session.Context, mark *model.BlockContentTextMar
 }
 
 // SetIcon sets an icon for the text block with style BlockContentText_Callout(13)
-func (t *textImpl) SetIcon(ctx *session.Context, image string, emoji string, blockIds ...string) (err error) {
+func (t *textImpl) SetIcon(ctx session.Context, image string, emoji string, blockIds ...string) (err error) {
 	s := t.NewStateCtx(ctx)
 	for _, id := range blockIds {
 		tb, err := getText(s, id)
@@ -249,11 +254,18 @@ func (t *textImpl) SetIcon(ctx *session.Context, image string, emoji string, blo
 	return t.Apply(s)
 }
 
-func (t *textImpl) newSetTextState(blockId string, ctx *session.Context) *state.State {
-	if t.lastSetTextState != nil && t.lastSetTextId == blockId {
+func (t *textImpl) newSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State {
+	if t.lastSetTextState != nil && t.lastSetTextId == blockID {
 		return t.lastSetTextState
 	}
-	t.lastSetTextId = blockId
+	if selectedRange != nil {
+		t.History().SetCarriageBeforeState(undo.CarriageState{
+			BlockID:   blockID,
+			RangeFrom: selectedRange.From,
+			RangeTo:   selectedRange.To,
+		})
+	}
+	t.lastSetTextId = blockID
 	t.lastSetTextState = t.NewStateCtx(ctx)
 	go func() {
 		select {
@@ -270,26 +282,40 @@ func (t *textImpl) newSetTextState(blockId string, ctx *session.Context) *state.
 
 func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
+		applyFlags := []smartblock.ApplyFlag{smartblock.NoHooks}
+		if t.shouldKeepInternalFlags() {
+			applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
+		}
+
+		// We create new context to avoid sending events to the current session
 		ctx := session.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
-		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks); err != nil {
+		if err := t.Apply(t.lastSetTextState, applyFlags...); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
 		}
-		msgs := ctx.GetMessages()
-		filteredMsgs := msgs[:0]
-		for _, msg := range msgs {
-			if msg.GetBlockSetText() == nil {
-				filteredMsgs = append(filteredMsgs, msg)
-			} else {
-				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
-			}
-		}
-		if len(filteredMsgs) > 0 {
-			t.SendEvent(filteredMsgs)
-		}
+		t.sendEvents(ctx)
 		t.cancelSetTextState()
 	}
 	return nil
+}
+
+// sendEvents send BlockSetText events only to the other sessions, other events are sent to all sessions
+func (t *textImpl) sendEvents(ctx session.Context) {
+	msgs := ctx.GetMessages()
+	filteredMsgs := msgs[:0]
+	for _, msg := range msgs {
+		if msg.GetBlockSetText() == nil {
+			filteredMsgs = append(filteredMsgs, msg)
+		} else {
+			t.eventSender.BroadcastToOtherSessions(ctx.ID(), &pb.Event{
+				Messages:  []*pb.EventMessage{msg},
+				ContextId: t.Id(),
+			})
+		}
+	}
+	if len(filteredMsgs) > 0 {
+		t.SendEvent(filteredMsgs)
+	}
 }
 
 func (t *textImpl) cancelSetTextState() {
@@ -302,7 +328,7 @@ func (t *textImpl) cancelSetTextState() {
 	}
 }
 
-func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTextRequest) (err error) {
+func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) (err error) {
 	defer func() {
 		if err != nil {
 			t.cancelSetTextState()
@@ -310,14 +336,20 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 	}()
 
 	// TODO: GO-2062 Need to refactor text shortening, as it could cut string incorrectly
-	//if len(req.Text) > textSizeLimit {
+	// if len(req.Text) > textSizeLimit {
 	//	log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)
 	//	req.Text = req.Text[:textSizeLimit]
-	//}
+	// }
 
+	// We create new context to avoid sending events to the current session
 	ctx := session.NewChildContext(parentCtx)
-	s := t.newSetTextState(req.BlockId, ctx)
+	s := t.newSetTextState(req.BlockId, req.SelectedTextRange, ctx)
 	wasEmpty := s.IsEmpty(true)
+
+	applyFlags := make([]smartblock.ApplyFlag, 0)
+	if t.shouldKeepInternalFlags() || wasEmpty {
+		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
+	}
 
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
@@ -329,19 +361,10 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 
 	if _, ok := tb.(text.DetailsBlock); ok || wasEmpty {
 		defer t.cancelSetTextState()
-		if err = t.Apply(s); err != nil {
+		if err = t.Apply(s, applyFlags...); err != nil {
 			return
 		}
-		msgs := ctx.GetMessages()
-		var filtered = msgs[:0]
-		for _, msg := range msgs {
-			if msg.GetBlockSetText() == nil {
-				filtered = append(filtered, msg)
-			} else {
-				ctx.SendToOtherSessions([]*pb.EventMessage{msg})
-			}
-		}
-		t.SendEvent(filtered)
+		t.sendEvents(ctx)
 		return
 	}
 	if len(beforeIds)+len(afterIds) > 0 {
@@ -356,7 +379,7 @@ func (t *textImpl) SetText(parentCtx *session.Context, req pb.RpcBlockTextSetTex
 	return
 }
 
-func (t *textImpl) TurnInto(ctx *session.Context, style model.BlockContentTextStyle, ids ...string) (err error) {
+func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextStyle, ids ...string) (err error) {
 	s := t.NewStateCtx(ctx)
 
 	turnInto := func(b text.Block) {
@@ -455,6 +478,29 @@ func (t *textImpl) TurnInto(ctx *session.Context, style model.BlockContentTextSt
 	}
 
 	return t.Apply(s)
+}
+
+func (t *textImpl) isLastTextBlockChanged() (bool, error) {
+	if t.lastSetTextState == nil || t.lastSetTextId == "" {
+		return true, fmt.Errorf("last state about text block is not saved")
+	}
+	newTextBlock, err := getText(t.lastSetTextState, t.lastSetTextId)
+	if err != nil {
+		return true, err
+	}
+	oldTextBlock := t.lastSetTextState.PickOrigin(t.lastSetTextId)
+	messages, err := oldTextBlock.Diff(newTextBlock)
+	return len(messages) != 0, err
+}
+
+// shouldKeepInternalFlags is used to keep internal flags in case no change on general text blocks were made
+// We keep internal flags because we allow user to change object type and apply some template further
+func (t *textImpl) shouldKeepInternalFlags() bool {
+	textChanged, err := t.isLastTextBlockChanged()
+	if err != nil {
+		textChanged = true
+	}
+	return t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID || !textChanged
 }
 
 func getText(s *state.State, id string) (text.Block, error) {

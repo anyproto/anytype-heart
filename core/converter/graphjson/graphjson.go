@@ -6,21 +6,16 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func NewMultiConverter(sbtProvider typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
-	return &graphjson{
-		linksByNode: map[string][]*Edge{},
-		nodes:       map[string]*Node{},
-		sbtProvider: sbtProvider,
-	}
-}
 
 type edgeType int
 
@@ -30,13 +25,13 @@ const (
 )
 
 type Node struct {
-	Id          string `json:"id,omitempty"`
-	Type        string `json:"type,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Layout      int    `json:"layout,omitempty"`
-	Description string `json:"description,omitempty"`
-	IconImage   string `json:"iconImage,omitempty"`
-	IconEmoji   string `json:"iconEmoji,omitempty"`
+	Id          string         `json:"id,omitempty"`
+	Type        domain.TypeKey `json:"type,omitempty"`
+	Name        string         `json:"name,omitempty"`
+	Layout      int            `json:"layout,omitempty"`
+	Description string         `json:"description,omitempty"`
+	IconImage   string         `json:"iconImage,omitempty"`
+	IconEmoji   string         `json:"iconEmoji,omitempty"`
 }
 
 type Edge struct {
@@ -57,7 +52,21 @@ type graphjson struct {
 	imageHashes []string
 	nodes       map[string]*Node
 	linksByNode map[string][]*Edge
-	sbtProvider typeprovider.SmartBlockTypeProvider
+
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	systemObjectService system_object.Service
+}
+
+func NewMultiConverter(
+	sbtProvider typeprovider.SmartBlockTypeProvider,
+	systemObjectService system_object.Service,
+) converter.MultiConverter {
+	return &graphjson{
+		linksByNode:         map[string][]*Edge{},
+		nodes:               map[string]*Node{},
+		sbtProvider:         sbtProvider,
+		systemObjectService: systemObjectService,
+	}
 }
 
 func (g *graphjson) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
@@ -80,46 +89,16 @@ func (g *graphjson) Add(st *state.State) error {
 		IconImage:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconImage.String()),
 		IconEmoji:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String()),
 		Description: pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String()),
-		Type:        st.ObjectType(),
+		Type:        st.ObjectTypeKey(),
 		Layout:      int(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())),
 	}
 
 	g.nodes[st.RootId()] = &n
-	// TODO: rewrite to relation service
-	for _, rel := range st.OldExtraRelations() {
-		if rel.Format != model.RelationFormat_object {
-			continue
-		}
-		if rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyId.String() {
-			continue
-		}
+	// TODO: add relations
 
-		objIds := pbtypes.GetStringList(st.Details(), rel.Key)
-
-		for _, objId := range objIds {
-			t, err := g.sbtProvider.Type(objId)
-			if err != nil {
-				continue
-			}
-			if _, ok := g.knownDocs[objId]; !ok {
-				continue
-			}
-			if t != smartblock.SmartBlockTypeAnytypeProfile && t != smartblock.SmartBlockTypePage {
-				continue
-			}
-
-			g.linksByNode[st.RootId()] = append(g.linksByNode[st.RootId()], &Edge{
-				Source:   st.RootId(),
-				Target:   objId,
-				EdgeType: EdgeTypeRelation,
-				Name:     rel.Name,
-			})
-
-		}
-	}
-
-	for _, depID := range st.DepSmartIds(true, true, false, false, false) {
-		t, err := g.sbtProvider.Type(depID)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, g.systemObjectService, true, true, false, false, false)
+	for _, depID := range dependentObjectIDs {
+		t, err := g.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
 			continue
 		}

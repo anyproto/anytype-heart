@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -13,11 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/testMock"
@@ -31,6 +33,8 @@ func New(id string) *SmartTest {
 		hooksOnce: map[string]struct{}{},
 	}
 }
+
+var _ smartblock.SmartBlock = &SmartTest{}
 
 type SmartTest struct {
 	Results          Results
@@ -49,16 +53,14 @@ type SmartTest struct {
 	hooksOnce map[string]struct{}
 }
 
+func (st *SmartTest) SpaceID() string { return "" }
+
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
 	return
 }
 
 func (st *SmartTest) IsLocked() bool {
 	return false
-}
-
-func (st *SmartTest) RelationService() relation.Service {
-	return st.App.Component(relation.CName).(relation.Service)
 }
 
 func (st *SmartTest) Locked() bool {
@@ -81,15 +83,21 @@ func (st *SmartTest) GetFirstTextBlock() (*model.BlockContentOfText, error) {
 	return nil, nil
 }
 
-func (st *SmartTest) SetAlign(ctx *session.Context, align model.BlockAlign, ids ...string) error {
+func (st *SmartTest) SetAlign(ctx session.Context, align model.BlockAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetVerticalAlign(ctx *session.Context, align model.BlockVerticalAlign, ids ...string) error {
+func (st *SmartTest) SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error {
 	return nil
 }
 
-func (st *SmartTest) SetLayout(ctx *session.Context, layout model.ObjectTypeLayout) error {
+func (st *SmartTest) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) error {
+	return nil
+}
+
+func (st *SmartTest) SetLocker(locker smartblock.Locker) {}
+
+func (st *SmartTest) Tree() objecttree.ObjectTree {
 	return nil
 }
 
@@ -140,7 +148,7 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddRelationLinks(ctx *session.Context, relationKeys ...string) (err error) {
+func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
 	for _, key := range relationKeys {
 		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
 			Key:    key,
@@ -158,15 +166,15 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 	return false
 }
 
-func (st *SmartTest) RefreshLocalDetails(ctx *session.Context) error {
+func (st *SmartTest) RefreshLocalDetails(ctx session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx *session.Context, relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []string) (err error) {
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(ctx *session.Context, objectTypes []string) (err error) {
+func (st *SmartTest) SetObjectTypes(ctx session.Context, objectTypes []string) (err error) {
 	return nil
 }
 
@@ -178,7 +186,7 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
-func (st *SmartTest) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (st *SmartTest) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	dets := &types.Struct{Fields: map[string]*types.Value{}}
 	for _, d := range details {
 		dets.Fields[d.Key] = d.Value
@@ -198,11 +206,11 @@ func (st *SmartTest) Id() string {
 	return st.id
 }
 
-func (st *SmartTest) Type() model.SmartBlockType {
-	return model.SmartBlockType_Page
+func (st *SmartTest) Type() coresb.SmartBlockType {
+	return coresb.SmartBlockTypePage
 }
 
-func (st *SmartTest) Show(*session.Context) (obj *model.ObjectView, err error) {
+func (st *SmartTest) Show() (obj *model.ObjectView, err error) {
 	return
 }
 
@@ -210,7 +218,7 @@ func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err error) {
-	var sendEvent, addHistory, checkRestrictions, hooks = true, true, true, true
+	var sendEvent, addHistory, checkRestrictions, hooks, keepInternalFlags = true, true, true, true, false
 
 	for _, f := range flags {
 		switch f {
@@ -222,6 +230,8 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 			checkRestrictions = false
 		case smartblock.NoHooks:
 			hooks = false
+		case smartblock.KeepInternalFlags:
+			keepInternalFlags = true
 		}
 	}
 
@@ -229,6 +239,10 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 		if err = s.CheckRestrictions(); err != nil {
 			return
 		}
+	}
+
+	if !keepInternalFlags {
+		s.RemoveDetail(bundle.RelationKeyInternalFlags.String())
 	}
 
 	msgs, act, err := state.ApplyState(s, true)
@@ -279,7 +293,7 @@ func (st *SmartTest) FileRelationKeys(s *state.State) []string {
 	return nil
 }
 
-func (st *SmartTest) ObjectClose() {
+func (st *SmartTest) ObjectClose(ctx session.Context) {
 	st.SetEventFunc(nil)
 }
 
@@ -297,6 +311,13 @@ func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
 
 func (st *SmartTest) Inner() smartblock.SmartBlock {
 	return nil
+}
+
+func (st *SmartTest) ObjectCloseAllSessions() {
+}
+
+func (st *SmartTest) RegisterSession(session.Context) {
+
 }
 
 type Results struct {

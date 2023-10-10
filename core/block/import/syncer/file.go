@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -23,7 +22,7 @@ func NewFileSyncer(
 	}
 }
 
-func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
+func (fs *FileSyncer) Sync(id string, b simple.Block) error {
 	if hash := b.Model().GetFile().GetHash(); hash != "" {
 		return nil
 	}
@@ -45,7 +44,7 @@ func (fs *FileSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 			BlockId: b.Model().Id,
 		}
 	}
-	_, err := fs.service.UploadFileBlockWithHash(ctx, id, params)
+	_, err := fs.service.UploadFileBlockWithHash(id, params)
 	if err != nil {
 		return fmt.Errorf("failed syncing file: %s", err)
 	}

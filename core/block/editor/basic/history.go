@@ -2,14 +2,21 @@ package basic
 
 import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type IHistory interface {
-	Undo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
-	Redo(*session.Context) (counters pb.RpcObjectUndoRedoCounter, err error)
+	Undo(session.Context) (info HistoryInfo, err error)
+	Redo(session.Context) (info HistoryInfo, err error)
+}
+
+type HistoryInfo struct {
+	Counters      pb.RpcObjectUndoRedoCounter
+	CarriageState undo.CarriageState
 }
 
 func NewHistory(sb smartblock.SmartBlock) IHistory {
@@ -20,7 +27,7 @@ type history struct {
 	smartblock.SmartBlock
 }
 
-func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (h *history) Undo(ctx session.Context) (info HistoryInfo, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Previous()
 	if err != nil {
@@ -37,9 +44,9 @@ func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 		s.Set(b.Before.Copy())
 	}
 	if action.ObjectTypes != nil {
-		ot := make([]string, len(action.ObjectTypes.Before))
+		ot := make([]domain.TypeKey, len(action.ObjectTypes.Before))
 		copy(ot, action.ObjectTypes.Before)
-		s.SetObjectTypes(ot)
+		s.SetObjectTypeKeys(ot)
 	}
 
 	if action.Details != nil {
@@ -48,11 +55,12 @@ func (h *history) Undo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}
-	counters.Undo, counters.Redo = h.History().Counters()
+	info.Counters.Undo, info.Counters.Redo = h.History().Counters()
+	info.CarriageState = action.CarriageInfo.Before
 	return
 }
 
-func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCounter, err error) {
+func (h *history) Redo(ctx session.Context) (info HistoryInfo, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Next()
 	if err != nil {
@@ -69,9 +77,9 @@ func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 		s.Set(b.After.Copy())
 	}
 	if action.ObjectTypes != nil {
-		ot := make([]string, len(action.ObjectTypes.After))
+		ot := make([]domain.TypeKey, len(action.ObjectTypes.After))
 		copy(ot, action.ObjectTypes.After)
-		s.SetObjectTypes(ot)
+		s.SetObjectTypeKeys(ot)
 	}
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.After))
@@ -79,6 +87,7 @@ func (h *history) Redo(ctx *session.Context) (counters pb.RpcObjectUndoRedoCount
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}
-	counters.Undo, counters.Redo = h.History().Counters()
+	info.Counters.Undo, info.Counters.Redo = h.History().Counters()
+	info.CarriageState = action.CarriageInfo.After
 	return
 }

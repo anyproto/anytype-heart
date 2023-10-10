@@ -1,8 +1,9 @@
 package loadenv
 
 import (
-	_ "github.com/joho/godotenv/autoload"
 	"os"
+
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func Get(key string) string {

@@ -10,61 +10,34 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor"
-	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
 	CName = "indexer"
-
-	// ### Increasing counters below will trigger existing account to reindex their
-
-	// ForceThreadsObjectsReindexCounter reindex thread-based objects
-	ForceThreadsObjectsReindexCounter int32 = 8
-	// ForceFilesReindexCounter reindex ipfs-file-based objects
-	ForceFilesReindexCounter int32 = 11 //
-	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
-	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
-	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
-	// (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 47
-	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
-	ForceFulltextIndexCounter int32 = 5
-	// ForceFilestoreKeysReindexCounter reindex filestore keys in all objects
-	ForceFilestoreKeysReindexCounter int32 = 2
 )
 
 var log = logging.Logger("anytype-doc-indexer")
-
-var (
-	ftIndexInterval         = 10 * time.Second
-	ftIndexForceMinInterval = time.Second * 10
-)
 
 func New() Indexer {
 	return &indexer{
@@ -74,7 +47,10 @@ func New() Indexer {
 
 type Indexer interface {
 	ForceFTIndex()
-	Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error
+	StartFullTextIndex() error
+	ReindexCommonObjects() error
+	ReindexSpace(spaceID string) error
+	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -82,51 +58,57 @@ type Hasher interface {
 	Hash() string
 }
 
-type subObjectCreator interface {
-	CreateSubObjectsInWorkspace(details []*types.Struct) (ids []string, objects []*types.Struct, err error)
+type objectCreator interface {
+	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
+	InstallBundledObjects(
+		ctx context.Context,
+		spaceID string,
+		sourceObjectIds []string,
+	) (ids []string, objects []*types.Struct, err error)
 }
 
-type syncStarter interface {
-	StartSync()
+type personalIDProvider interface {
+	PersonalSpaceID() string
 }
 
 type indexer struct {
-	store            objectstore.ObjectStore
-	fileStore        filestore.FileStore
-	anytype          core.Service
-	source           source.Service
-	picker           block.Picker
-	ftsearch         ftsearch.FTSearch
-	subObjectCreator subObjectCreator
-	syncStarter      syncStarter
-	fileService      files.Service
+	store          objectstore.ObjectStore
+	fileStore      filestore.FileStore
+	source         source.Service
+	picker         block.ObjectGetter
+	ftsearch       ftsearch.FTSearch
+	storageService storage.ClientStorage
+	objectCreator  objectCreator
+	fileService    files.Service
 
 	quit       chan struct{}
-	mu         sync.Mutex
 	btHash     Hasher
 	newAccount bool
 	forceFt    chan struct{}
 
 	typeProvider typeprovider.SmartBlockTypeProvider
-	spaceService space.Service
+	spaceCore    spacecore.SpaceCoreService
+	provider     personalIDProvider
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
+
+	flags reindexFlags
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
-	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.subObjectCreator = app.MustComponent[subObjectCreator](a)
-	i.syncStarter = app.MustComponent[syncStarter](a)
-	i.picker = app.MustComponent[block.Picker](a)
-	i.spaceService = app.MustComponent[space.Service](a)
+	i.objectCreator = app.MustComponent[objectCreator](a)
+	i.picker = app.MustComponent[block.ObjectGetter](a)
+	i.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
+	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
@@ -138,55 +120,35 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run(context.Context) (err error) {
+	return i.StartFullTextIndex()
+}
+
+func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
-	err = i.reindexIfNeeded()
-	if err != nil {
-		return err
-	}
-	i.migrateRemoveNonindexableObjects()
 	go i.ftLoop()
 	return
 }
 
-func (i *indexer) migrateRemoveNonindexableObjects() {
-	ids, err := i.getIdsForTypes(
-		smartblock.SmartBlockTypeDate,
-	)
-	if err != nil {
-		log.Errorf("migrateRemoveNonindexableObjects: failed to get ids: %s", err.Error())
-	}
-
-	for _, id := range ids {
-		err = i.store.DeleteDetails(id)
-		if err != nil {
-			log.Errorf("migrateRemoveNonindexableObjects: failed to get ids: %s", err.Error())
-		}
-	}
-}
-
 func (i *indexer) Close(ctx context.Context) (err error) {
-	i.mu.Lock()
-	quit := i.quit
-	i.mu.Unlock()
-	if quit != nil {
-		close(quit)
-		i.mu.Lock()
-		i.quit = nil
-		i.mu.Unlock()
-	}
+	close(i.quit)
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options ...smartblock2.IndexOption) error {
+func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
-	opts := &smartblock2.IndexOptions{}
+	opts := &editorsb.IndexOptions{}
 	for _, o := range options {
 		o(opts)
 	}
-	sbType, err := i.typeProvider.Type(info.Id)
+	err := i.storageService.BindSpaceID(info.SpaceID, info.Id)
+	if err != nil {
+		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
+		return err
+	}
+	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
@@ -224,7 +186,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		}
 	}
 
-	details := info.State.CombinedDetails()
+	details := info.Details
 
 	indexSetTime := time.Now()
 	var hasError bool
@@ -252,9 +214,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 					With("hashesAreEqual", lastIndexedHash == headHashToIndex).
 					With("lastHashIsEmpty", lastIndexedHash == "").
 					With("skipFlagSet", opts.SkipIfHeadsNotChanged)
-				// With("old", pbtypes.Sprint(oldDetails.Details)).
-				// With("new", pbtypes.Sprint(info.State.CombinedDetails())).
-				// With("diff", pbtypes.Sprint(pbtypes.StructDiff(oldDetails.Details, info.State.CombinedDetails())))
 
 				if opts.SkipIfHeadsNotChanged {
 					l.Warnf("details have changed, but heads are equal")
@@ -271,7 +230,7 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 			}
 		}
 
-		i.indexLinkedFiles(ctx, info.FileHashes)
+		i.indexLinkedFiles(ctx, info.SpaceID, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -290,14 +249,13 @@ func (i *indexer) Index(ctx context.Context, info smartblock2.DocInfo, options .
 		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
 		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
 		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
-		RelationsCount:          len(info.State.PickRelationLinks()),
 		DetailsCount:            detailsCount,
 	})
 
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHashes []string) {
 	if len(fileHashes) == 0 {
 		return
 	}
@@ -313,8 +271,13 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 			if ok {
 				return
 			}
+			err := i.storageService.BindSpaceID(spaceID, id)
+			if err != nil {
+				log.Error("failed to bind space id", zap.Error(err), zap.String("id", id))
+				return
+			}
 			// file's hash is id
-			idxErr := i.reindexDoc(ctx, id)
+			idxErr := i.reindexDoc(ctx, spaceID, id)
 			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
 				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
 			}
@@ -326,381 +289,6 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, fileHashes []string) {
 	}
 }
 
-func (i *indexer) reindexIfNeeded() error {
-	checksums, err := i.store.GetChecksums()
-	if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-		return err
-	}
-	if checksums == nil {
-		checksums = &model.ObjectStoreChecksums{
-			// do no add bundled relations checksums, because we want to index them for new accounts
-			ObjectsForceReindexCounter:       ForceThreadsObjectsReindexCounter,
-			FilesForceReindexCounter:         ForceFilesReindexCounter,
-			IdxRebuildCounter:                ForceIdxRebuildCounter,
-			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-			FulltextRebuild:                  ForceFulltextIndexCounter,
-			BundledObjects:                   ForceBundledObjectsReindexCounter,
-		}
-	}
-
-	var flags reindexFlags
-	if checksums.BundledRelations != bundle.RelationChecksum {
-		flags.bundledRelations = true
-	}
-	if checksums.BundledObjectTypes != bundle.TypeChecksum {
-		flags.bundledTypes = true
-	}
-	if checksums.ObjectsForceReindexCounter != ForceThreadsObjectsReindexCounter {
-		flags.threadObjects = true
-	}
-	if checksums.FilestoreKeysForceReindexCounter != ForceFilestoreKeysReindexCounter {
-		flags.fileKeys = true
-	}
-	if checksums.FilesForceReindexCounter != ForceFilesReindexCounter {
-		flags.fileObjects = true
-	}
-	if checksums.FulltextRebuild != ForceFulltextIndexCounter {
-		flags.fulltext = true
-	}
-	if checksums.BundledTemplates != i.btHash.Hash() {
-		flags.bundledTemplates = true
-	}
-	if checksums.BundledObjects != ForceBundledObjectsReindexCounter {
-		flags.bundledObjects = true
-	}
-	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
-		flags.enableAll()
-	}
-
-	return i.reindex(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "reindex_forced"), flags)
-}
-
-func (i *indexer) reindex(ctx context.Context, flags reindexFlags) (err error) {
-	if flags.any() {
-		log.Infof("start store reindex (%s)", flags.String())
-	}
-
-	ctx = block.CacheOptsWithRemoteLoadDisabled(ctx)
-	if flags.threadObjects && flags.fileObjects {
-		// files will be indexed within object indexing (see indexLinkedFiles)
-		// because we need to do it in the background.
-		// otherwise it will lead to the situation when files loading called from the reindex with DisableRemoteFlag
-		// will be waiting for the linkedFiles background indexing without this flag
-		flags.fileObjects = false
-	}
-
-	if flags.fileKeys {
-		err = i.fileStore.RemoveEmptyFileKeys()
-		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err.Error())
-		} else {
-			log.Infof("RemoveEmptyFileKeys filekeys succeed")
-		}
-	}
-
-	if flags.removeAllIndexedObjects {
-		ids, err := i.store.ListIds()
-		if err != nil {
-			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err.Error())
-		}
-		for _, id := range ids {
-			err = i.store.DeleteDetails(id)
-			if err != nil {
-				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
-			}
-		}
-	}
-	var indexesWereRemoved bool
-	if flags.eraseIndexes {
-		err = i.store.EraseIndexes()
-		if err != nil {
-			log.Errorf("reindex failed to erase indexes: %v", err.Error())
-		} else {
-			log.Infof("all store indexes successfully erased")
-			indexesWereRemoved = true
-		}
-	}
-
-	// We derive or init predefined blocks here in order to ensure consistency of object store.
-	// If we call this method before removing objects from store, we will end up with inconsistent state
-	// because indexing of predefined objects will not run again
-	err = i.anytype.EnsurePredefinedBlocks(ctx)
-	if err != nil {
-		return err
-	}
-	// starting sync of all other objects later, because we don't want to have problems with loading of derived objects
-	// due to parallel load which can overload the stream
-	i.syncStarter.StartSync()
-
-	// for all ids except home and archive setting cache timeout for reindexing
-	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
-	if flags.threadObjects {
-		ids, err := i.getIdsForTypes(
-			smartblock.SmartBlockTypePage,
-			smartblock.SmartBlockTypeProfilePage,
-			smartblock.SmartBlockTypeTemplate,
-			smartblock.SmartBlockTypeArchive,
-			smartblock.SmartBlockTypeHome,
-			smartblock.SmartBlockTypeWorkspace,
-		)
-		if err != nil {
-			return err
-		}
-		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-
-		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
-
-		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
-	} else {
-		go func() {
-			start := time.Now()
-			total, success, err := i.reindexOutdatedThreads()
-			if err != nil {
-				log.Infof("failed to reindex outdated objects: %s", err.Error())
-			} else {
-				log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
-			}
-			if total > 0 {
-				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
-			}
-		}()
-	}
-
-	if flags.fileObjects {
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeFiles, indexesWereRemoved, smartblock.SmartBlockTypeFile)
-		if err != nil {
-			return err
-		}
-	}
-	if flags.bundledRelations {
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledRelations, indexesWereRemoved, smartblock.SmartBlockTypeBundledRelation)
-		if err != nil {
-			return err
-		}
-	}
-	if flags.bundledTypes {
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledTypes, indexesWereRemoved, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
-		if err != nil {
-			return err
-		}
-	}
-	if flags.bundledObjects {
-		// hardcoded for now
-		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
-		err = i.reindexIDs(ctx, metrics.ReindexTypeBundledObjects, false, ids)
-		if err != nil {
-			return err
-		}
-	}
-
-	if flags.bundledTemplates {
-		existing, _, err := i.store.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
-		if err != nil {
-			return err
-		}
-		for _, id := range existing {
-			i.store.DeleteObject(id)
-		}
-
-		err = i.reindexIDsForSmartblockTypes(ctx, metrics.ReindexTypeBundledTemplates, indexesWereRemoved, smartblock.SmartBlockTypeBundledTemplate)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = i.ensurePreinstalledObjects()
-	if err != nil {
-		return fmt.Errorf("ensure preinstalled objects: %w", err)
-	}
-
-	if flags.fulltext {
-		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
-		if err != nil {
-			return err
-		}
-
-		var addedToQueue int
-		for _, id := range ids {
-			if err := i.store.AddToIndexQueue(id); err != nil {
-				log.Errorf("failed to add to index queue: %v", err)
-			} else {
-				addedToQueue++
-			}
-		}
-		msg := fmt.Sprintf("%d/%d objects have been successfully added to the fulltext queue", addedToQueue, len(ids))
-		if len(ids)-addedToQueue != 0 {
-			log.Error(msg)
-		} else {
-			log.Info(msg)
-		}
-	}
-
-	return i.saveLatestChecksums()
-}
-
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, sbTypes ...smartblock.SmartBlockType) error {
-	ids, err := i.getIdsForTypes(sbTypes...)
-	if err != nil {
-		return err
-	}
-	return i.reindexIDs(ctx, reindexType, indexesWereRemoved, ids)
-}
-
-func (i *indexer) reindexIDs(ctx context.Context, reindexType metrics.ReindexType, indexesWereRemoved bool, ids []string) error {
-	start := time.Now()
-	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, ids...)
-	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
-	return nil
-}
-
-func (i *indexer) ensurePreinstalledObjects() error {
-	var objects []*types.Struct
-
-	start := time.Now()
-	for _, ot := range bundle.SystemTypes {
-		t, err := bundle.GetTypeByUrl(ot.BundledURL())
-		if err != nil {
-			continue
-		}
-		objects = append(objects, (&relationutils.ObjectType{ObjectType: t}).ToStruct())
-	}
-
-	for _, rk := range bundle.SystemRelations {
-		rel := bundle.MustGetRelation(rk)
-		for _, opt := range rel.SelectDict {
-			opt.RelationKey = rel.Key
-			objects = append(objects, (&relationutils.Option{RelationOption: opt}).ToStruct())
-		}
-		objects = append(objects, (&relationutils.Relation{Relation: rel}).ToStruct())
-	}
-	ids, _, err := i.subObjectCreator.CreateSubObjectsInWorkspace(objects)
-	i.logFinishedReindexStat(metrics.ReindexTypeSystem, len(ids), len(ids), time.Since(start))
-
-	if errors.Is(err, editor.ErrSubObjectAlreadyExists) {
-		return nil
-	}
-	return err
-}
-
-func (i *indexer) saveLatestChecksums() error {
-	// todo: add layout indexing when needed
-	checksums := model.ObjectStoreChecksums{
-		BundledObjectTypes:         bundle.TypeChecksum,
-		BundledRelations:           bundle.RelationChecksum,
-		BundledTemplates:           i.btHash.Hash(),
-		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
-		FilesForceReindexCounter:   ForceFilesReindexCounter,
-
-		IdxRebuildCounter:                ForceIdxRebuildCounter,
-		FulltextRebuild:                  ForceFulltextIndexCounter,
-		BundledObjects:                   ForceBundledObjectsReindexCounter,
-		FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-	}
-	return i.store.SaveChecksums(&checksums)
-}
-
-func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
-	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
-	spc, err := i.spaceService.AccountSpace(context.Background())
-	if err != nil {
-		return
-	}
-
-	tids := spc.StoredIds()
-	var idsToReindex []string
-	for _, tid := range tids {
-		logErr := func(err error) {
-			log.With("tree", tid).Errorf("reindexOutdatedThreads failed to get tree to reindex: %s", err.Error())
-		}
-
-		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		info, err := spc.Storage().TreeStorage(tid)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		heads, err := info.Heads()
-		if err != nil {
-			logErr(err)
-			continue
-		}
-
-		hh := headsHash(heads)
-		if lastHash != hh {
-			if lastHash != "" {
-				log.With("tree", tid).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
-			}
-			idsToReindex = append(idsToReindex, tid)
-		}
-	}
-
-	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "reindexOutdatedThreads")
-	success = i.reindexIdsIgnoreErr(ctx, idsToReindex...)
-	return len(idsToReindex), success, nil
-}
-
-func (i *indexer) reindexDoc(ctx context.Context, id string) error {
-	err := block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
-		d := sb.GetDocInfo()
-		if v, ok := sb.(editor.SubObjectCollectionGetter); ok {
-			// index all the subobjects
-			v.GetAllDocInfoIterator(
-				func(info smartblock2.DocInfo) (contin bool) {
-					err := i.Index(ctx, info)
-					if err != nil {
-						log.Errorf("failed to index subobject %s: %s", info.Id, err)
-					}
-					return true
-				},
-			)
-		}
-
-		return i.Index(ctx, d)
-	})
-	return err
-}
-
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, ids ...string) (successfullyReindexed int) {
-	for _, id := range ids {
-		err := i.reindexDoc(ctx, id)
-		if err != nil {
-			log.With("objectID", id).Errorf("failed to reindex: %v", err)
-		} else {
-			successfullyReindexed++
-		}
-	}
-	return
-}
-
-func (i *indexer) getObjectInfo(ctx context.Context, id string) (info smartblock2.DocInfo, err error) {
-	err = block.DoWithContext(ctx, i.picker, id, func(sb smartblock2.SmartBlock) error {
-		info = sb.GetDocInfo()
-		return nil
-	})
-	return
-}
-
-func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, error) {
-	var ids []string
-	for _, t := range sbt {
-		lister, err := i.source.IDsListerBySmartblockType(t)
-		if err != nil {
-			return nil, err
-		}
-		idsT, err := lister.ListIds()
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, idsT...)
-	}
-	return ids, nil
-}
-
 func headsHash(heads []string) string {
 	if len(heads) == 0 {
 		return ""
@@ -709,31 +297,4 @@ func headsHash(heads []string) string {
 
 	sum := sha256.Sum256([]byte(strings.Join(heads, ",")))
 	return fmt.Sprintf("%x", sum)
-}
-
-func (i *indexer) GetLogFields() []zap.Field {
-	return i.reindexLogFields
-}
-
-func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalIds, succeedIds int, spent time.Duration) {
-	i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String(), totalIds))
-	if succeedIds < totalIds {
-		i.reindexLogFields = append(i.reindexLogFields, zap.Int("r_"+reindexType.String()+"_failed", totalIds-succeedIds))
-	}
-	i.reindexLogFields = append(i.reindexLogFields, zap.Int64("r_"+reindexType.String()+"_spent", spent.Milliseconds()))
-	msg := fmt.Sprintf("%d/%d %s have been successfully reindexed", succeedIds, totalIds, reindexType)
-	if totalIds-succeedIds != 0 {
-		log.Error(msg)
-	} else {
-		log.Info(msg)
-	}
-
-	if metrics.Enabled {
-		metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-			ReindexType: reindexType,
-			Total:       totalIds,
-			Succeed:     succeedIds,
-			SpentMs:     int(spent.Milliseconds()),
-		})
-	}
 }

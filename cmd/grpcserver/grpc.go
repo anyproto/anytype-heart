@@ -35,6 +35,8 @@ import (
 
 	//nolint: gosec
 	_ "net/http/pprof"
+	//nolint: gosec
+	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -86,7 +88,7 @@ func main() {
 	signal.Notify(signalChan, signals...)
 
 	var mw = core.New()
-	mw.EventSender = event.NewGrpcSender()
+	mw.SetEventSender(event.NewGrpcSender())
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -204,7 +206,7 @@ func main() {
 	service.RegisterClientCommandsServer(server, mw)
 	if metrics.Enabled {
 		grpc_prometheus.EnableHandlingTimeHistogram()
-		//grpc_prometheus.Register(server)
+		// grpc_prometheus.Register(server)
 	}
 
 	webrpc := grpcweb.WrapServer(
@@ -268,15 +270,6 @@ func appendInterceptor(
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (resp interface{}, err error) {
-		defer func() {
-			if r := recover(); r != nil {
-				if rerr, ok := r.(error); ok && rerr == core.ErrNotLoggedIn {
-					resp = onNotLoggedInError(resp, rerr)
-				} else {
-					resp = onDefaultError(mw, r, resp)
-				}
-			}
-		}()
 
 		resp, err = handler(ctx, req)
 		return resp, err
@@ -284,7 +277,7 @@ func appendInterceptor(
 }
 
 func onDefaultError(mw *core.Middleware, r any, resp interface{}) interface{} {
-	mw.OnPanic(r)
+	//	mw.OnPanic(r)
 	resp = &pb.RpcGenericErrorResponse{
 		Error: &pb.RpcGenericErrorResponseError{
 			Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,

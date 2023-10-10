@@ -1,9 +1,10 @@
 package rpcstore
 
 import (
-	"github.com/VividCortex/ewma"
 	"sync"
 	"time"
+
+	"github.com/VividCortex/ewma"
 )
 
 // defaultSpeedScore - initial value in Kb/s, it should be relatively high to test fresh client soon

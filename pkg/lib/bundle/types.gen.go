@@ -5,64 +5,52 @@ source: pkg/lib/bundle/types.json
 package bundle
 
 import (
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "8028c5cd83c93e95f8c9797c0c46a3a71e0f57e3540e0b5f156eb62bbc155e64"
-
-type TypeKey string
-
-func (tk TypeKey) String() string {
-	return string(tk)
-}
-func (tk TypeKey) URL() string {
-	return string(addr.ObjectTypeKeyToIdPrefix + tk)
-}
-func (tk TypeKey) BundledURL() string {
-	return string(addr.BundledObjectTypeURLPrefix + tk)
-}
-
+const TypeChecksum = "0b6ddb10a9e90cac620ea5490051c69dd77330c18f4067adf38dded3214692a9"
 const (
 	TypePrefix = "_ot"
 )
 const (
-	TypeKeyRecipe         TypeKey = "recipe"
-	TypeKeyNote           TypeKey = "note"
-	TypeKeyContact        TypeKey = "contact"
-	TypeKeyBookmark       TypeKey = "bookmark"
-	TypeKeyWeeklyPlan     TypeKey = "weeklyPlan"
-	TypeKeyDate           TypeKey = "date"
-	TypeKeyIdea           TypeKey = "idea"
-	TypeKeyTask           TypeKey = "task"
-	TypeKeyRelation       TypeKey = "relation"
-	TypeKeyBook           TypeKey = "book"
-	TypeKeyVideo          TypeKey = "video"
-	TypeKeyDashboard      TypeKey = "dashboard"
-	TypeKeyDailyPlan      TypeKey = "dailyPlan"
-	TypeKeyMovie          TypeKey = "movie"
-	TypeKeyObjectType     TypeKey = "objectType"
-	TypeKeyRelationOption TypeKey = "relationOption"
-	TypeKeySpace          TypeKey = "space"
-	TypeKeyTemplate       TypeKey = "template"
-	TypeKeySet            TypeKey = "set"
-	TypeKeyCollection     TypeKey = "collection"
-	TypeKeyClassNote      TypeKey = "classNote"
-	TypeKeyDiaryEntry     TypeKey = "diaryEntry"
-	TypeKeyPage           TypeKey = "page"
-	TypeKeyImage          TypeKey = "image"
-	TypeKeyBug            TypeKey = "bug"
-	TypeKeyProfile        TypeKey = "profile"
-	TypeKeyAudio          TypeKey = "audio"
-	TypeKeyGoal           TypeKey = "goal"
-	TypeKeyFeature        TypeKey = "feature"
-	TypeKeyDocument       TypeKey = "document"
-	TypeKeyFile           TypeKey = "file"
-	TypeKeyProject        TypeKey = "project"
+	TypeKeyRecipe         domain.TypeKey = "recipe"
+	TypeKeyNote           domain.TypeKey = "note"
+	TypeKeyContact        domain.TypeKey = "contact"
+	TypeKeyBookmark       domain.TypeKey = "bookmark"
+	TypeKeyWeeklyPlan     domain.TypeKey = "weeklyPlan"
+	TypeKeyDate           domain.TypeKey = "date"
+	TypeKeyIdea           domain.TypeKey = "idea"
+	TypeKeyTask           domain.TypeKey = "task"
+	TypeKeyRelation       domain.TypeKey = "relation"
+	TypeKeyBook           domain.TypeKey = "book"
+	TypeKeyVideo          domain.TypeKey = "video"
+	TypeKeyDashboard      domain.TypeKey = "dashboard"
+	TypeKeyDailyPlan      domain.TypeKey = "dailyPlan"
+	TypeKeyMovie          domain.TypeKey = "movie"
+	TypeKeyObjectType     domain.TypeKey = "objectType"
+	TypeKeyRelationOption domain.TypeKey = "relationOption"
+	TypeKeySpace          domain.TypeKey = "space"
+	TypeKeySpaceView      domain.TypeKey = "spaceView"
+	TypeKeyTemplate       domain.TypeKey = "template"
+	TypeKeySet            domain.TypeKey = "set"
+	TypeKeyCollection     domain.TypeKey = "collection"
+	TypeKeyClassNote      domain.TypeKey = "classNote"
+	TypeKeyDiaryEntry     domain.TypeKey = "diaryEntry"
+	TypeKeyPage           domain.TypeKey = "page"
+	TypeKeyImage          domain.TypeKey = "image"
+	TypeKeyBug            domain.TypeKey = "bug"
+	TypeKeyProfile        domain.TypeKey = "profile"
+	TypeKeyAudio          domain.TypeKey = "audio"
+	TypeKeyGoal           domain.TypeKey = "goal"
+	TypeKeyFeature        domain.TypeKey = "feature"
+	TypeKeyDocument       domain.TypeKey = "document"
+	TypeKeyFile           domain.TypeKey = "file"
+	TypeKeyProject        domain.TypeKey = "project"
 )
 
 var (
-	types = map[TypeKey]*model.ObjectType{
+	types = map[domain.TypeKey]*model.ObjectType{
 		TypeKeyAudio: {
 
 			Description:   "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce",
@@ -363,7 +351,7 @@ var (
 		},
 		TypeKeySpace: {
 
-			Description:   "Space for sharing",
+			Description:   "Workspace",
 			Hidden:        true,
 			IconEmoji:     "🌎",
 			Layout:        model.ObjectType_space,
@@ -372,6 +360,18 @@ var (
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Types:         []model.SmartBlockType{model.SmartBlockType_Workspace},
 			Url:           TypePrefix + "space",
+		},
+		TypeKeySpaceView: {
+
+			Description:   "Space",
+			Hidden:        true,
+			IconEmoji:     "🌎",
+			Layout:        model.ObjectType_spaceView,
+			Name:          "Space",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Types:         []model.SmartBlockType{model.SmartBlockType_SpaceView},
+			Url:           TypePrefix + "spaceView",
 		},
 		TypeKeyTask: {
 

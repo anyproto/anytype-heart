@@ -3,13 +3,14 @@ package bookmark
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 func init() {
@@ -69,7 +70,7 @@ type FetchParams struct {
 	Sync    bool
 }
 
-type Updater func(id string, apply func(b Block) error) (err error)
+type Updater func(blockID string, apply func(b Block) error) (err error)
 
 func (b *Bookmark) Copy() simple.Block {
 	copy := pbtypes.CopyBlock(b.Model())
@@ -173,6 +174,13 @@ func (b *Bookmark) FillFileHashes(hashes []string) []string {
 		hashes = append(hashes, b.content.FaviconHash)
 	}
 	return hashes
+}
+
+func (l *Bookmark) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if l.content.TargetObjectId != "" {
+		l.content.TargetObjectId = replacer(l.content.TargetObjectId)
+	}
+	return
 }
 
 func (b *Bookmark) FillSmartIds(ids []string) []string {

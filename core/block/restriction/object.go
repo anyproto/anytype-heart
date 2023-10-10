@@ -2,15 +2,15 @@ package restriction
 
 import (
 	"fmt"
-	"strings"
-	"errors"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -97,15 +97,15 @@ var (
 		},
 	}
 
-	objectRestrictionsBySBType = map[model.SmartBlockType]ObjectRestrictions{
-		model.SmartBlockType_ProfilePage: {
+	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
+		smartblock.SmartBlockTypeProfilePage: {
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Delete,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_AnytypeProfile: objRestrictAll,
-		model.SmartBlockType_Home: {
+		smartblock.SmartBlockTypeAnytypeProfile: objRestrictAll,
+		smartblock.SmartBlockTypeHome: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,
 			model.Restrictions_Delete,
@@ -114,7 +114,7 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_Workspace: {
+		smartblock.SmartBlockTypeWorkspace: {
 			model.Restrictions_Blocks,
 			model.Restrictions_Relations,
 			model.Restrictions_Delete,
@@ -123,21 +123,21 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_File:            objFileRestrictions,
-		model.SmartBlockType_Archive:         objRestrictAll,
-		model.SmartBlockType_BundledRelation: objRestrictAll,
-		model.SmartBlockType_SubObject: {
+		smartblock.SmartBlockTypeFile:            objFileRestrictions,
+		smartblock.SmartBlockTypeArchive:         objRestrictAll,
+		smartblock.SmartBlockTypeBundledRelation: objRestrictAll,
+		smartblock.SmartBlockTypeSubObject: {
 			model.Restrictions_Blocks,
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 		},
-		model.SmartBlockType_BundledObjectType: objRestrictAll,
-		model.SmartBlockType_BundledTemplate:   objRestrictAll,
-		model.SmartBlockType_Template: {
+		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
+		smartblock.SmartBlockTypeBundledTemplate:   objRestrictAll,
+		smartblock.SmartBlockTypeTemplate: {
 			model.Restrictions_Template,
 		},
-		model.SmartBlockType_Widget: {
+		smartblock.SmartBlockTypeWidget: {
 			model.Restrictions_Relations,
 			model.Restrictions_Details,
 			model.Restrictions_Delete,
@@ -146,9 +146,9 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		model.SmartBlockType_MissingObject: objRestrictAll,
-		model.SmartBlockType_Date:          objRestrictAll,
-		model.SmartBlockType_AccountOld: {
+		smartblock.SmartBlockTypeMissingObject: objRestrictAll,
+		smartblock.SmartBlockTypeDate:          objRestrictAll,
+		smartblock.SmartBlockTypeAccountOld: {
 			model.Restrictions_Template,
 		},
 	}
@@ -194,14 +194,9 @@ func (or ObjectRestrictions) ToPB() *types.Value {
 }
 
 func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
-	layout, hasLayout := rh.Layout()
-	if hasLayout {
-		switch layout {
-		case model.ObjectType_objectType, model.ObjectType_relation:
-			if rh.Type() == model.SmartBlockType_SubObject {
-				return GetRestrictionsForSubobject(rh.Id())
-			}
-		}
+	uk := rh.UniqueKey()
+	if uk != nil {
+		return GetRestrictionsForUniqueKey(rh.UniqueKey())
 	}
 
 	var ok bool
@@ -214,33 +209,39 @@ func (s *service) getObjectRestrictions(rh RestrictionHolder) (r ObjectRestricti
 			r = ObjectRestrictions{}
 		}
 	}
-
-	if !errors.Is(r.Check(model.Restrictions_Template), ErrRestricted) {
-		if ok, err := s.objectStore.HasObjectType(rh.ObjectType()); err != nil || !ok {
-			r = append(r, model.Restrictions_Template)
-		}
-	}
-
 	return
 }
 
-func GetRestrictionsForSubobject(id string) (r ObjectRestrictions) {
-	r, _ = objectRestrictionsBySBType[model.SmartBlockType_SubObject]
-	sep := addr.SubObjectCollectionIdSeparator
-	parts := strings.Split(id, sep)
-	if len(parts) != 2 {
-		// options
-		return r
-	}
-	switch parts[0] + sep {
-	case addr.ObjectTypeKeyToIdPrefix:
-		if lo.Contains(bundle.SystemTypes, bundle.TypeKey(parts[1])) {
+func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
+	switch uk.SmartblockType() {
+	case smartblock.SmartBlockTypeObjectType:
+		key := uk.InternalKey()
+		if lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
 			return sysTypesRestrictions
 		}
-	case addr.RelationKeyToIdPrefix:
-		if lo.Contains(bundle.SystemRelations, bundle.RelationKey(parts[1])) {
+	case smartblock.SmartBlockTypeRelation:
+		key := uk.InternalKey()
+		if lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
 			return sysRelationsRestrictions
 		}
 	}
 	return
+}
+
+func GetDataviewRestrictionsForUniqueKey(uk domain.UniqueKey) DataviewRestrictions {
+	switch uk.SmartblockType() {
+	case smartblock.SmartBlockTypeObjectType:
+		key := uk.InternalKey()
+		if lo.Contains(bundle.InternalTypes, domain.TypeKey(key)) {
+			return DataviewRestrictions{
+				model.RestrictionsDataviewRestrictions{
+					BlockId:      DataviewBlockId,
+					Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
+				},
+			}
+		}
+	case smartblock.SmartBlockTypeRelation:
+		// should we handle this?
+	}
+	return nil
 }

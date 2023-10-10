@@ -2,25 +2,30 @@ package source
 
 import (
 	"context"
+	"strings"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func NewBundledObjectType(id string) (s Source) {
 	return &bundledObjectType{
-		id: id,
+		id:            id,
+		objectTypeKey: domain.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),
 	}
 }
 
 type bundledObjectType struct {
-	id string
+	id            string
+	objectTypeKey domain.TypeKey
 }
 
 func (v *bundledObjectType) ReadOnly() bool {
@@ -31,8 +36,12 @@ func (v *bundledObjectType) Id() string {
 	return v.id
 }
 
-func (v *bundledObjectType) Type() model.SmartBlockType {
-	return model.SmartBlockType_BundledObjectType
+func (v *bundledObjectType) SpaceID() string {
+	return addr.AnytypeMarketplaceWorkspace
+}
+
+func (v *bundledObjectType) Type() smartblock.SmartBlockType {
+	return smartblock.SmartBlockTypeBundledObjectType
 }
 
 func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *types.Struct, err error) {
@@ -42,16 +51,26 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 	}
 	extraRels = []*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelationLink(bundle.RelationKeyRecommendedLayout)}
 
-	for i := range ot.RelationLinks {
-		extraRels = append(extraRels, ot.RelationLinks[i])
+	for _, rl := range ot.RelationLinks {
+		relationLink := &model.RelationLink{
+			Key:    rl.Key,
+			Format: rl.Format,
+		}
+		extraRels = append(extraRels, relationLink)
 	}
 
-	return extraRels, (&relationutils.ObjectType{ot}).ToStruct(), nil
+	return extraRels, (&relationutils.ObjectType{ot}).BundledTypeDetails(), nil
 }
 
 func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	s := state.NewDoc(v.id, nil).(*state.State)
+	// we use STType instead of BundledObjectType for a reason we want to have the same prefix
+	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, v.objectTypeKey.String())
+	if err != nil {
+		return nil, err
+	}
 
+	s := state.NewDocWithUniqueKey(v.id, nil, uk).(*state.State)
 	rels, d, err := getDetailsForBundledObjectType(v.id)
 	if err != nil {
 		return nil, err
@@ -60,12 +79,9 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
 	}
 	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyObjectType.BundledURL())
-	return s, nil
-}
+	s.SetObjectTypeKey(bundle.TypeKeyObjectType)
 
-func (v *bundledObjectType) ReadMeta(ctx context.Context, _ ChangeReceiver) (doc state.Doc, err error) {
-	return v.ReadDoc(ctx, nil, false)
+	return s, nil
 }
 
 func (v *bundledObjectType) PushChange(params PushChangeParams) (id string, err error) {

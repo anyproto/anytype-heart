@@ -11,10 +11,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -32,52 +35,58 @@ type Profile struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	table.TableEditor
+	anytype core.Service
 
-	sendEvent func(e *pb.Event)
+	eventSender event.Sender
 }
 
 func NewProfile(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	fileBlockService file.BlockService,
-	bookmarkBlockService bookmark.BlockService,
+	anytype core.Service,
+	picker getblock.ObjectGetter,
 	bookmarkService bookmark.BookmarkService,
-	sendEvent func(e *pb.Event),
 	tempDirProvider core.TempDirProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	eventSender event.Sender,
 ) *Profile {
 	f := file.NewFile(
 		sb,
 		fileBlockService,
+		anytype,
 		tempDirProvider,
 		fileService,
+		picker,
 	)
 	return &Profile{
 		SmartBlock:    sb,
-		sendEvent:     sendEvent,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			objectStore,
+			eventSender,
 		),
 		File: f,
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			f,
 			tempDirProvider,
-			relationService,
+			systemObjectService,
 			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,
-			bookmarkBlockService,
+			picker,
 			bookmarkService,
 			objectStore,
 		),
 		TableEditor: table.NewEditor(sb),
+		eventSender: eventSender,
+		anytype:     anytype,
 	}
 }
 
@@ -93,7 +102,7 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 		Version: 1,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
-				template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}, model.ObjectType_profile),
+				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 				template.WithTitle,
 				template.WithFeaturedRelations,
@@ -106,11 +115,12 @@ func (p *Profile) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (p *Profile) SetDetails(ctx *session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if err = p.AllOperations.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
-	p.sendEvent(&pb.Event{
+
+	p.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfAccountDetails{

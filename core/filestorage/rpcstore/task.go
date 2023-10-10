@@ -2,8 +2,9 @@ package rpcstore
 
 import (
 	"context"
-	"github.com/ipfs/go-cid"
 	"sync"
+
+	"github.com/ipfs/go-cid"
 )
 
 var taskPool = &sync.Pool{

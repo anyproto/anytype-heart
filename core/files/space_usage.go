@@ -6,8 +6,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (s *service) GetSpaceUsage(ctx context.Context) (*pb.RpcFileSpaceUsageResponseUsage, error) {
-	stat, err := s.fileSync.SpaceStat(ctx, s.spaceService.AccountId())
+func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error) {
+	stat, err := s.fileSync.SpaceStat(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}

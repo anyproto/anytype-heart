@@ -18,7 +18,7 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 	sb := smarttest.New("root")
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
-	objectStore.EXPECT().Query(gomock.Any(), gomock.Any()).AnyTimes()
+	objectStore.EXPECT().Query(gomock.Any()).AnyTimes()
 	dm := mockDetailsModifier.NewMockDetailsModifier(ctrl)
 	dm.EXPECT().ModifyLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 	a := &Archive{
@@ -28,7 +28,9 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 		objectStore:     objectStore,
 	}
 
-	initCtx := &smartblock.InitContext{IsNewObject: true}
+	initCtx := &smartblock.InitContext{
+		IsNewObject: true,
+	}
 	if err := a.Init(initCtx); err != nil {
 		return nil, err
 	}

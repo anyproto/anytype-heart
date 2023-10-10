@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -207,9 +206,9 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 }
 
 func (l *Dataview) FillSmartIds(ids []string) []string {
-	for _, rl := range l.content.RelationLinks {
-		ids = append(ids, addr.RelationKeyToIdPrefix+rl.Key)
-	}
+	// for _ := range l.content.RelationLinks {
+	// todo: add relationIds from relationLinks
+	// }
 
 	if l.content.TargetObjectId != "" {
 		ids = append(ids, l.content.TargetObjectId)
@@ -225,6 +224,13 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	}
 
 	return ids
+}
+
+func (l *Dataview) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if l.content.TargetObjectId != "" {
+		l.content.TargetObjectId = replacer(l.content.TargetObjectId)
+	}
+	return
 }
 
 func (l *Dataview) HasSmartIds() bool {

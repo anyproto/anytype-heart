@@ -5,8 +5,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 func newIdsFilter(ids []string) idsFilter {
@@ -19,13 +19,13 @@ func newIdsFilter(ids []string) idsFilter {
 
 type idsFilter map[string]int
 
-func (f idsFilter) FilterObject(getter filter.Getter) bool {
+func (f idsFilter) FilterObject(getter database.Getter) bool {
 	id := getter.Get(bundle.RelationKeyId.String()).GetStringValue()
 	_, ok := f[id]
 	return ok
 }
 
-func (f idsFilter) Compare(a, b filter.Getter) int {
+func (f idsFilter) Compare(a, b database.Getter) int {
 	idA := a.Get(bundle.RelationKeyId.String()).GetStringValue()
 	idB := b.Get(bundle.RelationKeyId.String()).GetStringValue()
 	aIndex := f[idA]
@@ -58,9 +58,10 @@ func newSmartblockTypesFilter(sbtProvider typeprovider.SmartBlockTypeProvider, n
 	}
 }
 
-func (m *filterSmartblockTypes) FilterObject(getter filter.Getter) bool {
+func (m *filterSmartblockTypes) FilterObject(getter database.Getter) bool {
 	id := getter.Get(bundle.RelationKeyId.String()).GetStringValue()
-	t, err := m.sbtProvider.Type(id)
+	spaceID := getter.Get(bundle.RelationKeySpaceId.String()).GetStringValue()
+	t, err := m.sbtProvider.Type(spaceID, id)
 	if err != nil {
 		log.Debugf("failed to detect smartblock type for %s: %s", id, err.Error())
 		return false

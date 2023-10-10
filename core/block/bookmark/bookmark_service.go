@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -38,22 +38,22 @@ const CName = "bookmark"
 type ContentFuture func() *model.BlockContentBookmark
 
 type Service interface {
-	CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
+	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
-	Fetch(id string, params bookmark.FetchParams) (err error)
-	FetchBookmarkContent(url string) ContentFuture
-	ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
+	Fetch(spaceID string, blockID string, params bookmark.FetchParams) (err error)
+	FetchBookmarkContent(spaceID string, url string) ContentFuture
+	ContentUpdaters(spaceID string, url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
 
 	app.Component
 }
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, s *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 type DetailsSetter interface {
-	SetDetails(ctx *session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	SetDetails(ctx session.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 }
 
 type service struct {
@@ -63,6 +63,7 @@ type service struct {
 	linkPreview    linkpreview.LinkPreview
 	tempDirService core.TempDirProvider
 	fileService    files.Service
+	coreService    core.Service
 }
 
 func New() Service {
@@ -70,10 +71,12 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.detailsSetter = a.MustComponent(treemanager.CName).(DetailsSetter)
+	s.detailsSetter = app.MustComponent[DetailsSetter](a)
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
+
 	s.fileService = app.MustComponent[files.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	return nil
@@ -85,14 +88,15 @@ func (s service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateBookmarkObject(details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error) {
+func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("empty details")
 	}
 
+	typeID := s.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyBookmark)
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
-	records, _, err := s.store.Query(nil, database.Query{
+	records, _, err := s.store.Query(database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
@@ -108,7 +112,7 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyBookmark.URL()),
+				Value:       pbtypes.String(typeID),
 			},
 		},
 		Limit: 1,
@@ -121,8 +125,14 @@ func (s *service) CreateBookmarkObject(details *types.Struct, getContent Content
 		rec := records[0]
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyBookmark.URL())
-		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(
+			ctx,
+			spaceID,
+			coresb.SmartBlockTypePage,
+			[]domain.TypeKey{bundle.TypeKeyBookmark},
+			details,
+			nil,
+		)
 		if err != nil {
 			return "", nil, fmt.Errorf("create bookmark object: %w", err)
 		}
@@ -168,20 +178,20 @@ func (s *service) UpdateBookmarkObject(objectId string, getContent ContentFuture
 	})
 }
 
-func (s *service) Fetch(id string, params bookmark.FetchParams) (err error) {
+func (s *service) Fetch(spaceID string, blockID string, params bookmark.FetchParams) (err error) {
 	if !params.Sync {
 		go func() {
-			if err := s.fetcher(id, params); err != nil {
-				log.Errorf("fetch bookmark %s: %s", id, err)
+			if err := s.fetcher(spaceID, blockID, params); err != nil {
+				log.Errorf("fetch bookmark %s: %s", blockID, err)
 			}
 		}()
 		return nil
 	}
 
-	return s.fetcher(id, params)
+	return s.fetcher(spaceID, blockID, params)
 }
 
-func (s *service) FetchBookmarkContent(url string) ContentFuture {
+func (s *service) FetchBookmarkContent(spaceID string, url string) ContentFuture {
 	contentCh := make(chan *model.BlockContentBookmark, 1)
 	go func() {
 		defer close(contentCh)
@@ -189,7 +199,7 @@ func (s *service) FetchBookmarkContent(url string) ContentFuture {
 		content := &model.BlockContentBookmark{
 			Url: url,
 		}
-		updaters, err := s.ContentUpdaters(url)
+		updaters, err := s.ContentUpdaters(spaceID, url)
 		if err != nil {
 			log.Errorf("fetch bookmark content %s: %s", url, err)
 		}
@@ -204,7 +214,7 @@ func (s *service) FetchBookmarkContent(url string) ContentFuture {
 	}
 }
 
-func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
+func (s *service) ContentUpdaters(spaceID string, url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
@@ -240,7 +250,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.fileService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
+			hash, err := loadImage(spaceID, s.fileService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
 			if err != nil {
 				log.Errorf("can't load image url %s: %s", data.ImageUrl, err)
 				return
@@ -254,7 +264,7 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(s.fileService, s.tempDirService.TempDir(), "", data.FaviconUrl)
+			hash, err := loadImage(spaceID, s.fileService, s.tempDirService.TempDir(), "", data.FaviconUrl)
 			if err != nil {
 				log.Errorf("can't load favicon url %s: %s", data.FaviconUrl, err)
 				return
@@ -272,17 +282,17 @@ func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.
 	return updaters, nil
 }
 
-func (s *service) fetcher(id string, params bookmark.FetchParams) error {
-	updaters, err := s.ContentUpdaters(params.Url)
+func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchParams) error {
+	updaters, err := s.ContentUpdaters(spaceID, params.Url)
 	if err != nil {
-		log.Errorf("can't get updates for %s: %s", id, err)
+		log.Errorf("can't get updates for %s: %s", blockID, err)
 	}
 
 	var upds []func(*model.BlockContentBookmark)
 	for u := range updaters {
 		upds = append(upds, u)
 	}
-	err = params.Updater(id, func(bm bookmark.Block) error {
+	err = params.Updater(blockID, func(bm bookmark.Block) error {
 		for _, u := range upds {
 			bm.UpdateContent(u)
 		}
@@ -294,7 +304,7 @@ func (s *service) fetcher(id string, params bookmark.FetchParams) error {
 	return nil
 }
 
-func loadImage(fileService files.Service, tempDir string, title, url string) (hash string, err error) {
+func loadImage(spaceID string, fileService files.Service, tempDir string, title, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -341,7 +351,7 @@ func loadImage(fileService files.Service, tempDir string, title, url string) (ha
 		fileName = title
 	}
 
-	im, err := fileService.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(fileName))
+	im, err := fileService.ImageAdd(context.Background(), spaceID, files.WithReader(tmpFile), files.WithName(fileName))
 	if err != nil {
 		return
 	}

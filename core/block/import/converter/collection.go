@@ -57,7 +57,7 @@ func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *st
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:        st.Blocks(),
 				Details:       detailsStruct,
-				ObjectTypes:   []string{bundle.TypeKeyCollection.URL()},
+				ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
 				RelationLinks: st.GetRelationLinks(),
 				Collections:   st.Store(),
 			},

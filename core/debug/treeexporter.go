@@ -3,30 +3,33 @@ package debug
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/debug/treearchive"
-	"github.com/anyproto/anytype-heart/util/anonymize"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/any-sync/commonspace/object/tree/exporter"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/exporter"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+
+	"github.com/anyproto/anytype-heart/core/debug/treearchive"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/util/anonymize"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type treeExporter struct {
 	log        *log.Logger
 	s          objectstore.ObjectStore
 	anonymized bool
-	id         string
+	id         domain.FullID
 	zw         *zip.Writer
 }
 
-func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (filename string, err error) {
+func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.ReadableObjectTree) (filename string, err error) {
 	filename = filepath.Join(path, fmt.Sprintf("at.dbg.%s.%s.zip", e.id, time.Now().Format("20060102.150405.99")))
 	archiveWriter, err := treearchive.NewArchiveWriter(filename)
 	if err != nil {
@@ -53,7 +56,7 @@ func (e *treeExporter) Export(path string, tree objecttree.ReadableObjectTree) (
 	}
 
 	e.log.Printf("exported tree for a %v", time.Since(st))
-	data, err := e.s.GetByIDs(e.id)
+	data, err := e.s.GetByIDs(e.id.SpaceID, []string{e.id.ObjectID})
 	if err != nil {
 		e.log.Printf("can't fetch localstore info: %v", err)
 	} else {

@@ -3,28 +3,23 @@ package subscription
 import (
 	"context"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	"testing"
 
-	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/app/testapp"
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestService_Search(t *testing.T) {
-
 	var newSub = func(fx *fixture, subId string) {
 		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
 			[]database.Record{
@@ -36,14 +31,14 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
+		}, nil).Maybe()
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		fx.store.EXPECT().QueryByID([]string{"author1"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
@@ -139,14 +134,14 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
+		}, nil).Maybe()
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		fx.store.EXPECT().QueryByID([]string{"force1", "force2"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
@@ -198,10 +193,10 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
@@ -265,10 +260,10 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
@@ -363,14 +358,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).Maybe()
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -413,14 +408,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).Maybe()
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -470,14 +465,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).Maybe()
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -520,15 +515,15 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
-		fx.store.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
 			Key:    testRelationKey,
 			Format: model.RelationFormat_object,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		s := fx.Service.(*service)
 		s.ds = newDependencyService(s)
@@ -575,15 +570,15 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
-		fx.store.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
 			Key:    testRelationKey,
 			Format: model.RelationFormat_object,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		s := fx.Service.(*service)
 		s.ds = newDependencyService(s)
@@ -630,14 +625,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
-		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).Maybe()
+		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).AnyTimes()
+		}, nil).Maybe()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -654,53 +649,144 @@ func TestService_Search(t *testing.T) {
 	})
 }
 
-type collectionServiceMock struct {
-	*mock_subscription.MockCollectionService
+func TestNestedSubscription(t *testing.T) {
+	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
+		fx := testCreateSubscriptionWithNestedFilter(t)
+
+		err := fx.store.UpdateObjectDetails("assignee1", &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":   pbtypes.String("assignee1"),
+				"name": pbtypes.String("John Doe"),
+			},
+		})
+		require.NoError(t, err)
+
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: "test-nested-1",
+					Id:    "assignee1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionRemove{
+				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+					SubId: "test",
+					Id:    "task1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test-nested-1",
+					Total: 0,
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test",
+					Total: 0,
+				},
+			})
+	})
+
+	t.Run("update parent object relation so no nested objects satisfy filter anymore", func(t *testing.T) {
+		fx := testCreateSubscriptionWithNestedFilter(t)
+
+		err := fx.store.UpdateObjectDetails("task1", &types.Struct{
+			Fields: map[string]*types.Value{
+				"id":       pbtypes.String("task1"),
+				"assignee": pbtypes.String("assignee2"),
+			},
+		})
+		require.NoError(t, err)
+	})
 }
 
-func (c *collectionServiceMock) Name() string {
-	return "collectionService"
-}
+func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
+	fx := newFixtureWithRealObjectStore(t)
+	fx.systemObjectServiceMock.EXPECT().GetRelationByKey(mock.Anything).Return(&model.Relation{}, nil)
+	resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+		SubId: "test",
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: "assignee.name",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String("Joe Doe"),
+			},
+		},
+		Keys: []string{"id", "name"},
+	})
 
-func (c *collectionServiceMock) Init(a *app.App) error { return nil }
+	require.NoError(t, err)
+	require.Empty(t, resp.Records)
 
-func newFixture(t *testing.T) *fixture {
-	ctrl := gomock.NewController(t)
-	a := testapp.New()
-	testMock.RegisterMockObjectStore(ctrl, a)
-	testMock.RegisterMockKanban(ctrl, a)
-	fx := &fixture{
-		Service: New(),
-		a:       a,
-		ctrl:    ctrl,
-		store:   a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
-	}
-	fx.sender = &testapp.EventSender{F: func(e *pb.Event) {
-		fx.events = append(fx.events, e)
-	}}
-	collectionService := mock_subscription.NewMockCollectionService(t)
-	fx.collectionService = &collectionServiceMock{MockCollectionService: collectionService}
-	a.Register(fx.Service)
-	a.Register(fx.sender)
-	a.Register(fx.collectionService)
+	t.Run("add nested object", func(t *testing.T) {
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				"id":   pbtypes.String("assignee1"),
+				"name": pbtypes.String("Joe Doe"),
+			},
+		})
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id: "assignee1",
+					SubIds: []string{
+						"test-nested-1",
+					},
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							"id": pbtypes.String("assignee1"),
+						},
+					},
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionAdd{
+				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+					SubId: "test-nested-1",
+					Id:    "assignee1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test-nested-1",
+					Total: 1,
+				},
+			})
+	})
 
-	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	sbtProvider.EXPECT().Name().Return("sbtProvider")
-	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
-
-	a.Register(sbtProvider)
-
-	fx.store.EXPECT().SubscribeForAll(gomock.Any())
-	require.NoError(t, a.Start(context.Background()))
+	t.Run("add object satisfying nested filter", func(t *testing.T) {
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				"id":       pbtypes.String("task1"),
+				"assignee": pbtypes.String("assignee1"),
+			},
+		})
+		fx.waitEvents(t,
+			&pb.EventMessageValueOfObjectDetailsSet{
+				ObjectDetailsSet: &pb.EventObjectDetailsSet{
+					Id: "task1",
+					SubIds: []string{
+						"test",
+					},
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							"id": pbtypes.String("task1"),
+						},
+					},
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionAdd{
+				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+					SubId: "test",
+					Id:    "task1",
+				},
+			},
+			&pb.EventMessageValueOfSubscriptionCounters{
+				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+					SubId: "test",
+					Total: 1,
+				},
+			})
+	})
 	return fx
-}
-
-type fixture struct {
-	Service
-	a                 *testapp.TestApp
-	ctrl              *gomock.Controller
-	store             *testMock.MockObjectStore
-	sender            *testapp.EventSender
-	events            []*pb.Event
-	collectionService *collectionServiceMock
 }

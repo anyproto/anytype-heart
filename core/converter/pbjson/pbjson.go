@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("json-converter")
@@ -25,12 +26,11 @@ func (p *pbj) Convert(sbType model.SmartBlockType) []byte {
 	st := p.s.NewState()
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
-			Blocks:         st.BlocksToSave(),
-			Details:        st.CombinedDetails(),
-			ExtraRelations: st.OldExtraRelations(),
-			ObjectTypes:    st.ObjectTypes(),
-			Collections:    st.Store(),
-			RelationLinks:  st.PickRelationLinks(),
+			Blocks:        st.BlocksToSave(),
+			Details:       st.CombinedDetails(),
+			ObjectTypes:   slice.UnwrapStrings(st.ObjectTypeKeys()),
+			Collections:   st.Store(),
+			RelationLinks: st.PickRelationLinks(),
 		},
 	}
 	for _, fk := range p.s.GetAndUnsetFileKeys() {

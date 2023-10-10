@@ -9,13 +9,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/database/filter"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) Query(sch schema.Schema, q database.Query) ([]database.Record, int, error) {
-	filters, err := s.buildQuery(sch, q)
+func (s *dsObjectStore) Query(q database.Query) ([]database.Record, int, error) {
+	filters, err := s.buildQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
@@ -71,8 +70,8 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	return records[offset:], nil
 }
 
-func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (*database.Filters, error) {
-	filters, err := database.NewFilters(q, sch, s)
+func (s *dsObjectStore) buildQuery(q database.Query) (*database.Filters, error) {
+	filters, err := database.NewFilters(q, s)
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
@@ -80,7 +79,7 @@ func (s *dsObjectStore) buildQuery(sch schema.Schema, q database.Query) (*databa
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
 	})
-	filters.FilterObj = filter.AndFilters{filters.FilterObj, discardSystemObjects}
+	filters.FilterObj = database.FiltersAnd{filters.FilterObj, discardSystemObjects}
 
 	if q.FullText != "" {
 		filters, err = s.makeFTSQuery(q.FullText, filters)
@@ -95,24 +94,45 @@ func (s *dsObjectStore) makeFTSQuery(text string, filters *database.Filters) (*d
 	if s.fts == nil {
 		return filters, fmt.Errorf("fullText search not configured")
 	}
-	ids, err := s.fts.Search(text)
+	ids, err := s.fts.Search(getSpaceIDFromFilter(filters.FilterObj), text)
 	if err != nil {
 		return filters, err
 	}
 	idsQuery := newIdsFilter(ids)
-	filters.FilterObj = filter.AndFilters{filters.FilterObj, idsQuery}
-	filters.Order = filter.SetOrder(append([]filter.Order{idsQuery}, filters.Order))
+	filters.FilterObj = database.FiltersAnd{filters.FilterObj, idsQuery}
+	filters.Order = database.SetOrder(append([]database.Order{idsQuery}, filters.Order))
 	return filters, nil
+}
+
+func getSpaceIDFromFilter(fltr database.Filter) (spaceID string) {
+	switch f := fltr.(type) {
+	case database.FilterEq:
+		if f.Key == bundle.RelationKeySpaceId.String() {
+			return f.Value.GetStringValue()
+		}
+	case database.FiltersAnd:
+		spaceID = iterateOverAndFilters(f)
+	}
+	return spaceID
+}
+
+func iterateOverAndFilters(fs []database.Filter) (spaceID string) {
+	for _, f := range fs {
+		if spaceID = getSpaceIDFromFilter(f); spaceID != "" {
+			return spaceID
+		}
+	}
+	return ""
 }
 
 // TODO: objstore: no one uses total
 func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
-	filters, err := s.buildQuery(nil, q)
+	filters, err := s.buildQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
 	}
 	if len(smartBlockTypes) > 0 {
-		filters.FilterObj = filter.AndFilters{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes), filters.FilterObj}
+		filters.FilterObj = database.FiltersAnd{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes), filters.FilterObj}
 	}
 	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
 	if err != nil {
@@ -128,7 +148,8 @@ func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smart
 func (s *dsObjectStore) QueryByID(ids []string) (records []database.Record, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		for _, id := range ids {
-			if sbt, err := s.sbtProvider.Type(id); err == nil {
+			// Don't use spaceID because expected objects are virtual
+			if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
 				if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 					details, err := s.sourceService.DetailsFromIdBasedSource(id)
 					if err != nil {

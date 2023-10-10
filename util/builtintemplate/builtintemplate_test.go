@@ -2,31 +2,42 @@ package builtintemplate
 
 import (
 	"context"
-	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
-	"github.com/anyproto/anytype-heart/app/testapp"
-	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
+	"github.com/anyproto/any-sync/app"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
+
+	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
 )
 
 func Test_registerBuiltin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	s := mockSource.NewMockService(ctrl)
-	s.EXPECT().Name().Return(source.CName).AnyTimes()
-	s.EXPECT().Init(gomock.Any()).AnyTimes()
-	s.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any(), nil).AnyTimes()
-	s.EXPECT().RegisterStaticSource(gomock.Any(), gomock.Any()).AnyTimes()
+
+	sourceService := mockSource.NewMockService(ctrl)
+	sourceService.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any(), nil).AnyTimes()
+	sourceService.EXPECT().RegisterStaticSource(gomock.Any()).AnyTimes()
+
+	objectStore := mock_objectstore.NewMockObjectStore(t)
+	systemObjectService := mock_system_object.NewMockService(t)
 
 	builtInTemplates := New()
-	a := testapp.New().With(s).With(builtInTemplates).With(config.New()).App
-	err := builtInTemplates.Init(a)
-	assert.Nil(t, err)
-	err = builtInTemplates.Run(context.Background())
-	assert.Nil(t, err)
 
-	defer a.Close(context.Background())
+	ctx := context.Background()
+	a := new(app.App)
+	a.Register(testutil.PrepareMock(ctx, a, sourceService))
+	a.Register(builtInTemplates)
+	a.Register(config.New())
+	a.Register(testutil.PrepareMock(ctx, a, objectStore))
+	a.Register(testutil.PrepareMock(ctx, a, systemObjectService))
+
+	err := builtInTemplates.Init(a)
+	assert.NoError(t, err)
+	err = builtInTemplates.Run(context.Background())
+	assert.NoError(t, err)
 }

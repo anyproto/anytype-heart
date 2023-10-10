@@ -3,8 +3,9 @@ package text
 import (
 	"testing"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func Test_marksEq(t *testing.T) {

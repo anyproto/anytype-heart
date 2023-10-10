@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -14,8 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -660,7 +659,7 @@ func TestState_ContainsInStore(t *testing.T) {
 		// then
 		assert.True(t, st.ContainsInStore([]string{collectionName, "subobject1"}))
 		assert.True(t, st.ContainsInStore([]string{collectionName, "subobject2"}))
-		//nested
+		// nested
 		assert.False(t, st.ContainsInStore([]string{collectionName, "subobject3"}))
 		assert.False(t, st.ContainsInStore([]string{collectionName, "subobject1", "subobject3"}))
 		assert.True(t, st.ContainsInStore([]string{collectionName, "subobject2", "subobject3"}))
@@ -703,7 +702,7 @@ func TestState_HasInStore(t *testing.T) {
 		// then
 		assert.True(t, st.HasInStore([]string{collectionName, "subobject1"}))
 		assert.True(t, st.HasInStore([]string{collectionName, "subobject2"}))
-		//nested
+		// nested
 		assert.False(t, st.HasInStore([]string{collectionName, "subobject3"}))
 		assert.False(t, st.HasInStore([]string{collectionName, "subobject1", "subobject3"}))
 		assert.True(t, st.HasInStore([]string{collectionName, "subobject2", "subobject3"}))
@@ -771,282 +770,6 @@ func TestState_Validate(t *testing.T) {
 		// then
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "missed block")
-	})
-}
-
-func TestState_DepSmartIdsLinks(t *testing.T) {
-	// given
-	stateWithLinks := NewDoc("root", map[string]simple.Block{
-		"root": simple.New(&model.Block{
-			Id:          "root",
-			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3"},
-		}),
-		"childBlock": simple.New(&model.Block{Id: "childBlock",
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{
-						{
-							Range: &model.Range{
-								From: 0,
-								To:   8,
-							},
-							Type:  model.BlockContentTextMark_Object,
-							Param: "objectID",
-						},
-						{
-							Range: &model.Range{
-								From: 9,
-								To:   19,
-							},
-							Type:  model.BlockContentTextMark_Mention,
-							Param: "objectID2",
-						},
-					},
-				}},
-			}}),
-		"childBlock2": simple.New(&model.Block{Id: "childBlock2",
-			Content: &model.BlockContentOfBookmark{
-				Bookmark: &model.BlockContentBookmark{
-					TargetObjectId: "objectID3",
-				},
-			}}),
-		"childBlock3": simple.New(&model.Block{Id: "childBlock3",
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: "objectID4",
-				},
-			}}),
-	}).(*State)
-
-	t.Run("all options are turned off", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(true, false, false, false, false)
-		assert.Len(t, objectIDs, 4)
-	})
-
-	t.Run("block option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(false, false, false, false, false)
-		assert.Len(t, objectIDs, 0)
-	})
-}
-
-func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
-	// given
-	stateWithLinks := NewDoc("root", map[string]simple.Block{
-		"root": simple.New(&model.Block{
-			Id:          "root",
-			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3"},
-		}),
-		"childBlock": simple.New(&model.Block{Id: "childBlock",
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{
-						{
-							Range: &model.Range{
-								From: 0,
-								To:   8,
-							},
-							Type:  model.BlockContentTextMark_Object,
-							Param: "objectID",
-						},
-						{
-							Range: &model.Range{
-								From: 9,
-								To:   19,
-							},
-							Type:  model.BlockContentTextMark_Mention,
-							Param: "objectID2",
-						},
-					},
-				}},
-			}}),
-		"childBlock2": simple.New(&model.Block{Id: "childBlock2",
-			Content: &model.BlockContentOfBookmark{
-				Bookmark: &model.BlockContentBookmark{
-					TargetObjectId: "objectID3",
-				},
-			}}),
-		"childBlock3": simple.New(&model.Block{Id: "childBlock3",
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: "objectID4",
-				},
-			}}),
-	}).(*State)
-
-	relations := []*model.RelationLink{
-		{
-			Key:    "relation1",
-			Format: model.RelationFormat_file,
-		},
-		{
-			Key:    "relation2",
-			Format: model.RelationFormat_tag,
-		},
-		{
-			Key:    "relation3",
-			Format: model.RelationFormat_status,
-		},
-		{
-			Key:    "relation4",
-			Format: model.RelationFormat_object,
-		},
-	}
-	stateWithLinks.AddRelationLinks(relations...)
-
-	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(true, false, false, false, false)
-		assert.Len(t, objectIDs, 4)
-	})
-
-	t.Run("blocks option and relations options are turned on: get ids from blocks and relations", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(true, false, true, false, false)
-		assert.Len(t, objectIDs, 10) // 4 links + 4 relations + 2 derived relations
-	})
-}
-
-func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
-	// given
-	stateWithLinks := NewDoc("root", map[string]simple.Block{
-		"root": simple.New(&model.Block{
-			Id:          "root",
-			ChildrenIds: []string{"childBlock", "childBlock2", "childBlock3"},
-		}),
-		"childBlock": simple.New(&model.Block{Id: "childBlock",
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{
-						{
-							Range: &model.Range{
-								From: 0,
-								To:   8,
-							},
-							Type:  model.BlockContentTextMark_Object,
-							Param: "objectID",
-						},
-						{
-							Range: &model.Range{
-								From: 9,
-								To:   19,
-							},
-							Type:  model.BlockContentTextMark_Mention,
-							Param: "objectID2",
-						},
-					},
-				}},
-			}}),
-		"childBlock2": simple.New(&model.Block{Id: "childBlock2",
-			Content: &model.BlockContentOfBookmark{
-				Bookmark: &model.BlockContentBookmark{
-					TargetObjectId: "objectID3",
-				},
-			}}),
-		"childBlock3": simple.New(&model.Block{Id: "childBlock3",
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: "objectID4",
-				},
-			}}),
-	}).(*State)
-
-	relations := []*model.RelationLink{
-		{
-			Key:    "relation1",
-			Format: model.RelationFormat_file,
-		},
-		{
-			Key:    "relation2",
-			Format: model.RelationFormat_tag,
-		},
-		{
-			Key:    "relation3",
-			Format: model.RelationFormat_status,
-		},
-		{
-			Key:    "relation4",
-			Format: model.RelationFormat_object,
-		},
-		{
-			Key:    "relation5",
-			Format: model.RelationFormat_date,
-		},
-	}
-	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", pbtypes.String("file"))
-	stateWithLinks.SetDetail("relation2", pbtypes.String("option1"))
-	stateWithLinks.SetDetail("relation3", pbtypes.String("option2"))
-	stateWithLinks.SetDetail("relation4", pbtypes.String("option3"))
-	stateWithLinks.SetDetail("relation5", pbtypes.Int64(time.Now().Unix()))
-
-	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(true, false, false, false, false)
-		assert.Len(t, objectIDs, 4) // links
-	})
-	t.Run("blocks option and relations option are turned on: get ids from blocks and relations", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(true, false, true, false, false)
-		assert.Len(t, objectIDs, 11) // 4 links + 5 relations + 2 derived relations
-	})
-	t.Run("blocks, relations and details option are turned on: get ids from blocks, relations and details", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(true, true, true, false, false)
-		assert.Len(t, objectIDs, 16) // 4 links + 5 relations + 2 derived relations + 3 options + 1 fileID + 1 date
-	})
-}
-
-func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
-	// given
-	stateWithLinks := NewDoc("root", nil).(*State)
-	relations := []*model.RelationLink{
-		{
-			Key:    "relation1",
-			Format: model.RelationFormat_date,
-		},
-		{
-			Key:    bundle.RelationKeyCreatedDate.String(),
-			Format: model.RelationFormat_date,
-		},
-		{
-			Key:    bundle.RelationKeyCreator.String(),
-			Format: model.RelationFormat_object,
-		},
-		{
-			Key:    bundle.RelationKeyWorkspaceId.String(),
-			Format: model.RelationFormat_object,
-		},
-		{
-			Key:    bundle.RelationKeyLastModifiedBy.String(),
-			Format: model.RelationFormat_object,
-		},
-	}
-	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.SetDetail("relation1", pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(time.Now().Unix()))
-	stateWithLinks.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("creator"))
-	stateWithLinks.SetDetail(bundle.RelationKeyWorkspaceId.String(), pbtypes.String("workspaceID"))
-	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String("lastModifiedBy"))
-
-	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(false, true, false, false, true)
-		assert.Len(t, objectIDs, 4) // creator + workspaceID + lastModifiedBy + 1 date
-	})
-
-	t.Run("details and relations options are turned on: get ids from details and relations", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(false, true, true, false, true)
-		assert.Len(t, objectIDs, 11) // 5 relations + creator + workspaceID + lastModifiedBy + 1 date + 2 derived relations
-	})
-}
-
-func TestState_DepSmartIdsObjectTypes(t *testing.T) {
-	// given
-	stateWithLinks := NewDoc("root", nil).(*State)
-	stateWithLinks.SetObjectType(bundle.TypeKeyPage.URL())
-
-	t.Run("all options are turned off", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(false, false, false, false, false)
-		assert.Len(t, objectIDs, 0)
-	})
-	t.Run("objTypes option is turned on, get only object types id", func(t *testing.T) {
-		objectIDs := stateWithLinks.DepSmartIds(false, false, false, true, false)
-		assert.Len(t, objectIDs, 1)
-		assert.Equal(t, objectIDs[0], bundle.TypeKeyPage.URL())
 	})
 }
 
@@ -1662,7 +1385,7 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateTextParams(t *testing.T) {
 		// when
 		st.ApplyChangeIgnoreErr(change)
 
-		//then
+		// then
 		b := st.Get("textBlock")
 		assert.NotNil(t, b)
 		assert.Equal(t, "updated text", b.Model().GetText().Text)
@@ -2456,7 +2179,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, "ot-page", st.ObjectType())
+		assert.Equal(t, domain.TypeKey("page"), st.ObjectTypeKey())
 	})
 
 	t.Run("apply ObjectTypeAdd change: add another object type", func(t *testing.T) {
@@ -2471,7 +2194,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// apply
-		assert.Equal(t, []string{"ot-page", "ot-note"}, st.ObjectTypes())
+		assert.Equal(t, []domain.TypeKey{"page", "note"}, st.ObjectTypeKeys())
 	})
 
 	t.Run("apply ObjectTypeAdd change: add existing object type - no changes", func(t *testing.T) {
@@ -2486,7 +2209,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Equal(t, []string{"ot-page", "ot-note"}, st.ObjectTypes())
+		assert.Equal(t, []domain.TypeKey{"page", "note"}, st.ObjectTypeKeys())
 	})
 }
 
@@ -2496,7 +2219,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
 			Id: "root",
 		}),
 	}).(*State)
-	st.objectTypes = append(st.objectTypes, "ot-page")
+	st.objectTypeKeys = append(st.objectTypeKeys, "page")
 
 	t.Run("apply ObjectTypeRemove change: remove existing object type", func(t *testing.T) {
 		// given
@@ -2510,7 +2233,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Empty(t, st.ObjectTypes())
+		assert.Empty(t, st.ObjectTypeKeys())
 	})
 
 	t.Run("apply ObjectTypeRemove change: remove non existing object type", func(t *testing.T) {
@@ -2525,7 +2248,7 @@ func TestState_ApplyChangeIgnoreErrObjectTypeRemove(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Empty(t, st.ObjectTypes())
+		assert.Empty(t, st.ObjectTypeKeys())
 	})
 }
 

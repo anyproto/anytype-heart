@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -28,7 +29,7 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 	key := pagesDetailsBase.ChildString(id).Bytes()
 	txErr := s.updateTxn(func(txn *badger.Txn) error {
 		oldDetails, err := s.extractDetailsByKey(txn, key)
-		if err != nil && !isNotFound(err) {
+		if err != nil && !badgerhelper.IsNotFound(err) {
 			return fmt.Errorf("extract details: %w", err)
 		}
 		if oldDetails != nil && oldDetails.Details.Equal(newDetails.Details) {
@@ -70,7 +71,7 @@ func (s *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 }
 
 func (s *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
-	return setValue(s.db, pagesSnippetBase.ChildString(id).Bytes(), snippet)
+	return badgerhelper.SetValue(s.db, pagesSnippetBase.ChildString(id).Bytes(), snippet)
 }
 
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error {
@@ -78,7 +79,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		key := pendingDetailsBase.ChildString(id).Bytes()
 
 		objDetails, err := s.getPendingLocalDetails(txn, key)
-		if err != nil && !isNotFound(err) {
+		if err != nil && !badgerhelper.IsNotFound(err) {
 			return fmt.Errorf("get pending details: %w", err)
 		}
 
@@ -102,7 +103,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 			newDetails.Fields = map[string]*types.Value{}
 		}
 		newDetails.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
-		err = setValueTxn(txn, key, &model.ObjectDetails{Details: newDetails})
+		err = badgerhelper.SetValueTxn(txn, key, &model.ObjectDetails{Details: newDetails})
 		if err != nil {
 			return fmt.Errorf("put pending details: %w", err)
 		}
@@ -111,7 +112,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 }
 
 func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
-	return getValueTxn(txn, key, func(raw []byte) (*model.ObjectDetails, error) {
+	return badgerhelper.GetValueTxn(txn, key, func(raw []byte) (*model.ObjectDetails, error) {
 		var res model.ObjectDetails
 		err := proto.Unmarshal(raw, &res)
 		return &res, err

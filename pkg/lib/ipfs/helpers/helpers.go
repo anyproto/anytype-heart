@@ -6,42 +6,15 @@ import (
 	gopath "path"
 	"time"
 
-	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers/resolver"
-	"github.com/ipfs/go-cid"
-
 	"github.com/ipfs/boxo/coreiface/path"
 	uio "github.com/ipfs/boxo/ipld/unixfs/io"
 	ipfspath "github.com/ipfs/boxo/path"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers/resolver"
 )
-
-var log = logging.Logger("anytype-ipfs")
-
-const (
-	netTcpHealthCheckAddress = "healthcheck.anytype.io:80"
-	netTcpHealthCheckTimeout = time.Second * 3
-)
-
-// DataAtPath return bytes under an ipfs path
-func DataAtPath(ctx context.Context, fs fileservice.FileService, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
-	resolvedPath, err := ResolvePath(ctx, fs.DAGService(), path.New(pth))
-	if err != nil {
-		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
-	}
-
-	r, err := fs.GetFile(ctx, resolvedPath.Cid())
-	if err != nil {
-		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
-	}
-
-	return resolvedPath.Cid(), r, nil
-}
 
 func LinksAtCid(ctx context.Context, dag ipld.DAGService, pathCid string) ([]*ipld.Link, error) {
 	pathCidParsed, err := cid.Parse(pathCid)

@@ -8,6 +8,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/samber/lo"
+	"golang.org/x/exp/constraints"
+	"golang.org/x/exp/slices"
 )
 
 func Union(a, b []string) []string {
@@ -140,7 +142,7 @@ func hash(s string) uint64 {
 	return h.Sum64()
 }
 
-func SortedEquals(s1, s2 []string) bool {
+func SortedEquals[K constraints.Ordered](s1, s2 []K) bool {
 	if len(s1) != len(s2) {
 		return false
 	}
@@ -152,17 +154,17 @@ func SortedEquals(s1, s2 []string) bool {
 	return true
 }
 
-func UnsortedEquals(s1, s2 []string) bool {
+func UnsortedEqual[K constraints.Ordered](s1, s2 []K) bool {
 	if len(s1) != len(s2) {
 		return false
 	}
 
-	s1Sorted := make([]string, len(s1))
-	s2Sorted := make([]string, len(s2))
+	s1Sorted := make([]K, len(s1))
+	s2Sorted := make([]K, len(s2))
 	copy(s1Sorted, s1)
 	copy(s2Sorted, s2)
-	sort.Strings(s1Sorted)
-	sort.Strings(s2Sorted)
+	slices.Sort(s1Sorted)
+	slices.Sort(s2Sorted)
 
 	return SortedEquals(s1Sorted, s2Sorted)
 }
@@ -221,4 +223,13 @@ func FilterCID(cids []string) []string {
 		_, err := cid.Parse(item)
 		return err == nil
 	})
+}
+
+// UnwrapStrings converts slice of type that has underlying type of string to slice of strings
+func UnwrapStrings[T ~string](values []T) []string {
+	res := make([]string, len(values))
+	for i, v := range values {
+		res[i] = string(v)
+	}
+	return res
 }

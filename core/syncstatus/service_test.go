@@ -34,18 +34,18 @@ package syncstatus
 //
 // 	}
 //
-// 	spaceService := mock_space.NewMockService(fx.ctrl)
+// 	provider := mock_space.NewMockService(fx.ctrl)
 // 	typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(fx.ctrl)
 // 	coreService := mock_core.NewMockService(fx.ctrl)
 //
-// 	statusService := New(typeProvider, &config.Config{}, eventReceiver, spaceService, coreService, fileSync)
+// 	statusService := New(typeProvider, &config.Config{}, eventReceiver, provider, coreService, fileSync)
 //
 // 	ctx := context.Background()
 // 	fileSync.EXPECT().NewStatusWatcher(statusService, 5*time.Second).Return(statusWatcher)
 //
 // 	spc := mock_space.NewMockSpace(fx.ctrl)
 //
-// 	spaceService.EXPECT().AccountSpace(ctx).Return(spc, nil)
+// 	provider.EXPECT().AccountSpace(ctx).Return(spc, nil)
 //
 // 	err := statusService.Run(ctx)
 // 	require.NoError(t, err)

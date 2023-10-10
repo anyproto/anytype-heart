@@ -11,7 +11,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
-	dsbadgerv3 "github.com/textileio/go-ds-badger3"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -32,23 +31,22 @@ var log = logging.Logger("anytype-clientds")
 type clientds struct {
 	running bool
 
-	spaceDS                                    *dsbadgerv3.Datastore
-	localstoreDS                               *dsbadgerv3.Datastore
+	spaceDS                                    *badger.DB
+	localstoreDS                               *badger.DB
 	cfg                                        Config
 	repoPath                                   string
-	migrations                                 []migration
 	spaceStoreWasMissing, localStoreWasMissing bool
 	spentOnInit                                time.Duration
 }
 
 type Config struct {
-	Spacestore dsbadgerv3.Options
-	Localstore dsbadgerv3.Options
+	Spacestore badger.Options
+	Localstore badger.Options
 }
 
 var DefaultConfig = Config{
-	Spacestore: dsbadgerv3.DefaultOptions,
-	Localstore: dsbadgerv3.DefaultOptions,
+	Spacestore: badger.DefaultOptions(""),
+	Localstore: badger.DefaultOptions(""),
 }
 
 type DSConfigGetter interface {
@@ -65,9 +63,7 @@ func init() {
 	// used to store all objects tree changes + some metadata
 	DefaultConfig.Spacestore.MemTableSize = 16 * 1024 * 1024     // Memtable saves all values below value threshold + write ahead log, actual file size is 2x the amount, the size is preallocated
 	DefaultConfig.Spacestore.ValueLogFileSize = 64 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
-	DefaultConfig.Spacestore.GcInterval = 0
-	DefaultConfig.Spacestore.GcSleep = 0
-	DefaultConfig.Spacestore.ValueThreshold = 1024 * 128 // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
+	DefaultConfig.Spacestore.ValueThreshold = 1024 * 128         // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
 	DefaultConfig.Spacestore.Logger = logging.LWrapper{logging.Logger("store.spacestore")}
 	DefaultConfig.Spacestore.SyncWrites = false
 	DefaultConfig.Spacestore.WithCompression(0) // disable compression
@@ -75,9 +71,7 @@ func init() {
 	// used to store objects localstore + threads logs info
 	DefaultConfig.Localstore.MemTableSize = 64 * 1024 * 1024
 	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
-	DefaultConfig.Localstore.GcInterval = 0                      // we don't need to have value GC here, because all the values should fit in the ValueThreshold. So GC will be done by the live LSM compactions
-	DefaultConfig.Localstore.GcSleep = 0
-	DefaultConfig.Localstore.ValueThreshold = 1024 * 1024 // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
+	DefaultConfig.Localstore.ValueThreshold = 1024 * 1024        // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
 	DefaultConfig.Localstore.Logger = logging.LWrapper{logging.Logger("store.localstore")}
 	DefaultConfig.Localstore.SyncWrites = false
 	DefaultConfig.Localstore.WithCompression(0) // disable compression
@@ -99,8 +93,6 @@ func (r *clientds) Init(a *app.App) (err error) {
 		return fmt.Errorf("ds config is missing")
 	}
 
-	r.migrations = []migration{}
-
 	if _, err := os.Stat(filepath.Join(r.getRepoPath(oldLitestoreDir))); !os.IsNotExist(err) {
 		return fmt.Errorf("old repo found")
 	}
@@ -115,19 +107,20 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 	RemoveExpiredLocks(r.repoPath)
 
-	r.localstoreDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(localstoreDSDir), &r.cfg.Localstore)
+	opts := r.cfg.Localstore
+	opts.Dir = r.getRepoPath(localstoreDSDir)
+	opts.ValueDir = opts.Dir
+	r.localstoreDS, err = badger.Open(opts)
 	if err != nil {
 		return oserror.TransformError(err)
 	}
 
-	r.spaceDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(SpaceDSDir), &r.cfg.Spacestore)
+	opts = r.cfg.Spacestore
+	opts.Dir = r.getRepoPath(SpaceDSDir)
+	opts.ValueDir = opts.Dir
+	r.spaceDS, err = badger.Open(opts)
 	if err != nil {
 		return oserror.TransformError(err)
-	}
-
-	err = r.migrateIfNeeded()
-	if err != nil {
-		return fmt.Errorf("migrateIfNeeded failed: %w", err)
 	}
 
 	r.running = true
@@ -139,50 +132,19 @@ func (r *clientds) Run(context.Context) error {
 	return nil
 }
 
-func (r *clientds) migrateIfNeeded() error {
-	for _, m := range r.migrations {
-		_, err := r.localstoreDS.Get(context.Background(), m.migrationKey)
-		if err == nil {
-			continue
-		}
-		if err != nil && err != ds.ErrNotFound {
-			return err
-		}
-		err = m.migrationFunc()
-		if err != nil {
-			return fmt.Errorf(
-				"migration with key %s failed: failed to migrate the keys from old db: %w",
-				m.migrationKey.String(),
-				err)
-		}
-		err = r.localstoreDS.Put(context.Background(), m.migrationKey, nil)
-		if err != nil {
-			return fmt.Errorf("failed to put %s migration key into db: %w", m.migrationKey.String(), err)
-		}
-	}
-	return nil
-}
-
 func (r *clientds) SpaceStorage() (*badger.DB, error) {
 	// TODO: [MR] Change after testing
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
-	return r.spaceDS.DB, nil
+	return r.spaceDS, nil
 }
 
-func (r *clientds) LocalstoreDS() (datastore.DSTxnBatching, error) {
+func (r *clientds) LocalStorage() (*badger.DB, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 	return r.localstoreDS, nil
-}
-
-func (r *clientds) LocalstoreBadger() (*badger.DB, error) {
-	if !r.running {
-		return nil, fmt.Errorf("exact ds may be requested only after Run")
-	}
-	return r.localstoreDS.DB, nil
 }
 
 func (r *clientds) Name() (name string) {

@@ -12,14 +12,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/relation"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type Page struct {
@@ -34,7 +39,8 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore objectstore.ObjectStore
+	objectStore         objectstore.ObjectStore
+	systemObjectService system_object.Service
 }
 
 func NewPage(
@@ -42,39 +48,43 @@ func NewPage(
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	fileBlockService file.BlockService,
-	bookmarkBlockService bookmark.BlockService,
+	picker getblock.ObjectGetter,
 	bookmarkService bookmark.BookmarkService,
-	relationService relation.Service,
+	systemObjectService system_object.Service,
 	tempDirProvider core.TempDirProvider,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
 	fileService files.Service,
+	eventSender event.Sender,
 ) *Page {
 	f := file.NewFile(
 		sb,
 		fileBlockService,
+		anytype,
 		tempDirProvider,
 		fileService,
+		picker,
 	)
 	return &Page{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, relationService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			objectStore,
+			eventSender,
 		),
 		File: f,
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			f,
 			tempDirProvider,
-			relationService,
+			systemObjectService,
 			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,
-			bookmarkBlockService,
+			picker,
 			bookmarkService,
 			objectStore,
 		),
@@ -82,19 +92,18 @@ func NewPage(
 			sb,
 			anytype,
 			objectStore,
-			relationService,
+			systemObjectService,
 			sbtProvider,
 		),
-		TableEditor: table.NewEditor(sb),
-		objectStore: objectStore,
+		TableEditor:         table.NewEditor(sb),
+		objectStore:         objectStore,
+		systemObjectService: systemObjectService,
 	}
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.ObjectTypeUrls == nil && (ctx.State == nil || len(ctx.State.ObjectTypes()) == 0) {
-		// todo: revise this logic
-		// we can have other default type on client side
-		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
+	if ctx.ObjectTypeKeys == nil && (ctx.State == nil || len(ctx.State.ObjectTypeKeys()) == 0) && ctx.IsNewObject {
+		ctx.ObjectTypeKeys = []domain.TypeKey{bundle.TypeKeyPage}
 	}
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
@@ -110,19 +119,27 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			layout, ok := ctx.State.Layout()
 			if !ok {
 				// nolint:errcheck
-				otypes, _ := p.objectStore.GetObjectTypes(ctx.ObjectTypeUrls)
-				for _, ot := range otypes {
-					layout = ot.Layout
+				lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
+				uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, string(lastTypeKey))
+				if err != nil {
+					log.Errorf("failed to create unique key: %v", err)
+				} else {
+					otype, err := p.systemObjectService.GetObjectByUniqueKey(p.SpaceID(), uk)
+					if err != nil {
+						log.Errorf("failed to get object by unique key: %v", err)
+					} else {
+						layout = model.ObjectTypeLayout(pbtypes.GetInt64(otype.Details, bundle.RelationKeyRecommendedLayout.String()))
+					}
 				}
 			}
-			if len(ctx.ObjectTypeUrls) > 0 && len(ctx.State.ObjectTypes()) == 0 {
-				ctx.State.SetObjectTypes(ctx.ObjectTypeUrls)
+			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
+				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
 			}
 			// TODO Templates must be dumb here, no migration logic
 
 			templates := []template.StateTransformer{
 				template.WithEmpty,
-				template.WithObjectTypesAndLayout(ctx.State.ObjectTypes(), layout),
+				template.WithObjectTypesAndLayout(ctx.State.ObjectTypeKeys(), layout),
 				template.WithLayout(layout),
 				template.WithDefaultFeaturedRelations,
 				template.WithFeaturedRelations,
@@ -141,7 +158,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_todo:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
+					template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),
 				)
 			case model.ObjectType_bookmark:
 				templates = append(templates,
@@ -150,6 +167,19 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 					template.WithBookmarkBlocks,
 				)
+			case model.ObjectType_relation:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+				)
+			case model.ObjectType_objectType:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithDescription,
+					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+				)
+				// TODO case for relationOption?
 			default:
 				templates = append(templates,
 					template.WithTitle,

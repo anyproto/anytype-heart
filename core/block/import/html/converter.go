@@ -1,6 +1,7 @@
 package html
 
 import (
+	"context"
 	"io"
 	"path/filepath"
 
@@ -52,7 +53,7 @@ func (h *HTML) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (h *HTML) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	path := h.GetParams(req)
 	if len(path) == 0 {
 		return nil, nil
@@ -198,7 +199,7 @@ func (h *HTML) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
 		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
-		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
+		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 
 	snapshot := &converter.Snapshot{

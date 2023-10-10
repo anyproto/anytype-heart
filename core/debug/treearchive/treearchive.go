@@ -4,12 +4,13 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
-	"github.com/anyproto/anytype-heart/core/debug/treearchive/zipaclstorage"
-	"github.com/anyproto/anytype-heart/core/debug/treearchive/ziptreestorage"
+
 	"github.com/anyproto/any-sync/commonspace/object/acl/liststorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/jsonpb"
 
+	"github.com/anyproto/anytype-heart/core/debug/treearchive/zipaclstorage"
+	"github.com/anyproto/anytype-heart/core/debug/treearchive/ziptreestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 

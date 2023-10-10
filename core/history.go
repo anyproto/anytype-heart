@@ -2,8 +2,11 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,8 +36,16 @@ func (mw *Middleware) HistoryShowVersion(cctx context.Context, req *pb.RpcHistor
 		err error
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hs := mw.app.MustComponent(history.CName).(history.History)
-		obj, ver, err = hs.Show(req.ObjectId, req.VersionId)
+		hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceID, err := res.ResolveSpaceID(req.ObjectId)
+		if err != nil {
+			return fmt.Errorf("resolve spaceID: %w", err)
+		}
+		obj, ver, err = hs.Show(domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: req.ObjectId,
+		}, req.VersionId)
 		return
 	}); err != nil {
 		return response(nil, nil, err)
@@ -64,8 +75,16 @@ func (mw *Middleware) HistoryGetVersions(cctx context.Context, req *pb.RpcHistor
 		err  error
 	)
 	if err = mw.doBlockService(func(bs *block.Service) (err error) {
-		hs := mw.app.MustComponent(history.CName).(history.History)
-		vers, err = hs.Versions(req.ObjectId, req.LastVersionId, int(req.Limit))
+		hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceID, err := res.ResolveSpaceID(req.ObjectId)
+		if err != nil {
+			return fmt.Errorf("resolve spaceID: %w", err)
+		}
+		vers, err = hs.Versions(domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: req.ObjectId,
+		}, req.LastVersionId, int(req.Limit))
 		return
 	}); err != nil {
 		return response(nil, err)
@@ -88,7 +107,15 @@ func (mw *Middleware) HistorySetVersion(cctx context.Context, req *pb.RpcHistory
 		return
 	}
 	return response(mw.doBlockService(func(bs *block.Service) (err error) {
-		hs := mw.app.MustComponent(history.CName).(history.History)
-		return hs.SetVersion(req.ObjectId, req.VersionId)
+		hs := mw.applicationService.GetApp().MustComponent(history.CName).(history.History)
+		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
+		spaceID, err := res.ResolveSpaceID(req.ObjectId)
+		if err != nil {
+			return fmt.Errorf("resolve spaceID: %w", err)
+		}
+		return hs.SetVersion(domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: req.ObjectId,
+		}, req.VersionId)
 	}))
 }

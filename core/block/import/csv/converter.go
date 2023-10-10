@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -54,7 +55,7 @@ func (c *CSV) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportReque
 	return nil
 }
 
-func (c *CSV) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	params := c.GetParams(req)
 	if params == nil {
 		return nil, nil

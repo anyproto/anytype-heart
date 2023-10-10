@@ -33,7 +33,7 @@ const (
 type fileStatusRegistry struct {
 	fileSyncService filesync.FileSync
 	fileStore       filestore.FileStore
-	picker          getblock.Picker
+	picker          getblock.ObjectGetter
 
 	sync.Mutex
 
@@ -44,7 +44,7 @@ type fileStatusRegistry struct {
 func newFileStatusRegistry(
 	fileSyncService filesync.FileSync,
 	fileStore filestore.FileStore,
-	picker getblock.Picker,
+	picker getblock.ObjectGetter,
 	updateInterval time.Duration,
 ) *fileStatusRegistry {
 	return &fileStatusRegistry{

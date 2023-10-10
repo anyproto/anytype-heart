@@ -2,11 +2,11 @@ package session
 
 import (
 	"fmt"
-	"github.com/golang-jwt/jwt"
 	"math/rand"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/golang-jwt/jwt"
 )
 
 const CName = "session"
@@ -19,15 +19,19 @@ type Service interface {
 	CloseSession(token string) error
 }
 
+type session struct {
+	token string
+}
+
 type service struct {
 	lock     *sync.RWMutex
-	sessions map[string]struct{}
+	sessions map[string]session
 }
 
 func New() Service {
 	return &service{
 		lock:     &sync.RWMutex{},
-		sessions: map[string]struct{}{},
+		sessions: map[string]session{},
 	}
 }
 
@@ -50,7 +54,9 @@ func (s *service) StartSession(privKey []byte) (string, error) {
 	if _, ok := s.sessions[token]; ok {
 		return "", fmt.Errorf("session is already started")
 	}
-	s.sessions[token] = struct{}{}
+	s.sessions[token] = session{
+		token: token,
+	}
 	return token, nil
 }
 

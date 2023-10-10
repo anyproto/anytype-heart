@@ -2,18 +2,18 @@ package localstore
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	dsCtx "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 	"github.com/multiformats/go-base32"
 
-	ds "github.com/anyproto/anytype-heart/pkg/lib/datastore/noctxds"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/util/slice"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 var (
@@ -60,82 +60,7 @@ func (i Index) JoinedKeys(val interface{}) []string {
 	return keys
 }
 
-func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
-	txn, err := ds.NewTransaction(false)
-	if err != nil {
-		return err
-	}
-
-	defer txn.Discard()
-
-	err = AddIndexWithTxn(index, txn, newVal, newValPrimary)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func UpdateIndexWithTxn(index Index, txn ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
-	oldKeys := index.JoinedKeys(oldVal)
-	getFullKey := func(key string) dsCtx.Key {
-		return IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(key).ChildString(newValPrimary)
-	}
-
-	newKeys := index.JoinedKeys(newVal)
-
-	removed, added := slice.DifferenceRemovedAdded(oldKeys, newKeys)
-	if len(oldKeys) > 0 {
-		exists, err := txn.Has(getFullKey(oldKeys[0]))
-		if err != nil {
-			return err
-		}
-
-		if !exists {
-			// inconsistency – lets add all keys, not only the new ones
-			added = newKeys
-		}
-	}
-
-	for _, removedKey := range removed {
-		key := getFullKey(removedKey)
-		exists, err := txn.Has(key)
-		if err != nil {
-			return err
-		}
-
-		if !exists {
-			continue
-		}
-		log.Debugf("update(remove) index at %s", key.String())
-
-		err = txn.Delete(key)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, addedKey := range added {
-		key := getFullKey(addedKey)
-		exists, err := txn.Has(key)
-		if err != nil {
-			return err
-		}
-
-		if exists {
-			continue
-		}
-		log.Debugf("update(add) index at %s", key.String())
-
-		err = txn.Put(key, []byte{})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary string) error {
+func AddIndexWithTxn(index Index, txn *badger.Txn, newVal interface{}, newValPrimary string) error {
 	for _, keyParts := range index.Keys(newVal) {
 		var sep string
 		if index.SplitIndexKeyParts {
@@ -149,7 +74,7 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 
 		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 		if index.Unique {
-			exists, err := ds.Has(key)
+			exists, err := badgerhelper.Has(txn, key.Bytes())
 			if err != nil {
 				return err
 			}
@@ -160,7 +85,7 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 
 		key = key.ChildString(newValPrimary)
 		log.Debugf("add index at %s", key.String())
-		err := ds.Put(key, []byte{})
+		err := txn.Set(key.Bytes(), []byte{})
 		if err != nil {
 			return err
 		}
@@ -168,37 +93,7 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 	return nil
 }
 
-// EraseIndex deletes the whole index
-func EraseIndex(index Index, datastore ds.DSTxnBatching) error {
-	key := IndexBase.ChildString(index.Prefix).ChildString(index.Name)
-	txn, err := datastore.NewTransaction(true)
-	if err != nil {
-		return err
-	}
-
-	res, err := GetKeys(txn, key.String(), 0)
-	if err != nil {
-		return err
-	}
-
-	keys, err := ExtractKeysFromResults(res)
-	if err != nil {
-		return fmt.Errorf("extract keys from results: %w", err)
-	}
-	b, err := datastore.Batch()
-	if err != nil {
-		return err
-	}
-	for _, key := range keys {
-		err = b.Delete(dsCtx.NewKey(key))
-		if err != nil {
-			return err
-		}
-	}
-	return b.Commit()
-}
-
-func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary string) error {
+func RemoveIndexWithTxn(index Index, txn *badger.Txn, val interface{}, valPrimary string) error {
 	for _, keyParts := range index.Keys(val) {
 		var sep string
 		if index.SplitIndexKeyParts {
@@ -212,7 +107,7 @@ func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary str
 
 		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 
-		exists, err := txn.Has(key.ChildString(valPrimary))
+		exists, err := badgerhelper.Has(txn, key.ChildString(valPrimary).Bytes())
 		if err != nil {
 			return err
 		}
@@ -221,7 +116,7 @@ func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary str
 			return nil
 		}
 
-		err = txn.Delete(key.ChildString(valPrimary))
+		err = txn.Delete(key.ChildString(valPrimary).Bytes())
 		if err != nil {
 			return err
 		}
@@ -229,18 +124,7 @@ func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary str
 	return nil
 }
 
-func UpdateIndexesWithTxn(store Indexable, txn ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
-	for _, index := range store.Indexes() {
-		err := UpdateIndexWithTxn(index, txn, oldVal, newVal, newValPrimary)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func AddIndexesWithTxn(store Indexable, txn ds.Txn, newVal interface{}, newValPrimary string) error {
+func AddIndexesWithTxn(store Indexable, txn *badger.Txn, newVal interface{}, newValPrimary string) error {
 	for _, index := range store.Indexes() {
 		err := AddIndexWithTxn(index, txn, newVal, newValPrimary)
 		if err != nil {
@@ -251,22 +135,7 @@ func AddIndexesWithTxn(store Indexable, txn ds.Txn, newVal interface{}, newValPr
 	return nil
 }
 
-func RemoveIndexes(store Indexable, ds ds.TxnDatastore, val interface{}, valPrimary string) error {
-	txn, err := ds.NewTransaction(false)
-	if err != nil {
-		return err
-	}
-	defer txn.Discard()
-
-	err = RemoveIndexesWithTxn(store, txn, val, valPrimary)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func RemoveIndexesWithTxn(store Indexable, txn ds.Txn, val interface{}, valPrimary string) error {
+func RemoveIndexesWithTxn(store Indexable, txn *badger.Txn, val interface{}, valPrimary string) error {
 	for _, index := range store.Indexes() {
 		err := RemoveIndexWithTxn(index, txn, val, valPrimary)
 		if err != nil {
@@ -277,23 +146,17 @@ func RemoveIndexesWithTxn(store Indexable, txn ds.Txn, val interface{}, valPrima
 	return nil
 }
 
-func GetKeyByIndex(index Index, txn ds.Txn, val interface{}) (string, error) {
-	results, err := GetKeysByIndex(index, txn, val, 1)
+func GetKeyByIndex(index Index, txn *badger.Txn, val interface{}) (string, error) {
+	keys, err := GetKeysByIndex(index, txn, val, 1)
 	if err != nil {
 		return "", err
 	}
 
-	defer results.Close()
-	res, ok := <-results.Next()
-	if !ok {
+	if len(keys) == 0 {
 		return "", ErrNotFound
 	}
 
-	if res.Error != nil {
-		return "", res.Error
-	}
-
-	key := dsCtx.RawKey(res.Key)
+	key := dsCtx.RawKey(keys[0])
 	keyParts := key.List()
 
 	return keyParts[len(keyParts)-1], nil
@@ -314,35 +177,13 @@ func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []st
 	return key.ChildString(keyStr)
 }
 
-func GetKeysByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool, limit int) (query.Results, error) {
+func GetKeysByIndexParts(txn *badger.Txn, prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool, limit int) ([]string, error) {
 	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, separator, hash)
 
-	return GetKeys(txn, key.String(), limit)
+	return GetKeys(txn, key.String(), limit), nil
 }
 
-func CountAllKeysFromResults(results query.Results) (int, error) {
-	var count int
-	for {
-		res, ok := <-results.Next()
-		if !ok {
-			break
-		}
-		if res.Error != nil {
-			return -1, res.Error
-		}
-
-		count++
-	}
-
-	return count, nil
-}
-
-func GetLeavesFromResults(results query.Results) ([]string, error) {
-	keys, err := ExtractKeysFromResults(results)
-	if err != nil {
-		return nil, err
-	}
-
+func GetLeavesFromResults(keys []string) ([]string, error) {
 	var leaves = make([]string, len(keys))
 	for i, key := range keys {
 		leaf, err := CarveKeyParts(key, -1, 0)
@@ -353,18 +194,6 @@ func GetLeavesFromResults(results query.Results) ([]string, error) {
 	}
 
 	return leaves, nil
-}
-
-func ExtractKeysFromResults(results query.Results) ([]string, error) {
-	var keys []string
-	for res := range results.Next() {
-		if res.Error != nil {
-			return nil, res.Error
-		}
-		keys = append(keys, res.Key)
-	}
-
-	return keys, nil
 }
 
 func CarveKeyParts(key string, from, to int) (string, error) {
@@ -378,7 +207,7 @@ func CarveKeyParts(key string, from, to int) (string, error) {
 	return strings.Join(polymorph.ToStrings(carved), "/"), nil
 }
 
-func GetKeysByIndex(index Index, txn ds.Txn, val interface{}, limit int) (query.Results, error) {
+func GetKeysByIndex(index Index, txn *badger.Txn, val interface{}, limit int) ([]string, error) {
 	indexKeyValues := index.Keys(val)
 	if indexKeyValues == nil {
 		return nil, fmt.Errorf("failed to get index key values – may be incorrect val interface")
@@ -405,13 +234,50 @@ func GetKeysByIndex(index Index, txn ds.Txn, val interface{}, limit int) (query.
 		limit = 1
 	}
 
-	return GetKeys(txn, key.String(), limit)
+	return GetKeys(txn, key.String(), limit), nil
 }
 
-func GetKeys(tx ds.Txn, prefix string, limit int) (query.Results, error) {
-	return tx.Query(query.Query{
-		Prefix:   prefix,
-		Limit:    limit,
-		KeysOnly: true,
+func GetKeys(txn *badger.Txn, prefix string, limit int) []string {
+	iter := txn.NewIterator(badger.IteratorOptions{
+		Prefix:         []byte(prefix),
+		PrefetchValues: false,
 	})
+	defer iter.Close()
+
+	var (
+		keys  []string
+		count int
+	)
+	for iter.Rewind(); iter.Valid(); iter.Next() {
+		count++
+		if limit > 0 && count > limit {
+			break
+		}
+		key := iter.Item().KeyCopy(nil)
+		keys = append(keys, string(key))
+	}
+	return keys
+}
+
+// EraseIndex deletes the whole index
+func EraseIndex(index Index, db *badger.DB, txn *badger.Txn) (*badger.Txn, error) {
+	indexKey := IndexBase.ChildString(index.Prefix).ChildString(index.Name)
+	keys := GetKeys(txn, indexKey.String(), 0)
+
+	for _, key := range keys {
+		key := dsCtx.NewKey(key).Bytes()
+		err := txn.Delete(key)
+		if errors.Is(err, badger.ErrTxnTooBig) {
+			err = txn.Commit()
+			if err != nil {
+				return txn, fmt.Errorf("commit big transaction: %w", err)
+			}
+			txn = db.NewTransaction(true)
+			err = txn.Delete(key)
+		}
+		if err != nil {
+			return txn, fmt.Errorf("delete key %s: %w", key, err)
+		}
+	}
+	return txn, nil
 }

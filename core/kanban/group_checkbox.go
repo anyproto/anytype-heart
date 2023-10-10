@@ -8,7 +8,7 @@ import (
 type GroupCheckBox struct {
 }
 
-func (gCh *GroupCheckBox) InitGroups(f *database.Filters) error {
+func (gCh *GroupCheckBox) InitGroups(spaceID string, f *database.Filters) error {
 	return nil
 }
 

@@ -2,19 +2,29 @@ package event
 
 import (
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 const CName = "eventSender"
 
 type Sender interface {
-	Send(event *pb.Event)
+	IsActive(token string) bool
+	Broadcast(event *pb.Event)
+	SendToSession(token string, event *pb.Event)
+	BroadcastToOtherSessions(token string, e *pb.Event)
 	app.Component
 }
 
 type CallbackSender struct {
 	callback func(event *pb.Event)
 }
+
+func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
+	return &CallbackSender{callback: callback}
+}
+
+var _ = Sender(&CallbackSender{})
 
 func (es *CallbackSender) Init(a *app.App) (err error) {
 	return
@@ -24,10 +34,18 @@ func (es *CallbackSender) Name() (name string) {
 	return CName
 }
 
-func NewCallbackSender(callback func(event *pb.Event)) *CallbackSender {
-	return &CallbackSender{callback: callback}
+func (es *CallbackSender) IsActive(token string) bool {
+	return true
 }
 
-func (es *CallbackSender) Send(event *pb.Event) {
+func (es *CallbackSender) BroadcastToOtherSessions(token string, e *pb.Event) {
+	// noop
+}
+
+func (es *CallbackSender) SendToSession(token string, event *pb.Event) {
+	es.callback(event)
+}
+
+func (es *CallbackSender) Broadcast(event *pb.Event) {
 	es.callback(event)
 }

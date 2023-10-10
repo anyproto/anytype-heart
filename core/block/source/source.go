@@ -1,6 +1,7 @@
 package source
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,30 +12,86 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/golang/snappy"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const changeSizeLimit = 10 * 1024 * 1024
+const (
+	dataTypeSnappy   = "1/s"
+	poolSize         = 4096
+	snappyLowerLimit = 64
+	changeSizeLimit  = 10 * 1024 * 1024
+)
 
-var log = logging.Logger("anytype-mw-source")
 var (
+	log = logging.Logger("anytype-mw-source")
+
+	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
+
 	ErrObjectNotFound = errors.New("object not found")
 	ErrReadOnly       = errors.New("object is read only")
 	ErrBigChangeSize  = errors.New("change size is above the limit")
 )
+
+func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
+	data := bytesPool.Get().([]byte)[:0]
+	defer bytesPool.Put(data)
+
+	data = slices.Grow(data, change.Size())
+	n, err := change.MarshalTo(data)
+	if err != nil {
+		return
+	}
+	data = data[:n]
+
+	if n > snappyLowerLimit {
+		result = snappy.Encode(nil, data)
+		dataType = dataTypeSnappy
+	} else {
+		result = bytes.Clone(data)
+	}
+
+	return
+}
+
+func UnmarshalChange(treeChange *objecttree.Change, data []byte) (result any, err error) {
+	change := &pb.Change{}
+	if treeChange.DataType == dataTypeSnappy {
+		buf := bytesPool.Get().([]byte)[:0]
+		defer bytesPool.Put(buf)
+
+		var n int
+		if n, err = snappy.DecodedLen(data); err == nil {
+			buf = slices.Grow(buf, n)[:n]
+			var decoded []byte
+			decoded, err = snappy.Decode(buf, data)
+			if err == nil {
+				data = decoded
+			}
+		}
+	}
+	if err = proto.Unmarshal(data, change); err == nil {
+		result = change
+	}
+	return
+}
 
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
@@ -44,7 +101,8 @@ type ChangeReceiver interface {
 
 type Source interface {
 	Id() string
-	Type() model.SmartBlockType
+	SpaceID() string
+	Type() smartblock.SmartBlockType
 	Heads() []string
 	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
@@ -77,24 +135,27 @@ type sourceDeps struct {
 	sbt smartblock.SmartBlockType
 	ot  objecttree.ObjectTree
 
-	coreService    core.Service
-	accountService accountservice.Service
-	spaceService   space.Service
-	sbtProvider    typeprovider.SmartBlockTypeProvider
-	fileService    files.Service
+	coreService         core.Service
+	accountService      accountservice.Service
+	spaceService        spacecore.SpaceCoreService
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	fileService         files.Service
+	systemObjectService system_object.Service
 }
 
-func newTreeSource(id string, deps sourceDeps) (s Source, err error) {
+func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err error) {
 	return &source{
-		ObjectTree:     deps.ot,
-		id:             id,
-		coreService:    deps.coreService,
-		spaceService:   deps.spaceService,
-		openedAt:       time.Now(),
-		smartblockType: deps.sbt,
-		accountService: deps.accountService,
-		sbtProvider:    deps.sbtProvider,
-		fileService:    deps.fileService,
+		ObjectTree:          deps.ot,
+		id:                  id,
+		spaceID:             spaceID,
+		coreService:         deps.coreService,
+		spaceService:        deps.spaceService,
+		openedAt:            time.Now(),
+		smartblockType:      deps.sbt,
+		accountService:      deps.accountService,
+		sbtProvider:         deps.sbtProvider,
+		fileService:         deps.fileService,
+		systemObjectService: deps.systemObjectService,
 	}, nil
 }
 
@@ -105,6 +166,7 @@ type ObjectTreeProvider interface {
 type source struct {
 	objecttree.ObjectTree
 	id                   string
+	spaceID              string
 	smartblockType       smartblock.SmartBlockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
@@ -114,12 +176,15 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
-	coreService    core.Service
-	fileService    files.Service
-	accountService accountservice.Service
-	spaceService   space.Service
-	sbtProvider    typeprovider.SmartBlockTypeProvider
+	coreService         core.Service
+	fileService         files.Service
+	accountService      accountservice.Service
+	spaceService        spacecore.SpaceCoreService
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	systemObjectService system_object.Service
 }
+
+var _ updatelistener.UpdateListener = (*source)(nil)
 
 func (s *source) Tree() objecttree.ObjectTree {
 	return s.ObjectTree
@@ -131,7 +196,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, s.coreService.PredefinedBlocks().Profile)
+		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, s.coreService.PredefinedObjects(s.spaceID).Profile)
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
@@ -169,15 +234,19 @@ func (s *source) Id() string {
 	return s.id
 }
 
-func (s *source) Type() model.SmartBlockType {
-	return model.SmartBlockType(s.smartblockType)
+func (s *source) SpaceID() string {
+	return s.spaceID
 }
 
-func (s *source) ReadDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
-	return s.readDoc(ctx, receiver, allowEmpty)
+func (s *source) Type() smartblock.SmartBlockType {
+	return s.smartblockType
 }
 
-func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+func (s *source) ReadDoc(_ context.Context, receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
+	return s.readDoc(receiver)
+}
+
+func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 	s.receiver = receiver
 	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
 	if !ok {
@@ -189,7 +258,7 @@ func (s *source) readDoc(ctx context.Context, receiver ChangeReceiver, allowEmpt
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedBlocks().Profile)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedObjects(s.spaceID).Profile)
 	if err != nil {
 		return
 	}
@@ -198,7 +267,16 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		log.With("objectID", s.id).Errorf("not valid state: %v", validationErr)
 	}
 	st.BlocksInit(st)
-	st.InjectDerivedDetails()
+
+	// This is temporary migration. We will move it to persistent migration later after several releases.
+	// The reason is to minimize the number of glitches for users of both old and new versions of Anytype.
+	// For example, if we persist this migration for Dataview block now, user will see "No query selected"
+	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
+	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
+	// compatibility. But in many cases we expect that users update object not so often as they just view them.
+	migration := newSubObjectsLinksMigration(s.spaceID, s.systemObjectService)
+	migration.migrate(st)
+
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
@@ -214,7 +292,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	creator = s.coreService.PredefinedBlocks().Profile
+	creator = s.coreService.PredefinedObjects(s.spaceID).Profile
 	return
 }
 
@@ -230,25 +308,13 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	if params.Time.IsZero() {
 		params.Time = time.Now()
 	}
-	c := &pb.Change{
-		Timestamp: params.Time.Unix(),
-		Version:   params.State.MigrationVersion(),
-	}
-	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
-		c.Snapshot = &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
-				Blocks:        params.State.BlocksToSave(),
-				Details:       params.State.Details(),
-				ObjectTypes:   params.State.ObjectTypes(),
-				Collections:   params.State.Store(),
-				RelationLinks: params.State.PickRelationLinks(),
-			},
-			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
-		}
-	}
-	c.Content = params.Changes
-	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
-	data, err := c.Marshal()
+	change := s.buildChange(params)
+
+	// TODO: GO-2151 Need to enable snappy compression when all clients will be able to decode snappy
+	// data, dataType, err := MarshalChange(change)
+	dataType := ""
+	data, err := change.Marshal()
+
 	if err != nil {
 		return
 	}
@@ -257,26 +323,51 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 			Errorf("change size (%d bytes) is above the limit of %d bytes", len(data), changeSizeLimit)
 		return "", err
 	}
+
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
 		Key:         s.accountService.Account().SignKey,
-		IsSnapshot:  c.Snapshot != nil,
+		IsSnapshot:  change.Snapshot != nil,
 		IsEncrypted: true,
+		DataType:    dataType,
 	})
 	if err != nil {
 		return
 	}
 	id = addResult.Heads[0]
 
-	if c.Snapshot != nil {
+	if change.Snapshot != nil {
 		s.lastSnapshotId = id
 		s.changesSinceSnapshot = 0
 		log.Infof("%s: pushed snapshot", s.id)
 	} else {
 		s.changesSinceSnapshot++
-		log.Debugf("%s: pushed %d changes", s.id, len(c.Content))
+		log.Debugf("%s: pushed %d changes", s.id, len(change.Content))
 	}
 	return
+}
+
+func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
+	c = &pb.Change{
+		Timestamp: params.Time.Unix(),
+		Version:   params.State.MigrationVersion(),
+	}
+	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
+		c.Snapshot = &pb.ChangeSnapshot{
+			Data: &model.SmartBlockSnapshotBase{
+				Blocks:        params.State.BlocksToSave(),
+				Details:       params.State.Details(),
+				ObjectTypes:   slice.UnwrapStrings(params.State.ObjectTypeKeys()),
+				Collections:   params.State.Store(),
+				RelationLinks: params.State.PickRelationLinks(),
+				Key:           params.State.UniqueKeyInternal(),
+			},
+			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
+		}
+	}
+	c.Content = params.Changes
+	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
+	return c
 }
 
 func checkChangeSize(data []byte, maxSize int) error {
@@ -288,12 +379,12 @@ func checkChangeSize(data []byte, maxSize int) error {
 }
 
 func (s *source) ListIds() (ids []string, err error) {
-	spc, err := s.spaceService.AccountSpace(context.Background())
+	spc, err := s.spaceService.Get(context.Background(), s.spaceID)
 	if err != nil {
 		return
 	}
 	ids = slice.Filter(spc.StoredIds(), func(id string) bool {
-		t, err := s.sbtProvider.Type(id)
+		t, err := s.sbtProvider.Type(s.spaceID, id)
 		if err != nil {
 			return false
 		}
@@ -333,16 +424,6 @@ func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return s.getFileHashesForSnapshot(nil)
 }
 
-func (s *source) iterate(startId string, iterFunc objecttree.ChangeIterateFunc) (err error) {
-	unmarshall := func(_ *objecttree.Change, decrypted []byte) (res any, err error) {
-		ch := &pb.Change{}
-		err = proto.Unmarshal(decrypted, ch)
-		res = ch
-		return
-	}
-	return s.ObjectTree.IterateFrom(startId, unmarshall, iterFunc)
-}
-
 func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {
 	fileKeys := s.getFileKeysByHashes(changeHashes)
 	var uniqKeys = make(map[string]struct{})
@@ -357,7 +438,7 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 			}
 		}
 	}
-	err := s.iterate(s.ObjectTree.Root().Id, func(c *objecttree.Change) (isContinue bool) {
+	err := s.ObjectTree.IterateRoot(UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
 		model, ok := c.Model.(*pb.Change)
 		if !ok {
 			return false
@@ -379,7 +460,10 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(h)
+		fk, err := s.fileService.FileGetKeys(domain.FullID{
+			SpaceID:  s.spaceID,
+			ObjectID: h,
+		})
 		if err != nil {
 			log.Warnf("can't get file key for hash: %v: %v", h, err)
 			continue
@@ -425,15 +509,8 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 	}
 
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId,
-		func(_ *objecttree.Change, decrypted []byte) (any, error) {
-			ch := &pb.Change{}
-			err = proto.Unmarshal(decrypted, ch)
-			if err != nil {
-				return nil, err
-			}
-			return ch, nil
-		}, func(change *objecttree.Change) bool {
+	err = ot.IterateFrom(startId, UnmarshalChange,
+		func(change *objecttree.Change) bool {
 			count++
 			lastChange = change
 			// that means that we are starting from tree root
@@ -501,54 +578,43 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 	}
 
 	var lastMigrationVersion uint32
-	err = ot.IterateFrom(startId,
-		func(_ *objecttree.Change, decrypted []byte) (any, error) {
-			ch := &pb.Change{}
-			err = proto.Unmarshal(decrypted, ch)
-			if err != nil {
-				return nil, err
-			}
-			return ch, nil
-		}, func(change *objecttree.Change) bool {
-			count++
-			lastChange = change
-			// that means that we are starting from tree root
-			if change.Id == ot.Id() {
-				st = state.NewDoc(ot.Id(), nil).(*state.State)
-				st.SetChangeId(change.Id)
-				return true
-			}
+	err = ot.IterateFrom(startId, UnmarshalChange, func(change *objecttree.Change) bool {
+		count++
+		lastChange = change
+		// that means that we are starting from tree root
+		if change.Id == ot.Id() {
+			st = state.NewDoc(ot.Id(), nil).(*state.State)
+			st.SetChangeId(change.Id)
+			return true
+		}
 
-			model := change.Model.(*pb.Change)
-			if model.Version > lastMigrationVersion {
-				lastMigrationVersion = model.Version
-			}
-			if startId == change.Id {
-				if st == nil {
-					changesAppliedSinceSnapshot = 0
-					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
-					return true
-				} else {
-					st = st.NewState()
-				}
-				return true
-			}
-			if model.Snapshot != nil {
+		model := change.Model.(*pb.Change)
+		if model.Version > lastMigrationVersion {
+			lastMigrationVersion = model.Version
+		}
+		if startId == change.Id {
+			if st == nil {
 				changesAppliedSinceSnapshot = 0
+				st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
+				return true
 			} else {
-				changesAppliedSinceSnapshot++
-			}
-			ns := st.NewState()
-			appliedContent = append(appliedContent, model.Content...)
-			ns.SetChangeId(change.Id)
-			ns.ApplyChangeIgnoreErr(model.Content...)
-			ns.AddFileKeys(model.FileKeys...)
-			_, _, err = state.ApplyStateFastOne(ns)
-			if err != nil {
-				return false
+				st = st.NewState()
 			}
 			return true
-		})
+		}
+		if model.Snapshot != nil {
+			changesAppliedSinceSnapshot = 0
+		} else {
+			changesAppliedSinceSnapshot++
+		}
+		ns := st.NewState()
+		appliedContent = append(appliedContent, model.Content...)
+		ns.SetChangeId(change.Id)
+		ns.ApplyChangeIgnoreErr(model.Content...)
+		ns.AddFileKeys(model.FileKeys...)
+		_, _, err = state.ApplyStateFastOne(ns)
+		return err == nil
+	})
 	if err != nil {
 		return
 	}

@@ -8,16 +8,16 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
 type updateReceiver struct {
 	coreService core.Service
-	emitter     func(event *pb.Event)
+	eventSender event.Sender
 
 	linkedFilesWatcher *linkedFilesWatcher
-	subObjectsWatcher  *subObjectsWatcher
 	nodeConfService    nodeconf.Service
 	sync.Mutex
 	nodeConnected bool
@@ -27,38 +27,31 @@ type updateReceiver struct {
 func newUpdateReceiver(
 	coreService core.Service,
 	linkedFilesWatcher *linkedFilesWatcher,
-	subObjectsWatcher *subObjectsWatcher,
 	nodeConfService nodeconf.Service,
 	cfg *config.Config,
-	emitter func(event *pb.Event),
+	eventSender event.Sender,
 ) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
-		emitter = nil
+		eventSender = nil
 	}
 	return &updateReceiver{
 		coreService:        coreService,
 		linkedFilesWatcher: linkedFilesWatcher,
-		subObjectsWatcher:  subObjectsWatcher,
 		nodeConfService:    nodeConfService,
-		emitter:            emitter,
 		lastStatus:         make(map[string]pb.EventStatusThreadSyncStatus),
+		eventSender:        eventSender,
 	}
 }
 
-func (r *updateReceiver) UpdateTree(ctx context.Context, objId string, status syncstatus.SyncStatus) error {
+func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status syncstatus.SyncStatus) error {
 	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
 	objStatus := r.getObjectStatus(status)
-
-	if objId == r.coreService.PredefinedBlocks().Account {
-		r.subObjectsWatcher.ForEach(func(subObjectID string) {
-			r.notify(subObjectID, objStatus, filesSummary.pinStatus)
-		})
-	}
 
 	if !r.isStatusUpdated(objId, objStatus, filesSummary) {
 		return nil
 	}
 	r.notify(objId, objStatus, filesSummary.pinStatus)
+
 	return nil
 }
 
@@ -102,6 +95,12 @@ func (r *updateReceiver) isNodeConnected() bool {
 	return r.nodeConnected
 }
 
+func (r *updateReceiver) UpdateNodeConnection(online bool) {
+	r.Lock()
+	defer r.Unlock()
+	r.nodeConnected = online
+}
+
 func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
 	r.Lock()
 	defer r.Unlock()
@@ -123,10 +122,10 @@ func (r *updateReceiver) notify(
 }
 
 func (r *updateReceiver) sendEvent(ctx string, event pb.IsEventMessageValue) {
-	if r.emitter == nil {
+	if r.eventSender == nil {
 		return
 	}
-	r.emitter(&pb.Event{
+	r.eventSender.Broadcast(&pb.Event{
 		Messages:  []*pb.EventMessage{{Value: event}},
 		ContextId: ctx,
 	})

@@ -183,7 +183,6 @@ func substituteLinksInDetails(d *types.Struct, idsMap map[string]string) *types.
 
 func normalizeDetails(d *types.Struct) *types.Struct {
 	delete(d.Fields, bundle.RelationKeyId.String())
-	delete(d.Fields, bundle.RelationKeyWorkspaceId.String())
 	delete(d.Fields, bundle.RelationKeyLastModifiedBy.String())
 	delete(d.Fields, bundle.RelationKeyLastModifiedDate.String())
 	delete(d.Fields, bundle.RelationKeyCreatedDate.String())

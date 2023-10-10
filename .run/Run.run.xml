@@ -4,6 +4,7 @@
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-tags &quot;nomutexdeadlockdetector noauth nographviz&quot;" />
     <envs>
+      <env name="ANYDEBUG" value=":6061" />
       <env name="ANYPROF" value=":6060" />
       <env name="ANYTYPE_GATEWAY_ADDR" value="127.0.0.1:31006" />
       <env name="ANYTYPE_GRPC_ADDR" value="127.0.0.1:31007" />

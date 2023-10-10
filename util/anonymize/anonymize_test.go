@@ -1,13 +1,15 @@
 package anonymize
 
 import (
+	"testing"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/text"
-	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestChange(t *testing.T) {

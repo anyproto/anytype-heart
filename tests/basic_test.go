@@ -5,6 +5,7 @@ package tests
 import (
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -112,7 +113,7 @@ func pageTemplate(children ...*Block) *Block {
 	return Root(Children(cs...))
 }
 
-func (s *testSuite) testOnNewObject(objectType bundle.TypeKey, fn func(objectID string), wantPage *Block) {
+func (s *testSuite) testOnNewObject(objectType domain.TypeKey, fn func(objectID string), wantPage *Block) {
 	cctx := s.newCallCtx(s.T())
 	resp := call(cctx, s.ObjectCreate, &pb.RpcObjectCreateRequest{
 		Details: &types.Struct{

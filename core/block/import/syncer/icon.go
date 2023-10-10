@@ -1,6 +1,7 @@
 package syncer
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -9,8 +10,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -19,14 +20,15 @@ import (
 var log = logging.Logger("import")
 
 type IconSyncer struct {
-	service *block.Service
+	service  *block.Service
+	resolver idresolver.Resolver
 }
 
-func NewIconSyncer(service *block.Service) *IconSyncer {
-	return &IconSyncer{service: service}
+func NewIconSyncer(service *block.Service, resolver idresolver.Resolver) *IconSyncer {
+	return &IconSyncer{service: service, resolver: resolver}
 }
 
-func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) error {
+func (is *IconSyncer) Sync(id string, b simple.Block) error {
 	icon := b.Model().GetText().GetIconImage()
 	_, err := cid.Decode(icon)
 	if err == nil {
@@ -36,14 +38,18 @@ func (is *IconSyncer) Sync(ctx *session.Context, id string, b simple.Block) erro
 	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
 		req = pb.RpcFileUploadRequest{Url: icon}
 	}
-	hash, err := is.service.UploadFile(req)
+	spaceID, err := is.resolver.ResolveSpaceID(id)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
+	hash, err := is.service.UploadFile(context.Background(), spaceID, req)
 	if err != nil {
 		log.Errorf("failed uploading icon image file: %s", oserror.TransformError(err))
 	}
 
-	err = is.service.Do(id, func(sb smartblock.SmartBlock) error {
+	err = block.Do(is.service, id, func(sb smartblock.SmartBlock) error {
 		updater := sb.(basic.Updatable)
-		upErr := updater.Update(ctx, func(simpleBlock simple.Block) error {
+		upErr := updater.Update(nil, func(simpleBlock simple.Block) error {
 			simpleBlock.Model().GetText().IconImage = hash
 			return nil
 		}, b.Model().Id)

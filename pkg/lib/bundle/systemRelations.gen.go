@@ -4,11 +4,13 @@ source: pkg/lib/bundle/systemRelations.json
 */
 package bundle
 
-const SystemRelationsChecksum = "23ba86a8bd114f5bf1bfa0ee4ed3f7835975fb775ce5a28799e420fb1053d0ac"
+import domain "github.com/anyproto/anytype-heart/core/domain"
+
+const SystemRelationsChecksum = "e519802efe57250a1fa27b9e7eec5abfd84b796cca986c0698fe1ef2d752c36b"
 
 // SystemRelations contains relations that have some special biz logic depends on them in some objects
 // in case EVERY object depend on the relation please add it to RequiredInternalRelations
-var SystemRelations = append(RequiredInternalRelations, []RelationKey{
+var SystemRelations = append(RequiredInternalRelations, []domain.RelationKey{
 	RelationKeyAddedDate,
 	RelationKeySource,
 	RelationKeySourceObject,
@@ -45,5 +47,6 @@ var SystemRelations = append(RequiredInternalRelations, []RelationKey{
 	RelationKeySourceFilePath,
 	RelationKeyFileSyncStatus,
 	RelationKeyDefaultTemplateId,
+	RelationKeyUniqueKey,
 	RelationKeyBacklinks,
 }...)

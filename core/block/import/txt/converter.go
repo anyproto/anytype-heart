@@ -1,6 +1,7 @@
 package txt
 
 import (
+	"context"
 	"io"
 	"path/filepath"
 
@@ -43,7 +44,7 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
@@ -156,7 +157,7 @@ func (t *TXT) getSnapshot(blocks []*model.Block, p string) (*converter.Snapshot,
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:      blocks,
 		Details:     converter.GetCommonDetails(p, "", "", model.ObjectType_basic),
-		ObjectTypes: []string{bundle.TypeKeyPage.URL()},
+		ObjectTypes: []string{bundle.TypeKeyPage.String()},
 	}
 
 	snapshot := &converter.Snapshot{

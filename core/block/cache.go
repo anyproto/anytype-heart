@@ -2,485 +2,145 @@ package block
 
 import (
 	"context"
-	"crypto/rand"
-	"errors"
 	"fmt"
-	"time"
 
-	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/anyproto/any-sync/commonspace"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/object/treemanager"
-	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/anyproto/any-sync/util/crypto"
-	"go.uber.org/zap"
-
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/source"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	spaceservice "github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 )
 
-type ctxKey int
-
-var errAppIsNotRunning = errors.New("app is not running")
-
-const (
-	optsKey                  ctxKey = iota
-	derivedObjectLoadTimeout        = time.Minute * 30
-	objectLoadTimeout               = time.Minute * 3
-	concurrentTrees                 = 10
-)
-
-type treeCreateCache struct {
-	initFunc InitFunc
+type ObjectGetter interface {
+	GetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error)
+	GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
 }
 
-type cacheOpts struct {
-	spaceId      string
-	createOption *treeCreateCache
-	buildOption  source.BuildOptions
-	putObject    smartblock.SmartBlock
-}
-
-type InitFunc = func(id string) *smartblock.InitContext
-
-func (s *Service) createCache() ocache.OCache {
-	return ocache.New(
-		s.cacheLoad,
-		// ocache.WithLogger(log.Desugar()),
-		ocache.WithGCPeriod(time.Minute),
-		// TODO: [MR] Get ttl from config
-		ocache.WithTTL(time.Duration(60)*time.Second),
-	)
-}
-
-func (s *Service) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
-	// TODO Pass options as parameter?
-	opts := ctx.Value(optsKey).(cacheOpts)
-
-	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
-		return s.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
-	}
-	createObject := func() (sb smartblock.SmartBlock, err error) {
-		initCtx := opts.createOption.initFunc(id)
-		initCtx.IsNewObject = true
-		initCtx.Ctx = ctx
-		initCtx.SpaceID = opts.spaceId
-		initCtx.BuildOpts = opts.buildOption
-		return s.objectFactory.InitObject(id, initCtx)
-	}
-
-	switch {
-	case opts.createOption != nil:
-		return createObject()
-	case opts.putObject != nil:
-		// putting object through cache
-		return opts.putObject, nil
-	default:
-		break
-	}
-
-	sbt, _ := s.sbtProvider.Type(id)
-	switch sbt {
-	case coresb.SmartBlockTypeSubObject:
-		return s.initSubObject(ctx, id)
-	default:
-		return buildObject(id)
-	}
-}
-
-// GetTree should only be called by either space services or debug apis, not the client code
-func (s *Service) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
-	if !s.anytype.IsStarted() {
-		err = errAppIsNotRunning
-		return
-	}
-
-	ctx = context.WithValue(ctx, optsKey, cacheOpts{spaceId: spaceId})
-	v, err := s.cache.Get(ctx, id)
+func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
+	ctx := context.Background()
+	sb, err := p.GetObject(ctx, objectID)
 	if err != nil {
-		return
+		return err
 	}
-	sb := v.(smartblock.SmartBlock).Inner()
-	return sb.(source.ObjectTreeProvider).Tree(), nil
+
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
 }
 
-func (s *Service) NewTreeSyncer(spaceId string, treeManager treemanager.TreeManager) treemanager.TreeSyncer {
-	s.syncerLock.Lock()
-	defer s.syncerLock.Unlock()
-	s.syncer = newTreeSyncer(spaceId, objectLoadTimeout, concurrentTrees, treeManager)
-	if s.syncStarted {
-		log.Warn("creating tree syncer after run")
-		s.syncer.Run()
-	}
-	return s.syncer
-}
-
-func (s *Service) StartSync() {
-	s.syncerLock.Lock()
-	defer s.syncerLock.Unlock()
-	s.syncStarted = true
-	if s.syncer != nil {
-		s.syncer.Run()
-	}
-}
-
-func (s *Service) GetObject(ctx context.Context, spaceId, id string) (sb smartblock.SmartBlock, err error) {
-	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
-		opts.spaceId = spaceId
-		return opts
-	})
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	var (
-		done    = make(chan struct{})
-		closing bool
-	)
-	var start time.Time
-	go func() {
-		select {
-		case <-done:
-			cancel()
-		case <-s.closing:
-			start = time.Now()
-			cancel()
-			closing = true
-		}
-	}()
-	v, err := s.cache.Get(ctx, id)
-	close(done)
-	if closing && errors.Is(err, context.Canceled) {
-		log.With("close_delay", time.Since(start).Milliseconds()).With("objectID", id).Warnf("object was loading during closing")
-	}
+func DoContext[t any](p ObjectGetter, ctx context.Context, objectID string, apply func(sb t) error) error {
+	sb, err := p.GetObject(ctx, objectID)
 	if err != nil {
-		return
-	}
-	return v.(smartblock.SmartBlock), nil
-}
-
-func (s *Service) GetAccountTree(ctx context.Context, id string) (tr objecttree.ObjectTree, err error) {
-	return s.GetTree(ctx, s.clientService.AccountId(), id)
-}
-
-func (s *Service) GetAccountObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
-	if _, ok := ctx.Deadline(); !ok {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, objectLoadTimeout)
-		defer cancel()
-	}
-	return s.GetObject(ctx, s.clientService.AccountId(), id)
-}
-
-// DeleteTree should only be called by space services
-func (s *Service) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
-	if !s.anytype.IsStarted() {
-		return errAppIsNotRunning
+		return err
 	}
 
-	obj, err := s.GetObject(ctx, spaceId, treeId)
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
+}
+
+func DoContextFullID[t any](p ObjectGetter, ctx context.Context, id domain.FullID, apply func(sb t) error) error {
+	sb, err := p.GetObjectByFullID(ctx, id)
 	if err != nil {
-		return
-	}
-	s.MarkTreeDeleted(ctx, spaceId, treeId)
-	// this should be done not inside lock
-	// TODO: looks very complicated, I know
-	err = obj.(smartblock.SmartBlock).Inner().(source.ObjectTreeProvider).Tree().Delete()
-	if err != nil {
-		return
+		return err
 	}
 
-	s.sendOnRemoveEvent(treeId)
-	_, err = s.cache.Remove(ctx, treeId)
-	return
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(bb)
 }
 
-func (s *Service) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
-	err := s.OnDelete(treeId, nil)
-	if err != nil {
-		log.Error("failed to execute on delete for tree", zap.Error(err))
+// DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
+// It correctly handles the case when two ids are the same.
+func DoState2[t1, t2 any](s ObjectGetter, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
+	if firstID == secondID {
+		return DoStateAsync(s, firstID, func(st *state.State, b t1) error {
+			// Check that b satisfies t2
+			b2, ok := any(b).(t2)
+			if !ok {
+				var dummy t2
+				return fmt.Errorf("block %s is not of type %T", firstID, dummy)
+			}
+			return f(st, st, b, b2)
+		})
 	}
-	return err
-}
-
-func (s *Service) DeleteSpace(ctx context.Context, spaceID string) error {
-	log.Debug("space deleted", zap.String("spaceID", spaceID))
-	return nil
-}
-
-func (s *Service) DeleteObject(id string) (err error) {
-	err = s.Do(id, func(b smartblock.SmartBlock) error {
-		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return
-	}
-
-	sbt, _ := s.sbtProvider.Type(id)
-	switch sbt {
-	case coresb.SmartBlockTypeSubObject:
-		err = s.OnDelete(id, func() error {
-			return Do(s, s.anytype.PredefinedBlocks().Account, func(w *editor.Workspaces) error {
-				return w.DeleteSubObject(id)
+	if firstID < secondID {
+		return DoStateAsync(s, firstID, func(firstState *state.State, firstBlock t1) error {
+			return DoStateAsync(s, secondID, func(secondState *state.State, secondBlock t2) error {
+				return f(firstState, secondState, firstBlock, secondBlock)
 			})
 		})
-	case coresb.SmartBlockTypeFile:
-		err = s.OnDelete(id, func() error {
-			if err := s.fileStore.DeleteFile(id); err != nil {
-				return err
-			}
-			if err := s.fileSync.RemoveFile(s.clientService.AccountId(), id); err != nil {
-				return fmt.Errorf("failed to remove file from sync: %w", err)
-			}
-			_, err = s.fileService.FileOffload(id, true)
-			if err != nil {
-				return err
-			}
-			return nil
+	}
+	return DoStateAsync(s, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoStateAsync(s, firstID, func(firstState *state.State, firstBlock t1) error {
+			return f(firstState, secondState, firstBlock, secondBlock)
 		})
-	default:
-		var space commonspace.Space
-		space, err = s.clientService.AccountSpace(context.Background())
-		if err != nil {
-			return
-		}
-		// this will call DeleteTree asynchronously in the end
-		return space.DeleteTree(context.Background(), id)
-	}
-	if err != nil {
-		return
-	}
-
-	s.sendOnRemoveEvent(id)
-	_, err = s.cache.Remove(context.Background(), id)
-	return
-}
-
-func (s *Service) CreateTreePayload(ctx context.Context, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
-	space, err := s.clientService.AccountSpace(ctx)
-	if err != nil {
-		return treestorage.TreeStorageCreatePayload{}, err
-	}
-	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx, space, tp, createdTime)
-}
-
-func (s *Service) CreateTreePayloadWithSpace(ctx context.Context, space commonspace.Space, tp coresb.SmartBlockType) (treestorage.TreeStorageCreatePayload, error) {
-	return s.CreateTreePayloadWithSpaceAndCreatedTime(ctx, space, tp, time.Now())
-}
-
-func (s *Service) CreateTreePayloadWithSpaceAndCreatedTime(ctx context.Context, space commonspace.Space, tp coresb.SmartBlockType, createdTime time.Time) (treestorage.TreeStorageCreatePayload, error) {
-	changePayload, err := createChangePayload(tp)
-	if err != nil {
-		return treestorage.TreeStorageCreatePayload{}, err
-	}
-	treePayload, err := createPayload(space.Id(), s.commonAccount.Account().SignKey, changePayload, createdTime.Unix())
-	if err != nil {
-		return treestorage.TreeStorageCreatePayload{}, err
-	}
-	return space.TreeBuilder().CreateTree(ctx, treePayload)
-}
-
-func (s *Service) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
-	if err != nil {
-		return nil, err
-	}
-	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-		err = fmt.Errorf("failed to put tree: %w", err)
-		return
-	}
-	if tr != nil {
-		tr.Close()
-	}
-	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
-}
-
-func (s *Service) CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
-	if err != nil {
-		return nil, err
-	}
-	payload, err := s.CreateTreePayloadWithSpace(ctx, space, tp)
-	if err != nil {
-		return nil, err
-	}
-
-	tr, err := space.TreeBuilder().PutTree(ctx, payload, nil)
-	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-		err = fmt.Errorf("failed to put tree: %w", err)
-		return
-	}
-	if tr != nil {
-		tr.Close()
-	}
-	return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
-}
-
-func (s *Service) ResetTreeObject(ctx context.Context, id string, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
-	if err != nil {
-		return
-	}
-
-	return s.cacheCreatedObject(ctx, id, space.Id(), initFunc)
-}
-
-// DeriveTreeCreatePayload creates payload for the tree of derived object.
-// Method should be called before DeriveObject to prepare payload
-func (s *Service) DeriveTreeCreatePayload(
-	ctx context.Context, tp coresb.SmartBlockType,
-) (*treestorage.TreeStorageCreatePayload, error) {
-	space, err := s.clientService.AccountSpace(ctx)
-	if err != nil {
-		return nil, err
-	}
-	changePayload, err := createChangePayload(tp)
-	if err != nil {
-		return nil, err
-	}
-	treePayload := derivePayload(space.Id(), s.commonAccount.Account().SignKey, changePayload)
-	create, err := space.TreeBuilder().CreateTree(context.Background(), treePayload)
-	return &create, err
-}
-
-// DeriveObject derives the object with id specified in the payload and triggers cache.Get
-// DeriveTreeCreatePayload should be called first to prepare the payload and derive the tree
-func (s *Service) DeriveObject(
-	ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool,
-) (err error) {
-	_, err = s.getDerivedObject(ctx, payload, newAccount, func(id string) *smartblock.InitContext {
-		return &smartblock.InitContext{Ctx: ctx, State: state.NewDoc(id, nil).(*state.State)}
-	})
-	if err != nil {
-		log.With(zap.Error(err)).Debug("derived object with error")
-		return
-	}
-	return nil
-}
-
-func (s *Service) getDerivedObject(
-	ctx context.Context, payload *treestorage.TreeStorageCreatePayload, newAccount bool, initFunc InitFunc,
-) (sb smartblock.SmartBlock, err error) {
-	space, err := s.clientService.AccountSpace(ctx)
-	if newAccount {
-		var tr objecttree.ObjectTree
-		tr, err = space.TreeBuilder().PutTree(ctx, *payload, nil)
-		s.predefinedObjectWasMissing = true
-		if err != nil {
-			if !errors.Is(err, treestorage.ErrTreeExists) {
-				err = fmt.Errorf("failed to put tree: %w", err)
-				return
-			}
-			s.predefinedObjectWasMissing = false
-			// the object exists locally
-			return s.GetAccountObject(ctx, payload.RootRawChange.Id)
-		}
-		tr.Close()
-		return s.cacheCreatedObject(ctx, payload.RootRawChange.Id, space.Id(), initFunc)
-	}
-
-	var (
-		cancel context.CancelFunc
-		id     = payload.RootRawChange.Id
-	)
-	// timing out when getting objects from remote
-	// here we set very long timeout, because we must load these documents
-	ctx, cancel = context.WithTimeout(ctx, derivedObjectLoadTimeout)
-	ctx = context.WithValue(ctx,
-		optsKey,
-		cacheOpts{
-			buildOption: source.BuildOptions{
-				// TODO: revive p2p (right now we are not ready to load from local clients due to the fact that we need to know when local peers connect)
-			},
-		},
-	)
-	defer cancel()
-
-	sb, err = s.GetAccountObject(ctx, id)
-	if err != nil {
-		if errors.Is(err, treechangeproto.ErrGetTree) {
-			err = spacesyncproto.ErrSpaceMissing
-		}
-		err = fmt.Errorf("failed to get object from node: %w", err)
-		return
-	}
-	return
-}
-
-func (s *Service) PutObject(ctx context.Context, id string, obj smartblock.SmartBlock) (sb smartblock.SmartBlock, err error) {
-	ctx = context.WithValue(ctx, optsKey, cacheOpts{
-		putObject: obj,
-	})
-	return s.GetAccountObject(ctx, id)
-}
-
-func (s *Service) cacheCreatedObject(ctx context.Context, id, spaceId string, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
-	ctx = context.WithValue(ctx, optsKey, cacheOpts{
-		createOption: &treeCreateCache{
-			initFunc: initFunc,
-		},
-	})
-	return s.GetObject(ctx, spaceId, id)
-}
-
-func (s *Service) initSubObject(ctx context.Context, id string) (account ocache.Object, err error) {
-	if account, err = s.cache.Get(ctx, s.anytype.PredefinedBlocks().Account); err != nil {
-		return
-	}
-	return account.(SmartblockOpener).Open(id)
-}
-
-func CacheOptsWithRemoteLoadDisabled(ctx context.Context) context.Context {
-	return updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
-		opts.buildOption.DisableRemoteLoad = true
-		return opts
 	})
 }
 
-func updateCacheOpts(ctx context.Context, update func(opts cacheOpts) cacheOpts) context.Context {
-	opts, ok := ctx.Value(optsKey).(cacheOpts)
+func DoStateAsync[t any](p ObjectGetter, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	ctx := context.Background()
+	sb, err := p.GetObject(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	bb, ok := sb.(t)
 	if !ok {
-		opts = cacheOpts{}
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
 	}
-	return context.WithValue(ctx, optsKey, update(opts))
+
+	sb.Lock()
+	defer sb.Unlock()
+
+	st := sb.NewState()
+	err = apply(st, bb)
+	if err != nil {
+		return fmt.Errorf("apply func: %w", err)
+	}
+
+	return sb.Apply(st, flags...)
 }
 
-func createChangePayload(sbType coresb.SmartBlockType) (data []byte, err error) {
-	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType)}
-	return payload.Marshal()
-}
-
-func derivePayload(spaceId string, signKey crypto.PrivKey, changePayload []byte) objecttree.ObjectTreeCreatePayload {
-	return objecttree.ObjectTreeCreatePayload{
-		PrivKey:       signKey,
-		ChangeType:    spaceservice.ChangeType,
-		ChangePayload: changePayload,
-		SpaceId:       spaceId,
-		IsEncrypted:   true,
+// TODO rename to something more meaningful
+func DoStateCtx[t any](p ObjectGetter, ctx session.Context, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+	sb, err := p.GetObject(context.Background(), id)
+	if err != nil {
+		return err
 	}
-}
 
-func createPayload(spaceId string, signKey crypto.PrivKey, changePayload []byte, timestamp int64) (objecttree.ObjectTreeCreatePayload, error) {
-	seed := make([]byte, 32)
-	if _, err := rand.Read(seed); err != nil {
-		return objecttree.ObjectTreeCreatePayload{}, err
+	bb, ok := sb.(t)
+	if !ok {
+		var dummy = new(t)
+		return fmt.Errorf("the interface %T is not implemented in %T", dummy, sb)
 	}
-	return objecttree.ObjectTreeCreatePayload{
-		PrivKey:       signKey,
-		ChangeType:    spaceservice.ChangeType,
-		ChangePayload: changePayload,
-		SpaceId:       spaceId,
-		IsEncrypted:   true,
-		Timestamp:     timestamp,
-		Seed:          seed,
-	}, nil
+
+	sb.Lock()
+	defer sb.Unlock()
+
+	st := sb.NewStateCtx(ctx)
+	err = apply(st, bb)
+	if err != nil {
+		return fmt.Errorf("apply func: %w", err)
+	}
+
+	return sb.Apply(st, flags...)
 }

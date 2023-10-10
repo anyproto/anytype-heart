@@ -51,6 +51,10 @@
     "name": "Space"
   },
   {
+    "id": "spaceView",
+    "name": "Space View"
+  },
+  {
     "id": "image",
     "name": "Image",
     "requiredRelations": [

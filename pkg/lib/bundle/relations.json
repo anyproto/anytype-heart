@@ -819,6 +819,19 @@
     "source": "local"
   },
   {
+    "description": "Space belongs to",
+    "format": "object",
+    "hidden": true,
+    "key": "spaceId",
+    "maxCount": 1,
+    "name": "SpaceID",
+    "objectTypes": [
+      "space"
+    ],
+    "readonly": true,
+    "source": "local"
+  },
+  {
     "description": "Audio record's genre name",
     "format": "longtext",
     "hidden": false,
@@ -1401,6 +1414,16 @@
     "source": "details"
   },
   {
+    "description": "Unique key used to ensure object uniqueness within the space",
+    "format": "longtext",
+    "key": "uniqueKey",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Unique object key",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "List of backlinks",
     "format": "object",
     "key": "backlinks",
@@ -1409,5 +1432,35 @@
     "name": "Backlinks",
     "readonly": false,
     "source": "local"
+  },
+  {
+    "description": "Relation that indicates document has been uninstalled",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isUninstalled",
+    "maxCount": 1,
+    "name": "Is uninstalled",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Relation that indicates the local status of space. Possible values: models.SpaceStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceLocalStatus",
+    "maxCount": 1,
+    "name": "Space local status",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Relation that indicates the remote status of space. Possible values: models.SpaceStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceRemoteStatus",
+    "maxCount": 1,
+    "name": "Space remote status",
+    "readonly": true,
+    "source": "derived"
   }
 ]

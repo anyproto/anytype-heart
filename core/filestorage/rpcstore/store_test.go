@@ -16,13 +16,13 @@ import (
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
-	"go.uber.org/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/space/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 var ctx = context.Background()

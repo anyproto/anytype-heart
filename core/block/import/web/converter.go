@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	we := converter.NewError(0)
 	url, err := c.getParams(req.Params)
 	progress.SetTotal(1)

@@ -3,12 +3,14 @@ package basic
 import (
 	"context"
 	"fmt"
+
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -18,13 +20,18 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	InjectWorkspaceID(details *types.Struct, objectID string)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
-func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+	typeUniqueKey, err := domain.UnmarshalUniqueKey(req.ObjectTypeUniqueKey)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal unique key: %w", err)
+	}
+	typeKey := domain.TypeKey(typeUniqueKey.InternalKey())
+
 	newState := bs.NewStateCtx(ctx)
 	rootIds := newState.SelectRoots(req.BlockIds)
 
@@ -33,14 +40,16 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, objectCreator Obje
 
 		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
 
-		details, err := bs.prepareTargetObjectDetails(req, rootBlock, objectCreator)
+		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), req, typeUniqueKey, rootBlock, objectCreator)
 		if err != nil {
 			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}
 
 		objectID, _, err := objectCreator.CreateSmartBlockFromState(
-			context.TODO(),
+			context.Background(),
+			bs.SpaceID(),
 			coresb.SmartBlockTypePage,
+			[]domain.TypeKey{typeKey},
 			details,
 			objState,
 		)
@@ -60,17 +69,18 @@ func (bs *basic) ExtractBlocksToObjects(ctx *session.Context, objectCreator Obje
 }
 
 func (bs *basic) prepareTargetObjectDetails(
+	spaceID string,
 	req pb.RpcBlockListConvertToObjectsRequest,
+	typeUniqueKey domain.UniqueKey,
 	rootBlock simple.Block,
 	objectCreator ObjectCreator,
 ) (*types.Struct, error) {
-	objType, err := bs.objectStore.GetObjectType(req.ObjectType)
+	objType, err := bs.systemObjectService.GetObjectByUniqueKey(spaceID, typeUniqueKey)
 	if err != nil {
 		return nil, err
 	}
-
-	details := createTargetObjectDetails(req.ObjectType, rootBlock.Model().GetText().GetText(), objType.Layout)
-	objectCreator.InjectWorkspaceID(details, req.ContextId)
+	rawLayout := pbtypes.GetInt64(objType.GetDetails(), bundle.RelationKeyRecommendedLayout.String())
+	details := createTargetObjectDetails(rootBlock.Model().GetText().GetText(), model.ObjectTypeLayout(rawLayout))
 	return details, nil
 }
 
@@ -114,7 +124,8 @@ func fixStateForNoteLayout(
 	req pb.RpcBlockListConvertToObjectsRequest,
 	newRoot string,
 ) {
-	if req.ObjectType == bundle.TypeKeyNote.URL() {
+	// todo: add check or remove this. It supposed to be run only for note
+	{
 		objState.Add(base.NewBase(&model.Block{
 			// This id will be replaced by id of the new object
 			Id:          "_root",
@@ -137,16 +148,12 @@ func removeBlocks(state *state.State, descendants []simple.Block) {
 	}
 }
 
-func createTargetObjectDetails(objectType string, nameText string, layout model.ObjectTypeLayout) *types.Struct {
+func createTargetObjectDetails(nameText string, layout model.ObjectTypeLayout) *types.Struct {
 	fields := map[string]*types.Value{}
 
 	// Without this check title will be duplicated in template.WithNameToFirstBlock
 	if layout != model.ObjectType_note {
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(nameText)
-	}
-
-	if objectType != "" {
-		fields[bundle.RelationKeyType.String()] = pbtypes.String(objectType)
 	}
 
 	details := &types.Struct{Fields: fields}

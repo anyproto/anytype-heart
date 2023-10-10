@@ -4,9 +4,10 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"strings"
+
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"strings"
 )
 
 type HeadsJsonEntry struct {

@@ -3,42 +3,61 @@ package editor
 import (
 	"testing"
 
-	"go.uber.org/mock/gomock"
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
-func NewTemplateTest(ctrl *gomock.Controller, templateName string) (*Template, error) {
+func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string) (*Template, error) {
 	sb := smarttest.New("root")
 	_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{&pb.RpcObjectSetDetailsDetail{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(templateName),
 	}}, false)
+
 	objectStore := testMock.NewMockObjectStore(ctrl)
-	objectStore.EXPECT().GetObjectTypes(gomock.Any()).AnyTimes()
-	t := &Template{
+
+	systemObjectService := mock_system_object.NewMockService(t)
+	templ := &Template{
 		Page: &Page{
-			SmartBlock:  sb,
-			objectStore: objectStore,
+			SmartBlock:          sb,
+			objectStore:         objectStore,
+			systemObjectService: systemObjectService,
 		},
 	}
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyPage.String())
+	require.NoError(t, err)
+
+	systemObjectService.EXPECT().GetObjectByUniqueKey(mock.Anything, uniqueKey).Return(&model.ObjectDetails{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_basic)),
+			},
+		},
+	}, nil)
 	initCtx := &smartblock.InitContext{IsNewObject: true}
-	if err := t.Init(initCtx); err != nil {
+	if err := templ.Init(initCtx); err != nil {
 		return nil, err
 	}
-	migration.RunMigrations(t, initCtx)
-	if err := t.Apply(initCtx.State); err != nil {
+	migration.RunMigrations(templ, initCtx)
+	if err := templ.Apply(initCtx.State); err != nil {
 		return nil, err
 	}
-	return t, nil
+	return templ, nil
 }
 
 func TestTemplate_GetNewPageState(t *testing.T) {
@@ -48,7 +67,7 @@ func TestTemplate_GetNewPageState(t *testing.T) {
 	templateName := "template"
 
 	t.Run("empty page name", func(t *testing.T) {
-		tmpl, err := NewTemplateTest(ctrl, templateName)
+		tmpl, err := NewTemplateTest(t, ctrl, templateName)
 		require.NoError(t, err)
 
 		st, err := tmpl.GetNewPageState("")
@@ -58,7 +77,7 @@ func TestTemplate_GetNewPageState(t *testing.T) {
 	})
 
 	t.Run("custom page name", func(t *testing.T) {
-		tmpl, err := NewTemplateTest(ctrl, templateName)
+		tmpl, err := NewTemplateTest(t, ctrl, templateName)
 		require.NoError(t, err)
 
 		customName := "some name"

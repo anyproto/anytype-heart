@@ -85,7 +85,7 @@ func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (s
 		f.spaceStats[spaceID] = newStats
 		// Do not send event if it is first time we get stats
 		if ok {
-			f.sendSpaceUsageEvent(uint64(newStats.BytesUsage))
+			f.sendSpaceUsageEvent(spaceID, uint64(newStats.BytesUsage))
 		}
 	}
 	f.spaceStatsLock.Unlock()
@@ -99,8 +99,8 @@ func (f *fileSync) updateSpaceUsageInformation(spaceID string) {
 	}
 }
 
-func (f *fileSync) sendSpaceUsageEvent(bytesUsage uint64) {
-	f.sendEvent(&pb.Event{
+func (f *fileSync) sendSpaceUsageEvent(spaceID string, bytesUsage uint64) {
+	f.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfFileSpaceUsage{
@@ -148,7 +148,7 @@ func (f *fileSync) FileStat(ctx context.Context, spaceId, fileId string) (fs Fil
 }
 
 func (f *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fileproto.FileInfo) (FileStat, error) {
-	totalChunks, err := f.countChunks(ctx, file.FileId)
+	totalChunks, err := f.countChunks(ctx, spaceId, file.FileId)
 	if err != nil {
 		return FileStat{}, fmt.Errorf("count chunks: %w", err)
 	}
@@ -162,13 +162,13 @@ func (f *fileSync) fileInfoToStat(ctx context.Context, spaceId string, file *fil
 	}, nil
 }
 
-func (f *fileSync) countChunks(ctx context.Context, fileID string) (int, error) {
+func (f *fileSync) countChunks(ctx context.Context, spaceID string, fileID string) (int, error) {
 	chunksCount, err := f.fileStore.GetChunksCount(fileID)
 	if err == nil {
 		return chunksCount, nil
 	}
 
-	chunksCount, err = f.fetchChunksCount(ctx, fileID)
+	chunksCount, err = f.fetchChunksCount(ctx, spaceID, fileID)
 	if err != nil {
 		return -1, fmt.Errorf("count chunks in IPFS: %w", err)
 	}
@@ -178,23 +178,21 @@ func (f *fileSync) countChunks(ctx context.Context, fileID string) (int, error) 
 	return chunksCount, err
 }
 
-func (f *fileSync) fetchChunksCount(ctx context.Context, fileID string) (int, error) {
+func (f *fileSync) fetchChunksCount(ctx context.Context, spaceID string, fileID string) (int, error) {
 	fileCid, err := cid.Parse(fileID)
 	if err != nil {
 		return -1, err
 	}
-	node, err := f.dagService.Get(ctx, fileCid)
+	dagService := f.dagServiceForSpace(spaceID)
+	node, err := dagService.Get(ctx, fileCid)
 	if err != nil {
 		return -1, err
 	}
-	return f.FetchChunksCount(ctx, node)
-}
 
-func (f *fileSync) FetchChunksCount(ctx context.Context, node ipld.Node) (int, error) {
 	var count int
 	visited := map[string]struct{}{}
-	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, f.dagService))
-	err := walker.Iterate(func(node ipld.NavigableNode) error {
+	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(node, dagService))
+	err = walker.Iterate(func(node ipld.NavigableNode) error {
 		id := node.GetIPLDNode().Cid().String()
 		if _, ok := visited[id]; !ok {
 			visited[id] = struct{}{}

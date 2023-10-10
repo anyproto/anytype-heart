@@ -17,7 +17,7 @@ import (
 	streampool "github.com/anyproto/any-sync/net/streampool"
 	gomock "go.uber.org/mock/gomock"
 
-	space "github.com/anyproto/anytype-heart/space"
+	space "github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 // MockService is a mock of Service interface.
@@ -86,11 +86,26 @@ func (mr *MockServiceMockRecorder) Close(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockService)(nil).Close), arg0)
 }
 
+// CreateSpace mocks base method.
+func (m *MockService) CreateSpace(arg0 context.Context) (commonspace.Space, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSpace", arg0)
+	ret0, _ := ret[0].(commonspace.Space)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateSpace indicates an expected call of CreateSpace.
+func (mr *MockServiceMockRecorder) CreateSpace(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSpace", reflect.TypeOf((*MockService)(nil).CreateSpace), arg0)
+}
+
 // DeleteAccount mocks base method.
-func (m *MockService) DeleteAccount(arg0 context.Context, arg1 bool) (space.StatusPayload, error) {
+func (m *MockService) DeleteAccount(arg0 context.Context, arg1 bool) (space.NetworkStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteAccount", arg0, arg1)
-	ret0, _ := ret[0].(space.StatusPayload)
+	ret0, _ := ret[0].(space.NetworkStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -102,10 +117,10 @@ func (mr *MockServiceMockRecorder) DeleteAccount(arg0, arg1 any) *gomock.Call {
 }
 
 // DeleteSpace mocks base method.
-func (m *MockService) DeleteSpace(arg0 context.Context, arg1 string, arg2 bool) (space.StatusPayload, error) {
+func (m *MockService) DeleteSpace(arg0 context.Context, arg1 string, arg2 bool) (space.NetworkStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteSpace", arg0, arg1, arg2)
-	ret0, _ := ret[0].(space.StatusPayload)
+	ret0, _ := ret[0].(space.NetworkStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

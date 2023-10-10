@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
 

@@ -1,12 +1,7 @@
 package restriction
 
 import (
-	"strings"
-
-	"github.com/samber/lo"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -30,9 +25,9 @@ var (
 		},
 	}
 
-	dataviewRestrictionsBySBType = map[model.SmartBlockType]DataviewRestrictions{
-		model.SmartBlockType_Page: dvRestrictNo,
-		model.SmartBlockType_Date: dvRestrictAll,
+	dataviewRestrictionsBySBType = map[smartblock.SmartBlockType]DataviewRestrictions{
+		smartblock.SmartBlockTypePage: dvRestrictNo,
+		smartblock.SmartBlockTypeDate: dvRestrictAll,
 	}
 )
 
@@ -105,27 +100,14 @@ func (dr DataviewRestrictions) Equal(dr2 DataviewRestrictions) bool {
 }
 
 func (s *service) getDataviewRestrictions(rh RestrictionHolder) DataviewRestrictions {
-	layout, hasLayout := rh.Layout()
-	if hasLayout && layout == model.ObjectType_objectType {
-		return s.getDataviewRestrictionsForObjectType(rh.Id())
-	}
-
 	if dr, ok := dataviewRestrictionsBySBType[rh.Type()]; ok {
 		return dr
 	}
-	return nil
-}
 
-func (s *service) getDataviewRestrictionsForObjectType(id string) (r DataviewRestrictions) {
-	r, _ = dataviewRestrictionsBySBType[model.SmartBlockType_SubObject]
-	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
-		return
+	uk := rh.UniqueKey()
+	if uk != nil {
+		return GetDataviewRestrictionsForUniqueKey(uk)
 	}
-	if !lo.Contains(bundle.InternalTypes, bundle.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))) {
-		return
-	}
-	return append(r.Copy(), model.RestrictionsDataviewRestrictions{
-		BlockId:      DataviewBlockId,
-		Restrictions: []model.RestrictionsDataviewRestriction{model.Restrictions_DVCreateObject},
-	})
+
+	return nil
 }

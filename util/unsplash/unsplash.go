@@ -40,7 +40,7 @@ type Unsplash interface {
 	Search(ctx context.Context, query string, max int) ([]Result, error)
 	Download(ctx context.Context, id string) (imgPath string, err error)
 
-	app.Component
+	app.ComponentRunnable
 }
 
 type unsplashService struct {
@@ -63,6 +63,14 @@ func (l *unsplashService) Init(a *app.App) (err error) {
 
 func (l *unsplashService) Name() (name string) {
 	return CName
+}
+
+func (l *unsplashService) Run(_ context.Context) error {
+	return nil
+}
+
+func (l *unsplashService) Close(_ context.Context) error {
+	return l.cache.Close()
 }
 
 type Result struct {

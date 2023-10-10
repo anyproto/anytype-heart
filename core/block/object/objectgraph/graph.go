@@ -6,8 +6,9 @@ import (
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/relation"
-	"github.com/anyproto/anytype-heart/core/relation/relationutils"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -15,12 +16,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // relationsSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
-var relationsSkipList = []bundle.RelationKey{
+var relationsSkipList = []domain.RelationKey{
 	bundle.RelationKeyType,
 	bundle.RelationKeySetOf,
 	bundle.RelationKeyCreator,
@@ -35,11 +36,11 @@ type Service interface {
 }
 
 type Builder struct {
-	graphService    Service //nolint:unused
-	relationService relation.Service
-	sbtProvider     typeprovider.SmartBlockTypeProvider
-	coreService     core.Service
-	objectStore     objectstore.ObjectStore
+	graphService        Service //nolint:unused
+	systemObjectService system_object.Service
+	sbtProvider         typeprovider.SmartBlockTypeProvider
+	coreService         core.Service
+	objectStore         objectstore.ObjectStore
 
 	*app.App
 }
@@ -50,7 +51,7 @@ func NewBuilder() *Builder {
 
 func (gr *Builder) Init(a *app.App) (err error) {
 	gr.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	gr.relationService = app.MustComponent[relation.Service](a)
+	gr.systemObjectService = app.MustComponent[system_object.Service](a)
 	gr.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	gr.coreService = app.MustComponent[core.Service](a)
 	return nil
@@ -73,20 +74,21 @@ func (gr *Builder) ObjectGraph(req *pb.RpcObjectGraphRequest) ([]*types.Struct, 
 
 	existedNodes := fillExistedNodes(records)
 
-	relations, err := gr.provideRelations()
+	relations, err := gr.provideRelations(req.SpaceId)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	nodes, edges = gr.extractGraph(records, nodes, req, relations, edges, existedNodes)
+	nodes, edges = gr.extractGraph(req.SpaceId, records, nodes, req, relations, edges, existedNodes)
 	return nodes, edges, nil
 }
 
 func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
-	return rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !lo.Contains(relationsSkipList, bundle.RelationKey(rel.Key))
+	return rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !lo.Contains(relationsSkipList, domain.RelationKey(rel.Key))
 }
 
 func (gr *Builder) extractGraph(
+	spaceID string,
 	records []database.Record,
 	nodes []*types.Struct,
 	req *pb.RpcObjectGraphRequest,
@@ -109,24 +111,21 @@ func (gr *Builder) extractGraph(
 			edges = appendRelations(v, existedNodes, rel, edges, id, outgoingRelationLink)
 		}
 
-		edges = gr.appendLinks(rec, outgoingRelationLink, existedNodes, edges, id)
+		edges = gr.appendLinks(spaceID, rec, outgoingRelationLink, existedNodes, edges, id)
 	}
 	return nodes, edges
 }
 
-func (gr *Builder) provideRelations() (relationutils.Relations, error) {
-	relations, err := gr.relationService.ListAll(relation.WithWorkspaceId(gr.coreService.PredefinedBlocks().Account))
+func (gr *Builder) provideRelations(spaceID string) (relationutils.Relations, error) {
+	relations, err := gr.systemObjectService.ListAllRelations(spaceID)
 	return relations, err
 }
 
 func (gr *Builder) queryRecords(req *pb.RpcObjectGraphRequest) ([]database.Record, error) {
-	records, _, err := gr.objectStore.Query(
-		nil,
-		database.Query{
-			Filters: req.Filters,
-			Limit:   int(req.Limit),
-		},
-	)
+	records, _, err := gr.objectStore.Query(database.Query{
+		Filters: req.Filters,
+		Limit:   int(req.Limit),
+	})
 	return records, err
 }
 
@@ -172,11 +171,11 @@ func unallowedRelation(rel *relationutils.Relation) bool {
 	return rel.Hidden ||
 		rel.Key == bundle.RelationKeyId.String() ||
 		rel.Key == bundle.RelationKeyCreator.String() ||
-		rel.Key == bundle.RelationKeyWorkspaceId.String() ||
 		rel.Key == bundle.RelationKeyLastModifiedBy.String()
 }
 
 func (gr *Builder) appendLinks(
+	spaceID string,
 	rec database.Record,
 	outgoingRelationLink map[string]struct{},
 	existedNodes map[string]struct{},
@@ -185,7 +184,7 @@ func (gr *Builder) appendLinks(
 ) []*pb.RpcObjectGraphEdge {
 	links := pbtypes.GetStringList(rec.Details, bundle.RelationKeyLinks.String())
 	for _, link := range links {
-		sbType, err := gr.sbtProvider.Type(link)
+		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {
 			log.Error(err)
 		}

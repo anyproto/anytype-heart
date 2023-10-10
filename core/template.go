@@ -29,7 +29,7 @@ func (mw *Middleware) TemplateCreateFromObject(cctx context.Context, req *pb.Rpc
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateCreateFromObject(req.ContextId)
+		templateId, err = bs.TemplateCreateFromObject(cctx, req.ContextId)
 		return
 	})
 	return response(templateId, err)
@@ -49,7 +49,7 @@ func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateClo
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateClone(req.ContextId)
+		templateId, err = bs.TemplateClone(req.SpaceId, req.ContextId)
 		return
 	})
 	return response(templateId, err)
@@ -86,7 +86,7 @@ func (mw *Middleware) TemplateCreateFromObjectType(cctx context.Context, req *pb
 	}
 	var templateId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateCreateFromObjectByObjectType(req.ObjectType)
+		// templateId, err = bs.TemplateCreateFromObjectByObjectType(cctx, req.ObjectType)
 		return
 	})
 	return response(templateId, err)
@@ -112,8 +112,8 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 		path string
 	)
 	err := mw.doBlockService(func(_ *block.Service) error {
-		es := mw.app.MustComponent(export.CName).(export.Export)
-		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+		es := mw.applicationService.GetApp().MustComponent(export.CName).(export.Export)
+		ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
 		docIds, _, err := ds.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -129,7 +129,7 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 		if len(docIds) == 0 {
 			return fmt.Errorf("no templates")
 		}
-		path, _, err = es.Export(pb.RpcObjectListExportRequest{
+		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
 			Path:      req.Path,
 			ObjectIds: docIds,
 			Format:    pb.RpcObjectListExport_Protobuf,
@@ -140,56 +140,12 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 	return response(path, err)
 }
 
+// WorkspaceExport is unused now, it must be fixed if someone wants to use it
 func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
-	response := func(path string, err error) (res *pb.RpcWorkspaceExportResponse) {
-		res = &pb.RpcWorkspaceExportResponse{
-			Error: &pb.RpcWorkspaceExportResponseError{
-				Code: pb.RpcWorkspaceExportResponseError_NULL,
-			},
-		}
-		if err != nil {
-			res.Error.Code = pb.RpcWorkspaceExportResponseError_UNKNOWN_ERROR
-			res.Error.Description = err.Error()
-			return
-		} else {
-			res.Path = path
-		}
-		return res
+	return &pb.RpcWorkspaceExportResponse{
+		Error: &pb.RpcWorkspaceExportResponseError{
+			Code:        pb.RpcWorkspaceExportResponseError_NULL,
+			Description: "Not implemented",
+		},
 	}
-	var (
-		path string
-	)
-	err := mw.doBlockService(func(_ *block.Service) error {
-		es := mw.app.MustComponent(export.CName).(export.Export)
-		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-		docIds, _, err := ds.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-				{
-					RelationKey: bundle.RelationKeyWorkspaceId.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(req.WorkspaceId),
-				},
-			},
-		}, []smartblock.SmartBlockType{})
-		if err != nil {
-			return err
-		}
-		if len(docIds) == 0 {
-			return fmt.Errorf("no objects in workspace")
-		}
-		path, _, err = es.Export(pb.RpcObjectListExportRequest{
-			Path:          req.Path,
-			ObjectIds:     docIds,
-			Format:        pb.RpcObjectListExport_Protobuf,
-			Zip:           true,
-			IncludeNested: false,
-		})
-		return err
-	})
-	return response(path, err)
 }

@@ -3,6 +3,7 @@ package template
 import (
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -57,7 +58,7 @@ func MakeCollectionDataviewContent() *model.BlockContentOfDataview {
 	return blockContent
 }
 
-var DefaultDataviewRelations = make([]bundle.RelationKey, 0, len(bundle.RequiredInternalRelations))
+var DefaultDataviewRelations = make([]domain.RelationKey, 0, len(bundle.RequiredInternalRelations))
 
 func init() {
 	// fill DefaultDataviewRelations

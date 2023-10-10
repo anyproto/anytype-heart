@@ -34,7 +34,7 @@ func start(t *testing.T, eventSender event.Sender) (setId string, rootPath strin
 		})
 	}
 
-	mw.EventSender = eventSender
+	mw.SetEventSender(eventSender)
 
 	respWalletCreate := mw.WalletCreate(context.Background(), &pb.RpcWalletCreateRequest{RootPath: rootPath})
 	require.Equal(t, 0, int(respWalletCreate.Error.Code), respWalletCreate.Error.Description)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
@@ -12,12 +11,12 @@ import (
 )
 
 type ObjectTreeCreator interface {
-	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc block.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
+	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
 }
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(req *pb.RpcObjectImportRequest, progress process.Progress) (*Response, *ConvertError)
+	GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*Response, *ConvertError)
 	Name() string
 }
 
@@ -31,6 +30,8 @@ type IOReader struct {
 	Name   string
 	Reader io.ReadCloser
 }
+
+// TODO Add spaceID?
 type Snapshot struct {
 	Id       string
 	SbType   coresb.SmartBlockType

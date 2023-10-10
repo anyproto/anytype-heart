@@ -2,6 +2,7 @@ package html
 
 import (
 	"archive/zip"
+	"context"
 	"errors"
 	"math/rand"
 	"os"
@@ -28,7 +29,7 @@ func (p *MockTempDirProvider) TempDir() string {
 func TestHTML_GetSnapshots(t *testing.T) {
 	h := &HTML{}
 	p := process.NewProgress(pb.ModelProcess_Import)
-	sn, err := h.GetSnapshots(&pb.RpcObjectImportRequest{
+	sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 		Params: &pb.RpcObjectImportRequestParamsOfHtmlParams{
 			HtmlParams: &pb.RpcObjectImportRequestHtmlParams{Path: []string{"testdata/test.html", "testdata/test"}},
 		},
@@ -44,7 +45,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 
 	assert.Contains(t, sn.Snapshots[1].FileName, rootCollectionName)
 	assert.NotEmpty(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes)
-	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.URL())
+	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
 	assert.NotEmpty(t, err)
 	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), cv.ErrNoObjectsToImport))

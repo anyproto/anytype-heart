@@ -12,17 +12,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	utf16 "github.com/anyproto/anytype-heart/util/text"
 )
 
-func NewHTMLConverter(fileService files.Service, s *state.State) *HTML {
-	return &HTML{fileService: fileService, s: s}
+func NewHTMLConverter(spaceID string, fileService files.Service, s *state.State) *HTML {
+	return &HTML{spaceID: spaceID, fileService: fileService, s: s}
 }
 
 type HTML struct {
+	spaceID     string
 	s           *state.State
 	buf         *bytes.Buffer
 	fileService files.Service
@@ -462,15 +464,16 @@ func (h *HTML) writeTextToBuf(text *model.BlockContentText) {
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {
-	im, err := h.fileService.ImageByHash(context.TODO(), hash)
+	ctx := context.Background()
+	im, err := h.fileService.ImageByHash(ctx, domain.FullID{SpaceID: h.spaceID, ObjectID: hash})
 	if err != nil {
 		return
 	}
-	f, err := im.GetFileForWidth(context.TODO(), 1024)
+	f, err := im.GetFileForWidth(ctx, 1024)
 	if err != nil {
 		return
 	}
-	rd, err := f.Reader(context.TODO())
+	rd, err := f.Reader(ctx)
 	if err != nil {
 		return
 	}

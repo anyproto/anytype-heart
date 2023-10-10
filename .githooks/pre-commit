@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 STAGED_GO_FILES=$(git diff --cached --name-only | grep ".go$")
 
@@ -9,7 +9,7 @@ fi
 for FILE in $STAGED_GO_FILES
 do
   echo $FILE
-  gci write $FILE -s "standard,default,prefix(github.com/anyproto/anytype-heart),blank,dot"
+  gci write $FILE -s standard -s default -s "prefix(github.com/anyproto/anytype-heart)" -s blank -s dot
 done
 
 exit 0

@@ -5,15 +5,15 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/metrics"
 )
 
-type Picker interface {
-	PickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
+type ObjectGetter interface {
+	GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 }
 
-func Do[t any](p Picker, id string, apply func(sb t) error) error {
-	sb, err := p.PickBlock(context.WithValue(context.TODO(), metrics.CtxKeyEntrypoint, "do"), id)
+func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
+	ctx := context.Background()
+	sb, err := p.GetObject(ctx, objectID)
 	if err != nil {
 		return err
 	}

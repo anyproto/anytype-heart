@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("pb-converter")
@@ -31,7 +32,7 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:        st.BlocksToSave(),
 			Details:       st.CombinedDetails(),
-			ObjectTypes:   st.ObjectTypes(),
+			ObjectTypes:   slice.UnwrapStrings(st.ObjectTypeKeys()),
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
 		},

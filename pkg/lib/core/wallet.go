@@ -10,7 +10,6 @@ import (
 )
 
 var ErrRepoExists = fmt.Errorf("repo not empty, reinitializing would overwrite your account")
-var ErrRepoCorrupted = fmt.Errorf("repo is corrupted")
 
 func WalletGenerateMnemonic(wordCount int) (string, error) {
 	m, err := crypto.NewMnemonicGenerator().WithWordCount(wordCount)
