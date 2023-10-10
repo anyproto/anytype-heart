@@ -90,7 +90,7 @@ func (v *date) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool)
 	}
 	s := state.NewDoc(v.id, nil).(*state.State)
 	d := v.getDetails()
-	dataview := model.BlockContentOfDataview{
+	dataview := &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			RelationLinks: []*model.RelationLink{
 				{
