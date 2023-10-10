@@ -11,12 +11,13 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'macos-11'
+        default: 'self-hosted'
 
 name: Build
 jobs:
   build:
-    runs-on: ${{ github.event.inputs.run-on-runner }}
+    runs-on: |
+      ${{ github.event_name == 'push') ? 'macos-11' : github.event.inputs.run-on-runner }}
     steps:
       - name: validate agent
         run: |
