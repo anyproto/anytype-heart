@@ -205,6 +205,14 @@ func (s *service) OnViewCreated(spaceID string) {
 	}()
 }
 
+func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
+	go func() {
+		if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {
+			log.Warn("OnWorkspaceChanged error", zap.Error(err))
+		}
+	}()
+}
+
 func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
 		s.ctxCancel()

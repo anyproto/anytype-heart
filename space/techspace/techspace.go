@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
@@ -39,6 +40,7 @@ type TechSpace interface {
 	SpaceViewCreate(ctx context.Context, spaceId string) (err error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
+	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 
 	app.ComponentRunnable
 }
@@ -143,6 +145,12 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 		SpaceID:  s.techCore.Id(),
 	})
 	return getErr == nil, nil
+}
+
+func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
+	return s.doSpaceView(ctx, spaceId, func(spaceView *editor.SpaceView) error {
+		return spaceView.SetSpaceData(details)
+	})
 }
 
 func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err error) {
