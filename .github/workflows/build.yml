@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: validate agent
         run: |
-          if [ "${{ github.event.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]; then
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]; then
             echo "Invalid runner"
             exit 1
           fi
