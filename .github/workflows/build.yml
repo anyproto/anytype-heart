@@ -18,6 +18,12 @@ jobs:
   build:
     runs-on: ${{ github.event.inputs.run-on-runner }}
     steps:
+      - name: validate agent
+        run: |
+          if [ "${{ github.event.inputs.run-on-runner }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]; then
+            echo "Invalid runner"
+            exit 1
+          fi
       - name: fix android ndk bundle
         run: |
           majorVersion=23
