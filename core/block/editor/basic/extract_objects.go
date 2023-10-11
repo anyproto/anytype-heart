@@ -14,13 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -48,7 +47,6 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 		objectID, _, err := objectCreator.CreateSmartBlockFromState(
 			context.Background(),
 			bs.SpaceID(),
-			coresb.SmartBlockTypePage,
 			[]domain.TypeKey{typeKey},
 			details,
 			objState,

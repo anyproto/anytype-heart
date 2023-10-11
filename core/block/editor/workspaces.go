@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/system_object"
@@ -31,7 +30,7 @@ type Workspaces struct {
 	stext.Text
 
 	DetailsModifier DetailsModifier
-	sourceService   source.Service
+	spaceService    spaceService
 	anytype         core.Service
 	objectStore     objectstore.ObjectStore
 	config          *config.Config
@@ -43,7 +42,7 @@ func NewWorkspace(
 	objectStore objectstore.ObjectStore,
 	anytype core.Service,
 	systemObjectService system_object.Service,
-	sourceService source.Service,
+	spaceService spaceService,
 	modifier DetailsModifier,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
 	layoutConverter converter.LayoutConverter,
@@ -70,7 +69,7 @@ func NewWorkspace(
 		DetailsModifier: modifier,
 		anytype:         anytype,
 		objectStore:     objectStore,
-		sourceService:   sourceService,
+		spaceService:    spaceService,
 		config:          config,
 		objectDeriver:   objectDeriver,
 	}
@@ -88,7 +87,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		objectDeriver: w.objectDeriver,
 	}
 	subObjectMigration.migrateSubObjects(ctx.State)
-
+	w.AddHook(w.onApply, smartblock.HookAfterApply)
 	return nil
 }
 
@@ -126,4 +125,10 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
+}
+
+func (w *Workspaces) onApply(info smartblock.ApplyInfo) (err error) {
+	details := pbtypes.CopyStruct(info.State.Details())
+	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
+	return
 }
