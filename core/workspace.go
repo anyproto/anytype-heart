@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -33,11 +34,11 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceInfo(cctx context.Context, req *pb.RpcWorkspaceInfoRequest) *pb.RpcWorkspaceInfoResponse {
-	response := func(info *model.AccountInfo, code pb.RpcWorkspaceInfoResponseErrorCode, err error) *pb.RpcWorkspaceInfoResponse {
-		m := &pb.RpcWorkspaceInfoResponse{
+func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
+	response := func(info *model.AccountInfo, code pb.RpcWorkspaceOpenResponseErrorCode, err error) *pb.RpcWorkspaceOpenResponse {
+		m := &pb.RpcWorkspaceOpenResponse{
 			Info:  info,
-			Error: &pb.RpcWorkspaceInfoResponseError{Code: code},
+			Error: &pb.RpcWorkspaceOpenResponseError{Code: code},
 		}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -47,9 +48,19 @@ func (mw *Middleware) WorkspaceInfo(cctx context.Context, req *pb.RpcWorkspaceIn
 	// TODO: [MR] this should probably be related only to account
 	info, err := getService[account.Service](mw).GetInfo(cctx, req.SpaceId)
 	if err != nil {
-		return response(info, pb.RpcWorkspaceInfoResponseError_UNKNOWN_ERROR, err)
+		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(info, pb.RpcWorkspaceInfoResponseError_NULL, nil)
+
+	err = mw.doBlockService(func(bs *block.Service) error {
+		return block.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
+			return sv.UpdateLastOpenedDate()
+		})
+	})
+	if err != nil {
+		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(info, pb.RpcWorkspaceOpenResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceSetIsHighlighted(cctx context.Context, req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {

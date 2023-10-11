@@ -41,6 +41,7 @@ type TechSpace interface {
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
+	SpaceViewId(id string) (string, error)
 
 	app.ComponentRunnable
 }
@@ -151,6 +152,12 @@ func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, detail
 	return s.doSpaceView(ctx, spaceId, func(spaceView *editor.SpaceView) error {
 		return spaceView.SetSpaceData(details)
 	})
+}
+
+func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.getViewId(context.TODO(), spaceId)
 }
 
 func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err error) {

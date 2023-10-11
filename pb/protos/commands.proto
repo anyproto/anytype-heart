@@ -614,7 +614,7 @@ message Rpc {
             }
         }
 
-        message Info {
+        message Open {
             message Request {
                 string spaceId = 1;
             }

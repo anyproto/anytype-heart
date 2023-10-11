@@ -133,7 +133,13 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 	}
 
 	if changed {
-		return s.Apply(st, smartblock.NoRestrictions)
+		return s.Apply(st, smartblock.NoRestrictions, smartblock.NoEvent, smartblock.NoHistory)
 	}
 	return nil
+}
+
+func (s *SpaceView) UpdateLastOpenedDate() error {
+	st := s.NewState()
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
