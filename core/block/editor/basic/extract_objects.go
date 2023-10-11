@@ -19,7 +19,7 @@ import (
 )
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
@@ -44,11 +44,12 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}
 
+		objState.SetDetails(details)
+
 		objectID, _, err := objectCreator.CreateSmartBlockFromState(
 			context.Background(),
 			bs.SpaceID(),
 			[]domain.TypeKey{typeKey},
-			details,
 			objState,
 		)
 		if err != nil {

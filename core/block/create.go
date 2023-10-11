@@ -41,7 +41,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
 
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, objectTypeKeys, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, objectTypeKeys, st)
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		return
 	}
 	// TODO Check this, we need to create template, so pass template type key, and creator should use template sbtype
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), spaceID, objectTypeKeys, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), spaceID, objectTypeKeys, st)
 	if err != nil {
 		return
 	}
@@ -124,7 +124,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
-	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, objectTypeKeys, nil, st)
+	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, objectTypeKeys, st)
 	if err != nil {
 		return
 	}
