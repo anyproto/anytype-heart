@@ -58,10 +58,6 @@ type Cache interface {
 	CloseBlocks()
 }
 
-type personalIDProvider interface {
-	PersonalSpaceID() string
-}
-
 type objectCache struct {
 	personalSpaceId string
 	objectFactory   ObjectFactory
