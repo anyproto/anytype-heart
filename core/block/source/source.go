@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -114,7 +113,7 @@ type Source interface {
 }
 
 type CreationInfoProvider interface {
-	GetCreationInfo() (creator crypto.PubKey, createdDate int64, err error)
+	GetCreationInfo() (creatorObjectId string, createdDate int64, err error)
 }
 
 type SourceIdEndodedDetails interface {
@@ -292,9 +291,12 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	return st, nil
 }
 
-func (s *source) GetCreationInfo() (creator crypto.PubKey, createdDate int64, err error) {
+func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.Root().Timestamp
-	creator = s.ObjectTree.Root().Identity
+	root := s.ObjectTree.Root()
+	if root != nil && root.Identity != nil {
+		creatorObjectId = addr.AccountIdToIdentityObjectId(root.Identity.Account())
+	}
 	return
 }
 

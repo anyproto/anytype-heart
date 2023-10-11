@@ -107,6 +107,6 @@ func (s *identity) PushChange(params PushChangeParams) (id string, err error) {
 	return
 }
 
-func (s *identity) GetCreationInfo() (creator string, createdDate int64, err error) {
+func (s *identity) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return s.id, 0, nil
 }

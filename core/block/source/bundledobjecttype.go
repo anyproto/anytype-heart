@@ -108,6 +108,6 @@ func (s *bundledObjectType) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *bundledObjectType) GetCreationInfo() (creator string, createdDate int64, err error) {
+func (s *bundledObjectType) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }

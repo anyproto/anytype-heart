@@ -653,14 +653,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	var lastModified = time.Now()
 	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
-		// in case it is the first change, allow to explicitly set the last modified time
-		// this case is used when we import existing data from other sources and want to preserve the original dates
-		if err != nil {
-			log.Errorf("failed to get creation info: %s", err)
-		} else {
-			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
+		// for the first change allow to set the last modified date from the state
+		// this used for the object imports
+		lastModifiedFromState := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		if lastModifiedFromState > 0 {
+			lastModified = time.Unix(lastModifiedFromState, 0)
 		}
+		s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
+		s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 	}
+
+	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AccountIdToIdentityObjectId(sb.coreService.AccountId())))
+
 	sb.beforeStateApply(s)
 
 	if !keepInternalFlags {
@@ -668,7 +672,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	// this one will be reverted in case we don't have any actual change being made
-	s.SetLastModified(lastModified.Unix(), addr.IdentityPrefix+sb.coreService.AccountId())
 
 	beforeApplyStateTime := time.Now()
 
@@ -919,7 +922,11 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		p.InjectLocalDetails(localDetailsFromStore)
 	}
 
-	return sb.injectCreationInfo(s)
+	err = sb.injectCreationInfo(s)
+	if err != nil {
+		log.With("objectID", sb.Id()).With("sbtype", sb.Type().String()).Errorf("failed to inject creation info: %s", err.Error())
+	}
+	return nil
 }
 
 func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
@@ -955,30 +962,52 @@ func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails
 	return details, hasPendingLocalDetails
 }
 
+func (sb *smartBlock) getCreationInfo() (creatorObjectId string, createdTS int64, err error) {
+	provider, conforms := sb.source.(source.CreationInfoProvider)
+	if !conforms {
+		err = fmt.Errorf("source does not conform to CreationInfoProvider")
+		return
+	}
+
+	creatorObjectId, createdTS, err = provider.GetCreationInfo()
+	if err != nil {
+		return
+	}
+
+	return creatorObjectId, createdTS, nil
+}
+
 func (sb *smartBlock) injectCreationInfo(s *state.State) error {
+	if sb.Type() == smartblock.SmartBlockTypeProfilePage {
+		// todo: for the shared spaces we need to change this for sophisticated logic
+		creator, _, err := sb.getCreationInfo()
+		if err != nil {
+			return err
+		}
+
+		if creator != "" {
+			id, err := addr.IdentityObjectIdToAccountId(creator)
+			if err != nil {
+				return err
+			}
+			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(id))
+		}
+	} else {
+		// make sure we don't have this relation for other objects
+		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity.String())
+	}
+
 	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
 		return nil
 	}
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		return nil
-	}
 
-	creator, createdDate, err := provider.GetCreationInfo()
+	creator, createdDate, err := sb.getCreationInfo()
 	if err != nil {
 		return err
 	}
 
-	if creator != nil {
-		creatorAccount := creator.Account()
-		if sb.Type() == smartblock.SmartBlockTypeProfilePage {
-			// todo: for the shared spaces we need to change this for sophisticated logic
-			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(creatorAccount))
-		} else {
-			// make sure we don't have this relation for other objects
-			s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity.String())
-		}
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(addr.AccountIdToIdentityObjectId(creatorAccount)))
+	if creator != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(addr.AccountIdToIdentityObjectId(creator)))
 	}
 
 	if createdDate != 0 {

@@ -109,6 +109,6 @@ func (s *bundledRelation) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *bundledRelation) GetCreationInfo() (creator string, createdDate int64, err error) {
+func (s *bundledRelation) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }

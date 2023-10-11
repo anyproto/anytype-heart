@@ -162,6 +162,6 @@ func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *date) GetCreationInfo() (creator string, createdDate int64, err error) {
-	return s.coreService.ProfileID(s.spaceID), 0, nil
+func (s *date) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+	return addr.AnytypeProfileId, 0, nil
 }

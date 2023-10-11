@@ -64,3 +64,10 @@ func TimeToID(t time.Time) string {
 func AccountIdToIdentityObjectId(identity string) string {
 	return IdentityPrefix + identity
 }
+
+func IdentityObjectIdToAccountId(objectId string) (string, error) {
+	if !strings.HasPrefix(objectId, IdentityPrefix) {
+		return "", fmt.Errorf("invalid identity object id")
+	}
+	return strings.TrimPrefix(objectId, IdentityPrefix), nil
+}
