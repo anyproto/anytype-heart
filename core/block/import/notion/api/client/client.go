@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var logger = logging.Logger("notion-api-client")
+var log = logging.Logger("notion-api-client")
 
 const (
 	notionURL  = "https://api.notion.com/v1"
@@ -81,7 +81,7 @@ func (c *Client) DoWithRetry(loggerInfo string, maxAttempts int, req *http.Reque
 		attempt = 0
 		body    []byte
 	)
-	lg := logger.With("info", loggerInfo)
+	log := log.With("info", loggerInfo)
 	if req.Body != nil {
 		var err error
 		body, err = io.ReadAll(req.Body)
@@ -101,13 +101,13 @@ retry:
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok {
 				if netErr.Timeout() {
-					lg.Warnf("network timeout error: %s", netErr)
+					log.Warnf("network timeout error: %s", netErr)
 				} else if netErr.Temporary() {
-					lg.Warnf("network temporary error: %s", netErr)
+					log.Warnf("network temporary error: %s", netErr)
 				}
 				retryReason = netErr.Error()
 			} else {
-				return nil, fmt.Errorf("http error: %s", err)
+				return nil, fmt.Errorf("http error: %w", err)
 			}
 		} else if res.StatusCode == http.StatusTooManyRequests || res.StatusCode >= 500 {
 			e := GetRetryAfterError(res.Header)
@@ -118,13 +118,13 @@ retry:
 		} else {
 			return res, nil
 		}
-		lg = lg.With("reason", retryReason)
+		log = log.With("reason", retryReason)
 		attempt++
 		if maxAttempts > 0 && attempt >= maxAttempts {
-			lg.Warnf("max attempts exceeded")
+			log.Warnf("max attempts exceeded")
 			return res, err
 		}
-		lg.With("delay", delay.Seconds()).With("attempt", attempt).Warnf("retry request")
+		log.With("delay", delay.Seconds()).With("attempt", attempt).Warnf("retry request")
 
 		select {
 		case <-req.Context().Done():

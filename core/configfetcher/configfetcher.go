@@ -73,7 +73,7 @@ func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
 	state = defaultAccountState
 	status, err := c.store.GetAccountStatus()
 	if err != nil {
-		log.Debug("failed to account state config from the store: %s", err.Error())
+		log.Debug("failed to account state config from the store: %s", err)
 	} else {
 		state.Status.Status = pb.AccountStateStatusType(status.Status)
 		state.Status.DeletionDate = status.DeletionTimestamp
@@ -152,7 +152,7 @@ func (c *configFetcher) Refetch() {
 	defer cancel()
 	err := c.updateStatus(ctx)
 	if err != nil {
-		log.Errorf("failed to update status: %s", err.Error())
+		log.Errorf("failed to update status: %s", err)
 	}
 }
 

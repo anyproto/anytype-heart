@@ -6,10 +6,13 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-	mock "github.com/stretchr/testify/mock"
+
+	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
-	core "github.com/anyproto/anytype-heart/pkg/lib/core"
+
+	mock "github.com/stretchr/testify/mock"
+
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 

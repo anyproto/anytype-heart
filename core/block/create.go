@@ -53,7 +53,7 @@ func (s *Service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*stat
 	st.SetLocalDetails(nil)
 	targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), sb.SpaceID(), st.ObjectTypeKey())
 	if err != nil {
-		return nil, fmt.Errorf("get type id by key: %s", err)
+		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
 	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
@@ -228,7 +228,7 @@ func (s *Service) CreateLinkToTheNewObject(
 			Position: req.Position,
 		})
 		if err != nil {
-			return fmt.Errorf("link create error: %v", err)
+			return fmt.Errorf("link create error: %w", err)
 		}
 		return nil
 	})

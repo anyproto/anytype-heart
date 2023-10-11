@@ -287,7 +287,9 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 	}
 	return sf.UpdateFile(info.blockId, info.groupId, func(f file.Block) error {
 		if info.err != nil || info.file == nil || info.file.State == model.BlockContentFile_Error {
-			log.Warnf("upload file[%v] error: %v", info.name, info.err)
+			if info.err != nil {
+				log.Warnf("upload file error: %s", info.err)
+			}
 			f.SetState(model.BlockContentFile_Error)
 			return nil
 		}
@@ -549,7 +551,7 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
 		Upload(context.Background())
 
 	if res.Err != nil {
-		log.With("filePath", f.path).Errorf("upload error: %s", res.Err)
+		log.Errorf("upload error: %s", res.Err)
 		f.err = fmt.Errorf("upload error: %w", res.Err)
 		return
 	}

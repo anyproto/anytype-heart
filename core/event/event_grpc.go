@@ -70,7 +70,7 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
 				es.shutdownCh <- server.Token
 			}
-			log.With("session", server.Token).Errorf("failed to send event: %s", err)
+			log.Errorf("failed to send event: %s", err)
 		}
 	}()
 }
@@ -103,7 +103,6 @@ type SessionServer struct {
 }
 
 func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
-	log.Warnf("listening %s\n", token)
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
 	if es.Servers == nil {

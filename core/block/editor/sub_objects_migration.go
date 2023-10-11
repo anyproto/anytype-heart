@@ -104,7 +104,7 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(sm
 			if v, ok := subObjectStruct.Kind.(*types.Value_StructValue); ok {
 				uk, err := m.getUniqueKey(coll, subObjectId)
 				if err != nil {
-					log.With("collection", coll).Errorf("subobject migration: failed to get uniqueKey: %s", err.Error())
+					log.With("collection", coll).Errorf("subobject migration: failed to get uniqueKey: %s", err)
 					continue
 				}
 

@@ -931,7 +931,7 @@ func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
 func (sb *smartBlock) updateBackLinks(details *types.Struct) {
 	backLinks, err := sb.objectStore.GetInboundLinksByID(sb.Id())
 	if err != nil {
-		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err.Error())
+		log.With("objectID", sb.Id()).Errorf("failed to get inbound links from object store: %s", err)
 		return
 	}
 	details.Fields[bundle.RelationKeyBacklinks.String()] = pbtypes.StringList(backLinks)
