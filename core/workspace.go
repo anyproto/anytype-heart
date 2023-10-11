@@ -63,9 +63,9 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	return response(info, pb.RpcWorkspaceOpenResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceSetIsHighlighted(cctx context.Context, req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {
-	response := func(code pb.RpcWorkspaceSetIsHighlightedResponseErrorCode, err error) *pb.RpcWorkspaceSetIsHighlightedResponse {
-		m := &pb.RpcWorkspaceSetIsHighlightedResponse{Error: &pb.RpcWorkspaceSetIsHighlightedResponseError{Code: code}}
+func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspaceSetInfoRequest) *pb.RpcWorkspaceSetInfoResponse {
+	response := func(code pb.RpcWorkspaceSetInfoResponseErrorCode, err error) *pb.RpcWorkspaceSetInfoResponse {
+		m := &pb.RpcWorkspaceSetInfoResponse{Error: &pb.RpcWorkspaceSetInfoResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -74,14 +74,14 @@ func (mw *Middleware) WorkspaceSetIsHighlighted(cctx context.Context, req *pb.Rp
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.SetIsHighlighted(req)
+		err = bs.SetSpaceInfo(req)
 		return
 	})
 	if err != nil {
-		return response(pb.RpcWorkspaceSetIsHighlightedResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(pb.RpcWorkspaceSetIsHighlightedResponseError_NULL, nil)
+	return response(pb.RpcWorkspaceSetInfoResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceSelect(cctx context.Context, req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {

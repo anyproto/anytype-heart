@@ -28,7 +28,7 @@ service ClientCommands {
     rpc WorkspaceSelect (anytype.Rpc.Workspace.Select.Request) returns (anytype.Rpc.Workspace.Select.Response);
     rpc WorkspaceGetCurrent (anytype.Rpc.Workspace.GetCurrent.Request) returns (anytype.Rpc.Workspace.GetCurrent.Response);
     rpc WorkspaceGetAll (anytype.Rpc.Workspace.GetAll.Request) returns (anytype.Rpc.Workspace.GetAll.Response);
-    rpc WorkspaceSetIsHighlighted (anytype.Rpc.Workspace.SetIsHighlighted.Request) returns (anytype.Rpc.Workspace.SetIsHighlighted.Response);
+    rpc WorkspaceSetInfo (anytype.Rpc.Workspace.SetInfo.Request) returns (anytype.Rpc.Workspace.SetInfo.Response);
     rpc WorkspaceExport (anytype.Rpc.Workspace.Export.Request) returns (anytype.Rpc.Workspace.Export.Response);
 
     // Account
