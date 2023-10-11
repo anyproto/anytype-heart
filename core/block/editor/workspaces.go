@@ -30,7 +30,6 @@ type Workspaces struct {
 
 	DetailsModifier DetailsModifier
 	spaceService    spaceService
-	anytype         core.Service
 	objectStore     objectstore.ObjectStore
 	config          *config.Config
 	objectDeriver   objectDeriver
@@ -48,7 +47,6 @@ func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore,
 		),
 		Dataview:        dataview.NewDataview(sb, anytype, objectStore, sbtProvider),
 		DetailsModifier: modifier,
-		anytype:         anytype,
 		objectStore:     objectStore,
 		spaceService:    spaceService,
 		config:          config,
@@ -90,7 +88,7 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
-		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(w.anytype.PredefinedObjects(w.SpaceID()).Profile)),
+		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String("TODO profile")),
 	)
 }
 

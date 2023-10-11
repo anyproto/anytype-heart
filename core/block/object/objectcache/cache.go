@@ -69,6 +69,7 @@ type objectCache struct {
 	cache           ocache.OCache
 	closing         chan struct{}
 	space           *spacecore.AnySpace
+	keyConverter    smartblock.KeyToIDConverter
 }
 
 func New(
@@ -76,6 +77,7 @@ func New(
 	accountService accountservice.Service,
 	objectFactory ObjectFactory,
 	personalSpaceId string,
+	keyConverter smartblock.KeyToIDConverter,
 ) Cache {
 	c := &objectCache{
 		personalSpaceId: personalSpaceId,
@@ -83,6 +85,7 @@ func New(
 		accountService:  accountService,
 		objectFactory:   objectFactory,
 		closing:         make(chan struct{}),
+		keyConverter:    keyConverter,
 	}
 	c.cache = ocache.New(
 		c.cacheLoad,
@@ -119,7 +122,13 @@ func ContextWithBuildOptions(ctx context.Context, buildOpts source.BuildOptions)
 func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
 	opts := ctx.Value(optsKey).(cacheOpts)
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
-		return c.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
+		initCtx := &smartblock.InitContext{
+			Ctx:              ctx,
+			BuildOpts:        opts.buildOption,
+			SpaceID:          opts.spaceId,
+			KeyToIDConverter: c.keyConverter,
+		}
+		return c.objectFactory.InitObject(id, initCtx)
 	}
 	createObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)

@@ -138,7 +138,7 @@ func (s *service) initTechSpace() error {
 	if err != nil {
 		return fmt.Errorf("derive tech space: %w", err)
 	}
-	techSpaceCache := objectcache.New(techCoreSpace, s.accountService, s.objectFactory, s.personalSpaceID)
+	techSpaceCache := objectcache.New(techCoreSpace, s.accountService, s.objectFactory, s.personalSpaceID, nil)
 	err = s.techSpace.Run(techCoreSpace, techSpaceCache)
 	if err != nil {
 		return fmt.Errorf("run tech space: %w", err)

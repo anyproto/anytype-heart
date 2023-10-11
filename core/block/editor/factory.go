@@ -42,24 +42,23 @@ type bundledObjectsInstaller interface {
 }
 
 type ObjectFactory struct {
-	anytype                core.Service
-	bookmarkService        bookmark.BookmarkService
-	detailsModifier        DetailsModifier
-	fileBlockService       file.BlockService
-	layoutConverter        converter.LayoutConverter
-	objectStore            objectstore.ObjectStore
-	uniqueKeyToIdConverter smartblock.KeyToIDConverter
-	sbtProvider            typeprovider.SmartBlockTypeProvider
-	sourceService          source.Service
-	tempDirProvider        core.TempDirProvider
-	fileService            files.Service
-	config                 *config.Config
-	picker                 getblock.ObjectGetter
-	eventSender            event.Sender
-	restrictionService     restriction.Service
-	indexer                spaceIndexer
-	spaceService           spaceService
-	objectDeriver          objectDeriver
+	anytype            core.Service
+	bookmarkService    bookmark.BookmarkService
+	detailsModifier    DetailsModifier
+	fileBlockService   file.BlockService
+	layoutConverter    converter.LayoutConverter
+	objectStore        objectstore.ObjectStore
+	sbtProvider        typeprovider.SmartBlockTypeProvider
+	sourceService      source.Service
+	tempDirProvider    core.TempDirProvider
+	fileService        files.Service
+	config             *config.Config
+	picker             getblock.ObjectGetter
+	eventSender        event.Sender
+	restrictionService restriction.Service
+	indexer            spaceIndexer
+	spaceService       spaceService
+	objectDeriver      objectDeriver
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -72,7 +71,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	f.uniqueKeyToIdConverter = app.MustComponent[smartblock.KeyToIDConverter](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.fileService = app.MustComponent[files.Service](a)
@@ -134,11 +132,9 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 
 func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
 	return smartblock.New(
-		f.anytype,
 		f.fileService,
 		f.restrictionService,
 		f.objectStore,
-		f.uniqueKeyToIdConverter,
 		f.indexer,
 		f.eventSender,
 	)

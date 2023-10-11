@@ -24,19 +24,17 @@ type Space interface {
 }
 
 func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (*space, error) {
-	cache := objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID)
-	provider := objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, cache, s.bundledObjectsInstaller)
-	derivedIds, err := provider.DeriveObjectIDs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("derive object ids: %w", err)
-	}
 	sp := &space{
 		service:                s,
 		AnySpace:               coreSpace,
-		derivedIDs:             derivedIds,
 		loadMandatoryObjectsCh: make(chan struct{}),
-		Cache:                  cache,
-		ObjectProvider:         provider,
+	}
+	sp.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
+	sp.ObjectProvider = objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, sp.Cache, s.bundledObjectsInstaller)
+	var err error
+	sp.derivedIDs, err = sp.ObjectProvider.DeriveObjectIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("derive object ids: %w", err)
 	}
 
 	// TODO BEGIN RUN ONLY ON CREATE
