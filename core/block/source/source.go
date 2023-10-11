@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
@@ -23,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -131,32 +131,34 @@ type SourceWithType interface {
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-type sourceDeps struct {
-	sbt smartblock.SmartBlockType
-	ot  objecttree.ObjectTree
+func (s *service) newTreeSource(ctx context.Context, spaceID string, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error) {
+	spc, err := s.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	var ot objecttree.ObjectTree
+	ot, err = spc.TreeBuilder().BuildTree(ctx, id, buildOpts)
+	if err != nil {
+		return nil, fmt.Errorf("build tree: %w", err)
+	}
 
-	coreService         core.Service
-	accountService      accountservice.Service
-	spaceService        spacecore.SpaceCoreService
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	fileService         files.Service
-	systemObjectService systemObjectService
-	objectStore         objectstore.ObjectStore
-}
+	sbt, err := typeprovider.GetTypeFromRoot(ot.Header())
+	if err != nil {
+		return nil, err
+	}
 
-func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err error) {
 	return &source{
-		ObjectTree:          deps.ot,
+		ObjectTree:          ot,
 		id:                  id,
 		spaceID:             spaceID,
-		spaceService:        deps.spaceService,
+		spaceService:        s.spaceService,
 		openedAt:            time.Now(),
-		smartblockType:      deps.sbt,
-		accountService:      deps.accountService,
-		sbtProvider:         deps.sbtProvider,
-		fileService:         deps.fileService,
-		systemObjectService: deps.systemObjectService,
-		objectStore:         deps.objectStore,
+		smartblockType:      sbt,
+		accountService:      s.accountService,
+		sbtProvider:         s.sbtProvider,
+		fileService:         s.fileService,
+		systemObjectService: s.systemObjectService,
+		objectStore:         s.objectStore,
 	}, nil
 }
 

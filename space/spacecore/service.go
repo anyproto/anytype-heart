@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
@@ -190,6 +191,9 @@ func (s *service) Create(ctx context.Context, replicationKey uint64) (container 
 }
 
 func (s *service) Get(ctx context.Context, id string) (space *AnySpace, err error) {
+	if id == addr.AnytypeMarketplaceWorkspace {
+		return NewMarketplace(), nil
+	}
 	v, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return

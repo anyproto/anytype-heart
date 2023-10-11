@@ -187,7 +187,11 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 		idsToCheck = append(idsToCheck, addr.BundledObjectTypeURLPrefix+string(typeKey))
 	}
 
-	_, _, err := oc.service.InstallBundledObjects(ctx, spaceID, idsToCheck)
+	spc, err := oc.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return fmt.Errorf("get space %s: %w", spaceID, err)
+	}
+	_, _, err = oc.service.InstallBundledObjects(ctx, spc, idsToCheck)
 	return err
 }
 

@@ -11,7 +11,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -58,15 +57,6 @@ type Hasher interface {
 	Hash() string
 }
 
-type objectCreator interface {
-	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
-	InstallBundledObjects(
-		ctx context.Context,
-		spaceID string,
-		sourceObjectIds []string,
-	) (ids []string, objects []*types.Struct, err error)
-}
-
 type personalIDProvider interface {
 	PersonalSpaceID() string
 }
@@ -78,7 +68,6 @@ type indexer struct {
 	picker         block.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
-	objectCreator  objectCreator
 	fileService    files.Service
 
 	quit       chan struct{}
@@ -105,7 +94,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.objectCreator = app.MustComponent[objectCreator](a)
 	i.picker = app.MustComponent[block.ObjectGetter](a)
 	i.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	i.provider = app.MustComponent[personalIDProvider](a)

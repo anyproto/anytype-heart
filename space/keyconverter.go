@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
 func (s *space) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
@@ -13,10 +14,9 @@ func (s *space) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) 
 		return "", err
 	}
 
-	// todo: it should be done via a virtual space
-	// if spaceId == addr.AnytypeMarketplaceWorkspace {
-	// 	return addr.BundledRelationURLPrefix + key.String(), nil
-	// }
+	if s.Id() == addr.AnytypeMarketplaceWorkspace {
+		return addr.BundledRelationURLPrefix + key.String(), nil
+	}
 	return s.DeriveObjectID(ctx, uk)
 }
 
@@ -26,14 +26,9 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 		return "", err
 	}
 
-	// todo: it should be done via a virtual space
-	// if spaceId == addr.AnytypeMarketplaceWorkspace {
-	// 	return addr.BundledObjectTypeURLPrefix + key.String(), nil
-	// }
-	//
-	// spc, err := s.spaceService.Get(ctx, spaceId)
-	// if err != nil {
-	// 	return "", fmt.Errorf("get space: %w", err)
-	// }
+	if s.Id() == addr.AnytypeMarketplaceWorkspace {
+		return addr.BundledObjectTypeURLPrefix + key.String(), nil
+	}
+
 	return s.DeriveObjectID(ctx, uk)
 }

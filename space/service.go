@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -39,11 +40,6 @@ type spaceIndexer interface {
 	ReindexSpace(spaceID string) error
 }
 
-type bundledObjectsInstaller interface {
-	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
-	app.Component
-}
-
 type isNewAccount interface {
 	IsNewAccount() bool
 	app.Component
@@ -59,9 +55,10 @@ type SpaceService interface {
 }
 
 type service struct {
-	indexer   spaceIndexer
-	spaceCore spacecore.SpaceCoreService
-	techSpace techspace.TechSpace
+	indexer          spaceIndexer
+	spaceCore        spacecore.SpaceCoreService
+	techSpace        techspace.TechSpace
+	marketplaceSpace *space
 
 	bundledObjectsInstaller bundledObjectsInstaller
 	accountService          accountservice.Service
@@ -105,6 +102,11 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	s.marketplaceSpace, err = s.newMarketplaceSpace(ctx)
+	if err != nil {
+		return
+	}
+
 	err = s.initTechSpace()
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
@@ -155,6 +157,9 @@ func (s *service) Create(ctx context.Context) (Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
+	if spaceID == addr.AnytypeMarketplaceWorkspace {
+		return s.marketplaceSpace, nil
+	}
 	if err = s.startLoad(ctx, spaceID); err != nil {
 		return nil, err
 	}

@@ -114,6 +114,14 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID stri
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
 func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+	spc, err := c.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", nil, err
+	}
+	return c.CreateSmartBlockFromStateInSpace(ctx, spc, sbType, objectTypeKeys, details, createState)
+}
+
+func (c *Creator) CreateSmartBlockFromStateInSpace(ctx context.Context, spc space.Space, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -141,10 +149,10 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	}
 
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.coreService.ProfileID(spaceID)))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String("TODO Profile!"))
 
 	// todo: find a proper way to inject the spaceID as soon as possible into the createState
-	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spc.Id()))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
@@ -158,14 +166,10 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			ObjectTypeKeys: objectTypeKeys,
 			State:          createState,
 			RelationKeys:   relationKeys,
-			SpaceID:        spaceID,
+			SpaceID:        spc.Id(),
 		}
 	}
 
-	spc, err := c.spaceService.Get(ctx, spaceID)
-	if err != nil {
-		return "", nil, fmt.Errorf("get space: %w", err)
-	}
 	var sb smartblock.SmartBlock
 	if uKey := createState.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)

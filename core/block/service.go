@@ -103,6 +103,7 @@ func New() *Service {
 }
 
 type objectCreator interface {
+	CreateSmartBlockFromStateInSpace(ctx context.Context, spc space.Space, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 }
@@ -316,27 +317,8 @@ func (s *Service) GetOpenedObjects() []string {
 	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
 }
 
-func (s *Service) InstallBundledObject(
-	ctx context.Context,
-	spaceID string,
-	sourceObjectId string,
-) (id string, object *types.Struct, err error) {
-	ids, details, err := s.InstallBundledObjects(ctx, spaceID, []string{sourceObjectId})
-	if err != nil {
-		return "", nil, err
-	}
-	if len(ids) == 0 {
-		return "", nil, fmt.Errorf("failed to add object")
-	}
-
-	return ids[0], details[0], nil
-}
-
-func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID string, details *types.Struct) (*types.Struct, error) {
-	spc, err := s.spaceService.Get(ctx, spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("get space: %w", err)
-	}
+func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spc space.Space, details *types.Struct) (*types.Struct, error) {
+	spaceID := spc.Id()
 	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
 	if pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
 		return nil, errors.New("object is not bundled")
@@ -346,12 +328,19 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
+	// TODO This should be done in objectcreator isnt it?
 	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
 	case bundle.TypeKeyObjectType.BundledURL():
-		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyObjectType)
+		typeID, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyObjectType)
+		if err != nil {
+			return nil, fmt.Errorf("get type id by key: %w", err)
+		}
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	case bundle.TypeKeyRelation.BundledURL():
-		typeID := s.anytype.GetSystemTypeID(spaceID, bundle.TypeKeyRelation)
+		typeID, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyRelation)
+		if err != nil {
+			return nil, fmt.Errorf("get type id by key: %w", err)
+		}
 		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
 	default:
 		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(details, bundle.RelationKeyType.String()))
@@ -399,11 +388,45 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 	return details, nil
 }
 
-func (s *Service) InstallBundledObjects(
+func (s *Service) SpaceInstallBundledObject(
 	ctx context.Context,
-	spaceID string,
+	spaceId string,
+	sourceObjectId string,
+) (id string, object *types.Struct, err error) {
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
+	ids, details, err := s.InstallBundledObjects(ctx, spc, []string{sourceObjectId})
+	if err != nil {
+		return "", nil, err
+	}
+	if len(ids) == 0 {
+		return "", nil, fmt.Errorf("failed to add object")
+	}
+
+	return ids[0], details[0], nil
+}
+
+func (s *Service) SpaceInstallBundledObjects(
+	ctx context.Context,
+	spaceId string,
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get space: %w", err)
+	}
+	return s.InstallBundledObjects(ctx, spc, sourceObjectIds)
+}
+
+func (s *Service) InstallBundledObjects(
+	ctx context.Context,
+	spc space.Space,
+	sourceObjectIds []string,
+) (ids []string, objects []*types.Struct, err error) {
+	spaceID := spc.Id()
+
 	ids, objects, err = s.reinstallBundledObjects(spaceID, sourceObjectIds)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reinstall bundled objects: %w", err)
@@ -434,7 +457,7 @@ func (s *Service) InstallBundledObjects(
 			continue
 		}
 		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
-			d, err := s.prepareDetailsForInstallingObject(ctx, spaceID, b.CombinedDetails())
+			d, err := s.prepareDetailsForInstallingObject(ctx, spc, b.CombinedDetails())
 			if err != nil {
 				return err
 			}
@@ -457,9 +480,9 @@ func (s *Service) InstallBundledObjects(
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
-			id, object, err := s.objectCreator.CreateSmartBlockFromState(
+			id, object, err := s.objectCreator.CreateSmartBlockFromStateInSpace(
 				ctx,
-				spaceID,
+				spc,
 				uk.SmartblockType(),
 				[]domain.TypeKey{objectTypeKey},
 				nil,
@@ -473,7 +496,7 @@ func (s *Service) InstallBundledObjects(
 
 			if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
 				installingObjectTypeKey := domain.TypeKey(uk.InternalKey())
-				err = s.installTemplatesForObjectType(spaceID, installingObjectTypeKey)
+				err = s.installTemplatesForObjectType(spc, installingObjectTypeKey)
 				if err != nil {
 					log.With("spaceID", spaceID, "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
 				}
@@ -541,7 +564,7 @@ func (s *Service) reinstallBundledObjects(spaceID string, sourceObjectIDs []stri
 	return ids, objects, nil
 }
 
-func (s *Service) installTemplatesForObjectType(spaceID string, typeKey domain.TypeKey) error {
+func (s *Service) installTemplatesForObjectType(spc space.Space, typeKey domain.TypeKey) error {
 	bundledTemplates, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -560,7 +583,7 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey domain.T
 		return fmt.Errorf("query bundled templates: %w", err)
 	}
 
-	installedTemplatesIDs, err := s.listInstalledTemplatesForType(spaceID, typeKey)
+	installedTemplatesIDs, err := s.listInstalledTemplatesForType(spc, typeKey)
 	if err != nil {
 		return fmt.Errorf("list installed templates: %w", err)
 	}
@@ -571,7 +594,7 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey domain.T
 			continue
 		}
 
-		_, err := s.TemplateClone(spaceID, id)
+		_, err := s.TemplateClone(spc.Id(), id)
 		if err != nil {
 			return fmt.Errorf("clone template: %w", err)
 		}
@@ -579,12 +602,12 @@ func (s *Service) installTemplatesForObjectType(spaceID string, typeKey domain.T
 	return nil
 }
 
-func (s *Service) listInstalledTemplatesForType(spaceID string, typeKey domain.TypeKey) (map[string]struct{}, error) {
-	templateTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
+func (s *Service) listInstalledTemplatesForType(spc space.Space, typeKey domain.TypeKey) (map[string]struct{}, error) {
+	templateTypeID, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("get template type id by key: %w", err)
 	}
-	targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, typeKey)
+	targetObjectTypeID, err := spc.GetTypeIdByKey(context.Background(), typeKey)
 	if err != nil {
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}
@@ -603,7 +626,7 @@ func (s *Service) listInstalledTemplatesForType(spaceID string, typeKey domain.T
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceID),
+				Value:       pbtypes.String(spc.Id()),
 			},
 		},
 	})

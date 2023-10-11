@@ -5,8 +5,10 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -21,6 +23,21 @@ type Space interface {
 
 	objectcache.Cache
 	objectprovider.ObjectProvider
+
+	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+}
+
+func (s *service) newMarketplaceSpace(ctx context.Context) (*space, error) {
+	coreSpace := spacecore.NewMarketplace()
+	sp := &space{
+		service:                s,
+		AnySpace:               coreSpace,
+		installer:              s.bundledObjectsInstaller,
+		loadMandatoryObjectsCh: make(chan struct{}),
+	}
+	sp.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
+	return sp, nil
 }
 
 func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (*space, error) {
@@ -28,9 +45,10 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (
 		service:                s,
 		AnySpace:               coreSpace,
 		loadMandatoryObjectsCh: make(chan struct{}),
+		installer:              s.bundledObjectsInstaller,
 	}
 	sp.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
-	sp.ObjectProvider = objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, sp.Cache, s.bundledObjectsInstaller)
+	sp.ObjectProvider = objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, sp.Cache)
 	var err error
 	sp.derivedIDs, err = sp.ObjectProvider.DeriveObjectIDs(ctx)
 	if err != nil {
@@ -39,10 +57,11 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (
 
 	// TODO BEGIN RUN ONLY ON CREATE
 	// create mandatory objects
-	// err = sp.CreateMandatoryObjects(ctx)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("CreateMandatoryObjects error: %w; spaceId: %v", err, coreSpace.Id())
-	// }
+	err = sp.CreateMandatoryObjects(ctx)
+	if err != nil {
+		log.Error("TEMP", zap.Error(err))
+		// return nil, fmt.Errorf("CreateMandatoryObjects error: %w; spaceId: %v", err, coreSpace.Id())
+	}
 	// TODO END RUN ONLY ON CREATE
 
 	go sp.mandatoryObjectsLoad(s.ctx)
@@ -56,6 +75,7 @@ type space struct {
 	service    *service
 	status     spaceinfo.SpaceInfo
 	derivedIDs threads.DerivedSmartblockIds
+	installer  bundledObjectsInstaller
 
 	*spacecore.AnySpace
 

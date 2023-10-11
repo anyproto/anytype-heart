@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -20,23 +19,17 @@ import (
 
 var log = logger.NewNamed("client.spaceobject.objectprovider")
 
-type bundledObjectsInstaller interface {
-	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
-}
-
 type ObjectProvider interface {
 	DeriveObjectIDs(ctx context.Context) (objIDs threads.DerivedSmartblockIds, err error)
 	LoadObjects(ctx context.Context, ids []string) (err error)
 	CreateMandatoryObjects(ctx context.Context) (err error)
-	InstallBundledObjects(ctx context.Context) error
 }
 
-func NewObjectProvider(spaceId string, personalSpaceId string, cache objectcache.Cache, installer bundledObjectsInstaller) ObjectProvider {
+func NewObjectProvider(spaceId string, personalSpaceId string, cache objectcache.Cache) ObjectProvider {
 	return &objectProvider{
 		spaceId:         spaceId,
 		personalSpaceId: personalSpaceId,
 		cache:           cache,
-		installer:       installer,
 	}
 }
 
@@ -44,7 +37,6 @@ type objectProvider struct {
 	personalSpaceId string
 	spaceId         string
 	cache           objectcache.Cache
-	installer       bundledObjectsInstaller
 
 	mu               sync.Mutex
 	derivedObjectIds threads.DerivedSmartblockIds
@@ -146,19 +138,4 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context) (err error)
 		}
 	}
 	return
-}
-
-func (o *objectProvider) InstallBundledObjects(ctx context.Context) error {
-	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
-	for _, ot := range bundle.SystemTypes {
-		ids = append(ids, ot.BundledURL())
-	}
-	for _, rk := range bundle.SystemRelations {
-		ids = append(ids, rk.BundledURL())
-	}
-	_, _, err := o.installer.InstallBundledObjects(ctx, o.spaceId, ids)
-	if err != nil {
-		return err
-	}
-	return nil
 }

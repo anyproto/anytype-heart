@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -52,7 +51,7 @@ type Service interface {
 type service struct {
 	coreService         core.Service
 	sbtProvider         typeprovider.SmartBlockTypeProvider
-	account             accountservice.Service
+	accountService      accountservice.Service
 	fileStore           filestore.FileStore
 	spaceService        spacecore.SpaceCoreService
 	storageService      storage.ClientStorage
@@ -69,7 +68,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]Source)
 	s.coreService = a.MustComponent(core.CName).(core.Service)
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
-	s.account = a.MustComponent(accountservice.CName).(accountservice.Service)
+	s.accountService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
@@ -133,32 +132,7 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 		return staticSrc, nil
 	}
 
-	spc, err := s.spaceService.Get(ctx, spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("get space: %w", err)
-	}
-	var ot objecttree.ObjectTree
-	ot, err = spc.TreeBuilder().BuildTree(ctx, id, buildOptions.BuildTreeOpts())
-	if err != nil {
-		return nil, fmt.Errorf("build tree: %w", err)
-	}
-
-	sbt, err := typeprovider.GetTypeFromRoot(ot.Header())
-	if err != nil {
-		return nil, err
-	}
-	deps := sourceDeps{
-		coreService:         s.coreService,
-		accountService:      s.account,
-		sbt:                 sbt,
-		ot:                  ot,
-		spaceService:        s.spaceService,
-		sbtProvider:         s.sbtProvider,
-		fileService:         s.fileService,
-		systemObjectService: s.systemObjectService,
-		objectStore:         s.objectStore,
-	}
-	return newTreeSource(spaceID, id, deps)
+	return s.newTreeSource(ctx, spaceID, id, buildOptions.BuildTreeOpts())
 }
 
 func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error) {
