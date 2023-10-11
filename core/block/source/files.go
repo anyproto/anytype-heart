@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -116,4 +117,9 @@ func (f *file) Heads() []string {
 
 func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
+}
+
+func (f *file) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+	creatorObjectId = addr.AccountIdToIdentityObjectId(f.a.AccountId())
+	return
 }
