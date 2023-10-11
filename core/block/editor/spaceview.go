@@ -5,9 +5,12 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -17,7 +20,8 @@ import (
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {
-	OnViewCreated(spaceID string)
+	OnViewCreated(spaceId string)
+	OnWorkspaceChanged(spaceId string, details *types.Struct)
 }
 
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
@@ -86,4 +90,28 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 		return "", ErrIncorrectSpaceInfo
 	}
 	return spaceHeader.SpaceID, nil
+}
+
+var workspaceKeysToCopy = []string{
+	bundle.RelationKeyName.String(),
+	bundle.RelationKeyIconImage.String(),
+	bundle.RelationKeyIconEmoji.String(),
+	bundle.RelationKeyIconOption.String(),
+	bundle.RelationKeySpaceDashboardId.String(),
+}
+
+func (s *SpaceView) SetSpaceData(details *types.Struct) error {
+	st := s.NewState()
+	var changed bool
+	for k, v := range details.Fields {
+		if slices.Contains(workspaceKeysToCopy, k) {
+			changed = true
+			st.SetDetailAndBundledRelation(domain.RelationKey(k), v)
+		}
+	}
+
+	if changed {
+		return s.Apply(st, smartblock.NoRestrictions)
+	}
+	return nil
 }

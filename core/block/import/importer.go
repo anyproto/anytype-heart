@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/import/notion"
+	"github.com/anyproto/anytype-heart/core/block/import/objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
@@ -33,11 +34,11 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -52,7 +53,7 @@ type Import struct {
 	converters      map[string]converter.Converter
 	s               *block.Service
 	oc              Creator
-	objectIDGetter  IDGetter
+	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 	fileSync        filesync.FileSync
@@ -66,8 +67,9 @@ func New() Importer {
 }
 
 func (i *Import) Init(a *app.App) (err error) {
-	i.s = a.MustComponent(block.CName).(*block.Service)
-	coreService := a.MustComponent(core.CName).(core.Service)
+	i.s = app.MustComponent[*block.Service](a)
+	coreService := app.MustComponent[core.Service](a)
+	spaceService := app.MustComponent[space.SpaceService](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{
@@ -83,15 +85,15 @@ func (i *Import) Init(a *app.App) (err error) {
 		i.converters[c.Name()] = c
 	}
 	objectCache := app.MustComponent[objectcache.Cache](a)
-	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
+	resolver := app.MustComponent[idresolver.Resolver](a)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.objectIDGetter = NewObjectIDGetter(store, coreService, objectCache)
+	i.idProvider = objectid.NewIDProvider(store, objectCache, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objectCache, coreService, factory, store, relationSyncer, fileStore)
+	i.oc = NewCreator(i.s, objectCache, spaceService, factory, store, relationSyncer, fileStore)
 	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	i.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
+	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
@@ -347,7 +349,6 @@ func (i *Import) getObjectID(
 	updateExisting bool,
 ) error {
 	var (
-		err         error
 		id          string
 		payload     treestorage.TreeStorageCreatePayload
 		createdTime time.Time
@@ -358,17 +359,15 @@ func (i *Import) getObjectID(
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(spaceID, snapshot, createdTime, updateExisting); err == nil {
-		oldIDToNew[snapshot.Id] = id
-		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
-			oldIDToNew[snapshot.Id] = snapshot.Id
-		}
-		if payload.RootRawChange != nil {
-			createPayloads[id] = payload
-		}
-		return nil
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, createdTime, updateExisting)
+	if err != nil {
+		return err
 	}
-	return err
+	oldIDToNew[snapshot.Id] = id
+	if payload.RootRawChange != nil {
+		createPayloads[id] = payload
+	}
+	return nil
 }
 
 func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {

@@ -26,12 +26,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -40,7 +40,7 @@ const relationsLimit = 10
 type ObjectCreator struct {
 	service        *block.Service
 	objectCache    objectcache.Cache
-	core           core.Service
+	spaceService   space.SpaceService
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
@@ -50,7 +50,7 @@ type ObjectCreator struct {
 
 func NewCreator(service *block.Service,
 	cache objectcache.Cache,
-	core core.Service,
+	spaceService space.SpaceService,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer syncer.RelationSyncer,
@@ -58,7 +58,7 @@ func NewCreator(service *block.Service,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
-		core:           core,
+		spaceService:   spaceService,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
@@ -111,7 +111,7 @@ func (oc *ObjectCreator) Create(
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(spaceID, st)
+		oc.setSpaceDashboardID(st, derivedSmartblockIds.Workspace)
 		return nil, newID, nil
 	}
 
@@ -153,7 +153,7 @@ func (oc *ObjectCreator) Create(
 }
 
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
-	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType
+	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -299,7 +299,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
+func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, workspace string) {
 	// hand-pick relation because space is a special case
 	var details []*pb.RpcObjectSetDetailsDetail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
@@ -326,7 +326,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 		})
 	}
 	if len(details) > 0 {
-		err := block.Do(oc.service, oc.core.PredefinedObjects(spaceID).Workspace, func(ws basic.CommonOperations) error {
+		err := block.Do(oc.service, workspace, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}

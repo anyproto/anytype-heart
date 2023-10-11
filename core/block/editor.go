@@ -575,15 +575,9 @@ func (s *Service) BookmarkCreateAndFetch(
 
 func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return fmt.Errorf("not implemented")
-		// todo: implement me
-		/*rel, err := s.systemObjectService.FetchRelationByKey(b.req.Key)
-		if err != nil {
-			return err
-		}
 		return b.AddRelationAndSet(ctx, s.systemObjectService, pb.RpcBlockRelationAddRequest{
-			RelationKey: rel.Key, BlockId: req.BlockId, ContextId: req.ContextId,
-		})*/
+			RelationKey: req.Key, BlockId: req.BlockId, ContextId: req.ContextId,
+		})
 	})
 }
 
