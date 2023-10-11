@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: validate agent
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && ("${{ github.event.inputs.run-on-runner }}" != "self-hosted" || "${{ github.event.inputs.alpha_version }}" == "") ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]]; then
             echo "Invalid runner"
             exit 1
           fi
@@ -78,6 +78,7 @@ jobs:
           GIT_SUMMARY=$(git describe --tags --always)
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
           VERSION=${{ github.event.inputs.alpha_version }}
+          GITHUB_SHA
           if [ -z "$VERSION" ]; then
             VERSION=${GITHUB_REF##*/}
           fi
@@ -107,7 +108,7 @@ jobs:
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
-        if: github.event.inputs.alpha_version == ''
+        if: github.event_name == 'push'
       - name: Make JS protos
         run: |
           make protos-js
@@ -116,7 +117,7 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-        if: github.event.inputs.alpha_version == ''
+        if: github.event_name == 'push'
       - name: Add system relations/types jsons
         run: |
           mkdir -p json/
@@ -132,7 +133,7 @@ jobs:
             protobuf
           if-no-files-found: error
           retention-days: 1
-        if: github.event.inputs.alpha_version == ''
+        if: github.event_name == 'push'
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
@@ -143,7 +144,7 @@ jobs:
           zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
-        if: github.event.inputs.alpha_version == ''
+        if: github.event_name == 'push'
       - name: Pack server unix
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
@@ -154,7 +155,7 @@ jobs:
           tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
-        if: github.event.inputs.alpha_version == ''
+        if: github.event_name == 'push'
       - name: Make swift protos
         run: |
           mkdir -p .release
@@ -217,7 +218,7 @@ jobs:
           MAVEN_ARTIFACT_ID: 'anytype-heart-android'
           MAVEN_ARTIFACT_NAME: 'lib.aar'
       - name: Release
-        if: github.event.inputs.alpha_version == ''
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
@@ -291,7 +292,12 @@ jobs:
           GIT_SUMMARY=$(git describe --tags --always)
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          VERSION=${{ github.event.inputs.alpha_version }}
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION=${{ github.event.inputs.alpha_version }}
+            if [ -z "$VERSION" ]; then
+              VERSION=${GITHUB_SHA}
+            fi
+          fi
           if [ -z "$VERSION" ]; then
             VERSION=${GITHUB_REF##*/}
           fi
@@ -347,7 +353,7 @@ jobs:
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Release
-        if: github.event.inputs.alpha_version == ''
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
