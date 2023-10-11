@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -722,15 +723,12 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyBookmark)
-		return err
-	})
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyBookmark,
+		Details:       req.Details,
+	}
+	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
 	}
