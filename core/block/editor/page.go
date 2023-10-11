@@ -195,18 +195,3 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 func (p *Page) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
-
-func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
-	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
-	for _, rel := range rels {
-		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
-			continue
-		}
-		var visible bool
-		if rel.Key == bundle.RelationKeyName.String() {
-			visible = true
-		}
-		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
-	}
-	return viewRels
-}

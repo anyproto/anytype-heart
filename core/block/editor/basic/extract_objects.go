@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -18,13 +19,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
-}
-
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
-func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator objectcreator.Service, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
 	typeUniqueKey, err := domain.UnmarshalUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal unique key: %w", err)
@@ -39,7 +36,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 
 		objState := prepareTargetObjectState(newState, rootID, rootBlock, req)
 
-		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), req, typeUniqueKey, rootBlock, objectCreator)
+		details, err := bs.prepareTargetObjectDetails(bs.SpaceID(), typeUniqueKey, rootBlock)
 		if err != nil {
 			return nil, fmt.Errorf("extract blocks to objects: %w", err)
 		}
@@ -67,13 +64,7 @@ func (bs *basic) ExtractBlocksToObjects(ctx session.Context, objectCreator Objec
 	return linkIds, bs.Apply(newState)
 }
 
-func (bs *basic) prepareTargetObjectDetails(
-	spaceID string,
-	req pb.RpcBlockListConvertToObjectsRequest,
-	typeUniqueKey domain.UniqueKey,
-	rootBlock simple.Block,
-	objectCreator ObjectCreator,
-) (*types.Struct, error) {
+func (bs *basic) prepareTargetObjectDetails(spaceID string, typeUniqueKey domain.UniqueKey, rootBlock simple.Block) (*types.Struct, error) {
 	objType, err := bs.systemObjectService.GetObjectByUniqueKey(spaceID, typeUniqueKey)
 	if err != nil {
 		return nil, err

@@ -5,13 +5,13 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -35,7 +35,7 @@ func (c *creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 
 	for i, view := range dvContent.Dataview.Views {
 		if view.Relations == nil {
-			dvContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(dvContent.Dataview.Relations)
+			dvContent.Dataview.Views[i].Relations = getDefaultViewRelations(dvContent.Dataview.Relations)
 		}
 	}
 	tmpls = append(tmpls,
@@ -45,4 +45,19 @@ func (c *creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 	template.InitTemplate(newState, tmpls...)
 
 	return c.CreateSmartBlockFromState(ctx, req.SpaceId, []domain.TypeKey{bundle.TypeKeySet}, newState)
+}
+
+func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
+	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
+	for _, rel := range rels {
+		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+			continue
+		}
+		var visible bool
+		if rel.Key == bundle.RelationKeyName.String() {
+			visible = true
+		}
+		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
+	}
+	return viewRels
 }
