@@ -12,11 +12,10 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "go.uber.org/mock/gomock"
-
 	process "github.com/anyproto/anytype-heart/core/block/process"
 	session "github.com/anyproto/anytype-heart/core/session"
 	pb "github.com/anyproto/anytype-heart/pb"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockBlockService is a mock of BlockService interface.
