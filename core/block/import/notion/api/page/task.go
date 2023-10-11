@@ -140,7 +140,7 @@ func (pt *Task) handlePageProperties(object *DataObject, details map[string]*typ
 	for name, prop := range pt.p.Properties {
 		relation, relationLink, err := pt.retrieveRelation(object, name, prop, details, hasTag, tagExist)
 		if err != nil {
-			logger.With("method", "handlePageProperties").Error(err)
+			log.With("method", "handlePageProperties").Error(err)
 			continue
 		}
 		relationsSnapshots = append(relationsSnapshots, relation...)
@@ -268,7 +268,7 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, propObject 
 				apiKey,
 				propObject.GetPropertyType(),
 			); err != nil {
-			return fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+			return fmt.Errorf("failed to get paginated property, %s, %w", propObject.GetPropertyType(), err)
 		}
 		pt.handlePaginatedProperties(propObject, properties)
 	}

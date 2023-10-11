@@ -5,9 +5,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	// nolint: gosec
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -32,11 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
-
-	//nolint: gosec
-	_ "net/http/pprof"
-	//nolint: gosec
-	_ "net/http/pprof"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -166,7 +164,7 @@ func main() {
 
 		cfg, err := jaegercfg.FromEnv()
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Fatal(err)
 		}
 		if cfg.ServiceName == "" {
 			cfg.ServiceName = "mw"
@@ -174,7 +172,7 @@ func main() {
 		// Initialize tracer with a logger and a metrics factory
 		tracer, closer, err := cfg.NewTracer(jaegercfg.Logger(jLogger))
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Fatal(err)
 		}
 		defer closer.Close()
 
@@ -249,7 +247,7 @@ func main() {
 		sig := <-signalChan
 		if shouldSaveStack(sig) {
 			if err = mw.SaveGoroutinesStack(""); err != nil {
-				log.Errorf("failed to save stack of goroutines: %s", err.Error())
+				log.Errorf("failed to save stack of goroutines: %s", err)
 			}
 			continue
 		}
@@ -270,6 +268,15 @@ func appendInterceptor(
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (resp interface{}, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				if rerr, ok := r.(error); ok && errors.Is(rerr, core.ErrNotLoggedIn) {
+					resp = onNotLoggedInError(resp, rerr)
+				} else {
+					resp = onDefaultError(mw, r, resp)
+				}
+			}
+		}()
 
 		resp, err = handler(ctx, req)
 		return resp, err
@@ -277,7 +284,7 @@ func appendInterceptor(
 }
 
 func onDefaultError(mw *core.Middleware, r any, resp interface{}) interface{} {
-	//	mw.OnPanic(r)
+	mw.OnPanic(r)
 	resp = &pb.RpcGenericErrorResponse{
 		Error: &pb.RpcGenericErrorResponseError{
 			Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,

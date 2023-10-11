@@ -218,7 +218,7 @@ func (f *Filters) unmarshal(e query.Entry) *types.Struct {
 	var details model.ObjectDetails
 	err := proto.Unmarshal(e.Value, &details)
 	if err != nil {
-		log.Errorf("query filters decode error: %s", err.Error())
+		log.Errorf("query filters decode error: %s", err)
 		return nil
 	}
 	return details.Details

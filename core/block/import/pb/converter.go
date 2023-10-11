@@ -2,6 +2,7 @@ package pb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/exp/rand"
 
@@ -273,7 +273,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", uErr)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
 		return snapshot, nil
 	}
@@ -281,10 +281,10 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		data, err := io.ReadAll(rd)
 		if err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		return snapshot, nil
 	}

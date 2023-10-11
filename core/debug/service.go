@@ -28,7 +28,7 @@ import (
 
 const CName = "debug"
 
-var logger = logging.Logger("anytype-debug")
+var log = logging.Logger("anytype-debug")
 
 func New() Debug {
 	return new(debug)
@@ -92,7 +92,7 @@ func (d *debug) Run(ctx context.Context) error {
 		go func() {
 			err := d.server.ListenAndServe()
 			if err != nil && err != http.ErrServerClosed {
-				logger.Error("debug server error:", err)
+				log.Error("debug server error:", err)
 			}
 		}()
 	}
@@ -182,7 +182,7 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 	}}
 	zipFilename, err := exporter.Export(ctx, path, tree)
 	if err != nil {
-		logger.Error("build tree error:", err)
+		log.Error("build tree error:", err)
 		return "", err
 	}
 

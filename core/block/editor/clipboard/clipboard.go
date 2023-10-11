@@ -122,7 +122,7 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 		lastTextBlock == nil {
 		cutBlock, _, err := simple.New(firstTextBlock).(text.Block).RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %w", err)
 		}
 
 		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
@@ -186,7 +186,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 		cutBlock, initialBlock, err := first.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
 		if err != nil {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %w", err)
 		}
 
 		first.SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
@@ -555,7 +555,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	}
 	relations, err := cb.systemObjectService.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
 	if err != nil {
-		return fmt.Errorf("failed to fetch relation keys of dataview: %v", err)
+		return fmt.Errorf("failed to fetch relation keys of dataview: %w", err)
 	}
 	links := make([]*model.RelationLink, 0, len(relations))
 	for _, r := range relations {

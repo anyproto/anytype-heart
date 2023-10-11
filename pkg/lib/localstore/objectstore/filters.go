@@ -63,7 +63,7 @@ func (m *filterSmartblockTypes) FilterObject(getter database.Getter) bool {
 	spaceID := getter.Get(bundle.RelationKeySpaceId.String()).GetStringValue()
 	t, err := m.sbtProvider.Type(spaceID, id)
 	if err != nil {
-		log.Debugf("failed to detect smartblock type for %s: %s", id, err.Error())
+		log.Debugf("failed to detect smartblock type for %s: %s", id, err)
 		return false
 	}
 	for _, ot := range m.smartBlockTypes {

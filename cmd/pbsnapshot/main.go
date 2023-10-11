@@ -21,7 +21,7 @@ func main() {
 		for _, path := range os.Args[1:] {
 			s, err := decodeFile(path)
 			if err != nil {
-				fmt.Printf("failed to decode %s: %s\n", path, err.Error())
+				fmt.Printf("failed to decode %s: %s\n", path, err)
 				continue
 			}
 			fmt.Println(path + ":")
@@ -34,17 +34,17 @@ func main() {
 func decodeFile(path string) (string, error) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("failed to read file: %s", err)
+		return "", fmt.Errorf("failed to read file: %w", err)
 	}
 	var snapshot pb.ChangeSnapshot
 	err = proto.Unmarshal(b, &snapshot)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal pb: %s", err)
+		return "", fmt.Errorf("failed to unmarshal pb: %w", err)
 	}
 	marsh := &jsonpb.Marshaler{Indent: " "}
 	s, err := marsh.MarshalToString(&snapshot)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal to json: %s", err)
+		return "", fmt.Errorf("failed to marshal to json: %w", err)
 	}
 
 	return s, nil

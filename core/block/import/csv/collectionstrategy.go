@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var logger = logging.Logger("import-csv")
+var log = logging.Logger("import-csv")
 
 const (
 	defaultRelationName = "Field"
@@ -277,7 +277,7 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *st
 			Format: relation.Format,
 		})
 		if err != nil {
-			logger.Errorf("failed to add relations to dataview, %s", err.Error())
+			log.Errorf("failed to add relations to dataview, %s", err)
 		}
 	}
 	return c.provideCollectionSnapshots(details, st, p)
