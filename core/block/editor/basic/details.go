@@ -115,7 +115,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 }
 
 func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value) error {
-	r, err := bs.systemObjectService.FetchRelationByKey(spaceID, key)
+	r, err := bs.objectStore.FetchRelationByKey(spaceID, key)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 
 func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
 	// TODO: add relation.WithWorkspaceId(workspaceId) filter
-	rel, err := bs.systemObjectService.FetchRelationByKey(bs.SpaceID(), relationKey)
+	rel, err := bs.objectStore.FetchRelationByKey(bs.SpaceID(), relationKey)
 	if err != nil || rel == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
@@ -344,7 +344,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}
-	typeDetails, err := bs.systemObjectService.GetObjectByUniqueKey(bs.SpaceID(), uk)
+	typeDetails, err := bs.objectStore.GetObjectByUniqueKey(bs.SpaceID(), uk)
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}

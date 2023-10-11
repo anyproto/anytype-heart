@@ -575,7 +575,7 @@ func (s *Service) BookmarkCreateAndFetch(
 
 func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.AddRelationAndSet(ctx, s.systemObjectService, pb.RpcBlockRelationAddRequest{
+		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{
 			RelationKey: req.Key, BlockId: req.BlockId, ContextId: req.ContextId,
 		})
 	})
@@ -583,7 +583,7 @@ func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSet
 
 func (s *Service) AddRelationBlock(ctx session.Context, req pb.RpcBlockRelationAddRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.AddRelationAndSet(ctx, s.systemObjectService, req)
+		return b.AddRelationAndSet(ctx, req)
 	})
 }
 
@@ -626,7 +626,15 @@ func (s *Service) ModifyLocalDetails(
 	// we set pending details if object is not in cache
 	// we do this under lock to prevent races if the object is created in parallel
 	// because in that case we can lose changes
-	err = s.objectCache.DoLockedIfNotExists(objectId, func() error {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return fmt.Errorf("resolve spaceId: %w", err)
+	}
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	err = spc.DoLockedIfNotExists(objectId, func() error {
 		return s.objectStore.UpdatePendingLocalDetails(objectId, modifier)
 	})
 	if err != nil && err != ocache.ErrExists {

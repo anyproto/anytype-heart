@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -43,24 +42,24 @@ type bundledObjectsInstaller interface {
 }
 
 type ObjectFactory struct {
-	anytype             core.Service
-	bookmarkService     bookmark.BookmarkService
-	detailsModifier     DetailsModifier
-	fileBlockService    file.BlockService
-	layoutConverter     converter.LayoutConverter
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	sourceService       source.Service
-	tempDirProvider     core.TempDirProvider
-	fileService         files.Service
-	config              *config.Config
-	picker              getblock.ObjectGetter
-	eventSender         event.Sender
-	restrictionService  restriction.Service
-	indexer             spaceIndexer
-	spaceService        spaceService
-	objectDeriver       objectDeriver
+	anytype                core.Service
+	bookmarkService        bookmark.BookmarkService
+	detailsModifier        DetailsModifier
+	fileBlockService       file.BlockService
+	layoutConverter        converter.LayoutConverter
+	objectStore            objectstore.ObjectStore
+	uniqueKeyToIdConverter smartblock.KeyToIDConverter
+	sbtProvider            typeprovider.SmartBlockTypeProvider
+	sourceService          source.Service
+	tempDirProvider        core.TempDirProvider
+	fileService            files.Service
+	config                 *config.Config
+	picker                 getblock.ObjectGetter
+	eventSender            event.Sender
+	restrictionService     restriction.Service
+	indexer                spaceIndexer
+	spaceService           spaceService
+	objectDeriver          objectDeriver
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -73,7 +72,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	f.systemObjectService = app.MustComponent[system_object.Service](a)
+	f.uniqueKeyToIdConverter = app.MustComponent[smartblock.KeyToIDConverter](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.sourceService = app.MustComponent[source.Service](a)
 	f.fileService = app.MustComponent[files.Service](a)
@@ -139,7 +138,7 @@ func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
 		f.fileService,
 		f.restrictionService,
 		f.objectStore,
-		f.systemObjectService,
+		f.uniqueKeyToIdConverter,
 		f.indexer,
 		f.eventSender,
 	)
@@ -155,20 +154,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption:
-		return NewPage(
-			sb,
-			f.objectStore,
-			f.anytype,
-			f.fileBlockService,
-			f.picker,
-			f.bookmarkService,
-			f.systemObjectService,
-			f.tempDirProvider,
-			f.sbtProvider,
-			f.layoutConverter,
-			f.fileService,
-			f.eventSender,
-		), nil
+		return NewPage(sb, f.objectStore, f.anytype, f.fileBlockService, f.picker, f.bookmarkService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.eventSender), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(
 			sb,
@@ -176,61 +162,17 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.objectStore,
 		), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(
-			sb,
-			f.detailsModifier,
-			f.objectStore,
-			f.systemObjectService,
-			f.anytype,
-			f.layoutConverter,
-		), nil
+		return NewDashboard(sb, f.detailsModifier, f.objectStore, f.anytype, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
-		return NewProfile(
-			sb,
-			f.objectStore,
-			f.systemObjectService,
-			f.fileBlockService,
-			f.anytype,
-			f.picker,
-			f.bookmarkService,
-			f.tempDirProvider,
-			f.layoutConverter,
-			f.fileService,
-			f.eventSender,
-		), nil
+		return NewProfile(sb, f.objectStore, f.fileBlockService, f.anytype, f.picker, f.bookmarkService, f.tempDirProvider, f.layoutConverter, f.fileService, f.eventSender), nil
 	case coresb.SmartBlockTypeFile:
 		return NewFiles(sb), nil
 	case coresb.SmartBlockTypeTemplate,
 		coresb.SmartBlockTypeBundledTemplate:
-		return NewTemplate(
-			sb,
-			f.objectStore,
-			f.anytype,
-			f.fileBlockService,
-			f.picker,
-			f.bookmarkService,
-			f.systemObjectService,
-			f.tempDirProvider,
-			f.sbtProvider,
-			f.layoutConverter,
-			f.fileService,
-			f.eventSender,
-		), nil
+		return NewTemplate(sb, f.objectStore, f.anytype, f.fileBlockService, f.picker, f.bookmarkService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.eventSender), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return NewWorkspace(
-			sb,
-			f.objectStore,
-			f.anytype,
-			f.systemObjectService,
-			f.spaceService,
-			f.detailsModifier,
-			f.sbtProvider,
-			f.layoutConverter,
-			f.config,
-			f.eventSender,
-			f.objectDeriver,
-		), nil
+		return NewWorkspace(sb, f.objectStore, f.anytype, f.spaceService, f.detailsModifier, f.sbtProvider, f.layoutConverter, f.config, f.eventSender, f.objectDeriver), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return newSpaceView(
 			sb,
@@ -239,7 +181,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, f.objectStore, f.systemObjectService, f.layoutConverter), nil
+		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	default:

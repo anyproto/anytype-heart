@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -37,35 +36,17 @@ type Workspaces struct {
 	objectDeriver   objectDeriver
 }
 
-func NewWorkspace(
-	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	anytype core.Service,
-	systemObjectService system_object.Service,
-	spaceService spaceService,
-	modifier DetailsModifier,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-	config *config.Config,
-	eventSender event.Sender,
-	objectDeriver objectDeriver,
-) *Workspaces {
+func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, anytype core.Service, spaceService spaceService, modifier DetailsModifier, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender, objectDeriver objectDeriver) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			objectStore,
 			eventSender,
 		),
-		Dataview: dataview.NewDataview(
-			sb,
-			anytype,
-			objectStore,
-			systemObjectService,
-			sbtProvider,
-		),
+		Dataview:        dataview.NewDataview(sb, anytype, objectStore, sbtProvider),
 		DetailsModifier: modifier,
 		anytype:         anytype,
 		objectStore:     objectStore,

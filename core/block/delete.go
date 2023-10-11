@@ -83,7 +83,11 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	}
 
 	sendOnRemoveEvent(s.eventSender, objectID)
-	err = s.objectCache.Remove(context.Background(), objectID)
+	spc, err := s.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return
+	}
+	err = spc.Remove(context.Background(), objectID)
 	return
 }
 

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -18,15 +19,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtintemplate"
@@ -44,16 +42,14 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	source              source.Service
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	generatedHash       string
+	source        source.Service
+	objectStore   objectstore.ObjectStore
+	generatedHash string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = app.MustComponent[source.Service](a)
 	b.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	b.systemObjectService = app.MustComponent[system_object.Service](a)
 
 	b.makeGenHash(4)
 	return
@@ -149,7 +145,7 @@ func (b *builtinTemplate) setObjectTypes(st *state.State) error {
 		// todo: remove this hack after fixing bundled templates
 		targetObjectTypeKey = domain.TypeKey(strings.TrimPrefix(targetObjectTypeID, addr.BundledObjectTypeURLPrefix))
 	} else {
-		targetObjectType, err := b.systemObjectService.GetObjectType(targetObjectTypeID)
+		targetObjectType, err := b.objectStore.GetObjectType(targetObjectTypeID)
 		if err != nil {
 			return fmt.Errorf("get object type %s: %w", targetObjectTypeID, err)
 		}

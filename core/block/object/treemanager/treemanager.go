@@ -11,13 +11,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 var log = logging.Logger("anytype-mw-tree-manager")
@@ -25,9 +25,9 @@ var log = logging.Logger("anytype-mw-tree-manager")
 var errAppIsNotRunning = errors.New("app is not running")
 
 type treeManager struct {
-	coreService core.Service
-	objectCache objectcache.Cache
-	eventSender event.Sender
+	coreService  core.Service
+	eventSender  event.Sender
+	spaceService space.SpaceService
 
 	onDelete func(id domain.FullID) error
 
@@ -56,7 +56,7 @@ type onDeleteProvider interface {
 func (m *treeManager) Init(a *app.App) error {
 	m.coreService = app.MustComponent[core.Service](a)
 	m.eventSender = app.MustComponent[event.Sender](a)
-	m.objectCache = app.MustComponent[objectcache.Cache](a)
+	m.spaceService = app.MustComponent[space.SpaceService](a)
 
 	onDelete := app.MustComponent[onDeleteProvider](a).OnDelete
 	m.onDelete = func(id domain.FullID) error {
@@ -81,10 +81,11 @@ func (m *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objec
 		return
 	}
 
-	v, err := m.objectCache.GetObject(ctx, domain.FullID{
-		SpaceID:  spaceId,
-		ObjectID: id,
-	})
+	spc, err := m.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return
+	}
+	v, err := spc.GetObject(ctx, id)
 	if err != nil {
 		return
 	}
@@ -110,10 +111,11 @@ func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 		return errAppIsNotRunning
 	}
 
-	obj, err := m.objectCache.GetObject(ctx, domain.FullID{
-		SpaceID:  spaceId,
-		ObjectID: treeId,
-	})
+	spc, err := m.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return
+	}
+	obj, err := spc.GetObject(ctx, treeId)
 	if err != nil {
 		return
 	}
@@ -126,7 +128,7 @@ func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (e
 	}
 
 	m.sendOnRemoveEvent(treeId)
-	err = m.objectCache.Remove(ctx, treeId)
+	err = spc.Remove(ctx, treeId)
 	return
 }
 

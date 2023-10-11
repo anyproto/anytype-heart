@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -42,13 +43,18 @@ type ObjectIDGetter struct {
 	core          core.Service
 	createPayload map[string]treestorage.TreeStorageCreatePayload
 	service       payloadcreator.PayloadCreator
+	spaceService  space.SpaceService
 }
 
-func NewObjectIDGetter(objectStore objectstore.ObjectStore, core core.Service, service payloadcreator.PayloadCreator) IDGetter {
+func NewObjectIDGetter(
+	objectStore objectstore.ObjectStore,
+	core core.Service,
+	spaceService space.SpaceService,
+) IDGetter {
 	return &ObjectIDGetter{
-		objectStore: objectStore,
-		service:     service,
-		core:        core,
+		objectStore:  objectStore,
+		core:         core,
+		spaceService: spaceService,
 	}
 }
 
@@ -83,6 +89,11 @@ func (ou *ObjectIDGetter) Get(
 		}
 	}
 
+	spc, err := ou.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space %s: %w", spaceID, err)
+	}
+
 	var payload treestorage.TreeStorageCreatePayload
 	if sbType == sb.SmartBlockTypeRelation || sbType == sb.SmartBlockTypeObjectType {
 		id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
@@ -94,14 +105,14 @@ func (ou *ObjectIDGetter) Get(
 				return "", treestorage.TreeStorageCreatePayload{}, err
 			}
 		}
-		payload, err = ou.service.DeriveTreePayload(context.Background(), spaceID, payloadcreator.PayloadDerivationParams{
+		payload, err = spc.DeriveTreePayload(context.Background(), payloadcreator.PayloadDerivationParams{
 			Key: uk,
 		})
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
 		}
 	} else {
-		payload, err = ou.service.CreateTreePayload(context.Background(), spaceID, payloadcreator.PayloadCreationParams{
+		payload, err = spc.CreateTreePayload(context.Background(), payloadcreator.PayloadCreationParams{
 			Time:           createdTime,
 			SmartblockType: sbType,
 		})

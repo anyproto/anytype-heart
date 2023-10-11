@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -40,19 +39,7 @@ type Profile struct {
 	eventSender event.Sender
 }
 
-func NewProfile(
-	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
-	fileBlockService file.BlockService,
-	anytype core.Service,
-	picker getblock.ObjectGetter,
-	bookmarkService bookmark.BookmarkService,
-	tempDirProvider core.TempDirProvider,
-	layoutConverter converter.LayoutConverter,
-	fileService files.Service,
-	eventSender event.Sender,
-) *Profile {
+func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, fileBlockService file.BlockService, anytype core.Service, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Profile {
 	f := file.NewFile(
 		sb,
 		fileBlockService,
@@ -63,7 +50,7 @@ func NewProfile(
 	)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -75,7 +62,7 @@ func NewProfile(
 			sb,
 			f,
 			tempDirProvider,
-			systemObjectService,
+			objectStore,
 			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(

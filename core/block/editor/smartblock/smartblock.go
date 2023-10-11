@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -90,7 +89,7 @@ func New(
 	fileService files.Service,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
+	uniqueKeyToIdConverter KeyToIDConverter,
 	indexer Indexer,
 	eventSender event.Sender,
 ) SmartBlock {
@@ -100,13 +99,12 @@ func New(
 		Locker:    &sync.Mutex{},
 		sessions:  map[string]session.Context{},
 
-		coreService:         coreService,
-		fileService:         fileService,
-		restrictionService:  restrictionService,
-		objectStore:         objectStore,
-		systemObjectService: systemObjectService,
-		indexer:             indexer,
-		eventSender:         eventSender,
+		fileService:            fileService,
+		restrictionService:     restrictionService,
+		objectStore:            objectStore,
+		uniqueKeyToIdConverter: uniqueKeyToIdConverter,
+		indexer:                indexer,
+		eventSender:            eventSender,
 	}
 	return s
 }
@@ -192,6 +190,11 @@ type Indexer interface {
 	app.ComponentRunnable
 }
 
+type KeyToIDConverter interface {
+	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
+}
+
 type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
@@ -214,13 +217,12 @@ type smartBlock struct {
 	closeRecordsSub func()
 
 	// Deps
-	coreService         core.Service
-	fileService         files.Service
-	restrictionService  restriction.Service
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	indexer             Indexer
-	eventSender         event.Sender
+	fileService            files.Service
+	restrictionService     restriction.Service
+	objectStore            objectstore.ObjectStore
+	uniqueKeyToIdConverter KeyToIDConverter
+	indexer                Indexer
+	eventSender            event.Sender
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -497,7 +499,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
-	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.systemObjectService, true, true, includeRelations, includeObjTypes, includeCreatorModifier)
+	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.uniqueKeyToIdConverter, true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) navigationalLinks(s *state.State) []string {
@@ -543,7 +545,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			relId, err := sb.systemObjectService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), domain.RelationKey(rel.Key))
+			relId, err := sb.uniqueKeyToIdConverter.GetRelationIdByKey(context.TODO(), sb.SpaceID(), domain.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
 				continue
@@ -666,7 +668,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	// this one will be reverted in case we don't have any actual change being made
-	s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
+	s.SetLastModified(lastModified.Unix(), "TODO profile")
 
 	beforeApplyStateTime := time.Now()
 
@@ -855,10 +857,6 @@ func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
 
-func (sb *smartBlock) Anytype() core.Service {
-	return sb.coreService
-}
-
 func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
@@ -871,7 +869,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.systemObjectService.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
+	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -1236,7 +1234,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.systemObjectService.FetchRelationByLinks(sb.SpaceID(), links)
+	rels, _ := sb.objectStore.FetchRelationByLinks(sb.SpaceID(), links)
 	return rels
 }
 
@@ -1259,7 +1257,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
-		creator = sb.coreService.ProfileID(sb.SpaceID())
+		creator = "TODO profile"
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
@@ -1395,7 +1393,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()))
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
-		typeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), sb.SpaceID(), ot)
+		typeID, err := sb.uniqueKeyToIdConverter.GetTypeIdByKey(context.Background(), sb.SpaceID(), ot)
 		if err != nil {
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}

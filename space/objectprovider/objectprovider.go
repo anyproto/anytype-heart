@@ -3,6 +3,7 @@ package objectprovider
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
@@ -24,25 +25,50 @@ type bundledObjectsInstaller interface {
 }
 
 type ObjectProvider interface {
-	DeriveObjectIDs(ctx context.Context, spaceID string, sbTypes []smartblock.SmartBlockType) (objIDs threads.DerivedSmartblockIds, err error)
-	LoadObjects(ctx context.Context, spaceID string, ids []string) (err error)
-	CreateMandatoryObjects(ctx context.Context, spaceID string, sbTypes []smartblock.SmartBlockType) (err error)
-	InstallBundledObjects(ctx context.Context, spaceID string) error
+	DeriveObjectIDs(ctx context.Context) (objIDs threads.DerivedSmartblockIds, err error)
+	LoadObjects(ctx context.Context, ids []string) (err error)
+	CreateMandatoryObjects(ctx context.Context) (err error)
+	InstallBundledObjects(ctx context.Context) error
 }
 
-func NewObjectProvider(cache objectcache.Cache, installer bundledObjectsInstaller) ObjectProvider {
+func NewObjectProvider(spaceId string, personalSpaceId string, cache objectcache.Cache, installer bundledObjectsInstaller) ObjectProvider {
 	return &objectProvider{
-		cache:     cache,
-		installer: installer,
+		spaceId:         spaceId,
+		personalSpaceId: personalSpaceId,
+		cache:           cache,
+		installer:       installer,
 	}
 }
 
 type objectProvider struct {
-	cache     objectcache.Cache
-	installer bundledObjectsInstaller
+	personalSpaceId string
+	spaceId         string
+	cache           objectcache.Cache
+	installer       bundledObjectsInstaller
+
+	mu               sync.Mutex
+	derivedObjectIds threads.DerivedSmartblockIds
 }
 
-func (o *objectProvider) DeriveObjectIDs(ctx context.Context, spaceID string, sbTypes []smartblock.SmartBlockType) (objIDs threads.DerivedSmartblockIds, err error) {
+func (o *objectProvider) isPersonal() bool {
+	return o.personalSpaceId == o.spaceId
+}
+
+func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.DerivedSmartblockIds, err error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if o.derivedObjectIds.IsFilled() {
+		return o.derivedObjectIds, nil
+	}
+
+	var sbTypes []smartblock.SmartBlockType
+	if o.isPersonal() {
+		sbTypes = threads.PersonalSpaceTypes
+	} else {
+		sbTypes = threads.SpaceTypes
+	}
+
 	objIDs.SystemRelations = make(map[domain.RelationKey]string)
 	objIDs.SystemTypes = make(map[domain.TypeKey]string)
 	// deriving system objects like archive etc
@@ -51,7 +77,7 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context, spaceID string, sb
 		if err != nil {
 			return objIDs, err
 		}
-		id, err := o.cache.DeriveObjectID(ctx, spaceID, uk)
+		id, err := o.cache.DeriveObjectID(ctx, uk)
 		if err != nil {
 			return objIDs, fmt.Errorf("derive object id: %w", err)
 		}
@@ -63,7 +89,7 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context, spaceID string, sb
 		if err != nil {
 			return objIDs, err
 		}
-		id, err := o.cache.DeriveObjectID(ctx, spaceID, uk)
+		id, err := o.cache.DeriveObjectID(ctx, uk)
 		if err != nil {
 			return objIDs, err
 		}
@@ -75,21 +101,19 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context, spaceID string, sb
 		if err != nil {
 			return objIDs, err
 		}
-		id, err := o.cache.DeriveObjectID(ctx, spaceID, uk)
+		id, err := o.cache.DeriveObjectID(ctx, uk)
 		if err != nil {
 			return objIDs, err
 		}
 		objIDs.SystemRelations[rk] = id
 	}
+	o.derivedObjectIds = objIDs
 	return
 }
 
-func (o *objectProvider) LoadObjects(ctx context.Context, spaceID string, objIDs []string) (err error) {
+func (o *objectProvider) LoadObjects(ctx context.Context, objIDs []string) (err error) {
 	for _, id := range objIDs {
-		_, err = o.cache.GetObject(ctx, domain.FullID{
-			ObjectID: id,
-			SpaceID:  spaceID,
-		})
+		_, err = o.cache.GetObject(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -97,16 +121,23 @@ func (o *objectProvider) LoadObjects(ctx context.Context, spaceID string, objIDs
 	return
 }
 
-func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, spaceID string, sbTypes []smartblock.SmartBlockType) (err error) {
+func (o *objectProvider) CreateMandatoryObjects(ctx context.Context) (err error) {
+	var sbTypes []smartblock.SmartBlockType
+	if o.isPersonal() {
+		sbTypes = threads.PersonalSpaceTypes
+	} else {
+		sbTypes = threads.SpaceTypes
+	}
+
 	for _, sbt := range sbTypes {
 		uk, err := domain.NewUniqueKey(sbt, "")
 		if err != nil {
 			return err
 		}
-		_, err = o.cache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+		_, err = o.cache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 			Key: uk,
 			InitFunc: func(id string) *editorsb.InitContext {
-				return &editorsb.InitContext{Ctx: ctx, SpaceID: spaceID, State: state.NewDoc(id, nil).(*state.State)}
+				return &editorsb.InitContext{Ctx: ctx, SpaceID: o.spaceId, State: state.NewDoc(id, nil).(*state.State)}
 			},
 		})
 		if err != nil {
@@ -117,7 +148,7 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, spaceID str
 	return
 }
 
-func (o *objectProvider) InstallBundledObjects(ctx context.Context, spaceID string) error {
+func (o *objectProvider) InstallBundledObjects(ctx context.Context) error {
 	ids := make([]string, 0, len(bundle.SystemTypes)+len(bundle.SystemRelations))
 	for _, ot := range bundle.SystemTypes {
 		ids = append(ids, ot.BundledURL())
@@ -125,7 +156,7 @@ func (o *objectProvider) InstallBundledObjects(ctx context.Context, spaceID stri
 	for _, rk := range bundle.SystemRelations {
 		ids = append(ids, rk.BundledURL())
 	}
-	_, _, err := o.installer.InstallBundledObjects(ctx, spaceID, ids)
+	_, _, err := o.installer.InstallBundledObjects(ctx, o.spaceId, ids)
 	if err != nil {
 		return err
 	}

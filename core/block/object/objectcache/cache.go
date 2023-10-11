@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 )
@@ -43,19 +41,18 @@ const CName = "client.object.objectcache"
 
 type InitFunc = func(id string) *smartblock.InitContext
 
-type objectFactory interface {
+type ObjectFactory interface {
 	InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
 }
 
 type Cache interface {
-	app.ComponentRunnable
 	payloadcreator.PayloadCreator
 
-	CreateTreeObject(ctx context.Context, spaceID string, params TreeCreationParams) (sb smartblock.SmartBlock, err error)
-	CreateTreeObjectWithPayload(ctx context.Context, spaceID string, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
-	DeriveTreeObject(ctx context.Context, spaceID string, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
-	GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
-	GetObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error)
+	CreateTreeObject(ctx context.Context, params TreeCreationParams) (sb smartblock.SmartBlock, err error)
+	CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObject(ctx context.Context, params TreeDerivationParams) (sb smartblock.SmartBlock, err error)
+	GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
+	GetObjectWithTimeout(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	DoLockedIfNotExists(objectID string, proc func() error) error
 	Remove(ctx context.Context, objectID string) error
 	CloseBlocks()
@@ -66,25 +63,27 @@ type personalIDProvider interface {
 }
 
 type objectCache struct {
-	objectFactory  objectFactory
-	spaceService   spacecore.SpaceCoreService
-	provider       personalIDProvider
-	accountService accountservice.Service
-	cache          ocache.OCache
-	closing        chan struct{}
+	personalSpaceId string
+	objectFactory   ObjectFactory
+	accountService  accountservice.Service
+	cache           ocache.OCache
+	closing         chan struct{}
+	space           *spacecore.AnySpace
 }
 
-func New() Cache {
-	return &objectCache{
-		closing: make(chan struct{}),
+func New(
+	space *spacecore.AnySpace,
+	accountService accountservice.Service,
+	objectFactory ObjectFactory,
+	personalSpaceId string,
+) Cache {
+	c := &objectCache{
+		personalSpaceId: personalSpaceId,
+		space:           space,
+		accountService:  accountService,
+		objectFactory:   objectFactory,
+		closing:         make(chan struct{}),
 	}
-}
-
-func (c *objectCache) Init(a *app.App) error {
-	c.accountService = app.MustComponent[accountservice.Service](a)
-	c.objectFactory = app.MustComponent[objectFactory](a)
-	c.provider = app.MustComponent[personalIDProvider](a)
-	c.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	c.cache = ocache.New(
 		c.cacheLoad,
 		// ocache.WithLogger(log.Desugar()),
@@ -92,15 +91,7 @@ func (c *objectCache) Init(a *app.App) error {
 		// TODO: [MR] Get ttl from config
 		ocache.WithTTL(time.Duration(60)*time.Second),
 	)
-	return nil
-}
-
-func (c *objectCache) Name() string {
-	return CName
-}
-
-func (c *objectCache) Run(_ context.Context) error {
-	return nil
+	return c
 }
 
 func (c *objectCache) Close(_ context.Context) error {
@@ -152,11 +143,9 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 	return buildObject(id)
 }
 
-func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (c *objectCache) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	ctx = updateCacheOpts(ctx, func(opts cacheOpts) cacheOpts {
-		if opts.spaceId == "" {
-			opts.spaceId = id.SpaceID
-		}
+		opts.spaceId = c.space.Id()
 		return opts
 	})
 	ctx, cancel := context.WithCancel(ctx)
@@ -176,7 +165,7 @@ func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smart
 			closing = true
 		}
 	}()
-	v, err := c.cache.Get(ctx, id.ObjectID)
+	v, err := c.cache.Get(ctx, id)
 	close(done)
 	if closing && errors.Is(err, context.Canceled) {
 		log.With("close_delay", time.Since(start).Milliseconds()).With("objectID", id).Warnf("object was loading during closing")
@@ -192,7 +181,7 @@ func (c *objectCache) Remove(ctx context.Context, objectID string) error {
 	return err
 }
 
-func (c *objectCache) GetObjectWithTimeout(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (c *objectCache) GetObjectWithTimeout(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, ObjectLoadTimeout)

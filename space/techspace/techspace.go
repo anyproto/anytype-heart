@@ -5,7 +5,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
@@ -31,24 +30,27 @@ var (
 	ErrNotASpaceView      = errors.New("smartblock not a spaceView")
 )
 
-func New() TechSpace {
-	return &techSpace{}
-}
-
 type TechSpace interface {
+	Run(techCoreSpace *spacecore.AnySpace, objectCache objectcache.Cache) (err error)
+
 	TechSpaceId() string
 	SpaceViewCreate(ctx context.Context, spaceId string) (err error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
+}
 
-	app.ComponentRunnable
+func New() TechSpace {
+	s := &techSpace{
+		viewIds: make(map[string]string),
+	}
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	return s
 }
 
 type techSpace struct {
-	techCore         *spacecore.AnySpace
-	spaceCoreService spacecore.SpaceCoreService
-	objectCache      objectcache.Cache
+	techCore    *spacecore.AnySpace
+	objectCache objectcache.Cache
 
 	mu sync.Mutex
 
@@ -58,22 +60,9 @@ type techSpace struct {
 	viewIds    map[string]string
 }
 
-func (s *techSpace) Init(a *app.App) (err error) {
-	s.viewIds = make(map[string]string)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
-	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	return
-}
-
-func (s *techSpace) Name() (name string) {
-	return CName
-}
-
-func (s *techSpace) Run(ctx context.Context) (err error) {
-	if s.techCore, err = s.spaceCoreService.Derive(ctx, spacecore.TechSpaceType); err != nil {
-		return
-	}
+func (s *techSpace) Run(techCoreSpace *spacecore.AnySpace, objectCache objectcache.Cache) (err error) {
+	s.techCore = techCoreSpace
+	s.objectCache = objectCache
 	s.idsWakedUp = make(chan struct{})
 	go func() {
 		defer close(s.idsWakedUp)
@@ -91,10 +80,7 @@ func (s *techSpace) wakeUpViews() {
 		}
 
 		s.mu.Lock()
-		if _, err := s.objectCache.GetObject(s.ctx, domain.FullID{
-			ObjectID: id,
-			SpaceID:  s.techCore.Id(),
-		}); err != nil {
+		if _, err := s.objectCache.GetObject(s.ctx, id); err != nil {
 			log.Warn("wakeUp views: get object error", zap.String("objectId", id), zap.Error(err))
 		}
 		s.mu.Unlock()
@@ -123,10 +109,7 @@ func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string) (err er
 	if err != nil {
 		return err
 	}
-	_, err = s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: viewId,
-		SpaceID:  s.techCore.Id(),
-	})
+	_, err = s.objectCache.GetObject(ctx, viewId)
 	if err != nil { // TODO: check specific error
 		return s.spaceViewCreate(ctx, spaceId)
 	}
@@ -140,10 +123,7 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 	if err != nil {
 		return
 	}
-	_, getErr := s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: viewId,
-		SpaceID:  s.techCore.Id(),
-	})
+	_, getErr := s.objectCache.GetObject(ctx, viewId)
 	return getErr == nil, nil
 }
 
@@ -158,7 +138,7 @@ func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err er
 	if err != nil {
 		return
 	}
-	_, err = s.objectCache.DeriveTreeObject(ctx, s.techCore.Id(), objectcache.TreeDerivationParams{
+	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 		Key: uniqueKey,
 		InitFunc: func(id string) *editorsb.InitContext {
 			return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: state.NewDoc(id, nil).(*state.State)}
@@ -176,7 +156,7 @@ func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (stri
 	if err != nil {
 		return "", err
 	}
-	payload, err := s.objectCache.DeriveTreePayload(ctx, s.techCore.Id(), payloadcreator.PayloadDerivationParams{
+	payload, err := s.objectCache.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
 		Key:           uniqueKey,
 		TargetSpaceID: spaceID,
 	})
@@ -191,10 +171,7 @@ func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(
 	if err != nil {
 		return
 	}
-	obj, err := s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: viewId,
-		SpaceID:  s.techCore.Id(),
-	})
+	obj, err := s.objectCache.GetObject(ctx, viewId)
 	if err != nil {
 		return ErrSpaceViewNotExists
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
@@ -16,36 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
-	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*model.RelationLink, err error) *pb.RpcObjectTypeRelationListResponse {
-		m := &pb.RpcObjectTypeRelationListResponse{Relations: relations, Error: &pb.RpcObjectTypeRelationListResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	at := mw.GetAnytype()
-	if at == nil {
-		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
-	}
-
-	systemObjectService := app.MustComponent[system_object.Service](mw.applicationService.GetApp())
-	objType, err := systemObjectService.GetObjectType(req.ObjectTypeUrl)
-	if err != nil {
-		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
-		}
-		return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_ERROR, nil, err)
-	}
-
-	// todo: AppendRelationsFromOtherTypes case
-	return response(pb.RpcObjectTypeRelationListResponseError_NULL, objType.RelationLinks, nil)
-}
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
 	ctx := mw.newContext(cctx)

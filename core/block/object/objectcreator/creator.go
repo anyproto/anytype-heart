@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -50,7 +51,6 @@ type Service interface {
 
 type Creator struct {
 	blockService        BlockService
-	objectCache         objectcache.Cache
 	blockPicker         block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	collectionService   CollectionService
@@ -58,7 +58,7 @@ type Creator struct {
 	bookmark            bookmark.Service
 	app                 *app.App
 	sbtProvider         typeprovider.SmartBlockTypeProvider
-	creator             Service //nolint:unused
+	spaceService        space.SpaceService
 
 	// TODO: remove it?
 	coreService core.Service
@@ -74,7 +74,6 @@ func NewCreator() *Creator {
 
 func (c *Creator) Init(a *app.App) (err error) {
 	c.blockService = a.MustComponent(block.CName).(BlockService)
-	c.objectCache = a.MustComponent(objectcache.CName).(objectcache.Cache)
 	c.blockPicker = a.MustComponent(block.CName).(block.ObjectGetter)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
@@ -83,6 +82,7 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	c.coreService = app.MustComponent[core.Service](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	c.spaceService = app.MustComponent[space.SpaceService](a)
 	c.app = a
 	return nil
 }
@@ -162,14 +162,17 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 		}
 	}
 
+	spc, err := c.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
 	var sb smartblock.SmartBlock
-
 	if uKey := createState.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)
 		if err != nil {
 			return "", nil, err
 		}
-		sb, err = c.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+		sb, err = spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 			Key:      uk,
 			InitFunc: initFunc,
 		})
@@ -177,7 +180,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			return "", nil, err
 		}
 	} else {
-		sb, err = c.objectCache.CreateTreeObject(ctx, spaceID, objectcache.TreeCreationParams{
+		sb, err = spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
 			Time:           time.Now(),
 			SmartblockType: sbType,
 			InitFunc:       initFunc,
@@ -198,7 +201,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
-	dvContent, err := dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.systemObjectService, req.Source)
+	dvContent, err := dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, req.Source)
 	if err != nil {
 		return
 	}
@@ -341,12 +344,16 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
 	}
 	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
+	spc, err := w.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
 	for _, relKey := range recommendedRelationKeys {
 		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
 		}
-		id, err := w.objectCache.DeriveObjectID(ctx, spaceID, uk)
+		id, err := spc.DeriveObjectID(ctx, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}
@@ -488,4 +495,13 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 	}
 
 	return c.CreateSmartBlockFromTemplate(ctx, spaceID, sbType, []domain.TypeKey{objectTypeKey}, details, templateID)
+}
+
+// TODO Temporarily home. Refactor to use CreateObject after object creator refactoring
+func (c *Creator) DeriveTreeObject(ctx context.Context, spaceID string, params objectcache.TreeDerivationParams) (sb smartblock.SmartBlock, err error) {
+	spc, err := c.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	return spc.DeriveTreeObject(ctx, params)
 }

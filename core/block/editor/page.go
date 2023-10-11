@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -39,24 +38,10 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
+	objectStore objectstore.ObjectStore
 }
 
-func NewPage(
-	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	anytype core.Service,
-	fileBlockService file.BlockService,
-	picker getblock.ObjectGetter,
-	bookmarkService bookmark.BookmarkService,
-	systemObjectService system_object.Service,
-	tempDirProvider core.TempDirProvider,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-	fileService files.Service,
-	eventSender event.Sender,
-) *Page {
+func NewPage(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, anytype core.Service, fileBlockService file.BlockService, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Page {
 	f := file.NewFile(
 		sb,
 		fileBlockService,
@@ -67,7 +52,7 @@ func NewPage(
 	)
 	return &Page{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
@@ -79,7 +64,7 @@ func NewPage(
 			sb,
 			f,
 			tempDirProvider,
-			systemObjectService,
+			objectStore,
 			fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
@@ -88,16 +73,9 @@ func NewPage(
 			bookmarkService,
 			objectStore,
 		),
-		Dataview: dataview.NewDataview(
-			sb,
-			anytype,
-			objectStore,
-			systemObjectService,
-			sbtProvider,
-		),
-		TableEditor:         table.NewEditor(sb),
-		objectStore:         objectStore,
-		systemObjectService: systemObjectService,
+		Dataview:    dataview.NewDataview(sb, anytype, objectStore, sbtProvider),
+		TableEditor: table.NewEditor(sb),
+		objectStore: objectStore,
 	}
 }
 
@@ -124,7 +102,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				if err != nil {
 					log.Errorf("failed to create unique key: %v", err)
 				} else {
-					otype, err := p.systemObjectService.GetObjectByUniqueKey(p.SpaceID(), uk)
+					otype, err := p.objectStore.GetObjectByUniqueKey(p.SpaceID(), uk)
 					if err != nil {
 						log.Errorf("failed to get object by unique key: %v", err)
 					} else {

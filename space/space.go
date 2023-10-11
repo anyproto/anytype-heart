@@ -2,9 +2,11 @@ package space
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace"
 
+	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -16,25 +18,46 @@ type Space interface {
 	DerivedIDs() threads.DerivedSmartblockIds
 
 	WaitMandatoryObjects(ctx context.Context) (err error)
+
+	objectcache.Cache
+	objectprovider.ObjectProvider
 }
 
-func newSpace(s *service, coreSpace *spacecore.AnySpace, derivedIDs threads.DerivedSmartblockIds) *space {
+func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (*space, error) {
+	cache := objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID)
+	provider := objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, cache, s.bundledObjectsInstaller)
+	derivedIds, err := provider.DeriveObjectIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("derive object ids: %w", err)
+	}
 	sp := &space{
 		service:                s,
-		objectProvider:         s.provider,
 		AnySpace:               coreSpace,
-		derivedIDs:             derivedIDs,
+		derivedIDs:             derivedIds,
 		loadMandatoryObjectsCh: make(chan struct{}),
+		Cache:                  cache,
+		ObjectProvider:         provider,
 	}
+
+	// TODO BEGIN RUN ONLY ON CREATE
+	// create mandatory objects
+	// err = sp.CreateMandatoryObjects(ctx)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("CreateMandatoryObjects error: %w; spaceId: %v", err, coreSpace.Id())
+	// }
+	// TODO END RUN ONLY ON CREATE
+
 	go sp.mandatoryObjectsLoad(s.ctx)
-	return sp
+	return sp, nil
 }
 
 type space struct {
-	service        *service
-	status         spaceinfo.SpaceInfo
-	derivedIDs     threads.DerivedSmartblockIds
-	objectProvider objectprovider.ObjectProvider
+	objectcache.Cache
+	objectprovider.ObjectProvider
+
+	service    *service
+	status     spaceinfo.SpaceInfo
+	derivedIDs threads.DerivedSmartblockIds
 
 	*spacecore.AnySpace
 
@@ -45,11 +68,11 @@ type space struct {
 func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	defer close(s.loadMandatoryObjectsCh)
 
-	s.loadMandatoryObjectsErr = s.objectProvider.LoadObjects(ctx, s.Id(), s.derivedIDs.IDs())
+	s.loadMandatoryObjectsErr = s.LoadObjects(ctx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
-	s.loadMandatoryObjectsErr = s.objectProvider.InstallBundledObjects(ctx, s.Id())
+	s.loadMandatoryObjectsErr = s.InstallBundledObjects(ctx)
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}

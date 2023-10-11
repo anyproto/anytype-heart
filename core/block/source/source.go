@@ -22,10 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -140,7 +140,8 @@ type sourceDeps struct {
 	spaceService        spacecore.SpaceCoreService
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
-	systemObjectService system_object.Service
+	systemObjectService systemObjectService
+	objectStore         objectstore.ObjectStore
 }
 
 func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err error) {
@@ -148,7 +149,6 @@ func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err er
 		ObjectTree:          deps.ot,
 		id:                  id,
 		spaceID:             spaceID,
-		coreService:         deps.coreService,
 		spaceService:        deps.spaceService,
 		openedAt:            time.Now(),
 		smartblockType:      deps.sbt,
@@ -156,6 +156,7 @@ func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err er
 		sbtProvider:         deps.sbtProvider,
 		fileService:         deps.fileService,
 		systemObjectService: deps.systemObjectService,
+		objectStore:         deps.objectStore,
 	}, nil
 }
 
@@ -176,12 +177,12 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
-	coreService         core.Service
 	fileService         files.Service
 	accountService      accountservice.Service
 	spaceService        spacecore.SpaceCoreService
 	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService system_object.Service
+	systemObjectService systemObjectService
+	objectStore         objectstore.ObjectStore
 }
 
 var _ updatelistener.UpdateListener = (*source)(nil)
@@ -196,7 +197,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, s.coreService.PredefinedObjects(s.spaceID).Profile)
+		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, "")
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
@@ -258,7 +259,7 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedObjects(s.spaceID).Profile)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, "")
 	if err != nil {
 		return
 	}
@@ -274,7 +275,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
-	migration := newSubObjectsLinksMigration(s.spaceID, s.systemObjectService)
+	migration := newSubObjectsLinksMigration(s.spaceID, s.systemObjectService, s.objectStore)
 	migration.migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
@@ -292,7 +293,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 
 func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	creator = s.coreService.PredefinedObjects(s.spaceID).Profile
+	creator = ""
 	return
 }
 

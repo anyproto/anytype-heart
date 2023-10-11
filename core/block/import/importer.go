@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
@@ -38,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -82,14 +82,14 @@ func (i *Import) Init(a *app.App) (err error) {
 	for _, c := range converters {
 		i.converters[c.Name()] = c
 	}
-	objectCache := app.MustComponent[objectcache.Cache](a)
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.objectIDGetter = NewObjectIDGetter(store, coreService, objectCache)
+	spaceService := app.MustComponent[space.SpaceService](a)
+	i.objectIDGetter = NewObjectIDGetter(store, coreService, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objectCache, coreService, factory, store, relationSyncer, fileStore)
+	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore, spaceService)
 	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	i.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
 	return nil

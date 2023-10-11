@@ -3,19 +3,19 @@ package space
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -59,11 +59,13 @@ type SpaceService interface {
 }
 
 type service struct {
-	indexer     spaceIndexer
-	spaceCore   spacecore.SpaceCoreService
-	provider    objectprovider.ObjectProvider
-	objectCache objectcache.Cache
-	techSpace   techspace.TechSpace
+	indexer   spaceIndexer
+	spaceCore spacecore.SpaceCoreService
+	techSpace techspace.TechSpace
+
+	bundledObjectsInstaller bundledObjectsInstaller
+	accountService          accountservice.Service
+	objectFactory           objectcache.ObjectFactory
 
 	personalSpaceID string
 
@@ -78,33 +80,35 @@ type service struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	derivedIDsCache ocache.OCache
-
 	repKey uint64
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.indexer = app.MustComponent[spaceIndexer](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
-	installer := app.MustComponent[bundledObjectsInstaller](a)
-	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
+	s.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
-	s.techSpace = app.MustComponent[techspace.TechSpace](a)
+	s.techSpace = techspace.New()
+	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
 	s.loaded = map[string]Space{}
 
-	s.derivedIDsCache = ocache.New(s.loadDerivedIDs)
-	return nil
+	return err
 }
 
 func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Run(_ context.Context) (err error) {
+func (s *service) Run(ctx context.Context) (err error) {
+	err = s.initTechSpace()
+	if err != nil {
+		return fmt.Errorf("init tech space: %w", err)
+	}
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
 	s.personalSpaceID, err = s.spaceCore.DeriveID(s.ctx, spacecore.SpaceType)
@@ -129,6 +133,19 @@ func (s *service) Run(_ context.Context) (err error) {
 	return s.loadPersonalSpace(s.ctx)
 }
 
+func (s *service) initTechSpace() error {
+	techCoreSpace, err := s.spaceCore.Derive(context.Background(), spacecore.TechSpaceType)
+	if err != nil {
+		return fmt.Errorf("derive tech space: %w", err)
+	}
+	techSpaceCache := objectcache.New(techCoreSpace, s.accountService, s.objectFactory, s.personalSpaceID)
+	err = s.techSpace.Run(techCoreSpace, techSpaceCache)
+	if err != nil {
+		return fmt.Errorf("run tech space: %w", err)
+	}
+	return nil
+}
+
 func (s *service) Create(ctx context.Context) (Space, error) {
 	coreSpace, err := s.spaceCore.Create(ctx, s.repKey)
 	if err != nil {
@@ -149,12 +166,7 @@ func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error
 	if err != nil {
 		return nil, err
 	}
-	derivedIDs, err := s.DerivedIDs(ctx, spaceID)
-	if err != nil {
-		return nil, err
-	}
-	sp = newSpace(s, coreSpace, derivedIDs)
-	return
+	return s.newSpace(ctx, coreSpace)
 }
 
 func (s *service) createPersonalSpace(ctx context.Context) (err error) {
@@ -217,7 +229,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-	return s.derivedIDsCache.Close()
+	return nil
 }
 
 func getRepKey(spaceID string) (uint64, error) {

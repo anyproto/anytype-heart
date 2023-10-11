@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -29,35 +28,9 @@ type Template struct {
 	picker getblock.ObjectGetter
 }
 
-func NewTemplate(
-	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	anytype core.Service,
-	fileBlockService file.BlockService,
-	picker getblock.ObjectGetter,
-	bookmarkService bookmark.BookmarkService,
-	systemObjectService system_object.Service,
-	tempDirProvider core.TempDirProvider,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-	fileService files.Service,
-	eventSender event.Sender,
-) *Template {
+func NewTemplate(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, anytype core.Service, fileBlockService file.BlockService, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Template {
 	return &Template{
-		Page: NewPage(
-			sb,
-			objectStore,
-			anytype,
-			fileBlockService,
-			picker,
-			bookmarkService,
-			systemObjectService,
-			tempDirProvider,
-			sbtProvider,
-			layoutConverter,
-			fileService,
-			eventSender,
-		),
+		Page:   NewPage(sb, objectStore, anytype, fileBlockService, picker, bookmarkService, tempDirProvider, sbtProvider, layoutConverter, fileService, eventSender),
 		picker: picker,
 	}
 }

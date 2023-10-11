@@ -16,6 +16,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -132,10 +134,21 @@ type ObjectStore interface {
 	EraseIndexes() error
 
 	GetDetails(id string) (*model.ObjectDetails, error)
+	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
 
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
+
+	FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error)
+	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
+	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
+	ListAllRelations(spaceId string) (relations relationutils.Relations, err error)
+	GetRelationByID(id string) (relation *model.Relation, err error)
+	GetRelationByKey(key string) (*model.Relation, error)
+
+	GetObjectType(url string) (*model.ObjectType, error)
+	HasObjectType(id string) (bool, error)
 }
 
 type IndexerStore interface {
@@ -497,6 +510,38 @@ func (s *dsObjectStore) getObjectsInfo(txn *badger.Txn, spaceID string, ids []st
 	}
 
 	return objects, nil
+}
+
+func (s *dsObjectStore) GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error) {
+	records, _, err := s.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Value:       pbtypes.String(uniqueKey.Marshal()),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+		Limit: 2,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) == 0 {
+		return nil, ErrObjectNotFound
+	}
+
+	if len(records) > 1 {
+		// should never happen
+		return nil, fmt.Errorf("multiple objects with unique key %s", uniqueKey)
+	}
+
+	return &model.ObjectDetails{Details: records[0].Details}, nil
 }
 
 // Find to which IDs specified one has outbound links.

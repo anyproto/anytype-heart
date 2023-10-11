@@ -24,7 +24,7 @@ type PayloadCreationParams struct {
 }
 
 type PayloadCreator interface {
-	CreateTreePayload(ctx context.Context, spaceID string, params PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error)
-	DeriveTreePayload(ctx context.Context, spaceID string, params PayloadDerivationParams) (storagePayload treestorage.TreeStorageCreatePayload, err error)
-	DeriveObjectID(ctx context.Context, spaceID string, uniqueKey domain.UniqueKey) (id string, err error)
+	CreateTreePayload(ctx context.Context, params PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error)
+	DeriveTreePayload(ctx context.Context, params PayloadDerivationParams) (storagePayload treestorage.TreeStorageCreatePayload, err error)
+	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 }

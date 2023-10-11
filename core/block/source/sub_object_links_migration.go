@@ -10,24 +10,32 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+type systemObjectService interface {
+	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
+	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
+	GetObjectIdByUniqueKey(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error)
+}
 
 // Migrate old relation (rel-name, etc.) and object type (ot-page, etc.) IDs to new ones (just ordinary object IDs)
 // Those old ids are ids of sub-objects, legacy system for storing types and relations inside workspace object
 type subObjectsLinksMigration struct {
 	spaceID             string
-	systemObjectService system_object.Service
+	systemObjectService systemObjectService
+	objectStore         objectstore.ObjectStore
 }
 
-func newSubObjectsLinksMigration(spaceID string, systemObjectService system_object.Service) *subObjectsLinksMigration {
+func newSubObjectsLinksMigration(spaceID string, systemObjectService systemObjectService, objectStore objectstore.ObjectStore) *subObjectsLinksMigration {
 	return &subObjectsLinksMigration{
 		spaceID:             spaceID,
 		systemObjectService: systemObjectService,
+		objectStore:         objectStore,
 	}
 }
 
@@ -114,7 +122,7 @@ func (m *subObjectsLinksMigration) migrateFilters(dv dataview2.Block) {
 }
 
 func (m *subObjectsLinksMigration) migrateFilter(filter *model.BlockContentDataviewFilter) error {
-	relation, err := m.systemObjectService.GetRelationByKey(filter.RelationKey)
+	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
 	if err != nil {
 		return fmt.Errorf("failed to get relation by key %s: %w", filter.RelationKey, err)
 	}

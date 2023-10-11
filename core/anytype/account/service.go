@@ -9,9 +9,9 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -41,7 +41,7 @@ type service struct {
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
-	objectCache  objectcache.Cache
+	picker       getblock.ObjectGetter
 
 	once            sync.Once
 	personalSpaceID string
@@ -57,7 +57,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.gateway = app.MustComponent[gateway.Gateway](a)
 	s.config = app.MustComponent[*config.Config](a)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
+	s.picker = app.MustComponent[getblock.ObjectGetter](a)
 	s.personalSpaceID, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	return
 }
@@ -141,22 +141,16 @@ func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get derived ids: %w", err)
 	}
-	sb, err := s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: ids.Workspace,
-		SpaceID:  s.personalSpaceID,
-	})
-	if err != nil {
-		return "", err
-	}
-
 	var analyticsID string
-	st := sb.NewState().GetSetting(state.SettingsAnalyticsId)
-	if st == nil {
-		log.Errorf("analytics id not found")
-	} else {
-		analyticsID = st.GetStringValue()
-	}
-
+	err = getblock.Do(s.picker, ids.Workspace, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState().GetSetting(state.SettingsAnalyticsId)
+		if st == nil {
+			log.Errorf("analytics id not found")
+		} else {
+			analyticsID = st.GetStringValue()
+		}
+		return nil
+	})
 	return analyticsID, err
 }
 

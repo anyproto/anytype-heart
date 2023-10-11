@@ -36,7 +36,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
@@ -76,7 +75,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -211,6 +209,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
+		Register(space.New()).
 		Register(system_object.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
@@ -221,7 +220,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.New()).
 		Register(core.NewTempDirService()).
 		Register(builtintemplate.New()).
-		Register(objectcache.New()).
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).
@@ -243,8 +241,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory()).
-		Register(techspace.New()).
-		Register(space.New()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New())
 }

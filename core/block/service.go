@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -132,7 +131,6 @@ type Service struct {
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
 	systemObjectService  system_object.Service
-	objectCache          objectcache.Cache
 	objectCreator        objectCreator
 	resolver             idresolver.Resolver
 	spaceService         space.SpaceService
@@ -177,7 +175,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 
@@ -199,14 +196,15 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 	if err != nil {
 		return nil, err
 	}
-	return s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: objectID,
-		SpaceID:  spaceID,
-	})
+	return s.GetObjectByFullID(ctx, domain.FullID{SpaceID: spaceID, ObjectID: objectID})
 }
 
 func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
-	return s.objectCache.GetObject(ctx, id)
+	spc, err := s.spaceService.Get(ctx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	return spc.GetObject(ctx, id.ObjectID)
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
@@ -335,6 +333,10 @@ func (s *Service) InstallBundledObject(
 }
 
 func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID string, details *types.Struct) (*types.Struct, error) {
+	spc, err := s.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
 	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
 	if pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
 		return nil, errors.New("object is not bundled")
@@ -364,7 +366,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.objectCache.DeriveObjectID(ctx, spaceID, uniqueKey)
+			id, err := spc.DeriveObjectID(ctx, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err
@@ -384,7 +386,7 @@ func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spaceID
 				// should never happen
 				return nil, err
 			}
-			id, err := s.objectCache.DeriveObjectID(ctx, spaceID, uniqueKey)
+			id, err := spc.DeriveObjectID(ctx, uniqueKey)
 			if err != nil {
 				// should never happen
 				return nil, err

@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -32,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -39,7 +39,7 @@ const relationsLimit = 10
 
 type ObjectCreator struct {
 	service        *block.Service
-	objectCache    objectcache.Cache
+	spaceService   space.SpaceService
 	core           core.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
@@ -49,12 +49,12 @@ type ObjectCreator struct {
 }
 
 func NewCreator(service *block.Service,
-	cache objectcache.Cache,
 	core core.Service,
 	syncFactory *syncer.Factory,
 	objectStore objectstore.ObjectStore,
 	relationSyncer syncer.RelationSyncer,
 	fileStore filestore.FileStore,
+	spaceService space.SpaceService,
 ) Creator {
 	return &ObjectCreator{
 		service:        service,
@@ -63,7 +63,7 @@ func NewCreator(service *block.Service,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
-		objectCache:    cache,
+		spaceService:   spaceService,
 	}
 }
 
@@ -199,7 +199,11 @@ func (oc *ObjectCreator) createNewObject(
 	newID string,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
 	var respDetails *types.Struct
-	sb, err := oc.objectCache.CreateTreeObjectWithPayload(ctx, spaceID, payload, func(id string) *smartblock.InitContext {
+	spc, err := oc.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space %s: %w", spaceID, err)
+	}
+	sb, err := spc.CreateTreeObjectWithPayload(ctx, payload, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,

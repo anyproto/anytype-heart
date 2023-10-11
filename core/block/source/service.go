@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -58,7 +57,7 @@ type service struct {
 	spaceService        spacecore.SpaceCoreService
 	storageService      storage.ClientStorage
 	fileService         files.Service
-	systemObjectService system_object.Service
+	systemObjectService systemObjectService
 
 	objectStore objectstore.ObjectStore
 
@@ -74,7 +73,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	s.systemObjectService = app.MustComponent[system_object.Service](a)
+	s.systemObjectService = app.MustComponent[systemObjectService](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -157,6 +156,7 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 		sbtProvider:         s.sbtProvider,
 		fileService:         s.fileService,
 		systemObjectService: s.systemObjectService,
+		objectStore:         s.objectStore,
 	}
 	return newTreeSource(spaceID, id, deps)
 }
@@ -182,7 +182,6 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 		return &source{
 			spaceID:        spaceID,
 			smartblockType: blockType,
-			coreService:    s.coreService,
 			spaceService:   s.spaceService,
 			sbtProvider:    s.sbtProvider,
 		}, nil

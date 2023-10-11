@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -31,17 +30,10 @@ type Dashboard struct {
 	anytype         core.Service
 }
 
-func NewDashboard(
-	sb smartblock.SmartBlock,
-	detailsModifier DetailsModifier,
-	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
-	anytype core.Service,
-	layoutConverter converter.LayoutConverter,
-) *Dashboard {
+func NewDashboard(sb smartblock.SmartBlock, detailsModifier DetailsModifier, objectStore objectstore.ObjectStore, anytype core.Service, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
 		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
+		AllOperations:   basic.NewBasic(sb, objectStore, layoutConverter),
 		Collection:      collection.NewCollection(sb),
 		DetailsModifier: detailsModifier,
 		objectStore:     objectStore,
