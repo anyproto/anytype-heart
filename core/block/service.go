@@ -27,9 +27,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	template2 "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -65,7 +67,6 @@ import (
 const (
 	CName           = "block-service"
 	linkObjectShare = "anytype://object/share?"
-	BlankTemplateID = "blank"
 )
 
 var (
@@ -101,23 +102,6 @@ func New() *Service {
 	return s
 }
 
-type objectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
-}
-type DetailsGetter interface {
-	GetDetails() *types.Struct
-}
-type InternalFlagsGetter interface {
-	GetInternalFlags() []*model.InternalFlag
-}
-type TemplateIDGetter interface {
-	GetTemplateId() string
-}
-type builtinObjects interface {
-	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-}
-
 type Service struct {
 	anytype              core.Service
 	syncStatus           syncstatus.Service
@@ -131,7 +115,7 @@ type Service struct {
 	bookmark             bookmarksvc.Service
 	systemObjectService  system_object.Service
 	objectCache          objectcache.Cache
-	objectCreator        objectCreator
+	objectCreator        objectcreator.Service
 	resolver             idresolver.Resolver
 	spaceService         space.SpaceService
 	spaceCore            spacecore.SpaceCoreService
@@ -147,6 +131,10 @@ type Service struct {
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
+}
+
+type builtinObjects interface {
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type openedObjects struct {
@@ -169,7 +157,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
-	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
+	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.SpaceService)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
@@ -641,7 +629,7 @@ func (s *Service) Close(ctx context.Context) (err error) {
 }
 
 func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, err error) {
-	if templateID == BlankTemplateID || templateID == "" {
+	if templateID == template2.BlankTemplateID || templateID == "" {
 		return s.BlankTemplateState(), nil
 	}
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
@@ -730,13 +718,15 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
-	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, &pb.RpcObjectCreateBookmarkRequest{
+	req := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyBookmark,
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeySource.String(): pbtypes.String(url),
 			},
 		},
-	}, bundle.TypeKeyBookmark)
+	}
+	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, req)
 	if err != nil {
 		return
 	}
@@ -776,7 +766,7 @@ func (s *Service) GetLogFields() []zap.Field {
 }
 
 func (s *Service) BlankTemplateState() (st *state.State) {
-	st = state.NewDoc(BlankTemplateID, nil).NewState()
+	st = state.NewDoc(template2.BlankTemplateID, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,

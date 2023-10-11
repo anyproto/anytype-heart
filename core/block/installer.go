@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -148,10 +149,11 @@ func (s *Service) InstallBundledObjects(
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
-			req := createRequest{
-				details: details,
+			req := objectcreator.CreateObjectRequest{
+				Details:       details,
+				ObjectTypeKey: objectTypeKey,
 			}
-			id, object, err := s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
+			id, object, err := s.objectCreator.CreateObject(ctx, spaceID, req)
 			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				// we don't want to stop adding other objects
 				log.Errorf("error while block create: %v", err)

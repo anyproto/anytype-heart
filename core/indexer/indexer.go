@@ -59,7 +59,6 @@ type Hasher interface {
 }
 
 type objectCreator interface {
-	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 	InstallBundledObjects(
 		ctx context.Context,
 		spaceID string,

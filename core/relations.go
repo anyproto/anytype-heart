@@ -11,6 +11,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
@@ -161,15 +162,13 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyObjectType)
-		return err
-	})
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyObjectType,
+		InternalFlags: req.InternalFlags,
+		Details:       req.Details,
+	}
+	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
 		return response(pb.RpcObjectCreateObjectTypeResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
@@ -190,24 +189,23 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		return m
 	}
 
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		if req.Details == nil {
-			req.Details = &types.Struct{}
-		}
-		if req.Details.Fields == nil {
-			req.Details.Fields = map[string]*types.Value{}
-		}
-		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeySet)
-		return err
-	})
+	if req.Details == nil {
+		req.Details = &types.Struct{}
+	}
+	if req.Details.Fields == nil {
+		req.Details.Fields = map[string]*types.Value{}
+	}
+	req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
+
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeySet,
+		InternalFlags: req.InternalFlags,
+		Details:       req.Details,
+	}
+	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
-		if err == block.ErrUnknownObjectType {
+		if errors.Is(err, block.ErrUnknownObjectType) {
 			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", nil, err)
 		}
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
@@ -236,15 +234,12 @@ func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObje
 			Details:  object,
 		}
 	}
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyRelation)
-		return err
-	})
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyRelation,
+		Details:       req.Details,
+	}
+	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
 		return response("", nil, err)
 	}
@@ -270,15 +265,12 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 		}
 	}
 
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyRelationOption)
-		return err
-	})
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyRelationOption,
+		Details:       req.Details,
+	}
+	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	return response(id, newDetails, err)
 }
 

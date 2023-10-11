@@ -10,11 +10,11 @@ import (
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
@@ -48,6 +48,8 @@ type CreationStrategy interface {
 }
 
 type Service interface {
+	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
+	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	RegisterCreationStrategy(typeKey domain.TypeKey, strategy CreationStrategy)
 	app.Component
@@ -81,7 +83,7 @@ func (c *creator) RegisterCreationStrategy(typeKey domain.TypeKey, strategy Crea
 }
 
 func (c *creator) Init(a *app.App) (err error) {
-	c.blockService = a.MustComponent(block.CName).(BlockService)
+	c.blockService = app.MustComponent[BlockService](a)
 	c.objectCache = a.MustComponent(objectcache.CName).(objectcache.Cache)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
@@ -248,24 +250,23 @@ func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct)
 	return domain.UnmarshalUniqueKey(uniqueKey)
 }
 
-func (c *creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error) {
-	details = req.GetDetails()
+// TODO Add validate method
+type CreateObjectRequest struct {
+	Details       *types.Struct
+	InternalFlags []*model.InternalFlag
+	TemplateId    string
+	ObjectTypeKey domain.TypeKey
+}
+
+// CreateObject is high-level method for creating new objects
+func (c *creator) CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error) {
+	details = req.Details
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
+	details = internalflag.PutToDetails(details, req.InternalFlags)
 
-	var internalFlags []*model.InternalFlag
-	if v, ok := req.(block.InternalFlagsGetter); ok {
-		internalFlags = v.GetInternalFlags()
-		details = internalflag.PutToDetails(details, internalFlags)
-	}
-
-	var templateID string
-	if v, ok := req.(block.TemplateIDGetter); ok {
-		templateID = v.GetTemplateId()
-	}
-
-	switch objectTypeKey {
+	switch req.ObjectTypeKey {
 	case bundle.TypeKeyBookmark:
 		return c.ObjectCreateBookmark(ctx, &pb.RpcObjectCreateBookmarkRequest{
 			Details: details,
@@ -275,14 +276,14 @@ func (c *creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_set))
 		return c.CreateSet(ctx, &pb.RpcObjectCreateSetRequest{
 			Details:       details,
-			InternalFlags: internalFlags,
+			InternalFlags: req.InternalFlags,
 			Source:        pbtypes.GetStringList(details, bundle.RelationKeySetOf.String()),
 			SpaceId:       spaceID,
 		})
 	case bundle.TypeKeyCollection:
 		var st *state.State
 		details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-		_, details, st, err = c.collectionService.CreateCollection(details, internalFlags)
+		_, details, st, err = c.collectionService.CreateCollection(details, req.InternalFlags)
 		if err != nil {
 			return "", nil, err
 		}
@@ -295,9 +296,18 @@ func (c *creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		return c.createRelationOption(ctx, spaceID, details)
 	}
 
-	if templateID == block.BlankTemplateID {
-		templateID = ""
+	if req.TemplateId == template.BlankTemplateID {
+		req.TemplateId = ""
 	}
 
-	return c.createSmartBlockFromTemplate(ctx, spaceID, []domain.TypeKey{objectTypeKey}, details, templateID)
+	return c.createSmartBlockFromTemplate(ctx, spaceID, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)
+}
+
+func (c *creator) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error) {
+	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
+	if err != nil {
+		return "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
+	}
+	req.ObjectTypeKey = objectTypeKey
+	return c.CreateObject(ctx, spaceID, req)
 }

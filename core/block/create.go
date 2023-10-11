@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -204,7 +203,13 @@ func (s *Service) CreateLinkToTheNewObject(
 		return "", "", fmt.Errorf("get type key from raw unique key: %w", err)
 	}
 
-	objectID, _, err = s.CreateObject(ctx, req.SpaceId, req, objectTypeKey)
+	createReq := objectcreator.CreateObjectRequest{
+		Details:       req.Details,
+		InternalFlags: req.InternalFlags,
+		ObjectTypeKey: objectTypeKey,
+		TemplateId:    req.TemplateId,
+	}
+	objectID, _, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
 		return
 	}
@@ -258,16 +263,4 @@ func (s *Service) ObjectToSet(id string, source []string) error {
 	}
 
 	return nil
-}
-
-func (s *Service) CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error) {
-	return s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
-}
-
-func (s *Service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, req DetailsGetter, objectUniqueTypeKey string) (id string, details *types.Struct, err error) {
-	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(objectUniqueTypeKey)
-	if err != nil {
-		return "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
-	}
-	return s.objectCreator.CreateObject(ctx, spaceID, req, objectTypeKey)
 }

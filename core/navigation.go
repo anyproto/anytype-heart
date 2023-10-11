@@ -7,8 +7,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -83,15 +83,14 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		return m
 	}
 
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		id, newDetails, err = bs.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req, req.ObjectTypeUniqueKey)
-		return err
-	})
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		Details:       req.Details,
+		InternalFlags: req.InternalFlags,
+		TemplateId:    req.TemplateId,
+	}
+	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
+
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
