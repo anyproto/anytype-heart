@@ -51,6 +51,8 @@ packages:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
+      bundledObjectsInstaller:
+      isNewAccount:
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:
@@ -66,7 +68,4 @@ packages:
   github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
-  github.com/anyproto/anytype-heart/space:
-    interfaces:
-      bundledObjectsInstaller:
-      isNewAccount:
+
