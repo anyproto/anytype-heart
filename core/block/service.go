@@ -100,8 +100,8 @@ func New() *Service {
 }
 
 type objectCreator interface {
-	CreateSmartBlockFromStateInSpace(ctx context.Context, spc space.Space, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromStateInSpace(ctx context.Context, spc space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 	CreateObject(ctx context.Context, spaceID string, req DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
 }
 type DetailsGetter interface {
@@ -466,26 +466,17 @@ func (s *Service) InstallBundledObjects(
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
+			// TODO Use high-level interface
 			id, object, err := s.objectCreator.CreateSmartBlockFromStateInSpace(
 				ctx,
 				spc,
-				uk.SmartblockType(),
 				[]domain.TypeKey{objectTypeKey},
-				nil,
 				st,
 			)
 			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				// we don't want to stop adding other objects
 				log.Errorf("error while block create: %v", err)
 				return nil
-			}
-
-			if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
-				installingObjectTypeKey := domain.TypeKey(uk.InternalKey())
-				err = s.installTemplatesForObjectType(spc, installingObjectTypeKey)
-				if err != nil {
-					log.With("spaceID", spaceID, "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
-				}
 			}
 
 			ids = append(ids, id)
@@ -548,85 +539,6 @@ func (s *Service) reinstallBundledObjects(spaceID string, sourceObjectIDs []stri
 	}
 
 	return ids, objects, nil
-}
-
-func (s *Service) installTemplatesForObjectType(spc space.Space, typeKey domain.TypeKey) error {
-	bundledTemplates, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeKey.BundledURL()),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("query bundled templates: %w", err)
-	}
-
-	installedTemplatesIDs, err := s.listInstalledTemplatesForType(spc, typeKey)
-	if err != nil {
-		return fmt.Errorf("list installed templates: %w", err)
-	}
-
-	for _, record := range bundledTemplates {
-		id := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-		if _, exists := installedTemplatesIDs[id]; exists {
-			continue
-		}
-
-		_, err := s.TemplateCloneInSpace(spc, id)
-		if err != nil {
-			return fmt.Errorf("clone template: %w", err)
-		}
-	}
-	return nil
-}
-
-func (s *Service) listInstalledTemplatesForType(spc space.Space, typeKey domain.TypeKey) (map[string]struct{}, error) {
-	templateTypeID, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("get template type id by key: %w", err)
-	}
-	targetObjectTypeID, err := spc.GetTypeIdByKey(context.Background(), typeKey)
-	if err != nil {
-		return nil, fmt.Errorf("get type id by key: %w", err)
-	}
-	alreadyInstalledTemplates, _, err := s.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeID),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(targetObjectTypeID),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spc.Id()),
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
-	}
-	existingTemplatesMap := map[string]struct{}{}
-	for _, rec := range alreadyInstalledTemplates {
-		sourceObject := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
-		if sourceObject != "" {
-			existingTemplatesMap[sourceObject] = struct{}{}
-		}
-	}
-	return existingTemplatesMap, nil
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {

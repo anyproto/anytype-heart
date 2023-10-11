@@ -42,7 +42,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
 
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, coresb.SmartBlockTypeTemplate, objectTypeKeys, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, objectTypeKeys, st)
 	if err != nil {
 		return
 	}
@@ -103,7 +103,7 @@ func (s *Service) TemplateCloneInSpace(space space.Space, id string) (templateID
 	}); err != nil {
 		return
 	}
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(context.Background(), space, coresb.SmartBlockTypeTemplate, objectTypeKeys, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(context.Background(), space, objectTypeKeys, st)
 	if err != nil {
 		return
 	}
@@ -113,12 +113,10 @@ func (s *Service) TemplateCloneInSpace(space space.Space, id string) (templateID
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
 	var (
 		st             *state.State
-		sbt            coresb.SmartBlockType
 		objectTypeKeys []domain.TypeKey
 	)
 	if err = Do(s, id, func(b smartblock.SmartBlock) error {
 		objectTypeKeys = b.ObjectTypeKeys()
-		sbt = b.Type()
 		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
 			return err
 		}
@@ -134,7 +132,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	if err != nil {
 		return "", fmt.Errorf("resolve spaceID: %w", err)
 	}
-	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, sbt, objectTypeKeys, nil, st)
+	objectID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, objectTypeKeys, st)
 	if err != nil {
 		return
 	}
