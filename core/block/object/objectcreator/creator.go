@@ -44,11 +44,10 @@ const eventCreate eventKey = 0
 
 type Service interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
-	CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error)
 	app.Component
 }
 
-type Creator struct {
+type creator struct {
 	blockService        BlockService
 	objectCache         objectcache.Cache
 	blockPicker         block.ObjectGetter
@@ -58,7 +57,6 @@ type Creator struct {
 	bookmark            bookmark.Service
 	app                 *app.App
 	sbtProvider         typeprovider.SmartBlockTypeProvider
-	creator             Service //nolint:unused
 
 	// TODO: remove it?
 	coreService core.Service
@@ -68,11 +66,11 @@ type CollectionService interface {
 	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
 }
 
-func NewCreator() *Creator {
-	return &Creator{}
+func NewCreator() Service {
+	return &creator{}
 }
 
-func (c *Creator) Init(a *app.App) (err error) {
+func (c *creator) Init(a *app.App) (err error) {
 	c.blockService = a.MustComponent(block.CName).(BlockService)
 	c.objectCache = a.MustComponent(objectcache.CName).(objectcache.Cache)
 	c.blockPicker = a.MustComponent(block.CName).(block.ObjectGetter)
@@ -89,7 +87,7 @@ func (c *Creator) Init(a *app.App) (err error) {
 
 const CName = "objectCreator"
 
-func (c *Creator) Name() (name string) {
+func (c *creator) Name() (name string) {
 	return CName
 }
 
@@ -99,7 +97,7 @@ type BlockService interface {
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
-func (c *Creator) createSmartBlockFromTemplate(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
+func (c *creator) createSmartBlockFromTemplate(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateID != "" {
 		if createState, err = c.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -133,7 +131,7 @@ func objectTypeKeysToSmartblockType(typeKeys []domain.TypeKey) (coresb.SmartBloc
 
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
-func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (c *creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -216,7 +214,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 	return id, sb.CombinedDetails(), nil
 }
 
-func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
+func (c *creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
 	dvContent, err := dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.systemObjectService, req.Source)
@@ -248,7 +246,7 @@ func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetReque
 }
 
 // ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
-func (c *Creator) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
+func (c *creator) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) (objectID string, newDetails *types.Struct, err error) {
 	source := pbtypes.GetString(req.Details, bundle.RelationKeySource.String())
 	var res bookmark.ContentFuture
 	if source != "" {
@@ -265,7 +263,7 @@ func (c *Creator) ObjectCreateBookmark(ctx context.Context, req *pb.RpcObjectCre
 	return c.bookmark.CreateBookmarkObject(ctx, req.SpaceId, req.Details, res)
 }
 
-func (c *Creator) createRelation(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
+func (c *creator) createRelation(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create relation: no data")
 	}
@@ -311,7 +309,7 @@ func (c *Creator) createRelation(ctx context.Context, spaceID string, details *t
 	return c.CreateSmartBlockFromState(ctx, spaceID, []domain.TypeKey{bundle.TypeKeyRelation}, createState)
 }
 
-func (c *Creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
+func (c *creator) createRelationOption(ctx context.Context, spaceID string, details *types.Struct) (id string, object *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create option: no data")
 	}
@@ -338,7 +336,7 @@ func (c *Creator) createRelationOption(ctx context.Context, spaceID string, deta
 	return c.CreateSmartBlockFromState(ctx, spaceID, []domain.TypeKey{bundle.TypeKeyRelationOption}, createState)
 }
 
-func (c *Creator) createObjectType(ctx context.Context, spaceID string, details *types.Struct) (id string, newDetails *types.Struct, err error) {
+func (c *creator) createObjectType(ctx context.Context, spaceID string, details *types.Struct) (id string, newDetails *types.Struct, err error) {
 	if details == nil || details.Fields == nil {
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
@@ -396,7 +394,7 @@ func (c *Creator) createObjectType(ctx context.Context, spaceID string, details 
 	return id, newDetails, nil
 }
 
-func (c *Creator) installTemplatesForObjectType(spaceID string, typeKey domain.TypeKey) error {
+func (c *creator) installTemplatesForObjectType(spaceID string, typeKey domain.TypeKey) error {
 	bundledTemplates, _, err := c.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -434,7 +432,7 @@ func (c *Creator) installTemplatesForObjectType(spaceID string, typeKey domain.T
 	return nil
 }
 
-func (c *Creator) listInstalledTemplatesForType(spaceID string, typeKey domain.TypeKey) (map[string]struct{}, error) {
+func (c *creator) listInstalledTemplatesForType(spaceID string, typeKey domain.TypeKey) (map[string]struct{}, error) {
 	templateTypeID, err := c.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, bundle.TypeKeyTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("get template type id by key: %w", err)
@@ -483,7 +481,7 @@ func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *types.Struct)
 	return domain.UnmarshalUniqueKey(uniqueKey)
 }
 
-func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error) {
+func (c *creator) CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error) {
 	details = req.GetDetails()
 	if details.GetFields() == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
