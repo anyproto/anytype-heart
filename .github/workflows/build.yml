@@ -76,8 +76,12 @@ jobs:
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          VERSION=${{ github.event.inputs.alpha_version }}
-          GITHUB_SHA
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION=${{ github.event.inputs.alpha_version }}
+            if [ -z "$VERSION" ]; then
+              VERSION=${GITHUB_SHA::7}
+            fi
+          fi
           if [ -z "$VERSION" ]; then
             VERSION=${GITHUB_REF##*/}
           fi
