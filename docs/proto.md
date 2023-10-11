@@ -21446,7 +21446,6 @@ Avatar of a user&#39;s account. It could be an image or color
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
-| workspaceObjectId | [string](#string) |  |  |
 | spaceViewId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |

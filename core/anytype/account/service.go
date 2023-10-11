@@ -126,7 +126,6 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		DeviceId:               deviceId,
 		AccountSpaceId:         spaceID,
 		WidgetsId:              ids.Widgets,
-		WorkspaceObjectId:      ids.Workspace,
 		SpaceViewId:            spaceViewId,
 		GatewayUrl:             gwAddr,
 		LocalStoragePath:       cfg.CustomFileStorePath,
