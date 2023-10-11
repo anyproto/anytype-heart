@@ -1472,5 +1472,15 @@
     "name": "Profile link",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Profile",
+    "format": "shorttext",
+    "key": "profileOwnerIdentity",
+    "maxCount": 1,
+    "hidden": true,
+    "name": "Anytype Identity",
+    "readonly": true,
+    "source": "derived"
   }
 ]

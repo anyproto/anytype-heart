@@ -969,8 +969,16 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		return err
 	}
 
-	if creator != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+	if creator != nil {
+		creatorAccount := creator.Account()
+		if sb.Type() == smartblock.SmartBlockTypeProfilePage {
+			// todo: for the shared spaces we need to change this for sophisticated logic
+			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(creatorAccount))
+		} else {
+			// make sure we don't have this relation for other objects
+			s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity.String())
+		}
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(addr.AccountIdToIdentityObjectId(creatorAccount)))
 	}
 
 	if createdDate != 0 {

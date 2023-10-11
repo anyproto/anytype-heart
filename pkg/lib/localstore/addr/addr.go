@@ -60,3 +60,7 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 func TimeToID(t time.Time) string {
 	return DatePrefix + t.Format("2006-01-02")
 }
+
+func AccountIdToIdentityObjectId(identity string) string {
+	return IdentityPrefix + identity
+}

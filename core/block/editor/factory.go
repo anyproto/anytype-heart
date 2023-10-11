@@ -190,7 +190,6 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		return NewProfile(
 			sb,
 			f.objectStore,
-			f.detailsModifier,
 			f.systemObjectService,
 			f.fileBlockService,
 			f.anytype,

@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -21,11 +22,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 type Profile struct {
@@ -39,14 +38,12 @@ type Profile struct {
 	table.TableEditor
 	anytype core.Service
 
-	DetailsModifier
 	eventSender event.Sender
 }
 
 func NewProfile(
 	sb smartblock.SmartBlock,
 	objectStore objectstore.ObjectStore,
-	modifier DetailsModifier,
 	systemObjectService system_object.Service,
 	fileBlockService file.BlockService,
 	anytype core.Service,
@@ -88,10 +85,9 @@ func NewProfile(
 			bookmarkService,
 			objectStore,
 		),
-		TableEditor:     table.NewEditor(sb),
-		DetailsModifier: modifier,
-		eventSender:     eventSender,
-		anytype:         anytype,
+		TableEditor: table.NewEditor(sb),
+		eventSender: eventSender,
+		anytype:     anytype,
 	}
 }
 
@@ -100,38 +96,51 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	return nil
 }
 
 func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
 				template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 				template.WithTitle,
 				template.WithFeaturedRelations,
-				template.WithRequiredRelations())
+				template.WithRequiredRelations(),
+				migrationWithIdentityBlock,
+			)
 		},
 	}
 }
 
-func (p *Profile) updateObjects(info smartblock.ApplyInfo) (err error) {
-	go func(id string) {
-		// just wake up the identity object
-		if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
-			return current, nil
-		}); err != nil {
-			log.Errorf("favorite: can't set detail to object: %v", err)
-		}
-	}(addr.IdentityPrefix + p.anytype.AccountId())
-	return nil
+func migrationWithIdentityBlock(st *state.State) {
+	blockId := "identity"
+	st.Set(simple.New(&model.Block{
+		Id: blockId,
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: bundle.RelationKeyProfileOwnerIdentity.String(),
+			},
+		},
+		Restrictions: &model.BlockRestrictions{
+			Edit:   true,
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
+	}))
+
+	st.InsertTo(state.TitleBlockID, model.Block_Bottom, blockId)
 }
 
 func (p *Profile) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{{
+		Version: 2,
+		Proc:    migrationWithIdentityBlock,
+	},
+	})
 }
 
 func (p *Profile) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
