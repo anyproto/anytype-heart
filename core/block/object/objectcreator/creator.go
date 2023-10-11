@@ -95,7 +95,7 @@ func (c *Creator) Name() (name string) {
 
 // TODO Temporarily
 type BlockService interface {
-	StateFromTemplate(templateID string, name string) (st *state.State, err error)
+	StateFromTemplate(templateID, name string) (st *state.State, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 }
 
@@ -214,42 +214,28 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
-	// TODO remove it, when schema will be refactored
-	source := req.Source
-	var dvContent model.BlockContentOfDataview
-	var dvSchema database.Schema
-	var blockContent *model.BlockContentOfDataview
+	dvContent, err := dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.systemObjectService, req.Source)
+	if err != nil {
+		return
+	}
 
 	newState := state.NewDoc("", nil).NewState()
-
-	if len(source) > 0 {
-		// todo: decide the behavior in case of empty source
-		if dvContent, dvSchema, err = dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.systemObjectService, source); err != nil {
-			return
-		}
-
-		if dvSchema != nil {
-			blockContent = &dvContent
-		}
-
-		if len(req.Source) > 0 {
-			newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-		}
+	if len(req.Source) > 0 {
+		newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
 	}
+
 	tmpls := []template.StateTransformer{
 		template.WithRequiredRelations(),
 	}
 
-	if blockContent != nil {
-		for i, view := range blockContent.Dataview.Views {
-			if view.Relations == nil {
-				blockContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(blockContent.Dataview.Relations)
-			}
+	for i, view := range dvContent.Dataview.Views {
+		if view.Relations == nil {
+			dvContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(dvContent.Dataview.Relations)
 		}
-		tmpls = append(tmpls,
-			template.WithDataview(*blockContent, false),
-		)
 	}
+	tmpls = append(tmpls,
+		template.WithDataview(dvContent, false),
+	)
 
 	template.InitTemplate(newState, tmpls...)
 
@@ -507,6 +493,10 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 		return c.createRelation(ctx, spaceID, details)
 	case bundle.TypeKeyRelationOption:
 		return c.createRelationOption(ctx, spaceID, details)
+	}
+
+	if templateID == block.BlankTemplateID {
+		templateID = ""
 	}
 
 	return c.CreateSmartBlockFromTemplate(ctx, spaceID, []domain.TypeKey{objectTypeKey}, details, templateID)

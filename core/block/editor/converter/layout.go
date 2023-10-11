@@ -151,7 +151,7 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	}
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, _, err := dataview.BlockBySource(st.SpaceID(), c.sbtProvider, c.systemObjectService, source)
+	dvBlock, err := dataview.BlockBySource(st.SpaceID(), c.sbtProvider, c.systemObjectService, source)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 	blockContent := template.MakeCollectionDataviewContent()
-	template.InitTemplate(st, template.WithDataview(*blockContent, false))
+	template.InitTemplate(st, template.WithDataview(blockContent, false))
 	return nil
 }
 

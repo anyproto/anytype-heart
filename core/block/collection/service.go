@@ -200,7 +200,7 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 
 	blockContent := template.MakeCollectionDataviewContent()
 	tmpls = append(tmpls,
-		template.WithDataview(*blockContent, false),
+		template.WithDataview(blockContent, false),
 	)
 	template.InitTemplate(newState, tmpls...)
 

@@ -23,7 +23,6 @@ const (
 
 type SpaceInfo struct {
 	SpaceID      string
-	ViewID       string
 	LocalStatus  LocalStatus
 	RemoteStatus RemoteStatus
 }

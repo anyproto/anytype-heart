@@ -11,8 +11,9 @@ package testMock
 import (
 	reflect "reflect"
 
-	undo "github.com/anyproto/anytype-heart/core/block/undo"
 	gomock "go.uber.org/mock/gomock"
+
+	undo "github.com/anyproto/anytype-heart/core/block/undo"
 )
 
 // MockHistory is a mock of History interface.
@@ -119,4 +120,28 @@ func (m *MockHistory) Reset() {
 func (mr *MockHistoryMockRecorder) Reset() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reset", reflect.TypeOf((*MockHistory)(nil).Reset))
+}
+
+// SetCarriageBeforeState mocks base method.
+func (m *MockHistory) SetCarriageBeforeState(arg0 undo.CarriageState) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetCarriageBeforeState", arg0)
+}
+
+// SetCarriageBeforeState indicates an expected call of SetCarriageBeforeState.
+func (mr *MockHistoryMockRecorder) SetCarriageBeforeState(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCarriageBeforeState", reflect.TypeOf((*MockHistory)(nil).SetCarriageBeforeState), arg0)
+}
+
+// SetCarriageState mocks base method.
+func (m *MockHistory) SetCarriageState(arg0 undo.CarriageState) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetCarriageState", arg0)
+}
+
+// SetCarriageState indicates an expected call of SetCarriageState.
+func (mr *MockHistoryMockRecorder) SetCarriageState(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCarriageState", reflect.TypeOf((*MockHistory)(nil).SetCarriageState), arg0)
 }

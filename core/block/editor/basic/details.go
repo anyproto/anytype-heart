@@ -36,10 +36,15 @@ func (bs *basic) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetai
 	// Collect updates handling special cases. These cases could update details themselves, so we
 	// have to apply changes later
 	updates := bs.collectDetailUpdates(details, s)
+
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoRestrictions}
+	if shouldKeepInternalFlags(updates) {
+		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
+	}
 	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
 	s.SetDetails(newDetails)
 
-	if err = bs.Apply(s, smartblock.NoRestrictions); err != nil {
+	if err = bs.Apply(s, applyFlags...); err != nil {
 		return
 	}
 
@@ -58,6 +63,17 @@ func (bs *basic) collectDetailUpdates(details []*pb.RpcObjectSetDetailsDetail, s
 		}
 	}
 	return updates
+}
+
+// shouldKeepInternalFlags is used to keep internal flags in case we update name or description
+// We keep internal flags because we allow user to change object type and apply some template further
+func shouldKeepInternalFlags(updates []*detailUpdate) bool {
+	for _, update := range updates {
+		if update.key == bundle.RelationKeyName.String() || update.key == bundle.RelationKeyDescription.String() {
+			return true
+		}
+	}
+	return false
 }
 
 func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *types.Struct {
@@ -291,11 +307,11 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 	}
 
 	flags := internalflag.NewFromState(s)
-	flags.Remove(model.InternalFlag_editorSelectType)
 	flags.AddToState(s)
 
 	// send event here to send updated details to client
-	if err = bs.Apply(s, smartblock.NoRestrictions); err != nil {
+	// KeepInternalFlags is set because we allow to choose object type and template further
+	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
 		return
 	}
 	return
@@ -314,24 +330,13 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
 	}
 
-	prevTypeID := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyType.String())
-	// nolint:errcheck
-	prevType, _ := bs.systemObjectService.GetObjectType(prevTypeID)
-
 	s.SetObjectTypeKeys(objectTypeKeys)
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
-	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
-		prevType == nil || // if we have no type set for some reason or it is missing
-		float64(prevType.Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
-		if err = bs.SetLayoutInState(s, toLayout); err != nil {
-			return
-		}
-	}
-	return
+	return bs.SetLayoutInState(s, toLayout)
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {

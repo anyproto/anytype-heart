@@ -130,7 +130,7 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	}
 
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
+	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
 func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
@@ -223,7 +223,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 			f.objectStore,
 			f.anytype,
 			f.systemObjectService,
-			f.sourceService,
+			f.spaceService,
 			f.detailsModifier,
 			f.sbtProvider,
 			f.layoutConverter,

@@ -37,97 +37,93 @@ func TestTechSpace_Init(t *testing.T) {
 	defer fx.finish(t)
 }
 
-func TestTechSpace_CreateSpaceView(t *testing.T) {
-	fx := newFixture(t, nil)
-	defer fx.finish(t)
+func TestTechSpace_SpaceViewCreate(t *testing.T) {
+	var (
+		spaceId = "space.id"
+		viewId  = "viewId"
+		view    = &editor.SpaceView{SmartBlock: smarttest.New(viewId)}
+	)
 
-	spaceView := &editor.SpaceView{}
-	fx.objectCache.EXPECT().DeriveTreeObject(ctx, testTechSpaceId, mock.Anything).Return(spaceView, nil)
+	t.Run("success", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
 
-	res, err := fx.CreateSpaceView(ctx, "new.space")
-	require.NoError(t, err)
-	assert.Equal(t, spaceView, res)
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{SpaceID: testTechSpaceId, ObjectID: viewId}).Return(nil, fmt.Errorf("not found"))
+		fx.objectCache.EXPECT().DeriveTreeObject(ctx, testTechSpaceId, mock.Anything).Return(view, nil)
+
+		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId))
+	})
+
+	t.Run("err spaceView exists", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{SpaceID: testTechSpaceId, ObjectID: viewId}).Return(view, nil)
+
+		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId), ErrSpaceViewExists.Error())
+	})
 }
 
-func TestTechSpace_DeriveSpaceViewID(t *testing.T) {
-	fx := newFixture(t, nil)
-	defer fx.finish(t)
-
-	payload := treestorage.TreeStorageCreatePayload{
-		RootRawChange: &treechangeproto.RawTreeChangeWithId{
-			Id: "viewId",
-		},
-	}
-	fx.objectCache.EXPECT().DeriveTreePayload(ctx, testTechSpaceId, mock.Anything).Return(payload, nil)
-
-	res, err := fx.DeriveSpaceViewID(ctx, "new.space")
-	require.NoError(t, err)
-	assert.Equal(t, payload.RootRawChange.Id, res)
+func TestTechSpace_SpaceViewExists(t *testing.T) {
+	var (
+		spaceId = "space.id"
+		viewId  = "viewId"
+		view    = &editor.SpaceView{SmartBlock: smarttest.New(viewId)}
+	)
+	t.Run("exists", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: viewId, SpaceID: testTechSpaceId}).Return(view, nil)
+		exists, err := fx.SpaceViewExists(ctx, spaceId)
+		require.NoError(t, err)
+		assert.True(t, exists)
+	})
+	t.Run("not exists", func(t *testing.T) {
+		fx := newFixture(t, nil)
+		defer fx.finish(t)
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: viewId, SpaceID: testTechSpaceId}).Return(nil, fmt.Errorf("not found"))
+		exists, err := fx.SpaceViewExists(ctx, spaceId)
+		require.NoError(t, err)
+		assert.False(t, exists)
+	})
 }
 
 func TestTechSpace_SetInfo(t *testing.T) {
 	info := spaceinfo.SpaceInfo{
-		SpaceID: "1",
-		ViewID:  "2",
+		SpaceID: "space.id",
 	}
-	spaceView := &editor.SpaceView{SmartBlock: smarttest.New(info.ViewID)}
+	viewId := "viewid"
+	spaceView := &editor.SpaceView{SmartBlock: smarttest.New(viewId)}
 
-	t.Run("existing spaceView", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		fx := newFixture(t, nil)
 		defer fx.finish(t)
 
-		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(spaceView, nil)
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: viewId, SpaceID: testTechSpaceId}).Return(spaceView, nil)
 
 		require.NoError(t, fx.SetInfo(ctx, info))
-		assert.Equal(t, info, fx.GetInfo(info.SpaceID))
 	})
 
-	t.Run("create spaceView", func(t *testing.T) {
+	t.Run("err spaceView not exists", func(t *testing.T) {
 		fx := newFixture(t, nil)
 		defer fx.finish(t)
 
-		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(nil, fmt.Errorf("no object"))
-		fx.objectCache.EXPECT().DeriveTreeObject(ctx, testTechSpaceId, mock.Anything).Return(spaceView, nil)
+		fx.expectDeriveTreePayload(viewId)
+		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: viewId, SpaceID: testTechSpaceId}).Return(nil, fmt.Errorf("object not found"))
 
-		require.NoError(t, fx.SetInfo(ctx, info))
-		// second call with same info
-		require.NoError(t, fx.SetInfo(ctx, info))
-
-		assert.Equal(t, info, fx.GetInfo(info.SpaceID))
+		require.EqualError(t, fx.SetInfo(ctx, info), ErrSpaceViewNotExists.Error())
 	})
 }
 
-func TestTechSpace_SetStatuses(t *testing.T) {
-	info := spaceinfo.SpaceInfo{
-		SpaceID: "1",
-		ViewID:  "2",
-	}
-	spaceView := &editor.SpaceView{SmartBlock: smarttest.New(info.ViewID)}
-
-	t.Run("changed", func(t *testing.T) {
-		fx := newFixture(t, nil)
-		defer fx.finish(t)
-
-		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(spaceView, nil)
-		require.NoError(t, fx.SetInfo(ctx, info))
-
-		changedInfo := info
-		changedInfo.LocalStatus = spaceinfo.LocalStatusLoading
-		changedInfo.RemoteStatus = spaceinfo.RemoteStatusError
-
-		require.NoError(t, fx.SetStatuses(ctx, info.SpaceID, changedInfo.LocalStatus, changedInfo.RemoteStatus))
-		assert.Equal(t, changedInfo, fx.GetInfo(info.SpaceID))
-	})
-	t.Run("not changed", func(t *testing.T) {
-		fx := newFixture(t, nil)
-		defer fx.finish(t)
-
-		fx.objectCache.EXPECT().GetObject(ctx, domain.FullID{ObjectID: info.ViewID, SpaceID: testTechSpaceId}).Return(spaceView, nil)
-		require.NoError(t, fx.SetInfo(ctx, info))
-
-		require.NoError(t, fx.SetStatuses(ctx, info.SpaceID, info.LocalStatus, info.RemoteStatus))
-		assert.Equal(t, info, fx.GetInfo(info.SpaceID))
-	})
+func TestTechSpace_TechSpaceId(t *testing.T) {
+	fx := newFixture(t, nil)
+	defer fx.finish(t)
+	assert.Equal(t, testTechSpaceId, fx.TechSpaceId())
 }
 
 type fixture struct {
@@ -153,6 +149,7 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.objectCache)).
 		Register(fx.TechSpace)
 
+	// expect wakeUpIds
 	treeSyncer := mock_treesyncer.NewMockTreeSyncer(fx.ctrl)
 	treeSyncer.EXPECT().StartSync()
 	fx.techCore.EXPECT().Id().Return(testTechSpaceId).AnyTimes()
@@ -165,7 +162,18 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 	fx.spaceCore.EXPECT().Derive(ctx, space.TechSpaceType).Return(&space.AnySpace{Space: fx.techCore}, nil)
 
 	require.NoError(t, fx.a.Start(ctx))
+
+	// do not cancel wakeUpIds func
+	fx.TechSpace.(*techSpace).ctxCancel = func() {}
 	return fx
+}
+
+func (fx *fixture) expectDeriveTreePayload(viewId string) {
+	fx.objectCache.EXPECT().DeriveTreePayload(ctx, testTechSpaceId, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{
+			Id: viewId,
+		},
+	}, nil)
 }
 
 func (fx *fixture) finish(t *testing.T) {

@@ -93,17 +93,18 @@ func (fx *fixture) expectRun(newAccount bool) {
 	if newAccount {
 		fx.spaceCore.EXPECT().Derive(mock.Anything, spacecore.SpaceType).Return(&spacecore.AnySpace{Space: fx.personalSpace}, nil)
 		fx.objectCache.EXPECT().DeriveTreeObject(mock.Anything, testPersonalSpaceID, mock.Anything).Return(nil, nil)
-		fx.techSpace.EXPECT().CreateSpaceView(mock.Anything, testPersonalSpaceID).Return(nil, nil)
+		fx.techSpace.EXPECT().SpaceViewCreate(mock.Anything, testPersonalSpaceID).Return(nil)
 	}
 	// startLoad
-	fx.techSpace.EXPECT().GetInfo(testPersonalSpaceID).Return(spaceinfo.SpaceInfo{SpaceID: testPersonalSpaceID}).Times(1)
-	fx.techSpace.EXPECT().DeriveSpaceViewID(mock.Anything, testPersonalSpaceID).Return("personalViewID", nil)
+	fx.techSpace.EXPECT().SpaceViewExists(mock.Anything, testPersonalSpaceID).Return(true, nil)
 	fx.techSpace.EXPECT().SetInfo(mock.Anything, mock.Anything).Return(nil)
 	// wait load
-	fx.techSpace.EXPECT().GetInfo(testPersonalSpaceID).Return(spaceinfo.SpaceInfo{SpaceID: testPersonalSpaceID, LocalStatus: spaceinfo.LocalStatusLoading}).Times(1)
-	fx.techSpace.EXPECT().GetInfo(testPersonalSpaceID).Return(spaceinfo.SpaceInfo{SpaceID: testPersonalSpaceID, LocalStatus: spaceinfo.LocalStatusOk}).Times(1)
 	fx.spaceCore.EXPECT().Get(mock.Anything, testPersonalSpaceID).Return(&spacecore.AnySpace{Space: fx.personalSpace}, nil)
-	fx.techSpace.EXPECT().SetStatuses(mock.Anything, testPersonalSpaceID, spaceinfo.LocalStatusOk, spaceinfo.RemoteStatusUnknown).Return(nil)
+	fx.techSpace.EXPECT().SetInfo(mock.Anything, spaceinfo.SpaceInfo{
+		SpaceID:      testPersonalSpaceID,
+		LocalStatus:  spaceinfo.LocalStatusOk,
+		RemoteStatus: spaceinfo.RemoteStatusUnknown,
+	}).Return(nil)
 
 	// space init
 	fx.objectCache.EXPECT().DeriveObjectID(mock.Anything, testPersonalSpaceID, mock.Anything).Return("derived", nil)

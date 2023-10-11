@@ -105,7 +105,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, _, err := BlockBySource(d.SpaceID(), d.sbtProvider, d.systemObjectService, source)
+	dvContent, err := BlockBySource(d.SpaceID(), d.sbtProvider, d.systemObjectService, source)
 	if err != nil {
 		return
 	}
@@ -113,7 +113,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 	if len(dvContent.Dataview.Views) > 0 {
 		dvContent.Dataview.ActiveView = dvContent.Dataview.Views[0].Id
 	}
-	blockNew := simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
+	blockNew := simple.New(&model.Block{Content: dvContent, Id: blockId}).(dataview.Block)
 	s.Set(blockNew)
 	if block == nil {
 		s.InsertTo("", 0, blockId)
@@ -401,7 +401,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		return sch, nil
 	}
 
-	return nil, fmt.Errorf("relation or type not found")
+	return database.NewEmptySchema(), nil
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -534,9 +534,10 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, systemObjectService system_object.Service, source []string) (res model.BlockContentOfDataview, schema database.Schema, err error) {
-	if schema, err = SchemaBySources(spaceID, sbtProvider, source, systemObjectService); err != nil {
-		return
+func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, systemObjectService system_object.Service, source []string) (*model.BlockContentOfDataview, error) {
+	schema, err := SchemaBySources(spaceID, sbtProvider, source, systemObjectService)
+	if err != nil {
+		return nil, fmt.Errorf("get schema by sources: %w", err)
 	}
 
 	var (
@@ -585,7 +586,7 @@ func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvid
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}
 
-	res = model.BlockContentOfDataview{
+	return &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			RelationLinks: relations,
 			Views: []*model.BlockContentDataviewView{
@@ -599,6 +600,5 @@ func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvid
 				},
 			},
 		},
-	}
-	return
+	}, nil
 }

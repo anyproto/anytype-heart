@@ -455,7 +455,7 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 	}
 }
 
-var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+var WithDataviewID = func(id string, dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		WithEmpty(s)
 		// remove old dataview
@@ -484,7 +484,7 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 		})
 
 		if blockNeedToUpdate || !s.Exists(id) {
-			s.Set(simple.New(&model.Block{Content: &dataview, Id: id}))
+			s.Set(simple.New(&model.Block{Content: dataview, Id: id}))
 			if !s.IsParentOf(s.RootId(), id) {
 				err := s.InsertTo(s.RootId(), model.Block_Inner, id)
 				if err != nil {
@@ -496,7 +496,7 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 	}
 }
 
-var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+var WithDataview = func(dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return WithDataviewID(DataviewBlockId, dataview, forceViews)
 }
 

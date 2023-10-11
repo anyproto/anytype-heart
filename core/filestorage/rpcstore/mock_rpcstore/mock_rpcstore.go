@@ -14,10 +14,11 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	fileproto "github.com/anyproto/any-sync/commonfile/fileproto"
-	rpcstore "github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	gomock "go.uber.org/mock/gomock"
+
+	rpcstore "github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 )
 
 // MockService is a mock of Service interface.

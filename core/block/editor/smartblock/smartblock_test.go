@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
@@ -404,6 +405,64 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 	})
 }
 
+func Test_removeInternalFlags(t *testing.T) {
+	t.Run("no flags - no changes", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", nil).(*state.State)
+		st.SetDetail(bundle.RelationKeyInternalFlags.String(), pbtypes.IntList())
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+	})
+	t.Run("EmptyDelete flag is not removed when state is empty", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", nil).(*state.State)
+		flags := defaultInternalFlags()
+		flags.AddToState(st)
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Len(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()), 1)
+	})
+	t.Run("all flags are removed when title is not empty", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", map[string]simple.Block{
+			"title": simple.New(&model.Block{Id: "title"}),
+		}).(*state.State)
+		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("some name"))
+		flags := defaultInternalFlags()
+		flags.AddToState(st)
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+	})
+	t.Run("all flags are removed when state has non-empty text blocks", func(t *testing.T) {
+		// given
+		st := state.NewDoc("test", map[string]simple.Block{
+			"test": simple.New(&model.Block{Id: "test", ChildrenIds: []string{"text"}}),
+			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "some text"},
+			}}),
+		}).(*state.State)
+		flags := defaultInternalFlags()
+		flags.AddToState(st)
+
+		// when
+		removeInternalFlags(st)
+
+		// then
+		assert.Empty(t, pbtypes.GetIntList(st.CombinedDetails(), bundle.RelationKeyInternalFlags.String()))
+	})
+}
+
 type fixture struct {
 	ctrl               *gomock.Controller
 	source             *mockSource.MockSource
@@ -499,4 +558,11 @@ func (p *creationInfoProvider) ReadDoc(_ context.Context, _ source.ChangeReceive
 }
 func (p *creationInfoProvider) PushChange(_ source.PushChangeParams) (id string, err error) {
 	return "", nil
+}
+
+func defaultInternalFlags() (flags internalflag.Set) {
+	flags.Add(model.InternalFlag_editorDeleteEmpty)
+	flags.Add(model.InternalFlag_editorSelectType)
+	flags.Add(model.InternalFlag_editorSelectTemplate)
+	return
 }

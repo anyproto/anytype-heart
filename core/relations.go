@@ -283,7 +283,6 @@ func (mw *Middleware) ObjectCreateRelationOption(cctx context.Context, req *pb.R
 }
 
 func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcRelationListRemoveOptionResponseErrorCode, err error) *pb.RpcRelationListRemoveOptionResponse {
 		if err != nil {
 			return &pb.RpcRelationListRemoveOptionResponse{
@@ -303,14 +302,14 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		err = bs.RemoveListOption(ctx, request.OptionIds, request.CheckInObjects)
+		err = bs.RemoveListOption(request.OptionIds, request.CheckInObjects)
 		return err
 	})
 	if err != nil {
 		if errors.Is(err, block.ErrOptionUsedByOtherObjects) {
-			return response(pb.RpcRelationListRemoveOptionResponseError_OPTION_USED_BY_OBJECTS, nil)
+			return response(pb.RpcRelationListRemoveOptionResponseError_OPTION_USED_BY_OBJECTS, err)
 		}
-		return response(pb.RpcRelationListRemoveOptionResponseError_UNKNOWN_ERROR, nil)
+		return response(pb.RpcRelationListRemoveOptionResponseError_UNKNOWN_ERROR, err)
 	}
 
 	return response(pb.RpcRelationListRemoveOptionResponseError_NULL, nil)
