@@ -6,7 +6,6 @@ on:
     inputs:
       alpha_version:
         description: 'Alpha version'
-        required: true
         default: ''
       run-on-runner:
         description: 'Specify the runner to use'
