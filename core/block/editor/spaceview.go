@@ -10,6 +10,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -51,6 +53,25 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	s.DisableLayouts()
 	s.spaceService.OnViewCreated(spaceID)
 	return s.setSpaceInfo(ctx.State, spaceinfo.SpaceInfo{})
+}
+
+func (s *SpaceView) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	return migration.Migration{
+		Version: 1,
+		Proc: func(s *state.State) {
+			template.InitTemplate(s,
+				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
+				template.WithRelations([]domain.RelationKey{
+					bundle.RelationKeySpaceLocalStatus,
+					bundle.RelationKeySpaceRemoteStatus,
+				}),
+			)
+		},
+	}
+}
+
+func (s *SpaceView) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations(nil)
 }
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -95,9 +116,10 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 var workspaceKeysToCopy = []string{
 	bundle.RelationKeyName.String(),
 	bundle.RelationKeyIconImage.String(),
-	bundle.RelationKeyIconEmoji.String(),
 	bundle.RelationKeyIconOption.String(),
 	bundle.RelationKeySpaceDashboardId.String(),
+	bundle.RelationKeyCreator.String(),
+	bundle.RelationKeyCreatedDate.String(),
 }
 
 func (s *SpaceView) SetSpaceData(details *types.Struct) error {
