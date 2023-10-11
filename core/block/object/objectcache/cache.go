@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-object-cache")
@@ -68,7 +67,6 @@ type personalIDProvider interface {
 
 type objectCache struct {
 	objectFactory  objectFactory
-	sbtProvider    typeprovider.SmartBlockTypeProvider
 	spaceService   spacecore.SpaceCoreService
 	provider       personalIDProvider
 	accountService accountservice.Service
@@ -86,7 +84,6 @@ func (c *objectCache) Init(a *app.App) error {
 	c.accountService = app.MustComponent[accountservice.Service](a)
 	c.objectFactory = app.MustComponent[objectFactory](a)
 	c.provider = app.MustComponent[personalIDProvider](a)
-	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	c.cache = ocache.New(
 		c.cacheLoad,
@@ -129,7 +126,6 @@ func ContextWithBuildOptions(ctx context.Context, buildOpts source.BuildOptions)
 }
 
 func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Object, err error) {
-	// TODO Pass options as parameter?
 	opts := ctx.Value(optsKey).(cacheOpts)
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
 		return c.objectFactory.InitObject(id, &smartblock.InitContext{Ctx: ctx, BuildOpts: opts.buildOption, SpaceID: opts.spaceId})
@@ -153,11 +149,7 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 		break
 	}
 
-	sbt, _ := c.sbtProvider.Type(opts.spaceId, id)
-	switch sbt {
-	default:
-		return buildObject(id)
-	}
+	return buildObject(id)
 }
 
 func (c *objectCache) GetObject(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
