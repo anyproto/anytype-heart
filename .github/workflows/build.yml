@@ -79,7 +79,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             VERSION=${{ github.event.inputs.alpha_version }}
             if [ -z "$VERSION" ]; then
-              VERSION=${GITHUB_SHA::7}
+              VERSION=$(git rev-parse --short HEAD)
             fi
           fi
           if [ -z "$VERSION" ]; then
@@ -295,16 +295,7 @@ jobs:
           GIT_SUMMARY=$(git describe --tags --always)
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            VERSION=${{ github.event.inputs.alpha_version }}
-            if [ -z "$VERSION" ]; then
-              VERSION=${GITHUB_SHA}
-            fi
-          fi
-          if [ -z "$VERSION" ]; then
-            VERSION=${GITHUB_REF##*/}
-          fi
-          echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
         run: |
