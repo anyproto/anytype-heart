@@ -136,6 +136,7 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 		initCtx.Ctx = ctx
 		initCtx.SpaceID = opts.spaceId
 		initCtx.BuildOpts = opts.buildOption
+		initCtx.KeyToIDConverter = c.keyConverter
 		return c.objectFactory.InitObject(id, initCtx)
 	}
 
