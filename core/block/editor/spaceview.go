@@ -80,7 +80,7 @@ func (s *SpaceView) initTemplate(st *state.State) {
 			bundle.RelationKeyTargetSpaceId,
 		}),
 	)
-},
+}
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return false, nil
