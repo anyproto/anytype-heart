@@ -18,7 +18,7 @@ type Profile struct {
 
 func (a *Anytype) LocalProfile(spaceID string) (Profile, error) {
 	profile := Profile{AccountAddr: a.wallet.GetAccountPrivkey().GetPublic().Account()}
-	profileID := a.PredefinedObjects(spaceID).Profile
+	profileID := a.ProfileID(spaceID)
 
 	if a.objectStore == nil {
 		return profile, errors.New("objectstore not available")
@@ -48,5 +48,5 @@ func (a *Anytype) LocalProfile(spaceID string) (Profile, error) {
 }
 
 func (a *Anytype) ProfileID(spaceID string) string {
-	return a.PredefinedObjects(spaceID).Profile
+	return "TODO Profile"
 }

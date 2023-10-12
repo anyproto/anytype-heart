@@ -9,13 +9,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
 var log = logging.Logger("anytype-core")
@@ -27,12 +24,7 @@ const (
 type Service interface {
 	Stop() error
 	IsStarted() bool
-	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
-	GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string
-	GetSystemRelationID(spaceID string, relationKey domain.RelationKey) string
-
 	ProfileInfo
-
 	app.ComponentRunnable
 }
 
@@ -82,21 +74,6 @@ func (a *Anytype) IsStarted() bool {
 	defer a.lock.Unlock()
 
 	return a.isStarted
-}
-
-func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds {
-	if spaceID == addr.AnytypeMarketplaceWorkspace {
-		return threads.DerivedSmartblockIds{}
-	}
-	return threads.DerivedSmartblockIds{}
-}
-
-func (a *Anytype) GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string {
-	return a.PredefinedObjects(spaceID).SystemTypes[typeKey]
-}
-
-func (a *Anytype) GetSystemRelationID(spaceID string, relationKey domain.RelationKey) string {
-	return a.PredefinedObjects(spaceID).SystemRelations[relationKey]
 }
 
 func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {

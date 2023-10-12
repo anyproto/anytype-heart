@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -37,25 +36,13 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-type PredefinedObjectsGetter interface {
-	GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string
-}
-
-func NewFile(
-	sb smartblock.SmartBlock,
-	fileSource BlockService,
-	idGetter PredefinedObjectsGetter,
-	tempDirProvider core.TempDirProvider,
-	fileService files.Service,
-	picker getblock.ObjectGetter,
-) File {
+func NewFile(sb smartblock.SmartBlock, fileSource BlockService, tempDirProvider core.TempDirProvider, fileService files.Service, picker getblock.ObjectGetter) File {
 	return &sfile{
-		SmartBlock:        sb,
-		fileSource:        fileSource,
-		tempDirProvider:   tempDirProvider,
-		fileService:       fileService,
-		picker:            picker,
-		predefinedObjects: idGetter,
+		SmartBlock:      sb,
+		fileSource:      fileSource,
+		tempDirProvider: tempDirProvider,
+		fileService:     fileService,
+		picker:          picker,
 	}
 }
 
@@ -85,11 +72,10 @@ type FileSource struct {
 
 type sfile struct {
 	smartblock.SmartBlock
-	fileSource        BlockService
-	tempDirProvider   core.TempDirProvider
-	fileService       files.Service
-	picker            getblock.ObjectGetter
-	predefinedObjects PredefinedObjectsGetter
+	fileSource      BlockService
+	tempDirProvider core.TempDirProvider
+	fileService     files.Service
+	picker          getblock.ObjectGetter
 }
 
 func (sf *sfile) Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error) {

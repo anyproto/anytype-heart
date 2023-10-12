@@ -40,14 +40,7 @@ type Profile struct {
 }
 
 func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, fileBlockService file.BlockService, anytype core.Service, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Profile {
-	f := file.NewFile(
-		sb,
-		fileBlockService,
-		anytype,
-		tempDirProvider,
-		fileService,
-		picker,
-	)
+	f := file.NewFile(sb, fileBlockService, tempDirProvider, fileService, picker)
 	return &Profile{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
