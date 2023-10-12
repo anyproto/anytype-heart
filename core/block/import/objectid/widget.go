@@ -2,6 +2,7 @@ package objectid
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -19,9 +20,9 @@ func newWidget(spaceService space.SpaceService) *widget {
 }
 
 func (w widget) GetIDAndPayload(ctx context.Context, spaceID string, _ *converter.Snapshot, _ time.Time, _ bool) (string, treestorage.TreeStorageCreatePayload, error) {
-	ds, err := w.spaceService.DerivedIDs(ctx, spaceID)
+	spc, err := w.spaceService.Get(ctx, spaceID)
 	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, err
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)
 	}
-	return ds.Widgets, treestorage.TreeStorageCreatePayload{}, nil
+	return spc.DerivedIDs().Widgets, treestorage.TreeStorageCreatePayload{}, nil
 }

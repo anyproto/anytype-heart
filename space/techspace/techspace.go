@@ -39,6 +39,7 @@ type TechSpace interface {
 	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 	SpaceViewId(id string) (string, error)
+}
 
 type SpaceView interface {
 	sync.Locker

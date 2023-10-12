@@ -5,14 +5,12 @@ package pb
 
 import (
 	fmt "fmt"
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	proto "github.com/gogo/protobuf/proto"
+	types "github.com/gogo/protobuf/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
-
-	proto "github.com/gogo/protobuf/proto"
-	types "github.com/gogo/protobuf/types"
-
-	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

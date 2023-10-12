@@ -99,7 +99,7 @@ func (oc *ObjectCreator) Create(
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(st, derivedSmartblockIds.Workspace)
+		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
 	}
 
@@ -295,7 +295,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, workspace string) {
+func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []*pb.RpcObjectSetDetailsDetail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())

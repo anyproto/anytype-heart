@@ -37,8 +37,6 @@ type cacheOpts struct {
 	putObject    smartblock.SmartBlock
 }
 
-const CName = "client.object.objectcache"
-
 type InitFunc = func(id string) *smartblock.InitContext
 
 type ObjectFactory interface {
