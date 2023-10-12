@@ -29,7 +29,6 @@ const (
 type Service interface {
 	Stop() error
 	IsStarted() bool
-	AccountObjects() threads.DerivedSmartblockIds
 	PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 	GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string
 	GetSystemRelationID(spaceID string, relationKey domain.RelationKey) string
@@ -80,7 +79,6 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
-	a.derivedIDs = app.MustComponent[derivedIDsGetter](ap)
 	a.personalGetter = app.MustComponent[personalSpaceIDGetter](ap)
 	return
 }
@@ -100,13 +98,6 @@ func (a *Anytype) IsStarted() bool {
 	defer a.lock.Unlock()
 
 	return a.isStarted
-}
-
-// PredefinedBlocks returns default blocks like home and archive
-// ⚠️ Will return empty struct in case it runs before Anytype.Start()
-// TODO Its deprecated
-func (a *Anytype) AccountObjects() threads.DerivedSmartblockIds {
-	return a.PredefinedObjects(a.personalGetter.PersonalSpaceID())
 }
 
 func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds {

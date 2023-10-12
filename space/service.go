@@ -46,7 +46,9 @@ type isNewAccount interface {
 
 type SpaceService interface {
 	Create(ctx context.Context) (space Space, err error)
+
 	Get(ctx context.Context, id string) (space Space, err error)
+	GetPersonalSpace(ctx context.Context) (space Space, err error)
 
 	app.ComponentRunnable
 }
@@ -171,6 +173,10 @@ func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error)
 		return nil, err
 	}
 	return s.waitLoad(ctx, spaceID)
+}
+
+func (s *service) GetPersonalSpace(ctx context.Context) (sp Space, err error) {
+	return s.Get(ctx, s.personalSpaceID)
 }
 
 func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error) {

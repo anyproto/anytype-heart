@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -151,16 +152,22 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	profileDetails, accountDetails := buildDetails(profile, icon)
 	bs := s.app.MustComponent(block.CName).(*block.Service)
-	coreService := s.app.MustComponent(core.CName).(core.Service)
+
+	spaceService := app.MustComponent[space.SpaceService](s.app)
+	spc, err := spaceService.GetPersonalSpace(context.Background())
+	if err != nil {
+		return fmt.Errorf("get personal space: %w", err)
+	}
+	accountObjects := spc.DerivedIDs()
 
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.AccountObjects().Profile,
+		ContextId: accountObjects.Profile,
 		Details:   profileDetails,
 	}); err != nil {
 		return err
 	}
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.AccountObjects().Workspace,
+		ContextId: accountObjects.Workspace,
 		Details:   accountDetails,
 	}); err != nil {
 		return err
