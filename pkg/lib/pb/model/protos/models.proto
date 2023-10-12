@@ -862,7 +862,13 @@ enum SpaceStatus {
 }
 
 message Metadata {
-    message Account {
+    MetadataType metadataType = 1;
+    bytes metadataPayload = 2;
+    message IdentityPayload {
         bytes profileSymKey = 1;
     }
+}
+
+enum MetadataType {
+    Identity = 0;
 }

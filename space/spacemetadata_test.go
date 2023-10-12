@@ -22,8 +22,12 @@ func TestSpace_deriveAccountMetadata(t *testing.T) {
 	metadata2, err := deriveAccountMetadata(randKeys.SignKey)
 	require.NoError(t, err)
 	require.Equal(t, metadata1, metadata2)
-	metadata := &model.MetadataAccount{}
+	metadata := &model.Metadata{}
 	err = proto.Unmarshal(metadata1, metadata)
 	require.NoError(t, err)
-	require.Equal(t, symKeyRaw, metadata.ProfileSymKey)
+	require.Equal(t, model.MetadataType_Identity, metadata.MetadataType)
+	metadataPayload := &model.MetadataIdentityPayload{}
+	err = proto.Unmarshal(metadata.MetadataPayload, metadataPayload)
+	require.NoError(t, err)
+	require.Equal(t, symKeyRaw, metadataPayload.ProfileSymKey)
 }
