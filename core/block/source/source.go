@@ -131,13 +131,8 @@ type SourceWithType interface {
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-func (s *service) newTreeSource(ctx context.Context, spaceID string, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error) {
-	spc, err := s.spaceService.Get(ctx, spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("get space: %w", err)
-	}
-	var ot objecttree.ObjectTree
-	ot, err = spc.TreeBuilder().BuildTree(ctx, id, buildOpts)
+func (s *service) newTreeSource(ctx context.Context, space Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error) {
+	ot, err := space.TreeBuilder().BuildTree(ctx, id, buildOpts)
 	if err != nil {
 		return nil, fmt.Errorf("build tree: %w", err)
 	}
@@ -150,8 +145,8 @@ func (s *service) newTreeSource(ctx context.Context, spaceID string, id string, 
 	return &source{
 		ObjectTree:          ot,
 		id:                  id,
-		spaceID:             spaceID,
-		spaceService:        s.spaceService,
+		spaceID:             space.Id(),
+		spaceService:        s.spaceCoreService,
 		openedAt:            time.Now(),
 		smartblockType:      sbt,
 		accountService:      s.accountService,

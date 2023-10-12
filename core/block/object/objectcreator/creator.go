@@ -389,23 +389,25 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		return "", nil, fmt.Errorf("query bundled templates: %w", err)
 	}
 
-	alreadyInstalledTemplates, _, err := w.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(w.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyTemplate)),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       object.Fields[bundle.RelationKeyType.String()],
-			},
-		},
-	})
-	if err != nil {
-		return
-	}
+	var alreadyInstalledTemplates []database.Record
+	// TODO Will be fixed in GO-2169 soon
+	// alreadyInstalledTemplates, _, err := w.objectStore.Query(database.Query{
+	// 	Filters: []*model.BlockContentDataviewFilter{
+	// 		{
+	// 			RelationKey: bundle.RelationKeyType.String(),
+	// 			Condition:   model.BlockContentDataviewFilter_Equal,
+	// 			Value:       pbtypes.String(w.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyTemplate)),
+	// 		},
+	// 		{
+	// 			RelationKey: bundle.RelationKeyTargetObjectType.String(),
+	// 			Condition:   model.BlockContentDataviewFilter_Equal,
+	// 			Value:       object.Fields[bundle.RelationKeyType.String()],
+	// 		},
+	// 	},
+	// })
+	// if err != nil {
+	// 	return
+	// }
 
 	var existingTemplatesMap = map[string]struct{}{}
 	for _, rec := range alreadyInstalledTemplates {

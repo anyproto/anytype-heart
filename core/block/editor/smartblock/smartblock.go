@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
@@ -107,6 +108,8 @@ func New(
 }
 
 type Space interface {
+	Id() string
+	TreeBuilder() objecttreebuilder.TreeBuilder
 	DerivedIDs() threads.DerivedSmartblockIds
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
@@ -179,8 +182,7 @@ type InitContext struct {
 	BuildOpts      source.BuildOptions
 	Ctx            context.Context
 
-	// Comes from space
-	KeyToIDConverter Space
+	Space Space
 }
 
 type linkSource interface {
@@ -295,7 +297,7 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	sb.space = ctx.KeyToIDConverter
+	sb.space = ctx.Space
 
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)

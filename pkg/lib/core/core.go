@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -41,13 +40,8 @@ var _ app.Component = (*Anytype)(nil)
 
 var _ Service = (*Anytype)(nil)
 
-type personalSpaceIDGetter interface {
-	PersonalSpaceID() string
-}
-
 type Anytype struct {
-	personalGetter personalSpaceIDGetter
-	objectStore    objectstore.ObjectStore
+	objectStore objectstore.ObjectStore
 
 	migrationOnce    sync.Once
 	lock             sync.RWMutex
@@ -58,8 +52,6 @@ type Anytype struct {
 	subscribeOnce sync.Once
 	config        *config.Config
 	wallet        wallet.Wallet
-
-	commonFiles fileservice.FileService
 }
 
 func New() *Anytype {
@@ -72,8 +64,6 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.wallet = ap.MustComponent(wallet.CName).(wallet.Wallet)
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	a.commonFiles = ap.MustComponent(fileservice.CName).(fileservice.FileService)
-	a.personalGetter = app.MustComponent[personalSpaceIDGetter](ap)
 	return
 }
 

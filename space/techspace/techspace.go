@@ -9,7 +9,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -38,6 +37,12 @@ type TechSpace interface {
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
+}
+
+type SpaceView interface {
+	sync.Locker
+	SetSpaceData(details *types.Struct) error
+	SetSpaceInfo(info spaceinfo.SpaceInfo) (err error)
 }
 
 func New() TechSpace {
@@ -96,7 +101,7 @@ func (s *techSpace) TechSpaceId() string {
 func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.doSpaceView(ctx, info.SpaceID, func(spaceView *editor.SpaceView) error {
+	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceInfo(info)
 	})
 }
@@ -128,7 +133,7 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 }
 
 func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
-	return s.doSpaceView(ctx, spaceId, func(spaceView *editor.SpaceView) error {
+	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
 	})
 }
@@ -166,7 +171,7 @@ func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (stri
 	return payload.RootRawChange.Id, nil
 }
 
-func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(spaceView *editor.SpaceView) error) (err error) {
+func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error) {
 	viewId, err := s.getViewId(ctx, spaceID)
 	if err != nil {
 		return
@@ -175,7 +180,7 @@ func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(
 	if err != nil {
 		return ErrSpaceViewNotExists
 	}
-	spaceView, ok := obj.(*editor.SpaceView)
+	spaceView, ok := obj.(SpaceView)
 	if !ok {
 		return ErrNotASpaceView
 	}

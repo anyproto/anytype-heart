@@ -226,7 +226,10 @@ func (sf *sfile) UploadFileWithHash(blockId string, source FileSource) (UploadRe
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
 	s := sf.NewState().SetGroupId(groupId)
-	pageTypeId := sf.predefinedObjects.GetSystemTypeID(sf.SpaceID(), bundle.TypeKeyPage)
+	pageTypeId, err := sf.Space().GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
+	if err != nil {
+		return
+	}
 	for _, entry := range entries {
 		var blockId, pageId string
 		if entry.isDir {

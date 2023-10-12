@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -63,7 +64,7 @@ type service struct {
 	linkPreview    linkpreview.LinkPreview
 	tempDirService core.TempDirProvider
 	fileService    files.Service
-	coreService    core.Service
+	spaceService   space.SpaceService
 }
 
 func New() Service {
@@ -75,8 +76,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.creator = a.MustComponent("objectCreator").(ObjectCreator)
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-	s.coreService = a.MustComponent(core.CName).(core.Service)
-
+	s.spaceService = app.MustComponent[space.SpaceService](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	return nil
@@ -93,7 +93,14 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 		return "", nil, fmt.Errorf("empty details")
 	}
 
-	typeID := s.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyBookmark)
+	spc, err := s.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
+	typeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyBookmark)
+	if err != nil {
+		return "", nil, fmt.Errorf("get bookmark type id: %w", err)
+	}
 	url := pbtypes.GetString(details, bundle.RelationKeySource.String())
 
 	records, _, err := s.store.Query(database.Query{
@@ -112,7 +119,7 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 			{
 				RelationKey: bundle.RelationKeyType.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeID),
+				Value:       pbtypes.String(typeId),
 			},
 		},
 		Limit: 1,

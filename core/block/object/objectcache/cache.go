@@ -119,10 +119,10 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 	opts := ctx.Value(optsKey).(cacheOpts)
 	buildObject := func(id string) (sb smartblock.SmartBlock, err error) {
 		initCtx := &smartblock.InitContext{
-			Ctx:              ctx,
-			BuildOpts:        opts.buildOption,
-			SpaceID:          opts.spaceId,
-			KeyToIDConverter: c.keyConverter,
+			Ctx:       ctx,
+			BuildOpts: opts.buildOption,
+			SpaceID:   opts.spaceId,
+			Space:     c.keyConverter,
 		}
 		return c.objectFactory.InitObject(id, initCtx)
 	}
@@ -132,7 +132,7 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 		initCtx.Ctx = ctx
 		initCtx.SpaceID = opts.spaceId
 		initCtx.BuildOpts = opts.buildOption
-		initCtx.KeyToIDConverter = c.keyConverter
+		initCtx.Space = c.keyConverter
 		return c.objectFactory.InitObject(id, initCtx)
 	}
 

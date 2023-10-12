@@ -37,8 +37,15 @@ type idResolver interface {
 	ResolveSpaceID(objectID string) (spaceID string, err error)
 }
 
+type Space interface {
+	Id() string
+	TreeBuilder() objecttreebuilder.TreeBuilder
+	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+}
+
 type Service interface {
-	NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (source Source, err error)
+	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
 	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
@@ -53,7 +60,7 @@ type service struct {
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	accountService      accountservice.Service
 	fileStore           filestore.FileStore
-	spaceService        spacecore.SpaceCoreService
+	spaceCoreService    spacecore.SpaceCoreService
 	storageService      storage.ClientStorage
 	fileService         files.Service
 	systemObjectService systemObjectService
@@ -70,7 +77,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
-	s.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
+	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.systemObjectService = app.MustComponent[systemObjectService](a)
 
@@ -94,8 +101,8 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 	}
 }
 
-func (s *service) NewSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (Source, error) {
-	src, err := s.newSource(ctx, id, spaceID, buildOptions)
+func (s *service) NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (Source, error) {
+	src, err := s.newSource(ctx, space, id, buildOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -106,19 +113,19 @@ func (s *service) NewSource(ctx context.Context, id string, spaceID string, buil
 	return src, nil
 }
 
-func (s *service) newSource(ctx context.Context, id string, spaceID string, buildOptions BuildOptions) (Source, error) {
+func (s *service) newSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (Source, error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
 	if id == addr.MissingObject {
 		return NewMissingObject(), nil
 	}
-	st, _ := s.sbtProvider.Type(spaceID, id)
+	st, _ := s.sbtProvider.Type(space.Id(), id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
-		return NewFile(s.coreService, s.fileStore, s.fileService, spaceID, id), nil
+		return NewFile(s.coreService, s.fileStore, s.fileService, space.Id(), id), nil
 	case smartblock.SmartBlockTypeDate:
-		return NewDate(spaceID, id, s.coreService), nil
+		return NewDate(space, id, s.coreService), nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return NewBundledObjectType(id), nil
 	case smartblock.SmartBlockTypeBundledRelation:
@@ -132,7 +139,7 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 		return staticSrc, nil
 	}
 
-	return s.newTreeSource(ctx, spaceID, id, buildOptions.BuildTreeOpts())
+	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
 }
 
 func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error) {
@@ -156,7 +163,7 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 		return &source{
 			spaceID:        spaceID,
 			smartblockType: blockType,
-			spaceService:   s.spaceService,
+			spaceService:   s.spaceCoreService,
 			sbtProvider:    s.sbtProvider,
 		}, nil
 	}
@@ -166,7 +173,8 @@ func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
 	if !strings.HasPrefix(id, addr.DatePrefix) {
 		return nil, fmt.Errorf("unsupported id")
 	}
-	ss := NewDate("", id, s.coreService)
+	// TODO Fix this, but how? It's broken by design, because no one pass spaceId here
+	ss := NewDate(nil, id, s.coreService)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()
