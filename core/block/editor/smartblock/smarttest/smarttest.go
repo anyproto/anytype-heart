@@ -1,12 +1,14 @@
 package smarttest
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -14,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
@@ -22,6 +25,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -54,6 +58,33 @@ type SmartTest struct {
 }
 
 func (st *SmartTest) SpaceID() string { return "" }
+
+type stubSpace struct {
+}
+
+func (s *stubSpace) Id() string {
+	return ""
+}
+
+func (s *stubSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
+	return nil
+}
+
+func (s *stubSpace) DerivedIDs() threads.DerivedSmartblockIds {
+	return threads.DerivedSmartblockIds{}
+}
+
+func (s *stubSpace) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
+	return
+}
+
+func (s *stubSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
+	return
+}
+
+func (st *SmartTest) Space() smartblock.Space {
+	return &stubSpace{}
+}
 
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
 	return
