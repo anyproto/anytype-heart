@@ -46,7 +46,7 @@ func (fs *FileSyncer) Sync(id string, b simple.Block) error {
 	}
 	_, err := fs.service.UploadFileBlockWithHash(id, params)
 	if err != nil {
-		return fmt.Errorf("failed syncing file: %s", err)
+		return fmt.Errorf("failed syncing file: %w", err)
 	}
 	return nil
 }

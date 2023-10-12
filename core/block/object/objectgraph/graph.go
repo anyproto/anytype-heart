@@ -3,8 +3,8 @@ package objectgraph
 import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
@@ -14,10 +14,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+var log = logging.LoggerNotSugared("object-graph")
 
 // relationsSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
 var relationsSkipList = []domain.RelationKey{
@@ -183,7 +186,7 @@ func (gr *Builder) appendLinks(
 	for _, link := range links {
 		sbType, err := gr.sbtProvider.Type(spaceID, link)
 		if err != nil {
-			log.Error(err)
+			log.Error("get smartblock type", zap.String("objectId", link), zap.Error(err))
 		}
 		// ignore files because we index all file blocks as outgoing links
 		if sbType != smartblock.SmartBlockTypeFile {

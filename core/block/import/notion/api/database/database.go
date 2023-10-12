@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -29,7 +30,7 @@ const ObjectType = "database"
 
 const rootCollectionName = "Notion Import"
 
-var logger = logging.Logger("notion-import-database")
+var log = logging.Logger("notion-import-database")
 
 type Service struct {
 	collectionService *collection.Service
@@ -178,7 +179,7 @@ func (ds *Service) handleNameProperty(databaseProperty property.DatabaseProperty
 	}
 	err := converter.ReplaceRelationsInDataView(st, relationLinks)
 	if err != nil {
-		logger.Errorf("failed to add relation to notion database, %s", err.Error())
+		log.Errorf("failed to add relation to notion database, %s", err)
 	}
 	return nil
 }
@@ -204,14 +205,14 @@ func (ds *Service) makeRelationSnapshotFromDatabaseProperty(relations *property.
 	if relationKey == bundle.RelationKeyTag.String() {
 		err := converter.ReplaceRelationsInDataView(st, relationLinks)
 		if err != nil {
-			logger.Errorf("failed to make tag relation not hidden in notion database, %s", err.Error())
+			log.Errorf("failed to make tag relation not hidden in notion database, %s", err)
 		}
 		return sn
 	}
 	st.AddRelationLinks(relationLinks)
 	err := converter.AddRelationsToDataView(st, relationLinks)
 	if err != nil {
-		logger.Errorf("failed to add relation to notion database, %s", err.Error())
+		log.Errorf("failed to add relation to notion database, %s", err)
 	}
 	return sn
 }
@@ -241,6 +242,12 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(databaseProperty.GetID())
+	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
+	if err != nil {
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
+		return details
+	}
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	return details
 }
 

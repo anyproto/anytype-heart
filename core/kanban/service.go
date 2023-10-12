@@ -61,7 +61,7 @@ func (s *service) Name() (name string) {
 func (s *service) Grouper(spaceID string, key string) (Grouper, error) {
 	rel, err := s.objectStore.FetchRelationByKey(spaceID, key)
 	if err != nil {
-		return nil, fmt.Errorf("can't get relation %s: %v", key, err)
+		return nil, fmt.Errorf("can't get relation %s: %w", key, err)
 	}
 
 	grouperFn, ok := s.groupColumns[rel.Format]

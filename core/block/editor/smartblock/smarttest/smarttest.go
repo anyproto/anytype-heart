@@ -284,7 +284,7 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 	if hooks {
 		for _, h := range st.hooks {
 			if err = h(smartblock.ApplyInfo{State: s, Changes: s.GetChanges()}); err != nil {
-				return fmt.Errorf("exec hook: %s", err)
+				return fmt.Errorf("exec hook: %w", err)
 			}
 		}
 	}

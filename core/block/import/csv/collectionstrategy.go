@@ -17,16 +17,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var logger = logging.Logger("import-csv")
+var log = logging.Logger("import-csv")
 
 const (
 	defaultRelationName = "Field"
@@ -118,7 +118,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 			Key:    id,
 		})
 		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
-			Id:     addr.RelationKeyToIdPrefix + id,
+			Id:     id,
 			SbType: smartblock.SmartBlockTypeRelation,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 				Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
@@ -176,6 +176,12 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
+	if err != nil {
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
+		return details
+	}
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	return details
 }
 
@@ -271,7 +277,7 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *st
 			Format: relation.Format,
 		})
 		if err != nil {
-			logger.Errorf("failed to add relations to dataview, %s", err.Error())
+			log.Errorf("failed to add relations to dataview, %s", err)
 		}
 	}
 	return c.provideCollectionSnapshots(details, st, p)

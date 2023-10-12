@@ -1,5 +1,4 @@
 dir: "{{.InterfaceDir}}/mock_{{.PackageName}}"
-#testonly: True
 with-expecter: True
 all: False
 outpkg: "mock_{{.PackageName}}"
@@ -42,6 +41,12 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/block/import/objectid:
+    interfaces:
+      IdGetterProvider:
+  github.com/anyproto/anytype-heart/core/block/import:
+    interfaces:
+      Creator:
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:

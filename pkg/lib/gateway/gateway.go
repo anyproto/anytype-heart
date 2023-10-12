@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -200,7 +201,7 @@ func (g *gateway) stopServer() error {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(0))
 		defer cancel()
 		if err := g.server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
-			log.Errorf("gateway stop error: %s", err.Error())
+			log.Errorf("gateway stop error: %s", err)
 		}
 		if err := g.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
@@ -234,7 +235,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	file, reader, err := g.getFile(ctx, r)
 	if err != nil {
-		log.With("path", r.URL.Path).Errorf("error getting file: %s", err)
+		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting file: %s", err)
 		if errors.Is(err, domain.ErrFileNotFound) {
 			http.NotFound(w, r)
 			return
@@ -266,7 +267,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	}
 	file, err := g.fileService.FileByHash(ctx, id)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get file by hash: %s", err)
+		return nil, nil, fmt.Errorf("get file by hash: %w", err)
 	}
 
 	reader, err := file.Reader(ctx)
@@ -289,7 +290,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 
 	file, reader, err := g.getImage(ctx, r)
 	if err != nil {
-		log.With("path", r.URL.Path).Errorf("error getting image: %s", err)
+		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting image: %s", err)
 		if errors.Is(err, domain.ErrFileNotFound) {
 			http.NotFound(w, r)
 			return
@@ -344,4 +345,20 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 
 	reader, err := file.Reader(ctx)
 	return file, reader, err
+}
+
+func cleanUpPathForLogging(input string) string {
+	parts := strings.SplitN(strings.TrimPrefix(input, "/"), "/", 2)
+	if len(parts) < 2 {
+		return input
+	}
+
+	// Don't mask CIDs
+	_, err := cid.Parse(parts[1])
+	if err == nil {
+		return input
+	}
+
+	parts[1] = "<masked invalid path>"
+	return "/" + strings.Join(parts, "/")
 }

@@ -72,7 +72,7 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	if objectTypeID != "" {
 		typeKey, err := t.getTypeKeyById(objectTypeID)
 		if err != nil {
-			return nil, fmt.Errorf("get target object type %s: %s", objectTypeID, err)
+			return nil, fmt.Errorf("get target object type %s: %w", objectTypeID, err)
 		}
 		st.SetObjectTypeKey(typeKey)
 	}

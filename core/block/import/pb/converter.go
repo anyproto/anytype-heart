@@ -2,16 +2,15 @@ package pb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/exp/rand"
 
@@ -274,7 +273,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", uErr)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
 		return snapshot, nil
 	}
@@ -282,10 +281,10 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		data, err := io.ReadAll(rd)
 		if err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		return snapshot, nil
 	}
@@ -322,15 +321,6 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 		p.cleanupEmptyBlock(snapshot)
 	}
 	return id, nil
-}
-
-// getIDForSubObject preserves original id from snapshot for relations and object types
-func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
-	originalID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	if strings.HasPrefix(originalID, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(originalID, addr.RelationKeyToIdPrefix) {
-		return originalID
-	}
-	return id
 }
 
 func (p *Pb) getIDForUserProfile(spaceID string, mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
@@ -437,7 +427,8 @@ func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
 		return key != bundle.RelationKeyIsFavorite.String() &&
 			key != bundle.RelationKeyIsArchived.String() &&
 			key != bundle.RelationKeyCreatedDate.String() &&
-			key != bundle.RelationKeyLastModifiedDate.String()
+			key != bundle.RelationKeyLastModifiedDate.String() &&
+			key != bundle.RelationKeyId.String()
 	})
 
 	for _, snapshot := range snapshots {
@@ -476,7 +467,8 @@ func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *con
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
 		rootObjects = lo.FilterMap(allObjects, func(item *converter.Snapshot, index int) (string, bool) {
-			if item.SbType != smartblock.SmartBlockTypeSubObject && item.SbType != smartblock.SmartBlockTypeTemplate {
+			if item.SbType != smartblock.SmartBlockTypeSubObject && item.SbType != smartblock.SmartBlockTypeTemplate &&
+				item.SbType != smartblock.SmartBlockTypeRelation && item.SbType != smartblock.SmartBlockTypeObjectType {
 				return item.Id, true
 			}
 			return item.Id, false
@@ -513,7 +505,8 @@ func (p *Pb) getObjectsFromWidgets(widgetSnapshot *converter.Snapshot, oldToNewI
 func (p *Pb) filterObjects(objectTypesToImport widgets.ImportWidgetFlags, objectsNotInWidget []*converter.Snapshot) []string {
 	var rootObjects []string
 	for _, snapshot := range objectsNotInWidget {
-		if snapshot.SbType == smartblock.SmartBlockTypeSubObject || snapshot.SbType == smartblock.SmartBlockTypeTemplate {
+		if snapshot.SbType == smartblock.SmartBlockTypeSubObject || snapshot.SbType == smartblock.SmartBlockTypeTemplate ||
+			snapshot.SbType == smartblock.SmartBlockTypeRelation || snapshot.SbType == smartblock.SmartBlockTypeObjectType {
 			continue
 		}
 		if objectTypesToImport.ImportCollection && lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {

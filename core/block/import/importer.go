@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/import/notion"
+	"github.com/anyproto/anytype-heart/core/block/import/objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
@@ -32,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -52,7 +52,7 @@ type Import struct {
 	converters      map[string]converter.Converter
 	s               *block.Service
 	oc              Creator
-	objectIDGetter  IDGetter
+	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
 	sbtProvider     typeprovider.SmartBlockTypeProvider
 	fileSync        filesync.FileSync
@@ -66,8 +66,9 @@ func New() Importer {
 }
 
 func (i *Import) Init(a *app.App) (err error) {
-	i.s = a.MustComponent(block.CName).(*block.Service)
-	coreService := a.MustComponent(core.CName).(core.Service)
+	i.s = app.MustComponent[*block.Service](a)
+	coreService := app.MustComponent[core.Service](a)
+	spaceService := app.MustComponent[space.SpaceService](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{
@@ -85,13 +86,12 @@ func (i *Import) Init(a *app.App) (err error) {
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	spaceService := app.MustComponent[space.SpaceService](a)
-	i.objectIDGetter = NewObjectIDGetter(store, coreService, spaceService)
+	i.idProvider = objectid.NewIDProvider(store, objectCache, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService)
+	i.oc = NewCreator(i.s, objectCache, spaceService, factory, store, relationSyncer, fileStore)
 	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	i.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
+	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
@@ -347,7 +347,6 @@ func (i *Import) getObjectID(
 	updateExisting bool,
 ) error {
 	var (
-		err         error
 		id          string
 		payload     treestorage.TreeStorageCreatePayload
 		createdTime time.Time
@@ -358,17 +357,15 @@ func (i *Import) getObjectID(
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(spaceID, snapshot, createdTime, updateExisting); err == nil {
-		oldIDToNew[snapshot.Id] = id
-		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
-			oldIDToNew[snapshot.Id] = snapshot.Id
-		}
-		if payload.RootRawChange != nil {
-			createPayloads[id] = payload
-		}
-		return nil
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, createdTime, updateExisting)
+	if err != nil {
+		return err
 	}
-	return err
+	oldIDToNew[snapshot.Id] = id
+	if payload.RootRawChange != nil {
+		createPayloads[id] = payload
+	}
+	return nil
 }
 
 func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {
@@ -390,7 +387,7 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(errors.Wrap(converter.ErrCancel, err.Error()))
+			allErrors.Add(fmt.Errorf("%w: %w", converter.ErrCancel, err))
 			pool.Stop()
 			return nil
 		}

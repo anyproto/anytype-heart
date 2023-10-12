@@ -56,7 +56,7 @@ func run() error {
 
 	r, err := zip.OpenReader(path)
 	if err != nil {
-		return fmt.Errorf("cannot open zip file %s: %v", path, err)
+		return fmt.Errorf("cannot open zip file %s: %w", path, err)
 	}
 	defer r.Close()
 
@@ -74,7 +74,7 @@ func run() error {
 
 	zf, err := os.Create(pathToNewZip)
 	if err != nil {
-		return fmt.Errorf("failed to create output zip file: %v", err)
+		return fmt.Errorf("failed to create output zip file: %w", err)
 	}
 	defer zf.Close()
 
@@ -118,7 +118,7 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo) error {
 	for _, f := range files {
 		rd, err := f.Open()
 		if err != nil {
-			return fmt.Errorf("cannot open pb file %s: %v", f.Name, err)
+			return fmt.Errorf("cannot open pb file %s: %w", f.Name, err)
 		}
 		if f.Name == anytypeProfileFilename {
 			fmt.Println(anytypeProfileFilename, "is excluded")
@@ -135,10 +135,10 @@ func processFiles(files []*zip.File, zw *zip.Writer, info *useCaseInfo) error {
 		}
 		nf, err := zw.Create(f.Name)
 		if err != nil {
-			return fmt.Errorf("failed to create new file %s: %v", f.Name, err)
+			return fmt.Errorf("failed to create new file %s: %w", f.Name, err)
 		}
 		if _, err = io.Copy(nf, bytes.NewReader(data)); err != nil {
-			return fmt.Errorf("failed to copy snapshot to new file %s: %v", f.Name, err)
+			return fmt.Errorf("failed to copy snapshot to new file %s: %w", f.Name, err)
 		}
 	}
 	if incorrectFileFound {
@@ -153,7 +153,7 @@ func processFile(r io.ReadCloser, name string, info *useCaseInfo) ([]byte, error
 	id := strings.TrimSuffix(name, filepath.Ext(name))
 	data, err := io.ReadAll(r)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read data from file %s: %v", name, err)
+		return nil, fmt.Errorf("cannot read data from file %s: %w", name, err)
 	}
 
 	if name == constant.ProfileFile {
@@ -195,13 +195,13 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.ChangeSnapshot, sbt
 	snapshotWithType := &pb.SnapshotWithType{}
 	sbt = model.SmartBlockType_Page
 	if err = snapshotWithType.Unmarshal(data); err != nil {
-		return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %v", name, err)
+		return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 	}
 	if snapshotWithType.SbType == model.SmartBlockType_AccountOld {
 		s = &pb.ChangeSnapshot{}
 		isOldAccount = true
 		if err = s.Unmarshal(data); err != nil {
-			return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %v", name, err)
+			return nil, sbt, false, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
 		}
 	} else {
 		s = snapshotWithType.Snapshot
@@ -278,7 +278,7 @@ func processAccountRelatedDetails(s *pb.ChangeSnapshot) {
 func processProfile(data []byte, info *useCaseInfo) ([]byte, error) {
 	profile := &pb.Profile{}
 	if err := profile.Unmarshal(data); err != nil {
-		e := fmt.Errorf("cannot unmarshal profile: %v", err)
+		e := fmt.Errorf("cannot unmarshal profile: %w", err)
 		fmt.Println(e)
 		return nil, e
 	}

@@ -249,7 +249,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 	}
 	existingIDs, err := i.store.HasIDs(fileHashes...)
 	if err != nil {
-		log.Errorf("failed to get existing file ids : %s", err.Error())
+		log.Errorf("failed to get existing file ids : %s", err)
 	}
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
@@ -271,7 +271,7 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			}
 			idxErr = i.store.AddToIndexQueue(id)
 			if idxErr != nil {
-				log.With("id", id).Error(idxErr.Error())
+				log.With("id", id).Error(idxErr)
 			}
 		}(id)
 	}

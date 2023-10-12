@@ -24,7 +24,7 @@ func (d *debug) initHandlers(a *app.App) {
 		r.Get("/debug", func(w http.ResponseWriter, req *http.Request) {
 			err := renderLinksList(w, "/", routes)
 			if err != nil {
-				logger.Error("failed to render links list", err)
+				log.Error("failed to render links list", err)
 			}
 		})
 		d.server = &http.Server{

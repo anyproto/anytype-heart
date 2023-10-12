@@ -143,7 +143,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		if req.Format == pb.RpcObjectListExport_Protobuf {
 			if len(req.ObjectIds) == 0 {
 				if err = e.createProfileFile(req.SpaceId, wr); err != nil {
-					log.Errorf("failed to create profile file: %s", err.Error())
+					log.Errorf("failed to create profile file: %s", err)
 				}
 			}
 		}
@@ -240,7 +240,7 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
 	links, err := e.objectStore.GetOutboundLinksByID(id)
 	if err != nil {
-		log.Errorf("export failed to get outbound links for id: %s", err.Error())
+		log.Errorf("export failed to get outbound links for id: %s", err)
 		return
 	}
 	for _, link := range links {
@@ -255,7 +255,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 			}
 			rec, qErr := e.objectStore.QueryByID([]string{link})
 			if qErr != nil {
-				log.Errorf("failed to query id %s, err: %s", qErr, err.Error())
+				log.Errorf("failed to query id %s, err: %s", qErr, err)
 				continue
 			}
 			if len(rec) > 0 {

@@ -144,7 +144,7 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	imageExif, err := i.Exif(ctx)
 	if err != nil {
-		log.Errorf("failed to get exif for image: %s", err.Error())
+		log.Errorf("failed to get exif for image: %s", err)
 		imageExif = &mill.ImageExifSchema{}
 	}
 

@@ -224,7 +224,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags); err != nil {
-			log.Errorf("failed to update lastOpenedDate: %s", err.Error())
+			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
 		afterApplyTime := time.Now()
 		if obj, err = ob.Show(); err != nil {
@@ -245,7 +245,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 			}, smartblock.HookOnClose)
 		}
 		if err != nil && err != treestorage.ErrUnknownTreeId {
-			log.Errorf("failed to watch status for object %s: %s", id, err.Error())
+			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
 
 		sbType, err := s.sbtProvider.Type(spaceID, id)
@@ -652,8 +652,25 @@ func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 	panic("should be removed")
 }
 
-func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
-	panic("should be removed")
+func (s *Service) SetSpaceInfo(req *pb.RpcWorkspaceSetInfoRequest) error {
+	ctx := context.TODO()
+	spc, err := s.spaceService.Get(ctx, req.SpaceId)
+	if err != nil {
+		return err
+	}
+	workspaceId := spc.DerivedIDs().Workspace
+
+	setDetails := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
+	for k, v := range req.Details.GetFields() {
+		setDetails = append(setDetails, &pb.RpcObjectSetDetailsDetail{
+			Key:   k,
+			Value: v,
+		})
+	}
+	return s.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: workspaceId,
+		Details:   setDetails,
+	})
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
@@ -992,7 +1009,7 @@ func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, e
 		}
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("can't apply template: %v", err)
+		return nil, fmt.Errorf("can't apply template: %w", err)
 	}
 	return
 }
@@ -1094,7 +1111,7 @@ func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (
 	err = s.DeleteObject(id)
 	if err != nil {
 		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())
+		log.Errorf("failed to delete object after conversion to bookmark: %s", err)
 		err = nil
 	}
 

@@ -2,11 +2,11 @@ package notion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
@@ -21,7 +21,7 @@ var (
 	ErrorNotionUnavailable = errors.New("unavailable")
 )
 
-var logger = logging.Logger("notion-ping")
+var log = logging.Logger("notion-ping")
 
 const (
 	endpoint = "/users?page_size=1"
@@ -42,21 +42,21 @@ func NewPingService(client *client.Client) *Service {
 func (s *Service) Ping(ctx context.Context, apiKey string) error {
 	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, endpoint, nil)
 	if err != nil {
-		logger.With(zap.String("method", "PrepareRequest")).Error(err)
-		return errors.Wrap(ErrorInternal, fmt.Sprintf("ping: %s", err.Error()))
+		log.With(zap.String("method", "PrepareRequest")).Error(err)
+		return fmt.Errorf("%w: ping: %w", ErrorInternal, err)
 	}
 	res, err := s.client.HTTPClient.Do(req)
 	if err != nil {
-		logger.With(zap.String("method", "Do")).Error(err)
-		return errors.Wrap(ErrorInternal, fmt.Sprintf("ping: %s", err.Error()))
+		log.With(zap.String("method", "Do")).Error(err)
+		return fmt.Errorf("%w: ping: %w", ErrorInternal, err)
 	}
 	defer res.Body.Close()
 
 	b, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		logger.With(zap.String("method", "ioutil.ReadAll")).Error(err)
-		return errors.Wrap(ErrorInternal, err.Error())
+		log.With(zap.String("method", "ioutil.ReadAll")).Error(err)
+		return fmt.Errorf("%w: %w", ErrorInternal, err)
 	}
 	if res.StatusCode != http.StatusOK {
 		if res.StatusCode == http.StatusUnauthorized {
@@ -70,7 +70,7 @@ func (s *Service) Ping(ctx context.Context, apiKey string) error {
 		}
 		err = client.TransformHTTPCodeToError(b)
 		if err != nil {
-			return errors.Wrap(ErrorInternal, err.Error())
+			return fmt.Errorf("%w: %w", ErrorInternal, err)
 		}
 	}
 	return nil

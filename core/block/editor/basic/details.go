@@ -96,7 +96,7 @@ func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *type
 func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDetailsDetail) (*detailUpdate, error) {
 	if detail.Value != nil {
 		if err := pbtypes.ValidateValue(detail.Value); err != nil {
-			return nil, fmt.Errorf("detail %s validation error: %s", detail.Key, err.Error())
+			return nil, fmt.Errorf("detail %s validation error: %w", detail.Key, err)
 		}
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
 			return nil, fmt.Errorf("special case: %w", err)
@@ -200,7 +200,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value
 		if s != "" {
 			err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
 			if err != nil {
-				return fmt.Errorf("failed to parse URL: %s", err.Error())
+				return fmt.Errorf("failed to parse URL: %w", err)
 			}
 		}
 		// todo: should we allow schemas other than http/https?
@@ -327,7 +327,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	}
 
 	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
-		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
+		return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
@@ -354,7 +354,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
 	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
-		return fmt.Errorf("layout change is restricted for object '%s': %v", bs.Id(), err)
+		return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
 	}
 
 	return bs.SetLayoutInStateAndIgnoreRestriction(s, toLayout)

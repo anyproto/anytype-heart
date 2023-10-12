@@ -10,6 +10,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -50,7 +52,27 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 	s.DisableLayouts()
 	s.spaceService.OnViewCreated(spaceID)
-	return s.setSpaceInfo(ctx.State, spaceinfo.SpaceInfo{})
+	return s.setSpaceInfo(ctx.State, spaceinfo.SpaceInfo{SpaceID: spaceID})
+}
+
+func (s *SpaceView) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+	return migration.Migration{
+		Version: 1,
+		Proc: func(s *state.State) {
+			template.InitTemplate(s,
+				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
+				template.WithRelations([]domain.RelationKey{
+					bundle.RelationKeySpaceLocalStatus,
+					bundle.RelationKeySpaceRemoteStatus,
+					bundle.RelationKeyTargetSpaceId,
+				}),
+			)
+		},
+	}
+}
+
+func (s *SpaceView) StateMigrations() migration.Migrations {
+	return migration.MakeMigrations(nil)
 }
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -66,6 +88,7 @@ func (s *SpaceView) SetSpaceInfo(info spaceinfo.SpaceInfo) (err error) {
 }
 
 func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) (err error) {
+	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
 	return
@@ -95,9 +118,10 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 var workspaceKeysToCopy = []string{
 	bundle.RelationKeyName.String(),
 	bundle.RelationKeyIconImage.String(),
-	bundle.RelationKeyIconEmoji.String(),
 	bundle.RelationKeyIconOption.String(),
 	bundle.RelationKeySpaceDashboardId.String(),
+	bundle.RelationKeyCreator.String(),
+	bundle.RelationKeyCreatedDate.String(),
 }
 
 func (s *SpaceView) SetSpaceData(details *types.Struct) error {
@@ -111,7 +135,13 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 	}
 
 	if changed {
-		return s.Apply(st, smartblock.NoRestrictions)
+		return s.Apply(st, smartblock.NoRestrictions, smartblock.NoEvent, smartblock.NoHistory)
 	}
 	return nil
+}
+
+func (s *SpaceView) UpdateLastOpenedDate() error {
+	st := s.NewState()
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }

@@ -144,7 +144,7 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 			start := time.Now()
 			total, success, err := i.reindexOutdatedObjects(ctx, spaceID)
 			if err != nil {
-				log.Infof("failed to reindex outdated objects: %s", err.Error())
+				log.Infof("failed to reindex outdated objects: %s", err)
 			} else {
 				log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
 			}
@@ -253,7 +253,7 @@ func (i *indexer) removeGlobalIndexes(flags reindexFlags) (err error) {
 	if flags.fileKeys {
 		err = i.fileStore.RemoveEmptyFileKeys()
 		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err.Error())
+			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err)
 		} else {
 			log.Infof("RemoveEmptyFileKeys filekeys succeed")
 		}
@@ -262,19 +262,19 @@ func (i *indexer) removeGlobalIndexes(flags reindexFlags) (err error) {
 	if flags.removeAllIndexedObjects {
 		ids, err := i.store.ListIds()
 		if err != nil {
-			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err.Error())
+			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)
 		}
 		for _, id := range ids {
 			err = i.store.DeleteDetails(id)
 			if err != nil {
-				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err.Error())
+				log.Errorf("reindex failed to delete details(removeAllIndexedObjects): %v", err)
 			}
 		}
 	}
 	if flags.eraseIndexes {
 		err = i.store.EraseIndexes()
 		if err != nil {
-			log.Errorf("reindex failed to erase indexes: %v", err.Error())
+			log.Errorf("reindex failed to erase indexes: %v", err)
 		} else {
 			log.Infof("all store indexes successfully erased")
 		}
@@ -308,7 +308,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (t
 	var idsToReindex []string
 	for _, tid := range tids {
 		logErr := func(err error) {
-			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err.Error())
+			log.With("tree", tid).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
 		}
 
 		lastHash, err := i.store.GetLastIndexedHeadsHash(tid)

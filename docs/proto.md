@@ -907,10 +907,6 @@
     - [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request)
     - [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response)
     - [Rpc.Workspace.GetCurrent.Response.Error](#anytype-Rpc-Workspace-GetCurrent-Response-Error)
-    - [Rpc.Workspace.Info](#anytype-Rpc-Workspace-Info)
-    - [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request)
-    - [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response)
-    - [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error)
     - [Rpc.Workspace.Object](#anytype-Rpc-Workspace-Object)
     - [Rpc.Workspace.Object.Add](#anytype-Rpc-Workspace-Object-Add)
     - [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request)
@@ -924,14 +920,18 @@
     - [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request)
     - [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response)
     - [Rpc.Workspace.Object.ListRemove.Response.Error](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error)
+    - [Rpc.Workspace.Open](#anytype-Rpc-Workspace-Open)
+    - [Rpc.Workspace.Open.Request](#anytype-Rpc-Workspace-Open-Request)
+    - [Rpc.Workspace.Open.Response](#anytype-Rpc-Workspace-Open-Response)
+    - [Rpc.Workspace.Open.Response.Error](#anytype-Rpc-Workspace-Open-Response-Error)
     - [Rpc.Workspace.Select](#anytype-Rpc-Workspace-Select)
     - [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request)
     - [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response)
     - [Rpc.Workspace.Select.Response.Error](#anytype-Rpc-Workspace-Select-Response-Error)
-    - [Rpc.Workspace.SetIsHighlighted](#anytype-Rpc-Workspace-SetIsHighlighted)
-    - [Rpc.Workspace.SetIsHighlighted.Request](#anytype-Rpc-Workspace-SetIsHighlighted-Request)
-    - [Rpc.Workspace.SetIsHighlighted.Response](#anytype-Rpc-Workspace-SetIsHighlighted-Response)
-    - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error)
+    - [Rpc.Workspace.SetInfo](#anytype-Rpc-Workspace-SetInfo)
+    - [Rpc.Workspace.SetInfo.Request](#anytype-Rpc-Workspace-SetInfo-Request)
+    - [Rpc.Workspace.SetInfo.Response](#anytype-Rpc-Workspace-SetInfo-Response)
+    - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
@@ -1148,12 +1148,12 @@
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype-Rpc-Workspace-GetAll-Response-Error-Code)
     - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype-Rpc-Workspace-GetCurrent-Response-Error-Code)
-    - [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code)
     - [Rpc.Workspace.Object.Add.Response.Error.Code](#anytype-Rpc-Workspace-Object-Add-Response-Error-Code)
     - [Rpc.Workspace.Object.ListAdd.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code)
     - [Rpc.Workspace.Object.ListRemove.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code)
+    - [Rpc.Workspace.Open.Response.Error.Code](#anytype-Rpc-Workspace-Open-Response-Error-Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype-Rpc-Workspace-Select-Response-Error-Code)
-    - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code)
+    - [Rpc.Workspace.SetInfo.Response.Error.Code](#anytype-Rpc-Workspace-SetInfo-Response-Error-Code)
   
     - [File-level Extensions](#pb_protos_commands-proto-extensions)
   
@@ -1488,14 +1488,14 @@
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
-| WorkspaceInfo | [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request) | [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response) |  |
+| WorkspaceOpen | [Rpc.Workspace.Open.Request](#anytype-Rpc-Workspace-Open-Request) | [Rpc.Workspace.Open.Response](#anytype-Rpc-Workspace-Open-Response) |  |
 | WorkspaceObjectAdd | [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request) | [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response) |  |
 | WorkspaceObjectListAdd | [Rpc.Workspace.Object.ListAdd.Request](#anytype-Rpc-Workspace-Object-ListAdd-Request) | [Rpc.Workspace.Object.ListAdd.Response](#anytype-Rpc-Workspace-Object-ListAdd-Response) |  |
 | WorkspaceObjectListRemove | [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request) | [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response) |  |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request) | [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response) |  |
 | WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request) | [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response) |  |
 | WorkspaceGetAll | [Rpc.Workspace.GetAll.Request](#anytype-Rpc-Workspace-GetAll-Request) | [Rpc.Workspace.GetAll.Response](#anytype-Rpc-Workspace-GetAll-Response) |  |
-| WorkspaceSetIsHighlighted | [Rpc.Workspace.SetIsHighlighted.Request](#anytype-Rpc-Workspace-SetIsHighlighted-Request) | [Rpc.Workspace.SetIsHighlighted.Response](#anytype-Rpc-Workspace-SetIsHighlighted-Response) |  |
+| WorkspaceSetInfo | [Rpc.Workspace.SetInfo.Request](#anytype-Rpc-Workspace-SetInfo-Request) | [Rpc.Workspace.SetInfo.Response](#anytype-Rpc-Workspace-SetInfo-Response) |  |
 | WorkspaceExport | [Rpc.Workspace.Export.Request](#anytype-Rpc-Workspace-Export-Request) | [Rpc.Workspace.Export.Response](#anytype-Rpc-Workspace-Export-Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
@@ -14817,63 +14817,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-Info"></a>
-
-### Rpc.Workspace.Info
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-Info-Request"></a>
-
-### Rpc.Workspace.Info.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-Info-Response"></a>
-
-### Rpc.Workspace.Info.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error) |  |  |
-| info | [model.Account.Info](#anytype-model-Account-Info) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-Info-Response-Error"></a>
-
-### Rpc.Workspace.Info.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Workspace-Object"></a>
 
 ### Rpc.Workspace.Object
@@ -15058,6 +15001,63 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Open"></a>
+
+### Rpc.Workspace.Open
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Open-Request"></a>
+
+### Rpc.Workspace.Open.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Open-Response"></a>
+
+### Rpc.Workspace.Open.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Open.Response.Error](#anytype-Rpc-Workspace-Open-Response-Error) |  |  |
+| info | [model.Account.Info](#anytype-model-Account-Info) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Open-Response-Error"></a>
+
+### Rpc.Workspace.Open.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Open.Response.Error.Code](#anytype-Rpc-Workspace-Open-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Workspace-Select"></a>
 
 ### Rpc.Workspace.Select
@@ -15114,56 +15114,56 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted"></a>
+<a name="anytype-Rpc-Workspace-SetInfo"></a>
 
-### Rpc.Workspace.SetIsHighlighted
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Request"></a>
-
-### Rpc.Workspace.SetIsHighlighted.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectId | [string](#string) |  |  |
-| isHighlighted | [bool](#bool) |  |  |
+### Rpc.Workspace.SetInfo
 
 
 
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Response"></a>
 
-### Rpc.Workspace.SetIsHighlighted.Response
+<a name="anytype-Rpc-Workspace-SetInfo-Request"></a>
+
+### Rpc.Workspace.SetInfo.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error) |  |  |
+| spaceId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Response-Error"></a>
+<a name="anytype-Rpc-Workspace-SetInfo-Response"></a>
 
-### Rpc.Workspace.SetIsHighlighted.Response.Error
+### Rpc.Workspace.SetInfo.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code) |  |  |
+| error | [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-SetInfo-Response-Error"></a>
+
+### Rpc.Workspace.SetInfo.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.SetInfo.Response.Error.Code](#anytype-Rpc-Workspace-SetInfo-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18062,19 +18062,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-Info-Response-Error-Code"></a>
-
-### Rpc.Workspace.Info.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-Workspace-Object-Add-Response-Error-Code"></a>
 
 ### Rpc.Workspace.Object.Add.Response.Error.Code
@@ -18114,6 +18101,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Open-Response-Error-Code"></a>
+
+### Rpc.Workspace.Open.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Workspace-Select-Response-Error-Code"></a>
 
 ### Rpc.Workspace.Select.Response.Error.Code
@@ -18127,9 +18127,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code"></a>
+<a name="anytype-Rpc-Workspace-SetInfo-Response-Error-Code"></a>
 
-### Rpc.Workspace.SetIsHighlighted.Response.Error.Code
+### Rpc.Workspace.SetInfo.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -21367,8 +21367,8 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  |  |
-| workspaceObjectId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
