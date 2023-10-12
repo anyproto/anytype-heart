@@ -1405,6 +1405,8 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [Metadata](#anytype-model-Metadata)
+    - [Metadata.Account](#anytype-model-Metadata-Account)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -22119,6 +22121,31 @@ Used to decode block meta only, without the content itself
 | imageUrl | [string](#string) |  |  |
 | faviconUrl | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Metadata"></a>
+
+### Metadata
+
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Account"></a>
+
+### Metadata.Account
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| profileSymKey | [bytes](#bytes) |  |  |
 
 
 

@@ -843,7 +843,6 @@ message ObjectView {
     }
 }
 
-
 enum SpaceStatus {
     // Unknown means the space is not loaded yet
     Unknown = 0;
@@ -860,4 +859,10 @@ enum SpaceStatus {
     RemoteWaitingDeletion = 5;
     // RemoteDeleted - the space is deleted in the current network
     RemoteDeleted = 6;
+}
+
+message Metadata {
+    message Account {
+        bytes profileSymKey = 1;
+    }
 }
