@@ -16,7 +16,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -48,8 +47,6 @@ type isNewAccount interface {
 type SpaceService interface {
 	Create(ctx context.Context) (space Space, err error)
 	Get(ctx context.Context, id string) (space Space, err error)
-
-	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
 
 	app.ComponentRunnable
 }

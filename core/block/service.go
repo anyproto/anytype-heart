@@ -49,7 +49,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
@@ -135,7 +134,6 @@ type Service struct {
 	objectCreator        objectCreator
 	resolver             idresolver.Resolver
 	spaceService         space.SpaceService
-	spaceCore            spacecore.SpaceCoreService
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
@@ -177,7 +175,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
-	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)

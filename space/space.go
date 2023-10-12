@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/headsync"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -16,7 +17,11 @@ import (
 )
 
 type Space interface {
-	commonspace.Space
+	Id() string
+	TreeBuilder() objecttreebuilder.TreeBuilder
+	DebugAllHeads() []headsync.TreeHeads
+	DeleteTree(ctx context.Context, id string) (err error)
+
 	DerivedIDs() threads.DerivedSmartblockIds
 
 	WaitMandatoryObjects(ctx context.Context) (err error)
@@ -26,6 +31,21 @@ type Space interface {
 
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+}
+
+type space struct {
+	objectcache.Cache
+	objectprovider.ObjectProvider
+
+	service    *service
+	status     spaceinfo.SpaceInfo
+	derivedIDs threads.DerivedSmartblockIds
+	installer  bundledObjectsInstaller
+
+	*spacecore.AnySpace
+
+	loadMandatoryObjectsCh  chan struct{}
+	loadMandatoryObjectsErr error
 }
 
 func (s *service) newMarketplaceSpace(ctx context.Context) (*space, error) {
@@ -66,21 +86,6 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (
 
 	go sp.mandatoryObjectsLoad(s.ctx)
 	return sp, nil
-}
-
-type space struct {
-	objectcache.Cache
-	objectprovider.ObjectProvider
-
-	service    *service
-	status     spaceinfo.SpaceInfo
-	derivedIDs threads.DerivedSmartblockIds
-	installer  bundledObjectsInstaller
-
-	*spacecore.AnySpace
-
-	loadMandatoryObjectsCh  chan struct{}
-	loadMandatoryObjectsErr error
 }
 
 func (s *space) mandatoryObjectsLoad(ctx context.Context) {

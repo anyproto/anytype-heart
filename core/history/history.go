@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -52,7 +52,7 @@ type history struct {
 	picker              block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	systemObjectService system_object.Service
-	spaceService        spacecore.SpaceCoreService
+	spaceService        space.SpaceService
 }
 
 func (h *history) Init(a *app.App) (err error) {
@@ -60,7 +60,7 @@ func (h *history) Init(a *app.App) (err error) {
 	h.picker = app.MustComponent[block.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
-	h.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
+	h.spaceService = app.MustComponent[space.SpaceService](a)
 	return
 }
 

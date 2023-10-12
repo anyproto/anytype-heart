@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-sync/commonspace"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -69,11 +68,9 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 			return nil
 		})
 	default:
-		var space commonspace.Space
-		// TODO: [MR] should we do this via spaceService instead?
-		space, err = s.spaceCore.Get(context.Background(), spaceID)
+		space, err := s.spaceService.Get(context.Background(), spaceID)
 		if err != nil {
-			return
+			return fmt.Errorf("get space: %w", err)
 		}
 		// this will call DeleteTree asynchronously in the end
 		return space.DeleteTree(context.Background(), objectID)
