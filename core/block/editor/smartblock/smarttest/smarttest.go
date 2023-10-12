@@ -351,6 +351,10 @@ func (st *SmartTest) RegisterSession(session.Context) {
 
 }
 
+func (st *SmartTest) UniqueKey() domain.UniqueKey {
+	return nil
+}
+
 type Results struct {
 	Events  [][]simple.EventMessage
 	Applies [][]*model.Block

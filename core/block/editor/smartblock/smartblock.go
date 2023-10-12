@@ -121,6 +121,7 @@ type SmartBlock interface {
 	Id() string
 	SpaceID() string
 	Type() smartblock.SmartBlockType
+	UniqueKey() domain.UniqueKey
 	Show() (obj *model.ObjectView, err error)
 	RegisterSession(session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error

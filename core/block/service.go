@@ -861,10 +861,9 @@ func (s *Service) checkArchivedRestriction(isArchived bool, spaceID string, obje
 	if !isArchived {
 		return nil
 	}
-	if err := s.restriction.CheckRestrictions(spaceID, objectId, model.Restrictions_Delete); err != nil {
-		return err
-	}
-	return nil
+	return Do(s, objectId, func(sb smartblock.SmartBlock) error {
+		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
+	})
 }
 
 func (s *Service) DeleteArchivedObjects(objectIDs []string) error {
