@@ -87,7 +87,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.techSpace = techspace.New()
-	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
@@ -247,7 +246,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-	return nil
+	return s.techSpace.Close(ctx)
 }
 
 func getRepKey(spaceID string) (uint64, error) {

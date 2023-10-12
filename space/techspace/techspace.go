@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -30,7 +30,8 @@ var (
 )
 
 type TechSpace interface {
-	Run(techCoreSpace *spacecore.AnySpace, objectCache objectcache.Cache) (err error)
+	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error)
+	Close(ctx context.Context) (err error)
 
 	TechSpaceId() string
 	SpaceViewCreate(ctx context.Context, spaceId string) (err error)
@@ -54,7 +55,7 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore    *spacecore.AnySpace
+	techCore    commonspace.Space
 	objectCache objectcache.Cache
 
 	mu sync.Mutex
@@ -65,7 +66,7 @@ type techSpace struct {
 	viewIds    map[string]string
 }
 
-func (s *techSpace) Run(techCoreSpace *spacecore.AnySpace, objectCache objectcache.Cache) (err error) {
+func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
 	s.idsWakedUp = make(chan struct{})

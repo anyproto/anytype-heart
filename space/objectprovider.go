@@ -3,12 +3,14 @@ package space
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 type bundledObjectsInstaller interface {
+	app.Component
 	InstallBundledObjects(ctx context.Context, spc Space, ids []string) ([]string, []*types.Struct, error)
 }
 

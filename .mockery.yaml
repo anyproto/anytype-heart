@@ -60,4 +60,10 @@ packages:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       bundledObjectsInstaller:
+        config:
+          dir: "{{.InterfaceDir}}"
+          inpackage: true
       isNewAccount:
+        config:
+          dir: "{{.InterfaceDir}}"
+          inpackage: true
