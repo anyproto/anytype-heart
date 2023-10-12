@@ -7,34 +7,17 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-type quicSetter struct{}
-
-func (q quicSetter) Init(a *app.App) (err error) {
-	return
-}
-
-func (q quicSetter) Name() (name string) {
-	return peerservice.CName
-}
-
-func (q quicSetter) PreferQuic(_ bool) {}
 
 func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
@@ -57,12 +40,7 @@ func Test_GrouperTags(t *testing.T) {
 	})
 
 	kanbanSrv := New()
-	err := a.Register(quicSetter{}).
-		Register(&config.DefaultConfig).
-		Register(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
-		Register(clientds.New()).
-		Register(ftsearch.New()).
-		Register(objectStore).
+	err := a.Register(objectStore).
 		Register(kanbanSrv).
 		Register(tp).
 		Start(context.Background())
