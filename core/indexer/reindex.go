@@ -32,7 +32,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 52
+	ForceIdxRebuildCounter int32 = 55
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
@@ -225,9 +225,6 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 				},
 			},
 		}, nil)
-		if err != nil {
-			return err
-		}
 		for _, id := range existing {
 			err = i.store.DeleteObject(id)
 			if err != nil {

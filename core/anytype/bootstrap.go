@@ -209,6 +209,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
+		Register(source.New()).
+		Register(builtintemplate.New()).
 		Register(space.New()).
 		Register(system_object.New()).
 		Register(converter.NewLayoutConverter()).
@@ -216,10 +218,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
-		Register(source.New()).
 		Register(core.New()).
 		Register(core.NewTempDirService()).
-		Register(builtintemplate.New()).
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(indexer.New()).

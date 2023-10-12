@@ -50,6 +50,7 @@ type SpaceService interface {
 	Get(ctx context.Context, id string) (space Space, err error)
 	GetPersonalSpace(ctx context.Context) (space Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
+
 	app.ComponentRunnable
 }
 

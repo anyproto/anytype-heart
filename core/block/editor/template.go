@@ -56,12 +56,16 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 }
 
 func (t *Template) getTypeKeyById(typeId string) (domain.TypeKey, error) {
-	var typeKey domain.TypeKey
-	err := getblock.Do(t.picker, typeId, func(sb smartblock.SmartBlock) error {
-		typeKey = domain.TypeKey(sb.UniqueKeyInternal())
-		return nil
-	})
-	return typeKey, err
+	obj, err := t.objectStore.GetDetails(typeId)
+	if err != nil {
+		return "", err
+	}
+	rawUniqueKey := pbtypes.GetString(obj.Details, bundle.RelationKeyUniqueKey.String())
+	uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
+	if err != nil {
+		return "", err
+	}
+	return domain.TypeKey(uniqueKey.InternalKey()), nil
 }
 
 // GetNewPageState returns state that can be safely used to create the new document

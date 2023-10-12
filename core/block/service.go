@@ -591,7 +591,7 @@ func (s *Service) installTemplatesForObjectType(spc space.Space, typeKey domain.
 			continue
 		}
 
-		_, err := s.TemplateClone(spc.Id(), id)
+		_, err := s.TemplateCloneInSpace(spc, id)
 		if err != nil {
 			return fmt.Errorf("clone template: %w", err)
 		}

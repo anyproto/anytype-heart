@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -66,11 +67,19 @@ func (s *Service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*stat
 }
 
 func (s *Service) TemplateClone(spaceID string, id string) (templateID string, err error) {
+	space, err := s.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+	return s.TemplateCloneInSpace(space, id)
+}
+
+func (s *Service) TemplateCloneInSpace(space space.Space, id string) (templateID string, err error) {
 	var (
 		st             *state.State
 		objectTypeKeys []domain.TypeKey
 	)
-	if err = Do(s, id, func(b smartblock.SmartBlock) error {
+	if err = space.Do(id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypeBundledTemplate {
 			return fmt.Errorf("can clone bundled templates only")
 		}
@@ -85,7 +94,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 		if err != nil {
 			return fmt.Errorf("get target object type key: %w", err)
 		}
-		targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), spaceID, targetObjectTypeKey)
+		targetObjectTypeID, err := space.GetTypeIdByKey(context.Background(), targetObjectTypeKey)
 		if err != nil {
 			return fmt.Errorf("get target object type id: %w", err)
 		}
@@ -94,7 +103,7 @@ func (s *Service) TemplateClone(spaceID string, id string) (templateID string, e
 	}); err != nil {
 		return
 	}
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), spaceID, coresb.SmartBlockTypeTemplate, objectTypeKeys, nil, st)
+	templateID, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(context.Background(), space, coresb.SmartBlockTypeTemplate, objectTypeKeys, nil, st)
 	if err != nil {
 		return
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -29,6 +30,7 @@ type Space interface {
 
 	WaitMandatoryObjects(ctx context.Context) (err error)
 
+	Do(objectId string, apply func(sb smartblock.SmartBlock) error) error
 	objectcache.Cache
 	objectprovider.ObjectProvider
 
@@ -123,4 +125,14 @@ func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (s *space) Do(objectId string, apply func(sb smartblock.SmartBlock) error) error {
+	sb, err := s.GetObject(context.Background(), objectId)
+	if err != nil {
+		return err
+	}
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(sb)
 }
