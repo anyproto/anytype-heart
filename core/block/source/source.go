@@ -9,16 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/accountservice"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+
+	"github.com/anyproto/any-sync/accountservice"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -275,7 +276,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
-	migration := newSubObjectsLinksMigration(s.spaceID, s.systemObjectService)
+	// TODO: we can skip migration for non-personal spaces
+	migration := newSubObjectsAndProfileLinksMigration(s.spaceID, addr.AccountIdToIdentityObjectId(s.coreService.AccountId()), s.systemObjectService)
 	migration.migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
