@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -47,8 +47,8 @@ func New() Indexer {
 type Indexer interface {
 	ForceFTIndex()
 	StartFullTextIndex() error
-	ReindexCommonObjects() error
-	ReindexSpace(spaceID string) error
+	ReindexMarketplaceSpace(space space.Space) error
+	ReindexSpace(space space.Space) error
 	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
 	app.ComponentRunnable
 }
@@ -69,6 +69,7 @@ type indexer struct {
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 	fileService    files.Service
+	spaceService   space.SpaceService
 
 	quit       chan struct{}
 	btHash     Hasher
@@ -76,7 +77,6 @@ type indexer struct {
 	forceFt    chan struct{}
 
 	typeProvider typeprovider.SmartBlockTypeProvider
-	spaceCore    spacecore.SpaceCoreService
 	provider     personalIDProvider
 
 	indexedFiles     *sync.Map
@@ -95,9 +95,9 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[block.ObjectGetter](a)
-	i.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
+	i.spaceService = app.MustComponent[space.SpaceService](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -243,7 +243,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, spaceId string, fileHashes []string) {
 	if len(fileHashes) == 0 {
 		return
 	}
@@ -254,18 +254,23 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
 		go func(id string) {
+			space, err := i.spaceService.Get(context.Background(), spaceId)
+			if err != nil {
+				log.Error("indexLinkedFiles: failed to get space", zap.Error(err), zap.String("spaceId", id))
+				return
+			}
 			// Deduplicate
 			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
 			if ok {
 				return
 			}
-			err := i.storageService.BindSpaceID(spaceID, id)
+			err = i.storageService.BindSpaceID(space.Id(), id)
 			if err != nil {
 				log.Error("failed to bind space id", zap.Error(err), zap.String("id", id))
 				return
 			}
 			// file's hash is id
-			idxErr := i.reindexDoc(ctx, spaceID, id)
+			idxErr := i.reindexDoc(ctx, space, id)
 			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
 				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
 			}

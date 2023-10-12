@@ -28,11 +28,6 @@ import (
 
 var log = logging.Logger("anytype-mw-editor")
 
-type spaceIndexer interface {
-	smartblock.Indexer
-	ReindexSpace(spaceID string) error
-}
-
 type personalIDProvider interface {
 	PersonalSpaceID() string
 }
@@ -56,7 +51,7 @@ type ObjectFactory struct {
 	picker             getblock.ObjectGetter
 	eventSender        event.Sender
 	restrictionService restriction.Service
-	indexer            spaceIndexer
+	indexer            smartblock.Indexer
 	spaceService       spaceService
 	objectDeriver      objectDeriver
 }
@@ -79,7 +74,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 	f.picker = app.MustComponent[getblock.ObjectGetter](a)
-	f.indexer = app.MustComponent[spaceIndexer](a)
+	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.objectDeriver = app.MustComponent[objectDeriver](a)
 	f.spaceService = app.MustComponent[spaceService](a)

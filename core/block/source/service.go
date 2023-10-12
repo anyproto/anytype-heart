@@ -42,6 +42,7 @@ type Space interface {
 	TreeBuilder() objecttreebuilder.TreeBuilder
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 }
 
 type Service interface {
@@ -56,14 +57,13 @@ type Service interface {
 }
 
 type service struct {
-	coreService         core.Service
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	accountService      accountservice.Service
-	fileStore           filestore.FileStore
-	spaceCoreService    spacecore.SpaceCoreService
-	storageService      storage.ClientStorage
-	fileService         files.Service
-	systemObjectService systemObjectService
+	coreService      core.Service
+	sbtProvider      typeprovider.SmartBlockTypeProvider
+	accountService   accountservice.Service
+	fileStore        filestore.FileStore
+	spaceCoreService spacecore.SpaceCoreService
+	storageService   storage.ClientStorage
+	fileService      files.Service
 
 	objectStore objectstore.ObjectStore
 
@@ -79,7 +79,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	s.systemObjectService = app.MustComponent[systemObjectService](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)

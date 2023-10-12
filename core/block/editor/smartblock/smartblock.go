@@ -111,8 +111,10 @@ type Space interface {
 	Id() string
 	TreeBuilder() objecttreebuilder.TreeBuilder
 	DerivedIDs() threads.DerivedSmartblockIds
+
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 }
 
 type SmartBlock interface {

@@ -35,8 +35,8 @@ func New() SpaceService {
 }
 
 type spaceIndexer interface {
-	ReindexCommonObjects() error
-	ReindexSpace(spaceID string) error
+	ReindexMarketplaceSpace(space Space) error
+	ReindexSpace(space Space) error
 }
 
 type isNewAccount interface {
@@ -122,7 +122,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	err = s.indexer.ReindexCommonObjects()
+	err = s.indexer.ReindexMarketplaceSpace(s.marketplaceSpace)
 	if err != nil {
 		return
 	}

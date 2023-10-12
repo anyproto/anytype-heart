@@ -26,16 +26,14 @@ type systemObjectService interface {
 // Migrate old relation (rel-name, etc.) and object type (ot-page, etc.) IDs to new ones (just ordinary object IDs)
 // Those old ids are ids of sub-objects, legacy system for storing types and relations inside workspace object
 type subObjectsLinksMigration struct {
-	spaceID             string
-	systemObjectService systemObjectService
-	objectStore         objectstore.ObjectStore
+	space       Space
+	objectStore objectstore.ObjectStore
 }
 
-func newSubObjectsLinksMigration(spaceID string, systemObjectService systemObjectService, objectStore objectstore.ObjectStore) *subObjectsLinksMigration {
+func newSubObjectsLinksMigration(space Space, objectStore objectstore.ObjectStore) *subObjectsLinksMigration {
 	return &subObjectsLinksMigration{
-		spaceID:             spaceID,
-		systemObjectService: systemObjectService,
-		objectStore:         objectStore,
+		space:       space,
+		objectStore: objectStore,
 	}
 }
 
@@ -86,7 +84,7 @@ func (m *subObjectsLinksMigration) migrateSubObjectId(oldId string) (newId strin
 		return oldId
 	}
 
-	newId, err := m.systemObjectService.GetObjectIdByUniqueKey(context.Background(), m.spaceID, uniqueKey)
+	newId, err := m.space.DeriveObjectID(context.Background(), uniqueKey)
 	if err != nil {
 		log.With("uniqueKey", uniqueKey.Marshal()).Errorf("failed to derive id: %s", err)
 		return oldId
@@ -168,7 +166,7 @@ func (m *subObjectsLinksMigration) migrateSources(dv dataview2.Block) {
 func (m *subObjectsLinksMigration) migrateID(id string) (string, error) {
 	typeKey, err := bundle.TypeKeyFromUrl(id)
 	if err == nil {
-		typeID, err := m.systemObjectService.GetTypeIdByKey(context.Background(), m.spaceID, typeKey)
+		typeID, err := m.space.GetTypeIdByKey(context.Background(), typeKey)
 		if err != nil {
 			return id, fmt.Errorf("migrate object type id %s: %w", id, err)
 		}
@@ -177,7 +175,7 @@ func (m *subObjectsLinksMigration) migrateID(id string) (string, error) {
 
 	relationKey, err := bundle.RelationKeyFromID(id)
 	if err == nil {
-		relationID, err := m.systemObjectService.GetRelationIdByKey(context.Background(), m.spaceID, relationKey)
+		relationID, err := m.space.GetRelationIdByKey(context.Background(), relationKey)
 		if err != nil {
 			return id, fmt.Errorf("migrate relation id %s: %w", id, err)
 		}

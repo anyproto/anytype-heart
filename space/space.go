@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -21,6 +22,8 @@ type Space interface {
 	TreeBuilder() objecttreebuilder.TreeBuilder
 	DebugAllHeads() []headsync.TreeHeads
 	DeleteTree(ctx context.Context, id string) (err error)
+	StoredIds() []string
+	Storage() spacestorage.SpaceStorage
 
 	DerivedIDs() threads.DerivedSmartblockIds
 
@@ -101,7 +104,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	}
 
 	// TODO: move to service
-	s.loadMandatoryObjectsErr = s.service.indexer.ReindexSpace(s.Id())
+	s.loadMandatoryObjectsErr = s.service.indexer.ReindexSpace(s)
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}

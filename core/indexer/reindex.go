@@ -9,16 +9,15 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -104,8 +103,8 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	return flags, nil
 }
 
-func (i *indexer) ReindexSpace(spaceID string) (err error) {
-	flags, err := i.buildFlags(spaceID)
+func (i *indexer) ReindexSpace(space space.Space) (err error) {
+	flags, err := i.buildFlags(space.Id())
 	if err != nil {
 		return
 	}
@@ -125,14 +124,14 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 			smartblock2.SmartBlockTypeProfilePage,
 		}
 		ids, err := i.getIdsForTypes(
-			spaceID,
+			space.Id(),
 			types...,
 		)
 		if err != nil {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, spaceID, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
 
 		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
 
@@ -142,7 +141,7 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 		// TODO Write more informative comment
 		go func() {
 			start := time.Now()
-			total, success, err := i.reindexOutdatedObjects(ctx, spaceID)
+			total, success, err := i.reindexOutdatedObjects(ctx, space)
 			if err != nil {
 				log.Infof("failed to reindex outdated objects: %s", err)
 			} else {
@@ -155,14 +154,14 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 	}
 
 	if flags.fileObjects {
-		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFile)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFile)
 		if err != nil {
 			return err
 		}
 	}
 
 	if flags.fulltext {
-		ids, err := i.getIdsForTypes(spaceID, smartblock2.SmartBlockTypePage, smartblock2.SmartBlockTypeFile, smartblock2.SmartBlockTypeBundledRelation, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
+		ids, err := i.getIdsForTypes(space.Id(), smartblock2.SmartBlockTypePage, smartblock2.SmartBlockTypeFile, smartblock2.SmartBlockTypeBundledRelation, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
 		}
@@ -183,26 +182,25 @@ func (i *indexer) ReindexSpace(spaceID string) (err error) {
 		}
 	}
 
-	return i.saveLatestChecksums(spaceID)
+	return i.saveLatestChecksums(space.Id())
 }
 
-func (i *indexer) ReindexCommonObjects() error {
+func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 	flags, err := i.buildFlags("")
 	if err != nil {
 		return err
 	}
 	err = i.removeGlobalIndexes(flags)
 	ctx := context.Background()
-	spaceID := addr.AnytypeMarketplaceWorkspace
 
 	if flags.bundledRelations {
-		err := i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledRelations, smartblock2.SmartBlockTypeBundledRelation)
+		err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledRelations, smartblock2.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return fmt.Errorf("reindex bundled relations: %w", err)
 		}
 	}
 	if flags.bundledTypes {
-		err := i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTypes, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
+		err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTypes, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return fmt.Errorf("reindex bundled types: %w", err)
 		}
@@ -211,14 +209,22 @@ func (i *indexer) ReindexCommonObjects() error {
 	if flags.bundledObjects {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId, addr.MissingObject}
-		err := i.reindexIDs(ctx, addr.AnytypeMarketplaceWorkspace, metrics.ReindexTypeBundledObjects, ids)
+		err := i.reindexIDs(ctx, space, metrics.ReindexTypeBundledObjects, ids)
 		if err != nil {
 			return fmt.Errorf("reindex profile and missing object: %w", err)
 		}
 	}
 
 	if flags.bundledTemplates {
-		existing, _, err := i.store.QueryObjectIDs(database.Query{}, []smartblock2.SmartBlockType{smartblock2.SmartBlockTypeBundledTemplate})
+		existing, _, err := i.store.QueryObjectIDs(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyType.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
+				},
+			},
+		}, nil)
 		if err != nil {
 			return err
 		}
@@ -229,7 +235,7 @@ func (i *indexer) ReindexCommonObjects() error {
 			}
 		}
 
-		err = i.reindexIDsForSmartblockTypes(ctx, spaceID, metrics.ReindexTypeBundledTemplates, smartblock2.SmartBlockTypeBundledTemplate)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeBundledTemplates, smartblock2.SmartBlockTypeBundledTemplate)
 		if err != nil {
 			return fmt.Errorf("reindex bundled templates: %w", err)
 		}
@@ -282,29 +288,23 @@ func (i *indexer) removeGlobalIndexes(flags reindexFlags) (err error) {
 	return
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, spaceID string, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
-	ids, err := i.getIdsForTypes(spaceID, sbTypes...)
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space space.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
+	ids, err := i.getIdsForTypes(space.Id(), sbTypes...)
 	if err != nil {
 		return err
 	}
-	return i.reindexIDs(ctx, spaceID, reindexType, ids)
+	return i.reindexIDs(ctx, space, reindexType, ids)
 }
 
-func (i *indexer) reindexIDs(ctx context.Context, spaceID string, reindexType metrics.ReindexType, ids []string) error {
+func (i *indexer) reindexIDs(ctx context.Context, space space.Space, reindexType metrics.ReindexType, ids []string) error {
 	start := time.Now()
-	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, spaceID, ids...)
+	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
 	return nil
 }
 
-func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (toReindex, success int, err error) {
-	// reindex of subobject collection always leads to reindex of the all subobjects reindexing
-	spc, err := i.spaceCore.Get(ctx, spaceID)
-	if err != nil {
-		return
-	}
-
-	tids := spc.StoredIds()
+func (i *indexer) reindexOutdatedObjects(ctx context.Context, space space.Space) (toReindex, success int, err error) {
+	tids := space.StoredIds()
 	var idsToReindex []string
 	for _, tid := range tids {
 		logErr := func(err error) {
@@ -316,7 +316,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (t
 			logErr(err)
 			continue
 		}
-		info, err := spc.Storage().TreeStorage(tid)
+		info, err := space.Storage().TreeStorage(tid)
 		if err != nil {
 			logErr(err)
 			continue
@@ -336,22 +336,24 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, spaceID string) (t
 		}
 	}
 
-	success = i.reindexIdsIgnoreErr(ctx, spaceID, idsToReindex...)
+	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, spaceID, id string) error {
-	return block.DoContextFullID(i.picker, ctx, domain.FullID{
-		ObjectID: id,
-		SpaceID:  spaceID,
-	}, func(sb smartblock.SmartBlock) error {
-		return i.Index(ctx, sb.GetDocInfo())
-	})
+func (i *indexer) reindexDoc(ctx context.Context, space space.Space, id string) error {
+	sb, err := space.GetObject(ctx, id)
+	if err != nil {
+		return err
+	}
+	sb.Lock()
+	defer sb.Unlock()
+
+	return i.Index(ctx, sb.GetDocInfo())
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, spaceID string, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space space.Space, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
-		err := i.reindexDoc(ctx, spaceID, id)
+		err := i.reindexDoc(ctx, space, id)
 		if err != nil {
 			log.With("objectID", id).Errorf("failed to reindex: %v", err)
 		} else {

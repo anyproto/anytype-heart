@@ -143,17 +143,17 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 	}
 
 	return &source{
-		ObjectTree:          ot,
-		id:                  id,
-		spaceID:             space.Id(),
-		spaceService:        s.spaceCoreService,
-		openedAt:            time.Now(),
-		smartblockType:      sbt,
-		accountService:      s.accountService,
-		sbtProvider:         s.sbtProvider,
-		fileService:         s.fileService,
-		systemObjectService: s.systemObjectService,
-		objectStore:         s.objectStore,
+		ObjectTree:     ot,
+		id:             id,
+		space:          space,
+		spaceID:        space.Id(),
+		spaceService:   s.spaceCoreService,
+		openedAt:       time.Now(),
+		smartblockType: sbt,
+		accountService: s.accountService,
+		sbtProvider:    s.sbtProvider,
+		fileService:    s.fileService,
+		objectStore:    s.objectStore,
 	}, nil
 }
 
@@ -164,6 +164,7 @@ type ObjectTreeProvider interface {
 type source struct {
 	objecttree.ObjectTree
 	id                   string
+	space                Space
 	spaceID              string
 	smartblockType       smartblock.SmartBlockType
 	lastSnapshotId       string
@@ -174,12 +175,11 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
-	fileService         files.Service
-	accountService      accountservice.Service
-	spaceService        spacecore.SpaceCoreService
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService systemObjectService
-	objectStore         objectstore.ObjectStore
+	fileService    files.Service
+	accountService accountservice.Service
+	spaceService   spacecore.SpaceCoreService
+	sbtProvider    typeprovider.SmartBlockTypeProvider
+	objectStore    objectstore.ObjectStore
 }
 
 var _ updatelistener.UpdateListener = (*source)(nil)
@@ -272,7 +272,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
-	migration := newSubObjectsLinksMigration(s.spaceID, s.systemObjectService, s.objectStore)
+	migration := newSubObjectsLinksMigration(s.space, s.objectStore)
 	migration.migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
