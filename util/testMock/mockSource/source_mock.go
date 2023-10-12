@@ -104,7 +104,7 @@ func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 }
 
 // NewSource mocks base method.
-func (m *MockService) NewSource(arg0 context.Context, arg1, arg2 string, arg3 source.BuildOptions) (source.Source, error) {
+func (m *MockService) NewSource(arg0 context.Context, arg1 source.Space, arg2 string, arg3 source.BuildOptions) (source.Source, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewSource", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(source.Source)

@@ -13,9 +13,7 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	domain "github.com/anyproto/anytype-heart/core/domain"
 	core "github.com/anyproto/anytype-heart/pkg/lib/core"
-	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,20 +40,6 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 	return m.recorder
 }
 
-// AccountObjects mocks base method.
-func (m *MockService) AccountObjects() threads.DerivedSmartblockIds {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AccountObjects")
-	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
-	return ret0
-}
-
-// AccountObjects indicates an expected call of AccountObjects.
-func (mr *MockServiceMockRecorder) AccountObjects() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AccountObjects", reflect.TypeOf((*MockService)(nil).AccountObjects))
-}
-
 // Close mocks base method.
 func (m *MockService) Close(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -68,34 +52,6 @@ func (m *MockService) Close(arg0 context.Context) error {
 func (mr *MockServiceMockRecorder) Close(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockService)(nil).Close), arg0)
-}
-
-// GetSystemRelationID mocks base method.
-func (m *MockService) GetSystemRelationID(arg0 string, arg1 domain.RelationKey) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSystemRelationID", arg0, arg1)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetSystemRelationID indicates an expected call of GetSystemRelationID.
-func (mr *MockServiceMockRecorder) GetSystemRelationID(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemRelationID", reflect.TypeOf((*MockService)(nil).GetSystemRelationID), arg0, arg1)
-}
-
-// GetSystemTypeID mocks base method.
-func (m *MockService) GetSystemTypeID(arg0 string, arg1 domain.TypeKey) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSystemTypeID", arg0, arg1)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetSystemTypeID indicates an expected call of GetSystemTypeID.
-func (mr *MockServiceMockRecorder) GetSystemTypeID(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSystemTypeID", reflect.TypeOf((*MockService)(nil).GetSystemTypeID), arg0, arg1)
 }
 
 // Init mocks base method.
@@ -153,20 +109,6 @@ func (m *MockService) Name() string {
 func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockService)(nil).Name))
-}
-
-// PredefinedObjects mocks base method.
-func (m *MockService) PredefinedObjects(arg0 string) threads.DerivedSmartblockIds {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PredefinedObjects", arg0)
-	ret0, _ := ret[0].(threads.DerivedSmartblockIds)
-	return ret0
-}
-
-// PredefinedObjects indicates an expected call of PredefinedObjects.
-func (mr *MockServiceMockRecorder) PredefinedObjects(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PredefinedObjects", reflect.TypeOf((*MockService)(nil).PredefinedObjects), arg0)
 }
 
 // ProfileID mocks base method.
