@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
-	"go.uber.org/zap"
 
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/import"
@@ -45,7 +44,10 @@ func (bd *BookmarkImporterDecorator) CreateBookmarkObject(ctx context.Context, s
 		Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: url}},
 		UpdateExistingObjects: true,
 	}); err != nil {
-		log.With(zap.String("function", "BookmarkFetch")).With(zap.String("message", "failed to import bookmark")).Error(err)
+		log.With(
+			"function", "BookmarkFetch",
+			"message", "failed to import bookmark",
+		).Error(err)
 		return bd.Service.CreateBookmarkObject(ctx, spaceID, details, getContent)
 	}
 	err = bd.Service.UpdateBookmarkObject(objectId, getContent)

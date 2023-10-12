@@ -140,7 +140,7 @@ func (pt *Task) handlePageProperties(object *DataObject, details map[string]*typ
 	for name, prop := range pt.p.Properties {
 		relation, relationLink, err := pt.retrieveRelation(object, name, prop, details, hasTag, tagExist)
 		if err != nil {
-			logger.With("method", "handlePageProperties").Error(err)
+			log.With("method", "handlePageProperties").Error(err)
 			continue
 		}
 		relationsSnapshots = append(relationsSnapshots, relation...)
@@ -231,7 +231,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
@@ -268,7 +268,7 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, propObject 
 				apiKey,
 				propObject.GetPropertyType(),
 			); err != nil {
-			return fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+			return fmt.Errorf("failed to get paginated property, %s, %w", propObject.GetPropertyType(), err)
 		}
 		pt.handlePaginatedProperties(propObject, properties)
 	}
@@ -482,7 +482,7 @@ func getDetailsForRelationOption(name, rel string) *types.Struct {
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())

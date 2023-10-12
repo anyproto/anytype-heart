@@ -18,8 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const BlockAdditionError = "failed to add widget '%s': %v"
-
 type WidgetObject struct {
 	smartblock.SmartBlock
 	basic.IHistory
@@ -93,7 +91,7 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 				},
 			},
 		}); err != nil {
-			log.Errorf(BlockAdditionError, id, err)
+			log.Errorf("failed to add widget '%s': %v", id, err)
 		}
 	}
 }

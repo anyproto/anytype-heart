@@ -62,7 +62,7 @@ func (f *fileStorage) Init(a *app.App) (err error) {
 	f.cfg = cfg
 	fileCfg, err := cfg.FSConfig()
 	if err != nil {
-		return fmt.Errorf("fail to get file config: %s", err)
+		return fmt.Errorf("fail to get file config: %w", err)
 	}
 
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)

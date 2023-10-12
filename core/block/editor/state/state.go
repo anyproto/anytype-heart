@@ -710,7 +710,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 			continue
 		}
 		if bytes.Equal(prev, curr) {
-			log.With("objectID", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
+			log.With("objectID", s.RootId()).Debugf("found trailing duplicated event %T", e.Msg.GetValue())
 			continue
 		}
 		prev = curr
@@ -812,9 +812,9 @@ func (s *State) StringDebug() string {
 
 func (s *State) SetDetails(d *types.Struct) *State {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	//if d != nil && d.Fields != nil {
+	// if d != nil && d.Fields != nil {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
-	//}
+	// }
 	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
 		for k, v := range local.Fields {
@@ -873,7 +873,7 @@ func (s *State) SetLocalDetails(d *types.Struct) {
 
 func (s *State) SetDetail(key string, value *types.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	//value = shortenValueToLimit(s.rootId, key, value)
+	// value = shortenValueToLimit(s.rootId, key, value)
 
 	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
 		s.SetLocalDetail(key, value)

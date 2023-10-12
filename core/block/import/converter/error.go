@@ -2,9 +2,8 @@ package converter
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -35,7 +34,7 @@ func NewFromError(initialError error, mode pb.RpcObjectImportRequestMode) *Conve
 }
 
 func NewCancelError(err error) *ConvertError {
-	return NewFromError(errors.Wrap(ErrCancel, err.Error()), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
+	return NewFromError(fmt.Errorf("%w: %w", ErrCancel, err), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 }
 
 func (ce *ConvertError) Add(err error) {
@@ -70,9 +69,9 @@ func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType)
 	for _, e := range ce.errors {
 		switch {
 		case errors.Is(e, ErrCancel):
-			return errors.Wrapf(ErrCancel, "import type: %s", importType.String())
+			return fmt.Errorf("import type: %s: %w", importType.String(), ErrCancel)
 		case errors.Is(e, ErrLimitExceeded):
-			return errors.Wrapf(ErrLimitExceeded, "import type: %s", importType.String())
+			return fmt.Errorf("import type: %s: %w", importType.String(), ErrLimitExceeded)
 		case errors.Is(e, ErrFailedToReceiveListOfObjects):
 			return ErrFailedToReceiveListOfObjects
 		case errors.Is(e, ErrNoObjectsToImport):
@@ -81,9 +80,9 @@ func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType)
 	}
 	// we return ErrNoObjectsToImport only if all paths has such error, otherwise we assume that import finished with internal code error
 	if countNoObjectsToImport == len(ce.errors) {
-		return errors.Wrapf(ErrNoObjectsToImport, "import type: %s", importType.String())
+		return fmt.Errorf("import type: %s: %w", importType.String(), ErrNoObjectsToImport)
 	}
-	return errors.Wrapf(ce.Error(), "import type: %s", importType.String())
+	return fmt.Errorf("import type: %s: %w", importType.String(), ce.Error())
 }
 
 func (ce *ConvertError) IsNoObjectToImportError(importPathsCount int) bool {

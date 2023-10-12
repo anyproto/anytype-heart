@@ -392,7 +392,7 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 		for _, relId := range sources {
 			rel, err := systemObjectService.GetRelationByID(relId)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get relation %s: %s", relId, err.Error())
+				return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 			}
 
 			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())

@@ -47,7 +47,7 @@ func (s *TempDirService) TempDir() string {
 		path := filepath.Join(s.wallet.RootPath(), tmpDir)
 		err = os.MkdirAll(path, 0700)
 		if err != nil {
-			log.Errorf("failed to make temp dir, use the default system one: %s", err.Error())
+			log.Errorf("failed to make temp dir, use the default system one: %s", err)
 			s.tempDir = os.TempDir()
 		} else {
 			s.tempDir = path

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var logger = logging.Logger("notion-get-blocks")
+var log = logging.Logger("notion-get-blocks")
 
 const (
 	// Page is also a block, so we use endpoint to retrieve its children
@@ -102,7 +102,7 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 		for _, b := range objects.Results {
 			buffer, err := json.Marshal(b)
 			if err != nil {
-				logger.Errorf("GetBlocks: failed to marshal: %s", err)
+				log.Errorf("GetBlocks: failed to marshal: %s", err)
 				continue
 			}
 			blockMap := b.(map[string]interface{})
@@ -121,6 +121,8 @@ func (s *Service) getBlocks(ctx context.Context, pageID, apiKey string, paginati
 	return blocks, nil
 }
 
+// TODO DRY logging: return ([]interface{}, error) and log that error later
+//
 //nolint:funlen
 func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 	blocks := make([]interface{}, 0)
@@ -129,7 +131,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var p ParagraphBlock
 		err := json.Unmarshal(buffer, &p)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &p)
@@ -137,7 +139,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var h Heading1Block
 		err := json.Unmarshal(buffer, &h)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &h)
@@ -145,7 +147,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var h Heading2Block
 		err := json.Unmarshal(buffer, &h)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &h)
@@ -153,7 +155,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var h Heading3Block
 		err := json.Unmarshal(buffer, &h)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &h)
@@ -161,7 +163,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var c CalloutBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &c)
@@ -169,7 +171,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var q QuoteBlock
 		err := json.Unmarshal(buffer, &q)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &q)
@@ -177,7 +179,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var list BulletedListBlock
 		err := json.Unmarshal(buffer, &list)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &list)
@@ -185,7 +187,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var nl NumberedListBlock
 		err := json.Unmarshal(buffer, &nl)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &nl)
@@ -193,7 +195,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var t ToggleBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &t)
@@ -201,7 +203,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var c CodeBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &c)
@@ -209,7 +211,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var e EquationBlock
 		err := json.Unmarshal(buffer, &e)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &e)
@@ -217,7 +219,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var t ToDoBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &t)
@@ -225,7 +227,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var f FileBlock
 		err := json.Unmarshal(buffer, &f)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &f)
@@ -233,7 +235,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var i ImageBlock
 		err := json.Unmarshal(buffer, &i)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &i)
@@ -241,7 +243,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var v VideoBlock
 		err := json.Unmarshal(buffer, &v)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &v)
@@ -249,7 +251,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var v AudioBlock
 		err := json.Unmarshal(buffer, &v)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &v)
@@ -257,7 +259,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var p PdfBlock
 		err := json.Unmarshal(buffer, &p)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &p)
@@ -265,7 +267,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var b BookmarkBlock
 		err := json.Unmarshal(buffer, &b)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &b)
@@ -273,7 +275,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var d DividerBlock
 		err := json.Unmarshal(buffer, &d)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &d)
@@ -281,7 +283,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var t TableOfContentsBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &t)
@@ -289,7 +291,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var e EmbedBlock
 		err := json.Unmarshal(buffer, &e)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &e)
@@ -297,7 +299,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var lp LinkPreviewBlock
 		err := json.Unmarshal(buffer, &lp)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &lp)
@@ -305,7 +307,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var c ChildDatabaseBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &c)
@@ -313,7 +315,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var c ChildPageBlock
 		err := json.Unmarshal(buffer, &c)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &c)
@@ -321,7 +323,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var l LinkToPageBlock
 		err := json.Unmarshal(buffer, &l)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &l)
@@ -329,7 +331,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var u UnsupportedBlock
 		err := json.Unmarshal(buffer, &u)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &u)
@@ -337,7 +339,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var t TableBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &t)
@@ -345,7 +347,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var t TableRowBlock
 		err := json.Unmarshal(buffer, &t)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &t)
@@ -353,7 +355,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var cl ColumnListBlock
 		err := json.Unmarshal(buffer, &cl)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		cl.SetChildren([]interface{}{})
@@ -362,7 +364,7 @@ func (*Service) fillBlocks(blockType Type, buffer []byte) []interface{} {
 		var cb ColumnBlock
 		err := json.Unmarshal(buffer, &cb)
 		if err != nil {
-			logger.With(zap.String("method", "getBlocks")).Error(err)
+			log.With(zap.String("method", "getBlocks")).Error(err)
 			return blocks
 		}
 		blocks = append(blocks, &cb)
@@ -378,7 +380,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	req, err := s.client.PrepareRequest(ctx, apiKey, http.MethodGet, url, nil)
 
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	query := req.URL.Query()
 
@@ -391,14 +393,14 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	req.URL.RawQuery = query.Encode()
 	res, err := s.client.DoWithRetry(endpoint, 0, req)
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	defer res.Body.Close()
 
 	b, err := ioutil.ReadAll(res.Body)
 
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	var objects Response
 	if res.StatusCode != http.StatusOK {
@@ -413,7 +415,7 @@ func (s *Service) getBlocksResponse(ctx context.Context,
 	err = json.Unmarshal(b, &objects)
 
 	if err != nil {
-		return Response{}, fmt.Errorf("GetBlocks: %s", err)
+		return Response{}, fmt.Errorf("GetBlocks: %w", err)
 	}
 	return objects, nil
 }

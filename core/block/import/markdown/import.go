@@ -475,7 +475,7 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 
 				if err != nil {
 					allErrors.Add(err)
-					log.Warnf("err while url.PathUnescape: %s \n \t\t\t url: %s", err, link.TargetBlockId)
+					log.Warnf("error while url.PathUnescape: %s", err)
 					target = link.TargetBlockId
 				}
 

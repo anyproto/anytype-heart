@@ -41,8 +41,8 @@ type service struct {
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
-	objectCache  objectcache.Cache
 
+	objectCache     objectcache.Cache
 	once            sync.Once
 	personalSpaceID string
 }
@@ -137,17 +137,22 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	if err != nil {
 		return nil, fmt.Errorf("failed to get derived ids: %w", err)
 	}
+
+	spaceViewId, err := s.spaceService.SpaceViewId(spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+	}
+
 	return &model.AccountInfo{
 		HomeObjectId:           ids.Home,
 		ArchiveObjectId:        ids.Archive,
 		ProfileObjectId:        personalIds.Profile,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
-		AccountSpaceId:         spaceID,
-		TechSpaceId:            techSpaceId,
-		WorkspaceObjectId:      ids.Workspace,
-		WidgetsId:              ids.Widgets,
-		GatewayUrl:             gwAddr,
 		DeviceId:               deviceId,
+		AccountSpaceId:         spaceID,
+		WidgetsId:              ids.Widgets,
+		SpaceViewId:            spaceViewId,
+		GatewayUrl:             gwAddr,
 		LocalStoragePath:       cfg.CustomFileStorePath,
 		TimeZone:               cfg.TimeZone,
 		AnalyticsId:            analyticsId,

@@ -1482,5 +1482,15 @@
     "name": "Anytype Identity",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Relation that indicates the real space id on the spaceView",
+    "format": "longtext",
+    "hidden": true,
+    "key": "targetSpaceId",
+    "maxCount": 1,
+    "name": "Target space id",
+    "readonly": true,
+    "source": "derived"
   }
 ]

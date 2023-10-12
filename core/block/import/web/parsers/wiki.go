@@ -1,13 +1,13 @@
 package parsers
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"regexp"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -26,17 +26,17 @@ func New() Parser {
 func (w *DumbWikiParser) ParseUrl(url string) (*model.SmartBlockSnapshotBase, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
+		return nil, fmt.Errorf("WikiParser: ParseUrl: %w", err)
 	}
 	defer resp.Body.Close()
 
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
+		return nil, fmt.Errorf("WikiParser: ParseUrl: %w", err)
 	}
 	blocks, _, err := anymark.HTMLToBlocks(bytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "WikiParser: ParseUrl: ")
+		return nil, fmt.Errorf("WikiParser: ParseUrl: %w", err)
 	}
 
 	snapshots := &model.SmartBlockSnapshotBase{}

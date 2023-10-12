@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a6f11a536e6b918776972d27130c6d65e2cf420b16936f86fefc32b7422ea8f6"
+const RelationChecksum = "f23b3760c4b9dc6df63d024c488ef0f0df3a7f61f45b93223ca9872d1024a3fd"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -160,6 +160,7 @@ const (
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
+	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 )
 
 var (
@@ -1945,6 +1946,20 @@ var (
 			Name:             "Template's Type",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTargetSpaceId: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates the real space id on the spaceView",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brtargetSpaceId",
+			Key:              "targetSpaceId",
+			MaxCount:         1,
+			Name:             "Target space id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

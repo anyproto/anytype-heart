@@ -53,7 +53,8 @@ type SpaceService interface {
 	Create(ctx context.Context) (space Space, err error)
 	Get(ctx context.Context, id string) (space Space, err error)
 
-	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
+	DerivedIDs(ctx context.Context, spaceId string) (ids threads.DerivedSmartblockIds, err error)
+	SpaceViewId(spaceId string) (spaceViewId string, err error)
 
 	app.ComponentRunnable
 }
@@ -211,6 +212,10 @@ func (s *service) OnWorkspaceChanged(spaceId string, details *types.Struct) {
 			log.Warn("OnWorkspaceChanged error", zap.Error(err))
 		}
 	}()
+}
+
+func (s *service) SpaceViewId(spaceId string) (spaceViewId string, err error) {
+	return s.techSpace.SpaceViewId(spaceId)
 }
 
 func (s *service) Close(ctx context.Context) (err error) {

@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	stdlog "log"
 	"os"
 	"path/filepath"
 	"time"
@@ -22,7 +22,7 @@ import (
 )
 
 type treeExporter struct {
-	log        *log.Logger
+	log        *stdlog.Logger
 	s          objectstore.ObjectStore
 	anonymized bool
 	id         domain.FullID
@@ -46,7 +46,7 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	anySyncExporter := exporter.NewTreeExporter(params)
 	logBuf := bytes.NewBuffer(nil)
 
-	e.log = log.New(io.MultiWriter(logBuf, os.Stderr), "", log.LstdFlags)
+	e.log = stdlog.New(io.MultiWriter(logBuf, os.Stderr), "", stdlog.LstdFlags)
 	e.log.Printf("exporting tree and acl")
 	st := time.Now()
 	err = anySyncExporter.ExportUnencrypted(tree)

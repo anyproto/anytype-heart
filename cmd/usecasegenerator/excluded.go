@@ -36,7 +36,7 @@ var (
 func init() {
 	err := json.Unmarshal(excludedJson, &objectsToExcludeSlice)
 	if err != nil {
-		panic(fmt.Errorf("failed to unmarshal excluded.json: %v", err))
+		panic(fmt.Errorf("failed to unmarshal excluded.json: %w", err))
 	}
 	objectsToExclude = make(map[string]struct{})
 	for _, id := range objectsToExcludeSlice {
