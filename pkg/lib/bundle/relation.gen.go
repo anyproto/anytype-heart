@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f23b3760c4b9dc6df63d024c488ef0f0df3a7f61f45b93223ca9872d1024a3fd"
+const RelationChecksum = "67ed75db45282edeae3cbcaca63d4ef96bd30b4beaa8aaec5349060596fa53f1"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -1404,9 +1404,8 @@ var (
 		RelationKeyProfileOwnerIdentity: {
 
 			DataSource:       model.Relation_derived,
-			Description:      "Profile",
+			Description:      "Link the profile object to specific Identity",
 			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
 			Id:               "_brprofileOwnerIdentity",
 			Key:              "profileOwnerIdentity",
 			MaxCount:         1,

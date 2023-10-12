@@ -1474,11 +1474,11 @@
     "source": "derived"
   },
   {
-    "description": "Profile",
+    "description": "Link the profile object to specific Identity",
     "format": "shorttext",
     "key": "profileOwnerIdentity",
     "maxCount": 1,
-    "hidden": true,
+    "hidden": false,
     "name": "Anytype Identity",
     "readonly": true,
     "source": "derived"
