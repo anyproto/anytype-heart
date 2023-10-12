@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -140,11 +141,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 	}
 
 	if len(req.Source) > 0 {
-		spaceId, err := spaceIdFromFilters(req.Filters)
-		if err != nil {
-			return nil, fmt.Errorf("source set but can't get spaceId from filters: %w", err)
-		}
-		sourceFilter, err := s.filtersFromSource(spaceId, req.Source)
+		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -347,7 +344,7 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
+		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -519,26 +516,48 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	return dur
 }
 
-func (s *service) filtersFromSource(spaceID string, sources []string) (database.Filter, error) {
-	idsByType, err := s.sbtProvider.PartitionIDsByType(spaceID, sources)
-	if err != nil {
-		return nil, err
-	}
+func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	var relTypeFilter database.FiltersOr
-	if len(idsByType[smartblock.SmartBlockTypeObjectType]) > 0 {
+	var (
+		relKeys  []string
+		typeKeys []string
+	)
+
+	var err error
+	for _, source := range sources {
+		var uk domain.UniqueKey
+		if uk, err = domain.UnmarshalUniqueKey(source); err != nil {
+			// todo: remove this branch after all clients start using uniqueKey for source
+			log.Warn("Using object id instead of uniqueKey is deprecated in the Source")
+
+			details, err := s.objectStore.GetDetails(source)
+			if err != nil {
+				return nil, fmt.Errorf("get object %s details: %w", source, err)
+			}
+
+			uk, err = domain.UnmarshalUniqueKey(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
+			if err != nil {
+				return nil, fmt.Errorf("object doesn't have uniqueKey: %w", err)
+			}
+		}
+		switch uk.SmartblockType() {
+		case smartblock.SmartBlockTypeRelation:
+			relKeys = append(relKeys, uk.InternalKey())
+		case smartblock.SmartBlockTypeObjectType:
+			typeKeys = append(typeKeys, uk.InternalKey())
+		}
+	}
+
+	if len(typeKeys) > 0 {
 		relTypeFilter = append(relTypeFilter, database.FilterIn{
 			Key:   bundle.RelationKeyType.String(),
-			Value: pbtypes.StringList(idsByType[smartblock.SmartBlockTypeObjectType]).GetListValue(),
+			Value: pbtypes.StringList(typeKeys).GetListValue(),
 		})
 	}
 
-	for _, relationID := range idsByType[smartblock.SmartBlockTypeRelation] {
-		relationDetails, err := s.objectStore.GetDetails(relationID)
-		if err != nil {
-			return nil, fmt.Errorf("get relation %s details: %w", relationID, err)
-		}
+	for _, relKey := range relKeys {
 		relTypeFilter = append(relTypeFilter, database.FilterExists{
-			Key: pbtypes.GetString(relationDetails.Details, bundle.RelationKeyRelationKey.String()),
+			Key: relKey,
 		})
 	}
 	return relTypeFilter, nil

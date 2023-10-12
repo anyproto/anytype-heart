@@ -122,7 +122,6 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 			MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 			AccountSpaceId:         spaceID,
 			TechSpaceId:            techSpaceId,
-			WorkspaceObjectId:      "",
 			WidgetsId:              "",
 			GatewayUrl:             gwAddr,
 			DeviceId:               deviceId,
