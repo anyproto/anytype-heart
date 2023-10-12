@@ -212,7 +212,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		return
 	}
 
-	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedObjects(id.SpaceID).Profile)
+	st, _, _, err = source.BuildState(nil, tree, "TODO profile")
 	if err != nil {
 		return
 	}

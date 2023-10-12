@@ -65,7 +65,7 @@ type objectCache struct {
 	cache           ocache.OCache
 	closing         chan struct{}
 	space           *spacecore.AnySpace
-	keyConverter    smartblock.KeyToIDConverter
+	keyConverter    smartblock.Space
 }
 
 func New(
@@ -73,7 +73,7 @@ func New(
 	accountService accountservice.Service,
 	objectFactory ObjectFactory,
 	personalSpaceId string,
-	keyConverter smartblock.KeyToIDConverter,
+	keyConverter smartblock.Space,
 ) Cache {
 	c := &objectCache{
 		personalSpaceId: personalSpaceId,

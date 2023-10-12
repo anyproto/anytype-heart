@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -40,7 +39,6 @@ const relationsLimit = 10
 type ObjectCreator struct {
 	service        *block.Service
 	spaceService   space.SpaceService
-	core           core.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
@@ -48,17 +46,9 @@ type ObjectCreator struct {
 	mu             sync.Mutex
 }
 
-func NewCreator(service *block.Service,
-	core core.Service,
-	syncFactory *syncer.Factory,
-	objectStore objectstore.ObjectStore,
-	relationSyncer syncer.RelationSyncer,
-	fileStore filestore.FileStore,
-	spaceService space.SpaceService,
-) Creator {
+func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.SpaceService) Creator {
 	return &ObjectCreator{
 		service:        service,
-		core:           core,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
@@ -96,7 +86,7 @@ func (oc *ObjectCreator) Create(
 			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
 		}
 	}
-	st.SetLastModified(lastModifiedDate, oc.core.ProfileID(spaceID))
+	st.SetLastModified(lastModifiedDate, "TODO Profile")
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -333,7 +323,12 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 		})
 	}
 	if len(details) > 0 {
-		err := block.Do(oc.service, oc.core.PredefinedObjects(spaceID).Workspace, func(ws basic.CommonOperations) error {
+		spc, err := oc.spaceService.Get(context.Background(), spaceID)
+		if err != nil {
+			log.Errorf("failed to get space: %v", err)
+			return
+		}
+		err = block.Do(oc.service, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}

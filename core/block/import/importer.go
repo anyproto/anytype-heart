@@ -89,7 +89,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.objectIDGetter = NewObjectIDGetter(store, coreService, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, coreService, factory, store, relationSyncer, fileStore, spaceService)
+	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService)
 	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	i.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
 	return nil

@@ -1,6 +1,7 @@
 package dataview
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
@@ -12,11 +13,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -54,10 +55,9 @@ type Dataview interface {
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
-func NewDataview(sb smartblock.SmartBlock, anytype core.Service, objectStore objectstore.ObjectStore, sbtProvider typeprovider.SmartBlockTypeProvider) Dataview {
+func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, sbtProvider typeprovider.SmartBlockTypeProvider) Dataview {
 	dv := &sdataview{
 		SmartBlock:  sb,
-		anytype:     anytype,
 		objectStore: objectStore,
 		sbtProvider: sbtProvider,
 	}
@@ -67,7 +67,6 @@ func NewDataview(sb smartblock.SmartBlock, anytype core.Service, objectStore obj
 
 type sdataview struct {
 	smartblock.SmartBlock
-	anytype     core.Service
 	objectStore objectstore.ObjectStore
 	sbtProvider typeprovider.SmartBlockTypeProvider
 }
@@ -396,6 +395,27 @@ func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProv
 	return database.NewEmptySchema(), nil
 }
 
+func (d *sdataview) listRestrictedSources(ctx context.Context) ([]string, error) {
+	keys := []domain.TypeKey{
+		bundle.TypeKeyFile,
+		bundle.TypeKeyImage,
+		bundle.TypeKeyVideo,
+		bundle.TypeKeyAudio,
+		bundle.TypeKeyObjectType,
+		bundle.TypeKeySet,
+		bundle.TypeKeyRelation,
+	}
+	sources := make([]string, 0, len(keys))
+	for _, key := range keys {
+		id, err := d.Space().GetTypeIdByKey(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, id)
+	}
+	return sources, nil
+}
+
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	var dvChanged bool
 	info.State.IterateActive(func(b simple.Block) (isContinue bool) {
@@ -408,16 +428,8 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	if !dvChanged {
 		return
 	}
-	systemTypeIDs := d.anytype.PredefinedObjects(d.SpaceID()).SystemTypes
-	restrictedSources := []string{
-		systemTypeIDs[bundle.TypeKeyFile],
-		systemTypeIDs[bundle.TypeKeyImage],
-		systemTypeIDs[bundle.TypeKeyVideo],
-		systemTypeIDs[bundle.TypeKeyAudio],
-		systemTypeIDs[bundle.TypeKeyObjectType],
-		systemTypeIDs[bundle.TypeKeySet],
-		systemTypeIDs[bundle.TypeKeyRelation],
-	}
+
+	restrictedSources, _ := d.listRestrictedSources(context.Background())
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]
 	info.State.Iterate(func(b simple.Block) (isContinue bool) {

@@ -64,13 +64,17 @@ func (ou *ObjectIDGetter) Get(
 	createdTime time.Time,
 	getExisting bool,
 ) (string, treestorage.TreeStorageCreatePayload, error) {
+	spc, err := ou.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space: %w", err)
+	}
 	sbType := sn.SbType
 	if sbType == sb.SmartBlockTypeWorkspace {
-		workspaceID := ou.core.PredefinedObjects(spaceID).Workspace
+		workspaceID := spc.DerivedIDs().Workspace
 		return workspaceID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 	if sbType == sb.SmartBlockTypeWidget {
-		widgetID := ou.core.PredefinedObjects(spaceID).Widgets
+		widgetID := spc.DerivedIDs().Widgets
 		return widgetID, treestorage.TreeStorageCreatePayload{}, nil
 	}
 
@@ -87,11 +91,6 @@ func (ou *ObjectIDGetter) Get(
 		if id != "" {
 			return id, treestorage.TreeStorageCreatePayload{}, nil
 		}
-	}
-
-	spc, err := ou.spaceService.Get(context.Background(), spaceID)
-	if err != nil {
-		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space %s: %w", spaceID, err)
 	}
 
 	var payload treestorage.TreeStorageCreatePayload

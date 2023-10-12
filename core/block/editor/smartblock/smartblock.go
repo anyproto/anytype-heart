@@ -36,6 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -105,6 +106,12 @@ func New(
 	return s
 }
 
+type Space interface {
+	DerivedIDs() threads.DerivedSmartblockIds
+	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+}
+
 type SmartBlock interface {
 	Tree() objecttree.ObjectTree
 	Init(ctx *InitContext) (err error)
@@ -139,6 +146,8 @@ type SmartBlock interface {
 	ObjectCloseAllSessions()
 	FileRelationKeys(s *state.State) []string
 
+	Space() Space
+
 	ocache.Object
 	state.Doc
 	sync.Locker
@@ -171,7 +180,7 @@ type InitContext struct {
 	Ctx            context.Context
 
 	// Comes from space
-	KeyToIDConverter KeyToIDConverter
+	KeyToIDConverter Space
 }
 
 type linkSource interface {
@@ -187,11 +196,6 @@ type Locker interface {
 type Indexer interface {
 	Index(ctx context.Context, info DocInfo, options ...IndexOption) error
 	app.ComponentRunnable
-}
-
-type KeyToIDConverter interface {
-	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 }
 
 type smartBlock struct {
@@ -215,13 +219,14 @@ type smartBlock struct {
 	recordsSub      database.Subscription
 	closeRecordsSub func()
 
+	space Space
+
 	// Deps
-	fileService            files.Service
-	restrictionService     restriction.Service
-	objectStore            objectstore.ObjectStore
-	uniqueKeyToIdConverter KeyToIDConverter
-	indexer                Indexer
-	eventSender            event.Sender
+	fileService        files.Service
+	restrictionService restriction.Service
+	objectStore        objectstore.ObjectStore
+	indexer            Indexer
+	eventSender        event.Sender
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -251,6 +256,10 @@ func (sb *smartBlock) Id() string {
 
 func (sb *smartBlock) SpaceID() string {
 	return sb.source.SpaceID()
+}
+
+func (sb *smartBlock) Space() Space {
+	return sb.space
 }
 
 // UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
@@ -286,7 +295,7 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	sb.uniqueKeyToIdConverter = ctx.KeyToIDConverter
+	sb.space = ctx.KeyToIDConverter
 
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
@@ -499,7 +508,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 }
 
 type uniqueKeyToIdConverterWrapper struct {
-	converter KeyToIDConverter
+	converter Space
 }
 
 func (w *uniqueKeyToIdConverterWrapper) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error) {
@@ -512,7 +521,7 @@ func (w *uniqueKeyToIdConverterWrapper) GetTypeIdByKey(ctx context.Context, spac
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
-	converter := &uniqueKeyToIdConverterWrapper{converter: sb.uniqueKeyToIdConverter}
+	converter := &uniqueKeyToIdConverterWrapper{converter: sb.space}
 	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), converter, true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
@@ -559,7 +568,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			relId, err := sb.uniqueKeyToIdConverter.GetRelationIdByKey(context.TODO(), domain.RelationKey(rel.Key))
+			relId, err := sb.space.GetRelationIdByKey(context.TODO(), domain.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
 				continue
@@ -1407,7 +1416,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()))
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
-		typeID, err := sb.uniqueKeyToIdConverter.GetTypeIdByKey(context.Background(), ot)
+		typeID, err := sb.space.GetTypeIdByKey(context.Background(), ot)
 		if err != nil {
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}

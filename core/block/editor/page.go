@@ -4,7 +4,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -12,17 +11,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -41,41 +35,41 @@ type Page struct {
 	objectStore objectstore.ObjectStore
 }
 
-func NewPage(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, anytype core.Service, fileBlockService file.BlockService, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Page {
-	f := file.NewFile(
+func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
+	file := file.NewFile(
 		sb,
-		fileBlockService,
-		anytype,
-		tempDirProvider,
-		fileService,
-		picker,
+		f.fileBlockService,
+		f.anytype,
+		f.tempDirProvider,
+		f.fileService,
+		f.picker,
 	)
 	return &Page{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			objectStore,
-			eventSender,
+			f.objectStore,
+			f.eventSender,
 		),
-		File: f,
+		File: file,
 		Clipboard: clipboard.NewClipboard(
 			sb,
-			f,
-			tempDirProvider,
-			objectStore,
-			fileService,
+			file,
+			f.tempDirProvider,
+			f.objectStore,
+			f.fileService,
 		),
 		Bookmark: bookmark.NewBookmark(
 			sb,
-			picker,
-			bookmarkService,
-			objectStore,
+			f.picker,
+			f.bookmarkService,
+			f.objectStore,
 		),
-		Dataview:    dataview.NewDataview(sb, anytype, objectStore, sbtProvider),
+		Dataview:    dataview.NewDataview(sb, f.objectStore, f.sbtProvider),
 		TableEditor: table.NewEditor(sb),
-		objectStore: objectStore,
+		objectStore: f.objectStore,
 	}
 }
 

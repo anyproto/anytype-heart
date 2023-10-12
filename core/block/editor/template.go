@@ -3,22 +3,14 @@ package editor
 import (
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -28,10 +20,10 @@ type Template struct {
 	picker getblock.ObjectGetter
 }
 
-func NewTemplate(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, anytype core.Service, fileBlockService file.BlockService, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Template {
+func (f *ObjectFactory) newTemplate(sb smartblock.SmartBlock) *Template {
 	return &Template{
-		Page:   NewPage(sb, objectStore, anytype, fileBlockService, picker, bookmarkService, tempDirProvider, sbtProvider, layoutConverter, fileService, eventSender),
-		picker: picker,
+		Page:   f.newPage(sb),
+		picker: f.picker,
 	}
 }
 

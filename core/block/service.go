@@ -686,7 +686,11 @@ func (s *Service) SetPagesIsArchived(ctx session.Context, req pb.RpcObjectListSe
 }
 
 func (s *Service) setIsArchivedForObjects(spaceID string, objectIDs []string, isArchived bool) error {
-	return Do(s, s.anytype.PredefinedObjects(spaceID).Archive, func(b smartblock.SmartBlock) error {
+	spc, err := s.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
@@ -788,7 +792,11 @@ func (s *Service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err e
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
-	return s.objectLinksCollectionModify(s.anytype.PredefinedObjects(spaceID).Home, req.ContextId, req.IsFavorite)
+	spc, err := s.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return s.objectLinksCollectionModify(spc.DerivedIDs().Home, req.ContextId, req.IsFavorite)
 }
 
 func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
@@ -796,10 +804,14 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
+	spc, err := s.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
 	if err := s.checkArchivedRestriction(req.IsArchived, spaceID, req.ContextId); err != nil {
 		return err
 	}
-	return s.objectLinksCollectionModify(s.anytype.PredefinedObjects(spaceID).Archive, req.ContextId, req.IsArchived)
+	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, req.ContextId, req.IsArchived)
 }
 
 func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
@@ -886,7 +898,11 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
-	return Do(s, s.anytype.PredefinedObjects(spaceID).Archive, func(b smartblock.SmartBlock) error {
+	spc, err := s.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)

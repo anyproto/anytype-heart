@@ -150,7 +150,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
 		coresb.SmartBlockTypeRelationOption:
-		return NewPage(sb, f.objectStore, f.anytype, f.fileBlockService, f.picker, f.bookmarkService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.eventSender), nil
+		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(
 			sb,
@@ -166,7 +166,7 @@ func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock
 		return NewFiles(sb), nil
 	case coresb.SmartBlockTypeTemplate,
 		coresb.SmartBlockTypeBundledTemplate:
-		return NewTemplate(sb, f.objectStore, f.anytype, f.fileBlockService, f.picker, f.bookmarkService, f.tempDirProvider, f.sbtProvider, f.layoutConverter, f.fileService, f.eventSender), nil
+		return f.newTemplate(sb), nil
 	case coresb.SmartBlockTypeWorkspace:
 		return NewWorkspace(sb, f.objectStore, f.anytype, f.spaceService, f.detailsModifier, f.sbtProvider, f.layoutConverter, f.config, f.eventSender, f.objectDeriver), nil
 	case coresb.SmartBlockTypeSpaceView:

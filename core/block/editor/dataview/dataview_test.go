@@ -93,7 +93,7 @@ func TestDataviewCollectionImpl_SetViewPosition(t *testing.T) {
 		coreService := mock_core.NewMockService(t)
 		coreService.EXPECT().PredefinedObjects(mock.Anything).Return(threads.DerivedSmartblockIds{})
 
-		return NewDataview(sb, coreService, nil, nil), sb
+		return NewDataview(sb, nil, nil), sb
 	}
 	assertViewPositions := func(viewId string, pos uint32, exp []string) {
 		dv, sb := newTestDv()

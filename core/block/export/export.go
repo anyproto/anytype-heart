@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -61,11 +62,11 @@ type export struct {
 	blockService        *block.Service
 	picker              getblock.ObjectGetter
 	objectStore         objectstore.ObjectStore
-	coreService         core.Service
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
 	systemObjectService system_object.Service
 	resolver            idresolver.Resolver
+	spaceService        space.SpaceService
 }
 
 func New() Export {
@@ -74,13 +75,13 @@ func New() Export {
 
 func (e *export) Init(a *app.App) (err error) {
 	e.blockService = a.MustComponent(block.CName).(*block.Service)
-	e.coreService = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
 	e.picker = app.MustComponent[getblock.ObjectGetter](a)
 	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.systemObjectService = app.MustComponent[system_object.Service](a)
+	e.spaceService = app.MustComponent[space.SpaceService](a)
 	return
 }
 
@@ -329,7 +330,7 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		var conv converter.Converter
 		switch format {
 		case pb.RpcObjectListExport_Markdown:
-			conv = md.NewMDConverter(e.coreService, b.NewState(), wr.Namer())
+			conv = md.NewMDConverter(b.NewState(), wr.Namer())
 		case pb.RpcObjectListExport_Protobuf:
 			conv = pbc.NewConverter(b, isJSON)
 		case pb.RpcObjectListExport_JSON:
@@ -346,7 +347,7 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 			}
 			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docID == e.coreService.PredefinedObjects(b.SpaceID()).Home {
+		if docID == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -407,25 +408,33 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 }
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {
-	var spaceDashBoardID string
-	pr, err := e.coreService.LocalProfile(spaceID)
+	spc, err := e.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
 		return err
 	}
-	err = getblock.Do(e.picker, e.coreService.PredefinedObjects(spaceID).Workspace, func(b sb.SmartBlock) error {
+	var spaceDashBoardID string
+
+	var pr core.Profile
+	// TODO Integrate profile
+	// pr, err := e.coreService.LocalProfile(spaceID)
+	// if err != nil {
+	// 	return err
+	// }
+	err = getblock.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	profileID := e.coreService.ProfileID(spaceID)
+	// TODO Fix profile
+	// profileID := e.coreService.ProfileID(spaceID)
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,
 		Name:             pr.Name,
 		Avatar:           pr.IconImage,
-		ProfileId:        profileID,
+		ProfileId:        "TODO Profile",
 	}
 	data, err := profile.Marshal()
 	if err != nil {

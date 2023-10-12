@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -46,12 +45,7 @@ type personalSpaceIDGetter interface {
 	PersonalSpaceID() string
 }
 
-type derivedIDsGetter interface {
-	DerivedIDs(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error)
-}
-
 type Anytype struct {
-	derivedIDs     derivedIDsGetter
 	personalGetter personalSpaceIDGetter
 	objectStore    objectstore.ObjectStore
 
@@ -104,12 +98,7 @@ func (a *Anytype) PredefinedObjects(spaceID string) threads.DerivedSmartblockIds
 	if spaceID == addr.AnytypeMarketplaceWorkspace {
 		return threads.DerivedSmartblockIds{}
 	}
-	ids, err := a.derivedIDs.DerivedIDs(context.Background(), spaceID)
-	if err != nil {
-		log.Error("failed to get account objects", zap.Error(err))
-		return threads.DerivedSmartblockIds{}
-	}
-	return ids
+	return threads.DerivedSmartblockIds{}
 }
 
 func (a *Anytype) GetSystemTypeID(spaceID string, typeKey domain.TypeKey) string {

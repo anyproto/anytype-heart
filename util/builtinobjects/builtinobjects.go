@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -129,11 +130,11 @@ type BuiltinObjects interface {
 
 type builtinObjects struct {
 	service             *block.Service
-	coreService         core.Service
 	importer            importer.Importer
 	store               objectstore.ObjectStore
 	tempDirService      core.TempDirProvider
 	systemObjectService system_object.Service
+	spaceService        space.SpaceService
 }
 
 func New() BuiltinObjects {
@@ -142,7 +143,6 @@ func New() BuiltinObjects {
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.service = a.MustComponent(block.CName).(*block.Service)
-	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
@@ -260,8 +260,12 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		return nil
 	}
 
-	b.handleSpaceDashboard(spaceID, newID)
-	b.createWidgets(ctx, spaceID, useCase)
+	spc, err := b.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %s", err)
+	}
+	b.handleSpaceDashboard(spc, newID)
+	b.createWidgets(ctx, spc, useCase)
 	return
 }
 
@@ -345,9 +349,9 @@ func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (i
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
+func (b *builtinObjects) handleSpaceDashboard(spc space.Space, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: b.coreService.PredefinedObjects(spaceID).Workspace,
+		ContextId: spc.DerivedIDs().Workspace,
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -359,15 +363,15 @@ func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
 	}
 }
 
-func (b *builtinObjects) createWidgets(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spc space.Space, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
-	widgetObjectID := b.coreService.PredefinedObjects(spaceID).Widgets
+	widgetObjectID := spc.DerivedIDs().Widgets
 
 	if err = block.DoStateCtx(b.service, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
-				objectID, err = b.getNewObjectID(spaceID, objectID)
+				objectID, err = b.getNewObjectID(spc.Id(), objectID)
 				if err != nil {
 					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
 					continue
