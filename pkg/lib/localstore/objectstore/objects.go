@@ -148,7 +148,6 @@ type ObjectStore interface {
 	GetRelationByKey(key string) (*model.Relation, error)
 
 	GetObjectType(url string) (*model.ObjectType, error)
-	HasObjectType(id string) (bool, error)
 }
 
 type IndexerStore interface {

@@ -205,7 +205,7 @@ func (c *Creator) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
-	dvContent, err := dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.objectStore, req.Source)
+	dvContent, err := dataview.BlockBySource(c.objectStore, req.Source)
 	if err != nil {
 		return
 	}

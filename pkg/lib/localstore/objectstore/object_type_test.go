@@ -18,14 +18,11 @@ func TestGetObjectType(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		id := bundle.TypeKeyTask.BundledURL()
-		got, err := s.GetObjectType(bundle.TypeKeyTask.BundledURL())
+		got, err := s.GetObjectType(id)
 		require.NoError(t, err)
 
 		want := bundle.MustGetType(bundle.TypeKeyTask)
 		assert.Equal(t, want, got)
-		ok, err := s.HasObjectType(id)
-		require.NoError(t, err)
-		assert.True(t, ok)
 	})
 
 	t.Run("with object is not type expect error", func(t *testing.T) {
@@ -40,9 +37,6 @@ func TestGetObjectType(t *testing.T) {
 
 		_, err := s.GetObjectType(id)
 		require.Error(t, err)
-		ok, err := s.HasObjectType(id)
-		require.NoError(t, err)
-		assert.False(t, ok)
 	})
 
 	t.Run("with object is type", func(t *testing.T) {
@@ -92,8 +86,5 @@ func TestGetObjectType(t *testing.T) {
 		}
 
 		assert.Equal(t, want, got)
-		ok, err := s.HasObjectType(id)
-		require.NoError(t, err)
-		assert.True(t, ok)
 	})
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -95,7 +94,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, err := BlockBySource(d.SpaceID(), d.sbtProvider, d.objectStore, source)
+	dvContent, err := BlockBySource(d.objectStore, source)
 	if err != nil {
 		return
 	}
@@ -342,57 +341,31 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, objectStore objectstore.ObjectStore) (database.Schema, error) {
-	var relationFound, typeFound bool
-
-	for _, source := range sources {
-		// TODO Just check OBJECT TYPE, not smartblock type
-		sbt, err := sbtProvider.Type(spaceID, source)
-		if err != nil {
-			return nil, err
-		}
-
-		if sbt == smartblock2.SmartBlockTypeObjectType {
-			if relationFound {
-				return nil, fmt.Errorf("dataview source contains both type and relation")
-			}
-			if typeFound {
-				return nil, fmt.Errorf("dataview source contains more than one object type")
-			}
-			typeFound = true
-		}
-
-		if sbt == smartblock2.SmartBlockTypeRelation {
-			if typeFound {
-				return nil, fmt.Errorf("dataview source contains both type and relation")
-			}
-			relationFound = true
-		}
+func SchemaBySources(sources []string, objectStore objectstore.ObjectStore) (database.Schema, error) {
+	// Empty schema
+	if len(sources) == 0 {
+		return database.NewEmptySchema(), nil
 	}
-	if typeFound {
-		objectType, err := objectStore.GetObjectType(sources[0])
-		if err != nil {
-			return nil, err
-		}
+
+	// Try object type
+	objectType, err := objectStore.GetObjectType(sources[0])
+	if err == nil {
 		sch := database.NewByType(objectType)
 		return sch, nil
 	}
 
-	if relationFound {
-		var relations []*model.RelationLink
-		for _, relId := range sources {
-			rel, err := objectStore.GetRelationByID(relId)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
-			}
-
-			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
+	// Finally, try relations
+	var relations []*model.RelationLink
+	for _, relId := range sources {
+		rel, err := objectStore.GetRelationByID(relId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}
-		sch := database.NewByRelations(relations)
-		return sch, nil
-	}
 
-	return database.NewEmptySchema(), nil
+		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
+	}
+	sch := database.NewByRelations(relations)
+	return sch, nil
 }
 
 func (d *sdataview) listRestrictedSources(ctx context.Context) ([]string, error) {
@@ -538,8 +511,8 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, objectStore objectstore.ObjectStore, source []string) (*model.BlockContentOfDataview, error) {
-	schema, err := SchemaBySources(spaceID, sbtProvider, source, objectStore)
+func BlockBySource(objectStore objectstore.ObjectStore, source []string) (*model.BlockContentOfDataview, error) {
+	schema, err := SchemaBySources(source, objectStore)
 	if err != nil {
 		return nil, fmt.Errorf("get schema by sources: %w", err)
 	}
