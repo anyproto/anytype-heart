@@ -231,7 +231,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
@@ -482,7 +482,7 @@ func getDetailsForRelationOption(name, rel string) *types.Struct {
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())

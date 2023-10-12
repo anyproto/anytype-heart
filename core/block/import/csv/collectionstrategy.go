@@ -178,7 +178,7 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, key)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())

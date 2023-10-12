@@ -244,7 +244,7 @@ func (ds *Service) getRelationDetails(databaseProperty property.DatabaseProperty
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(databaseProperty.GetID())
 	uniqueKey, err := domain.NewUniqueKey(sb.SmartBlockTypeRelation, key)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())

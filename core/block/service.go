@@ -630,8 +630,25 @@ func (s *Service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 	panic("should be removed")
 }
 
-func (s *Service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
-	panic("should be removed")
+func (s *Service) SetSpaceInfo(req *pb.RpcWorkspaceSetInfoRequest) error {
+	ctx := context.TODO()
+	spc, err := s.spaceService.Get(ctx, req.SpaceId)
+	if err != nil {
+		return err
+	}
+	workspaceId := spc.DerivedIDs().Workspace
+
+	setDetails := make([]*pb.RpcObjectSetDetailsDetail, 0, len(req.Details.GetFields()))
+	for k, v := range req.Details.GetFields() {
+		setDetails = append(setDetails, &pb.RpcObjectSetDetailsDetail{
+			Key:   k,
+			Value: v,
+		})
+	}
+	return s.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: workspaceId,
+		Details:   setDetails,
+	})
 }
 
 func (s *Service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
