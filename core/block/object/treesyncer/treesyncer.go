@@ -173,7 +173,7 @@ func (t *treeSyncer) requestTree(peerId, id string) {
 }
 
 func (t *treeSyncer) updateTree(peerId, id string) {
-	log := log.With(zap.String("treeId", id))
+	log := log.With(zap.String("treeId", id), zap.String("spaceId", t.spaceId))
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
 	if err != nil {

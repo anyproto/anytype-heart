@@ -140,8 +140,18 @@ func (s *service) initTechSpace() error {
 	if err != nil {
 		return fmt.Errorf("derive tech space: %w", err)
 	}
-	techSpaceCache := objectcache.New(techCoreSpace, s.accountService, s.objectFactory, s.personalSpaceID, nil)
-	err = s.techSpace.Run(techCoreSpace, techSpaceCache)
+
+	sp := &space{
+		service:                s,
+		AnySpace:               techCoreSpace,
+		loadMandatoryObjectsCh: make(chan struct{}),
+		installer:              s.bundledObjectsInstaller,
+	}
+	sp.Cache = objectcache.New(techCoreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
+
+	err = s.techSpace.Run(techCoreSpace, sp.Cache)
+
+	s.preLoad(techCoreSpace.Id(), sp)
 	if err != nil {
 		return fmt.Errorf("run tech space: %w", err)
 	}

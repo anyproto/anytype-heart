@@ -74,6 +74,18 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	})
 }
 
+func (s *service) preLoad(spaceId string, sp Space) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.loaded[spaceId] = sp
+	s.statuses[spaceId] = spaceinfo.SpaceInfo{
+		SpaceID:      spaceId,
+		LocalStatus:  spaceinfo.LocalStatusOk,
+		RemoteStatus: spaceinfo.RemoteStatusUnknown,
+	}
+}
+
 func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err error) {
 	s.mu.Lock()
 	status := s.getStatus(spaceID)
