@@ -18,14 +18,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/testMock"
@@ -58,8 +56,6 @@ func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.at.EXPECT().ProfileID("space1").Return("profile1")
-		fx.at.EXPECT().PredefinedObjects("space1").Return(threads.DerivedSmartblockIds{})
 		defer fx.tearDown()
 		fx.store.EXPECT().GetDetails(gomock.Any()).AnyTimes().Return(&model.ObjectDetails{
 			Details: &types.Struct{Fields: map[string]*types.Value{}},
@@ -493,14 +489,11 @@ func newFixture(t *testing.T) *fixture {
 	restrictionService := mock_restriction.NewMockService(t)
 	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{}).Maybe()
 
-	systemObjectService := mock_system_object.NewMockService(t)
-	systemObjectService.EXPECT().GetObjectType(mock.Anything).Return(&model.ObjectType{}, nil).Maybe()
-
 	fileService := testMock.NewMockFileService(ctrl)
 
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(coreService, fileService, restrictionService, objectStore, systemObjectService, indexer, sender).(*smartBlock)
+	sb := New(fileService, restrictionService, objectStore, indexer, sender).(*smartBlock)
 	sb.source = source
 	return &fixture{
 		smartBlock:         sb,
