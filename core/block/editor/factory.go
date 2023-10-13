@@ -140,6 +140,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeIdentity,
 		coresb.SmartBlockTypeRelationOption:
 		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -26,24 +27,27 @@ type systemObjectService interface {
 // Migrate old relation (rel-name, etc.) and object type (ot-page, etc.) IDs to new ones (just ordinary object IDs)
 // Those old ids are ids of sub-objects, legacy system for storing types and relations inside workspace object
 type subObjectsLinksMigration struct {
+	profileID           string
+	identityObjectID    string
 	space       Space
 	objectStore objectstore.ObjectStore
 }
 
-func newSubObjectsLinksMigration(space Space, objectStore objectstore.ObjectStore) *subObjectsLinksMigration {
+func newSubObjectsLinksMigration(space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsLinksMigration {
 	return &subObjectsLinksMigration{
 		space:       space,
+		identityObjectID:    identityObjectID,
 		objectStore: objectStore,
 	}
 }
 
-func (m *subObjectsLinksMigration) replaceSubObjectLinksInDetails(s *state.State) {
+func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
 	for _, rel := range s.GetRelationLinks() {
 		if m.canRelationContainObjectValues(rel.Format) {
 			ids := pbtypes.GetStringList(s.Details(), rel.Key)
 			changed := false
 			for i, oldId := range ids {
-				newId := m.migrateSubObjectId(oldId)
+				newId := m.migrateId(oldId)
 				if oldId != newId {
 					ids[i] = newId
 					changed = true
@@ -56,14 +60,26 @@ func (m *subObjectsLinksMigration) replaceSubObjectLinksInDetails(s *state.State
 	}
 }
 
-func (m *subObjectsLinksMigration) migrate(s *state.State) {
-	m.replaceSubObjectLinksInDetails(s)
+func (m *subObjectsAndProfileLinksMigration) migrate(s *state.State) {
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeProfilePage, "")
+	if err != nil {
+		log.Errorf("migration: failed to create unique key for profile: %s", err)
+	} else {
+		// this way we will get incorrect profileID for non-personal spaces, but we are not migrating them
+		id, err := m.systemObjectService.GetObjectIdByUniqueKey(context.Background(), m.spaceID, uk)
+		if err != nil {
+			log.Errorf("migration: failed to derive id for profile: %s", err)
+		} else {
+			m.profileID = id
+		}
+	}
+
+	m.replaceLinksInDetails(s)
 
 	s.Iterate(func(block simple.Block) bool {
 		if block.Model().GetDataview() != nil {
 			// Mark block as mutable
 			dv := s.Get(block.Model().Id).(dataview2.Block)
-			m.migrateSources(dv)
 			m.migrateFilters(dv)
 		}
 
@@ -71,14 +87,17 @@ func (m *subObjectsLinksMigration) migrate(s *state.State) {
 			// Mark block as mutable
 			b := s.Get(block.Model().Id)
 			replacer := b.(simple.ObjectLinkReplacer)
-			replacer.ReplaceLinkIds(m.migrateSubObjectId)
+			replacer.ReplaceLinkIds(m.migrateId)
 		}
 
 		return true
 	})
 }
 
-func (m *subObjectsLinksMigration) migrateSubObjectId(oldId string) (newId string) {
+func (m *subObjectsAndProfileLinksMigration) migrateId(oldId string) (newId string) {
+	if m.profileID != "" && m.identityObjectID != "" && oldId == m.profileID {
+		return m.identityObjectID
+	}
 	uniqueKey, valid := subObjectIdToUniqueKey(oldId)
 	if !valid {
 		return oldId
@@ -108,7 +127,7 @@ func subObjectIdToUniqueKey(id string) (uniqueKey domain.UniqueKey, valid bool) 
 	return uniqueKey, true
 }
 
-func (m *subObjectsLinksMigration) migrateFilters(dv dataview2.Block) {
+func (m *subObjectsAndProfileLinksMigration) migrateFilters(dv dataview2.Block) {
 	for _, view := range dv.Model().GetDataview().GetViews() {
 		for _, filter := range view.GetFilters() {
 			err := m.migrateFilter(filter)
@@ -119,51 +138,42 @@ func (m *subObjectsLinksMigration) migrateFilters(dv dataview2.Block) {
 	}
 }
 
-func (m *subObjectsLinksMigration) migrateFilter(filter *model.BlockContentDataviewFilter) error {
+func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockContentDataviewFilter) error {
 	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
 	if err != nil {
-		return fmt.Errorf("failed to get relation by key %s: %w", filter.RelationKey, err)
+		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)
 	}
 
-	if m.canRelationContainObjectValues(relation.Format) {
-		if oldID := filter.Value.GetStringValue(); oldID != "" {
-			newID, err := m.migrateID(oldID)
-			if err != nil {
-				log.Errorf("subObjectsLinksMigration: failed to migrate filter %s with single value %s: %s", filter.Id, oldID, err)
-			}
+	// TODO: check this logic
+	// here we use objectstore to get relation, but it may be not yet available
+	// In case it is missing, lets try to migrate any string/stringlist: it should ignore invalid strings
+	if relation == nil || m.canRelationContainObjectValues(relation.Format) {
+		switch v := filter.Value.Kind.(type) {
+		case *types.Value_StringValue:
+			filter.Value = pbtypes.String(m.migrateId(v.StringValue))
+		case *types.Value_ListValue:
+			newIDs := make([]string, 0, len(v.ListValue.Values))
 
-			filter.Value = pbtypes.String(newID)
-		}
-
-		if oldIDs := pbtypes.GetStringListValue(filter.Value); len(oldIDs) > 0 {
-			newIDs := make([]string, 0, len(oldIDs))
-			for _, oldID := range oldIDs {
-				newID, err := m.migrateID(oldID)
-				if err != nil {
-					log.Errorf("subObjectsLinksMigration: failed to migrate filter %s with value list: id %s: %s", filter.Id, oldID, err)
+			for _, oldID := range v.ListValue.Values {
+				if id, ok := oldID.Kind.(*types.Value_StringValue); ok {
+					newIDs = append(newIDs, m.migrateId(id.StringValue))
+				} else {
+					return fmt.Errorf("migration: failed to migrate filter: invalid list item value kind %t", oldID.Kind)
 				}
-				newIDs = append(newIDs, newID)
 			}
+
 			filter.Value = pbtypes.StringList(newIDs)
 		}
 	}
 	return nil
 }
 
-func (m *subObjectsLinksMigration) migrateSources(dv dataview2.Block) {
-	newSources := make([]string, 0, len(dv.GetSource()))
-	for _, src := range dv.GetSource() {
-		newID, err := m.migrateID(src)
-		if err != nil {
-			log.Errorf("subObjectsLinksMigration: failed to migrate source %s: %s", src, err)
-		}
-		newSources = append(newSources, newID)
-	}
-	dv.SetSource(newSources)
-}
-
 // migrateID always returns ID, even if migration failed
-func (m *subObjectsLinksMigration) migrateID(id string) (string, error) {
+func (m *subObjectsAndProfileLinksMigration) migrateID(id string) (string, error) {
+	if m.profileID != "" && m.identityObjectID != "" && id == m.profileID {
+		return m.identityObjectID, nil
+	}
+
 	typeKey, err := bundle.TypeKeyFromUrl(id)
 	if err == nil {
 		typeID, err := m.space.GetTypeIdByKey(context.Background(), typeKey)
@@ -185,7 +195,7 @@ func (m *subObjectsLinksMigration) migrateID(id string) (string, error) {
 	return id, nil
 }
 
-func (m *subObjectsLinksMigration) canRelationContainObjectValues(format model.RelationFormat) bool {
+func (m *subObjectsAndProfileLinksMigration) canRelationContainObjectValues(format model.RelationFormat) bool {
 	switch format {
 	case
 		model.RelationFormat_status,

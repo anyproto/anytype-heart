@@ -212,7 +212,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		return
 	}
 
-	st, _, _, err = source.BuildState(nil, tree, "TODO profile")
+	st, _, _, err = source.BuildState(nil, tree)
 	if err != nil {
 		return
 	}

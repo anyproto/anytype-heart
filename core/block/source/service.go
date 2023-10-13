@@ -6,16 +6,19 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	identityService "github.com/anyproto/anytype-heart/core/identity"
+	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -64,7 +67,7 @@ type service struct {
 	spaceCoreService spacecore.SpaceCoreService
 	storageService   storage.ClientStorage
 	fileService      files.Service
-
+	identityService     identityService.Service
 	objectStore objectstore.ObjectStore
 
 	mu        sync.Mutex
@@ -74,11 +77,14 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]Source)
 	s.coreService = a.MustComponent(core.CName).(core.Service)
+	s.coreService = a.MustComponent(core.CName).(core.Service)
+
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	s.identityService = app.MustComponent[identityService.Service](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -130,6 +136,8 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
 			return NewBundledRelation(id), nil
+		case smartblock.SmartBlockTypeIdentity:
+			return NewIdentity(s.identityService, id), nil
 		}
 	}
 

@@ -84,7 +84,6 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
-		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String("TODO profile")),
 	)
 }
 

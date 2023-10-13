@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-heart/core/identity"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -242,7 +243,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(kanban.New()).
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
-		Register(account.New())
+		Register(account.New()).
+		Register(identity.New())
 }
 
 func MiddlewareVersion() string {

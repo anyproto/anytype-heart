@@ -21371,6 +21371,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | accountSpaceId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
 | spaceViewId | [string](#string) |  |  |
+| techSpaceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
@@ -22974,6 +22975,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STType | 528 |  |
 | STRelationOption | 529 |  |
 | SpaceView | 530 |  |
+| Identity | 532 |  |
 | MissingObject | 519 |  |
 
 

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a0b341316b60ad6c591c001fb7ff9a054d38ae4a993f8730256e04c4ebe9ccfe"
+const RelationChecksum = "67ed75db45282edeae3cbcaca63d4ef96bd30b4beaa8aaec5349060596fa53f1"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -158,6 +158,8 @@ const (
 	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
+	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
+	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 )
 
@@ -889,6 +891,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIdentityProfileLink: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Link to the profile attached to Anytype Identity",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_bridentityProfileLink",
+			Key:              "identityProfileLink",
+			MaxCount:         1,
+			Name:             "Profile link",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyImdbRating: {
 
 			DataSource:       model.Relation_details,
@@ -1382,6 +1398,19 @@ var (
 			MaxCount:         1,
 			Name:             "Problem",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyProfileOwnerIdentity: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Link the profile object to specific Identity",
+			Format:           model.RelationFormat_shorttext,
+			Id:               "_brprofileOwnerIdentity",
+			Key:              "profileOwnerIdentity",
+			MaxCount:         1,
+			Name:             "Anytype Identity",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

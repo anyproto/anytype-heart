@@ -84,14 +84,22 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	return s
 }
 
+// NewDocWithUniqueKey creates a new state with the given uniqueKey.
+// it is used for creating new objects which ID is derived from the uniqueKey(smartblockType+key)
 func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key domain.UniqueKey) Doc {
+	return NewDocWithInternalKey(rootId, blocks, key.InternalKey())
+}
+
+// NewDocWithInternalKey creates a new state with the given internal key.
+// prefer creating new objects using NewDocWithUniqueKey instead, for the extra checks during the unique key creation
+func NewDocWithInternalKey(rootId string, blocks map[string]simple.Block, internalKey string) Doc {
 	if blocks == nil {
 		blocks = make(map[string]simple.Block)
 	}
 	s := &State{
 		rootId:            rootId,
 		blocks:            blocks,
-		uniqueKeyInternal: key.InternalKey(),
+		uniqueKeyInternal: internalKey,
 	}
 	return s
 }
@@ -1637,6 +1645,7 @@ func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
+// AddRelationLinks adds relation links to the state in case they are not already present
 func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 	relLinks := s.GetRelationLinks()
 	for _, l := range links {

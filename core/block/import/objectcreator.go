@@ -83,8 +83,11 @@ func (oc *ObjectCreator) Create(
 			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
 			log.With("objectID", sn.Id).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
 		}
+		if lastModifiedDate > 0 {
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModifiedDate))
+		}
 	}
-	st.SetLastModified(lastModifiedDate, "TODO Profile")
+
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation

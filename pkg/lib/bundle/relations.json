@@ -1464,6 +1464,26 @@
     "source": "derived"
   },
   {
+    "description": "Link to the profile attached to Anytype Identity",
+    "format": "object",
+    "hidden": true,
+    "key": "identityProfileLink",
+    "maxCount": 1,
+    "name": "Profile link",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Link the profile object to specific Identity",
+    "format": "shorttext",
+    "key": "profileOwnerIdentity",
+    "maxCount": 1,
+    "hidden": false,
+    "name": "Anytype Identity",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Relation that indicates the real space id on the spaceView",
     "format": "longtext",
     "hidden": true,
