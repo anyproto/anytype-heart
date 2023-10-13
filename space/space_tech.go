@@ -20,7 +20,7 @@ func (s *service) initTechSpace() error {
 		loadMandatoryObjectsCh: make(chan struct{}),
 		installer:              s.bundledObjectsInstaller,
 	}
-	sp.Cache = objectcache.New(techCoreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
+	sp.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, sp)
 
 	err = s.techSpace.Run(techCoreSpace, sp.Cache)
 

@@ -88,8 +88,8 @@ func (f *ObjectFactory) Name() (name string) {
 	return CName
 }
 
-func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := f.sourceService.NewSource(initCtx.Ctx, initCtx.Space, id, initCtx.BuildOpts)
+func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
+	sc, err := f.sourceService.NewSource(initCtx.Ctx, space, id, initCtx.BuildOpts)
 	if err != nil {
 		return
 	}
@@ -104,7 +104,7 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 		}
 	}()
 
-	sb, err = f.New(sc.Type())
+	sb, err = f.New(space, sc.Type())
 	if err != nil {
 		return nil, fmt.Errorf("new smartblock: %w", err)
 	}
@@ -125,8 +125,9 @@ func (f *ObjectFactory) InitObject(id string, initCtx *smartblock.InitContext) (
 	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
 }
 
-func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
+func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
 	return smartblock.New(
+		space,
 		f.fileService,
 		f.restrictionService,
 		f.objectStore,
@@ -135,8 +136,8 @@ func (f *ObjectFactory) produceSmartblock() smartblock.SmartBlock {
 	)
 }
 
-func (f *ObjectFactory) New(sbType coresb.SmartBlockType) (smartblock.SmartBlock, error) {
-	sb := f.produceSmartblock()
+func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType) (smartblock.SmartBlock, error) {
+	sb := f.produceSmartblock(space)
 	switch sbType {
 	case coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeDate,

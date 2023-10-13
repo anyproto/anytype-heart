@@ -7,7 +7,6 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app/ocache"
-	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -40,7 +39,7 @@ type cacheOpts struct {
 type InitFunc = func(id string) *smartblock.InitContext
 
 type ObjectFactory interface {
-	InitObject(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
+	InitObject(space smartblock.Space, id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
 }
 
 type Cache interface {
@@ -62,24 +61,16 @@ type objectCache struct {
 	accountService  accountservice.Service
 	cache           ocache.OCache
 	closing         chan struct{}
-	space           commonspace.Space
-	keyConverter    smartblock.Space
+	space           smartblock.Space
 }
 
-func New(
-	space commonspace.Space,
-	accountService accountservice.Service,
-	objectFactory ObjectFactory,
-	personalSpaceId string,
-	keyConverter smartblock.Space,
-) Cache {
+func New(accountService accountservice.Service, objectFactory ObjectFactory, personalSpaceId string, space smartblock.Space) Cache {
 	c := &objectCache{
 		personalSpaceId: personalSpaceId,
-		space:           space,
 		accountService:  accountService,
 		objectFactory:   objectFactory,
 		closing:         make(chan struct{}),
-		keyConverter:    keyConverter,
+		space:           space,
 	}
 	c.cache = ocache.New(
 		c.cacheLoad,
@@ -120,9 +111,8 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 			Ctx:       ctx,
 			BuildOpts: opts.buildOption,
 			SpaceID:   opts.spaceId,
-			Space:     c.keyConverter,
 		}
-		return c.objectFactory.InitObject(id, initCtx)
+		return c.objectFactory.InitObject(c.space, id, initCtx)
 	}
 	createObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)
@@ -130,8 +120,7 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 		initCtx.Ctx = ctx
 		initCtx.SpaceID = opts.spaceId
 		initCtx.BuildOpts = opts.buildOption
-		initCtx.Space = c.keyConverter
-		return c.objectFactory.InitObject(id, initCtx)
+		return c.objectFactory.InitObject(c.space, id, initCtx)
 	}
 
 	switch {

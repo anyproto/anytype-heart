@@ -35,7 +35,7 @@ func (s *service) initMarketplaceSpace() error {
 			loadMandatoryObjectsCh: make(chan struct{}),
 		},
 	}
-	spc.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, spc)
+	spc.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, spc)
 
 	s.preLoad(spc)
 

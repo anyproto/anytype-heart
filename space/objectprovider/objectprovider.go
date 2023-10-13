@@ -132,7 +132,6 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smart
 				return &smartblock.InitContext{
 					Ctx:     ctx,
 					SpaceID: o.spaceId,
-					Space:   space,
 					State:   state.NewDoc(id, nil).(*state.State),
 				}
 			},

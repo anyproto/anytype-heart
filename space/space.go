@@ -61,7 +61,7 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, j
 		loadMandatoryObjectsCh: make(chan struct{}),
 		installer:              s.bundledObjectsInstaller,
 	}
-	sp.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
+	sp.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, sp.Cache)
 	var err error
 	sp.derivedIDs, err = sp.ObjectProvider.DeriveObjectIDs(ctx)

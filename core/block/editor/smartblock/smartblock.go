@@ -86,6 +86,7 @@ const CallerKey key = 0
 var log = logging.Logger("anytype-mw-smartblock")
 
 func New(
+	space Space,
 	fileService files.Service,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
@@ -93,6 +94,7 @@ func New(
 	eventSender event.Sender,
 ) SmartBlock {
 	s := &smartBlock{
+		space:     space,
 		hooks:     map[Hook][]HookCallback{},
 		hooksOnce: map[string]struct{}{},
 		Locker:    &sync.Mutex{},
@@ -184,8 +186,6 @@ type InitContext struct {
 	SpaceID        string
 	BuildOpts      source.BuildOptions
 	Ctx            context.Context
-
-	Space Space
 }
 
 type linkSource interface {
@@ -300,8 +300,6 @@ func (sb *smartBlock) ObjectTypeID() string {
 }
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
-	sb.space = ctx.Space
-
 	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
