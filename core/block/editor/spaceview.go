@@ -2,6 +2,7 @@ package editor
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -104,6 +105,9 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	err = proto.Unmarshal(changeInfo.ChangePayload, changePayload)
 	if err != nil {
 		return "", ErrIncorrectSpaceInfo
+	}
+	if changePayload.Key == "" {
+		return "", fmt.Errorf("space key is empty")
 	}
 	return changePayload.Key, nil
 }
