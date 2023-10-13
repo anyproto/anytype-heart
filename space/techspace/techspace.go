@@ -214,5 +214,5 @@ func (s *techSpace) Close(ctx context.Context) (err error) {
 	if s.idsWakedUp != nil {
 		<-s.idsWakedUp
 	}
-	return
+	return s.objectCache.Close(ctx)
 }

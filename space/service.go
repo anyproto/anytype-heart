@@ -67,9 +67,10 @@ type service struct {
 
 	newAccount bool
 
-	statuses map[string]spaceinfo.SpaceInfo
-	loading  map[string]*loadingSpace
-	loaded   map[string]Space
+	createdSpaces map[string]struct{}
+	statuses      map[string]spaceinfo.SpaceInfo
+	loading       map[string]*loadingSpace
+	loaded        map[string]Space
 
 	mu sync.Mutex
 
@@ -88,6 +89,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.techSpace = techspace.New()
 
+	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
 	s.loaded = map[string]Space{}
@@ -126,7 +128,7 @@ func (s *service) Create(ctx context.Context) (Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
-	if err = s.startLoad(ctx, spaceID, false); err != nil {
+	if err = s.startLoad(ctx, spaceID); err != nil {
 		return nil, err
 	}
 	return s.waitLoad(ctx, spaceID)
@@ -150,7 +152,7 @@ func (s *service) IsPersonal(id string) bool {
 
 func (s *service) OnViewCreated(spaceID string) {
 	go func() {
-		if err := s.startLoad(s.ctx, spaceID, true); err != nil {
+		if err := s.startLoad(s.ctx, spaceID); err != nil {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
 		}
 	}()
@@ -172,7 +174,17 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-	return s.techSpace.Close(ctx)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, sp := range s.loaded {
+		err = sp.Close(ctx)
+		if err != nil {
+			return fmt.Errorf("close space %s: %w", sp.Id(), err)
+		}
+	}
+	return nil
 }
 
 func getRepKey(spaceID string) (uint64, error) {

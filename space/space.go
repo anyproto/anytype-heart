@@ -37,6 +37,8 @@ type Space interface {
 
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+
+	Close(ctx context.Context) error
 }
 
 type space struct {
@@ -136,4 +138,15 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 		return "", err
 	}
 	return s.DeriveObjectID(ctx, uk)
+}
+
+func (s *space) Close(ctx context.Context) error {
+	if s == nil {
+		return nil
+	}
+	err := s.Cache.Close(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }

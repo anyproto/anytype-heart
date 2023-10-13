@@ -53,6 +53,8 @@ type Cache interface {
 	DoLockedIfNotExists(objectID string, proc func() error) error
 	Remove(ctx context.Context, objectID string) error
 	CloseBlocks()
+
+	Close(ctx context.Context) error
 }
 
 type objectCache struct {
