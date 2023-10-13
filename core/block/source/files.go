@@ -5,15 +5,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -21,23 +21,23 @@ import (
 
 var getFileTimeout = 60 * time.Second
 
-func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.Service, spaceID string, id string) (s Source) {
+func NewFile(accountService accountService, fileStore filestore.FileStore, fileService files.Service, spaceID string, id string) (s Source) {
 	return &file{
 		id: domain.FullID{
 			SpaceID:  spaceID,
 			ObjectID: id,
 		},
-		a:           a,
-		fileStore:   fileStore,
-		fileService: fileService,
+		accountService: accountService,
+		fileStore:      fileStore,
+		fileService:    fileService,
 	}
 }
 
 type file struct {
-	id          domain.FullID
-	a           core.Service
-	fileStore   filestore.FileStore
-	fileService files.Service
+	id             domain.FullID
+	accountService accountService
+	fileStore      filestore.FileStore
+	fileService    files.Service
 }
 
 func (f *file) ReadOnly() bool {
@@ -120,6 +120,6 @@ func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (f *file) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	creatorObjectId = addr.AccountIdToIdentityObjectId(f.a.AccountId())
+	creatorObjectId = addr.AccountIdToIdentityObjectId(f.accountService.AccountID())
 	return
 }

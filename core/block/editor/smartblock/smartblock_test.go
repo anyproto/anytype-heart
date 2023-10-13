@@ -493,7 +493,7 @@ func newFixture(t *testing.T) *fixture {
 
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(nil, fileService, restrictionService, objectStore, indexer, sender).(*smartBlock)
+	sb := New(nil, "", fileService, restrictionService, objectStore, indexer, sender).(*smartBlock)
 	sb.source = source
 	return &fixture{
 		smartBlock:         sb,

@@ -90,6 +90,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 func New(
 	space Space,
+	currentAccountId string,
 	fileService files.Service,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
@@ -97,11 +98,12 @@ func New(
 	eventSender event.Sender,
 ) SmartBlock {
 	s := &smartBlock{
-		space:     space,
-		hooks:     map[Hook][]HookCallback{},
-		hooksOnce: map[string]struct{}{},
-		Locker:    &sync.Mutex{},
-		sessions:  map[string]session.Context{},
+		currentAccountId: currentAccountId,
+		space:            space,
+		hooks:            map[Hook][]HookCallback{},
+		hooksOnce:        map[string]struct{}{},
+		Locker:           &sync.Mutex{},
+		sessions:         map[string]session.Context{},
 
 		fileService:        fileService,
 		restrictionService: restrictionService,
@@ -215,14 +217,15 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	depIds         []string // slice must be sorted
-	sessions       map[string]session.Context
-	undo           undo.History
-	source         source.Source
-	lastDepDetails map[string]*pb.EventObjectDetailsSet
-	restrictions   restriction.Restrictions
-	isDeleted      bool
-	disableLayouts bool
+	currentAccountId string
+	depIds           []string // slice must be sorted
+	sessions         map[string]session.Context
+	undo             undo.History
+	source           source.Source
+	lastDepDetails   map[string]*pb.EventObjectDetailsSet
+	restrictions     restriction.Restrictions
+	isDeleted        bool
+	disableLayouts   bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -697,7 +700,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 	}
 
-	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AccountIdToIdentityObjectId(sb.coreService.AccountId())))
+	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AccountIdToIdentityObjectId(sb.currentAccountId)))
 
 	sb.beforeStateApply(s)
 

@@ -18,26 +18,20 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type systemObjectService interface {
-	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
-	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
-	GetObjectIdByUniqueKey(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error)
-}
-
 // Migrate old relation (rel-name, etc.) and object type (ot-page, etc.) IDs to new ones (just ordinary object IDs)
 // Those old ids are ids of sub-objects, legacy system for storing types and relations inside workspace object
-type subObjectsLinksMigration struct {
-	profileID           string
-	identityObjectID    string
-	space       Space
-	objectStore objectstore.ObjectStore
+type subObjectsAndProfileLinksMigration struct {
+	profileID        string
+	identityObjectID string
+	space            Space
+	objectStore      objectstore.ObjectStore
 }
 
-func newSubObjectsLinksMigration(space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsLinksMigration {
-	return &subObjectsLinksMigration{
-		space:       space,
-		identityObjectID:    identityObjectID,
-		objectStore: objectStore,
+func newSubObjectsAndProfileLinksMigration(space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
+	return &subObjectsAndProfileLinksMigration{
+		space:            space,
+		identityObjectID: identityObjectID,
+		objectStore:      objectStore,
 	}
 }
 
@@ -66,7 +60,7 @@ func (m *subObjectsAndProfileLinksMigration) migrate(s *state.State) {
 		log.Errorf("migration: failed to create unique key for profile: %s", err)
 	} else {
 		// this way we will get incorrect profileID for non-personal spaces, but we are not migrating them
-		id, err := m.systemObjectService.GetObjectIdByUniqueKey(context.Background(), m.spaceID, uk)
+		id, err := m.space.DeriveObjectID(context.Background(), uk)
 		if err != nil {
 			log.Errorf("migration: failed to derive id for profile: %s", err)
 		} else {

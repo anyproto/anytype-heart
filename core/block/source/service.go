@@ -17,8 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	identityService "github.com/anyproto/anytype-heart/core/identity"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -35,9 +33,8 @@ func New() Service {
 	return &service{}
 }
 
-type idResolver interface {
-	BindSpaceID(spaceID string, objectID string) error
-	ResolveSpaceID(objectID string) (spaceID string, err error)
+type accountService interface {
+	AccountID() string
 }
 
 type Space interface {
@@ -60,15 +57,16 @@ type Service interface {
 }
 
 type service struct {
-	coreService      core.Service
-	sbtProvider      typeprovider.SmartBlockTypeProvider
-	accountService   accountservice.Service
-	fileStore        filestore.FileStore
-	spaceCoreService spacecore.SpaceCoreService
-	storageService   storage.ClientStorage
-	fileService      files.Service
-	identityService     identityService.Service
-	objectStore objectstore.ObjectStore
+	coreService        core.Service
+	sbtProvider        typeprovider.SmartBlockTypeProvider
+	accountService     accountService
+	accountKeysService accountservice.Service
+	fileStore          filestore.FileStore
+	spaceCoreService   spacecore.SpaceCoreService
+	storageService     storage.ClientStorage
+	fileService        files.Service
+	identityService    identityService
+	objectStore        objectstore.ObjectStore
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -80,11 +78,12 @@ func (s *service) Init(a *app.App) (err error) {
 	s.coreService = a.MustComponent(core.CName).(core.Service)
 
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
-	s.accountService = a.MustComponent(accountservice.CName).(accountservice.Service)
+	s.accountService = app.MustComponent[accountService](a)
+	s.accountKeysService = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	s.identityService = app.MustComponent[identityService.Service](a)
+	s.identityService = app.MustComponent[identityService](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -129,7 +128,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	if err == nil {
 		switch st {
 		case smartblock.SmartBlockTypeFile:
-			return NewFile(s.coreService, s.fileStore, s.fileService, space.Id(), id), nil
+			return NewFile(s.accountService, s.fileStore, s.fileService, space.Id(), id), nil
 		case smartblock.SmartBlockTypeDate:
 			return NewDate(space.Id(), id, s.coreService), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
@@ -158,7 +157,7 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 	case smartblock.SmartBlockTypeMissingObject:
 		return &missingObject{}, nil
 	case smartblock.SmartBlockTypeFile:
-		return &file{a: s.coreService, fileStore: s.fileStore}, nil
+		return &file{accountService: s.accountService, fileStore: s.fileStore}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{}, nil
 	case smartblock.SmartBlockTypeBundledRelation:

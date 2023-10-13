@@ -46,7 +46,6 @@ type Service interface {
 
 type DetailsModifier interface {
 	ModifyDetails(ctx session.Context, objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
-	ModifyLocalDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type spaceIdDeriver interface {

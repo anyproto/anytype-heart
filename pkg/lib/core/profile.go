@@ -7,7 +7,6 @@ import (
 type ProfileInfo interface {
 	LocalProfile(spaceID string) (Profile, error)
 	ProfileID(spaceID string) string
-	AccountId() string
 }
 
 type Profile struct {
@@ -50,8 +49,4 @@ func (a *Anytype) LocalProfile(spaceID string) (Profile, error) {
 
 func (a *Anytype) ProfileID(spaceID string) string {
 	return "TODO Profile"
-}
-
-func (a *Anytype) AccountId() string {
-	return a.wallet.GetAccountPrivkey().GetPublic().Account()
 }

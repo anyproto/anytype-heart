@@ -1,12 +1,10 @@
 package editor
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
@@ -27,12 +25,8 @@ import (
 
 var log = logging.Logger("anytype-mw-editor")
 
-type personalIDProvider interface {
-	PersonalSpaceID() string
-}
-
-type bundledObjectsInstaller interface {
-	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
+type accountService interface {
+	AccountID() string
 }
 
 type ObjectFactory struct {
@@ -51,6 +45,7 @@ type ObjectFactory struct {
 	indexer            smartblock.Indexer
 	spaceService       spaceService
 	objectDeriver      objectDeriver
+	accountService     accountService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -73,6 +68,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.objectDeriver = app.MustComponent[objectDeriver](a)
 	f.spaceService = app.MustComponent[spaceService](a)
+	f.accountService = app.MustComponent[accountService](a)
 
 	return nil
 }
@@ -123,6 +119,7 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
 	return smartblock.New(
 		space,
+		f.accountService.AccountID(),
 		f.fileService,
 		f.restrictionService,
 		f.objectStore,

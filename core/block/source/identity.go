@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
-	identityService "github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -16,7 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func NewIdentity(identityService identityService.Service, id string) (s Source) {
+type identityService interface {
+	SpaceId() string
+	GetDetails(ctx context.Context, identity string) (details *types.Struct, err error)
+}
+
+func NewIdentity(identityService identityService, id string) (s Source) {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &identity{
 		identityService: identityService,
@@ -27,7 +31,7 @@ func NewIdentity(identityService identityService.Service, id string) (s Source) 
 }
 
 type identity struct {
-	identityService identityService.Service
+	identityService identityService
 	closingCtx      context.Context
 	closingCtxFunc  context.CancelFunc
 	id              string

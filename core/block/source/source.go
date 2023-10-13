@@ -13,18 +13,20 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -136,23 +138,25 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		return nil, fmt.Errorf("build tree: %w", err)
 	}
 
-	sbt, err := typeprovider.GetTypeFromRoot(ot.Header())
+	sbt, key, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
 	if err != nil {
 		return nil, err
 	}
 
 	return &source{
-		ObjectTree:     ot,
-		id:             id,
-		space:          space,
-		spaceID:        space.Id(),
-		spaceService:   s.spaceCoreService,
-		openedAt:       time.Now(),
-		smartblockType: sbt,
-		accountService: s.accountService,
-		sbtProvider:    s.sbtProvider,
-		fileService:    s.fileService,
-		objectStore:    s.objectStore,
+		ObjectTree:         ot,
+		id:                 id,
+		headerKey:          key,
+		space:              space,
+		spaceID:            space.Id(),
+		spaceService:       s.spaceCoreService,
+		openedAt:           time.Now(),
+		smartblockType:     sbt,
+		accountService:     s.accountService,
+		accountKeysService: s.accountKeysService,
+		sbtProvider:        s.sbtProvider,
+		fileService:        s.fileService,
+		objectStore:        s.objectStore,
 	}, nil
 }
 
@@ -162,11 +166,11 @@ type ObjectTreeProvider interface {
 
 type source struct {
 	objecttree.ObjectTree
-	id             string
+	id                   string
 	space                Space
-	spaceID        string
-	smartblockType smartblock.SmartBlockType
-	headerKey      string // used for header(id) derivation together with smartblockType
+	spaceID              string
+	smartblockType       smartblock.SmartBlockType
+	headerKey            string // used for header(id) derivation together with smartblockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
 	receiver             ChangeReceiver
@@ -175,11 +179,12 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
-	fileService    files.Service
-	accountService accountservice.Service
-	spaceService   spacecore.SpaceCoreService
-	sbtProvider    typeprovider.SmartBlockTypeProvider
-	objectStore    objectstore.ObjectStore
+	fileService        files.Service
+	accountService     accountService
+	accountKeysService accountservice.Service
+	spaceService       spacecore.SpaceCoreService
+	sbtProvider        typeprovider.SmartBlockTypeProvider
+	objectStore        objectstore.ObjectStore
 }
 
 var _ updatelistener.UpdateListener = (*source)(nil)
@@ -274,7 +279,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := newSubObjectsAndProfileLinksMigration(s.space, addr.AccountIdToIdentityObjectId(s.coreService.AccountId()), s.objectStore)
+	migration := newSubObjectsAndProfileLinksMigration(s.space, addr.AccountIdToIdentityObjectId(s.accountService.AccountID()), s.objectStore)
 	migration.migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
@@ -329,7 +334,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.accountService.Account().SignKey,
+		Key:         s.accountKeysService.Account().SignKey,
 		IsSnapshot:  change.Snapshot != nil,
 		IsEncrypted: true,
 		DataType:    dataType,
