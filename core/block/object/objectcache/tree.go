@@ -25,7 +25,6 @@ type TreeCreationParams struct {
 	Time           time.Time
 	SmartblockType coresb.SmartBlockType
 	InitFunc       InitFunc
-	TargetSpaceID  string
 }
 
 // CreateTreePayload creates a tree payload for a given space and smart block type
@@ -34,7 +33,7 @@ func (c *objectCache) CreateTreePayload(ctx context.Context, spaceID string, par
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
-	changePayload, err := createChangePayload(params.SmartblockType, nil, params.TargetSpaceID)
+	changePayload, err := createChangePayload(params.SmartblockType, nil, "")
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -50,7 +49,6 @@ func (c *objectCache) CreateTreeObject(ctx context.Context, spaceID string, para
 	payload, err := c.CreateTreePayload(ctx, spaceID, payloadcreator.PayloadCreationParams{
 		Time:           params.Time,
 		SmartblockType: params.SmartblockType,
-		TargetSpaceID:  params.TargetSpaceID,
 	})
 	if err != nil {
 		return nil, err

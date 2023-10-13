@@ -20,7 +20,6 @@ type PayloadDerivationParams struct {
 type PayloadCreationParams struct {
 	Time           time.Time
 	SmartblockType coresb.SmartBlockType
-	TargetSpaceID  string
 }
 
 type PayloadCreator interface {
