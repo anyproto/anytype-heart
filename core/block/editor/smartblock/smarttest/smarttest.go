@@ -86,6 +86,14 @@ func (s *stubSpace) DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueK
 	return
 }
 
+func (s *stubSpace) Do(objectId string, apply func(sb smartblock.SmartBlock) error) error {
+	return nil
+}
+
+func (s *stubSpace) DoLockedIfNotExists(objectID string, proc func() error) error {
+	return nil
+}
+
 func (st *SmartTest) Space() smartblock.Space {
 	return &stubSpace{}
 }
