@@ -1406,7 +1406,8 @@
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [Metadata](#anytype-model-Metadata)
-    - [Metadata.IdentityPayload](#anytype-model-Metadata-IdentityPayload)
+    - [Metadata.Payload](#anytype-model-Metadata-Payload)
+    - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1453,7 +1454,6 @@
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
-    - [MetadataType](#anytype-model-MetadataType)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
@@ -22136,17 +22136,26 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| metadataType | [MetadataType](#anytype-model-MetadataType) |  |  |
-| metadataPayload | [bytes](#bytes) |  |  |
+| identity | [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload) |  |  |
 
 
 
 
 
 
-<a name="anytype-model-Metadata-IdentityPayload"></a>
+<a name="anytype-model-Metadata-Payload"></a>
 
-### Metadata.IdentityPayload
+### Metadata.Payload
+
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload-IdentityPayload"></a>
+
+### Metadata.Payload.IdentityPayload
 
 
 
@@ -22899,17 +22908,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
-
-
-
-<a name="anytype-model-MetadataType"></a>
-
-### MetadataType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Identity | 0 |  |
 
 
 

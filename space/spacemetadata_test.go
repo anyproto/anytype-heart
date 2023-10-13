@@ -15,7 +15,7 @@ func TestSpace_deriveAccountMetadata(t *testing.T) {
 	require.NoError(t, err)
 	symKey, err := deriveAccountEncKey(randKeys.SignKey)
 	require.NoError(t, err)
-	symKeyRaw, err := symKey.Raw()
+	symKeyProto, err := symKey.Marshall()
 	require.NoError(t, err)
 	metadata1, err := deriveAccountMetadata(randKeys.SignKey)
 	require.NoError(t, err)
@@ -25,9 +25,5 @@ func TestSpace_deriveAccountMetadata(t *testing.T) {
 	metadata := &model.Metadata{}
 	err = proto.Unmarshal(metadata1, metadata)
 	require.NoError(t, err)
-	require.Equal(t, model.MetadataType_Identity, metadata.MetadataType)
-	metadataPayload := &model.MetadataIdentityPayload{}
-	err = proto.Unmarshal(metadata.MetadataPayload, metadataPayload)
-	require.NoError(t, err)
-	require.Equal(t, symKeyRaw, metadataPayload.ProfileSymKey)
+	require.Equal(t, symKeyProto, metadata.GetIdentity().GetProfileSymKey())
 }

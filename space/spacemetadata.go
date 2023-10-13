@@ -13,20 +13,16 @@ func deriveAccountMetadata(acc crypto.PrivKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	rawSymKey, err := symKey.Raw()
+	symKeyProto, err := symKey.Marshall()
 	if err != nil {
 		return nil, err
 	}
-	metadataPayload := &model.MetadataIdentityPayload{
-		ProfileSymKey: rawSymKey,
-	}
-	metadataPayloadBytes, err := metadataPayload.Marshal()
-	if err != nil {
-		return nil, err
-	}
-	metadata := model.Metadata{
-		MetadataType:    model.MetadataType_Identity,
-		MetadataPayload: metadataPayloadBytes,
+	metadata := &model.Metadata{
+		Payload: &model.MetadataPayloadOfIdentity{
+			Identity: &model.MetadataPayloadIdentityPayload{
+				ProfileSymKey: symKeyProto,
+			},
+		},
 	}
 	return metadata.Marshal()
 }
