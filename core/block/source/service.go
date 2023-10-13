@@ -119,16 +119,18 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	if id == addr.MissingObject {
 		return NewMissingObject(), nil
 	}
-	st, _ := s.sbtProvider.Type(space.Id(), id)
-	switch st {
-	case smartblock.SmartBlockTypeFile:
-		return NewFile(s.coreService, s.fileStore, s.fileService, space.Id(), id), nil
-	case smartblock.SmartBlockTypeDate:
-		return NewDate(space.Id(), id, s.coreService), nil
-	case smartblock.SmartBlockTypeBundledObjectType:
-		return NewBundledObjectType(id), nil
-	case smartblock.SmartBlockTypeBundledRelation:
-		return NewBundledRelation(id), nil
+	st, err := typeprovider.SmartblockTypeFromID(id)
+	if err == nil {
+		switch st {
+		case smartblock.SmartBlockTypeFile:
+			return NewFile(s.coreService, s.fileStore, s.fileService, space.Id(), id), nil
+		case smartblock.SmartBlockTypeDate:
+			return NewDate(space.Id(), id, s.coreService), nil
+		case smartblock.SmartBlockTypeBundledObjectType:
+			return NewBundledObjectType(id), nil
+		case smartblock.SmartBlockTypeBundledRelation:
+			return NewBundledRelation(id), nil
+		}
 	}
 
 	s.mu.Lock()

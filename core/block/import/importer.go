@@ -38,7 +38,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -54,7 +53,6 @@ type Import struct {
 	oc              Creator
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
 	fileSync        filesync.FileSync
 	sync.Mutex
 }
@@ -74,7 +72,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	converters := []converter.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(col, i.sbtProvider, coreService),
+		pbc.New(col, coreService),
 		web.NewConverter(),
 		html.New(col, i.tempDirProvider),
 		txt.New(col),
@@ -90,7 +88,6 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService)
-	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }

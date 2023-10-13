@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -54,11 +53,10 @@ type Dataview interface {
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
-func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, sbtProvider typeprovider.SmartBlockTypeProvider) Dataview {
+func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Dataview {
 	dv := &sdataview{
 		SmartBlock:  sb,
 		objectStore: objectStore,
-		sbtProvider: sbtProvider,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv
@@ -67,7 +65,6 @@ func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, 
 type sdataview struct {
 	smartblock.SmartBlock
 	objectStore objectstore.ObjectStore
-	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {

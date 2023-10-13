@@ -49,7 +49,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/mutex"
@@ -137,7 +136,6 @@ type Service struct {
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
-	sbtProvider          typeprovider.SmartBlockTypeProvider
 	layoutConverter      converter.LayoutConverter
 	builtinObjectService builtinObjects
 
@@ -177,7 +175,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
@@ -248,10 +245,6 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
 
-		sbType, err := s.sbtProvider.Type(spaceID, id)
-		if err != nil {
-			return fmt.Errorf("failed to get smartblock type: %w", err)
-		}
 		afterHashesTime := time.Now()
 		metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
 			ObjectId:       id,
@@ -260,7 +253,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 			ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
 			ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
 			FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
-			SmartblockType: int(sbType),
+			SmartblockType: int(ob.Type()),
 		})
 		return nil
 	})

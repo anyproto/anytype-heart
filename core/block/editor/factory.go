@@ -23,7 +23,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -42,7 +41,6 @@ type ObjectFactory struct {
 	fileBlockService   file.BlockService
 	layoutConverter    converter.LayoutConverter
 	objectStore        objectstore.ObjectStore
-	sbtProvider        typeprovider.SmartBlockTypeProvider
 	sourceService      source.Service
 	tempDirProvider    core.TempDirProvider
 	fileService        files.Service
@@ -69,7 +67,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileService = app.MustComponent[files.Service](a)
 	f.config = app.MustComponent[*config.Config](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-	f.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 	f.picker = app.MustComponent[getblock.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
@@ -158,7 +155,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledTemplate:
 		return f.newTemplate(sb), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return NewWorkspace(sb, f.objectStore, f.spaceService, f.sbtProvider, f.layoutConverter, f.config, f.eventSender, f.objectDeriver), nil
+		return NewWorkspace(sb, f.objectStore, f.spaceService, f.layoutConverter, f.config, f.eventSender, f.objectDeriver), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return newSpaceView(
 			sb,

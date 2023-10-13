@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -57,7 +56,6 @@ type Creator struct {
 	systemObjectService system_object.Service
 	bookmark            bookmark.Service
 	app                 *app.App
-	sbtProvider         typeprovider.SmartBlockTypeProvider
 	spaceService        space.Service
 
 	// TODO: remove it?
@@ -81,7 +79,6 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.collectionService = app.MustComponent[CollectionService](a)
 	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	c.coreService = app.MustComponent[core.Service](a)
-	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	c.spaceService = app.MustComponent[space.Service](a)
 	c.app = a
 	return nil

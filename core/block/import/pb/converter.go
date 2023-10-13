@@ -28,7 +28,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -41,17 +40,15 @@ const (
 )
 
 type Pb struct {
-	service     *collection.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-	core        core.Service
-	iconOption  int64
+	service    *collection.Service
+	core       core.Service
+	iconOption int64
 }
 
-func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypeProvider, core core.Service) converter.Converter {
+func New(service *collection.Service, core core.Service) converter.Converter {
 	return &Pb{
-		service:     service,
-		sbtProvider: sbtProvider,
-		core:        core,
+		service: service,
+		core:    core,
 	}
 }
 

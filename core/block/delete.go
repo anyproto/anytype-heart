@@ -21,10 +21,12 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
+	var sbType coresb.SmartBlockType
 	err = Do(s, objectID, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
+		sbType = b.Type()
 		return nil
 	})
 	if err != nil {
@@ -35,8 +37,7 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 		SpaceID:  spaceID,
 		ObjectID: objectID,
 	}
-	sbt, _ := s.sbtProvider.Type(spaceID, objectID)
-	switch sbt {
+	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation:
 		err = Do(s, objectID, func(b smartblock.SmartBlock) error {

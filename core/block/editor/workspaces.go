@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -33,7 +32,7 @@ type Workspaces struct {
 	objectDeriver objectDeriver
 }
 
-func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, spaceService spaceService, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender, objectDeriver objectDeriver) *Workspaces {
+func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, spaceService spaceService, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender, objectDeriver objectDeriver) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
@@ -43,7 +42,7 @@ func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore,
 			objectStore,
 			eventSender,
 		),
-		Dataview:      dataview.NewDataview(sb, objectStore, sbtProvider),
+		Dataview:      dataview.NewDataview(sb, objectStore),
 		objectStore:   objectStore,
 		spaceService:  spaceService,
 		config:        config,
