@@ -134,8 +134,9 @@ type SourceWithType interface {
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
 type sourceDeps struct {
-	sbt smartblock.SmartBlockType
-	ot  objecttree.ObjectTree
+	sbt       smartblock.SmartBlockType
+	headerKey string // used for header derivation together with sbt
+	ot        objecttree.ObjectTree
 
 	coreService         core.Service
 	accountService      accountservice.Service
@@ -154,6 +155,7 @@ func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err er
 		spaceService:        deps.spaceService,
 		openedAt:            time.Now(),
 		smartblockType:      deps.sbt,
+		headerKey:           deps.headerKey,
 		accountService:      deps.accountService,
 		sbtProvider:         deps.sbtProvider,
 		fileService:         deps.fileService,
@@ -167,9 +169,11 @@ type ObjectTreeProvider interface {
 
 type source struct {
 	objecttree.ObjectTree
-	id                   string
-	spaceID              string
-	smartblockType       smartblock.SmartBlockType
+	id             string
+	spaceID        string
+	smartblockType smartblock.SmartBlockType
+	headerKey      string // used for header(id) derivation together with smartblockType
+
 	lastSnapshotId       string
 	changesSinceSnapshot int
 	receiver             ChangeReceiver
@@ -260,10 +264,11 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedObjects(s.spaceID).Profile)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree)
 	if err != nil {
 		return
 	}
+
 	validationErr := st.Validate()
 	if validationErr != nil {
 		log.With("objectID", s.id).Errorf("not valid state: %v", validationErr)
@@ -500,7 +505,7 @@ func (s *source) Close() (err error) {
 	return s.ObjectTree.Close()
 }
 
-func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
+func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -514,6 +519,8 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 		startId = st.ChangeId()
 	}
 
+	// todo: can we avoid unmarshaling here? we already had this data
+	_, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId, UnmarshalChange,
 		func(change *objecttree.Change) bool {
@@ -521,7 +528,11 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			lastChange = change
 			// that means that we are starting from tree root
 			if change.Id == ot.Id() {
-				st = state.NewDoc(ot.Id(), nil).(*state.State)
+				if uniqueKeyInternalKey != "" {
+					st = state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State)
+				} else {
+					st = state.NewDoc(ot.Id(), nil).(*state.State)
+				}
 				st.SetChangeId(change.Id)
 				return true
 			}
@@ -533,7 +544,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			if startId == change.Id {
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
-					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
+					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey)).(*state.State)
 					return true
 				} else {
 					st = st.NewState()
@@ -562,7 +573,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 
 	if lastChange != nil && !st.IsTheHeaderChange() {
 		// todo: why do we don't need to set last modified for the header change?
-		st.SetLastModified(lastChange.Timestamp, addr.IdentityPrefix+lastChange.Identity.Account())
+		st.SetLastModified(lastChange.Timestamp, addr.AccountIdToIdentityObjectId(lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return

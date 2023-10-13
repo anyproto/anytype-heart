@@ -154,7 +154,7 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 		return nil, fmt.Errorf("build tree: %w", err)
 	}
 
-	sbt, err := typeprovider.GetTypeFromRoot(ot.Header())
+	sbt, key, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +162,7 @@ func (s *service) newSource(ctx context.Context, id string, spaceID string, buil
 		coreService:         s.coreService,
 		accountService:      s.account,
 		sbt:                 sbt,
+		headerKey:           key,
 		ot:                  ot,
 		spaceService:        s.spaceService,
 		sbtProvider:         s.sbtProvider,

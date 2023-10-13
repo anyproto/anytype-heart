@@ -23,6 +23,7 @@ import (
 
 type snapshotOptions struct {
 	changeId           string
+	internalKey        string
 	uniqueKeyMigration *uniqueKeyMigration
 }
 
@@ -35,6 +36,13 @@ type SnapshotOption func(*snapshotOptions)
 func WithChangeId(changeId string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.changeId = changeId
+		return
+	}
+}
+
+func WithInternalKey(internalKey string) func(*snapshotOptions) {
+	return func(o *snapshotOptions) {
+		o.internalKey = internalKey
 		return
 	}
 }
@@ -96,6 +104,11 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		storeKeyRemoved:   removedCollectionKeysMap,
 		uniqueKeyInternal: snapshot.Data.Key,
 	}
+
+	if sOpts.internalKey != "" {
+		s.uniqueKeyInternal = sOpts.internalKey
+	}
+
 	if s.store != nil {
 		for collName, coll := range s.store.Fields {
 			if c := coll.GetStructValue(); s != nil {
