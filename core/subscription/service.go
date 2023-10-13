@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
@@ -527,8 +528,8 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	for _, source := range sources {
 		var uk domain.UniqueKey
 		if uk, err = domain.UnmarshalUniqueKey(source); err != nil {
-			// todo: remove this branch after all clients start using uniqueKey for source
-			log.Warn("Using object id instead of uniqueKey is deprecated in the Source")
+			// todo: gradually escalate to return error
+			log.Info("Using object id instead of uniqueKey is deprecated in the Source")
 
 			details, err := s.objectStore.GetDetails(source)
 			if err != nil {
