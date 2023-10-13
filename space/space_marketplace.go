@@ -17,30 +17,45 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
+type marketplaceSpace struct {
+	*space
+}
+
 func (s *service) initMarketplaceSpace() error {
-	coreSpace := newMarketplace()
-	sp := &space{
-		service:                s,
-		Space:                  coreSpace,
-		installer:              s.bundledObjectsInstaller,
-		loadMandatoryObjectsCh: make(chan struct{}),
+	coreSpace := newMarketplaceCommon()
+	spc := &marketplaceSpace{
+		space: &space{
+			service:                s,
+			Space:                  coreSpace,
+			installer:              s.bundledObjectsInstaller,
+			loadMandatoryObjectsCh: make(chan struct{}),
+		},
 	}
-	sp.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
+	spc.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, spc)
 
-	s.preLoad(sp)
+	s.preLoad(spc)
 
-	err := s.indexer.ReindexMarketplaceSpace(s.marketplaceSpace)
+	err := s.indexer.ReindexMarketplaceSpace(spc)
 	if err != nil {
 		return fmt.Errorf("reindex marketplace space: %w", err)
 	}
-	s.marketplaceSpace = sp
+	s.marketplaceSpace = spc
 	return nil
 }
 
-func newMarketplace() commonspace.Space {
+func (s *marketplaceSpace) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
+	return addr.BundledRelationURLPrefix + key.String(), nil
+}
+
+func (s *marketplaceSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
+	return addr.BundledObjectTypeURLPrefix + key.String(), nil
+}
+
+func newMarketplaceCommon() commonspace.Space {
 	return &marketplaceCommonSpace{}
 }
 

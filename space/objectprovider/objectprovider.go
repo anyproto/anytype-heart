@@ -8,12 +8,12 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
-	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
@@ -22,7 +22,7 @@ var log = logger.NewNamed("client.spaceobject.objectprovider")
 type ObjectProvider interface {
 	DeriveObjectIDs(ctx context.Context) (objIDs threads.DerivedSmartblockIds, err error)
 	LoadObjects(ctx context.Context, ids []string) (err error)
-	CreateMandatoryObjects(ctx context.Context) (err error)
+	CreateMandatoryObjects(ctx context.Context, space smartblock.Space) (err error)
 }
 
 func NewObjectProvider(spaceId string, personalSpaceId string, cache objectcache.Cache) ObjectProvider {
@@ -54,7 +54,7 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 		return o.derivedObjectIds, nil
 	}
 
-	var sbTypes []smartblock.SmartBlockType
+	var sbTypes []coresb.SmartBlockType
 	if o.isPersonal() {
 		sbTypes = threads.PersonalSpaceTypes
 	} else {
@@ -77,7 +77,7 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 	}
 	// deriving system types
 	for _, ot := range bundle.SystemTypes {
-		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, ot.String())
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, ot.String())
 		if err != nil {
 			return objIDs, err
 		}
@@ -89,7 +89,7 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 	}
 	// deriving system relations
 	for _, rk := range bundle.SystemRelations {
-		uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, rk.String())
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, rk.String())
 		if err != nil {
 			return objIDs, err
 		}
@@ -113,8 +113,8 @@ func (o *objectProvider) LoadObjects(ctx context.Context, objIDs []string) (err 
 	return
 }
 
-func (o *objectProvider) CreateMandatoryObjects(ctx context.Context) (err error) {
-	var sbTypes []smartblock.SmartBlockType
+func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smartblock.Space) (err error) {
+	var sbTypes []coresb.SmartBlockType
 	if o.isPersonal() {
 		sbTypes = threads.PersonalSpaceTypes
 	} else {
@@ -128,8 +128,13 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context) (err error)
 		}
 		_, err = o.cache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 			Key: uk,
-			InitFunc: func(id string) *editorsb.InitContext {
-				return &editorsb.InitContext{Ctx: ctx, SpaceID: o.spaceId, State: state.NewDoc(id, nil).(*state.State)}
+			InitFunc: func(id string) *smartblock.InitContext {
+				return &smartblock.InitContext{
+					Ctx:     ctx,
+					SpaceID: o.spaceId,
+					Space:   space,
+					State:   state.NewDoc(id, nil).(*state.State),
+				}
 			},
 		})
 		if err != nil {

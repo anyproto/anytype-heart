@@ -12,7 +12,7 @@ func (s *service) create(ctx context.Context, coreSpace *spacecore.AnySpace) (Sp
 	}
 
 	// load
-	if err := s.startLoad(ctx, coreSpace.Id()); err != nil {
+	if err := s.startLoad(ctx, coreSpace.Id(), true); err != nil {
 		return nil, err
 	}
 	return s.waitLoad(ctx, coreSpace.Id())

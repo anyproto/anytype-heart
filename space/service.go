@@ -126,7 +126,7 @@ func (s *service) Create(ctx context.Context) (Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
-	if err = s.startLoad(ctx, spaceID); err != nil {
+	if err = s.startLoad(ctx, spaceID, false); err != nil {
 		return nil, err
 	}
 	return s.waitLoad(ctx, spaceID)
@@ -136,12 +136,12 @@ func (s *service) GetPersonalSpace(ctx context.Context) (sp Space, err error) {
 	return s.Get(ctx, s.personalSpaceID)
 }
 
-func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error) {
+func (s *service) open(ctx context.Context, spaceID string, justCreated bool) (sp Space, err error) {
 	coreSpace, err := s.spaceCore.Get(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}
-	return s.newSpace(ctx, coreSpace)
+	return s.newSpace(ctx, coreSpace, justCreated)
 }
 
 func (s *service) IsPersonal(id string) bool {
@@ -150,7 +150,7 @@ func (s *service) IsPersonal(id string) bool {
 
 func (s *service) OnViewCreated(spaceID string) {
 	go func() {
-		if err := s.startLoad(s.ctx, spaceID); err != nil {
+		if err := s.startLoad(s.ctx, spaceID, true); err != nil {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
 		}
 	}()

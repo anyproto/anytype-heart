@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
@@ -207,7 +206,7 @@ func (oc *ObjectCreator) createNewObject(
 	if err == nil {
 		respDetails = sb.Details()
 	} else if errors.Is(err, treestorage.ErrTreeExists) {
-		err = getblock.Do(oc.service, newID, func(sb smartblock.SmartBlock) error {
+		err = spc.Do(newID, func(sb smartblock.SmartBlock) error {
 			respDetails = sb.Details()
 			return nil
 		})

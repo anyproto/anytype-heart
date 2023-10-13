@@ -8,11 +8,11 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -54,7 +54,7 @@ type space struct {
 	loadMandatoryObjectsErr error
 }
 
-func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (*space, error) {
+func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, justCreated bool) (*space, error) {
 	sp := &space{
 		service:                s,
 		Space:                  coreSpace,
@@ -68,16 +68,12 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
 	}
-
-	// TODO BEGIN RUN ONLY ON CREATE
-	// create mandatory objects
-	err = sp.CreateMandatoryObjects(ctx)
-	if err != nil {
-		log.Error("TEMP", zap.Error(err))
-		// return nil, fmt.Errorf("CreateMandatoryObjects error: %w; spaceId: %v", err, coreSpace.Id())
+	if justCreated {
+		err = sp.ObjectProvider.CreateMandatoryObjects(ctx, sp)
+		if err != nil {
+			return nil, fmt.Errorf("create mandatory objects: %w", err)
+		}
 	}
-	// TODO END RUN ONLY ON CREATE
-
 	go sp.mandatoryObjectsLoad(s.ctx)
 	return sp, nil
 }
@@ -124,4 +120,20 @@ func (s *space) Do(objectId string, apply func(sb smartblock.SmartBlock) error) 
 	sb.Lock()
 	defer sb.Unlock()
 	return apply(sb)
+}
+
+func (s *space) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key.String())
+	if err != nil {
+		return "", err
+	}
+	return s.DeriveObjectID(ctx, uk)
+}
+
+func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, key.String())
+	if err != nil {
+		return "", err
+	}
+	return s.DeriveObjectID(ctx, uk)
 }

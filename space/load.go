@@ -9,12 +9,12 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
+func (s *service) startLoad(ctx context.Context, spaceID string, justCreated bool) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	status := s.getStatus(spaceID)
-
+	// Do nothing if space is already loading
 	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
 		return nil
 	}
@@ -34,7 +34,7 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	if err = s.setStatus(ctx, info); err != nil {
 		return
 	}
-	s.loading[spaceID] = newLoadingSpace(s.ctx, spaceID, s)
+	s.loading[spaceID] = s.newLoadingSpace(s.ctx, spaceID, justCreated)
 	return
 }
 
