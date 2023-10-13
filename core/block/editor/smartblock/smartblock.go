@@ -174,6 +174,8 @@ type DocInfo struct {
 	Creator    string
 	Type       domain.TypeKey
 	Details    *types.Struct
+
+	SmartblockType smartblock.SmartBlockType
 }
 
 // TODO Maybe create constructor? Don't want to forget required fields
@@ -1303,14 +1305,15 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		}
 	}
 	return DocInfo{
-		Id:         sb.Id(),
-		SpaceID:    sb.SpaceID(),
-		Links:      links,
-		Heads:      heads,
-		FileHashes: fileHashes,
-		Creator:    creator,
-		Details:    sb.CombinedDetails(),
-		Type:       sb.ObjectTypeKey(),
+		Id:             sb.Id(),
+		SpaceID:        sb.SpaceID(),
+		Links:          links,
+		Heads:          heads,
+		FileHashes:     fileHashes,
+		Creator:        creator,
+		Details:        sb.CombinedDetails(),
+		Type:           sb.ObjectTypeKey(),
+		SmartblockType: sb.Type(),
 	}
 }
 

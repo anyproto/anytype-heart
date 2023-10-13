@@ -21,14 +21,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -76,9 +74,6 @@ type indexer struct {
 	newAccount bool
 	forceFt    chan struct{}
 
-	typeProvider typeprovider.SmartBlockTypeProvider
-	provider     personalIDProvider
-
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
 
@@ -89,13 +84,11 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[block.ObjectGetter](a)
-	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.spaceService = app.MustComponent[space.Service](a)
 	i.quit = make(chan struct{})
@@ -136,10 +129,6 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
 		return err
 	}
-	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
-	if err != nil {
-		sbType = smartblock.SmartBlockTypePage
-	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
@@ -152,7 +141,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 		}
 	}
 
-	indexDetails, indexLinks := sbType.Indexable()
+	indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
 		return nil
