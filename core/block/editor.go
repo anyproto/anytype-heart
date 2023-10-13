@@ -2,10 +2,8 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -23,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -612,53 +609,6 @@ func (s *Service) ModifyDetails(
 
 		return b.Apply(b.NewState().SetDetails(dets))
 	})
-}
-
-// ModifyLocalDetails modifies local details of the object in cache,
-// and if it is not found, sets pending details in object store
-func (s *Service) ModifyLocalDetails(
-	objectId string,
-	modifier func(current *types.Struct) (*types.Struct, error),
-) (err error) {
-	if modifier == nil {
-		return fmt.Errorf("modifier is nil")
-	}
-	// we set pending details if object is not in cache
-	// we do this under lock to prevent races if the object is created in parallel
-	// because in that case we can lose changes
-	spaceId, err := s.resolver.ResolveSpaceID(objectId)
-	if err != nil {
-		return fmt.Errorf("resolve spaceId: %w", err)
-	}
-	spc, err := s.spaceService.Get(context.Background(), spaceId)
-	if err != nil {
-		return fmt.Errorf("get space: %w", err)
-	}
-	err = spc.DoLockedIfNotExists(objectId, func() error {
-		return s.objectStore.UpdatePendingLocalDetails(objectId, modifier)
-	})
-	if err != nil && err != ocache.ErrExists {
-		return err
-	}
-	err = Do(s, objectId, func(b smartblock.SmartBlock) error {
-		// we just need to invoke the smartblock so it reads from pending details
-		// no need to call modify twice
-		if err == nil {
-			return b.Apply(b.NewState())
-		}
-
-		dets, err := modifier(b.CombinedDetails())
-		if err != nil {
-			return err
-		}
-
-		return b.Apply(b.NewState().SetDetails(dets))
-	})
-	// that means that we will apply the change later as soon as the block is loaded by thread queue
-	if errors.Is(err, source.ErrObjectNotFound) {
-		return nil
-	}
-	return err
 }
 
 func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relationIds []string) (err error) {

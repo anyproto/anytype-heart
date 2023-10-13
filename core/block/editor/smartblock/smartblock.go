@@ -117,6 +117,9 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
+
+	Do(objectId string, apply func(sb SmartBlock) error) error
+	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
 }
 
 type SmartBlock interface {

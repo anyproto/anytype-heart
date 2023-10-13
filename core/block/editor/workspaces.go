@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
@@ -28,14 +27,13 @@ type Workspaces struct {
 	dataview.Dataview
 	stext.Text
 
-	DetailsModifier DetailsModifier
-	spaceService    spaceService
-	objectStore     objectstore.ObjectStore
-	config          *config.Config
-	objectDeriver   objectDeriver
+	spaceService  spaceService
+	objectStore   objectstore.ObjectStore
+	config        *config.Config
+	objectDeriver objectDeriver
 }
 
-func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, anytype core.Service, spaceService spaceService, modifier DetailsModifier, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender, objectDeriver objectDeriver) *Workspaces {
+func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, spaceService spaceService, sbtProvider typeprovider.SmartBlockTypeProvider, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender, objectDeriver objectDeriver) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
@@ -45,12 +43,11 @@ func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore,
 			objectStore,
 			eventSender,
 		),
-		Dataview:        dataview.NewDataview(sb, objectStore, sbtProvider),
-		DetailsModifier: modifier,
-		objectStore:     objectStore,
-		spaceService:    spaceService,
-		config:          config,
-		objectDeriver:   objectDeriver,
+		Dataview:      dataview.NewDataview(sb, objectStore, sbtProvider),
+		objectStore:   objectStore,
+		spaceService:  spaceService,
+		config:        config,
+		objectDeriver: objectDeriver,
 	}
 }
 

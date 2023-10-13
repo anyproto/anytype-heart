@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -18,28 +17,20 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-type DetailsModifier interface {
-	ModifyDetails(ctx session.Context, objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
-	ModifyLocalDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
-}
-
 type Archive struct {
 	smartblock.SmartBlock
 	collection.Collection
-	DetailsModifier DetailsModifier
-	objectStore     objectstore.ObjectStore
+	objectStore objectstore.ObjectStore
 }
 
 func NewArchive(
 	sb smartblock.SmartBlock,
-	detailsModifier DetailsModifier,
 	objectStore objectstore.ObjectStore,
 ) *Archive {
 	return &Archive{
-		SmartBlock:      sb,
-		Collection:      collection.NewCollection(sb),
-		DetailsModifier: detailsModifier,
-		objectStore:     objectStore,
+		SmartBlock:  sb,
+		Collection:  collection.NewCollection(sb, objectStore),
+		objectStore: objectStore,
 	}
 }
 
@@ -107,7 +98,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
 	for _, removedId := range removedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},
@@ -122,7 +113,7 @@ func (p *Archive) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 	for _, addedId := range addedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},

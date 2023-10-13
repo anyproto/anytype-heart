@@ -70,6 +70,7 @@ func (a *Anytype) Run(ctx context.Context) (err error) {
 
 // TODO: refactor to call tech space
 func (a *Anytype) IsStarted() bool {
+	return true
 	a.lock.Lock()
 	defer a.lock.Unlock()
 

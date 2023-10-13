@@ -39,7 +39,6 @@ type bundledObjectsInstaller interface {
 type ObjectFactory struct {
 	anytype            core.Service
 	bookmarkService    bookmark.BookmarkService
-	detailsModifier    DetailsModifier
 	fileBlockService   file.BlockService
 	layoutConverter    converter.LayoutConverter
 	objectStore        objectstore.ObjectStore
@@ -63,7 +62,6 @@ func NewObjectFactory() *ObjectFactory {
 func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.anytype = app.MustComponent[core.Service](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
-	f.detailsModifier = app.MustComponent[DetailsModifier](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.restrictionService = app.MustComponent[restriction.Service](a)
@@ -148,13 +146,9 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeRelationOption:
 		return f.newPage(sb), nil
 	case coresb.SmartBlockTypeArchive:
-		return NewArchive(
-			sb,
-			f.detailsModifier,
-			f.objectStore,
-		), nil
+		return NewArchive(sb, f.objectStore), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, f.detailsModifier, f.objectStore, f.anytype, f.layoutConverter), nil
+		return NewDashboard(sb, f.objectStore, f.anytype, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return NewProfile(sb, f.objectStore, f.fileBlockService, f.anytype, f.picker, f.bookmarkService, f.tempDirProvider, f.layoutConverter, f.fileService, f.eventSender), nil
@@ -164,7 +158,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledTemplate:
 		return f.newTemplate(sb), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return NewWorkspace(sb, f.objectStore, f.anytype, f.spaceService, f.detailsModifier, f.sbtProvider, f.layoutConverter, f.config, f.eventSender, f.objectDeriver), nil
+		return NewWorkspace(sb, f.objectStore, f.spaceService, f.sbtProvider, f.layoutConverter, f.config, f.eventSender, f.objectDeriver), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return newSpaceView(
 			sb,
