@@ -56,7 +56,7 @@ type PoolManager interface {
 }
 
 type SpaceCoreService interface {
-	Create(ctx context.Context, replicationKey uint64) (*AnySpace, error)
+	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
 	Delete(ctx context.Context, spaceID string) (payload NetworkStatus, err error)
@@ -165,7 +165,7 @@ func (s *service) DeriveID(ctx context.Context, spaceType string) (id string, er
 	return s.commonSpace.DeriveId(ctx, payload)
 }
 
-func (s *service) Create(ctx context.Context, replicationKey uint64) (container *AnySpace, err error) {
+func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
 	metadataPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("generate metadata key: %w", err)
@@ -177,6 +177,7 @@ func (s *service) Create(ctx context.Context, replicationKey uint64) (container 
 		MetadataKey:    metadataPrivKey,
 		SpaceType:      SpaceType,
 		ReplicationKey: replicationKey,
+		Metadata:       metadataPayload,
 	}
 	id, err := s.commonSpace.CreateSpace(ctx, payload)
 	if err != nil {

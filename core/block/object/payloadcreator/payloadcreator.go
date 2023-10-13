@@ -12,15 +12,13 @@ import (
 
 // PayloadDerivationParams is a struct for deriving a payload
 type PayloadDerivationParams struct {
-	Key           domain.UniqueKey
-	TargetSpaceID string
+	Key domain.UniqueKey
 }
 
 // PayloadCreationParams is a struct for creating a payload
 type PayloadCreationParams struct {
 	Time           time.Time
 	SmartblockType coresb.SmartBlockType
-	TargetSpaceID  string
 }
 
 type PayloadCreator interface {

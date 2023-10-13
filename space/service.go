@@ -64,6 +64,7 @@ type service struct {
 	objectFactory           objectcache.ObjectFactory
 
 	personalSpaceID string
+	metadataPayload []byte
 
 	newAccount bool
 
@@ -102,7 +103,10 @@ func (s *service) Name() (name string) {
 
 func (s *service) Run(ctx context.Context) (err error) {
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-
+	s.metadataPayload, err = deriveAccountMetadata(s.accountService.Account().SignKey)
+	if err != nil {
+		return
+	}
 	err = s.initMarketplaceSpace()
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
@@ -119,7 +123,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Create(ctx context.Context) (Space, error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey)
+	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
 	if err != nil {
 		return nil, err
 	}

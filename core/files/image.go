@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	imageObjectHiddenWidth = 256
+	imageObjectHiddenWidth = 257
 )
 
 type Image interface {

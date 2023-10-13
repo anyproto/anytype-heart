@@ -147,7 +147,7 @@ func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
 }
 
 func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, "")
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
 	if err != nil {
 		return
 	}
@@ -156,7 +156,6 @@ func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err er
 		InitFunc: func(id string) *editorsb.InitContext {
 			return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: state.NewDoc(id, nil).(*state.State)}
 		},
-		TargetSpaceID: spaceID,
 	})
 	if err != nil {
 		return
@@ -165,13 +164,12 @@ func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err er
 }
 
 func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, "")
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
 	if err != nil {
 		return "", err
 	}
 	payload, err := s.objectCache.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
-		Key:           uniqueKey,
-		TargetSpaceID: spaceID,
+		Key: uniqueKey,
 	})
 	if err != nil {
 		return "", err

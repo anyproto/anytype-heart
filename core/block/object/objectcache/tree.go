@@ -15,9 +15,8 @@ import (
 
 // TreeDerivationParams is a struct for deriving a tree
 type TreeDerivationParams struct {
-	Key           domain.UniqueKey
-	InitFunc      InitFunc
-	TargetSpaceID string
+	Key      domain.UniqueKey
+	InitFunc InitFunc
 }
 
 // TreeCreationParams is a struct for creating a tree
@@ -25,12 +24,11 @@ type TreeCreationParams struct {
 	Time           time.Time
 	SmartblockType coresb.SmartBlockType
 	InitFunc       InitFunc
-	TargetSpaceID  string
 }
 
 // CreateTreePayload creates a tree payload for a given space and smart block type
 func (c *objectCache) CreateTreePayload(ctx context.Context, params payloadcreator.PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error) {
-	changePayload, err := createChangePayload(params.SmartblockType, nil, params.TargetSpaceID)
+	changePayload, err := createChangePayload(params.SmartblockType, nil)
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -46,7 +44,6 @@ func (c *objectCache) CreateTreeObject(ctx context.Context, params TreeCreationP
 	payload, err := c.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           params.Time,
 		SmartblockType: params.SmartblockType,
-		TargetSpaceID:  params.TargetSpaceID,
 	})
 	if err != nil {
 		return nil, err
@@ -72,7 +69,7 @@ func (c *objectCache) CreateTreeObjectWithPayload(ctx context.Context, payload t
 // it takes into account whether it is for personal space and if so uses old derivation logic
 // to maintain backward compatibility
 func (c *objectCache) DeriveTreePayload(ctx context.Context, params payloadcreator.PayloadDerivationParams) (storagePayload treestorage.TreeStorageCreatePayload, err error) {
-	changePayload, err := createChangePayload(params.Key.SmartblockType(), params.Key, params.TargetSpaceID)
+	changePayload, err := createChangePayload(params.Key.SmartblockType(), params.Key)
 	if err != nil {
 		return treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -97,8 +94,7 @@ func (c *objectCache) DeriveTreePayload(ctx context.Context, params payloadcreat
 // DeriveTreeObject derives a tree object for a given space and smart block type
 func (c *objectCache) DeriveTreeObject(ctx context.Context, params TreeDerivationParams) (sb smartblock.SmartBlock, err error) {
 	payload, err := c.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
-		Key:           params.Key,
-		TargetSpaceID: params.TargetSpaceID,
+		Key: params.Key,
 	})
 	if err != nil {
 		return nil, err
@@ -109,8 +105,7 @@ func (c *objectCache) DeriveTreeObject(ctx context.Context, params TreeDerivatio
 
 func (c *objectCache) DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error) {
 	payload, err := c.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
-		Key:           uniqueKey,
-		TargetSpaceID: c.space.Id(),
+		Key: uniqueKey,
 	})
 	if err != nil {
 		return "", err
