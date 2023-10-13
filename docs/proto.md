@@ -1405,6 +1405,9 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [Metadata](#anytype-model-Metadata)
+    - [Metadata.Payload](#anytype-model-Metadata-Payload)
+    - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -22119,6 +22122,46 @@ Used to decode block meta only, without the content itself
 | imageUrl | [string](#string) |  |  |
 | faviconUrl | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Metadata"></a>
+
+### Metadata
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload"></a>
+
+### Metadata.Payload
+
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload-IdentityPayload"></a>
+
+### Metadata.Payload.IdentityPayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| profileSymKey | [bytes](#bytes) |  |  |
 
 
 
