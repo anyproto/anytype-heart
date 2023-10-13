@@ -88,6 +88,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	subObjectMigration.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
+	w.AddHook(w.onApply, smartblock.HookAfterApply)
 	return nil
 }
 
@@ -125,6 +126,11 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
+}
+
+func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
+	w.onWorkspaceChanged(info.State)
+	return nil
 }
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
