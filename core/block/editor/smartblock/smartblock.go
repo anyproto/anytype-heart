@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 
 	// nolint:misspell
@@ -980,17 +981,13 @@ func (sb *smartBlock) getCreationInfo() (creatorObjectId string, createdTS int64
 func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 	if sb.Type() == smartblock.SmartBlockTypeProfilePage {
 		// todo: for the shared spaces we need to change this for sophisticated logic
-		creator, _, err := sb.getCreationInfo()
+		creatorIdentityObjectId, _, err := sb.getCreationInfo()
 		if err != nil {
 			return err
 		}
 
-		if creator != "" {
-			id, err := addr.IdentityObjectIdToAccountId(creator)
-			if err != nil {
-				return err
-			}
-			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(id))
+		if creatorIdentityObjectId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(creatorIdentityObjectId))
 		}
 	} else {
 		// make sure we don't have this relation for other objects
@@ -1001,13 +998,13 @@ func (sb *smartBlock) injectCreationInfo(s *state.State) error {
 		return nil
 	}
 
-	creator, createdDate, err := sb.getCreationInfo()
+	creatorIdentityObjectId, createdDate, err := sb.getCreationInfo()
 	if err != nil {
 		return err
 	}
 
-	if creator != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(addr.AccountIdToIdentityObjectId(creator)))
+	if creatorIdentityObjectId != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
 	}
 
 	if createdDate != 0 {
