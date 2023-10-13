@@ -13,7 +13,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/indexer/mock_indexer"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -40,6 +39,25 @@ func xTestService_Init(t *testing.T) {
 
 }
 
+type indexerStub struct {
+}
+
+func (i *indexerStub) ReindexMarketplaceSpace(space Space) error {
+	return nil
+}
+
+func (i *indexerStub) ReindexSpace(space Space) error {
+	return nil
+}
+
+func (i *indexerStub) Init(a *app.App) (err error) {
+	return nil
+}
+
+func (i *indexerStub) Name() (name string) {
+	return "indexerStub"
+}
+
 func newFixture(t *testing.T, newAccount bool) *fixture {
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
@@ -47,14 +65,13 @@ func newFixture(t *testing.T, newAccount bool) *fixture {
 		a:             new(app.App),
 		ctrl:          ctrl,
 		objectCache:   mock_objectcache.NewMockCache(t),
-		indexer:       mock_indexer.NewMockIndexer(t),
 		spaceCore:     mock_spacecore.NewMockSpaceCoreService(t),
 		installer:     NewMockbundledObjectsInstaller(t),
 		isNewAccount:  NewMockisNewAccount(t),
 		techSpace:     mock_techspace.NewMockTechSpace(t),
 		personalSpace: mock_commonspace.NewMockSpace(ctrl),
 	}
-	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.indexer)).
+	fx.a.Register(&indexerStub{}).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.installer)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.isNewAccount)).
@@ -74,7 +91,6 @@ type fixture struct {
 	*service
 	a             *app.App
 	objectCache   *mock_objectcache.MockCache
-	indexer       *mock_indexer.MockIndexer
 	spaceCore     *mock_spacecore.MockSpaceCoreService
 	installer     *MockbundledObjectsInstaller
 	ctrl          *gomock.Controller
@@ -85,7 +101,6 @@ type fixture struct {
 
 func (fx *fixture) expectRun(newAccount bool) {
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.SpaceType).Return(testPersonalSpaceID, nil)
-	fx.indexer.EXPECT().ReindexCommonObjects().Return(nil)
 
 	if newAccount {
 		fx.spaceCore.EXPECT().Derive(mock.Anything, spacecore.SpaceType).Return(&spacecore.AnySpace{Space: fx.personalSpace}, nil)
@@ -107,7 +122,6 @@ func (fx *fixture) expectRun(newAccount bool) {
 	// fx.objectCache.EXPECT().DeriveObjectID(mock.Anything, testPersonalSpaceID, mock.Anything).Return("derived", nil)
 	fx.objectCache.EXPECT().GetObject(mock.Anything, domain.FullID{ObjectID: "derived", SpaceID: testPersonalSpaceID}).Return(nil, nil)
 	fx.installer.EXPECT().InstallBundledObjects(mock.Anything, testPersonalSpaceID, mock.Anything).Return(nil, nil, nil)
-	fx.indexer.EXPECT().ReindexSpace(testPersonalSpaceID).Return(nil)
 	ts := mock_treesyncer.NewMockTreeSyncer(fx.ctrl)
 	ts.EXPECT().StartSync()
 	fx.personalSpace.EXPECT().TreeSyncer().Return(ts)

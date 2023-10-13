@@ -87,7 +87,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
-	s.techSpace = techspace.New()
 
 	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
@@ -181,7 +180,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	for _, sp := range s.loaded {
 		err = sp.Close(ctx)
 		if err != nil {
-			return fmt.Errorf("close space %s: %w", sp.Id(), err)
+			log.Error("close space", zap.String("spaceId", sp.Id()), zap.Error(err))
 		}
 	}
 	return nil
