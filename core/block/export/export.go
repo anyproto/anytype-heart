@@ -273,7 +273,11 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, info := range res {
-		if !e.objectValid(info.Id, info, includeArchived, isProtobuf) {
+		sbType, err := e.sbtProvider.Type(spaceID, info.Id)
+		if err != nil {
+			return nil, fmt.Errorf("get smartblock type: %w", err)
+		}
+		if !e.objectValid(sbType, info.Id, info, includeArchived, isProtobuf) {
 			continue
 		}
 		objectDetails[info.Id] = info.Details
@@ -447,14 +451,14 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+func (e *export) objectValid(sbType smartblock.SmartBlockType, id string, r *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
 	if r.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && !validTypeForNonProtobuf(smartblock.SmartBlockType(r.ObjectType)) {
+	if !isProtobuf && !validTypeForNonProtobuf(sbType) {
 		return false
 	}
-	if isProtobuf && !validType(smartblock.SmartBlockType(r.ObjectType)) {
+	if isProtobuf && !validType(sbType) {
 		return false
 	}
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {

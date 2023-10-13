@@ -16,7 +16,6 @@ import (
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	relationutils "github.com/anyproto/anytype-heart/core/system_object/relationutils"
-	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -532,9 +531,9 @@ func (mr *MockObjectStoreMockRecorder) QueryByIDAndSubscribeForChanges(arg0, arg
 }
 
 // QueryObjectIDs mocks base method.
-func (m *MockObjectStore) QueryObjectIDs(arg0 database.Query, arg1 []smartblock.SmartBlockType) ([]string, int, error) {
+func (m *MockObjectStore) QueryObjectIDs(arg0 database.Query) ([]string, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryObjectIDs", arg0, arg1)
+	ret := m.ctrl.Call(m, "QueryObjectIDs", arg0)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -542,9 +541,9 @@ func (m *MockObjectStore) QueryObjectIDs(arg0 database.Query, arg1 []smartblock.
 }
 
 // QueryObjectIDs indicates an expected call of QueryObjectIDs.
-func (mr *MockObjectStoreMockRecorder) QueryObjectIDs(arg0, arg1 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) QueryObjectIDs(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryObjectIDs", reflect.TypeOf((*MockObjectStore)(nil).QueryObjectIDs), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryObjectIDs", reflect.TypeOf((*MockObjectStore)(nil).QueryObjectIDs), arg0)
 }
 
 // QueryRaw mocks base method.

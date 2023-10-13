@@ -42,7 +42,7 @@ func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, er
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list ids: %w", err)
 	}

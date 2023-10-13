@@ -19,13 +19,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -65,7 +63,6 @@ type SourceDetailsFromID interface {
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
-	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	src := a.Component("source")
 	if src != nil {
 		s.sourceService = a.MustComponent("source").(SourceDetailsFromID)
@@ -114,7 +111,7 @@ type ObjectStore interface {
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByID(ids []string) (records []database.Record, err error)
 	QueryByIDAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
-	QueryObjectIDs(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
+	QueryObjectIDs(q database.Query) (ids []string, total int, err error)
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
@@ -181,8 +178,6 @@ type dsObjectStore struct {
 	db    *badger.DB
 
 	fts ftsearch.FTSearch
-
-	sbtProvider typeprovider.SmartBlockTypeProvider
 
 	sync.RWMutex
 	onChangeCallback func(record database.Record)
@@ -450,42 +445,33 @@ func detailsKeyToID(key []byte) string {
 }
 
 func (s *dsObjectStore) getObjectInfo(txn *badger.Txn, spaceID string, id string) (*model.ObjectInfo, error) {
-	sbt, err := s.sbtProvider.Type(spaceID, id)
-	if err != nil {
-		log.With("objectID", id).Errorf("failed to extract smartblock type %s", id) // todo rq: surpess error?
-		return nil, ErrNotAnObject
-	}
-	if sbt == smartblock.SmartBlockTypeArchive {
-		return nil, ErrNotAnObject
+	details, err := s.sourceService.DetailsFromIdBasedSource(id)
+	if err == nil {
+		details.Fields[database.RecordIDField] = pbtypes.ToValue(id)
+		return &model.ObjectInfo{
+			Id:      id,
+			Details: details,
+		}, nil
 	}
 
-	var details *types.Struct
-	if indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
-		details, err = s.sourceService.DetailsFromIdBasedSource(id)
-		if err != nil {
-			return nil, ErrObjectNotFound
-		}
-	} else {
-		it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
-		if err != nil {
-			return nil, fmt.Errorf("get details: %w", err)
-		}
-		detailsModel, err := s.extractDetailsFromItem(it)
-		if err != nil {
-			return nil, err
-		}
-		details = detailsModel.Details
+	it, err := txn.Get(pagesDetailsBase.ChildString(id).Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("get details: %w", err)
 	}
+	detailsModel, err := s.extractDetailsFromItem(it)
+	if err != nil {
+		return nil, err
+	}
+	details = detailsModel.Details
 	snippet, err := badgerhelper.GetValueTxn(txn, pagesSnippetBase.ChildString(id).Bytes(), bytesToString)
 	if err != nil && !badgerhelper.IsNotFound(err) {
 		return nil, fmt.Errorf("failed to get snippet: %w", err)
 	}
 
 	return &model.ObjectInfo{
-		Id:         id,
-		ObjectType: sbt.ToProto(),
-		Details:    details,
-		Snippet:    snippet,
+		Id:      id,
+		Details: details,
+		Snippet: snippet,
 	}, nil
 }
 

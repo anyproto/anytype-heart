@@ -342,7 +342,7 @@ func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (i
 				Value:       pbtypes.String(spaceID),
 			},
 		},
-	}, nil)
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
@@ -421,7 +421,7 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 				Value:       pbtypes.String(spaceID),
 			},
 		},
-	}, nil)
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}

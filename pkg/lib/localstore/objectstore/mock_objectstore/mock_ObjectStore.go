@@ -23,8 +23,6 @@ import (
 
 	relationutils "github.com/anyproto/anytype-heart/core/system_object/relationutils"
 
-	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-
 	types "github.com/gogo/protobuf/types"
 )
 
@@ -1716,32 +1714,32 @@ func (_c *MockObjectStore_QueryByIDAndSubscribeForChanges_Call) RunAndReturn(run
 	return _c
 }
 
-// QueryObjectIDs provides a mock function with given fields: q, objectTypes
-func (_m *MockObjectStore) QueryObjectIDs(q database.Query, objectTypes []smartblock.SmartBlockType) ([]string, int, error) {
-	ret := _m.Called(q, objectTypes)
+// QueryObjectIDs provides a mock function with given fields: q
+func (_m *MockObjectStore) QueryObjectIDs(q database.Query) ([]string, int, error) {
+	ret := _m.Called(q)
 
 	var r0 []string
 	var r1 int
 	var r2 error
-	if rf, ok := ret.Get(0).(func(database.Query, []smartblock.SmartBlockType) ([]string, int, error)); ok {
-		return rf(q, objectTypes)
+	if rf, ok := ret.Get(0).(func(database.Query) ([]string, int, error)); ok {
+		return rf(q)
 	}
-	if rf, ok := ret.Get(0).(func(database.Query, []smartblock.SmartBlockType) []string); ok {
-		r0 = rf(q, objectTypes)
+	if rf, ok := ret.Get(0).(func(database.Query) []string); ok {
+		r0 = rf(q)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(database.Query, []smartblock.SmartBlockType) int); ok {
-		r1 = rf(q, objectTypes)
+	if rf, ok := ret.Get(1).(func(database.Query) int); ok {
+		r1 = rf(q)
 	} else {
 		r1 = ret.Get(1).(int)
 	}
 
-	if rf, ok := ret.Get(2).(func(database.Query, []smartblock.SmartBlockType) error); ok {
-		r2 = rf(q, objectTypes)
+	if rf, ok := ret.Get(2).(func(database.Query) error); ok {
+		r2 = rf(q)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -1756,14 +1754,13 @@ type MockObjectStore_QueryObjectIDs_Call struct {
 
 // QueryObjectIDs is a helper method to define mock.On call
 //   - q database.Query
-//   - objectTypes []smartblock.SmartBlockType
-func (_e *MockObjectStore_Expecter) QueryObjectIDs(q interface{}, objectTypes interface{}) *MockObjectStore_QueryObjectIDs_Call {
-	return &MockObjectStore_QueryObjectIDs_Call{Call: _e.mock.On("QueryObjectIDs", q, objectTypes)}
+func (_e *MockObjectStore_Expecter) QueryObjectIDs(q interface{}) *MockObjectStore_QueryObjectIDs_Call {
+	return &MockObjectStore_QueryObjectIDs_Call{Call: _e.mock.On("QueryObjectIDs", q)}
 }
 
-func (_c *MockObjectStore_QueryObjectIDs_Call) Run(run func(q database.Query, objectTypes []smartblock.SmartBlockType)) *MockObjectStore_QueryObjectIDs_Call {
+func (_c *MockObjectStore_QueryObjectIDs_Call) Run(run func(q database.Query)) *MockObjectStore_QueryObjectIDs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(database.Query), args[1].([]smartblock.SmartBlockType))
+		run(args[0].(database.Query))
 	})
 	return _c
 }
@@ -1773,7 +1770,7 @@ func (_c *MockObjectStore_QueryObjectIDs_Call) Return(ids []string, total int, e
 	return _c
 }
 
-func (_c *MockObjectStore_QueryObjectIDs_Call) RunAndReturn(run func(database.Query, []smartblock.SmartBlockType) ([]string, int, error)) *MockObjectStore_QueryObjectIDs_Call {
+func (_c *MockObjectStore_QueryObjectIDs_Call) RunAndReturn(run func(database.Query) ([]string, int, error)) *MockObjectStore_QueryObjectIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }

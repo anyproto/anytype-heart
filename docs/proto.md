@@ -21168,7 +21168,6 @@ Precondition: user A and user B opened the same block
 | relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  | DEPRECATED |
-| objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 
 
 

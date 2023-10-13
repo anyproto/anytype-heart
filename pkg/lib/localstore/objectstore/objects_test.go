@@ -12,10 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -73,20 +71,15 @@ func Test_removeByPrefix(t *testing.T) {
 
 func TestList(t *testing.T) {
 	s := NewStoreFixture(t)
-	typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	s.sbtProvider = typeProvider
 
 	obj1 := makeObjectWithName("id1", "name1")
 	err := s.UpdateObjectSnippet("id1", "snippet1")
 	require.NoError(t, err)
-	typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypePage, nil)
 
 	obj2 := makeObjectWithName("id2", "name2")
-	typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypeFile, nil)
 
 	obj3 := makeObjectWithName("id3", "date")
 	obj3[bundle.RelationKeyIsDeleted] = pbtypes.Bool(true)
-	typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypePage, nil)
 
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -95,15 +88,13 @@ func TestList(t *testing.T) {
 
 	want := []*model.ObjectInfo{
 		{
-			Id:         "id1",
-			Details:    makeDetails(obj1),
-			Snippet:    "snippet1",
-			ObjectType: model.SmartBlockType_Page,
+			Id:      "id1",
+			Details: makeDetails(obj1),
+			Snippet: "snippet1",
 		},
 		{
-			Id:         "id2",
-			Details:    makeDetails(obj2),
-			ObjectType: model.SmartBlockType_File,
+			Id:      "id2",
+			Details: makeDetails(obj2),
 		},
 		// Skip deleted id3
 	}

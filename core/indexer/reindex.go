@@ -224,7 +224,7 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 					Value:       pbtypes.String(bundle.TypeKeyTemplate.BundledURL()),
 				},
 			},
-		}, nil)
+		})
 		for _, id := range existing {
 			err = i.store.DeleteObject(id)
 			if err != nil {
