@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
@@ -60,13 +61,15 @@ type SpaceService interface {
 }
 
 type service struct {
-	indexer     spaceIndexer
-	spaceCore   spacecore.SpaceCoreService
-	provider    objectprovider.ObjectProvider
-	objectCache objectcache.Cache
-	techSpace   techspace.TechSpace
+	indexer        spaceIndexer
+	spaceCore      spacecore.SpaceCoreService
+	provider       objectprovider.ObjectProvider
+	objectCache    objectcache.Cache
+	techSpace      techspace.TechSpace
+	accountService accountservice.Service
 
 	personalSpaceID string
+	metadataPayload []byte
 
 	newAccount bool
 
@@ -92,6 +95,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.techSpace = app.MustComponent[techspace.TechSpace](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
 
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
@@ -109,6 +113,10 @@ func (s *service) Run(_ context.Context) (err error) {
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 
 	s.personalSpaceID, err = s.spaceCore.DeriveID(s.ctx, spacecore.SpaceType)
+	if err != nil {
+		return
+	}
+	s.metadataPayload, err = deriveAccountMetadata(s.accountService.Account().SignKey)
 	if err != nil {
 		return
 	}
@@ -131,7 +139,7 @@ func (s *service) Run(_ context.Context) (err error) {
 }
 
 func (s *service) Create(ctx context.Context) (Space, error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey)
+	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package editor
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -100,19 +101,15 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	if changeInfo == nil {
 		return "", ErrIncorrectSpaceInfo
 	}
-	var (
-		changePayload = &model.ObjectChangePayload{}
-		spaceHeader   = &model.SpaceObjectHeader{}
-	)
+	changePayload := &model.ObjectChangePayload{}
 	err = proto.Unmarshal(changeInfo.ChangePayload, changePayload)
 	if err != nil {
 		return "", ErrIncorrectSpaceInfo
 	}
-	err = proto.Unmarshal(changePayload.Data, spaceHeader)
-	if err != nil {
-		return "", ErrIncorrectSpaceInfo
+	if changePayload.Key == "" {
+		return "", fmt.Errorf("space key is empty")
 	}
-	return spaceHeader.SpaceID, nil
+	return changePayload.Key, nil
 }
 
 var workspaceKeysToCopy = []string{

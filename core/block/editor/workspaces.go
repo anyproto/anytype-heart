@@ -87,7 +87,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		objectDeriver: w.objectDeriver,
 	}
 	subObjectMigration.migrateSubObjects(ctx.State)
-	w.AddHook(w.onApply, smartblock.HookAfterApply)
+	w.onWorkspaceChanged(ctx.State)
 	return nil
 }
 
@@ -126,8 +126,7 @@ func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (w *Workspaces) onApply(info smartblock.ApplyInfo) (err error) {
-	details := pbtypes.CopyStruct(info.State.Details())
+func (w *Workspaces) onWorkspaceChanged(state *state.State) {
+	details := pbtypes.CopyStruct(state.Details())
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
-	return
 }

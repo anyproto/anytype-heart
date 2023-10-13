@@ -1405,6 +1405,9 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [Metadata](#anytype-model-Metadata)
+    - [Metadata.Payload](#anytype-model-Metadata-Payload)
+    - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -20450,7 +20453,7 @@ Precondition: user A opened a block
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
-| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  | deprecated, source is no longer used |
 | blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
 | blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
@@ -22126,6 +22129,46 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Metadata"></a>
+
+### Metadata
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload"></a>
+
+### Metadata.Payload
+
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload-IdentityPayload"></a>
+
+### Metadata.Payload.IdentityPayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| profileSymKey | [bytes](#bytes) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Object"></a>
 
 ### Object
@@ -22622,6 +22665,7 @@ stored |
 | List | 1 |  |
 | Gallery | 2 |  |
 | Kanban | 3 |  |
+| Calendar | 4 |  |
 
 
 
