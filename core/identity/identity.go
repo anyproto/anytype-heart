@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/slice"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
@@ -14,14 +17,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-
-	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "identity"
@@ -142,7 +142,6 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 	}()
 
 	cctx := session.NewContext()
-	log.Errorf("profile ex records: %v", records)
 	if len(records) > 0 {
 		details := getDetailsFromProfile(accountId, s.techSpaceId, records[0].Details)
 
@@ -158,7 +157,6 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 			if !ok {
 				return
 			}
-			log.Errorf("profile update: %v", records)
 
 			details := getDetailsFromProfile(accountId, s.techSpaceId, rec)
 			err = s.detailsModifier.ModifyDetails(cctx, addr.AccountIdToIdentityObjectId(accountId), func(current *types.Struct) (*types.Struct, error) {
