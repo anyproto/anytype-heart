@@ -37,12 +37,12 @@ type Service interface {
 
 type service struct {
 	spaceCore    spacecore.SpaceCoreService
-	spaceService space.SpaceService
+	spaceService space.Service
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
 
-	picker       getblock.ObjectGetter
+	picker          getblock.ObjectGetter
 	once            sync.Once
 	personalSpaceID string
 }
@@ -52,7 +52,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.spaceService = app.MustComponent[space.SpaceService](a)
+	s.spaceService = app.MustComponent[space.Service](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.gateway = app.MustComponent[gateway.Gateway](a)

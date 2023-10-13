@@ -6,7 +6,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
@@ -36,9 +35,5 @@ func (r *resolver) Name() (name string) {
 }
 
 func (r *resolver) ResolveSpaceID(objectID string) (string, error) {
-	// TODO: [MR] remove it, because maybe we don't need it
-	if addr.IsBundledId(objectID) {
-		return addr.AnytypeMarketplaceWorkspace, nil
-	}
 	return r.storage.GetSpaceID(objectID)
 }

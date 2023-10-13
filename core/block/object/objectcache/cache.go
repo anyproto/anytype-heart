@@ -7,13 +7,13 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app/ocache"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 )
 
 var log = logging.Logger("anytype-mw-object-cache")
@@ -62,12 +62,12 @@ type objectCache struct {
 	accountService  accountservice.Service
 	cache           ocache.OCache
 	closing         chan struct{}
-	space           *spacecore.AnySpace
+	space           commonspace.Space
 	keyConverter    smartblock.Space
 }
 
 func New(
-	space *spacecore.AnySpace,
+	space commonspace.Space,
 	accountService accountservice.Service,
 	objectFactory ObjectFactory,
 	personalSpaceId string,

@@ -19,11 +19,11 @@ type IDProvider interface {
 
 type Provider struct {
 	objectStore                objectstore.ObjectStore
-	spaceService               space.SpaceService
+	spaceService               space.Service
 	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
-func NewIDProvider(objectStore objectstore.ObjectStore, spaceService space.SpaceService) IDProvider {
+func NewIDProvider(objectStore objectstore.ObjectStore, spaceService space.Service) IDProvider {
 	p := &Provider{
 		objectStore:                objectStore,
 		spaceService:               spaceService,
@@ -33,7 +33,7 @@ func NewIDProvider(objectStore objectstore.ObjectStore, spaceService space.Space
 	return p
 }
 
-func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, spaceService space.SpaceService) {
+func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, spaceService space.Service) {
 	existingObject := newExistingObject(objectStore)
 	treeObject := newTreeObject(existingObject, spaceService)
 	derivedObject := newDerivedObject(existingObject, spaceService)

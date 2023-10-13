@@ -66,7 +66,7 @@ type export struct {
 	fileService         files.Service
 	systemObjectService system_object.Service
 	resolver            idresolver.Resolver
-	spaceService        space.SpaceService
+	spaceService        space.Service
 }
 
 func New() Export {
@@ -81,7 +81,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.systemObjectService = app.MustComponent[system_object.Service](a)
-	e.spaceService = app.MustComponent[space.SpaceService](a)
+	e.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 

@@ -52,7 +52,7 @@ type history struct {
 	picker              block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	systemObjectService system_object.Service
-	spaceService        space.SpaceService
+	spaceService        space.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
@@ -60,7 +60,7 @@ func (h *history) Init(a *app.App) (err error) {
 	h.picker = app.MustComponent[block.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
-	h.spaceService = app.MustComponent[space.SpaceService](a)
+	h.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 

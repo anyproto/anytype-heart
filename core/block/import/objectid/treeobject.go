@@ -14,10 +14,10 @@ import (
 
 type treeObject struct {
 	existingObject *existingObject
-	spaceService   space.SpaceService
+	spaceService   space.Service
 }
 
-func newTreeObject(existingObject *existingObject, spaceService space.SpaceService) *treeObject {
+func newTreeObject(existingObject *existingObject, spaceService space.Service) *treeObject {
 	return &treeObject{existingObject: existingObject, spaceService: spaceService}
 }
 

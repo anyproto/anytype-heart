@@ -69,7 +69,7 @@ type indexer struct {
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 	fileService    files.Service
-	spaceService   space.SpaceService
+	spaceService   space.Service
 
 	quit       chan struct{}
 	btHash     Hasher
@@ -97,7 +97,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.picker = app.MustComponent[block.ObjectGetter](a)
 	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
-	i.spaceService = app.MustComponent[space.SpaceService](a)
+	i.spaceService = app.MustComponent[space.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return

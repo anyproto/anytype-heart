@@ -82,6 +82,10 @@ func (s *stubSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id 
 	return
 }
 
+func (s *stubSpace) DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error) {
+	return
+}
+
 func (st *SmartTest) Space() smartblock.Space {
 	return &stubSpace{}
 }

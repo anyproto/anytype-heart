@@ -27,7 +27,7 @@ var errAppIsNotRunning = errors.New("app is not running")
 type treeManager struct {
 	coreService  core.Service
 	eventSender  event.Sender
-	spaceService space.SpaceService
+	spaceService space.Service
 
 	onDelete func(id domain.FullID) error
 
@@ -56,7 +56,7 @@ type onDeleteProvider interface {
 func (m *treeManager) Init(a *app.App) error {
 	m.coreService = app.MustComponent[core.Service](a)
 	m.eventSender = app.MustComponent[event.Sender](a)
-	m.spaceService = app.MustComponent[space.SpaceService](a)
+	m.spaceService = app.MustComponent[space.Service](a)
 
 	onDelete := app.MustComponent[onDeleteProvider](a).OnDelete
 	m.onDelete = func(id domain.FullID) error {

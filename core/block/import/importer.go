@@ -68,7 +68,7 @@ func New() Importer {
 func (i *Import) Init(a *app.App) (err error) {
 	i.s = app.MustComponent[*block.Service](a)
 	coreService := app.MustComponent[core.Service](a)
-	spaceService := app.MustComponent[space.SpaceService](a)
+	spaceService := app.MustComponent[space.Service](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{

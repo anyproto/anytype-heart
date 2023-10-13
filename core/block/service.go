@@ -133,7 +133,7 @@ type Service struct {
 	systemObjectService  system_object.Service
 	objectCreator        objectCreator
 	resolver             idresolver.Resolver
-	spaceService         space.SpaceService
+	spaceService         space.Service
 	commonAccount        accountservice.Service
 	fileStore            filestore.FileStore
 	tempDirProvider      core.TempDirProvider
@@ -169,7 +169,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
-	s.spaceService = a.MustComponent(space.CName).(space.SpaceService)
+	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)

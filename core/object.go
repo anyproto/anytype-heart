@@ -245,7 +245,7 @@ func deriveDateId(t time.Time) string {
 
 func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID string, t time.Time) (database.Record, error) {
 	id := deriveDateId(t)
-	spc, err := getService[space.SpaceService](mw).Get(ctx, spaceID)
+	spc, err := getService[space.Service](mw).Get(ctx, spaceID)
 	if err != nil {
 		return database.Record{}, fmt.Errorf("get space: %w", err)
 	}

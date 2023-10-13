@@ -12,10 +12,10 @@ import (
 )
 
 type workspace struct {
-	spaceService space.SpaceService
+	spaceService space.Service
 }
 
-func newWorkspace(spaceService space.SpaceService) *workspace {
+func newWorkspace(spaceService space.Service) *workspace {
 	return &workspace{spaceService: spaceService}
 }
 

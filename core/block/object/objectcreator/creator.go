@@ -58,7 +58,7 @@ type Creator struct {
 	bookmark            bookmark.Service
 	app                 *app.App
 	sbtProvider         typeprovider.SmartBlockTypeProvider
-	spaceService        space.SpaceService
+	spaceService        space.Service
 
 	// TODO: remove it?
 	coreService core.Service
@@ -82,7 +82,7 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	c.coreService = app.MustComponent[core.Service](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	c.spaceService = app.MustComponent[space.SpaceService](a)
+	c.spaceService = app.MustComponent[space.Service](a)
 	c.app = a
 	return nil
 }

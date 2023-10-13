@@ -34,12 +34,12 @@ type Service interface {
 
 type service struct {
 	objectStore  objectstore.ObjectStore
-	spaceService space.SpaceService
+	spaceService space.Service
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.spaceService = app.MustComponent[space.SpaceService](a)
+	s.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 

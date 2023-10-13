@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -47,28 +48,16 @@ type space struct {
 	derivedIDs threads.DerivedSmartblockIds
 	installer  bundledObjectsInstaller
 
-	*spacecore.AnySpace
+	commonspace.Space
 
 	loadMandatoryObjectsCh  chan struct{}
 	loadMandatoryObjectsErr error
 }
 
-func (s *service) newMarketplaceSpace(ctx context.Context) (*space, error) {
-	coreSpace := spacecore.NewMarketplace()
-	sp := &space{
-		service:                s,
-		AnySpace:               coreSpace,
-		installer:              s.bundledObjectsInstaller,
-		loadMandatoryObjectsCh: make(chan struct{}),
-	}
-	sp.Cache = objectcache.New(coreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
-	return sp, nil
-}
-
 func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace) (*space, error) {
 	sp := &space{
 		service:                s,
-		AnySpace:               coreSpace,
+		Space:                  coreSpace,
 		loadMandatoryObjectsCh: make(chan struct{}),
 		installer:              s.bundledObjectsInstaller,
 	}

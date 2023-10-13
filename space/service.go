@@ -15,7 +15,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -30,7 +29,7 @@ var (
 	ErrSpaceNotExists   = errors.New("space not exists")
 )
 
-func New() SpaceService {
+func New() Service {
 	return &service{}
 }
 
@@ -44,7 +43,7 @@ type isNewAccount interface {
 	app.Component
 }
 
-type SpaceService interface {
+type Service interface {
 	Create(ctx context.Context) (space Space, err error)
 
 	Get(ctx context.Context, id string) (space Space, err error)
@@ -58,7 +57,7 @@ type service struct {
 	indexer          spaceIndexer
 	spaceCore        spacecore.SpaceCoreService
 	techSpace        techspace.TechSpace
-	marketplaceSpace *space
+	marketplaceSpace Space
 
 	bundledObjectsInstaller bundledObjectsInstaller
 	accountService          accountservice.Service
@@ -101,11 +100,10 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.marketplaceSpace, err = s.newMarketplaceSpace(ctx)
+	err = s.initMarketplaceSpace()
 	if err != nil {
-		return
+		return fmt.Errorf("init marketplace space: %w", err)
 	}
-
 	err = s.initTechSpace()
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
@@ -119,11 +117,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 
 	// TODO: move this logic to any-sync
 	s.repKey, err = getRepKey(s.personalSpaceID)
-	if err != nil {
-		return
-	}
-
-	err = s.indexer.ReindexMarketplaceSpace(s.marketplaceSpace)
 	if err != nil {
 		return
 	}
@@ -142,7 +135,7 @@ func (s *service) initTechSpace() error {
 
 	sp := &space{
 		service:                s,
-		AnySpace:               techCoreSpace,
+		Space:                  techCoreSpace,
 		loadMandatoryObjectsCh: make(chan struct{}),
 		installer:              s.bundledObjectsInstaller,
 	}
@@ -150,7 +143,7 @@ func (s *service) initTechSpace() error {
 
 	err = s.techSpace.Run(techCoreSpace, sp.Cache)
 
-	s.preLoad(techCoreSpace.Id(), sp)
+	s.preLoad(sp)
 	if err != nil {
 		return fmt.Errorf("run tech space: %w", err)
 	}
@@ -166,9 +159,6 @@ func (s *service) Create(ctx context.Context) (Space, error) {
 }
 
 func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error) {
-	if spaceID == addr.AnytypeMarketplaceWorkspace {
-		return s.marketplaceSpace, nil
-	}
 	if err = s.startLoad(ctx, spaceID); err != nil {
 		return nil, err
 	}

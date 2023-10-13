@@ -12,10 +12,10 @@ import (
 )
 
 type widget struct {
-	spaceService space.SpaceService
+	spaceService space.Service
 }
 
-func newWidget(spaceService space.SpaceService) *widget {
+func newWidget(spaceService space.Service) *widget {
 	return &widget{spaceService: spaceService}
 }
 

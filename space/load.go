@@ -74,13 +74,13 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	})
 }
 
-func (s *service) preLoad(spaceId string, sp Space) {
+func (s *service) preLoad(spc Space) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.loaded[spaceId] = sp
-	s.statuses[spaceId] = spaceinfo.SpaceInfo{
-		SpaceID:      spaceId,
+	s.loaded[spc.Id()] = spc
+	s.statuses[spc.Id()] = spaceinfo.SpaceInfo{
+		SpaceID:      spc.Id(),
 		LocalStatus:  spaceinfo.LocalStatusOk,
 		RemoteStatus: spaceinfo.RemoteStatusUnknown,
 	}

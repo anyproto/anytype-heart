@@ -17,10 +17,10 @@ import (
 
 type derivedObject struct {
 	existingObject *existingObject
-	spaceService   space.SpaceService
+	spaceService   space.Service
 }
 
-func newDerivedObject(existingObject *existingObject, spaceService space.SpaceService) *derivedObject {
+func newDerivedObject(existingObject *existingObject, spaceService space.Service) *derivedObject {
 	return &derivedObject{existingObject: existingObject, spaceService: spaceService}
 }
 

@@ -125,7 +125,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		}
 	}
 
-	spaceService := app.MustComponent[space.SpaceService](s.app)
+	spaceService := app.MustComponent[space.Service](s.app)
 	spc, err := spaceService.Get(ctx, personalSpaceId)
 	if err != nil {
 		return fmt.Errorf("get personal space: %w", err)

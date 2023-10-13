@@ -153,7 +153,7 @@ func (s *Service) setDetails(profile *pb.Profile, icon int64) error {
 	profileDetails, accountDetails := buildDetails(profile, icon)
 	bs := s.app.MustComponent(block.CName).(*block.Service)
 
-	spaceService := app.MustComponent[space.SpaceService](s.app)
+	spaceService := app.MustComponent[space.Service](s.app)
 	spc, err := spaceService.GetPersonalSpace(context.Background())
 	if err != nil {
 		return fmt.Errorf("get personal space: %w", err)

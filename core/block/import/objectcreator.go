@@ -37,7 +37,7 @@ const relationsLimit = 10
 
 type ObjectCreator struct {
 	service        *block.Service
-	spaceService   space.SpaceService
+	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
@@ -45,7 +45,7 @@ type ObjectCreator struct {
 	mu             sync.Mutex
 }
 
-func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.SpaceService) Creator {
+func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.Service) Creator {
 	return &ObjectCreator{
 		service:        service,
 		syncFactory:    syncFactory,

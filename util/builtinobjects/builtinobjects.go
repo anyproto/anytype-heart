@@ -133,7 +133,7 @@ type builtinObjects struct {
 	store               objectstore.ObjectStore
 	tempDirService      core.TempDirProvider
 	systemObjectService system_object.Service
-	spaceService        space.SpaceService
+	spaceService        space.Service
 }
 
 func New() BuiltinObjects {
@@ -146,7 +146,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	b.systemObjectService = app.MustComponent[system_object.Service](a)
-	b.spaceService = app.MustComponent[space.SpaceService](a)
+	b.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 
