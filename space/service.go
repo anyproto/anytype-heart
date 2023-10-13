@@ -100,6 +100,8 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+
 	err = s.initMarketplaceSpace()
 	if err != nil {
 		return fmt.Errorf("init marketplace space: %w", err)
@@ -108,44 +110,9 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-
-	s.personalSpaceID, err = s.spaceCore.DeriveID(s.ctx, spacecore.SpaceType)
+	err = s.initPersonalSpace()
 	if err != nil {
-		return
-	}
-
-	// TODO: move this logic to any-sync
-	s.repKey, err = getRepKey(s.personalSpaceID)
-	if err != nil {
-		return
-	}
-
-	if s.newAccount {
-		return s.createPersonalSpace(s.ctx)
-	}
-	return s.loadPersonalSpace(s.ctx)
-}
-
-func (s *service) initTechSpace() error {
-	techCoreSpace, err := s.spaceCore.Derive(context.Background(), spacecore.TechSpaceType)
-	if err != nil {
-		return fmt.Errorf("derive tech space: %w", err)
-	}
-
-	sp := &space{
-		service:                s,
-		Space:                  techCoreSpace,
-		loadMandatoryObjectsCh: make(chan struct{}),
-		installer:              s.bundledObjectsInstaller,
-	}
-	sp.Cache = objectcache.New(techCoreSpace, s.accountService, s.objectFactory, s.personalSpaceID, sp)
-
-	err = s.techSpace.Run(techCoreSpace, sp.Cache)
-
-	s.preLoad(sp)
-	if err != nil {
-		return fmt.Errorf("run tech space: %w", err)
+		return fmt.Errorf("init personal space: %w", err)
 	}
 	return nil
 }
@@ -175,42 +142,6 @@ func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error
 		return nil, err
 	}
 	return s.newSpace(ctx, coreSpace)
-}
-
-func (s *service) createPersonalSpace(ctx context.Context) (err error) {
-	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
-	if err != nil {
-		return
-	}
-	_, err = s.create(ctx, coreSpace)
-	if err == nil {
-		return
-	}
-	if errors.Is(err, techspace.ErrSpaceViewExists) {
-		return s.loadPersonalSpace(ctx)
-	}
-	return
-}
-
-func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
-	err = s.startLoad(ctx, s.personalSpaceID)
-	// This could happen for old accounts
-	if errors.Is(err, ErrSpaceNotExists) {
-		err = s.techSpace.SpaceViewCreate(ctx, s.personalSpaceID)
-		if err != nil {
-			return err
-		}
-		err = s.startLoad(ctx, s.personalSpaceID)
-		if err != nil {
-			return err
-		}
-	}
-	if err != nil {
-		return
-	}
-
-	_, err = s.waitLoad(ctx, s.personalSpaceID)
-	return err
 }
 
 func (s *service) IsPersonal(id string) bool {
