@@ -15,7 +15,7 @@ import (
 
 const ChangeType = "anytype.object"
 
-func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey, spaceID string) (data []byte, err error) {
+func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (data []byte, err error) {
 	var keyStr string
 	if key != nil {
 		if key.SmartblockType() != sbType {
@@ -24,14 +24,6 @@ func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey, spa
 		keyStr = key.InternalKey()
 	}
 	payload := &model.ObjectChangePayload{SmartBlockType: model.SmartBlockType(sbType), Key: keyStr}
-	if sbType == coresb.SmartBlockTypeSpaceView {
-		mdl := &model.SpaceObjectHeader{SpaceID: spaceID}
-		marshalled, err := mdl.Marshal()
-		if err != nil {
-			return nil, err
-		}
-		payload.Data = marshalled
-	}
 	return payload.Marshal()
 }
 

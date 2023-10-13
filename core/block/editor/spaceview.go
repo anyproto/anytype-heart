@@ -100,19 +100,12 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	if changeInfo == nil {
 		return "", ErrIncorrectSpaceInfo
 	}
-	var (
-		changePayload = &model.ObjectChangePayload{}
-		spaceHeader   = &model.SpaceObjectHeader{}
-	)
+	changePayload := &model.ObjectChangePayload{}
 	err = proto.Unmarshal(changeInfo.ChangePayload, changePayload)
 	if err != nil {
 		return "", ErrIncorrectSpaceInfo
 	}
-	err = proto.Unmarshal(changePayload.Data, spaceHeader)
-	if err != nil {
-		return "", ErrIncorrectSpaceInfo
-	}
-	return spaceHeader.SpaceID, nil
+	return changePayload.Key, nil
 }
 
 var workspaceKeysToCopy = []string{
