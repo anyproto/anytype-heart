@@ -107,6 +107,12 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
+	profileSpace, err := s.spaceService.GetPersonalSpace(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get personal space: %w", err)
+	}
+	profileObjectId := profileSpace.DerivedIDs().Profile
+
 	techSpaceId, err := s.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive tech space id: %w", err)
@@ -117,7 +123,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		return &model.AccountInfo{
 			HomeObjectId:           "",
 			ArchiveObjectId:        "",
-			ProfileObjectId:        s.ProfileId(),
+			ProfileObjectId:        profileObjectId,
 			MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 			AccountSpaceId:         spaceID,
 			TechSpaceId:            techSpaceId,
@@ -144,7 +150,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 	return &model.AccountInfo{
 		HomeObjectId:           ids.Home,
 		ArchiveObjectId:        ids.Archive,
-		ProfileObjectId:        s.ProfileId(),
+		ProfileObjectId:        profileObjectId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		DeviceId:               deviceId,
 		AccountSpaceId:         spaceID,
