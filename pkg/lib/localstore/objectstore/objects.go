@@ -17,7 +17,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -117,6 +117,7 @@ type ObjectStore interface {
 	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
 	List(spaceID string) ([]*model.ObjectInfo, error)
 	ListIds() ([]string, error)
+	ListIdsBySpace(spaceId string) ([]string, error)
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
@@ -128,7 +129,7 @@ type ObjectStore interface {
 	DeleteObject(id string) error
 	DeleteDetails(id string) error
 	// EraseIndexes erase all indexes for objectstore. All objects need to be reindexed
-	EraseIndexes() error
+	EraseIndexes(spaceId string) error
 
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
@@ -137,6 +138,7 @@ type ObjectStore interface {
 
 	GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error)
 
+	GetRelationLink(spaceID string, key string) (*model.RelationLink, error)
 	FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error)
 	FetchRelationByKeys(spaceId string, keys ...string) (relations relationutils.Relations, err error)
 	FetchRelationByLinks(spaceId string, links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
@@ -157,8 +159,6 @@ type IndexerStore interface {
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
-	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
-	SaveGlobalChecksums(checksums *model.ObjectStoreChecksums) (err error)
 
 	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
@@ -184,31 +184,23 @@ type dsObjectStore struct {
 	subscriptions    []database.Subscription
 }
 
-func (s *dsObjectStore) EraseIndexes() error {
-	outboundRemoved, inboundRemoved, err := s.eraseLinks()
+func (s *dsObjectStore) EraseIndexes(spaceId string) error {
+	ids, err := s.ListIdsBySpace(spaceId)
 	if err != nil {
-		log.Errorf("eraseLinks failed: %s", err)
+		return fmt.Errorf("list ids by space: %w", err)
 	}
-	log.Infof("eraseLinks: removed %d outbound links", outboundRemoved)
-	log.Infof("eraseLinks: removed %d inbound links", inboundRemoved)
-	return nil
-}
-
-func (s *dsObjectStore) eraseLinks() (outboundRemoved int, inboundRemoved int, err error) {
 	err = badgerhelper.RetryOnConflict(func() error {
 		txn := s.db.NewTransaction(true)
 		defer txn.Discard()
-		txn, outboundRemoved, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String())
-		if err != nil {
-			return fmt.Errorf("remove all outbound links: %w", err)
-		}
-		txn, inboundRemoved, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String())
-		if err != nil {
-			return fmt.Errorf("remove all inbound links: %w", err)
+		for _, id := range ids {
+			txn, err = s.eraseLinksForObject(txn, id)
+			if err != nil {
+				return fmt.Errorf("erase links for object %s: %w", id, err)
+			}
 		}
 		return txn.Commit()
 	})
-	return
+	return err
 }
 
 func (s *dsObjectStore) Run(context.Context) (err error) {
@@ -377,6 +369,19 @@ func (s *dsObjectStore) GetByIDs(spaceID string, ids []string) ([]*model.ObjectI
 		return err
 	})
 	return infos, err
+}
+
+func (s *dsObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
+	ids, _, err := s.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	return ids, err
 }
 
 func (s *dsObjectStore) ListIds() ([]string, error) {

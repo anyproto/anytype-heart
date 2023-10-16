@@ -7,26 +7,24 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func newTestConverter(t *testing.T) KeyToIDConverter {
-	converter := mock_system_object.NewMockService(t)
-	converter.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
-		return fakeDerivedID(key.String()), nil
-	}).Maybe()
-	converter.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, spaceId string, key domain.TypeKey) (string, error) {
-		return fakeDerivedID(key.String()), nil
-	}).Maybe()
-	return converter
+type fakeConverter struct {
+}
+
+func (f *fakeConverter) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
+	return fakeDerivedID(key.String()), nil
+}
+
+func (f *fakeConverter) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
+	return fakeDerivedID(key.String()), nil
 }
 
 func fakeDerivedID(key string) string {
@@ -76,7 +74,7 @@ func TestState_DepSmartIdsLinks(t *testing.T) {
 				},
 			}}),
 	}).(*state.State)
-	converter := newTestConverter(t)
+	converter := &fakeConverter{}
 
 	t.Run("all options are turned off", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, true, false, false, false, false)
@@ -132,7 +130,7 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 				},
 			}}),
 	}).(*state.State)
-	converter := newTestConverter(t)
+	converter := &fakeConverter{}
 
 	relations := []*model.RelationLink{
 		{
@@ -208,7 +206,7 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 				},
 			}}),
 	}).(*state.State)
-	converter := newTestConverter(t)
+	converter := &fakeConverter{}
 
 	relations := []*model.RelationLink{
 		{
@@ -279,7 +277,7 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	stateWithLinks.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("creator"))
 	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String("lastModifiedBy"))
-	converter := newTestConverter(t)
+	converter := &fakeConverter{}
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, true, false, false, true)
@@ -296,7 +294,7 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 	// given
 	stateWithLinks := state.NewDoc("root", nil).(*state.State)
 	stateWithLinks.SetObjectTypeKey(bundle.TypeKeyPage)
-	converter := newTestConverter(t)
+	converter := &fakeConverter{}
 
 	t.Run("all options are turned off", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, false, false, false, false, false)

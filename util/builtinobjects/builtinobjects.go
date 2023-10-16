@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -128,12 +127,11 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	service             *block.Service
-	importer            importer.Importer
-	store               objectstore.ObjectStore
-	tempDirService      core.TempDirProvider
-	systemObjectService system_object.Service
-	spaceService        space.Service
+	service        *block.Service
+	importer       importer.Importer
+	store          objectstore.ObjectStore
+	tempDirService core.TempDirProvider
+	spaceService   space.Service
 }
 
 func New() BuiltinObjects {
@@ -145,7 +143,6 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
-	b.systemObjectService = app.MustComponent[system_object.Service](a)
 	b.spaceService = app.MustComponent[space.Service](a)
 	return
 }

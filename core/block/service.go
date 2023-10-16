@@ -36,7 +36,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -129,7 +128,6 @@ type Service struct {
 	objectStore          objectstore.ObjectStore
 	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
-	systemObjectService  system_object.Service
 	objectCreator        objectCreator
 	resolver             idresolver.Resolver
 	spaceService         space.Service
@@ -165,7 +163,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
-	s.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	s.objectCreator = a.MustComponent("objectCreator").(objectCreator)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
 	s.commonAccount = a.MustComponent(accountservice.CName).(accountservice.Service)
@@ -310,11 +307,7 @@ func (s *Service) GetOpenedObjects() []string {
 func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spc space.Space, details *types.Struct) (*types.Struct, error) {
 	spaceID := spc.Id()
 	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	if pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
-		return nil, errors.New("object is not bundled")
-	}
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
-
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
@@ -442,11 +435,16 @@ func (s *Service) InstallBundledObjects(
 		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
 	}
 
+	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get marketplace space: %w", err)
+	}
+
 	for _, sourceObjectId := range sourceObjectIds {
 		if _, ok := existingObjectMap[sourceObjectId]; ok {
 			continue
 		}
-		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
+		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
 			d, err := s.prepareDetailsForInstallingObject(ctx, spc, b.CombinedDetails())
 			if err != nil {
 				return err

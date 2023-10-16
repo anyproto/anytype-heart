@@ -34,7 +34,7 @@ type Service interface {
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
 	PersonalSpaceID() string
-	ProfileId() string
+	IdentityObjectId() string
 	LocalProfile() (Profile, error)
 }
 
@@ -107,28 +107,15 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
+	profileSpace, err := s.spaceService.GetPersonalSpace(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get personal space: %w", err)
+	}
+	profileObjectId := profileSpace.DerivedIDs().Profile
+
 	techSpaceId, err := s.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive tech space id: %w", err)
-	}
-
-	// todo: remove this temp hack after fixing the issue with tech space @cheggaaa
-	if spaceID == techSpaceId {
-		return &model.AccountInfo{
-			HomeObjectId:           "",
-			ArchiveObjectId:        "",
-			ProfileObjectId:        s.ProfileId(),
-			MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
-			AccountSpaceId:         spaceID,
-			TechSpaceId:            techSpaceId,
-			WidgetsId:              "",
-			GatewayUrl:             gwAddr,
-			DeviceId:               deviceId,
-			LocalStoragePath:       cfg.CustomFileStorePath,
-			TimeZone:               cfg.TimeZone,
-			AnalyticsId:            analyticsId,
-			NetworkId:              s.getNetworkID(),
-		}, nil
 	}
 
 	ids, err := s.getIds(ctx, spaceID)
@@ -136,15 +123,19 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		return nil, fmt.Errorf("failed to get derived ids: %w", err)
 	}
 
-	spaceViewId, err := s.spaceService.SpaceViewId(spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+	var spaceViewId string
+	// Tech space doesn't have space view
+	if spaceID != techSpaceId {
+		spaceViewId, err = s.spaceService.SpaceViewId(spaceID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+		}
 	}
 
 	return &model.AccountInfo{
 		HomeObjectId:           ids.Home,
 		ArchiveObjectId:        ids.Archive,
-		ProfileObjectId:        s.ProfileId(),
+		ProfileObjectId:        profileObjectId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		DeviceId:               deviceId,
 		AccountSpaceId:         spaceID,

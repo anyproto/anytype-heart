@@ -23,8 +23,9 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/anytype-heart/core/identity"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/identity"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -56,7 +57,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -213,7 +213,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(builtintemplate.New()).
 		Register(space.New()).
-		Register(system_object.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).

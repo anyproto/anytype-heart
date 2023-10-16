@@ -1,6 +1,8 @@
 module github.com/anyproto/anytype-heart
 
-go 1.20
+go 1.21
+
+toolchain go1.21.0
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
@@ -58,7 +60,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.7
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
-	github.com/microcosm-cc/bluemonday v1.0.25
+	github.com/microcosm-cc/bluemonday v1.0.26
 	github.com/miolini/datacounter v1.0.3
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-base32 v0.1.0
@@ -103,7 +105,7 @@ require (
 	github.com/RoaringBitmap/roaring v1.2.3 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
-	github.com/andybalholm/cascadia v1.3.1 // indirect
+	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/anyproto/go-chash v0.1.0 // indirect
 	github.com/anyproto/go-slip10 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
@@ -276,4 +278,3 @@ replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-202
 replace github.com/multiformats/go-multiaddr => github.com/anyproto/go-multiaddr v0.8.1-0.20221213144344-0b6b93adaec4
 
 replace github.com/gogo/protobuf => github.com/anyproto/protobuf v1.3.3-0.20230114170705-8e2cb769640b
-

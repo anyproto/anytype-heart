@@ -21,8 +21,8 @@ import (
 var log = logging.Logger("objectlink")
 
 type KeyToIDConverter interface {
-	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
+	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 }
 
 type linkSource interface {
@@ -49,7 +49,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 				log.Errorf("sb %s has empty ot", s.RootId())
 				continue
 			}
-			id, err := converter.GetTypeIdByKey(context.Background(), s.SpaceID(), objectTypeKey)
+			id, err := converter.GetTypeIdByKey(context.Background(), objectTypeKey)
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to get object type id by key %s: %s", objectTypeKey, err)
 				continue
@@ -66,7 +66,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 	for _, rel := range s.GetRelationLinks() {
 		// do not index local dates such as lastOpened/lastModified
 		if relations {
-			id, err := converter.GetRelationIdByKey(context.Background(), s.SpaceID(), domain.RelationKey(rel.Key))
+			id, err := converter.GetRelationIdByKey(context.Background(), domain.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", rel.Key, err)
 				continue

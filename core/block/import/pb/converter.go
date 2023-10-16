@@ -323,7 +323,7 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	if objectID == profileID && isMigration {
-		return p.accountService.ProfileId()
+		return p.accountService.IdentityObjectId()
 	}
 	return id
 }

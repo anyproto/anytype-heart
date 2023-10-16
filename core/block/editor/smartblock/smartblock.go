@@ -28,8 +28,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -519,22 +519,9 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 	})
 }
 
-type uniqueKeyToIdConverterWrapper struct {
-	converter Space
-}
-
-func (w *uniqueKeyToIdConverterWrapper) GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error) {
-	return w.converter.GetRelationIdByKey(ctx, key)
-}
-
-func (w *uniqueKeyToIdConverterWrapper) GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error) {
-	return w.converter.GetTypeIdByKey(ctx, key)
-}
-
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
-	converter := &uniqueKeyToIdConverterWrapper{converter: sb.space}
-	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), converter, true, true, includeRelations, includeObjTypes, includeCreatorModifier)
+	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) navigationalLinks(s *state.State) []string {
@@ -992,13 +979,7 @@ func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails
 }
 
 func (sb *smartBlock) getCreationInfo() (creatorObjectId string, createdTS int64, err error) {
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		err = fmt.Errorf("source does not conform to CreationInfoProvider")
-		return
-	}
-
-	creatorObjectId, createdTS, err = provider.GetCreationInfo()
+	creatorObjectId, createdTS, err = sb.source.GetCreationInfo()
 	if err != nil {
 		return
 	}

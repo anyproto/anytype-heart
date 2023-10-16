@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -72,12 +71,11 @@ type service struct {
 	subscriptions map[string]subscription
 	recBatch      *mb.MB
 
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	kanban              kanban.Service
-	collectionService   CollectionService
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	eventSender         event.Sender
+	objectStore       objectstore.ObjectStore
+	kanban            kanban.Service
+	collectionService CollectionService
+	sbtProvider       typeprovider.SmartBlockTypeProvider
+	eventSender       event.Sender
 
 	m      sync.Mutex
 	ctxBuf *opCtx
@@ -93,7 +91,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
-	s.systemObjectService = app.MustComponent[system_object.Service](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
@@ -520,8 +517,8 @@ func (s *service) onChange(entries []*entry) time.Duration {
 func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	var relTypeFilter database.FiltersOr
 	var (
-		relKeys  []string
-		typeKeys []string
+		relKeys        []string
+		typeUniqueKeys []string
 	)
 
 	var err error
@@ -545,15 +542,23 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 		case smartblock.SmartBlockTypeRelation:
 			relKeys = append(relKeys, uk.InternalKey())
 		case smartblock.SmartBlockTypeObjectType:
-			typeKeys = append(typeKeys, uk.InternalKey())
+			typeUniqueKeys = append(typeUniqueKeys, uk.Marshal())
 		}
 	}
 
-	if len(typeKeys) > 0 {
-		relTypeFilter = append(relTypeFilter, database.FilterIn{
-			Key:   bundle.RelationKeyType.String(),
-			Value: pbtypes.StringList(typeKeys).GetListValue(),
-		})
+	if len(typeUniqueKeys) > 0 {
+		nestedFiler, err := database.MakeFilter("",
+			&model.BlockContentDataviewFilter{
+				RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(typeUniqueKeys),
+			},
+			s.objectStore,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("make nested filter: %w", err)
+		}
+		relTypeFilter = append(relTypeFilter, nestedFiler)
 	}
 
 	for _, relKey := range relKeys {
