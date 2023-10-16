@@ -35,6 +35,7 @@ type ClientStorage interface {
 	AllSpaceIds() (ids []string, err error)
 	GetSpaceID(objectID string) (spaceID string, err error)
 	BindSpaceID(spaceID, objectID string) (err error)
+	DeleteSpaceStorage(ctx context.Context, spaceId string) error
 }
 
 func New() ClientStorage {

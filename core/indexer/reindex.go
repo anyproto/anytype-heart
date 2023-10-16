@@ -186,6 +186,11 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	return i.saveLatestChecksums(space.Id())
 }
 
+func (i *indexer) RemoveIndexes(spaceID string) (err error) {
+	// TODO: remove indexes for space
+	return nil
+}
+
 func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 	flags, err := i.buildFlags("")
 	if err != nil {
