@@ -17,7 +17,7 @@ func (s *service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	if status.RemoteStatus != spaceinfo.RemoteStatusDeleted || status.RemoteStatus != spaceinfo.RemoteStatusWaitingDeletion {
+	if !status.RemoteStatus.IsDeleted() {
 		_, err := s.spaceCore.Delete(ctx, id)
 		if err != nil {
 			log.Warn("network delete error", zap.Error(err), zap.String("spaceId", id))
@@ -53,5 +53,9 @@ func (s *service) offload(ctx context.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
-	return s.indexer.RemoveIndexes(id)
+	err = s.indexer.RemoveIndexes(id)
+	if err != nil {
+		return err
+	}
+	return s.offloader.FilesSpaceOffload(ctx, id)
 }

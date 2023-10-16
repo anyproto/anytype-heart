@@ -65,8 +65,8 @@ func (d *deletionController) Close() {
 }
 
 func (d *deletionController) loopIterate(ctx context.Context) (err error) {
-	var spaceIDs []string
 	localStatuses := d.localDeleter.allStatuses()
+	spaceIDs := make([]string, 0, len(localStatuses))
 	for _, status := range localStatuses {
 		spaceIDs = append(spaceIDs, status.SpaceID)
 	}

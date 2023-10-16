@@ -21,6 +21,10 @@ const (
 	RemoteStatusError           = RemoteStatus(model.SpaceStatus_Error)
 )
 
+func (r RemoteStatus) IsDeleted() bool {
+	return r == RemoteStatusDeleted || r == RemoteStatusWaitingDeletion
+}
+
 type AccountStatus int
 
 const (

@@ -13,6 +13,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 )
 
+func (s *service) FilesSpaceOffload(ctx context.Context, spaceID string) (err error) {
+	// TODO: implement file offload for space
+	return nil
+}
+
 func (s *service) FileOffload(ctx context.Context, fileID string, includeNotPinned bool) (totalSize uint64, err error) {
 	spaceID, err := s.resolver.ResolveSpaceID(fileID)
 	if err != nil {

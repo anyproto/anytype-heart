@@ -43,6 +43,10 @@ type spaceIndexer interface {
 	RemoveIndexes(spaceID string) (err error)
 }
 
+type fileOffloader interface {
+	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
+}
+
 type isNewAccount interface {
 	IsNewAccount() bool
 	app.Component
@@ -70,6 +74,7 @@ type service struct {
 	accountService          accountservice.Service
 	objectFactory           objectcache.ObjectFactory
 	storageService          storage.ClientStorage
+	offloader               fileOffloader
 
 	personalSpaceID string
 	metadataPayload []byte
@@ -99,6 +104,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.storageService = app.MustComponent[storage.ClientStorage](a)
 	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.delController = newDeletionController(s, s.spaceCore, coordClient)
+	s.offloader = app.MustComponent[fileOffloader](a)
 	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
