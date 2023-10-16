@@ -9,14 +9,16 @@ import (
 )
 
 func (s *service) Delete(ctx context.Context, id string) error {
+	s.mu.Lock()
 	status := s.getStatus(id)
 	status.AccountStatus = spaceinfo.AccountStatusDeleted
 	err := s.setStatus(ctx, status)
+	s.mu.Unlock()
 	if err != nil {
 		return err
 	}
 	if status.RemoteStatus != spaceinfo.RemoteStatusDeleted || status.RemoteStatus != spaceinfo.RemoteStatusWaitingDeletion {
-		err = s.delController.NetworkDelete(ctx, id)
+		_, err := s.spaceCore.Delete(ctx, id)
 		if err != nil {
 			log.Warn("network delete error", zap.Error(err), zap.String("spaceId", id))
 		}
@@ -28,18 +30,24 @@ func (s *service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	s.mu.Lock()
+	status = s.getStatus(id)
 	status.LocalStatus = spaceinfo.LocalStatusMissing
-	return nil
+	err = s.setStatus(ctx, status)
+	s.mu.Unlock()
+	return err
 }
 
 func (s *service) offload(ctx context.Context, id string) (err error) {
 	sp, err := s.Get(ctx, id)
-	if err != nil {
+	if err != nil && err != ErrSpaceDeleted {
 		return err
 	}
-	err = sp.Close(ctx)
-	if err != nil {
-		return
+	if err == nil {
+		err = sp.Close(ctx)
+		if err != nil {
+			return
+		}
 	}
 	err = s.storageService.DeleteSpaceStorage(ctx, id)
 	if err != nil {

@@ -18,6 +18,10 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
 		return nil
 	}
+	// If space is not loading, but it is deleted, return error
+	if status.AccountStatus == spaceinfo.AccountStatusDeleted {
+		return ErrSpaceDeleted
+	}
 
 	exists, err := s.techSpace.SpaceViewExists(ctx, spaceID)
 	if err != nil {
