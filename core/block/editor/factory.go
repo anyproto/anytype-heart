@@ -44,7 +44,6 @@ type ObjectFactory struct {
 	restrictionService restriction.Service
 	indexer            smartblock.Indexer
 	spaceService       spaceService
-	objectDeriver      objectDeriver
 	accountService     accountService
 }
 
@@ -66,7 +65,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.picker = app.MustComponent[getblock.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
-	f.objectDeriver = app.MustComponent[objectDeriver](a)
 	f.spaceService = app.MustComponent[spaceService](a)
 	f.accountService = app.MustComponent[accountService](a)
 
@@ -153,7 +151,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledTemplate:
 		return f.newTemplate(sb), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return NewWorkspace(sb, f.objectStore, f.spaceService, f.layoutConverter, f.config, f.eventSender, f.objectDeriver), nil
+		return NewWorkspace(sb, f.objectStore, f.spaceService, f.layoutConverter, f.config, f.eventSender), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return newSpaceView(
 			sb,

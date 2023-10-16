@@ -18,13 +18,12 @@ import (
 )
 
 type objectDeriver interface {
-	DeriveTreeObject(ctx context.Context, spaceID string, params objectcache.TreeDerivationParams) (sb smartblock.SmartBlock, err error)
+	DeriveTreeObject(ctx context.Context, params objectcache.TreeDerivationParams) (sb smartblock.SmartBlock, err error)
 }
 
 // Migrate legacy sub-objects to ordinary objects
 type subObjectsMigration struct {
-	workspace     *Workspaces
-	objectDeriver objectDeriver
+	workspace *Workspaces
 }
 
 func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
@@ -52,7 +51,11 @@ func (m *subObjectsMigration) migrateSubObject(
 	if err != nil {
 		return "", fmt.Errorf("unmarshal unique key: %w", err)
 	}
-	sb, err := m.objectDeriver.DeriveTreeObject(ctx, m.workspace.SpaceID(), objectcache.TreeDerivationParams{
+	deriver, ok := m.workspace.Space().(objectDeriver)
+	if !ok {
+		return "", fmt.Errorf("can't get object deriver")
+	}
+	sb, err := deriver.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 		Key: uniqueKey,
 		InitFunc: func(id string) *smartblock.InitContext {
 			st := state.NewDocWithUniqueKey(id, nil, uniqueKey).NewState()

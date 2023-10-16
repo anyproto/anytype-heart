@@ -26,13 +26,12 @@ type Workspaces struct {
 	dataview.Dataview
 	stext.Text
 
-	spaceService  spaceService
-	objectStore   objectstore.ObjectStore
-	config        *config.Config
-	objectDeriver objectDeriver
+	spaceService spaceService
+	objectStore  objectstore.ObjectStore
+	config       *config.Config
 }
 
-func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, spaceService spaceService, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender, objectDeriver objectDeriver) *Workspaces {
+func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, spaceService spaceService, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
@@ -42,11 +41,10 @@ func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore,
 			objectStore,
 			eventSender,
 		),
-		Dataview:      dataview.NewDataview(sb, objectStore),
-		objectStore:   objectStore,
-		spaceService:  spaceService,
-		config:        config,
-		objectDeriver: objectDeriver,
+		Dataview:     dataview.NewDataview(sb, objectStore),
+		objectStore:  objectStore,
+		spaceService: spaceService,
+		config:       config,
 	}
 }
 
@@ -58,8 +56,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	w.initTemplate(ctx)
 
 	subObjectMigration := subObjectsMigration{
-		workspace:     w,
-		objectDeriver: w.objectDeriver,
+		workspace: w,
 	}
 	subObjectMigration.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
