@@ -9,6 +9,7 @@ import (
 
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
 
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
@@ -20,8 +21,6 @@ import (
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
-
-	relationutils "github.com/anyproto/anytype-heart/core/system_object/relationutils"
 
 	types "github.com/gogo/protobuf/types"
 )

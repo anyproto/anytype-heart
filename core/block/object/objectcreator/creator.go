@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -49,14 +48,13 @@ type Service interface {
 }
 
 type Creator struct {
-	blockService        BlockService
-	blockPicker         block.ObjectGetter
-	objectStore         objectstore.ObjectStore
-	collectionService   CollectionService
-	systemObjectService system_object.Service
-	bookmark            bookmark.Service
-	app                 *app.App
-	spaceService        space.Service
+	blockService      BlockService
+	blockPicker       block.ObjectGetter
+	objectStore       objectstore.ObjectStore
+	collectionService CollectionService
+	bookmark          bookmark.Service
+	app               *app.App
+	spaceService      space.Service
 
 	// TODO: remove it?
 	coreService core.Service
@@ -77,7 +75,6 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.collectionService = app.MustComponent[CollectionService](a)
-	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	c.coreService = app.MustComponent[core.Service](a)
 	c.spaceService = app.MustComponent[space.Service](a)
 	c.app = a

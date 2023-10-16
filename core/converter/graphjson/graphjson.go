@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -54,19 +53,16 @@ type graphjson struct {
 	nodes       map[string]*Node
 	linksByNode map[string][]*Edge
 
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService system_object.Service
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func NewMultiConverter(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
-	systemObjectService system_object.Service,
 ) converter.MultiConverter {
 	return &graphjson{
-		linksByNode:         map[string][]*Edge{},
-		nodes:               map[string]*Node{},
-		sbtProvider:         sbtProvider,
-		systemObjectService: systemObjectService,
+		linksByNode: map[string][]*Edge{},
+		nodes:       map[string]*Node{},
+		sbtProvider: sbtProvider,
 	}
 }
 

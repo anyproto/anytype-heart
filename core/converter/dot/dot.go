@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -44,22 +43,20 @@ type linkInfo struct {
 }
 
 type dot struct {
-	graph               *cgraph.Graph
-	graphviz            *graphviz.Graphviz
-	knownDocs           map[string]*types.Struct
-	fileHashes          []string
-	imageHashes         []string
-	exportFormat        graphviz.Format
-	nodes               map[string]*cgraph.Node
-	linksByNode         map[string][]linkInfo
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService system_object.Service
+	graph        *cgraph.Graph
+	graphviz     *graphviz.Graphviz
+	knownDocs    map[string]*types.Struct
+	fileHashes   []string
+	imageHashes  []string
+	exportFormat graphviz.Format
+	nodes        map[string]*cgraph.Node
+	linksByNode  map[string][]linkInfo
+	sbtProvider  typeprovider.SmartBlockTypeProvider
 }
 
 func NewMultiConverter(
 	format graphviz.Format,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
-	systemObjectService system_object.Service,
 ) converter.MultiConverter {
 	g := graphviz.New()
 	graph, err := g.Graph()
