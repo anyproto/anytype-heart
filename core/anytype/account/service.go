@@ -118,33 +118,18 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		return nil, fmt.Errorf("failed to derive tech space id: %w", err)
 	}
 
-	// todo: remove this temp hack after fixing the issue with tech space @cheggaaa
-	if spaceID == techSpaceId {
-		return &model.AccountInfo{
-			HomeObjectId:           "",
-			ArchiveObjectId:        "",
-			ProfileObjectId:        profileObjectId,
-			MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
-			AccountSpaceId:         spaceID,
-			TechSpaceId:            techSpaceId,
-			WidgetsId:              "",
-			GatewayUrl:             gwAddr,
-			DeviceId:               deviceId,
-			LocalStoragePath:       cfg.CustomFileStorePath,
-			TimeZone:               cfg.TimeZone,
-			AnalyticsId:            analyticsId,
-			NetworkId:              s.getNetworkID(),
-		}, nil
-	}
-
 	ids, err := s.getIds(ctx, spaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get derived ids: %w", err)
 	}
 
-	spaceViewId, err := s.spaceService.SpaceViewId(spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+	var spaceViewId string
+	// Tech space doesn't have space view
+	if spaceID != techSpaceId {
+		spaceViewId, err = s.spaceService.SpaceViewId(spaceID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+		}
 	}
 
 	return &model.AccountInfo{
