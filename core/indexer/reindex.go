@@ -286,6 +286,19 @@ func (i *indexer) removeGlobalIndexes(flags reindexFlags) (err error) {
 	return
 }
 
+func (i *indexer) listIdsBySpace(spaceId string) ([]string, error) {
+	ids, _, err := i.store.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+		},
+	})
+	return ids, err
+}
+
 func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
 	ids, err := i.getIdsForTypes(space.Id(), sbTypes...)
 	if err != nil {
