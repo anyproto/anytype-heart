@@ -86,19 +86,12 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	// Index profile
-	techSpace, err := s.spaceService.Get(ctx, s.techSpaceId)
+	s.personalSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.SpaceType)
 	if err != nil {
-		return fmt.Errorf("get tech space: %w", err)
-	}
-	err = techSpace.Do(s.accountService.ProfileId(), func(_ smartblock.SmartBlock) error {
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("touch profile to index: %w", err)
+		return err
 	}
 
-	s.personalSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.SpaceType)
+	err = s.indexTechProfile(ctx)
 	if err != nil {
 		return err
 	}
@@ -157,6 +150,21 @@ func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Str
 	return d
 }
 
+func (s *service) indexTechProfile(ctx context.Context) error {
+	// Index profile
+	techSpace, err := s.spaceService.Get(ctx, s.techSpaceId)
+	if err != nil {
+		return fmt.Errorf("get tech space: %w", err)
+	}
+	err = techSpace.Do(s.accountService.ProfileId(), func(_ smartblock.SmartBlock) error {
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("touch profile to index: %w", err)
+	}
+	return nil
+}
+
 func (s *service) runLocalProfileSubscriptions() (err error) {
 	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeProfilePage, "")
 	if err != nil {
@@ -176,7 +184,7 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 	)
 
 	profileId := s.accountService.ProfileId()
-	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges([]string{profileId}, sub)
+	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges([]string{profileObjectId}, sub)
 	if err != nil {
 		return err
 	}
@@ -192,7 +200,7 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 	if len(records) > 0 {
 		details := getDetailsFromProfile(profileId, s.techSpaceId, records[0].Details)
 
-		s.detailsModifier.ModifyDetails(profileObjectId, func(current *types.Struct) (*types.Struct, error) {
+		s.detailsModifier.ModifyDetails(profileId, func(current *types.Struct) (*types.Struct, error) {
 			return pbtypes.StructMerge(current, details, false), nil
 		})
 
@@ -206,7 +214,7 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 			}
 
 			details := getDetailsFromProfile(profileId, s.techSpaceId, rec)
-			err = s.detailsModifier.ModifyDetails(profileObjectId, func(current *types.Struct) (*types.Struct, error) {
+			err = s.detailsModifier.ModifyDetails(profileId, func(current *types.Struct) (*types.Struct, error) {
 				return pbtypes.StructMerge(current, details, false), nil
 			})
 			if err != nil {
