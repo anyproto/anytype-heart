@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -17,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -48,17 +48,15 @@ type History interface {
 }
 
 type history struct {
-	accountService      account.Service
-	picker              block.ObjectGetter
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	spaceService        space.Service
+	accountService account.Service
+	picker         block.ObjectGetter
+	objectStore    objectstore.ObjectStore
+	spaceService   space.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
 	h.picker = app.MustComponent[block.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	h.spaceService = app.MustComponent[space.Service](a)
 	h.accountService = app.MustComponent[account.Service](a)
 	return
@@ -69,11 +67,15 @@ func (h *history) Name() (name string) {
 }
 
 func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error) {
+	space, err := h.spaceService.Get(context.Background(), id.SpaceID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get space: %w", err)
+	}
 	s, sbType, ver, err := h.buildState(id, versionID)
 	if err != nil {
 		return
 	}
-	dependentObjectIDs := objectlink.DependentObjectIDs(s, h.systemObjectService, true, true, false, true, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, true, true, false, true, false)
 	// nolint:errcheck
 	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))

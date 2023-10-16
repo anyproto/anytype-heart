@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -53,7 +52,6 @@ type service struct {
 	objectStore     objectstore.ObjectStore
 	accountService  account.Service
 	spaceIdDeriver  spaceIdDeriver
-	systemObjects   system_object.Service
 	detailsModifier DetailsModifier
 	closing         chan struct{}
 	identities      []string
@@ -69,7 +67,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.accountService = app.MustComponent[account.Service](a)
 	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
-	s.systemObjects = app.MustComponent[system_object.Service](a)
 	s.detailsModifier = app.MustComponent[DetailsModifier](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.closing = make(chan struct{})
@@ -96,7 +93,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	err = s.runLocalProfileSubscriptions()
+	err = s.runLocalProfileSubscriptions(ctx)
 	if err != nil {
 		return err
 	}
@@ -165,12 +162,16 @@ func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Str
 	return d
 }
 
-func (s *service) runLocalProfileSubscriptions() (err error) {
+func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) {
 	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeProfilePage, "")
 	if err != nil {
 		return err
 	}
-	profileObjectId, err := s.systemObjects.GetObjectIdByUniqueKey(context.TODO(), s.personalSpaceId, uniqueKey)
+	personalSpace, err := s.spaceService.GetPersonalSpace(ctx)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	profileObjectId, err := personalSpace.DeriveObjectID(ctx, uniqueKey)
 	if err != nil {
 		return err
 	}

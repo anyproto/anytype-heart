@@ -52,7 +52,7 @@ func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 func (s *Service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
-	targetObjectTypeID, err := s.systemObjectService.GetTypeIdByKey(context.Background(), sb.SpaceID(), st.ObjectTypeKey())
+	targetObjectTypeID, err := sb.Space().GetTypeIdByKey(context.Background(), st.ObjectTypeKey())
 	if err != nil {
 		return nil, fmt.Errorf("get type id by key: %w", err)
 	}

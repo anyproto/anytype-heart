@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -59,15 +58,14 @@ type Export interface {
 }
 
 type export struct {
-	blockService        *block.Service
-	picker              getblock.ObjectGetter
-	objectStore         objectstore.ObjectStore
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	fileService         files.Service
-	systemObjectService system_object.Service
-	resolver            idresolver.Resolver
-	spaceService        space.Service
-	accountService      account.Service
+	blockService   *block.Service
+	picker         getblock.ObjectGetter
+	objectStore    objectstore.ObjectStore
+	sbtProvider    typeprovider.SmartBlockTypeProvider
+	fileService    files.Service
+	resolver       idresolver.Resolver
+	spaceService   space.Service
+	accountService account.Service
 }
 
 func New() Export {
@@ -81,7 +79,6 @@ func (e *export) Init(a *app.App) (err error) {
 	e.picker = app.MustComponent[getblock.ObjectGetter](a)
 	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	e.systemObjectService = app.MustComponent[system_object.Service](a)
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
 	return
@@ -128,14 +125,14 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		if req.Format == pb.RpcObjectListExport_SVG {
 			format = dot.ExportFormatSVG
 		}
-		mc := dot.NewMultiConverter(format, e.sbtProvider, e.systemObjectService)
+		mc := dot.NewMultiConverter(format, e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
-		mc := graphjson.NewMultiConverter(e.sbtProvider, e.systemObjectService)
+		mc := graphjson.NewMultiConverter(e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
@@ -296,7 +293,7 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
 			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
-				if err = mw.Add(b.NewState().Copy()); err != nil {
+				if err = mw.Add(b.Space(), b.NewState().Copy()); err != nil {
 					return err
 				}
 				if !includeFiles {

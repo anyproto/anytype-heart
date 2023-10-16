@@ -16,11 +16,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -36,13 +34,12 @@ func (c *collectionServiceMock) Init(a *app.App) error { return nil }
 
 type fixture struct {
 	Service
-	a                   *app.App
-	ctrl                *gomock.Controller
-	store               *testMock.MockObjectStore
-	systemObjectService *mock_system_object.MockService
-	sender              *mock_event.MockSender
-	events              []*pb.Event
-	collectionService   *collectionServiceMock
+	a                 *app.App
+	ctrl              *gomock.Controller
+	store             *testMock.MockObjectStore
+	sender            *mock_event.MockSender
+	events            []*pb.Event
+	collectionService *collectionServiceMock
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -55,19 +52,15 @@ func newFixture(t *testing.T) *fixture {
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
 
-	systemObjectService := mock_system_object.NewMockService(t)
-	a.Register(testutil.PrepareMock(context.Background(), a, systemObjectService))
-
 	collectionService := &collectionServiceMock{MockCollectionService: mock_subscription.NewMockCollectionService(t)}
 	a.Register(collectionService)
 
 	fx := &fixture{
-		Service:             New(),
-		a:                   a,
-		ctrl:                ctrl,
-		store:               a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
-		systemObjectService: systemObjectService,
-		collectionService:   collectionService,
+		Service:           New(),
+		a:                 a,
+		ctrl:              ctrl,
+		store:             a.MustComponent(objectstore.CName).(*testMock.MockObjectStore),
+		collectionService: collectionService,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)
@@ -86,13 +79,12 @@ func newFixture(t *testing.T) *fixture {
 
 type fixtureRealStore struct {
 	Service
-	a                       *app.App
-	ctrl                    *gomock.Controller
-	store                   *objectstore.StoreFixture
-	sender                  *mock_event.MockSender
-	eventsLock              sync.Mutex
-	events                  []pb.IsEventMessageValue
-	systemObjectServiceMock *mock_system_object.MockService
+	a          *app.App
+	ctrl       *gomock.Controller
+	store      *objectstore.StoreFixture
+	sender     *mock_event.MockSender
+	eventsLock sync.Mutex
+	events     []pb.IsEventMessageValue
 }
 
 func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
@@ -106,14 +98,11 @@ func newFixtureWithRealObjectStore(t *testing.T) *fixtureRealStore {
 	sbtProvider.EXPECT().Name().Return("smartBlockTypeProvider")
 	sbtProvider.EXPECT().Init(mock.Anything).Return(nil)
 	a.Register(sbtProvider)
-	systemObjectService := mock_system_object.NewMockService(t)
-	a.Register(testutil.PrepareMock(context.Background(), a, systemObjectService))
 	fx := &fixtureRealStore{
-		Service:                 New(),
-		a:                       a,
-		ctrl:                    ctrl,
-		store:                   store,
-		systemObjectServiceMock: systemObjectService,
+		Service: New(),
+		a:       a,
+		ctrl:    ctrl,
+		store:   store,
 	}
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Init(mock.Anything).Return(nil)

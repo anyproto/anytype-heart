@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -72,12 +71,11 @@ type service struct {
 	subscriptions map[string]subscription
 	recBatch      *mb.MB
 
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	kanban              kanban.Service
-	collectionService   CollectionService
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	eventSender         event.Sender
+	objectStore       objectstore.ObjectStore
+	kanban            kanban.Service
+	collectionService CollectionService
+	sbtProvider       typeprovider.SmartBlockTypeProvider
+	eventSender       event.Sender
 
 	m      sync.Mutex
 	ctxBuf *opCtx
@@ -93,7 +91,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
-	s.systemObjectService = app.MustComponent[system_object.Service](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
