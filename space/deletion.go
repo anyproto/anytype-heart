@@ -2,27 +2,24 @@ package space
 
 import (
 	"context"
-	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-func (s *service) Delete(ctx context.Context, id string, deletionPeriod time.Duration) error {
-	// TODO: do for non-0 deletion period
+func (s *service) Delete(ctx context.Context, id string) error {
 	status := s.getStatus(id)
-	if err := s.checkDeletionPossible(status); err != nil {
-		return err
-	}
-	status.RemoteStatus = spaceinfo.RemoteStatusDeleted
+	status.AccountStatus = spaceinfo.AccountStatusDeleted
 	err := s.setStatus(ctx, status)
 	if err != nil {
 		return err
 	}
-	err = s.delController.NetworkDelete(ctx, id)
-	if err != nil {
-		log.Warn("network delete error", zap.Error(err), zap.String("spaceId", id))
+	if status.RemoteStatus != spaceinfo.RemoteStatusDeleted || status.RemoteStatus != spaceinfo.RemoteStatusWaitingDeletion {
+		err = s.delController.NetworkDelete(ctx, id)
+		if err != nil {
+			log.Warn("network delete error", zap.Error(err), zap.String("spaceId", id))
+		}
 	}
 	if status.LocalStatus == spaceinfo.LocalStatusMissing {
 		return nil
@@ -32,21 +29,6 @@ func (s *service) Delete(ctx context.Context, id string, deletionPeriod time.Dur
 		return err
 	}
 	status.LocalStatus = spaceinfo.LocalStatusMissing
-	return nil
-}
-
-func (s *service) RevertDeletion(ctx context.Context, id string) (err error) {
-	return nil
-}
-
-func (s *service) checkDeletionPossible(spaceInfo spaceinfo.SpaceInfo) error {
-	// TODO: check if other conditions are needed
-	switch spaceInfo.RemoteStatus {
-	case spaceinfo.RemoteStatusWaitingDeletion:
-		return ErrSpaceWaitingForDeletion
-	default:
-		break
-	}
 	return nil
 }
 

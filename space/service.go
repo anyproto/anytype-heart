@@ -16,6 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -25,8 +26,10 @@ const CName = "client.space"
 var log = logger.NewNamed(CName)
 
 var (
-	ErrIncorrectSpaceID = errors.New("incorrect space id")
-	ErrSpaceNotExists   = errors.New("space not exists")
+	ErrIncorrectSpaceID        = errors.New("incorrect space id")
+	ErrSpaceNotExists          = errors.New("space not exists")
+	ErrSpaceWaitingForDeletion = errors.New("space waiting for deletion")
+	ErrStatusUnkown            = errors.New("space status is unknown")
 )
 
 func New() Service {
@@ -36,6 +39,7 @@ func New() Service {
 type spaceIndexer interface {
 	ReindexMarketplaceSpace(space Space) error
 	ReindexSpace(space Space) error
+	RemoveIndexes(spaceID string) (err error)
 }
 
 type isNewAccount interface {
@@ -47,6 +51,7 @@ type Service interface {
 	Create(ctx context.Context) (space Space, err error)
 
 	Get(ctx context.Context, id string) (space Space, err error)
+	Delete(ctx context.Context, id string) (err error)
 	GetPersonalSpace(ctx context.Context) (space Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 
@@ -58,10 +63,12 @@ type service struct {
 	spaceCore        spacecore.SpaceCoreService
 	techSpace        techspace.TechSpace
 	marketplaceSpace Space
+	delController    *deletionController
 
 	bundledObjectsInstaller bundledObjectsInstaller
 	accountService          accountservice.Service
 	objectFactory           objectcache.ObjectFactory
+	storageService          storage.ClientStorage
 
 	personalSpaceID string
 	metadataPayload []byte
@@ -88,7 +95,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
-
+	s.storageService = app.MustComponent[storage.ClientStorage](a)
+	s.delController = newDeletionController(s)
 	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}

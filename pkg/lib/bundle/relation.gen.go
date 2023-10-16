@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "67ed75db45282edeae3cbcaca63d4ef96bd30b4beaa8aaec5349060596fa53f1"
+const RelationChecksum = "5490bc4a969e1e3e5572c69cda10e33595f31e43c492f113c0a00aeba6e65224"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -158,6 +158,7 @@ const (
 	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
+	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
@@ -1811,6 +1812,20 @@ var (
 			MaxCount:         1,
 			Name:             "Space accessibility",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceAccountStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Relation that indicates the status of space that the user is set. Possible values: models.SpaceStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceAccountStatus",
+			Key:              "spaceAccountStatus",
+			MaxCount:         1,
+			Name:             "Space account status",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
