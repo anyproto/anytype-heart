@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/util/slice"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -91,11 +90,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 		return err
 	}
 
-	err = s.indexTechProfile(ctx)
-	if err != nil {
-		return err
-	}
-
 	err = s.runLocalProfileSubscriptions()
 	if err != nil {
 		return err
@@ -148,21 +142,6 @@ func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Str
 	}
 
 	return d
-}
-
-func (s *service) indexTechProfile(ctx context.Context) error {
-	// Index profile
-	techSpace, err := s.spaceService.Get(ctx, s.techSpaceId)
-	if err != nil {
-		return fmt.Errorf("get tech space: %w", err)
-	}
-	err = techSpace.Do(s.accountService.ProfileId(), func(_ smartblock.SmartBlock) error {
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("touch profile to index: %w", err)
-	}
-	return nil
 }
 
 func (s *service) runLocalProfileSubscriptions() (err error) {
