@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -33,6 +34,8 @@ type Service interface {
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
 	PersonalSpaceID() string
+	ProfileId() string
+	LocalProfile() (Profile, error)
 }
 
 type service struct {
@@ -41,6 +44,7 @@ type service struct {
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
+	objectStore  objectstore.ObjectStore
 
 	picker          getblock.ObjectGetter
 	once            sync.Once
@@ -58,6 +62,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.gateway = app.MustComponent[gateway.Gateway](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.picker = app.MustComponent[getblock.ObjectGetter](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.personalSpaceID, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	return
 }

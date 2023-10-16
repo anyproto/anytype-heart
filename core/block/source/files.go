@@ -7,8 +7,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -120,6 +118,6 @@ func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (f *file) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	creatorObjectId = addr.AccountIdToIdentityObjectId(f.accountService.AccountID())
+	creatorObjectId = f.accountService.ProfileId()
 	return
 }

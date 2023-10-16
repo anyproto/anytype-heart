@@ -24,7 +24,6 @@ const (
 type Service interface {
 	Stop() error
 	IsStarted() bool
-	ProfileInfo
 	app.ComponentRunnable
 }
 

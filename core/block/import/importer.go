@@ -14,6 +14,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
@@ -65,14 +66,14 @@ func New() Importer {
 
 func (i *Import) Init(a *app.App) (err error) {
 	i.s = app.MustComponent[*block.Service](a)
-	coreService := app.MustComponent[core.Service](a)
+	accountService := app.MustComponent[account.Service](a)
 	spaceService := app.MustComponent[space.Service](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(col, coreService),
+		pbc.New(col, accountService),
 		web.NewConverter(),
 		html.New(col, i.tempDirProvider),
 		txt.New(col),

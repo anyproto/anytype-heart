@@ -2,7 +2,6 @@ package source
 
 import (
 	"context"
-	"strings"
 
 	"github.com/gogo/protobuf/types"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -81,8 +79,7 @@ func (v *identity) detailsToState(details *types.Struct) (doc state.Doc) {
 }
 
 func (v *identity) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	accountId := strings.TrimPrefix(v.id, addr.IdentityPrefix)
-	details, err := v.identityService.GetDetails(ctx, accountId)
+	details, err := v.identityService.GetDetails(ctx, v.id)
 	if err != nil {
 		return nil, err
 	}

@@ -593,11 +593,7 @@ func (s *Service) GetRelations(ctx session.Context, objectId string) (relations 
 }
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
-func (s *Service) ModifyDetails(
-	ctx session.Context,
-	objectId string,
-	modifier func(current *types.Struct) (*types.Struct, error),
-) (err error) {
+func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}

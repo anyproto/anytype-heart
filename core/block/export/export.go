@@ -16,6 +16,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
@@ -32,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -67,6 +67,7 @@ type export struct {
 	systemObjectService system_object.Service
 	resolver            idresolver.Resolver
 	spaceService        space.Service
+	accountService      account.Service
 }
 
 func New() Export {
@@ -82,6 +83,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.systemObjectService = app.MustComponent[system_object.Service](a)
 	e.spaceService = app.MustComponent[space.Service](a)
+	e.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -418,12 +420,10 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	}
 	var spaceDashBoardID string
 
-	var pr core.Profile
-	// TODO Integrate profile
-	// pr, err := e.coreService.LocalProfile(spaceID)
-	// if err != nil {
-	// 	return err
-	// }
+	pr, err := e.accountService.LocalProfile()
+	if err != nil {
+		return err
+	}
 	err = getblock.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
@@ -431,14 +431,12 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	if err != nil {
 		return err
 	}
-	// TODO Fix profile
-	// profileID := e.coreService.ProfileID(spaceID)
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,
 		Name:             pr.Name,
 		Avatar:           pr.IconImage,
-		ProfileId:        "TODO Profile",
+		ProfileId:        pr.Id,
 	}
 	data, err := profile.Marshal()
 	if err != nil {

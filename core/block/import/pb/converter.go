@@ -14,6 +14,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/exp/rand"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -24,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -40,15 +40,15 @@ const (
 )
 
 type Pb struct {
-	service    *collection.Service
-	core       core.Service
-	iconOption int64
+	service        *collection.Service
+	accountService account.Service
+	iconOption     int64
 }
 
-func New(service *collection.Service, core core.Service) converter.Converter {
+func New(service *collection.Service, accountService account.Service) converter.Converter {
 	return &Pb{
-		service: service,
-		core:    core,
+		service:        service,
+		accountService: accountService,
 	}
 }
 
@@ -147,7 +147,7 @@ func (p *Pb) handleImportPath(
 		}
 	}
 	if profile != nil {
-		pr, e := p.core.LocalProfile(spaceID)
+		pr, e := p.accountService.LocalProfile()
 		if e != nil {
 			allErrors.Add(e)
 			if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
@@ -311,7 +311,7 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 	}
 
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
-		id = p.getIDForUserProfile(spaceID, snapshot, profileID, id, isMigration)
+		id = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
 		p.setProfileIconOption(snapshot, profileID)
 	}
 	if snapshot.SbType == model.SmartBlockType_Page {
@@ -320,10 +320,10 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 	return id, nil
 }
 
-func (p *Pb) getIDForUserProfile(spaceID string, mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
+func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	if objectID == profileID && isMigration {
-		return p.core.ProfileID(spaceID)
+		return p.accountService.ProfileId()
 	}
 	return id
 }

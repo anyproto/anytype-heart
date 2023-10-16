@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -19,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -48,7 +48,7 @@ type History interface {
 }
 
 type history struct {
-	a                   core.Service
+	accountService      account.Service
 	picker              block.ObjectGetter
 	objectStore         objectstore.ObjectStore
 	systemObjectService system_object.Service
@@ -56,11 +56,11 @@ type history struct {
 }
 
 func (h *history) Init(a *app.App) (err error) {
-	h.a = a.MustComponent(core.CName).(core.Service)
 	h.picker = app.MustComponent[block.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
 	h.spaceService = app.MustComponent[space.Service](a)
+	h.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -107,7 +107,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	if limit <= 0 {
 		limit = 100
 	}
-	profileId, profileName, err := h.getProfileInfo(id.SpaceID)
+	profileId, profileName, err := h.getProfileInfo()
 	if err != nil {
 		return
 	}
@@ -222,7 +222,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
-		profileId, profileName, e := h.getProfileInfo(id.SpaceID)
+		profileId, profileName, e := h.getProfileInfo()
 		if e != nil {
 			err = e
 			return
@@ -238,9 +238,9 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	return
 }
 
-func (h *history) getProfileInfo(spaceID string) (profileId, profileName string, err error) {
-	profileId = h.a.ProfileID(spaceID)
-	lp, err := h.a.LocalProfile(spaceID)
+func (h *history) getProfileInfo() (profileId, profileName string, err error) {
+	profileId = h.accountService.ProfileId()
+	lp, err := h.accountService.LocalProfile()
 	if err != nil {
 		return
 	}

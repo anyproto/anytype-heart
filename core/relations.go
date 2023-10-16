@@ -20,7 +20,6 @@ import (
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectTypeRelationAddResponseErrorCode, err error) *pb.RpcObjectTypeRelationAddResponse {
 		m := &pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: code}}
 		if err != nil {
@@ -47,7 +46,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 			return err
 		}
 
-		err = bs.ModifyDetails(ctx, req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
+		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 
 			for _, relKey := range req.RelationKeys {
@@ -79,7 +78,6 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectTypeRelationRemoveResponseErrorCode, err error) *pb.RpcObjectTypeRelationRemoveResponse {
 		m := &pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: code}}
 		if err != nil {
@@ -98,7 +96,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.ModifyDetails(ctx, req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
+		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 			for _, relKey := range req.RelationKeys {
 				relId := addr.RelationKeyToIdPrefix + relKey

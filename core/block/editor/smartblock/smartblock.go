@@ -11,8 +11,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
@@ -90,7 +88,7 @@ var log = logging.Logger("anytype-mw-smartblock")
 
 func New(
 	space Space,
-	currentAccountId string,
+	currentProfileId string,
 	fileService files.Service,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
@@ -98,7 +96,7 @@ func New(
 	eventSender event.Sender,
 ) SmartBlock {
 	s := &smartBlock{
-		currentAccountId: currentAccountId,
+		currentProfileId: currentProfileId,
 		space:            space,
 		hooks:            map[Hook][]HookCallback{},
 		hooksOnce:        map[string]struct{}{},
@@ -217,7 +215,7 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	currentAccountId string
+	currentProfileId string
 	depIds           []string // slice must be sorted
 	sessions         map[string]session.Context
 	undo             undo.History
@@ -700,7 +698,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 	}
 
-	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AccountIdToIdentityObjectId(sb.currentAccountId)))
+	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentProfileId))
 
 	sb.beforeStateApply(s)
 
@@ -1324,9 +1322,6 @@ func (sb *smartBlock) GetDocInfo() DocInfo {
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
-	if creator == "" {
-		creator = "TODO profile"
-	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
 	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())

@@ -279,7 +279,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := newSubObjectsAndProfileLinksMigration(s.space, addr.AccountIdToIdentityObjectId(s.accountService.AccountID()), s.objectStore)
+	migration := newSubObjectsAndProfileLinksMigration(s.space, s.accountService.ProfileId(), s.objectStore)
 	migration.migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot

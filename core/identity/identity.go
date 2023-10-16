@@ -6,17 +6,15 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/slice"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -45,7 +43,7 @@ type Service interface {
 }
 
 type DetailsModifier interface {
-	ModifyDetails(ctx session.Context, objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
+	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
 }
 
 type spaceIdDeriver interface {
@@ -54,7 +52,7 @@ type spaceIdDeriver interface {
 
 type service struct {
 	objectStore     objectstore.ObjectStore
-	accountService  accountservice.Service
+	accountService  account.Service
 	spaceIdDeriver  spaceIdDeriver
 	systemObjects   system_object.Service
 	detailsModifier DetailsModifier
@@ -69,8 +67,8 @@ func (s *service) SpaceId() string {
 	return s.techSpaceId
 }
 
-func (s *service) GetDetails(ctx context.Context, identity string) (details *types.Struct, err error) {
-	rec, err := s.objectStore.GetDetails(addr.AccountIdToIdentityObjectId(identity))
+func (s *service) GetDetails(ctx context.Context, profileId string) (details *types.Struct, err error) {
+	rec, err := s.objectStore.GetDetails(profileId)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +111,7 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 		return err
 	}
 
-	accountId := s.accountService.Account().SignKey.GetPublic().Account()
+	accountId := s.accountService.AccountID()
 	profileObjectId, err := s.systemObjects.GetObjectIdByUniqueKey(context.TODO(), s.personalSpaceId, uniqueKey)
 	if err != nil {
 		return err
@@ -140,11 +138,10 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 		}
 	}()
 
-	cctx := session.NewContext()
 	if len(records) > 0 {
 		details := getDetailsFromProfile(accountId, s.techSpaceId, records[0].Details)
 
-		s.detailsModifier.ModifyDetails(cctx, addr.AccountIdToIdentityObjectId(accountId), func(current *types.Struct) (*types.Struct, error) {
+		s.detailsModifier.ModifyDetails(s.accountService.ProfileId(), func(current *types.Struct) (*types.Struct, error) {
 			return pbtypes.StructMerge(current, details, false), nil
 		})
 
@@ -158,7 +155,7 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 			}
 
 			details := getDetailsFromProfile(accountId, s.techSpaceId, rec)
-			err = s.detailsModifier.ModifyDetails(cctx, addr.AccountIdToIdentityObjectId(accountId), func(current *types.Struct) (*types.Struct, error) {
+			err = s.detailsModifier.ModifyDetails(s.accountService.ProfileId(), func(current *types.Struct) (*types.Struct, error) {
 				return pbtypes.StructMerge(current, details, false), nil
 			})
 			if err != nil {
@@ -172,7 +169,7 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 
 func (s *service) SubscribeToIdentities(identities []string) (err error) {
 	for _, identity := range identities {
-		if identity != s.accountService.Account().SignKey.GetPublic().Account() {
+		if identity != s.accountService.AccountID() {
 			return fmt.Errorf("only your personal profileId is supported right now")
 		}
 		if slice.FindPos(s.identities, identity) == -1 {
@@ -186,7 +183,7 @@ func (s *service) SubscribeToIdentities(identities []string) (err error) {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
 	s.systemObjects = app.MustComponent[system_object.Service](a)
 	s.detailsModifier = app.MustComponent[DetailsModifier](a)

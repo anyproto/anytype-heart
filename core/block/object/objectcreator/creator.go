@@ -144,11 +144,6 @@ func (c *Creator) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 			createState.SetDetail(k, v)
 		}
 	}
-
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String("TODO Profile!"))
-
-	// todo: find a proper way to inject the spaceID as soon as possible into the createState
 	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spc.Id()))
 
 	ev := &metrics.CreateObjectEvent{
