@@ -92,6 +92,7 @@ func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) (err
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
+	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
 	return
 }
 

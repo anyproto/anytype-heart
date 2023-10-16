@@ -29,9 +29,7 @@ type AccountStatus int
 
 const (
 	AccountStatusUnknown = AccountStatus(model.SpaceStatus_Unknown)
-	AccountStatusOk      = AccountStatus(model.SpaceStatus_Ok)
 	AccountStatusDeleted = AccountStatus(model.SpaceStatus_AccountDeleted)
-	AccountStatusError   = AccountStatus(model.SpaceStatus_Error)
 )
 
 type SpaceInfo struct {
