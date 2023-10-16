@@ -110,9 +110,6 @@ type Source interface {
 	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
 	Close() (err error)
-}
-
-type CreationInfoProvider interface {
 	GetCreationInfo() (creatorObjectId string, createdDate int64, err error)
 }
 

@@ -992,13 +992,7 @@ func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails
 }
 
 func (sb *smartBlock) getCreationInfo() (creatorObjectId string, createdTS int64, err error) {
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		err = fmt.Errorf("source does not conform to CreationInfoProvider")
-		return
-	}
-
-	creatorObjectId, createdTS, err = provider.GetCreationInfo()
+	creatorObjectId, createdTS, err = sb.source.GetCreationInfo()
 	if err != nil {
 		return
 	}
