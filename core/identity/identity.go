@@ -10,14 +10,16 @@ import (
 	"github.com/anyproto/any-sync/util/slice"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -27,10 +29,6 @@ const CName = "identity"
 var (
 	log = logging.Logger("anytype-identity")
 )
-
-func New() Service {
-	return new(service)
-}
 
 type Service interface {
 	// SubscribeToIdentities subscribes to identities and updates them directly into the objectStore
@@ -51,6 +49,7 @@ type spaceIdDeriver interface {
 }
 
 type service struct {
+	spaceService    space.Service
 	objectStore     objectstore.ObjectStore
 	accountService  account.Service
 	spaceIdDeriver  spaceIdDeriver
@@ -61,6 +60,60 @@ type service struct {
 	techSpaceId     string
 	personalSpaceId string
 	profileId       string
+}
+
+func New() Service {
+	return new(service)
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.accountService = app.MustComponent[account.Service](a)
+	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
+	s.systemObjects = app.MustComponent[system_object.Service](a)
+	s.detailsModifier = app.MustComponent[DetailsModifier](a)
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.closing = make(chan struct{})
+	return
+}
+
+func (s *service) Name() (name string) {
+	return CName
+}
+
+func (s *service) Run(ctx context.Context) (err error) {
+	s.techSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.TechSpaceType)
+	if err != nil {
+		return err
+	}
+
+	// Index profile
+	techSpace, err := s.spaceService.Get(ctx, s.techSpaceId)
+	if err != nil {
+		return fmt.Errorf("get tech space: %w", err)
+	}
+	err = techSpace.Do(s.accountService.ProfileId(), func(_ smartblock.SmartBlock) error {
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("touch profile to index: %w", err)
+	}
+
+	s.personalSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.SpaceType)
+	if err != nil {
+		return err
+	}
+
+	err = s.runLocalProfileSubscriptions()
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func (s *service) Close(ctx context.Context) (err error) {
+	close(s.closing)
+	return nil
 }
 
 func (s *service) SpaceId() string {
@@ -106,7 +159,7 @@ func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Str
 }
 
 func (s *service) runLocalProfileSubscriptions() (err error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeProfilePage, "")
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeProfilePage, "")
 	if err != nil {
 		return err
 	}
@@ -179,41 +232,4 @@ func (s *service) SubscribeToIdentities(identities []string) (err error) {
 
 	// todo: later this method will restart the regular update from the identity registry
 	return
-}
-
-func (s *service) Init(a *app.App) (err error) {
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.accountService = app.MustComponent[account.Service](a)
-	s.spaceIdDeriver = app.MustComponent[spaceIdDeriver](a)
-	s.systemObjects = app.MustComponent[system_object.Service](a)
-	s.detailsModifier = app.MustComponent[DetailsModifier](a)
-	s.closing = make(chan struct{})
-	return
-}
-
-func (s *service) Name() (name string) {
-	return CName
-}
-
-func (s *service) Run(ctx context.Context) (err error) {
-	s.techSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.TechSpaceType)
-	if err != nil {
-		return err
-	}
-
-	s.personalSpaceId, err = s.spaceIdDeriver.DeriveID(ctx, spacecore.SpaceType)
-	if err != nil {
-		return err
-	}
-
-	err = s.runLocalProfileSubscriptions()
-	if err != nil {
-		return err
-	}
-	return
-}
-
-func (s *service) Close(ctx context.Context) (err error) {
-	close(s.closing)
-	return nil
 }
