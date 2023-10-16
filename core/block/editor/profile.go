@@ -59,12 +59,7 @@ func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, f
 			objectStore,
 			fileService,
 		),
-		Bookmark: bookmark.NewBookmark(
-			sb,
-			picker,
-			bookmarkService,
-			objectStore,
-		),
+		Bookmark:    bookmark.NewBookmark(sb, bookmarkService, objectStore),
 		TableEditor: table.NewEditor(sb),
 		eventSender: eventSender,
 		anytype:     anytype,

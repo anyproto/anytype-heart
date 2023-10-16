@@ -24,15 +24,9 @@ import (
 
 var log = logging.Logger("bookmark")
 
-func NewBookmark(
-	sb smartblock.SmartBlock,
-	picker getblock.ObjectGetter,
-	bookmarkSvc BookmarkService,
-	objectStore objectstore.ObjectStore,
-) Bookmark {
+func NewBookmark(sb smartblock.SmartBlock, bookmarkSvc BookmarkService, objectStore objectstore.ObjectStore) Bookmark {
 	return &sbookmark{
 		SmartBlock:  sb,
-		picker:      picker,
 		bookmarkSvc: bookmarkSvc,
 		objectStore: objectStore,
 	}
@@ -93,8 +87,14 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 				defer updMu.Unlock()
 				return b.updateBlock(ctx, bm, apply)
 			}
-			return getblock.Do(b.picker, b.Id(), func(b Bookmark) error {
-				return b.UpdateBookmark(ctx, blockID, groupId, apply)
+			// Async
+			return b.Space().Do(b.Id(), func(sb smartblock.SmartBlock) error {
+				bm, ok := sb.(Bookmark)
+				// Should never happen, because we're updating the same block
+				if !ok {
+					return fmt.Errorf("not a bookmark")
+				}
+				return bm.UpdateBookmark(ctx, blockID, groupId, apply)
 			})
 		},
 		Sync: isSync,
