@@ -9,6 +9,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -285,7 +286,7 @@ func (i *indexer) removeGlobalIndexes(flags reindexFlags) (err error) {
 	return
 }
 
-func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space space.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
+func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
 	ids, err := i.getIdsForTypes(space.Id(), sbTypes...)
 	if err != nil {
 		return err
@@ -293,7 +294,7 @@ func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space space.
 	return i.reindexIDs(ctx, space, reindexType, ids)
 }
 
-func (i *indexer) reindexIDs(ctx context.Context, space space.Space, reindexType metrics.ReindexType, ids []string) error {
+func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, ids []string) error {
 	start := time.Now()
 	successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
 	i.logFinishedReindexStat(reindexType, len(ids), successfullyReindexed, time.Since(start))
@@ -337,18 +338,13 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space space.Space)
 	return len(idsToReindex), success, nil
 }
 
-func (i *indexer) reindexDoc(ctx context.Context, space space.Space, id string) error {
-	sb, err := space.GetObject(ctx, id)
-	if err != nil {
-		return err
-	}
-	sb.Lock()
-	defer sb.Unlock()
-
-	return i.Index(ctx, sb.GetDocInfo())
+func (i *indexer) reindexDoc(ctx context.Context, space smartblock.Space, id string) error {
+	return space.Do(id, func(sb smartblock.SmartBlock) error {
+		return i.Index(ctx, sb.GetDocInfo())
+	})
 }
 
-func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space space.Space, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, space smartblock.Space, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
 		err := i.reindexDoc(ctx, space, id)
 		if err != nil {

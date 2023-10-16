@@ -16,7 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -47,16 +47,12 @@ type Indexer interface {
 	StartFullTextIndex() error
 	ReindexMarketplaceSpace(space space.Space) error
 	ReindexSpace(space space.Space) error
-	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
+	Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error
 	app.ComponentRunnable
 }
 
 type Hasher interface {
 	Hash() string
-}
-
-type personalIDProvider interface {
-	PersonalSpaceID() string
 }
 
 type indexer struct {
@@ -67,7 +63,6 @@ type indexer struct {
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
 	fileService    files.Service
-	spaceService   space.Service
 
 	quit       chan struct{}
 	btHash     Hasher
@@ -90,7 +85,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[block.ObjectGetter](a)
 	i.fileService = app.MustComponent[files.Service](a)
-	i.spaceService = app.MustComponent[space.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
 	return
@@ -117,14 +111,14 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error {
+func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
-	opts := &editorsb.IndexOptions{}
+	opts := &smartblock.IndexOptions{}
 	for _, o := range options {
 		o(opts)
 	}
-	err := i.storageService.BindSpaceID(info.SpaceID, info.Id)
+	err := i.storageService.BindSpaceID(info.Space.Id(), info.Id)
 	if err != nil {
 		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
 		return err
@@ -207,7 +201,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 			}
 		}
 
-		i.indexLinkedFiles(ctx, info.SpaceID, info.FileHashes)
+		i.indexLinkedFiles(ctx, info.Space, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -232,7 +226,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, spaceId string, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, space smartblock.Space, fileHashes []string) {
 	if len(fileHashes) == 0 {
 		return
 	}
@@ -243,11 +237,6 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceId string, fileHash
 	newIDs := slice.Difference(fileHashes, existingIDs)
 	for _, id := range newIDs {
 		go func(id string) {
-			space, err := i.spaceService.Get(context.Background(), spaceId)
-			if err != nil {
-				log.Error("indexLinkedFiles: failed to get space", zap.Error(err), zap.String("spaceId", id))
-				return
-			}
 			// Deduplicate
 			_, ok := i.indexedFiles.LoadOrStore(id, struct{}{})
 			if ok {

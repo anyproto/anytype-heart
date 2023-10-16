@@ -112,7 +112,6 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(sm
 				details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
 
 				proc(smartblock.DocInfo{
-					SpaceID:    m.workspace.SpaceID(),
 					Links:      nil,
 					FileHashes: nil,
 					Heads:      nil,
