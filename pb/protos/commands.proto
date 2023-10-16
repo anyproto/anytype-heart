@@ -332,7 +332,6 @@ message Rpc {
 
         message Delete {
             message Request {
-                bool revert = 1;
             }
 
             message Response {
@@ -349,7 +348,29 @@ message Rpc {
                         BAD_INPUT = 2;
 
                         ACCOUNT_IS_ALREADY_DELETED = 101;
-                        ACCOUNT_IS_ACTIVE = 102;
+                    }
+                }
+            }
+        }
+
+        message RevertDeletion {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1; // Error while trying to recover an account
+                anytype.model.Account.Status status = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error;
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2;
+
+                        ACCOUNT_IS_ACTIVE = 101;
                     }
                 }
             }

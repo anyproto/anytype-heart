@@ -67,6 +67,10 @@
     - [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request)
     - [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error)
+    - [Rpc.Account.RevertDeletion](#anytype-Rpc-Account-RevertDeletion)
+    - [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request)
+    - [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response)
+    - [Rpc.Account.RevertDeletion.Response.Error](#anytype-Rpc-Account-RevertDeletion-Response-Error)
     - [Rpc.Account.Select](#anytype-Rpc-Account-Select)
     - [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request)
     - [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response)
@@ -947,6 +951,7 @@
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
+    - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
     - [Rpc.App.GetVersion.Response.Error.Code](#anytype-Rpc-App-GetVersion-Response-Error-Code)
@@ -1509,6 +1514,7 @@
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
+| AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
@@ -2289,11 +2295,6 @@ Middleware-to-front-end response for an account creation request, that can conta
 
 
 
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| revert | [bool](#bool) |  |  |
-
-
 
 
 
@@ -2571,6 +2572,58 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion"></a>
+
+### Rpc.Account.RevertDeletion
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Request"></a>
+
+### Rpc.Account.RevertDeletion.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Response"></a>
+
+### Rpc.Account.RevertDeletion.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.RevertDeletion.Response.Error](#anytype-Rpc-Account-RevertDeletion-Response-Error) |  | Error while trying to recover an account |
+| status | [model.Account.Status](#anytype-model-Account-Status) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Response-Error"></a>
+
+### Rpc.Account.RevertDeletion.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -15347,7 +15400,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
-| ACCOUNT_IS_ACTIVE | 102 |  |
 
 
 
@@ -15409,6 +15461,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | DIFFERENT_ACCOUNT | 3 |  |
+
+
+
+<a name="anytype-Rpc-Account-RevertDeletion-Response-Error-Code"></a>
+
+### Rpc.Account.RevertDeletion.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error; |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_ACTIVE | 101 |  |
 
 
 
