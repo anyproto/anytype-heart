@@ -10,11 +10,41 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *service) FilesSpaceOffload(ctx context.Context, spaceID string) (err error) {
-	// TODO: implement file offload for space
+	fileIDs, _, err := s.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(bundle.TypeKeyFile.URL()),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	for _, fileID := range fileIDs {
+		id := domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: fileID,
+		}
+		_, err := s.fileOffload(ctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to offload file %s: %w", fileID, err)
+		}
+	}
 	return nil
 }
 
