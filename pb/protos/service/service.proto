@@ -43,6 +43,10 @@ service ClientCommands {
     rpc AccountConfigUpdate (anytype.Rpc.Account.ConfigUpdate.Request) returns (anytype.Rpc.Account.ConfigUpdate.Response);
     rpc AccountRecoverFromLegacyExport(anytype.Rpc.Account.RecoverFromLegacyExport.Request) returns (anytype.Rpc.Account.RecoverFromLegacyExport.Response);
 
+    // Space
+    // ***
+    rpc SpaceDelete (anytype.Rpc.Space.Delete.Request) returns (anytype.Rpc.Space.Delete.Response);
+
     // Object
     // ***
     rpc ObjectOpen (anytype.Rpc.Object.Open.Request) returns (anytype.Rpc.Object.Open.Response);

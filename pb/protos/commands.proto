@@ -91,6 +91,30 @@ message Rpc {
         }
     }
 
+    message Space {
+        message Delete {
+            message Request {
+                string spaceId = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                int64 timestamp = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        NO_SUCH_SPACE = 1;
+                        SPACE_IS_DELETED = 2;
+                    }
+                }
+            }
+        }
+    }
+
     message Wallet {
         message Create {
             /**

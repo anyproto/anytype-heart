@@ -11,6 +11,11 @@ import (
 func (s *service) Delete(ctx context.Context, id string) error {
 	s.mu.Lock()
 	status := s.getStatus(id)
+	if status.IsDeleted() {
+		s.mu.Unlock()
+		return ErrSpaceDeleted
+	}
+	// TODO: add handling for missing status
 	status.AccountStatus = spaceinfo.AccountStatusDeleted
 	err := s.setStatus(ctx, status)
 	s.mu.Unlock()
