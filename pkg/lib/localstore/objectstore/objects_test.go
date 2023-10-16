@@ -46,27 +46,41 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 func Test_removeByPrefix(t *testing.T) {
 	s := NewStoreFixture(t)
 	var key = make([]byte, 32)
-	for i := 0; i < 10; i++ {
-
+	spaceId := "space1"
+	objectsCount := 10
+	objectIds := make([]string, 0, objectsCount)
+	for i := 0; i < objectsCount; i++ {
 		var links []string
 		rand.Seed(time.Now().UnixNano())
 		rand.Read(key)
 		objId := fmt.Sprintf("%x", key)
-
+		objectIds = append(objectIds, objId)
 		for j := 0; j < 8000; j++ {
 			rand.Seed(time.Now().UnixNano())
 			rand.Read(key)
 			links = append(links, fmt.Sprintf("%x", key))
 		}
-		require.NoError(t, s.UpdateObjectDetails(objId, nil))
+		details := makeDetails(TestObject{
+			bundle.RelationKeyId:      pbtypes.String(objId),
+			bundle.RelationKeySpaceId: pbtypes.String(spaceId),
+		})
+		require.NoError(t, s.UpdateObjectDetails(objId, details))
 		require.NoError(t, s.UpdateObjectLinks(objId, links))
 	}
 
-	// Test huge transactions
-	outboundRemoved, inboundRemoved, err := s.eraseLinks()
-	require.Equal(t, 10*8000, outboundRemoved)
-	require.Equal(t, 10*8000, inboundRemoved)
+	// Test huge transaction
+	err := s.EraseIndexes(spaceId)
 	require.NoError(t, err)
+
+	for _, id := range objectIds {
+		links, err := s.GetInboundLinksByID(id)
+		require.NoError(t, err)
+		require.Empty(t, links)
+
+		links, err = s.GetOutboundLinksByID(id)
+		require.NoError(t, err)
+		require.Empty(t, links)
+	}
 }
 
 func TestList(t *testing.T) {
