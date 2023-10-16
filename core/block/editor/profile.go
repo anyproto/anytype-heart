@@ -35,12 +35,11 @@ type Profile struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	table.TableEditor
-	anytype core.Service
 
 	eventSender event.Sender
 }
 
-func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, fileBlockService file.BlockService, anytype core.Service, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Profile {
+func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, fileBlockService file.BlockService, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Profile {
 	f := file.NewFile(sb, fileBlockService, tempDirProvider, fileService, picker)
 	return &Profile{
 		SmartBlock:    sb,
@@ -62,7 +61,6 @@ func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, f
 		Bookmark:    bookmark.NewBookmark(sb, bookmarkService, objectStore),
 		TableEditor: table.NewEditor(sb),
 		eventSender: eventSender,
-		anytype:     anytype,
 	}
 }
 

@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -437,7 +436,6 @@ func Test_removeInternalFlags(t *testing.T) {
 
 type fixture struct {
 	ctrl               *gomock.Controller
-	at                 *mock_core.MockService
 	store              *testMock.MockObjectStore
 	restrictionService *mock_restriction.MockService
 	indexer            *MockIndexer
@@ -449,8 +447,6 @@ type fixture struct {
 
 func newFixture(id string, t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
-
-	coreService := mock_core.NewMockService(t)
 
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().Name().Return(objectstore.CName).AnyTimes()
@@ -475,7 +471,6 @@ func newFixture(id string, t *testing.T) *fixture {
 	return &fixture{
 		source:             source,
 		smartBlock:         sb,
-		at:                 coreService,
 		ctrl:               ctrl,
 		store:              objectStore,
 		restrictionService: restrictionService,

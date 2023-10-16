@@ -352,7 +352,7 @@ func SchemaBySources(sources []string, objectStore objectstore.ObjectStore) (dat
 	}
 
 	// Finally, try relations
-	var relations []*model.RelationLink
+	relations := make([]*model.RelationLink, 0, len(sources))
 	for _, relId := range sources {
 		rel, err := objectStore.GetRelationByID(relId)
 		if err != nil {

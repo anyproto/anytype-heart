@@ -118,7 +118,6 @@ type builtinObjects interface {
 }
 
 type Service struct {
-	anytype              core.Service
 	syncStatus           syncstatus.Service
 	eventSender          event.Sender
 	linkPreview          linkpreview.LinkPreview
@@ -154,7 +153,6 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) Init(a *app.App) (err error) {
-	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.syncStatus = a.MustComponent(syncstatus.CName).(syncstatus.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)

@@ -176,7 +176,7 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 		return err
 	}
 
-	recordsCh := make(chan *types.Struct, 0)
+	recordsCh := make(chan *types.Struct)
 	sub := database.NewSubscription(nil, recordsCh)
 
 	var (
@@ -201,10 +201,12 @@ func (s *service) runLocalProfileSubscriptions(ctx context.Context) (err error) 
 	if len(records) > 0 {
 		details := getDetailsFromProfile(identityObjectId, s.techSpaceId, records[0].Details)
 
-		s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
+		err = s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
 			return pbtypes.StructMerge(current, details, false), nil
 		})
-
+		if err != nil {
+			return fmt.Errorf("initial modify details: %w", err)
+		}
 	}
 
 	go func() {

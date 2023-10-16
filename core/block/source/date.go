@@ -11,26 +11,23 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(spaceId string, id string, coreService core.Service) (s Source) {
+func NewDate(spaceId string, id string) (s Source) {
 	return &date{
-		spaceId:     spaceId,
-		id:          id,
-		coreService: coreService,
+		spaceId: spaceId,
+		id:      id,
 	}
 }
 
 type date struct {
-	spaceId     string
-	id          string
-	t           time.Time
-	coreService core.Service
+	spaceId string
+	id      string
+	t       time.Time
 }
 
 func (v *date) ListIds() ([]string, error) {

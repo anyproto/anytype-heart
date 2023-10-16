@@ -515,6 +515,9 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *s
 
 	// todo: can we avoid unmarshaling here? we already had this data
 	_, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+	if err != nil {
+		return
+	}
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId, UnmarshalChange,
 		func(change *objecttree.Change) bool {

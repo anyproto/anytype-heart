@@ -30,7 +30,6 @@ type accountService interface {
 }
 
 type ObjectFactory struct {
-	anytype            core.Service
 	bookmarkService    bookmark.BookmarkService
 	fileBlockService   file.BlockService
 	layoutConverter    converter.LayoutConverter
@@ -52,7 +51,6 @@ func NewObjectFactory() *ObjectFactory {
 }
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
-	f.anytype = app.MustComponent[core.Service](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -141,10 +139,10 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, f.objectStore), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, f.objectStore, f.anytype, f.layoutConverter), nil
+		return NewDashboard(sb, f.objectStore, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
-		return NewProfile(sb, f.objectStore, f.fileBlockService, f.anytype, f.picker, f.bookmarkService, f.tempDirProvider, f.layoutConverter, f.fileService, f.eventSender), nil
+		return NewProfile(sb, f.objectStore, f.fileBlockService, f.picker, f.bookmarkService, f.tempDirProvider, f.layoutConverter, f.fileService, f.eventSender), nil
 	case coresb.SmartBlockTypeFile:
 		return NewFiles(sb), nil
 	case coresb.SmartBlockTypeTemplate,

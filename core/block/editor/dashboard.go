@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -26,16 +25,14 @@ type Dashboard struct {
 	collection.Collection
 
 	objectStore objectstore.ObjectStore
-	anytype     core.Service
 }
 
-func NewDashboard(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, anytype core.Service, layoutConverter converter.LayoutConverter) *Dashboard {
+func NewDashboard(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
 		Collection:    collection.NewCollection(sb, objectStore),
 		objectStore:   objectStore,
-		anytype:       anytype,
 	}
 }
 

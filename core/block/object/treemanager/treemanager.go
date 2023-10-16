@@ -2,7 +2,6 @@ package treemanager
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -15,17 +14,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 )
 
 var log = logging.Logger("anytype-mw-tree-manager")
 
-var errAppIsNotRunning = errors.New("app is not running")
-
 type treeManager struct {
-	coreService  core.Service
 	eventSender  event.Sender
 	spaceService space.Service
 
@@ -54,7 +49,6 @@ type onDeleteProvider interface {
 }
 
 func (m *treeManager) Init(a *app.App) error {
-	m.coreService = app.MustComponent[core.Service](a)
 	m.eventSender = app.MustComponent[event.Sender](a)
 	m.spaceService = app.MustComponent[space.Service](a)
 
@@ -76,11 +70,6 @@ func (m *treeManager) Close(ctx context.Context) error {
 
 // GetTree should only be called by either space services or debug apis, not the client code
 func (m *treeManager) GetTree(ctx context.Context, spaceId, id string) (tr objecttree.ObjectTree, err error) {
-	if !m.coreService.IsStarted() {
-		err = errAppIsNotRunning
-		return
-	}
-
 	spc, err := m.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return
@@ -107,10 +96,6 @@ func (m *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId strin
 
 // DeleteTree should only be called by space services
 func (m *treeManager) DeleteTree(ctx context.Context, spaceId, treeId string) (err error) {
-	if !m.coreService.IsStarted() {
-		return errAppIsNotRunning
-	}
-
 	spc, err := m.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return
