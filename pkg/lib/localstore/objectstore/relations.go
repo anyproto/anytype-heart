@@ -14,7 +14,28 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+func (s *dsObjectStore) GetRelationLink(spaceID string, key string) (*model.RelationLink, error) {
+	bundledRel, err := bundle.GetRelation(domain.RelationKey(key))
+	if err == nil {
+		return &model.RelationLink{
+			Key:    bundledRel.Key,
+			Format: bundledRel.Format,
+		}, nil
+	}
+
+	rel, err := s.FetchRelationByKey(spaceID, key)
+	if err != nil {
+		return nil, fmt.Errorf("get relation: %w", err)
+	}
+	return rel.RelationLink(), nil
+}
+
 func (s *dsObjectStore) FetchRelationByKey(spaceID string, key string) (relation *relationutils.Relation, err error) {
+	bundledRel, err := bundle.GetRelation(domain.RelationKey(key))
+	if err == nil {
+		return &relationutils.Relation{Relation: bundledRel}, nil
+	}
+
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
 		return nil, err

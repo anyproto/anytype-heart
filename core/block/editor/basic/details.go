@@ -258,15 +258,11 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 }
 
 func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
-	// TODO: add relation.WithWorkspaceId(workspaceId) filter
-	rel, err := bs.objectStore.FetchRelationByKey(bs.SpaceID(), relationKey)
-	if err != nil || rel == nil {
+	relLink, err := bs.objectStore.GetRelationLink(bs.SpaceID(), relationKey)
+	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
-	st.AddRelationLinks(&model.RelationLink{
-		Format: rel.Format,
-		Key:    rel.Key,
-	})
+	st.AddRelationLinks(relLink)
 	return nil
 }
 
