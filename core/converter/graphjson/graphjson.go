@@ -5,13 +5,14 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -82,7 +83,7 @@ func (g *graphjson) ImageHashes() []string {
 	return g.imageHashes
 }
 
-func (g *graphjson) Add(st *state.State) error {
+func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	n := Node{
 		Id:          st.RootId(),
 		Name:        pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
@@ -96,7 +97,7 @@ func (g *graphjson) Add(st *state.State) error {
 	g.nodes[st.RootId()] = &n
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, g.systemObjectService, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, true, true, false, false, false)
 	for _, depID := range dependentObjectIDs {
 		t, err := g.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
@@ -106,7 +107,7 @@ func (g *graphjson) Add(st *state.State) error {
 			continue
 		}
 
-		if t == smartblock.SmartBlockTypeAnytypeProfile || t == smartblock.SmartBlockTypePage {
+		if t == coresb.SmartBlockTypeAnytypeProfile || t == coresb.SmartBlockTypePage {
 			g.linksByNode[st.RootId()] = append(g.linksByNode[st.RootId()], &Edge{
 				Source:   st.RootId(),
 				Target:   depID,

@@ -25,7 +25,6 @@ func New() Service {
 }
 
 type Service interface {
-	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
 	GetObjectIdByUniqueKey(ctx context.Context, spaceId string, key domain.UniqueKey) (id string, err error)
 
 	app.Component

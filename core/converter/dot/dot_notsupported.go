@@ -6,6 +6,7 @@ package dot
 import (
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/system_object"
@@ -44,7 +45,7 @@ func (d *dot) ImageHashes() []string {
 	return nil
 }
 
-func (d *dot) Add(st *state.State) error {
+func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 

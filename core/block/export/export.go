@@ -296,7 +296,7 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
 			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
-				if err = mw.Add(b.NewState().Copy()); err != nil {
+				if err = mw.Add(b.Space(), b.NewState().Copy()); err != nil {
 					return err
 				}
 				if !includeFiles {
