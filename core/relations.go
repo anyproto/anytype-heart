@@ -9,9 +9,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -20,61 +17,16 @@ import (
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	response := func(code pb.RpcObjectTypeRelationAddResponseErrorCode, err error) *pb.RpcObjectTypeRelationAddResponse {
-		m := &pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
+	blockService := getService[*block.Service](mw)
+	err := blockService.ObjectTypeRelationAdd(cctx, req)
+	code := mapErrorCode(err,
+		errToCode(block.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeRelationAddResponse{
+		Error: &pb.RpcObjectTypeRelationAddResponseError{
+			Code: code,
+		},
 	}
-
-	systemObjectService := getService[system_object.Service](mw)
-
-	at := mw.GetAnytype()
-	if at == nil {
-		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
-	}
-
-	if strings.HasPrefix(req.ObjectTypeUrl, bundle.TypePrefix) {
-		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
-	}
-
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
-		spaceId, err := res.ResolveSpaceID(req.ObjectTypeUrl)
-		if err != nil {
-			return err
-		}
-
-		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
-			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
-
-			for _, relKey := range req.RelationKeys {
-				relId, err := systemObjectService.GetRelationIdByKey(cctx, spaceId, domain.RelationKey(relKey))
-				if err != nil {
-					return nil, err
-				}
-
-				if slice.FindPos(list, relId) == -1 {
-					list = append(list, relId)
-				}
-			}
-			detCopy := pbtypes.CopyStruct(current)
-			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
-			return detCopy, nil
-		})
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectTypeRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
