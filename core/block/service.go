@@ -310,11 +310,7 @@ func (s *Service) GetOpenedObjects() []string {
 func (s *Service) prepareDetailsForInstallingObject(ctx context.Context, spc space.Space, details *types.Struct) (*types.Struct, error) {
 	spaceID := spc.Id()
 	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
-	if pbtypes.GetString(details, bundle.RelationKeySpaceId.String()) != addr.AnytypeMarketplaceWorkspace {
-		return nil, errors.New("object is not bundled")
-	}
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)
-
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
@@ -442,11 +438,16 @@ func (s *Service) InstallBundledObjects(
 		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
 	}
 
+	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get marketplace space: %w", err)
+	}
+
 	for _, sourceObjectId := range sourceObjectIds {
 		if _, ok := existingObjectMap[sourceObjectId]; ok {
 			continue
 		}
-		err = Do(s, sourceObjectId, func(b smartblock.SmartBlock) error {
+		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
 			d, err := s.prepareDetailsForInstallingObject(ctx, spc, b.CombinedDetails())
 			if err != nil {
 				return err
