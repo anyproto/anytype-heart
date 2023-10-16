@@ -14,15 +14,14 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	types "github.com/gogo/protobuf/types"
-	gomock "go.uber.org/mock/gomock"
-
 	domain "github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
+	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
+	types "github.com/gogo/protobuf/types"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockObjectStore is a mock of ObjectStore interface.
@@ -105,17 +104,17 @@ func (mr *MockObjectStoreMockRecorder) DeleteObject(arg0 any) *gomock.Call {
 }
 
 // EraseIndexes mocks base method.
-func (m *MockObjectStore) EraseIndexes() error {
+func (m *MockObjectStore) EraseIndexes(arg0 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EraseIndexes")
+	ret := m.ctrl.Call(m, "EraseIndexes", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // EraseIndexes indicates an expected call of EraseIndexes.
-func (mr *MockObjectStoreMockRecorder) EraseIndexes() *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) EraseIndexes(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EraseIndexes", reflect.TypeOf((*MockObjectStore)(nil).EraseIndexes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EraseIndexes", reflect.TypeOf((*MockObjectStore)(nil).EraseIndexes), arg0)
 }
 
 // FTSearch mocks base method.
@@ -242,21 +241,6 @@ func (mr *MockObjectStoreMockRecorder) GetDetails(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDetails", reflect.TypeOf((*MockObjectStore)(nil).GetDetails), arg0)
 }
 
-// GetGlobalChecksums mocks base method.
-func (m *MockObjectStore) GetGlobalChecksums() (*model.ObjectStoreChecksums, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGlobalChecksums")
-	ret0, _ := ret[0].(*model.ObjectStoreChecksums)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetGlobalChecksums indicates an expected call of GetGlobalChecksums.
-func (mr *MockObjectStoreMockRecorder) GetGlobalChecksums() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGlobalChecksums", reflect.TypeOf((*MockObjectStore)(nil).GetGlobalChecksums))
-}
-
 // GetInboundLinksByID mocks base method.
 func (m *MockObjectStore) GetInboundLinksByID(arg0 string) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -360,6 +344,21 @@ func (m *MockObjectStore) GetRelationByKey(arg0 string) (*model.Relation, error)
 func (mr *MockObjectStoreMockRecorder) GetRelationByKey(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationByKey", reflect.TypeOf((*MockObjectStore)(nil).GetRelationByKey), arg0)
+}
+
+// GetRelationLink mocks base method.
+func (m *MockObjectStore) GetRelationLink(arg0, arg1 string) (*model.RelationLink, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRelationLink", arg0, arg1)
+	ret0, _ := ret[0].(*model.RelationLink)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRelationLink indicates an expected call of GetRelationLink.
+func (mr *MockObjectStoreMockRecorder) GetRelationLink(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationLink", reflect.TypeOf((*MockObjectStore)(nil).GetRelationLink), arg0, arg1)
 }
 
 // GetWithLinksInfoByID mocks base method.
@@ -468,6 +467,21 @@ func (m *MockObjectStore) ListIds() ([]string, error) {
 func (mr *MockObjectStoreMockRecorder) ListIds() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIds", reflect.TypeOf((*MockObjectStore)(nil).ListIds))
+}
+
+// ListIdsBySpace mocks base method.
+func (m *MockObjectStore) ListIdsBySpace(arg0 string) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListIdsBySpace", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListIdsBySpace indicates an expected call of ListIdsBySpace.
+func (mr *MockObjectStoreMockRecorder) ListIdsBySpace(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIdsBySpace", reflect.TypeOf((*MockObjectStore)(nil).ListIdsBySpace), arg0)
 }
 
 // Name mocks base method.
@@ -614,20 +628,6 @@ func (m *MockObjectStore) SaveChecksums(arg0 string, arg1 *model.ObjectStoreChec
 func (mr *MockObjectStoreMockRecorder) SaveChecksums(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveChecksums", reflect.TypeOf((*MockObjectStore)(nil).SaveChecksums), arg0, arg1)
-}
-
-// SaveGlobalChecksums mocks base method.
-func (m *MockObjectStore) SaveGlobalChecksums(arg0 *model.ObjectStoreChecksums) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveGlobalChecksums", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SaveGlobalChecksums indicates an expected call of SaveGlobalChecksums.
-func (mr *MockObjectStoreMockRecorder) SaveGlobalChecksums(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGlobalChecksums", reflect.TypeOf((*MockObjectStore)(nil).SaveGlobalChecksums), arg0)
 }
 
 // SaveLastIndexedHeadsHash mocks base method.
