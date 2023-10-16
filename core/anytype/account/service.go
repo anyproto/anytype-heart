@@ -34,7 +34,7 @@ type Service interface {
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
 	PersonalSpaceID() string
-	ProfileId() string
+	IdentityObjectId() string
 	LocalProfile() (Profile, error)
 }
 

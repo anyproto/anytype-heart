@@ -239,7 +239,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 }
 
 func (h *history) getProfileInfo() (profileId, profileName string, err error) {
-	profileId = h.accountService.ProfileId()
+	profileId = h.accountService.IdentityObjectId()
 	lp, err := h.accountService.LocalProfile()
 	if err != nil {
 		return

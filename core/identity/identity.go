@@ -162,7 +162,7 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 		closeSub func()
 	)
 
-	profileId := s.accountService.ProfileId()
+	identityObjectId := s.accountService.IdentityObjectId()
 	records, closeSub, err = s.objectStore.QueryByIDAndSubscribeForChanges([]string{profileObjectId}, sub)
 	if err != nil {
 		return err
@@ -177,9 +177,9 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 	}()
 
 	if len(records) > 0 {
-		details := getDetailsFromProfile(profileId, s.techSpaceId, records[0].Details)
+		details := getDetailsFromProfile(identityObjectId, s.techSpaceId, records[0].Details)
 
-		s.detailsModifier.ModifyDetails(profileId, func(current *types.Struct) (*types.Struct, error) {
+		s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
 			return pbtypes.StructMerge(current, details, false), nil
 		})
 
@@ -192,8 +192,8 @@ func (s *service) runLocalProfileSubscriptions() (err error) {
 				return
 			}
 
-			details := getDetailsFromProfile(profileId, s.techSpaceId, rec)
-			err = s.detailsModifier.ModifyDetails(profileId, func(current *types.Struct) (*types.Struct, error) {
+			details := getDetailsFromProfile(identityObjectId, s.techSpaceId, rec)
+			err = s.detailsModifier.ModifyDetails(identityObjectId, func(current *types.Struct) (*types.Struct, error) {
 				return pbtypes.StructMerge(current, details, false), nil
 			})
 			if err != nil {

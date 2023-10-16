@@ -14,13 +14,13 @@ type Profile struct {
 	IconColor   string
 }
 
-func (s *service) ProfileId() string {
+func (s *service) IdentityObjectId() string {
 	return addr.AccountIdToIdentityObjectId(s.AccountID())
 }
 
 func (s *service) LocalProfile() (Profile, error) {
 	profile := Profile{
-		Id:          s.ProfileId(),
+		Id:          s.IdentityObjectId(),
 		AccountAddr: s.wallet.GetAccountPrivkey().GetPublic().Account(),
 	}
 

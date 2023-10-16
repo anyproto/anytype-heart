@@ -118,6 +118,6 @@ func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 }
 
 func (f *file) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
-	creatorObjectId = f.accountService.ProfileId()
+	creatorObjectId = f.accountService.IdentityObjectId()
 	return
 }

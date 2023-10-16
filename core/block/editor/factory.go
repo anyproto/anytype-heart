@@ -26,7 +26,7 @@ import (
 var log = logging.Logger("anytype-mw-editor")
 
 type accountService interface {
-	ProfileId() string
+	IdentityObjectId() string
 }
 
 type ObjectFactory struct {
@@ -117,7 +117,7 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) smartblock.SmartBlock {
 	return smartblock.New(
 		space,
-		f.accountService.ProfileId(),
+		f.accountService.IdentityObjectId(),
 		f.fileService,
 		f.restrictionService,
 		f.objectStore,
