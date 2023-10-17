@@ -29,7 +29,7 @@ var log = logger.NewNamed(CName)
 var (
 	ErrIncorrectSpaceID = errors.New("incorrect space id")
 	ErrSpaceNotExists   = errors.New("space not exists")
-	ErrSpaceDeleted     = errors.New("space is deleted")
+	ErrSpaceDeleted     = errors.New("space is offloaded")
 	ErrStatusUnkown     = errors.New("space status is unknown")
 )
 
@@ -84,6 +84,8 @@ type service struct {
 	createdSpaces map[string]struct{}
 	statuses      map[string]spaceinfo.SpaceInfo
 	loading       map[string]*loadingSpace
+	offloading    map[string]*offloadingSpace
+	offloaded     map[string]struct{}
 	loaded        map[string]Space
 
 	mu sync.Mutex
@@ -103,12 +105,14 @@ func (s *service) Init(a *app.App) (err error) {
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 	s.storageService = app.MustComponent[storage.ClientStorage](a)
 	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
-	s.delController = newDeletionController(s, s.spaceCore, coordClient)
+	s.delController = newDeletionController(s, coordClient)
 	s.offloader = app.MustComponent[fileOffloader](a)
 	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
+	s.offloading = map[string]*offloadingSpace{}
 	s.loaded = map[string]Space{}
+	s.offloaded = map[string]struct{}{}
 
 	return err
 }
@@ -170,9 +174,9 @@ func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceID == id
 }
 
-func (s *service) OnViewCreated(spaceID string) {
+func (s *service) OnViewCreated(info spaceinfo.SpaceInfo) {
 	go func() {
-		if err := s.startLoad(s.ctx, spaceID); err != nil {
+		if err := s.startLoad(s.ctx, info.SpaceID); err != nil {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
 		}
 	}()

@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -22,35 +21,29 @@ type loopAction int
 
 const (
 	loopActionNothing = iota
-	loopActionDeleteLocally
+	loopActionDelete
 	loopActionDeleteRemotely
 )
 
 type localDeleter interface {
-	Delete(ctx context.Context, id string) (err error)
+	startDelete(ctx context.Context, id string) error
+	setStatus(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
 	allStatuses() (statuses []spaceinfo.SpaceInfo)
 }
 
-type remoteDeleter interface {
-	Delete(ctx context.Context, spaceID string) (payload spacecore.NetworkStatus, err error)
-}
-
 type deletionController struct {
-	localDeleter  localDeleter
-	remoteDeleter remoteDeleter
-	client        coordinatorclient.CoordinatorClient
+	deleter localDeleter
+	client  coordinatorclient.CoordinatorClient
 
 	periodicCall periodicsync.PeriodicSync
 }
 
 func newDeletionController(
 	localDeleter localDeleter,
-	remoteDeleter remoteDeleter,
 	client coordinatorclient.CoordinatorClient) *deletionController {
 	d := &deletionController{
-		localDeleter:  localDeleter,
-		remoteDeleter: remoteDeleter,
-		client:        client,
+		deleter: localDeleter,
+		client:  client,
 	}
 	d.periodicCall = periodicsync.NewPeriodicSync(loopPeriodSecs, loopTimeout, d.loopIterate, log)
 	return d
@@ -64,41 +57,61 @@ func (d *deletionController) Close() {
 	d.periodicCall.Close()
 }
 
-func (d *deletionController) loopIterate(ctx context.Context) (err error) {
-	localStatuses := d.localDeleter.allStatuses()
+func (d *deletionController) loopIterate(ctx context.Context) error {
+	statuses := d.updateStatuses(ctx)
+	d.checkStatuses(ctx, statuses)
+	return nil
+}
+
+func (d *deletionController) updateStatuses(ctx context.Context) (statuses []spaceinfo.SpaceInfo) {
+	localStatuses := d.deleter.allStatuses()
 	spaceIDs := make([]string, 0, len(localStatuses))
 	for _, status := range localStatuses {
 		spaceIDs = append(spaceIDs, status.SpaceID)
 	}
 	remoteStatuses, err := d.client.StatusCheckMany(ctx, spaceIDs)
 	if err != nil {
-		return
+		log.Warn("remote status check error", zap.Error(err))
+		return localStatuses
+	}
+	convStatus := func(status coordinatorproto.SpaceStatus) spaceinfo.RemoteStatus {
+		switch status {
+		case coordinatorproto.SpaceStatus_SpaceStatusCreated:
+			return spaceinfo.RemoteStatusOk
+		case coordinatorproto.SpaceStatus_SpaceStatusPendingDeletion:
+			return spaceinfo.RemoteStatusWaitingDeletion
+		default:
+			return spaceinfo.RemoteStatusDeleted
+		}
 	}
 	for idx, remoteStatus := range remoteStatuses {
-		localStatus := localStatuses[idx]
-		action := d.compareStatuses(localStatuses[idx], remoteStatus.Status)
-		switch action {
-		case loopActionDeleteLocally:
-			err = d.localDeleter.Delete(ctx, localStatus.SpaceID)
+		err := d.deleter.setStatus(ctx, localStatuses[idx])
+		if err != nil {
+			log.Warn("local status update error", zap.Error(err), zap.String("spaceId", localStatuses[idx].SpaceID))
+			return localStatuses
+		}
+		localStatuses[idx].RemoteStatus = convStatus(remoteStatus.Status)
+	}
+	return localStatuses
+}
+
+func (d *deletionController) checkStatuses(ctx context.Context, localStatuses []spaceinfo.SpaceInfo) {
+	for _, status := range localStatuses {
+		if d.shouldDelete(status) {
+			err := d.deleter.startDelete(ctx, status.SpaceID)
 			if err != nil {
-				log.Warn("local delete error", zap.Error(err), zap.String("spaceId", localStatus.SpaceID))
-			}
-		case loopActionDeleteRemotely:
-			_, err = d.remoteDeleter.Delete(ctx, localStatus.SpaceID)
-			if err != nil {
-				log.Warn("remote delete error", zap.Error(err), zap.String("spaceId", localStatus.SpaceID))
+				log.Warn("local delete error", zap.Error(err), zap.String("spaceId", status.SpaceID))
 			}
 		}
 	}
-	return
 }
 
-func (d *deletionController) compareStatuses(localStatus spaceinfo.SpaceInfo, remoteStatus coordinatorproto.SpaceStatus) loopAction {
-	if localStatus.LocalStatus == spaceinfo.LocalStatusOk && remoteStatus == coordinatorproto.SpaceStatus_SpaceStatusDeleted {
-		return loopActionDeleteLocally
+func (d *deletionController) shouldDelete(localStatus spaceinfo.SpaceInfo) bool {
+	if localStatus.AccountStatus == spaceinfo.AccountStatusDeleted {
+		return localStatus.RemoteStatus != spaceinfo.RemoteStatusDeleted || localStatus.LocalStatus != spaceinfo.LocalStatusMissing
 	}
-	if localStatus.AccountStatus == spaceinfo.AccountStatusDeleted && remoteStatus != coordinatorproto.SpaceStatus_SpaceStatusDeleted {
-		return loopActionDeleteRemotely
+	if localStatus.RemoteStatus == spaceinfo.RemoteStatusDeleted {
+		return localStatus.LocalStatus != spaceinfo.LocalStatusMissing
 	}
-	return loopActionNothing
+	return false
 }

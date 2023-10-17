@@ -23,7 +23,7 @@ import (
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {
-	OnViewCreated(spaceId string)
+	OnViewCreated(info spaceinfo.SpaceInfo)
 	OnWorkspaceChanged(spaceId string, details *types.Struct)
 }
 
@@ -52,7 +52,7 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	s.DisableLayouts()
-	s.spaceService.OnViewCreated(spaceID)
+	s.spaceService.OnViewCreated(s.getSpaceInfo(ctx.State))
 	return s.setSpaceInfo(ctx.State, spaceinfo.SpaceInfo{SpaceID: spaceID})
 }
 
@@ -111,6 +111,16 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 		return "", fmt.Errorf("space key is empty")
 	}
 	return changePayload.Key, nil
+}
+
+func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpaceInfo) {
+	details := st.CombinedDetails()
+	return spaceinfo.SpaceInfo{
+		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
+		LocalStatus:   spaceinfo.LocalStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceLocalStatus.String())),
+		RemoteStatus:  spaceinfo.RemoteStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceRemoteStatus.String())),
+		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
+	}
 }
 
 var workspaceKeysToCopy = []string{

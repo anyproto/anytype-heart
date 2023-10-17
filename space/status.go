@@ -3,6 +3,7 @@ package space
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -26,7 +27,9 @@ func (s *service) allStatuses() (statuses []spaceinfo.SpaceInfo) {
 	defer s.mu.Unlock()
 	statuses = make([]spaceinfo.SpaceInfo, 0, len(s.statuses))
 	for _, status := range s.statuses {
-		statuses = append(statuses, status)
+		if status.SpaceID != addr.AnytypeMarketplaceWorkspace {
+			statuses = append(statuses, status)
+		}
 	}
 	return
 }

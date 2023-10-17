@@ -18,10 +18,6 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
 		return nil
 	}
-	// If space is not loading, but it is deleted, return error
-	if status.AccountStatus == spaceinfo.AccountStatusDeleted {
-		return ErrSpaceDeleted
-	}
 
 	exists, err := s.techSpace.SpaceViewExists(ctx, spaceID)
 	if err != nil {
@@ -70,6 +66,7 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	}
 
 	s.loaded[spaceID] = sp
+	delete(s.loading, spaceID)
 
 	// TODO: check remote status
 	return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
