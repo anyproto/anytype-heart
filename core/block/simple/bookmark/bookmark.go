@@ -67,7 +67,6 @@ var _ Block = &Bookmark{}
 type FetchParams struct {
 	Url     string
 	Updater Updater
-	Sync    bool
 }
 
 type Updater func(blockID string, apply func(b Block) error) (err error)
