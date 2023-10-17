@@ -3,6 +3,7 @@ package linkpreview
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -62,6 +63,10 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 			return l.makeNonHtml(fetchUrl, resp)
 		}
 		return model.LinkPreview{}, err
+	}
+
+	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
+		return model.LinkPreview{}, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
