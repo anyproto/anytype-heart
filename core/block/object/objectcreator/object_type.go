@@ -39,12 +39,13 @@ func (s *service) createObjectType(ctx context.Context, space space.Space, detai
 		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
 	}
 	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
+	relationsToInstall := make([]string, 0, len(recommendedRelationKeys))
 	for _, relKey := range recommendedRelationKeys {
-		// TODO Install relation
 		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
 		}
+		relationsToInstall = append(relationsToInstall, domain.RelationKey(relKey).BundledURL())
 		id, err := space.DeriveObjectID(ctx, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
@@ -65,6 +66,11 @@ func (s *service) createObjectType(ctx context.Context, space space.Space, detai
 	id, newDetails, err = s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyObjectType}, createState)
 	if err != nil {
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
+	}
+
+	_, _, err = s.InstallBundledObjects(ctx, space, relationsToInstall)
+	if err != nil {
+		return "", nil, fmt.Errorf("install recommended relations: %w", err)
 	}
 
 	installingObjectTypeKey := domain.TypeKey(uniqueKey.InternalKey())
