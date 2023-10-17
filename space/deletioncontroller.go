@@ -14,7 +14,7 @@ import (
 
 const (
 	loopPeriodSecs = 60
-	loopTimeout    = time.Second * 10
+	loopTimeout    = time.Second * 120
 )
 
 type localDeleter interface {
@@ -70,8 +70,9 @@ func (d *deletionController) updateStatuses(ctx context.Context) (statuses []spa
 		switch status {
 		case coordinatorproto.SpaceStatus_SpaceStatusCreated:
 			return spaceinfo.RemoteStatusOk
-		case coordinatorproto.SpaceStatus_SpaceStatusPendingDeletion:
-			return spaceinfo.RemoteStatusWaitingDeletion
+		// TODO: [MR] uncomment when coordinator is updated
+		//case coordinatorproto.SpaceStatus_SpaceStatusPendingDeletion:
+		//	return spaceinfo.RemoteStatusWaitingDeletion
 		default:
 			return spaceinfo.RemoteStatusDeleted
 		}

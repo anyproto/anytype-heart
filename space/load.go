@@ -13,12 +13,12 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	status := s.getStatus(spaceID)
+	if status.AccountStatus == spaceinfo.AccountStatusDeleted {
+		return ErrSpaceDeleted
+	}
 	// Do nothing if space is already loading
 	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
 		return nil
-	}
-	if status.AccountStatus == spaceinfo.AccountStatusDeleted {
-		return ErrSpaceDeleted
 	}
 
 	exists, err := s.techSpace.SpaceViewExists(ctx, spaceID)

@@ -54,7 +54,8 @@ func (s *service) allStatuses() (statuses []spaceinfo.SpaceInfo) {
 	defer s.mu.Unlock()
 	statuses = make([]spaceinfo.SpaceInfo, 0, len(s.statuses))
 	for _, status := range s.statuses {
-		if status.SpaceID != addr.AnytypeMarketplaceWorkspace {
+		// TODO: check why we have them in statuses
+		if status.SpaceID != addr.AnytypeMarketplaceWorkspace && status.SpaceID != s.techSpace.TechSpaceId() {
 			statuses = append(statuses, status)
 		}
 	}
