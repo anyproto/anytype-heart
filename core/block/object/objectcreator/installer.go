@@ -159,41 +159,21 @@ func (s *service) prepareDetailsForInstallingObject(ctx context.Context, spc spa
 	details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceId)
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(false)
 
-	// TODO This should be done in objectcreator isnt it?
-	switch pbtypes.GetString(details, bundle.RelationKeyType.String()) {
-	case bundle.TypeKeyObjectType.BundledURL():
-		typeID, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyObjectType)
-		if err != nil {
-			return nil, fmt.Errorf("get type id by key: %w", err)
-		}
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
-	case bundle.TypeKeyRelation.BundledURL():
-		typeID, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyRelation)
-		if err != nil {
-			return nil, fmt.Errorf("get type id by key: %w", err)
-		}
-		details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(typeID)
-	default:
-		return nil, fmt.Errorf("unknown object type: %s", pbtypes.GetString(details, bundle.RelationKeyType.String()))
-	}
-	relations := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
-
-	if len(relations) > 0 {
-		for i, relation := range relations {
-			// replace relation url with id
-			uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, strings.TrimPrefix(relation, addr.BundledRelationURLPrefix))
+	bundledRelationIds := pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String())
+	if len(bundledRelationIds) > 0 {
+		recommendedRelationKeys := make([]string, 0, len(bundledRelationIds))
+		for _, id := range bundledRelationIds {
+			key, err := bundle.RelationKeyFromID(id)
 			if err != nil {
-				// should never happen
-				return nil, err
+				return nil, fmt.Errorf("relation key from id %s: %w", id, err)
 			}
-			id, err := spc.DeriveObjectID(ctx, uniqueKey)
-			if err != nil {
-				// should never happen
-				return nil, err
-			}
-			relations[i] = id
+			recommendedRelationKeys = append(recommendedRelationKeys, key.String())
 		}
-		details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relations)
+		recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, spc, recommendedRelationKeys)
+		if err != nil {
+			return nil, fmt.Errorf("prepare recommended relation ids: %w", err)
+		}
+		details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
 	}
 
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyRelationFormatObjectTypes.String())

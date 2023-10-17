@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -28,38 +29,15 @@ func (s *service) createObjectType(ctx context.Context, space space.Space, detai
 	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
 
 	object := pbtypes.CopyStruct(details)
-	rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
-	recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
-	if err != nil {
-		return "", nil, fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
+	if len(pbtypes.GetStringList(object, bundle.RelationKeyRecommendedRelations.String())) == 0 {
+		err = s.fillRecommendedRelationsFromLayout(ctx, space, object)
+		if err != nil {
+			return "", nil, fmt.Errorf("fill recommended relations: %w", err)
+		}
 	}
 
-	recommendedRelationKeys := make([]string, 0, len(recommendedLayout.RequiredRelations))
-	for _, rel := range recommendedLayout.RequiredRelations {
-		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
-	}
-	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
-	relationsToInstall := make([]string, 0, len(recommendedRelationKeys))
-	for _, relKey := range recommendedRelationKeys {
-		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
-		}
-		relationsToInstall = append(relationsToInstall, domain.RelationKey(relKey).BundledURL())
-		id, err := space.DeriveObjectID(ctx, uk)
-		if err != nil {
-			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
-		}
-		recommendedRelationIDs = append(recommendedRelationIDs, id)
-	}
 	object.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 	object.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_objectType))
-	object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(rawRecommendedLayout)
-	object.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIDs)
-
-	if details.GetFields() == nil {
-		details.Fields = map[string]*types.Value{}
-	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
@@ -68,17 +46,56 @@ func (s *service) createObjectType(ctx context.Context, space space.Space, detai
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
 	}
 
-	_, _, err = s.InstallBundledObjects(ctx, space, relationsToInstall)
-	if err != nil {
-		return "", nil, fmt.Errorf("install recommended relations: %w", err)
-	}
-
 	installingObjectTypeKey := domain.TypeKey(uniqueKey.InternalKey())
 	err = s.installTemplatesForObjectType(space, installingObjectTypeKey)
 	if err != nil {
 		log.With("spaceID", space.Id(), "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
 	}
 	return id, newDetails, nil
+}
+
+func (s *service) fillRecommendedRelationsFromLayout(ctx context.Context, space space.Space, details *types.Struct) error {
+	rawRecommendedLayout := pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String())
+	recommendedLayout, err := bundle.GetLayout(model.ObjectTypeLayout(int32(rawRecommendedLayout)))
+	if err != nil {
+		return fmt.Errorf("invalid recommended layout %d: %w", rawRecommendedLayout, err)
+	}
+	recommendedRelationKeys := make([]string, 0, len(recommendedLayout.RequiredRelations)+1)
+	for _, rel := range recommendedLayout.RequiredRelations {
+		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
+	}
+	recommendedRelationIds, err := s.prepareRecommendedRelationIds(ctx, space, recommendedRelationKeys)
+	if err != nil {
+		return fmt.Errorf("prepare recommended relation ids: %w", err)
+	}
+	details.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(recommendedRelationIds)
+	return nil
+}
+
+func (s *service) prepareRecommendedRelationIds(ctx context.Context, space space.Space, recommendedRelationKeys []string) ([]string, error) {
+	descriptionRelationKey := bundle.RelationKeyDescription.String()
+	if !slices.Contains(recommendedRelationKeys, descriptionRelationKey) {
+		recommendedRelationKeys = append(recommendedRelationKeys, descriptionRelationKey)
+	}
+	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
+	relationsToInstall := make([]string, 0, len(recommendedRelationKeys))
+	for _, relKey := range recommendedRelationKeys {
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create unique Key: %w", err)
+		}
+		relationsToInstall = append(relationsToInstall, domain.RelationKey(relKey).BundledURL())
+		id, err := space.DeriveObjectID(ctx, uk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to derive object id: %w", err)
+		}
+		recommendedRelationIDs = append(recommendedRelationIDs, id)
+	}
+	_, _, err := s.InstallBundledObjects(ctx, space, relationsToInstall)
+	if err != nil {
+		return nil, fmt.Errorf("install recommended relations: %w", err)
+	}
+	return recommendedRelationIDs, nil
 }
 
 func (s *service) installTemplatesForObjectType(spc space.Space, typeKey domain.TypeKey) error {
