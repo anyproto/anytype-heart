@@ -448,7 +448,7 @@ func (s *Service) InstallBundledObjects(
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
-			id, object, err := s.objectCreator.CreateObject(ctx, spc.Id(), objectcreator.CreateObjectRequest{
+			id, object, err := s.objectCreator.CreateObjectInSpace(ctx, spc, objectcreator.CreateObjectRequest{
 				Details:       d,
 				ObjectTypeKey: objectTypeKey,
 			})
