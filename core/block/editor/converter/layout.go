@@ -8,6 +8,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -25,19 +26,13 @@ import (
 const DefaultSetSource = bundle.TypeKeyPage
 
 type LayoutConverter interface {
-	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
 	app.Component
 }
 
 type layoutConverter struct {
-	objectStore         objectstore.ObjectStore
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService KeyToIDConverter
-}
-
-type KeyToIDConverter interface {
-	GetRelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (id string, err error)
+	objectStore objectstore.ObjectStore
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func NewLayoutConverter() LayoutConverter {
@@ -47,7 +42,6 @@ func NewLayoutConverter() LayoutConverter {
 func (c *layoutConverter) Init(a *app.App) error {
 	c.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	c.systemObjectService = app.MustComponent[KeyToIDConverter](a)
 	return nil
 }
 
@@ -55,7 +49,7 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
 	}
@@ -71,10 +65,10 @@ func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 	}
 
 	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_set {
-		return c.fromNoteToSet(st)
+		return c.fromNoteToSet(space, st)
 	}
 	if toLayout == model.ObjectType_set {
-		return c.fromAnyToSet(st)
+		return c.fromAnyToSet(space, st)
 	}
 
 	if toLayout == model.ObjectType_note {
@@ -128,7 +122,7 @@ func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	return nil
 }
 
-func (c *layoutConverter) fromNoteToSet(st *state.State) error {
+func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -137,17 +131,17 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 		template.WithTitle,
 		template.WithDescription,
 	)
-	err2 := c.fromAnyToSet(st)
+	err2 := c.fromAnyToSet(space, st)
 	if err2 != nil {
 		return err2
 	}
 	return nil
 }
 
-func (c *layoutConverter) fromAnyToSet(st *state.State) error {
+func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
 	if len(source) == 0 {
-		defaultTypeID, err := c.systemObjectService.GetTypeIdByKey(context.Background(), st.SpaceID(), DefaultSetSource)
+		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
 		if err != nil {
 			return fmt.Errorf("get default type id: %w", err)
 		}

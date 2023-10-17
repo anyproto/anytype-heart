@@ -515,6 +515,9 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *s
 
 	// todo: can we avoid unmarshaling here? we already had this data
 	_, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+	if err != nil {
+		return
+	}
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId, UnmarshalChange,
 		func(change *objecttree.Change) bool {
@@ -630,7 +633,8 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 		return
 	}
 	if lastChange != nil && !st.IsTheHeaderChange() {
-		st.SetLastModified(lastChange.Timestamp, lastChange.Identity.Account())
+		// todo: why do we don't need to set last modified for the header change?
+		st.SetLastModified(lastChange.Timestamp, addr.AccountIdToIdentityObjectId(lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return

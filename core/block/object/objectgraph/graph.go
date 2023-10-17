@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -40,7 +39,6 @@ type Service interface {
 type Builder struct {
 	graphService Service //nolint:unused
 	sbtProvider  typeprovider.SmartBlockTypeProvider
-	coreService  core.Service
 	objectStore  objectstore.ObjectStore
 
 	*app.App
@@ -53,7 +51,6 @@ func NewBuilder() *Builder {
 func (gr *Builder) Init(a *app.App) (err error) {
 	gr.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	gr.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	gr.coreService = app.MustComponent[core.Service](a)
 	return nil
 }
 

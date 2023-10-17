@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
+
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -14,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -26,19 +29,68 @@ type subObjectsMigration struct {
 	workspace *Workspaces
 }
 
+// we use this key to store the flag that subobject has been migrated, so we never migrate it again
+const migratedKey = "_migrated"
+
 func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
+	migratedSubObjects := 0
 	m.iterateAllSubObjects(
 		st,
-		func(info smartblock.DocInfo) {
+		func(info smartblock.DocInfo, path []string) {
+			if pbtypes.GetBool(info.Details, migratedKey) {
+				return
+			}
 			uniqueKeyRaw := pbtypes.GetString(info.Details, bundle.RelationKeyUniqueKey.String())
 			id, err := m.migrateSubObject(context.Background(), uniqueKeyRaw, info.Details, info.Type)
-			if err == nil {
-				log.With("objectId", id, "uniqueKey", uniqueKeyRaw).Warnf("migrated sub-object")
-			} else if !errors.Is(err, treestorage.ErrTreeExists) {
+			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				log.With("objectID", id).Errorf("failed to migrate subobject: %v", err)
+				return
 			}
+			key := path[len(path)-1]
+
+			// now, lets set some additional restrictions for old clients, to limit the ability to edit sub-objects and cause inconsistencies
+			needToAddRestrictions := false
+			switch info.Type {
+			case bundle.TypeKeyRelation:
+				format := pbtypes.GetInt64(info.Details, bundle.RelationKeyRelationFormat.String())
+				if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
+					// tags and statuses relations values are become readonly
+					st.SetInStore(append(path, bundle.RelationKeyRelationReadonlyValue.String()), pbtypes.Bool(true))
+				}
+				if !lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
+					// no need to restrict system types, they are already restricted
+					needToAddRestrictions = true
+				}
+			case bundle.TypeKeyObjectType:
+				if !lo.Contains(bundle.SystemTypes, domain.TypeKey(key)) {
+					// no need to restrict system types, they are already restricted
+					needToAddRestrictions = true
+				}
+			case bundle.TypeKeyRelationOption:
+				needToAddRestrictions = true
+			default:
+				// unsupported collection? skip
+				return
+			}
+
+			st.SetInStore(append(path, migratedKey), pbtypes.Bool(true))
+
+			// restrict all edits for older clients to avoid inconsistencies (migration only done once, changes are not going to sync)
+			if needToAddRestrictions {
+				st.SetInStore(append(path, bundle.RelationKeyRestrictions.String()), pbtypes.IntList(1, 3, 4))
+			}
+
+			migratedSubObjects++
 		},
 	)
+	if migratedSubObjects == 0 {
+		return
+	}
+	log.With("migrated", migratedSubObjects).Warnf("migrated sub-objects")
+	err := m.workspace.Apply(st)
+	if err != nil {
+		log.Errorf("failed to apply state: %v", err)
+	}
 }
 
 func (m *subObjectsMigration) migrateSubObject(
@@ -96,7 +148,7 @@ func collectionKeyToTypeKey(collKey string) (domain.TypeKey, bool) {
 	return "", false
 }
 
-func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(smartblock.DocInfo)) {
+func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(info smartblock.DocInfo, path []string)) {
 	for typeKey, coll := range objectTypeToCollection {
 		collection := st.GetSubObjectCollection(coll)
 		if collection == nil {
@@ -120,7 +172,8 @@ func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(sm
 					Heads:      nil,
 					Type:       typeKey,
 					Details:    details,
-				})
+				}, []string{coll, subObjectId})
+
 			} else {
 				log.Errorf("got invalid value for %s.%s:%t", coll, subObjectId, subObjectStruct.Kind)
 				continue

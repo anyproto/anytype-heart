@@ -224,6 +224,9 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 				},
 			},
 		})
+		if err != nil {
+			return fmt.Errorf("query bundled templates: %w", err)
+		}
 		for _, id := range existing {
 			err = i.store.DeleteObject(id)
 			if err != nil {

@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
@@ -80,7 +79,6 @@ type service struct {
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
 	objectStore       objectstore.ObjectStore
-	coreService       core.Service
 }
 
 func New() Service {
@@ -91,7 +89,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
-	s.coreService = app.MustComponent[core.Service](a)
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)

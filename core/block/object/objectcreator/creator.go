@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -55,9 +54,6 @@ type Creator struct {
 	bookmark          bookmark.Service
 	app               *app.App
 	spaceService      space.Service
-
-	// TODO: remove it?
-	coreService core.Service
 }
 
 type CollectionService interface {
@@ -73,9 +69,7 @@ func (c *Creator) Init(a *app.App) (err error) {
 	c.blockPicker = a.MustComponent(block.CName).(block.ObjectGetter)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
-	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.collectionService = app.MustComponent[CollectionService](a)
-	c.coreService = app.MustComponent[core.Service](a)
 	c.spaceService = app.MustComponent[space.Service](a)
 	c.app = a
 	return nil

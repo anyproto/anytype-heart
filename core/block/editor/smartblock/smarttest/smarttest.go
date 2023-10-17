@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -42,7 +41,6 @@ var _ smartblock.SmartBlock = &SmartTest{}
 
 type SmartTest struct {
 	Results          Results
-	anytype          *testMock.MockService
 	id               string
 	hist             undo.History
 	TestRestrictions restriction.Restrictions
@@ -313,14 +311,6 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 
 func (st *SmartTest) History() undo.History {
 	return st.hist
-}
-
-func (st *SmartTest) Anytype() core.Service {
-	return st.anytype
-}
-
-func (st *SmartTest) MockAnytype() *testMock.MockService {
-	return st.anytype
 }
 
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {

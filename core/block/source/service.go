@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -57,7 +56,6 @@ type Service interface {
 }
 
 type service struct {
-	coreService        core.Service
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	accountService     accountService
 	accountKeysService accountservice.Service
@@ -74,8 +72,6 @@ type service struct {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]Source)
-	s.coreService = a.MustComponent(core.CName).(core.Service)
-	s.coreService = a.MustComponent(core.CName).(core.Service)
 
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = app.MustComponent[accountService](a)
@@ -130,7 +126,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeFile:
 			return NewFile(s.accountService, s.fileStore, s.fileService, space.Id(), id), nil
 		case smartblock.SmartBlockTypeDate:
-			return NewDate(space.Id(), id, s.coreService), nil
+			return NewDate(space.Id(), id), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
@@ -182,7 +178,7 @@ func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
 		return nil, fmt.Errorf("unsupported id")
 	}
 	// TODO Fix this, but how? It's broken by design, because no one pass spaceId here
-	ss := NewDate("", id, s.coreService)
+	ss := NewDate("", id)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()

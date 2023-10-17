@@ -38,11 +38,6 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 		return m
 	}
 
-	at := mw.GetAnytype()
-	if at == nil {
-		return response(pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
-	}
-
 	if strings.HasPrefix(req.ObjectTypeUrl, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}

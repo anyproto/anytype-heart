@@ -13,7 +13,6 @@ import (
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
-	core "github.com/anyproto/anytype-heart/pkg/lib/core"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -82,21 +81,6 @@ func (mr *MockServiceMockRecorder) IsStarted() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsStarted", reflect.TypeOf((*MockService)(nil).IsStarted))
 }
 
-// LocalProfile mocks base method.
-func (m *MockService) LocalProfile(arg0 string) (core.Profile, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "LocalProfile", arg0)
-	ret0, _ := ret[0].(core.Profile)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// LocalProfile indicates an expected call of LocalProfile.
-func (mr *MockServiceMockRecorder) LocalProfile(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LocalProfile", reflect.TypeOf((*MockService)(nil).LocalProfile), arg0)
-}
-
 // Name mocks base method.
 func (m *MockService) Name() string {
 	m.ctrl.T.Helper()
@@ -109,20 +93,6 @@ func (m *MockService) Name() string {
 func (mr *MockServiceMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockService)(nil).Name))
-}
-
-// ProfileID mocks base method.
-func (m *MockService) ProfileID(arg0 string) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProfileID", arg0)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ProfileID indicates an expected call of ProfileID.
-func (mr *MockServiceMockRecorder) ProfileID(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProfileID", reflect.TypeOf((*MockService)(nil).ProfileID), arg0)
 }
 
 // Run mocks base method.

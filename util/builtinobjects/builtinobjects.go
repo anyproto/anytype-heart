@@ -259,7 +259,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 
 	spc, err := b.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
-		return fmt.Errorf("get space: %s", err)
+		return fmt.Errorf("get space: %w", err)
 	}
 	b.handleSpaceDashboard(spc, newID)
 	b.createWidgets(ctx, spc, useCase)

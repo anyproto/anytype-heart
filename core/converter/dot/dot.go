@@ -65,13 +65,12 @@ func NewMultiConverter(
 	}
 
 	return &dot{
-		graph:               graph,
-		graphviz:            g,
-		exportFormat:        format,
-		linksByNode:         map[string][]linkInfo{},
-		nodes:               map[string]*cgraph.Node{},
-		sbtProvider:         sbtProvider,
-		systemObjectService: systemObjectService,
+		graph:        graph,
+		graphviz:     g,
+		exportFormat: format,
+		linksByNode:  map[string][]linkInfo{},
+		nodes:        map[string]*cgraph.Node{},
+		sbtProvider:  sbtProvider,
 	}
 }
 

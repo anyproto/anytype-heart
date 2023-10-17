@@ -9,7 +9,6 @@ import (
 
 	coordinatorproto "github.com/anyproto/any-sync/coordinator/coordinatorproto"
 
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	database "github.com/anyproto/anytype-heart/pkg/lib/database"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
@@ -21,6 +20,8 @@ import (
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
+
+	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
 
 	types "github.com/gogo/protobuf/types"
 )
@@ -206,13 +207,13 @@ func (_c *MockObjectStore_DeleteObject_Call) RunAndReturn(run func(string) error
 	return _c
 }
 
-// EraseIndexes provides a mock function with given fields:
-func (_m *MockObjectStore) EraseIndexes() error {
-	ret := _m.Called()
+// EraseIndexes provides a mock function with given fields: spaceId
+func (_m *MockObjectStore) EraseIndexes(spaceId string) error {
+	ret := _m.Called(spaceId)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(spaceId)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -226,13 +227,14 @@ type MockObjectStore_EraseIndexes_Call struct {
 }
 
 // EraseIndexes is a helper method to define mock.On call
-func (_e *MockObjectStore_Expecter) EraseIndexes() *MockObjectStore_EraseIndexes_Call {
-	return &MockObjectStore_EraseIndexes_Call{Call: _e.mock.On("EraseIndexes")}
+//   - spaceId string
+func (_e *MockObjectStore_Expecter) EraseIndexes(spaceId interface{}) *MockObjectStore_EraseIndexes_Call {
+	return &MockObjectStore_EraseIndexes_Call{Call: _e.mock.On("EraseIndexes", spaceId)}
 }
 
-func (_c *MockObjectStore_EraseIndexes_Call) Run(run func()) *MockObjectStore_EraseIndexes_Call {
+func (_c *MockObjectStore_EraseIndexes_Call) Run(run func(spaceId string)) *MockObjectStore_EraseIndexes_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -242,7 +244,7 @@ func (_c *MockObjectStore_EraseIndexes_Call) Return(_a0 error) *MockObjectStore_
 	return _c
 }
 
-func (_c *MockObjectStore_EraseIndexes_Call) RunAndReturn(run func() error) *MockObjectStore_EraseIndexes_Call {
+func (_c *MockObjectStore_EraseIndexes_Call) RunAndReturn(run func(string) error) *MockObjectStore_EraseIndexes_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -685,59 +687,6 @@ func (_c *MockObjectStore_GetDetails_Call) RunAndReturn(run func(string) (*model
 	return _c
 }
 
-// GetGlobalChecksums provides a mock function with given fields:
-func (_m *MockObjectStore) GetGlobalChecksums() (*model.ObjectStoreChecksums, error) {
-	ret := _m.Called()
-
-	var r0 *model.ObjectStoreChecksums
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (*model.ObjectStoreChecksums, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() *model.ObjectStoreChecksums); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.ObjectStoreChecksums)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockObjectStore_GetGlobalChecksums_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetGlobalChecksums'
-type MockObjectStore_GetGlobalChecksums_Call struct {
-	*mock.Call
-}
-
-// GetGlobalChecksums is a helper method to define mock.On call
-func (_e *MockObjectStore_Expecter) GetGlobalChecksums() *MockObjectStore_GetGlobalChecksums_Call {
-	return &MockObjectStore_GetGlobalChecksums_Call{Call: _e.mock.On("GetGlobalChecksums")}
-}
-
-func (_c *MockObjectStore_GetGlobalChecksums_Call) Run(run func()) *MockObjectStore_GetGlobalChecksums_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_GetGlobalChecksums_Call) Return(checksums *model.ObjectStoreChecksums, err error) *MockObjectStore_GetGlobalChecksums_Call {
-	_c.Call.Return(checksums, err)
-	return _c
-}
-
-func (_c *MockObjectStore_GetGlobalChecksums_Call) RunAndReturn(run func() (*model.ObjectStoreChecksums, error)) *MockObjectStore_GetGlobalChecksums_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetInboundLinksByID provides a mock function with given fields: id
 func (_m *MockObjectStore) GetInboundLinksByID(id string) ([]string, error) {
 	ret := _m.Called(id)
@@ -1111,6 +1060,61 @@ func (_c *MockObjectStore_GetRelationByKey_Call) Return(_a0 *model.Relation, _a1
 }
 
 func (_c *MockObjectStore_GetRelationByKey_Call) RunAndReturn(run func(string) (*model.Relation, error)) *MockObjectStore_GetRelationByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRelationLink provides a mock function with given fields: spaceID, key
+func (_m *MockObjectStore) GetRelationLink(spaceID string, key string) (*model.RelationLink, error) {
+	ret := _m.Called(spaceID, key)
+
+	var r0 *model.RelationLink
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (*model.RelationLink, error)); ok {
+		return rf(spaceID, key)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) *model.RelationLink); ok {
+		r0 = rf(spaceID, key)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.RelationLink)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceID, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_GetRelationLink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationLink'
+type MockObjectStore_GetRelationLink_Call struct {
+	*mock.Call
+}
+
+// GetRelationLink is a helper method to define mock.On call
+//   - spaceID string
+//   - key string
+func (_e *MockObjectStore_Expecter) GetRelationLink(spaceID interface{}, key interface{}) *MockObjectStore_GetRelationLink_Call {
+	return &MockObjectStore_GetRelationLink_Call{Call: _e.mock.On("GetRelationLink", spaceID, key)}
+}
+
+func (_c *MockObjectStore_GetRelationLink_Call) Run(run func(spaceID string, key string)) *MockObjectStore_GetRelationLink_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetRelationLink_Call) Return(_a0 *model.RelationLink, _a1 error) *MockObjectStore_GetRelationLink_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_GetRelationLink_Call) RunAndReturn(run func(string, string) (*model.RelationLink, error)) *MockObjectStore_GetRelationLink_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1489,6 +1493,60 @@ func (_c *MockObjectStore_ListIds_Call) Return(_a0 []string, _a1 error) *MockObj
 }
 
 func (_c *MockObjectStore_ListIds_Call) RunAndReturn(run func() ([]string, error)) *MockObjectStore_ListIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListIdsBySpace provides a mock function with given fields: spaceId
+func (_m *MockObjectStore) ListIdsBySpace(spaceId string) ([]string, error) {
+	ret := _m.Called(spaceId)
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(spaceId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_ListIdsBySpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListIdsBySpace'
+type MockObjectStore_ListIdsBySpace_Call struct {
+	*mock.Call
+}
+
+// ListIdsBySpace is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockObjectStore_Expecter) ListIdsBySpace(spaceId interface{}) *MockObjectStore_ListIdsBySpace_Call {
+	return &MockObjectStore_ListIdsBySpace_Call{Call: _e.mock.On("ListIdsBySpace", spaceId)}
+}
+
+func (_c *MockObjectStore_ListIdsBySpace_Call) Run(run func(spaceId string)) *MockObjectStore_ListIdsBySpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_ListIdsBySpace_Call) Return(_a0 []string, _a1 error) *MockObjectStore_ListIdsBySpace_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_ListIdsBySpace_Call) RunAndReturn(run func(string) ([]string, error)) *MockObjectStore_ListIdsBySpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1986,48 +2044,6 @@ func (_c *MockObjectStore_SaveChecksums_Call) Return(err error) *MockObjectStore
 }
 
 func (_c *MockObjectStore_SaveChecksums_Call) RunAndReturn(run func(string, *model.ObjectStoreChecksums) error) *MockObjectStore_SaveChecksums_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SaveGlobalChecksums provides a mock function with given fields: checksums
-func (_m *MockObjectStore) SaveGlobalChecksums(checksums *model.ObjectStoreChecksums) error {
-	ret := _m.Called(checksums)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.ObjectStoreChecksums) error); ok {
-		r0 = rf(checksums)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockObjectStore_SaveGlobalChecksums_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveGlobalChecksums'
-type MockObjectStore_SaveGlobalChecksums_Call struct {
-	*mock.Call
-}
-
-// SaveGlobalChecksums is a helper method to define mock.On call
-//   - checksums *model.ObjectStoreChecksums
-func (_e *MockObjectStore_Expecter) SaveGlobalChecksums(checksums interface{}) *MockObjectStore_SaveGlobalChecksums_Call {
-	return &MockObjectStore_SaveGlobalChecksums_Call{Call: _e.mock.On("SaveGlobalChecksums", checksums)}
-}
-
-func (_c *MockObjectStore_SaveGlobalChecksums_Call) Run(run func(checksums *model.ObjectStoreChecksums)) *MockObjectStore_SaveGlobalChecksums_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*model.ObjectStoreChecksums))
-	})
-	return _c
-}
-
-func (_c *MockObjectStore_SaveGlobalChecksums_Call) Return(err error) *MockObjectStore_SaveGlobalChecksums_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockObjectStore_SaveGlobalChecksums_Call) RunAndReturn(run func(*model.ObjectStoreChecksums) error) *MockObjectStore_SaveGlobalChecksums_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -8,10 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -32,8 +29,6 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type Anytype struct {
-	objectStore objectstore.ObjectStore
-
 	migrationOnce    sync.Once
 	lock             sync.RWMutex
 	isStarted        bool // use under the lock
@@ -41,8 +36,6 @@ type Anytype struct {
 	} // closed when node shutdown starts
 
 	subscribeOnce sync.Once
-	config        *config.Config
-	wallet        wallet.Wallet
 }
 
 func New() *Anytype {
@@ -52,9 +45,6 @@ func New() *Anytype {
 }
 
 func (a *Anytype) Init(ap *app.App) (err error) {
-	a.wallet = ap.MustComponent(wallet.CName).(wallet.Wallet)
-	a.config = ap.MustComponent(config.CName).(*config.Config)
-	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	return
 }
 

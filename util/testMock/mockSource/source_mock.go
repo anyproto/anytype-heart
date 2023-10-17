@@ -195,6 +195,22 @@ func (mr *MockSourceMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockSource)(nil).Close))
 }
 
+// GetCreationInfo mocks base method.
+func (m *MockSource) GetCreationInfo() (string, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCreationInfo")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetCreationInfo indicates an expected call of GetCreationInfo.
+func (mr *MockSourceMockRecorder) GetCreationInfo() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCreationInfo", reflect.TypeOf((*MockSource)(nil).GetCreationInfo))
+}
+
 // GetFileKeysSnapshot mocks base method.
 func (m *MockSource) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	m.ctrl.T.Helper()

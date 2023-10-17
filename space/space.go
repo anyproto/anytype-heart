@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 type Space interface {
@@ -46,7 +45,6 @@ type space struct {
 	objectprovider.ObjectProvider
 
 	service    *service
-	status     spaceinfo.SpaceInfo
 	derivedIDs threads.DerivedSmartblockIds
 	installer  bundledObjectsInstaller
 

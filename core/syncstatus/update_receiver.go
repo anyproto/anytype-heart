@@ -10,11 +10,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
 type updateReceiver struct {
-	coreService core.Service
 	eventSender event.Sender
 
 	linkedFilesWatcher *linkedFilesWatcher
@@ -24,18 +22,11 @@ type updateReceiver struct {
 	lastStatus    map[string]pb.EventStatusThreadSyncStatus
 }
 
-func newUpdateReceiver(
-	coreService core.Service,
-	linkedFilesWatcher *linkedFilesWatcher,
-	nodeConfService nodeconf.Service,
-	cfg *config.Config,
-	eventSender event.Sender,
-) *updateReceiver {
+func newUpdateReceiver(linkedFilesWatcher *linkedFilesWatcher, nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}
 	return &updateReceiver{
-		coreService:        coreService,
 		linkedFilesWatcher: linkedFilesWatcher,
 		nodeConfService:    nodeConfService,
 		lastStatus:         make(map[string]pb.EventStatusThreadSyncStatus),
