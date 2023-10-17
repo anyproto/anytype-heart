@@ -22,6 +22,33 @@ func (s *service) setStatus(ctx context.Context, info spaceinfo.SpaceInfo) (err 
 	return nil
 }
 
+func (s *service) updateRemoteStatusLocked(ctx context.Context, spaceID string, remoteStatus spaceinfo.RemoteStatus) (status spaceinfo.SpaceInfo, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	status = s.getStatus(spaceID)
+	status.RemoteStatus = remoteStatus
+	err = s.setStatus(ctx, status)
+	if err != nil {
+		return status, err
+	}
+	return status, nil
+}
+
+func (s *service) setViewCreatedInfo(status spaceinfo.SpaceInfo) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	info := s.getStatus(status.SpaceID)
+	if info.SpaceID == "" {
+		s.statuses[status.SpaceID] = spaceinfo.SpaceInfo{
+			SpaceID:       status.SpaceID,
+			AccountStatus: status.AccountStatus,
+		}
+		return
+	}
+	info.AccountStatus = status.AccountStatus
+	s.statuses[status.SpaceID] = info
+}
+
 func (s *service) allStatuses() (statuses []spaceinfo.SpaceInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -176,8 +176,17 @@ func (s *service) IsPersonal(id string) bool {
 
 func (s *service) OnViewCreated(info spaceinfo.SpaceInfo) {
 	go func() {
-		if err := s.startLoad(s.ctx, info.SpaceID); err != nil {
+		s.setViewCreatedInfo(info)
+		err := s.startLoad(s.ctx, info.SpaceID)
+		if err != nil && err != ErrSpaceDeleted {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
+		}
+		if info.AccountStatus != spaceinfo.AccountStatusDeleted {
+			return
+		}
+		err = s.startDelete(s.ctx, info.SpaceID)
+		if err != nil {
+			log.Warn("OnViewCreated.startDelete error", zap.Error(err))
 		}
 	}()
 }

@@ -81,11 +81,13 @@ func (s *service) waitOffload(ctx context.Context, id string) (err error) {
 func (s *service) startDelete(ctx context.Context, id string) error {
 	s.mu.Lock()
 	status := s.getStatus(id)
-	status.AccountStatus = spaceinfo.AccountStatusDeleted
-	err := s.setStatus(ctx, status)
-	if err != nil {
-		s.mu.Unlock()
-		return err
+	if status.AccountStatus != spaceinfo.AccountStatusDeleted {
+		status.AccountStatus = spaceinfo.AccountStatusDeleted
+		err := s.setStatus(ctx, status)
+		if err != nil {
+			s.mu.Unlock()
+			return err
+		}
 	}
 	s.mu.Unlock()
 	if !status.RemoteStatus.IsDeleted() {

@@ -17,17 +17,9 @@ const (
 	loopTimeout    = time.Second * 10
 )
 
-type loopAction int
-
-const (
-	loopActionNothing = iota
-	loopActionDelete
-	loopActionDeleteRemotely
-)
-
 type localDeleter interface {
 	startDelete(ctx context.Context, id string) error
-	setStatus(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
+	updateRemoteStatusLocked(ctx context.Context, spaceID string, remoteStatus spaceinfo.RemoteStatus) (status spaceinfo.SpaceInfo, err error)
 	allStatuses() (statuses []spaceinfo.SpaceInfo)
 }
 
@@ -84,13 +76,14 @@ func (d *deletionController) updateStatuses(ctx context.Context) (statuses []spa
 			return spaceinfo.RemoteStatusDeleted
 		}
 	}
-	for idx, remoteStatus := range remoteStatuses {
-		err := d.deleter.setStatus(ctx, localStatuses[idx])
+	for idx, nodeStatus := range remoteStatuses {
+		remoteStatus := convStatus(nodeStatus.Status)
+		status, err := d.deleter.updateRemoteStatusLocked(ctx, localStatuses[idx].SpaceID, remoteStatus)
 		if err != nil {
 			log.Warn("local status update error", zap.Error(err), zap.String("spaceId", localStatuses[idx].SpaceID))
 			return localStatuses
 		}
-		localStatuses[idx].RemoteStatus = convStatus(remoteStatus.Status)
+		localStatuses[idx] = status
 	}
 	return localStatuses
 }
