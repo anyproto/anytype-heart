@@ -11,25 +11,22 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
-	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -48,27 +45,14 @@ func New() Indexer {
 type Indexer interface {
 	ForceFTIndex()
 	StartFullTextIndex() error
-	ReindexCommonObjects() error
-	ReindexSpace(spaceID string) error
-	Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error
+	ReindexMarketplaceSpace(space space.Space) error
+	ReindexSpace(space space.Space) error
+	Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error
 	app.ComponentRunnable
 }
 
 type Hasher interface {
 	Hash() string
-}
-
-type objectCreator interface {
-	CreateObject(ctx context.Context, spaceID string, req block.DetailsGetter, objectTypeKey domain.TypeKey) (id string, details *types.Struct, err error)
-	InstallBundledObjects(
-		ctx context.Context,
-		spaceID string,
-		sourceObjectIds []string,
-	) (ids []string, objects []*types.Struct, err error)
-}
-
-type personalIDProvider interface {
-	PersonalSpaceID() string
 }
 
 type indexer struct {
@@ -78,17 +62,12 @@ type indexer struct {
 	picker         block.ObjectGetter
 	ftsearch       ftsearch.FTSearch
 	storageService storage.ClientStorage
-	objectCreator  objectCreator
 	fileService    files.Service
 
 	quit       chan struct{}
 	btHash     Hasher
 	newAccount bool
 	forceFt    chan struct{}
-
-	typeProvider typeprovider.SmartBlockTypeProvider
-	spaceCore    spacecore.SpaceCoreService
-	provider     personalIDProvider
 
 	indexedFiles     *sync.Map
 	reindexLogFields []zap.Field
@@ -100,15 +79,11 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	i.typeProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
-	i.objectCreator = app.MustComponent[objectCreator](a)
 	i.picker = app.MustComponent[block.ObjectGetter](a)
-	i.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
-	i.provider = app.MustComponent[personalIDProvider](a)
 	i.fileService = app.MustComponent[files.Service](a)
 	i.quit = make(chan struct{})
 	i.forceFt = make(chan struct{})
@@ -136,21 +111,17 @@ func (i *indexer) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...editorsb.IndexOption) error {
+func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	startTime := time.Now()
-	opts := &editorsb.IndexOptions{}
+	opts := &smartblock.IndexOptions{}
 	for _, o := range options {
 		o(opts)
 	}
-	err := i.storageService.BindSpaceID(info.SpaceID, info.Id)
+	err := i.storageService.BindSpaceID(info.Space.Id(), info.Id)
 	if err != nil {
 		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
 		return err
-	}
-	sbType, err := i.typeProvider.Type(info.SpaceID, info.Id)
-	if err != nil {
-		sbType = smartblock.SmartBlockTypePage
 	}
 	headHashToIndex := headsHash(info.Heads)
 	saveIndexedHash := func() {
@@ -164,7 +135,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 		}
 	}
 
-	indexDetails, indexLinks := sbType.Indexable()
+	indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
 		saveIndexedHash()
 		return nil
@@ -230,7 +201,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 			}
 		}
 
-		i.indexLinkedFiles(ctx, info.SpaceID, info.FileHashes)
+		i.indexLinkedFiles(ctx, info.Space, info.FileHashes)
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
@@ -255,7 +226,7 @@ func (i *indexer) Index(ctx context.Context, info editorsb.DocInfo, options ...e
 	return nil
 }
 
-func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHashes []string) {
+func (i *indexer) indexLinkedFiles(ctx context.Context, space smartblock.Space, fileHashes []string) {
 	if len(fileHashes) == 0 {
 		return
 	}
@@ -271,13 +242,13 @@ func (i *indexer) indexLinkedFiles(ctx context.Context, spaceID string, fileHash
 			if ok {
 				return
 			}
-			err := i.storageService.BindSpaceID(spaceID, id)
+			err = i.storageService.BindSpaceID(space.Id(), id)
 			if err != nil {
 				log.Error("failed to bind space id", zap.Error(err), zap.String("id", id))
 				return
 			}
 			// file's hash is id
-			idxErr := i.reindexDoc(ctx, spaceID, id)
+			idxErr := i.reindexDoc(ctx, space, id)
 			if idxErr != nil && !errors.Is(idxErr, domain.ErrFileNotFound) {
 				log.With("id", id).Errorf("failed to reindex file: %s", idxErr)
 			}

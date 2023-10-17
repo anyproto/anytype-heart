@@ -7,7 +7,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -192,7 +190,7 @@ func TestExtractObjects(t *testing.T) {
 				ObjectTypeUniqueKey: domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyNote.String()).Marshal(),
 			}
 			ctx := session.NewContext()
-			linkIds, err := NewBasic(sb, fixture.store, fixture.systemObjectService, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
+			linkIds, err := NewBasic(sb, fixture.store, converter.NewLayoutConverter()).ExtractBlocksToObjects(ctx, ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string
@@ -226,10 +224,9 @@ func TestExtractObjects(t *testing.T) {
 }
 
 type fixture struct {
-	t                   *testing.T
-	ctrl                *gomock.Controller
-	store               *testMock.MockObjectStore
-	systemObjectService *mock_system_object.MockService
+	t     *testing.T
+	ctrl  *gomock.Controller
+	store *testMock.MockObjectStore
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -243,15 +240,12 @@ func newFixture(t *testing.T) *fixture {
 			},
 		},
 	}
-
-	systemObjectService := mock_system_object.NewMockService(t)
-	systemObjectService.EXPECT().GetObjectByUniqueKey(mock.Anything, mock.Anything).Return(objectTypeDetails, nil).Maybe()
+	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), gomock.Any()).Return(objectTypeDetails, nil).AnyTimes()
 
 	return &fixture{
-		t:                   t,
-		ctrl:                ctrl,
-		store:               objectStore,
-		systemObjectService: systemObjectService,
+		t:     t,
+		ctrl:  ctrl,
+		store: objectStore,
 	}
 }
 

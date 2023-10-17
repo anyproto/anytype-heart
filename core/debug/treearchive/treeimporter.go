@@ -78,7 +78,7 @@ func (t *treeImporter) State(fullStateChain bool) (*state.State, error) {
 			return nil, err
 		}
 	} else {
-		st, _, _, err = source.BuildState(nil, t.objectTree, "")
+		st, _, _, err = source.BuildState(nil, t.objectTree)
 		if err != nil {
 			return nil, err
 		}

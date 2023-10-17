@@ -9,7 +9,6 @@ import (
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -76,11 +75,7 @@ func (i *indexer) prepareSearchDocument(id string) (ftDoc ftsearch.SearchDoc, er
 	// ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 	ctx := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "index_fulltext")
 	err = block.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
-		sbType, err := i.typeProvider.Type(sb.SpaceID(), id)
-		if err != nil {
-			sbType = smartblock.SmartBlockTypePage
-		}
-		indexDetails, _ := sbType.Indexable()
+		indexDetails, _ := sb.Type().Indexable()
 		if !indexDetails {
 			return nil
 		}

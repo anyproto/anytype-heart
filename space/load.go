@@ -14,7 +14,7 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	defer s.mu.Unlock()
 
 	status := s.getStatus(spaceID)
-
+	// Do nothing if space is already loading
 	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
 		return nil
 	}
@@ -34,7 +34,8 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	if err = s.setStatus(ctx, info); err != nil {
 		return
 	}
-	s.loading[spaceID] = newLoadingSpace(s.ctx, spaceID, s)
+	_, justCreated := s.createdSpaces[spaceID]
+	s.loading[spaceID] = s.newLoadingSpace(s.ctx, spaceID, justCreated)
 	return
 }
 
@@ -72,6 +73,18 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 		LocalStatus:  spaceinfo.LocalStatusOk,
 		RemoteStatus: spaceinfo.RemoteStatusUnknown,
 	})
+}
+
+func (s *service) preLoad(spc Space) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.loaded[spc.Id()] = spc
+	s.statuses[spc.Id()] = spaceinfo.SpaceInfo{
+		SpaceID:      spc.Id(),
+		LocalStatus:  spaceinfo.LocalStatusOk,
+		RemoteStatus: spaceinfo.RemoteStatusUnknown,
+	}
 }
 
 func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err error) {

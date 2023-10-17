@@ -7,36 +7,17 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-type quicSetter struct{}
-
-func (q quicSetter) Init(a *app.App) (err error) {
-	return
-}
-
-func (q quicSetter) Name() (name string) {
-	return peerservice.CName
-}
-
-func (q quicSetter) PreferQuic(_ bool) {}
 
 func Test_GrouperTags(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
@@ -47,28 +28,25 @@ func Test_GrouperTags(t *testing.T) {
 	tp.EXPECT().Name().Return("typeprovider")
 	tp.EXPECT().Init(a).Return(nil)
 
-	systemObjectService := mock_system_object.NewMockService(t)
-	systemObjectService.EXPECT().Name().Return("relation")
-	systemObjectService.EXPECT().Init(a).Return(nil)
+	objectStore := objectstore.NewStoreFixture(t)
 
-	relationWithFormatTag := &relationutils.Relation{&model.Relation{Format: model.RelationFormat_tag}}
-	systemObjectService.EXPECT().FetchRelationByKey("", "tag").Return(relationWithFormatTag, nil)
+	objectStore.AddObjects(t, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             pbtypes.String("tag1"),
+			bundle.RelationKeyUniqueKey:      pbtypes.String("rel-tag"),
+			bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
+			bundle.RelationKeySpaceId:        pbtypes.String(""),
+		},
+	})
 
-	ds := objectstore.New()
 	kanbanSrv := New()
-	err := a.Register(quicSetter{}).
-		Register(&config.DefaultConfig).
-		Register(wallet.NewWithRepoDirAndRandomKeys(tmpDir)).
-		Register(clientds.New()).
-		Register(ftsearch.New()).
-		Register(ds).
+	err := a.Register(objectStore).
 		Register(kanbanSrv).
 		Register(tp).
-		Register(systemObjectService).
 		Start(context.Background())
 	require.NoError(t, err)
 
-	require.NoError(t, ds.UpdateObjectDetails("rel-tag", &types.Struct{
+	require.NoError(t, objectStore.UpdateObjectDetails("rel-tag", &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":             pbtypes.String("rel-tag"),
 			"relationKey":    pbtypes.String("tag"),
@@ -82,7 +60,7 @@ func Test_GrouperTags(t *testing.T) {
 	idTag2 := bson.NewObjectId().Hex()
 	idTag3 := bson.NewObjectId().Hex()
 
-	require.NoError(t, ds.UpdateObjectDetails(idTag1, &types.Struct{
+	require.NoError(t, objectStore.UpdateObjectDetails(idTag1, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag1),
 			"relationKey": pbtypes.String("tag"),
@@ -91,7 +69,7 @@ func Test_GrouperTags(t *testing.T) {
 		},
 	}))
 
-	require.NoError(t, ds.UpdateObjectDetails(idTag2, &types.Struct{
+	require.NoError(t, objectStore.UpdateObjectDetails(idTag2, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag2),
 			"relationKey": pbtypes.String("tag"),
@@ -99,7 +77,7 @@ func Test_GrouperTags(t *testing.T) {
 			"layout":      pbtypes.Int64(int64(model.ObjectType_relationOption)),
 		},
 	}))
-	require.NoError(t, ds.UpdateObjectDetails(idTag3, &types.Struct{
+	require.NoError(t, objectStore.UpdateObjectDetails(idTag3, &types.Struct{
 		Fields: map[string]*types.Value{
 			"id":          pbtypes.String(idTag3),
 			"relationKey": pbtypes.String("tag"),
@@ -113,28 +91,28 @@ func Test_GrouperTags(t *testing.T) {
 	id3 := bson.NewObjectId().Hex()
 	id4 := bson.NewObjectId().Hex()
 
-	require.NoError(t, ds.UpdateObjectDetails(id1, &types.Struct{
+	require.NoError(t, objectStore.UpdateObjectDetails(id1, &types.Struct{
 		Fields: map[string]*types.Value{"name": pbtypes.String("one")},
 	}))
-	require.NoError(t, ds.UpdateObjectSnippet(id1, "s1"))
+	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s1"))
 
-	require.NoError(t, ds.UpdateObjectDetails(id2, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, objectStore.UpdateObjectDetails(id2, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("two"),
 		"tag":  pbtypes.StringList([]string{idTag1}),
 	}}))
-	require.NoError(t, ds.UpdateObjectSnippet(id1, "s2"))
+	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s2"))
 
-	require.NoError(t, ds.UpdateObjectDetails(id3, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, objectStore.UpdateObjectDetails(id3, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("three"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag2, idTag3}),
 	}}))
-	require.NoError(t, ds.UpdateObjectSnippet(id1, "s3"))
+	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s3"))
 
-	require.NoError(t, ds.UpdateObjectDetails(id4, &types.Struct{Fields: map[string]*types.Value{
+	require.NoError(t, objectStore.UpdateObjectDetails(id4, &types.Struct{Fields: map[string]*types.Value{
 		"name": pbtypes.String("four"),
 		"tag":  pbtypes.StringList([]string{idTag1, idTag3}),
 	}}))
-	require.NoError(t, ds.UpdateObjectSnippet(id1, "s4"))
+	require.NoError(t, objectStore.UpdateObjectSnippet(id1, "s4"))
 
 	grouper, err := kanbanSrv.Grouper("", "tag")
 	require.NoError(t, err)

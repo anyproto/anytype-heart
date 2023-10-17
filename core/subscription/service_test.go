@@ -7,7 +7,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -31,14 +30,14 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		fx.store.EXPECT().QueryByID([]string{"author1"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
@@ -134,14 +133,14 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		fx.store.EXPECT().QueryByID([]string{"force1", "force2"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
@@ -193,10 +192,10 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
@@ -260,10 +259,10 @@ func TestService_Search(t *testing.T) {
 			},
 			nil,
 		)
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: "test",
@@ -358,14 +357,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -408,14 +407,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -465,14 +464,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -515,15 +514,15 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
 			Key:    testRelationKey,
 			Format: model.RelationFormat_object,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		s := fx.Service.(*service)
 		s.ds = newDependencyService(s)
@@ -570,15 +569,15 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(testRelationKey).Return(&model.Relation{
 			Key:    testRelationKey,
 			Format: model.RelationFormat_object,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		s := fx.Service.(*service)
 		s.ds = newDependencyService(s)
@@ -625,14 +624,14 @@ func TestService_Search(t *testing.T) {
 			}}},
 		}, nil)
 
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
-		fx.systemObjectService.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelationByKey(bundle.RelationKeyId.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyId.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil).Maybe()
+		}, nil).AnyTimes()
 
 		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId:        subscriptionID,
@@ -703,7 +702,7 @@ func TestNestedSubscription(t *testing.T) {
 
 func testCreateSubscriptionWithNestedFilter(t *testing.T) *fixtureRealStore {
 	fx := newFixtureWithRealObjectStore(t)
-	fx.systemObjectServiceMock.EXPECT().GetRelationByKey(mock.Anything).Return(&model.Relation{}, nil)
+	// fx.store.EXPECT().GetRelationByKey(mock.Anything).Return(&model.Relation{}, nil)
 	resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 		SubId: "test",
 		Filters: []*model.BlockContentDataviewFilter{

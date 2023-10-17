@@ -83,3 +83,7 @@ func (m *missingObject) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 func (m *missingObject) PushChange(params PushChangeParams) (id string, err error) {
 	return
 }
+
+func (m *missingObject) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+	return addr.AnytypeProfileId, 0, nil
+}

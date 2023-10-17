@@ -1,6 +1,7 @@
 package dataview
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
@@ -12,18 +13,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -55,19 +53,10 @@ type Dataview interface {
 	GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error)
 }
 
-func NewDataview(
-	sb smartblock.SmartBlock,
-	anytype core.Service,
-	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-) Dataview {
+func NewDataview(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore) Dataview {
 	dv := &sdataview{
-		SmartBlock:          sb,
-		anytype:             anytype,
-		objectStore:         objectStore,
-		systemObjectService: systemObjectService,
-		sbtProvider:         sbtProvider,
+		SmartBlock:  sb,
+		objectStore: objectStore,
 	}
 	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv
@@ -75,10 +64,7 @@ func NewDataview(
 
 type sdataview struct {
 	smartblock.SmartBlock
-	anytype             core.Service
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	sbtProvider         typeprovider.SmartBlockTypeProvider
+	objectStore objectstore.ObjectStore
 }
 
 func (d *sdataview) GetDataviewBlock(s *state.State, blockID string) (dataview.Block, error) {
@@ -105,7 +91,7 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
-	dvContent, err := BlockBySource(d.SpaceID(), d.sbtProvider, d.systemObjectService, source)
+	dvContent, err := BlockBySource(d.objectStore, source)
 	if err != nil {
 		return
 	}
@@ -130,7 +116,7 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 		return err
 	}
 	for _, key := range relationKeys {
-		relation, err2 := d.systemObjectService.FetchRelationByKey(d.SpaceID(), key)
+		relation, err2 := d.objectStore.FetchRelationByKey(d.SpaceID(), key)
 		if err2 != nil {
 			return err2
 		}
@@ -352,56 +338,52 @@ func (d *sdataview) DataviewMoveObjectsInView(ctx session.Context, req *pb.RpcBl
 	return d.Apply(st)
 }
 
-func SchemaBySources(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, sources []string, systemObjectService system_object.Service) (database.Schema, error) {
-	var relationFound, typeFound bool
-
-	for _, source := range sources {
-		sbt, err := sbtProvider.Type(spaceID, source)
-		if err != nil {
-			return nil, err
-		}
-
-		if sbt == smartblock2.SmartBlockTypeObjectType {
-			if relationFound {
-				return nil, fmt.Errorf("dataview source contains both type and relation")
-			}
-			if typeFound {
-				return nil, fmt.Errorf("dataview source contains more than one object type")
-			}
-			typeFound = true
-		}
-
-		if sbt == smartblock2.SmartBlockTypeRelation {
-			if typeFound {
-				return nil, fmt.Errorf("dataview source contains both type and relation")
-			}
-			relationFound = true
-		}
+func SchemaBySources(sources []string, objectStore objectstore.ObjectStore) (database.Schema, error) {
+	// Empty schema
+	if len(sources) == 0 {
+		return database.NewEmptySchema(), nil
 	}
-	if typeFound {
-		objectType, err := systemObjectService.GetObjectType(sources[0])
-		if err != nil {
-			return nil, err
-		}
+
+	// Try object type
+	objectType, err := objectStore.GetObjectType(sources[0])
+	if err == nil {
 		sch := database.NewByType(objectType)
 		return sch, nil
 	}
 
-	if relationFound {
-		var relations []*model.RelationLink
-		for _, relId := range sources {
-			rel, err := systemObjectService.GetRelationByID(relId)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
-			}
-
-			relations = append(relations, (&relationutils.Relation{rel}).RelationLink())
+	// Finally, try relations
+	relations := make([]*model.RelationLink, 0, len(sources))
+	for _, relId := range sources {
+		rel, err := objectStore.GetRelationByID(relId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
 		}
-		sch := database.NewByRelations(relations)
-		return sch, nil
-	}
 
-	return database.NewEmptySchema(), nil
+		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
+	}
+	sch := database.NewByRelations(relations)
+	return sch, nil
+}
+
+func (d *sdataview) listRestrictedSources(ctx context.Context) ([]string, error) {
+	keys := []domain.TypeKey{
+		bundle.TypeKeyFile,
+		bundle.TypeKeyImage,
+		bundle.TypeKeyVideo,
+		bundle.TypeKeyAudio,
+		bundle.TypeKeyObjectType,
+		bundle.TypeKeySet,
+		bundle.TypeKeyRelation,
+	}
+	sources := make([]string, 0, len(keys))
+	for _, key := range keys {
+		id, err := d.Space().GetTypeIdByKey(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, id)
+	}
+	return sources, nil
 }
 
 func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
@@ -416,16 +398,8 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	if !dvChanged {
 		return
 	}
-	systemTypeIDs := d.anytype.PredefinedObjects(d.SpaceID()).SystemTypes
-	restrictedSources := []string{
-		systemTypeIDs[bundle.TypeKeyFile],
-		systemTypeIDs[bundle.TypeKeyImage],
-		systemTypeIDs[bundle.TypeKeyVideo],
-		systemTypeIDs[bundle.TypeKeyAudio],
-		systemTypeIDs[bundle.TypeKeyObjectType],
-		systemTypeIDs[bundle.TypeKeySet],
-		systemTypeIDs[bundle.TypeKeyRelation],
-	}
+
+	restrictedSources, _ := d.listRestrictedSources(context.Background())
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]
 	info.State.Iterate(func(b simple.Block) (isContinue bool) {
@@ -534,8 +508,8 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 	return
 }
 
-func BlockBySource(spaceID string, sbtProvider typeprovider.SmartBlockTypeProvider, systemObjectService system_object.Service, source []string) (*model.BlockContentOfDataview, error) {
-	schema, err := SchemaBySources(spaceID, sbtProvider, source, systemObjectService)
+func BlockBySource(objectStore objectstore.ObjectStore, source []string) (*model.BlockContentOfDataview, error) {
+	schema, err := SchemaBySources(source, objectStore)
 	if err != nil {
 		return nil, fmt.Errorf("get schema by sources: %w", err)
 	}

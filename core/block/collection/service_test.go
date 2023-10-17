@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -49,12 +48,8 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := mock_objectstore.NewMockObjectStore(t)
 	objectStore.EXPECT().Name().Return("objectStore")
 
-	systemObjectService := mock_system_object.NewMockService(t)
-	systemObjectService.EXPECT().Name().Return("systemObjectService")
-
 	a.Register(picker)
 	a.Register(objectStore)
-	a.Register(systemObjectService)
 	s := New()
 
 	err := s.Init(a)

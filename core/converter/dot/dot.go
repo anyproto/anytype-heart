@@ -12,12 +12,12 @@ import (
 	"github.com/goccy/go-graphviz/cgraph"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -43,22 +43,20 @@ type linkInfo struct {
 }
 
 type dot struct {
-	graph               *cgraph.Graph
-	graphviz            *graphviz.Graphviz
-	knownDocs           map[string]*types.Struct
-	fileHashes          []string
-	imageHashes         []string
-	exportFormat        graphviz.Format
-	nodes               map[string]*cgraph.Node
-	linksByNode         map[string][]linkInfo
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService system_object.Service
+	graph        *cgraph.Graph
+	graphviz     *graphviz.Graphviz
+	knownDocs    map[string]*types.Struct
+	fileHashes   []string
+	imageHashes  []string
+	exportFormat graphviz.Format
+	nodes        map[string]*cgraph.Node
+	linksByNode  map[string][]linkInfo
+	sbtProvider  typeprovider.SmartBlockTypeProvider
 }
 
 func NewMultiConverter(
 	format graphviz.Format,
 	sbtProvider typeprovider.SmartBlockTypeProvider,
-	systemObjectService system_object.Service,
 ) converter.MultiConverter {
 	g := graphviz.New()
 	graph, err := g.Graph()
@@ -67,13 +65,12 @@ func NewMultiConverter(
 	}
 
 	return &dot{
-		graph:               graph,
-		graphviz:            g,
-		exportFormat:        format,
-		linksByNode:         map[string][]linkInfo{},
-		nodes:               map[string]*cgraph.Node{},
-		sbtProvider:         sbtProvider,
-		systemObjectService: systemObjectService,
+		graph:        graph,
+		graphviz:     g,
+		exportFormat: format,
+		linksByNode:  map[string][]linkInfo{},
+		nodes:        map[string]*cgraph.Node{},
+		sbtProvider:  sbtProvider,
 	}
 }
 
@@ -90,7 +87,7 @@ func (d *dot) ImageHashes() []string {
 	return d.imageHashes
 }
 
-func (d *dot) Add(st *state.State) error {
+func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	n, e := d.graph.CreateNode(st.RootId())
 	if e != nil {
 		return e
@@ -120,7 +117,7 @@ func (d *dot) Add(st *state.State) error {
 
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, d.systemObjectService, true, true, false, false, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, true, true, false, false, false)
 	for _, depID := range dependentObjectIDs {
 		t, err := d.sbtProvider.Type(st.SpaceID(), depID)
 		if err != nil {
@@ -130,7 +127,7 @@ func (d *dot) Add(st *state.State) error {
 			continue
 		}
 
-		if t == smartblock.SmartBlockTypeAnytypeProfile || t == smartblock.SmartBlockTypePage {
+		if t == coresb.SmartBlockTypeAnytypeProfile || t == coresb.SmartBlockTypePage {
 			d.linksByNode[st.RootId()] = append(d.linksByNode[st.RootId()], linkInfo{
 				target:   depID,
 				edgeType: EdgeTypeLink,

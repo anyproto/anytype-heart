@@ -12,13 +12,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -29,49 +26,25 @@ type Workspaces struct {
 	dataview.Dataview
 	stext.Text
 
-	DetailsModifier DetailsModifier
-	spaceService    spaceService
-	anytype         core.Service
-	objectStore     objectstore.ObjectStore
-	config          *config.Config
-	objectDeriver   objectDeriver
+	spaceService spaceService
+	objectStore  objectstore.ObjectStore
+	config       *config.Config
 }
 
-func NewWorkspace(
-	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	anytype core.Service,
-	systemObjectService system_object.Service,
-	spaceService spaceService,
-	modifier DetailsModifier,
-	sbtProvider typeprovider.SmartBlockTypeProvider,
-	layoutConverter converter.LayoutConverter,
-	config *config.Config,
-	eventSender event.Sender,
-	objectDeriver objectDeriver,
-) *Workspaces {
+func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, spaceService spaceService, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			objectStore,
 			eventSender,
 		),
-		Dataview: dataview.NewDataview(
-			sb,
-			anytype,
-			objectStore,
-			systemObjectService,
-			sbtProvider,
-		),
-		DetailsModifier: modifier,
-		anytype:         anytype,
-		objectStore:     objectStore,
-		spaceService:    spaceService,
-		config:          config,
-		objectDeriver:   objectDeriver,
+		Dataview:     dataview.NewDataview(sb, objectStore),
+		objectStore:  objectStore,
+		spaceService: spaceService,
+		config:       config,
 	}
 }
 
@@ -83,8 +56,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	w.initTemplate(ctx)
 
 	subObjectMigration := subObjectsMigration{
-		workspace:     w,
-		objectDeriver: w.objectDeriver,
+		workspace: w,
 	}
 	subObjectMigration.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
@@ -110,7 +82,6 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
-		template.WithForcedDetail(bundle.RelationKeyCreator, pbtypes.String(w.anytype.PredefinedObjects(w.SpaceID()).Profile)),
 	)
 }
 

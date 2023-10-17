@@ -6,108 +6,30 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (mw *Middleware) ObjectTypeRelationList(cctx context.Context, req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
-	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*model.RelationLink, err error) *pb.RpcObjectTypeRelationListResponse {
-		m := &pb.RpcObjectTypeRelationListResponse{Relations: relations, Error: &pb.RpcObjectTypeRelationListResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	at := mw.GetAnytype()
-	if at == nil {
-		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
-	}
-
-	systemObjectService := app.MustComponent[system_object.Service](mw.applicationService.GetApp())
-	objType, err := systemObjectService.GetObjectType(req.ObjectTypeUrl)
-	if err != nil {
-		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
-		}
-		return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_ERROR, nil, err)
-	}
-
-	// todo: AppendRelationsFromOtherTypes case
-	return response(pb.RpcObjectTypeRelationListResponseError_NULL, objType.RelationLinks, nil)
-}
-
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectTypeRelationAddResponseErrorCode, err error) *pb.RpcObjectTypeRelationAddResponse {
-		m := &pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
+	blockService := getService[*block.Service](mw)
+	err := blockService.ObjectTypeRelationAdd(cctx, req)
+	code := mapErrorCode(err,
+		errToCode(block.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeRelationAddResponse{
+		Error: &pb.RpcObjectTypeRelationAddResponseError{
+			Code: code,
+		},
 	}
-
-	systemObjectService := getService[system_object.Service](mw)
-
-	at := mw.GetAnytype()
-	if at == nil {
-		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
-	}
-
-	if strings.HasPrefix(req.ObjectTypeUrl, bundle.TypePrefix) {
-		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
-	}
-
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		res := mw.applicationService.GetApp().MustComponent(idresolver.CName).(idresolver.Resolver)
-		spaceId, err := res.ResolveSpaceID(req.ObjectTypeUrl)
-		if err != nil {
-			return err
-		}
-
-		err = bs.ModifyDetails(ctx, req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
-			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
-
-			for _, relKey := range req.RelationKeys {
-				relId, err := systemObjectService.GetRelationIdByKey(cctx, spaceId, domain.RelationKey(relKey))
-				if err != nil {
-					return nil, err
-				}
-
-				if slice.FindPos(list, relId) == -1 {
-					list = append(list, relId)
-				}
-			}
-			detCopy := pbtypes.CopyStruct(current)
-			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
-			return detCopy, nil
-		})
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectTypeRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectTypeRelationRemoveResponseErrorCode, err error) *pb.RpcObjectTypeRelationRemoveResponse {
 		m := &pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: code}}
 		if err != nil {
@@ -116,17 +38,12 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 		return m
 	}
 
-	at := mw.GetAnytype()
-	if at == nil {
-		return response(pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
-	}
-
 	if strings.HasPrefix(req.ObjectTypeUrl, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.ModifyDetails(ctx, req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
+		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 			for _, relKey := range req.RelationKeys {
 				relId := addr.RelationKeyToIdPrefix + relKey

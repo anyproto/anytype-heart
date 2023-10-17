@@ -13,7 +13,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,8 +45,9 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 
 	// we already have this account running, lets just stop events
 	if s.app != nil && req.Id == s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account() {
-		objectCache := app.MustComponent[objectcache.Cache](s.app)
-		objectCache.CloseBlocks()
+		// TODO What should we do?
+		// objectCache := app.MustComponent[objectcache.Cache](s.app)
+		// objectCache.CloseBlocks()
 
 		spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 		acc := &model.Account{Id: req.Id}

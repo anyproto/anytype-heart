@@ -8,11 +8,11 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -26,14 +26,13 @@ import (
 const DefaultSetSource = bundle.TypeKeyPage
 
 type LayoutConverter interface {
-	Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
+	Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error
 	app.Component
 }
 
 type layoutConverter struct {
-	objectStore         objectstore.ObjectStore
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService system_object.Service
+	objectStore objectstore.ObjectStore
+	sbtProvider typeprovider.SmartBlockTypeProvider
 }
 
 func NewLayoutConverter() LayoutConverter {
@@ -43,7 +42,6 @@ func NewLayoutConverter() LayoutConverter {
 func (c *layoutConverter) Init(a *app.App) error {
 	c.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	c.systemObjectService = app.MustComponent[system_object.Service](a)
 	return nil
 }
 
@@ -51,7 +49,7 @@ func (c *layoutConverter) Name() string {
 	return "layout-converter"
 }
 
-func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
+func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromLayout, toLayout model.ObjectTypeLayout) error {
 	if fromLayout == toLayout {
 		return nil
 	}
@@ -67,10 +65,10 @@ func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 	}
 
 	if fromLayout == model.ObjectType_note && toLayout == model.ObjectType_set {
-		return c.fromNoteToSet(st)
+		return c.fromNoteToSet(space, st)
 	}
 	if toLayout == model.ObjectType_set {
-		return c.fromAnyToSet(st)
+		return c.fromAnyToSet(space, st)
 	}
 
 	if toLayout == model.ObjectType_note {
@@ -124,7 +122,7 @@ func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	return nil
 }
 
-func (c *layoutConverter) fromNoteToSet(st *state.State) error {
+func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State) error {
 	if err := c.fromNoteToAny(st); err != nil {
 		return err
 	}
@@ -133,17 +131,17 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 		template.WithTitle,
 		template.WithDescription,
 	)
-	err2 := c.fromAnyToSet(st)
+	err2 := c.fromAnyToSet(space, st)
 	if err2 != nil {
 		return err2
 	}
 	return nil
 }
 
-func (c *layoutConverter) fromAnyToSet(st *state.State) error {
+func (c *layoutConverter) fromAnyToSet(space smartblock.Space, st *state.State) error {
 	source := pbtypes.GetStringList(st.Details(), bundle.RelationKeySetOf.String())
 	if len(source) == 0 {
-		defaultTypeID, err := c.systemObjectService.GetTypeIdByKey(context.Background(), st.SpaceID(), DefaultSetSource)
+		defaultTypeID, err := space.GetTypeIdByKey(context.Background(), DefaultSetSource)
 		if err != nil {
 			return fmt.Errorf("get default type id: %w", err)
 		}
@@ -151,7 +149,7 @@ func (c *layoutConverter) fromAnyToSet(st *state.State) error {
 	}
 	addFeaturedRelationSetOf(st)
 
-	dvBlock, err := dataview.BlockBySource(st.SpaceID(), c.sbtProvider, c.systemObjectService, source)
+	dvBlock, err := dataview.BlockBySource(c.objectStore, source)
 	if err != nil {
 		return err
 	}
@@ -305,7 +303,7 @@ func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []st
 func (c *layoutConverter) appendRelationFilters(relationIDs []string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, error) {
 	if len(relationIDs) != 0 {
 		for _, relationID := range relationIDs {
-			relation, err := c.systemObjectService.GetRelationByID(relationID)
+			relation, err := c.objectStore.GetRelationByID(relationID)
 			if err != nil {
 				return nil, fmt.Errorf("get relation by id %s: %w", relationID, err)
 			}

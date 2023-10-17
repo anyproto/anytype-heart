@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-sync/commonspace"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -22,10 +21,12 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
+	var sbType coresb.SmartBlockType
 	err = Do(s, objectID, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
+		sbType = b.Type()
 		return nil
 	})
 	if err != nil {
@@ -36,8 +37,7 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 		SpaceID:  spaceID,
 		ObjectID: objectID,
 	}
-	sbt, _ := s.sbtProvider.Type(spaceID, objectID)
-	switch sbt {
+	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation:
 		err = Do(s, objectID, func(b smartblock.SmartBlock) error {
@@ -69,11 +69,9 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 			return nil
 		})
 	default:
-		var space commonspace.Space
-		// TODO: [MR] should we do this via spaceService instead?
-		space, err = s.spaceCore.Get(context.Background(), spaceID)
+		space, err := s.spaceService.Get(context.Background(), spaceID)
 		if err != nil {
-			return
+			return fmt.Errorf("get space: %w", err)
 		}
 		// this will call DeleteTree asynchronously in the end
 		return space.DeleteTree(context.Background(), objectID)
@@ -83,7 +81,11 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	}
 
 	sendOnRemoveEvent(s.eventSender, objectID)
-	err = s.objectCache.Remove(context.Background(), objectID)
+	spc, err := s.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return
+	}
+	err = spc.Remove(context.Background(), objectID)
 	return
 }
 

@@ -153,6 +153,9 @@ func SmartblockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.MissingObject) {
 		return smartblock.SmartBlockTypeMissingObject, nil
 	}
+	if strings.HasPrefix(id, addr.IdentityPrefix) {
+		return smartblock.SmartBlockTypeIdentity, nil
+	}
 
 	c, err := cid.Decode(id)
 	if err != nil {
@@ -189,7 +192,7 @@ func (p *provider) objectTypeFromSpace(spaceID string, id string) (tp smartblock
 		return
 	}
 
-	tp, err = GetTypeFromRoot(rawRoot)
+	tp, _, err = GetTypeAndKeyFromRoot(rawRoot)
 	if err != nil {
 		return
 	}
@@ -213,20 +216,25 @@ func (p *provider) setType(id string, tp smartblock.SmartBlockType) (err error) 
 	return nil
 }
 
-func GetTypeFromRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (smartblock.SmartBlockType, error) {
-	root, err := unmarshallRoot(rawRoot)
-	if err != nil {
-		return 0, fmt.Errorf("unmarshall root: %w", err)
-	}
+func GetTypeAndKeyFromRootChange(root *treechangeproto.RootChange) (sbt smartblock.SmartBlockType, key string, err error) {
 	if root.ChangeType != spacecore.ChangeType {
 		err = ErrUnknownChangeType
-		return 0, err
+		return 0, "", err
 	}
 	payload, err := objectType(root.ChangePayload)
 	if err != nil {
-		return 0, fmt.Errorf("get object type: %w", err)
+		return 0, "", fmt.Errorf("get object type: %w", err)
 	}
-	return smartblock.SmartBlockType(payload.SmartBlockType), nil
+	return smartblock.SmartBlockType(payload.SmartBlockType), payload.Key, nil
+}
+
+func GetTypeAndKeyFromRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (sbt smartblock.SmartBlockType, key string, err error) {
+	root, err := unmarshallRoot(rawRoot)
+	if err != nil {
+		return 0, "", fmt.Errorf("unmarshall root: %w", err)
+	}
+
+	return GetTypeAndKeyFromRootChange(root)
 }
 
 func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {

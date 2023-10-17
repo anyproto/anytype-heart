@@ -318,7 +318,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 func Test_ListImports(t *testing.T) {
 	i := Import{}
 	i.converters = make(map[string]cv.Converter, 0)
-	i.converters["Notion"] = pbc.New(nil, nil, nil)
+	i.converters["Notion"] = pbc.New(nil, nil)
 	creator := mock_importer.NewMockCreator(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)

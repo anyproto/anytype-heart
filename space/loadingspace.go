@@ -12,24 +12,14 @@ import (
 var loadingRetryTimeout = time.Second * 20
 
 type spaceServiceProvider interface {
-	open(ctx context.Context, spaceId string) (Space, error)
+	open(ctx context.Context, spaceId string, justCreated bool) (Space, error)
 	onLoad(spaceId string, sp Space, loadErr error) (err error)
-}
-
-func newLoadingSpace(ctx context.Context, spaceID string, serviceProvider spaceServiceProvider) *loadingSpace {
-	ls := &loadingSpace{
-		ID:                   spaceID,
-		retryTimeout:         loadingRetryTimeout,
-		spaceServiceProvider: serviceProvider,
-		loadCh:               make(chan struct{}),
-	}
-	go ls.loadRetry(ctx)
-	return ls
 }
 
 type loadingSpace struct {
 	ID           string
 	retryTimeout time.Duration
+	justCreated  bool // indicates that user created space
 
 	spaceServiceProvider spaceServiceProvider
 
@@ -37,6 +27,18 @@ type loadingSpace struct {
 	space   Space
 	loadErr error
 	loadCh  chan struct{}
+}
+
+func (s *service) newLoadingSpace(ctx context.Context, spaceID string, justCreated bool) *loadingSpace {
+	ls := &loadingSpace{
+		ID:                   spaceID,
+		retryTimeout:         loadingRetryTimeout,
+		justCreated:          justCreated,
+		spaceServiceProvider: s,
+		loadCh:               make(chan struct{}),
+	}
+	go ls.loadRetry(ctx)
+	return ls
 }
 
 func (ls *loadingSpace) loadRetry(ctx context.Context) {
@@ -64,7 +66,7 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 }
 
 func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
-	sp, err := ls.spaceServiceProvider.open(ctx, ls.ID)
+	sp, err := ls.spaceServiceProvider.open(ctx, ls.ID, ls.justCreated)
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 		return false
 	}
@@ -72,6 +74,10 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 		err = sp.WaitMandatoryObjects(ctx)
 	}
 	if err != nil {
+		closeErr := sp.Close(ctx)
+		if closeErr != nil {
+			log.WarnCtx(ctx, "space close error", zap.Error(closeErr))
+		}
 		ls.loadErr = err
 	} else {
 		ls.space = sp

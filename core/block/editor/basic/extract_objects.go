@@ -75,7 +75,7 @@ func (bs *basic) prepareTargetObjectDetails(
 	rootBlock simple.Block,
 	objectCreator ObjectCreator,
 ) (*types.Struct, error) {
-	objType, err := bs.systemObjectService.GetObjectByUniqueKey(spaceID, typeUniqueKey)
+	objType, err := bs.objectStore.GetObjectByUniqueKey(spaceID, typeUniqueKey)
 	if err != nil {
 		return nil, err
 	}

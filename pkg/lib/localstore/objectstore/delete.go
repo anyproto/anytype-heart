@@ -1,12 +1,14 @@
 package objectstore
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
@@ -59,11 +61,7 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 			}
 		}
 
-		txn, _, err = s.removeByPrefixInTx(txn, pagesInboundLinksBase.String()+"/"+id+"/")
-		if err != nil {
-			return err
-		}
-		txn, _, err = s.removeByPrefixInTx(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
+		txn, err = s.eraseLinksForObject(txn, id)
 		if err != nil {
 			return err
 		}
@@ -85,30 +83,39 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	})
 }
 
-func (s *dsObjectStore) removeByPrefixInTx(txn *badger.Txn, prefix string) (*badger.Txn, int, error) {
+func getLastPartOfKey(key []byte) string {
+	lastSlashIdx := bytes.LastIndexByte(key, '/')
+	if lastSlashIdx == -1 {
+		return string(key)
+	}
+	return string(key[lastSlashIdx+1:])
+}
+
+func (s *dsObjectStore) eraseLinksForObject(txn *badger.Txn, from string) (*badger.Txn, error) {
 	var toDelete [][]byte
-	err := iterateKeysByPrefixTx(txn, []byte(prefix), func(key []byte) {
-		toDelete = append(toDelete, key)
+	outboundPrefix := pagesOutboundLinksBase.ChildString(from).Bytes()
+	err := iterateKeysByPrefixTx(txn, outboundPrefix, func(key []byte) {
+		key = slices.Clone(key)
+		to := getLastPartOfKey(key)
+		toDelete = append(toDelete, key, inboundLinkKey(from, to).Bytes())
 	})
 	if err != nil {
-		return txn, 0, fmt.Errorf("iterate keys: %w", err)
+		return txn, fmt.Errorf("iterate keys: %w", err)
 	}
 
-	var removed int
 	for _, key := range toDelete {
 		err = txn.Delete(key)
 		if err == badger.ErrTxnTooBig {
 			err = txn.Commit()
 			if err != nil {
-				return txn, removed, fmt.Errorf("commit big transaction: %w", err)
+				return txn, fmt.Errorf("commit big transaction: %w", err)
 			}
 			txn = s.db.NewTransaction(true)
 			err = txn.Delete(key)
 		}
 		if err != nil {
-			return txn, removed, fmt.Errorf("delete key %s: %w", key, err)
+			return txn, fmt.Errorf("delete key %s: %w", key, err)
 		}
-		removed++
 	}
-	return txn, removed, nil
+	return txn, nil
 }
