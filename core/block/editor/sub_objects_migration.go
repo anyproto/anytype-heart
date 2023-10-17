@@ -33,7 +33,6 @@ type subObjectsMigration struct {
 const migratedKey = "_migrated"
 
 func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
-	st2 := st.NewState()
 	migratedSubObjects := 0
 	m.iterateAllSubObjects(
 		st,
@@ -56,7 +55,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 				format := pbtypes.GetInt64(info.Details, bundle.RelationKeyRelationFormat.String())
 				if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
 					// tags and statuses relations values are become readonly
-					st2.SetInStore(append(path, bundle.RelationKeyRelationReadonlyValue.String()), pbtypes.Bool(true))
+					st.SetInStore(append(path, bundle.RelationKeyRelationReadonlyValue.String()), pbtypes.Bool(true))
 				}
 				if !lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
 					// no need to restrict system types, they are already restricted
@@ -74,11 +73,11 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 				return
 			}
 
-			st2.SetInStore(append(path, migratedKey), pbtypes.Bool(true))
+			st.SetInStore(append(path, migratedKey), pbtypes.Bool(true))
 
 			// restrict all edits for older clients to avoid inconsistencies (migration only done once, changes are not going to sync)
 			if needToAddRestrictions {
-				st2.SetInStore(append(path, bundle.RelationKeyRestrictions.String()), pbtypes.IntList(1, 3, 4))
+				st.SetInStore(append(path, bundle.RelationKeyRestrictions.String()), pbtypes.IntList(1, 3, 4))
 			}
 
 			migratedSubObjects++
@@ -88,7 +87,7 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 		return
 	}
 	log.With("migrated", migratedSubObjects).Warnf("migrated sub-objects")
-	err := m.workspace.Apply(st2)
+	err := m.workspace.Apply(st)
 	if err != nil {
 		log.Errorf("failed to apply state: %v", err)
 	}
