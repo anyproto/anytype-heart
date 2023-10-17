@@ -439,11 +439,6 @@ func (s *Service) InstallBundledObjects(
 			if err != nil {
 				return err
 			}
-
-			// create via the state directly, because we have cyclic dependencies and we want to avoid typeId resolving from the details
-			st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
-			st.SetDetails(d)
-
 			var objectTypeKey domain.TypeKey
 			if uk.SmartblockType() == coresb.SmartBlockTypeRelation {
 				objectTypeKey = bundle.TypeKeyRelation
@@ -453,13 +448,10 @@ func (s *Service) InstallBundledObjects(
 				return fmt.Errorf("unsupported object type: %s", b.Type())
 			}
 
-			// TODO Use high-level interface
-			id, object, err := s.objectCreator.CreateSmartBlockFromStateInSpace(
-				ctx,
-				spc,
-				[]domain.TypeKey{objectTypeKey},
-				st,
-			)
+			id, object, err := s.objectCreator.CreateObject(ctx, spc.Id(), objectcreator.CreateObjectRequest{
+				Details:       d,
+				ObjectTypeKey: objectTypeKey,
+			})
 			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
 				// we don't want to stop adding other objects
 				log.Errorf("error while block create: %v", err)
