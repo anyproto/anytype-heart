@@ -58,7 +58,7 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 func (s *SpaceView) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc:    s.initTemplate,
 	}
 }
@@ -66,7 +66,7 @@ func (s *SpaceView) CreationStateMigration(ctx *smartblock.InitContext) migratio
 func (s *SpaceView) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{
 		{
-			Version: 1,
+			Version: 2,
 			Proc:    s.initTemplate,
 		},
 	})
