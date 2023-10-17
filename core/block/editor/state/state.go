@@ -492,6 +492,9 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		orig := s.PickOrigin(id)
 		if orig == nil {
 			bc := s.blocks[id].Copy()
+			if db, ok := bc.(simple.DetailsHandler); ok {
+				db.DetailsInit(s)
+			}
 			newBlocks = append(newBlocks, bc.Model())
 			action.Add = append(action.Add, bc)
 		} else {
