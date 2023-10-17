@@ -633,7 +633,8 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 		return
 	}
 	if lastChange != nil && !st.IsTheHeaderChange() {
-		st.SetLastModified(lastChange.Timestamp, lastChange.Identity.Account())
+		// todo: why do we don't need to set last modified for the header change?
+		st.SetLastModified(lastChange.Timestamp, addr.AccountIdToIdentityObjectId(lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
