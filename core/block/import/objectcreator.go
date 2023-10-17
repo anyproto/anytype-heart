@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -41,10 +42,11 @@ type ObjectCreator struct {
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
 	fileStore      filestore.FileStore
+	objectCreator  objectcreator.Service
 	mu             sync.Mutex
 }
 
-func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.Service) Creator {
+func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.Service, objectCreator objectcreator.Service) Creator {
 	return &ObjectCreator{
 		service:        service,
 		syncFactory:    syncFactory,
@@ -52,6 +54,7 @@ func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
 		spaceService:   spaceService,
+		objectCreator:  objectCreator,
 	}
 }
 
@@ -182,7 +185,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.service.InstallBundledObjects(ctx, spc, idsToCheck)
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck)
 	return err
 }
 
