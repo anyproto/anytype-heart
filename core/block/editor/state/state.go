@@ -1795,3 +1795,10 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 func (s *State) UniqueKeyInternal() string {
 	return s.uniqueKeyInternal
 }
+
+func IsRequiredBlockId(targetId string) bool {
+	return targetId == TitleBlockID ||
+		targetId == DescriptionBlockID ||
+		targetId == FeaturedRelationsID ||
+		targetId == HeaderLayoutID
+}
