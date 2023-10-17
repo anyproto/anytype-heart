@@ -32,12 +32,12 @@ func (r *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 	if id != "" {
 		return id, payload, nil
 	}
-	id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
-	uk, err := domain.UnmarshalUniqueKey(id)
+	rawUniqueKey := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+	uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 	if err != nil {
-		id = pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		uk, err = domain.UnmarshalUniqueKey(id)
-		if err != nil {
+		if sn.Snapshot.Data.Key != "" {
+			uniqueKey = domain.MustUniqueKey(sn.SbType, sn.Snapshot.Data.Key)
+		} else {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get unique key: %w", err)
 		}
 	}
@@ -47,7 +47,7 @@ func (r *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)
 	}
 	payload, err = spc.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
-		Key: uk,
+		Key: uniqueKey,
 	})
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("derive tree create payload: %w", err)
