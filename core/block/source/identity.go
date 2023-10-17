@@ -6,11 +6,9 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type identityService interface {
@@ -54,20 +52,6 @@ func (v *identity) SpaceID() string {
 
 func (v *identity) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeIdentity
-}
-
-func (v *identity) addRelationLinks(details *types.Struct, st *state.State) error {
-	for key := range details.Fields {
-		rel, err := bundle.GetRelation(domain.RelationKey(key))
-		if err != nil {
-			return err
-		}
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    rel.Key,
-			Format: rel.Format,
-		})
-	}
-	return nil
 }
 
 func (v *identity) detailsToState(details *types.Struct) (doc state.Doc) {

@@ -44,7 +44,6 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 func WithInternalKey(internalKey string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.internalKey = internalKey
-		return
 	}
 }
 

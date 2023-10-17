@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -160,33 +159,6 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 		}
 	}
 	return nil
-}
-
-// migrateID always returns ID, even if migration failed
-func (m *subObjectsAndProfileLinksMigration) migrateID(id string) (string, error) {
-	if m.profileID != "" && m.identityObjectID != "" && id == m.profileID {
-		return m.identityObjectID, nil
-	}
-
-	typeKey, err := bundle.TypeKeyFromUrl(id)
-	if err == nil {
-		typeID, err := m.space.GetTypeIdByKey(context.Background(), typeKey)
-		if err != nil {
-			return id, fmt.Errorf("migrate object type id %s: %w", id, err)
-		}
-		return typeID, nil
-	}
-
-	relationKey, err := bundle.RelationKeyFromID(id)
-	if err == nil {
-		relationID, err := m.space.GetRelationIdByKey(context.Background(), relationKey)
-		if err != nil {
-			return id, fmt.Errorf("migrate relation id %s: %w", id, err)
-		}
-		return relationID, nil
-	}
-
-	return id, nil
 }
 
 func (m *subObjectsAndProfileLinksMigration) canRelationContainObjectValues(format model.RelationFormat) bool {

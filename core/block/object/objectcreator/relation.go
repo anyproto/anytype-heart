@@ -38,12 +38,10 @@ func (s *service) createRelation(ctx context.Context, space space.Space, details
 	key := pbtypes.GetString(details, bundle.RelationKeyRelationKey.String())
 	if key == "" {
 		key = bson.NewObjectId().Hex()
-	} else {
-		// no need to check for the generated bson's
-		if bundle.HasRelation(key) {
-			object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
-		}
+	} else if bundle.HasRelation(key) {
+		object.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(addr.BundledRelationURLPrefix + key)
 	}
+
 	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, key)
 	if err != nil {
 		return "", nil, err

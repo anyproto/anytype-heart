@@ -47,6 +47,9 @@ func (s *service) InstallBundledObjects(
 			},
 		},
 	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("query existing objects: %w", err)
+	}
 	var existingObjectMap = make(map[string]struct{})
 	for _, existingObject := range existingObjects {
 		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
