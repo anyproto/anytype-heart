@@ -93,6 +93,9 @@ func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
+	for k, v := range details.GetFields() {
+		createState.SetDetail(k, v)
+	}
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
 }
 
@@ -144,21 +147,19 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 		return "", nil, fmt.Errorf("objectTypeKey to smartblockType: %w", err)
 	}
 
-	var relationKeys []string
-	for k, v := range createState.Details().GetFields() {
-		relationKeys = append(relationKeys, k)
-		createState.SetDetail(k, v)
-	}
-	for k, v := range createState.LocalDetails().GetFields() {
-		relationKeys = append(relationKeys, k)
-		createState.SetDetail(k, v)
-	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spc.Id()))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
 
+	var relationKeys []string
+	for k := range createState.Details().GetFields() {
+		relationKeys = append(relationKeys, k)
+	}
+	for k := range createState.LocalDetails().GetFields() {
+		relationKeys = append(relationKeys, k)
+	}
 	ctx = context.WithValue(ctx, eventCreate, ev)
 	initFunc := func(id string) *smartblock.InitContext {
 		createState.SetRootId(id)
