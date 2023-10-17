@@ -3,7 +3,6 @@ package bookmark
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -33,14 +32,14 @@ func NewBookmark(sb smartblock.SmartBlock, bookmarkSvc BookmarkService, objectSt
 }
 
 type Bookmark interface {
-	Fetch(ctx session.Context, id string, url string, isSync bool) (err error)
+	Fetch(ctx session.Context, id string, url string) (err error)
 	CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(ctx session.Context, id, groupId string, apply func(b bookmark.Block) error) (err error)
 }
 
 type BookmarkService interface {
 	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
-	Fetch(spaceID string, blockID string, params bookmark.FetchParams) (err error)
+	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
 }
 
 type sbookmark struct {
@@ -54,15 +53,15 @@ type BlockService interface {
 	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
-func (b *sbookmark) Fetch(ctx session.Context, id string, url string, isSync bool) (err error) {
+func (b *sbookmark) Fetch(ctx session.Context, id string, url string) (err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
-	if err = b.fetch(ctx, s, id, url, isSync); err != nil {
+	if err = b.fetch(ctx, s, id, url); err != nil {
 		return
 	}
 	return b.Apply(s)
 }
 
-func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, isSync bool) (err error) {
+func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string) (err error) {
 	bb := s.Get(id)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
@@ -72,22 +71,15 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 		// Do nothing
 	}
 	groupId := s.GroupId()
-	var updMu sync.Mutex
 	bm, ok := bb.(bookmark.Block)
 	if !ok {
 		return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 	}
 	bm.SetState(model.BlockContentBookmark_Fetching)
 
-	err = b.bookmarkSvc.Fetch(b.SpaceID(), id, bookmark.FetchParams{
+	b.bookmarkSvc.FetchAsync(b.SpaceID(), id, bookmark.FetchParams{
 		Url: url,
 		Updater: func(blockID string, apply func(b bookmark.Block) error) (err error) {
-			if isSync {
-				updMu.Lock()
-				defer updMu.Unlock()
-				return b.updateBlock(ctx, bm, apply)
-			}
-			// Async
 			return b.Space().Do(b.Id(), func(sb smartblock.SmartBlock) error {
 				bm, ok := sb.(Bookmark)
 				// Should never happen, because we're updating the same block
@@ -97,9 +89,8 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 				return bm.UpdateBookmark(ctx, blockID, groupId, apply)
 			})
 		},
-		Sync: isSync,
 	})
-	return err
+	return nil
 }
 
 func (b *sbookmark) CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
@@ -116,7 +107,7 @@ func (b *sbookmark) CreateAndFetch(ctx session.Context, req pb.RpcBlockBookmarkC
 	if err = s.InsertTo(req.TargetId, req.Position, newId); err != nil {
 		return
 	}
-	if err = b.fetch(ctx, s, newId, req.Url, false); err != nil {
+	if err = b.fetch(ctx, s, newId, req.Url); err != nil {
 		return
 	}
 	if err = b.Apply(s); err != nil {
