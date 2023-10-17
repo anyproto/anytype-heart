@@ -26,9 +26,11 @@ func (s *service) createObjectType(ctx context.Context, space space.Space, detai
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
-	details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uniqueKey.Marshal())
-
 	object := pbtypes.CopyStruct(details)
+
+	if _, ok := object.Fields[bundle.RelationKeyRecommendedLayout.String()]; !ok {
+		object.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(model.ObjectType_basic))
+	}
 	if len(pbtypes.GetStringList(object, bundle.RelationKeyRecommendedRelations.String())) == 0 {
 		err = s.fillRecommendedRelationsFromLayout(ctx, space, object)
 		if err != nil {
