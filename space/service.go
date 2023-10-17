@@ -3,19 +3,18 @@ package space
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -30,18 +29,13 @@ var (
 	ErrSpaceNotExists   = errors.New("space not exists")
 )
 
-func New() SpaceService {
+func New() Service {
 	return &service{}
 }
 
 type spaceIndexer interface {
-	ReindexCommonObjects() error
-	ReindexSpace(spaceID string) error
-}
-
-type bundledObjectsInstaller interface {
-	InstallBundledObjects(ctx context.Context, spaceID string, ids []string) ([]string, []*types.Struct, error)
-	app.Component
+	ReindexMarketplaceSpace(space Space) error
+	ReindexSpace(space Space) error
 }
 
 type isNewAccount interface {
@@ -49,37 +43,40 @@ type isNewAccount interface {
 	app.Component
 }
 
-type SpaceService interface {
+type Service interface {
 	Create(ctx context.Context) (space Space, err error)
-	Get(ctx context.Context, id string) (space Space, err error)
 
-	DerivedIDs(ctx context.Context, spaceId string) (ids threads.DerivedSmartblockIds, err error)
+	Get(ctx context.Context, id string) (space Space, err error)
+	GetPersonalSpace(ctx context.Context) (space Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 
 	app.ComponentRunnable
 }
 
 type service struct {
-	indexer     spaceIndexer
-	spaceCore   spacecore.SpaceCoreService
-	provider    objectprovider.ObjectProvider
-	objectCache objectcache.Cache
-	techSpace   techspace.TechSpace
+	indexer          spaceIndexer
+	spaceCore        spacecore.SpaceCoreService
+	techSpace        techspace.TechSpace
+	marketplaceSpace Space
+
+	bundledObjectsInstaller bundledObjectsInstaller
+	accountService          accountservice.Service
+	objectFactory           objectcache.ObjectFactory
 
 	personalSpaceID string
+	metadataPayload []byte
 
 	newAccount bool
 
-	statuses map[string]spaceinfo.SpaceInfo
-	loading  map[string]*loadingSpace
-	loaded   map[string]Space
+	createdSpaces map[string]struct{}
+	statuses      map[string]spaceinfo.SpaceInfo
+	loading       map[string]*loadingSpace
+	loaded        map[string]Space
 
 	mu sync.Mutex
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
-
-	derivedIDsCache ocache.OCache
 
 	repKey uint64
 }
@@ -87,51 +84,46 @@ type service struct {
 func (s *service) Init(a *app.App) (err error) {
 	s.indexer = app.MustComponent[spaceIndexer](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
-	installer := app.MustComponent[bundledObjectsInstaller](a)
-	s.provider = objectprovider.NewObjectProvider(s.objectCache, installer)
+	s.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
-	s.techSpace = app.MustComponent[techspace.TechSpace](a)
 
+	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
 	s.loaded = map[string]Space{}
 
-	s.derivedIDsCache = ocache.New(s.loadDerivedIDs)
-	return nil
+	return err
 }
 
 func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Run(_ context.Context) (err error) {
+func (s *service) Run(ctx context.Context) (err error) {
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-
-	s.personalSpaceID, err = s.spaceCore.DeriveID(s.ctx, spacecore.SpaceType)
+	s.metadataPayload, err = deriveAccountMetadata(s.accountService.Account().SignKey)
 	if err != nil {
 		return
 	}
-
-	// TODO: move this logic to any-sync
-	s.repKey, err = getRepKey(s.personalSpaceID)
+	err = s.initMarketplaceSpace()
 	if err != nil {
-		return
+		return fmt.Errorf("init marketplace space: %w", err)
 	}
-
-	err = s.indexer.ReindexCommonObjects()
+	err = s.initTechSpace()
 	if err != nil {
-		return
+		return fmt.Errorf("init tech space: %w", err)
 	}
-
-	if s.newAccount {
-		return s.createPersonalSpace(s.ctx)
+	err = s.initPersonalSpace()
+	if err != nil {
+		return fmt.Errorf("init personal space: %w", err)
 	}
-	return s.loadPersonalSpace(s.ctx)
+	return nil
 }
 
 func (s *service) Create(ctx context.Context) (Space, error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey)
+	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.metadataPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -145,53 +137,16 @@ func (s *service) Get(ctx context.Context, spaceID string) (sp Space, err error)
 	return s.waitLoad(ctx, spaceID)
 }
 
-func (s *service) open(ctx context.Context, spaceID string) (sp Space, err error) {
+func (s *service) GetPersonalSpace(ctx context.Context) (sp Space, err error) {
+	return s.Get(ctx, s.personalSpaceID)
+}
+
+func (s *service) open(ctx context.Context, spaceID string, justCreated bool) (sp Space, err error) {
 	coreSpace, err := s.spaceCore.Get(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}
-	derivedIDs, err := s.DerivedIDs(ctx, spaceID)
-	if err != nil {
-		return nil, err
-	}
-	sp = newSpace(s, coreSpace, derivedIDs)
-	return
-}
-
-func (s *service) createPersonalSpace(ctx context.Context) (err error) {
-	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
-	if err != nil {
-		return
-	}
-	_, err = s.create(ctx, coreSpace)
-	if err == nil {
-		return
-	}
-	if errors.Is(err, techspace.ErrSpaceViewExists) {
-		return s.loadPersonalSpace(ctx)
-	}
-	return
-}
-
-func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
-	err = s.startLoad(ctx, s.personalSpaceID)
-	// This could happen for old accounts
-	if errors.Is(err, ErrSpaceNotExists) {
-		err = s.techSpace.SpaceViewCreate(ctx, s.personalSpaceID)
-		if err != nil {
-			return err
-		}
-		err = s.startLoad(ctx, s.personalSpaceID)
-		if err != nil {
-			return err
-		}
-	}
-	if err != nil {
-		return
-	}
-
-	_, err = s.waitLoad(ctx, s.personalSpaceID)
-	return err
+	return s.newSpace(ctx, coreSpace, justCreated)
 }
 
 func (s *service) IsPersonal(id string) bool {
@@ -222,7 +177,17 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
-	return s.derivedIDsCache.Close()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, sp := range s.loaded {
+		err = sp.Close(ctx)
+		if err != nil {
+			log.Error("close space", zap.String("spaceId", sp.Id()), zap.Error(err))
+		}
+	}
+	return nil
 }
 
 func getRepKey(spaceID string) (uint64, error) {

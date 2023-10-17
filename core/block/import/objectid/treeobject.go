@@ -8,17 +8,17 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 type treeObject struct {
 	existingObject *existingObject
-	objectCache    objectcache.Cache
+	spaceService   space.Service
 }
 
-func newTreeObject(existingObject *existingObject, objectCache objectcache.Cache) *treeObject {
-	return &treeObject{existingObject: existingObject, objectCache: objectCache}
+func newTreeObject(existingObject *existingObject, spaceService space.Service) *treeObject {
+	return &treeObject{existingObject: existingObject, spaceService: spaceService}
 }
 
 func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
@@ -29,7 +29,11 @@ func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *co
 	if id != "" {
 		return id, payload, nil
 	}
-	payload, err = t.objectCache.CreateTreePayload(ctx, spaceID, payloadcreator.PayloadCreationParams{
+	spc, err := t.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)
+	}
+	payload, err = spc.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
 		Time:           createdTime,
 		SmartblockType: sn.SbType,
 	})

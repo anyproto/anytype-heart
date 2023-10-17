@@ -37,6 +37,9 @@ linters-settings:
       - name: var-naming
         severity: warning
         disabled: true
+  gosec:
+    excludes:
+      - G602
 
 linters:
   disable-all: true

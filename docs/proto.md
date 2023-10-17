@@ -819,10 +819,6 @@
     - [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request)
     - [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response)
     - [Rpc.ObjectType.Relation.Add.Response.Error](#anytype-Rpc-ObjectType-Relation-Add-Response-Error)
-    - [Rpc.ObjectType.Relation.List](#anytype-Rpc-ObjectType-Relation-List)
-    - [Rpc.ObjectType.Relation.List.Request](#anytype-Rpc-ObjectType-Relation-List-Request)
-    - [Rpc.ObjectType.Relation.List.Response](#anytype-Rpc-ObjectType-Relation-List-Response)
-    - [Rpc.ObjectType.Relation.List.Response.Error](#anytype-Rpc-ObjectType-Relation-List-Response-Error)
     - [Rpc.ObjectType.Relation.Remove](#anytype-Rpc-ObjectType-Relation-Remove)
     - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
     - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
@@ -1132,7 +1128,6 @@
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
-    - [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-List-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
@@ -1405,6 +1400,9 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [Metadata](#anytype-model-Metadata)
+    - [Metadata.Payload](#anytype-model-Metadata-Payload)
+    - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1564,7 +1562,6 @@
 | ObjectRelationRemoveFeatured | [Rpc.ObjectRelation.RemoveFeatured.Request](#anytype-Rpc-ObjectRelation-RemoveFeatured-Request) | [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response) |  |
 | ObjectRelationListAvailable | [Rpc.ObjectRelation.ListAvailable.Request](#anytype-Rpc-ObjectRelation-ListAvailable-Request) | [Rpc.ObjectRelation.ListAvailable.Response](#anytype-Rpc-ObjectRelation-ListAvailable-Response) |  |
 | ObjectCreateObjectType | [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request) | [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response) | ObjectType commands *** |
-| ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype-Rpc-ObjectType-Relation-List-Request) | [Rpc.ObjectType.Relation.List.Response](#anytype-Rpc-ObjectType-Relation-List-Response) |  |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
@@ -13599,64 +13596,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-ObjectType-Relation-List"></a>
-
-### Rpc.ObjectType.Relation.List
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-List-Request"></a>
-
-### Rpc.ObjectType.Relation.List.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
-| appendRelationsFromOtherTypes | [bool](#bool) |  | add relations from other object types in the end |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-List-Response"></a>
-
-### Rpc.ObjectType.Relation.List.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Relation.List.Response.Error](#anytype-Rpc-ObjectType-Relation-List-Response-Error) |  |  |
-| relations | [model.RelationLink](#anytype-model-RelationLink) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-List-Response-Error"></a>
-
-### Rpc.ObjectType.Relation.List.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-List-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-ObjectType-Relation-Remove"></a>
 
 ### Rpc.ObjectType.Relation.Remove
@@ -17860,20 +17799,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-ObjectType-Relation-List-Response-Error-Code"></a>
-
-### Rpc.ObjectType.Relation.List.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
-
-
-
 <a name="anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Relation.Remove.Response.Error.Code
@@ -20450,7 +20375,7 @@ Precondition: user A opened a block
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
-| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  | deprecated, source is no longer used |
 | blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
 | blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
@@ -21246,7 +21171,6 @@ Precondition: user A and user B opened the same block
 | relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  | DEPRECATED |
-| objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 
 
 
@@ -21447,6 +21371,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | accountSpaceId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
 | spaceViewId | [string](#string) |  |  |
+| techSpaceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
@@ -22125,6 +22050,46 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Metadata"></a>
+
+### Metadata
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload"></a>
+
+### Metadata.Payload
+
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload-IdentityPayload"></a>
+
+### Metadata.Payload.IdentityPayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| profileSymKey | [bytes](#bytes) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Object"></a>
 
 ### Object
@@ -22621,6 +22586,7 @@ stored |
 | List | 1 |  |
 | Gallery | 2 |  |
 | Kanban | 3 |  |
+| Calendar | 4 |  |
 
 
 
@@ -23009,6 +22975,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STType | 528 |  |
 | STRelationOption | 529 |  |
 | SpaceView | 530 |  |
+| Identity | 532 |  |
 | MissingObject | 519 |  |
 
 

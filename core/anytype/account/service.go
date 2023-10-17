@@ -9,12 +9,13 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -33,16 +34,19 @@ type Service interface {
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
 	PersonalSpaceID() string
+	IdentityObjectId() string
+	LocalProfile() (Profile, error)
 }
 
 type service struct {
 	spaceCore    spacecore.SpaceCoreService
-	spaceService space.SpaceService
+	spaceService space.Service
 	wallet       wallet.Wallet
 	gateway      gateway.Gateway
 	config       *config.Config
+	objectStore  objectstore.ObjectStore
 
-	objectCache     objectcache.Cache
+	picker          getblock.ObjectGetter
 	once            sync.Once
 	personalSpaceID string
 }
@@ -52,12 +56,13 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.spaceService = app.MustComponent[space.SpaceService](a)
+	s.spaceService = app.MustComponent[space.Service](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.gateway = app.MustComponent[gateway.Gateway](a)
 	s.config = app.MustComponent[*config.Config](a)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
+	s.picker = app.MustComponent[getblock.ObjectGetter](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.personalSpaceID, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
 	return
 }
@@ -102,10 +107,15 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
-	// TODO Temporary
-	personalIds, err := s.getIds(ctx, s.PersonalSpaceID())
+	profileSpace, err := s.spaceService.GetPersonalSpace(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get derived ids: %w", err)
+		return nil, fmt.Errorf("get personal space: %w", err)
+	}
+	profileObjectId := profileSpace.DerivedIDs().Profile
+
+	techSpaceId, err := s.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive tech space id: %w", err)
 	}
 
 	ids, err := s.getIds(ctx, spaceID)
@@ -113,15 +123,19 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		return nil, fmt.Errorf("failed to get derived ids: %w", err)
 	}
 
-	spaceViewId, err := s.spaceService.SpaceViewId(spaceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+	var spaceViewId string
+	// Tech space doesn't have space view
+	if spaceID != techSpaceId {
+		spaceViewId, err = s.spaceService.SpaceViewId(spaceID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get spaceViewId: %w", err)
+		}
 	}
 
 	return &model.AccountInfo{
 		HomeObjectId:           ids.Home,
 		ArchiveObjectId:        ids.Archive,
-		ProfileObjectId:        personalIds.Profile,
+		ProfileObjectId:        profileObjectId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		DeviceId:               deviceId,
 		AccountSpaceId:         spaceID,
@@ -136,7 +150,11 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 }
 
 func (s *service) getIds(ctx context.Context, spaceID string) (ids threads.DerivedSmartblockIds, err error) {
-	return s.spaceService.DerivedIDs(ctx, spaceID)
+	spc, err := s.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return ids, fmt.Errorf("failed to get space: %w", err)
+	}
+	return spc.DeriveObjectIDs(ctx)
 }
 
 func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
@@ -147,22 +165,16 @@ func (s *service) getAnalyticsID(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get derived ids: %w", err)
 	}
-	sb, err := s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: ids.Workspace,
-		SpaceID:  s.personalSpaceID,
-	})
-	if err != nil {
-		return "", err
-	}
-
 	var analyticsID string
-	st := sb.NewState().GetSetting(state.SettingsAnalyticsId)
-	if st == nil {
-		log.Errorf("analytics id not found")
-	} else {
-		analyticsID = st.GetStringValue()
-	}
-
+	err = getblock.Do(s.picker, ids.Workspace, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState().GetSetting(state.SettingsAnalyticsId)
+		if st == nil {
+			log.Errorf("analytics id not found")
+		} else {
+			analyticsID = st.GetStringValue()
+		}
+		return nil
+	})
 	return analyticsID, err
 }
 

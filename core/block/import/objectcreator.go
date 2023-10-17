@@ -16,11 +16,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -38,8 +36,7 @@ const relationsLimit = 10
 
 type ObjectCreator struct {
 	service        *block.Service
-	objectCache    objectcache.Cache
-	spaceService   space.SpaceService
+	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
@@ -47,22 +44,14 @@ type ObjectCreator struct {
 	mu             sync.Mutex
 }
 
-func NewCreator(service *block.Service,
-	cache objectcache.Cache,
-	spaceService space.SpaceService,
-	syncFactory *syncer.Factory,
-	objectStore objectstore.ObjectStore,
-	relationSyncer syncer.RelationSyncer,
-	fileStore filestore.FileStore,
-) Creator {
+func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.Service) Creator {
 	return &ObjectCreator{
 		service:        service,
-		spaceService:   spaceService,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
-		objectCache:    cache,
+		spaceService:   spaceService,
 	}
 }
 
@@ -94,13 +83,11 @@ func (oc *ObjectCreator) Create(
 			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
 			log.With("objectID", sn.Id).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
 		}
-	}
-	derivedSmartblockIds, err := oc.spaceService.DerivedIDs(ctx, spaceID)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to create imported object %s, %s", newID, err)
+		if lastModifiedDate > 0 {
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModifiedDate))
+		}
 	}
 
-	st.SetLastModified(lastModifiedDate, derivedSmartblockIds.Profile)
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -114,7 +101,7 @@ func (oc *ObjectCreator) Create(
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(st, derivedSmartblockIds.Workspace)
+		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
 	}
 
@@ -191,7 +178,11 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 		idsToCheck = append(idsToCheck, addr.BundledObjectTypeURLPrefix+string(typeKey))
 	}
 
-	_, _, err := oc.service.InstallBundledObjects(ctx, spaceID, idsToCheck)
+	spc, err := oc.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return fmt.Errorf("get space %s: %w", spaceID, err)
+	}
+	_, _, err = oc.service.InstallBundledObjects(ctx, spc, idsToCheck)
 	return err
 }
 
@@ -203,7 +194,11 @@ func (oc *ObjectCreator) createNewObject(
 	newID string,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
 	var respDetails *types.Struct
-	sb, err := oc.objectCache.CreateTreeObjectWithPayload(ctx, spaceID, payload, func(id string) *smartblock.InitContext {
+	spc, err := oc.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space %s: %w", spaceID, err)
+	}
+	sb, err := spc.CreateTreeObjectWithPayload(ctx, payload, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,
@@ -214,7 +209,7 @@ func (oc *ObjectCreator) createNewObject(
 	if err == nil {
 		respDetails = sb.Details()
 	} else if errors.Is(err, treestorage.ErrTreeExists) {
-		err = getblock.Do(oc.service, newID, func(sb smartblock.SmartBlock) error {
+		err = spc.Do(newID, func(sb smartblock.SmartBlock) error {
 			respDetails = sb.Details()
 			return nil
 		})
@@ -302,7 +297,7 @@ func (oc *ObjectCreator) deleteFile(hash string) {
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, workspace string) {
+func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []*pb.RpcObjectSetDetailsDetail
 	spaceDashBoardID := pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
@@ -329,7 +324,12 @@ func (oc *ObjectCreator) setSpaceDashboardID(st *state.State, workspace string) 
 		})
 	}
 	if len(details) > 0 {
-		err := block.Do(oc.service, workspace, func(ws basic.CommonOperations) error {
+		spc, err := oc.spaceService.Get(context.Background(), spaceID)
+		if err != nil {
+			log.Errorf("failed to get space: %v", err)
+			return
+		}
+		err = block.Do(oc.service, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}

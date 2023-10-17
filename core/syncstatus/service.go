@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -66,7 +65,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 	dbProvider := app.MustComponent[datastore.Datastore](a)
 	personalIDProvider := app.MustComponent[personalIDProvider](a)
-	coreService := app.MustComponent[core.Service](a)
 	nodeConfService := app.MustComponent[nodeconf.Service](a)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	picker := app.MustComponent[getblock.ObjectGetter](a)
@@ -75,7 +73,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	fileStatusRegistry := newFileStatusRegistry(s.fileSyncService, fileStore, picker, s.fileWatcherUpdateInterval)
 	s.linkedFilesWatcher = newLinkedFilesWatcher(fileStatusRegistry)
-	s.updateReceiver = newUpdateReceiver(coreService, s.linkedFilesWatcher, nodeConfService, cfg, eventSender)
+	s.updateReceiver = newUpdateReceiver(s.linkedFilesWatcher, nodeConfService, cfg, eventSender)
 	s.fileWatcher = newFileWatcher(personalIDProvider, dbProvider, fileStatusRegistry, s.updateReceiver, s.fileWatcherUpdateInterval)
 
 	s.fileSyncService.OnUpload(s.OnFileUpload)

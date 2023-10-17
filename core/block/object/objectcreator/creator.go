@@ -18,18 +18,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -49,19 +47,13 @@ type Service interface {
 }
 
 type Creator struct {
-	blockService        BlockService
-	objectCache         objectcache.Cache
-	blockPicker         block.ObjectGetter
-	objectStore         objectstore.ObjectStore
-	collectionService   CollectionService
-	systemObjectService system_object.Service
-	bookmark            bookmark.Service
-	app                 *app.App
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	creator             Service //nolint:unused
-
-	// TODO: remove it?
-	coreService core.Service
+	blockService      BlockService
+	blockPicker       block.ObjectGetter
+	objectStore       objectstore.ObjectStore
+	collectionService CollectionService
+	bookmark          bookmark.Service
+	app               *app.App
+	spaceService      space.Service
 }
 
 type CollectionService interface {
@@ -74,15 +66,11 @@ func NewCreator() *Creator {
 
 func (c *Creator) Init(a *app.App) (err error) {
 	c.blockService = a.MustComponent(block.CName).(BlockService)
-	c.objectCache = a.MustComponent(objectcache.CName).(objectcache.Cache)
 	c.blockPicker = a.MustComponent(block.CName).(block.ObjectGetter)
 	c.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
-	c.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	c.collectionService = app.MustComponent[CollectionService](a)
-	c.systemObjectService = app.MustComponent[system_object.Service](a)
-	c.coreService = app.MustComponent[core.Service](a)
-	c.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	c.spaceService = app.MustComponent[space.Service](a)
 	c.app = a
 	return nil
 }
@@ -114,6 +102,14 @@ func (c *Creator) CreateSmartBlockFromTemplate(ctx context.Context, spaceID stri
 // CreateSmartBlockFromState create new object from the provided `createState` and `details`. If you pass `details` into the function, it will automatically add missing relationLinks and override the details from the `createState`
 // It will return error if some of the relation keys in `details` not installed in the workspace.
 func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
+	spc, err := c.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", nil, err
+	}
+	return c.CreateSmartBlockFromStateInSpace(ctx, spc, sbType, objectTypeKeys, details, createState)
+}
+
+func (c *Creator) CreateSmartBlockFromStateInSpace(ctx context.Context, spc space.Space, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	if createState == nil {
 		createState = state.NewDoc("", nil).(*state.State)
 	}
@@ -139,12 +135,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			createState.SetDetail(k, v)
 		}
 	}
-
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(c.coreService.ProfileID(spaceID)))
-
-	// todo: find a proper way to inject the spaceID as soon as possible into the createState
-	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spc.Id()))
 
 	ev := &metrics.CreateObjectEvent{
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
@@ -158,18 +149,17 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			ObjectTypeKeys: objectTypeKeys,
 			State:          createState,
 			RelationKeys:   relationKeys,
-			SpaceID:        spaceID,
+			SpaceID:        spc.Id(),
 		}
 	}
 
 	var sb smartblock.SmartBlock
-
 	if uKey := createState.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)
 		if err != nil {
 			return "", nil, err
 		}
-		sb, err = c.objectCache.DeriveTreeObject(ctx, spaceID, objectcache.TreeDerivationParams{
+		sb, err = spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 			Key:      uk,
 			InitFunc: initFunc,
 		})
@@ -177,7 +167,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 			return "", nil, err
 		}
 	} else {
-		sb, err = c.objectCache.CreateTreeObject(ctx, spaceID, objectcache.TreeCreationParams{
+		sb, err = spc.CreateTreeObject(ctx, objectcache.TreeCreationParams{
 			Time:           time.Now(),
 			SmartblockType: sbType,
 			InitFunc:       initFunc,
@@ -198,7 +188,7 @@ func (c *Creator) CreateSmartBlockFromState(ctx context.Context, spaceID string,
 func (c *Creator) CreateSet(ctx context.Context, req *pb.RpcObjectCreateSetRequest) (setID string, newDetails *types.Struct, err error) {
 	req.Details = internalflag.PutToDetails(req.Details, req.InternalFlags)
 
-	dvContent, err := dataview.BlockBySource(req.SpaceId, c.sbtProvider, c.systemObjectService, req.Source)
+	dvContent, err := dataview.BlockBySource(c.objectStore, req.Source)
 	if err != nil {
 		return
 	}
@@ -341,12 +331,16 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		recommendedRelationKeys = append(recommendedRelationKeys, rel.Key)
 	}
 	recommendedRelationIDs := make([]string, 0, len(recommendedRelationKeys))
+	spc, err := w.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
 	for _, relKey := range recommendedRelationKeys {
 		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, relKey)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to create unique Key: %w", err)
 		}
-		id, err := w.objectCache.DeriveObjectID(ctx, spaceID, uk)
+		id, err := spc.DeriveObjectID(ctx, uk)
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to derive object id: %w", err)
 		}
@@ -378,23 +372,25 @@ func (w *Creator) createObjectType(ctx context.Context, spaceID string, details 
 		return "", nil, fmt.Errorf("query bundled templates: %w", err)
 	}
 
-	alreadyInstalledTemplates, _, err := w.objectStore.Query(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(w.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyTemplate)),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       object.Fields[bundle.RelationKeyType.String()],
-			},
-		},
-	})
-	if err != nil {
-		return
-	}
+	var alreadyInstalledTemplates []database.Record
+	// TODO Will be fixed in GO-2169 soon
+	// alreadyInstalledTemplates, _, err := w.objectStore.Query(database.Query{
+	// 	Filters: []*model.BlockContentDataviewFilter{
+	// 		{
+	// 			RelationKey: bundle.RelationKeyType.String(),
+	// 			Condition:   model.BlockContentDataviewFilter_Equal,
+	// 			Value:       pbtypes.String(w.coreService.GetSystemTypeID(spaceID, bundle.TypeKeyTemplate)),
+	// 		},
+	// 		{
+	// 			RelationKey: bundle.RelationKeyTargetObjectType.String(),
+	// 			Condition:   model.BlockContentDataviewFilter_Equal,
+	// 			Value:       object.Fields[bundle.RelationKeyType.String()],
+	// 		},
+	// 	},
+	// })
+	// if err != nil {
+	// 	return
+	// }
 
 	var existingTemplatesMap = map[string]struct{}{}
 	for _, rec := range alreadyInstalledTemplates {
@@ -488,4 +484,13 @@ func (c *Creator) CreateObject(ctx context.Context, spaceID string, req block.De
 	}
 
 	return c.CreateSmartBlockFromTemplate(ctx, spaceID, sbType, []domain.TypeKey{objectTypeKey}, details, templateID)
+}
+
+// TODO Temporarily home. Refactor to use CreateObject after object creator refactoring
+func (c *Creator) DeriveTreeObject(ctx context.Context, spaceID string, params objectcache.TreeDerivationParams) (sb smartblock.SmartBlock, err error) {
+	spc, err := c.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space: %w", err)
+	}
+	return spc.DeriveTreeObject(ctx, params)
 }

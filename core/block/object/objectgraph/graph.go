@@ -7,11 +7,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -39,11 +37,9 @@ type Service interface {
 }
 
 type Builder struct {
-	graphService        Service //nolint:unused
-	systemObjectService system_object.Service
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	coreService         core.Service
-	objectStore         objectstore.ObjectStore
+	graphService Service //nolint:unused
+	sbtProvider  typeprovider.SmartBlockTypeProvider
+	objectStore  objectstore.ObjectStore
 
 	*app.App
 }
@@ -54,9 +50,7 @@ func NewBuilder() *Builder {
 
 func (gr *Builder) Init(a *app.App) (err error) {
 	gr.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	gr.systemObjectService = app.MustComponent[system_object.Service](a)
 	gr.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	gr.coreService = app.MustComponent[core.Service](a)
 	return nil
 }
 
@@ -120,7 +114,7 @@ func (gr *Builder) extractGraph(
 }
 
 func (gr *Builder) provideRelations(spaceID string) (relationutils.Relations, error) {
-	relations, err := gr.systemObjectService.ListAllRelations(spaceID)
+	relations, err := gr.objectStore.ListAllRelations(spaceID)
 	return relations, err
 }
 

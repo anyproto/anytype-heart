@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -36,6 +37,10 @@ func MakeFiltersAnd(protoFilters []*model.BlockContentDataviewFilter, store Obje
 		}
 	}
 	return and, nil
+}
+
+func NestedRelationKey(baseRelationKey domain.RelationKey, nestedRelationKey domain.RelationKey) string {
+	return fmt.Sprintf("%s.%s", baseRelationKey.String(), nestedRelationKey.String())
 }
 
 func MakeFilter(spaceID string, rawFilter *model.BlockContentDataviewFilter, store ObjectStore) (Filter, error) {

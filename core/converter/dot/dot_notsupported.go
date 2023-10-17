@@ -6,14 +6,14 @@ package dot
 import (
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
-func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider, _ system_object.Service) converter.MultiConverter {
+func NewMultiConverter(format int, _ typeprovider.SmartBlockTypeProvider) converter.MultiConverter {
 	return &dot{}
 }
 
@@ -44,7 +44,7 @@ func (d *dot) ImageHashes() []string {
 	return nil
 }
 
-func (d *dot) Add(st *state.State) error {
+func (d *dot) Add(space smartblock.Space, st *state.State) error {
 	return nil
 }
 

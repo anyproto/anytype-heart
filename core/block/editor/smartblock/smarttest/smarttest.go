@@ -1,12 +1,14 @@
 package smarttest
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -14,14 +16,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/testMock"
 )
 
@@ -38,7 +41,6 @@ var _ smartblock.SmartBlock = &SmartTest{}
 
 type SmartTest struct {
 	Results          Results
-	anytype          *testMock.MockService
 	id               string
 	hist             undo.History
 	TestRestrictions restriction.Restrictions
@@ -54,6 +56,45 @@ type SmartTest struct {
 }
 
 func (st *SmartTest) SpaceID() string { return "" }
+
+type stubSpace struct {
+}
+
+func (s *stubSpace) Id() string {
+	return ""
+}
+
+func (s *stubSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
+	return nil
+}
+
+func (s *stubSpace) DerivedIDs() threads.DerivedSmartblockIds {
+	return threads.DerivedSmartblockIds{}
+}
+
+func (s *stubSpace) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
+	return
+}
+
+func (s *stubSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
+	return
+}
+
+func (s *stubSpace) DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error) {
+	return
+}
+
+func (s *stubSpace) Do(objectId string, apply func(sb smartblock.SmartBlock) error) error {
+	return nil
+}
+
+func (s *stubSpace) DoLockedIfNotExists(objectID string, proc func() error) error {
+	return nil
+}
+
+func (st *SmartTest) Space() smartblock.Space {
+	return &stubSpace{}
+}
 
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
 	return
@@ -272,14 +313,6 @@ func (st *SmartTest) History() undo.History {
 	return st.hist
 }
 
-func (st *SmartTest) Anytype() core.Service {
-	return st.anytype
-}
-
-func (st *SmartTest) MockAnytype() *testMock.MockService {
-	return st.anytype
-}
-
 func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 	st.Doc.(*state.State).Add(b)
 	return st
@@ -318,6 +351,10 @@ func (st *SmartTest) ObjectCloseAllSessions() {
 
 func (st *SmartTest) RegisterSession(session.Context) {
 
+}
+
+func (st *SmartTest) UniqueKey() domain.UniqueKey {
+	return nil
 }
 
 type Results struct {

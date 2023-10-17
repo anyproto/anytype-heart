@@ -45,7 +45,7 @@ type Debug interface {
 type debug struct {
 	block        *block.Service
 	store        objectstore.ObjectStore
-	spaceService space.SpaceService
+	spaceService space.Service
 	resolver     idresolver.Resolver
 
 	server *http.Server
@@ -58,7 +58,7 @@ type Debuggable interface {
 func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	d.block = a.MustComponent(block.CName).(*block.Service)
-	d.spaceService = app.MustComponent[space.SpaceService](a)
+	d.spaceService = app.MustComponent[space.Service](a)
 	d.resolver = app.MustComponent[idresolver.Resolver](a)
 
 	d.initHandlers(a)

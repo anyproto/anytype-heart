@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -59,7 +58,7 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *converter.S
 				Value:       pbtypes.String(spaceID),
 			},
 		},
-	}, []sb.SmartBlockType{sn.SbType})
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
@@ -78,7 +77,7 @@ func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *converter.S
 				Value:       pbtypes.String(spaceID),
 			},
 		},
-	}, []sb.SmartBlockType{sn.SbType})
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
@@ -101,7 +100,7 @@ func (e *existingObject) getExistingObject(spaceID string, sn *converter.Snapsho
 				Value:       pbtypes.String(spaceID),
 			},
 		},
-	}, []sb.SmartBlockType{sn.SbType})
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0]
 	}
@@ -129,7 +128,7 @@ func (e *existingObject) getExistingRelationOption(snapshot *converter.Snapshot)
 				Value:       pbtypes.String(bundle.TypeKeyRelationOption.URL()),
 			},
 		},
-	}, []sb.SmartBlockType{snapshot.SbType})
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0]
 	}

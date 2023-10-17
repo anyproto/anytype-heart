@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/mock_core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -66,7 +65,6 @@ func TestFileAdd(t *testing.T) {
 	personalSpaceIdGetter := &personalSpaceIdStub{personalSpaceId: spaceId}
 	spaceIdResolver := &spaceResolverStub{spaceId: spaceId}
 
-	coreService := mock_core.NewMockService(t)
 	objectStore := objectstore.NewStoreFixture(t)
 
 	eventSender := mock_event.NewMockSender(t)
@@ -77,7 +75,6 @@ func TestFileAdd(t *testing.T) {
 	a.Register(filestore.New())
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
-	a.Register(testutil.PrepareMock(ctx, a, coreService))
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(blockStorage)
 	a.Register(objectStore)

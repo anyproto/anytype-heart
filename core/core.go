@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
@@ -89,13 +88,6 @@ func requireApp(a *app.App) {
 	if a == nil {
 		panic(ErrNotLoggedIn)
 	}
-}
-
-func (mw *Middleware) GetAnytype() core.Service {
-	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent("anytype").(core.Service)
-	}
-	return nil
 }
 
 func (mw *Middleware) GetApp() *app.App {

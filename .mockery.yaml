@@ -34,10 +34,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/system_object:
-    interfaces:
-      Service:
-      deriver:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
@@ -56,14 +52,19 @@ packages:
   github.com/anyproto/anytype-heart/core/indexer:
     interfaces:
       Indexer:
-  github.com/anyproto/anytype-heart/space:
-    interfaces:
-      Service:
-      bundledObjectsInstaller:
-      isNewAccount:
   github.com/anyproto/anytype-heart/space/spacecore:
     interfaces:
       SpaceCoreService:
   github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
+  github.com/anyproto/anytype-heart/space:
+    interfaces:
+      bundledObjectsInstaller:
+        config:
+          dir: "{{.InterfaceDir}}"
+          inpackage: true
+      isNewAccount:
+        config:
+          dir: "{{.InterfaceDir}}"
+          inpackage: true

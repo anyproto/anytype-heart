@@ -164,7 +164,7 @@ func (mw *Middleware) WorkspaceObjectListAdd(cctx context.Context, req *pb.RpcWo
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		ids, _, err = bs.InstallBundledObjects(cctx, req.SpaceId, req.ObjectIds)
+		ids, _, err = bs.SpaceInstallBundledObjects(cctx, req.SpaceId, req.ObjectIds)
 		return
 	})
 
@@ -191,7 +191,7 @@ func (mw *Middleware) WorkspaceObjectAdd(cctx context.Context, req *pb.RpcWorksp
 	)
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, details, err = bs.InstallBundledObject(cctx, req.SpaceId, req.ObjectId)
+		id, details, err = bs.SpaceInstallBundledObject(cctx, req.SpaceId, req.ObjectId)
 		return
 	})
 

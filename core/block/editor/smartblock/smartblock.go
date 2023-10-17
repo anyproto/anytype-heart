@@ -10,8 +10,10 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
+
 	// nolint:misspell
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
@@ -26,18 +28,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -86,29 +87,42 @@ const CallerKey key = 0
 var log = logging.Logger("anytype-mw-smartblock")
 
 func New(
-	coreService core.Service,
+	space Space,
+	currentProfileId string,
 	fileService files.Service,
 	restrictionService restriction.Service,
 	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
 	indexer Indexer,
 	eventSender event.Sender,
 ) SmartBlock {
 	s := &smartBlock{
-		hooks:     map[Hook][]HookCallback{},
-		hooksOnce: map[string]struct{}{},
-		Locker:    &sync.Mutex{},
-		sessions:  map[string]session.Context{},
+		currentProfileId: currentProfileId,
+		space:            space,
+		hooks:            map[Hook][]HookCallback{},
+		hooksOnce:        map[string]struct{}{},
+		Locker:           &sync.Mutex{},
+		sessions:         map[string]session.Context{},
 
-		coreService:         coreService,
-		fileService:         fileService,
-		restrictionService:  restrictionService,
-		objectStore:         objectStore,
-		systemObjectService: systemObjectService,
-		indexer:             indexer,
-		eventSender:         eventSender,
+		fileService:        fileService,
+		restrictionService: restrictionService,
+		objectStore:        objectStore,
+		indexer:            indexer,
+		eventSender:        eventSender,
 	}
 	return s
+}
+
+type Space interface {
+	Id() string
+	TreeBuilder() objecttreebuilder.TreeBuilder
+	DerivedIDs() threads.DerivedSmartblockIds
+
+	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
+	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
+
+	Do(objectId string, apply func(sb SmartBlock) error) error
+	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
 }
 
 type SmartBlock interface {
@@ -117,6 +131,7 @@ type SmartBlock interface {
 	Id() string
 	SpaceID() string
 	Type() smartblock.SmartBlockType
+	UniqueKey() domain.UniqueKey
 	Show() (obj *model.ObjectView, err error)
 	RegisterSession(session.Context)
 	Apply(s *state.State, flags ...ApplyFlag) error
@@ -145,6 +160,8 @@ type SmartBlock interface {
 	ObjectCloseAllSessions()
 	FileRelationKeys(s *state.State) []string
 
+	Space() Space
+
 	ocache.Object
 	state.Doc
 	sync.Locker
@@ -153,13 +170,15 @@ type SmartBlock interface {
 
 type DocInfo struct {
 	Id         string
-	SpaceID    string
+	Space      Space
 	Links      []string
 	FileHashes []string
 	Heads      []string
 	Creator    string
 	Type       domain.TypeKey
 	Details    *types.Struct
+
+	SmartblockType smartblock.SmartBlockType
 }
 
 // TODO Maybe create constructor? Don't want to forget required fields
@@ -196,14 +215,15 @@ type smartBlock struct {
 	state.Doc
 	objecttree.ObjectTree
 	Locker
-	depIds         []string // slice must be sorted
-	sessions       map[string]session.Context
-	undo           undo.History
-	source         source.Source
-	lastDepDetails map[string]*pb.EventObjectDetailsSet
-	restrictions   restriction.Restrictions
-	isDeleted      bool
-	disableLayouts bool
+	currentProfileId string
+	depIds           []string // slice must be sorted
+	sessions         map[string]session.Context
+	undo             undo.History
+	source           source.Source
+	lastDepDetails   map[string]*pb.EventObjectDetailsSet
+	restrictions     restriction.Restrictions
+	isDeleted        bool
+	disableLayouts   bool
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -213,14 +233,14 @@ type smartBlock struct {
 	recordsSub      database.Subscription
 	closeRecordsSub func()
 
+	space Space
+
 	// Deps
-	coreService         core.Service
-	fileService         files.Service
-	restrictionService  restriction.Service
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	indexer             Indexer
-	eventSender         event.Sender
+	fileService        files.Service
+	restrictionService restriction.Service
+	objectStore        objectstore.ObjectStore
+	indexer            Indexer
+	eventSender        event.Sender
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -250,6 +270,10 @@ func (sb *smartBlock) Id() string {
 
 func (sb *smartBlock) SpaceID() string {
 	return sb.source.SpaceID()
+}
+
+func (sb *smartBlock) Space() Space {
+	return sb.space
 }
 
 // UniqueKey returns the unique key for types that support it. For example, object types, relations and relation options
@@ -497,7 +521,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, includeCreatorModifier, _ bool) (ids []string) {
-	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.systemObjectService, true, true, includeRelations, includeObjTypes, includeCreatorModifier)
+	return objectlink.DependentObjectIDs(sb.Doc.(*state.State), sb.Space(), true, true, includeRelations, includeObjTypes, includeCreatorModifier)
 }
 
 func (sb *smartBlock) navigationalLinks(s *state.State) []string {
@@ -543,7 +567,7 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 
 	for _, rel := range s.GetRelationLinks() {
 		if includeRelations {
-			relId, err := sb.systemObjectService.GetRelationIdByKey(context.TODO(), sb.SpaceID(), domain.RelationKey(rel.Key))
+			relId, err := sb.space.GetRelationIdByKey(context.TODO(), domain.RelationKey(rel.Key))
 			if err != nil {
 				log.With("objectID", s.RootId()).Errorf("failed to derive object id for relation: %s", err)
 				continue
@@ -651,22 +675,23 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	var lastModified = time.Now()
 	if s.ParentState() != nil && s.ParentState().IsTheHeaderChange() {
-		// in case it is the first change, allow to explicitly set the last modified time
-		// this case is used when we import existing data from other sources and want to preserve the original dates
-		if err != nil {
-			log.Errorf("failed to get creation info: %s", err)
-		} else {
-			lastModified = time.Unix(pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String()), 0)
+		// for the first change allow to set the last modified date from the state
+		// this used for the object imports
+		lastModifiedFromState := pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		if lastModifiedFromState > 0 {
+			lastModified = time.Unix(lastModifiedFromState, 0)
 		}
+		s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
+		s.SetLocalDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Int64(lastModified.Unix()))
 	}
+
+	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentProfileId))
+
 	sb.beforeStateApply(s)
 
 	if !keepInternalFlags {
 		removeInternalFlags(s)
 	}
-
-	// this one will be reverted in case we don't have any actual change being made
-	s.SetLastModified(lastModified.Unix(), sb.coreService.PredefinedObjects(sb.SpaceID()).Profile)
 
 	beforeApplyStateTime := time.Now()
 
@@ -855,10 +880,6 @@ func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
 
-func (sb *smartBlock) Anytype() core.Service {
-	return sb.coreService
-}
-
 func (sb *smartBlock) AddRelationLinks(ctx session.Context, relationKeys ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 	if err = sb.AddRelationLinksToState(s, relationKeys...); err != nil {
@@ -871,7 +892,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 	if len(relationKeys) == 0 {
 		return
 	}
-	relations, err := sb.systemObjectService.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
+	relations, err := sb.objectStore.FetchRelationByKeys(sb.SpaceID(), relationKeys...)
 	if err != nil {
 		return
 	}
@@ -917,7 +938,11 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		p.InjectLocalDetails(localDetailsFromStore)
 	}
 
-	return sb.injectCreationInfo(s)
+	err = sb.injectCreationInfo(s)
+	if err != nil {
+		log.With("objectID", sb.Id()).With("sbtype", sb.Type().String()).Errorf("failed to inject creation info: %s", err.Error())
+	}
+	return nil
 }
 
 func (sb *smartBlock) getDetailsFromStore() (*types.Struct, error) {
@@ -953,22 +978,42 @@ func (sb *smartBlock) appendPendingDetails(details *types.Struct) (resultDetails
 	return details, hasPendingLocalDetails
 }
 
+func (sb *smartBlock) getCreationInfo() (creatorObjectId string, createdTS int64, err error) {
+	creatorObjectId, createdTS, err = sb.source.GetCreationInfo()
+	if err != nil {
+		return
+	}
+
+	return creatorObjectId, createdTS, nil
+}
+
 func (sb *smartBlock) injectCreationInfo(s *state.State) error {
+	if sb.Type() == smartblock.SmartBlockTypeProfilePage {
+		// todo: for the shared spaces we need to change this for sophisticated logic
+		creatorIdentityObjectId, _, err := sb.getCreationInfo()
+		if err != nil {
+			return err
+		}
+
+		if creatorIdentityObjectId != "" {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyProfileOwnerIdentity, pbtypes.String(creatorIdentityObjectId))
+		}
+	} else {
+		// make sure we don't have this relation for other objects
+		s.RemoveLocalDetail(bundle.RelationKeyProfileOwnerIdentity.String())
+	}
+
 	if pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String()) != "" && pbtypes.GetInt64(s.LocalDetails(), bundle.RelationKeyCreatedDate.String()) != 0 {
 		return nil
 	}
-	provider, conforms := sb.source.(source.CreationInfoProvider)
-	if !conforms {
-		return nil
-	}
 
-	creator, createdDate, err := provider.GetCreationInfo()
+	creatorIdentityObjectId, createdDate, err := sb.getCreationInfo()
 	if err != nil {
 		return err
 	}
 
-	if creator != "" {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+	if creatorIdentityObjectId != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creatorIdentityObjectId))
 	}
 
 	if createdDate != 0 {
@@ -1236,7 +1281,7 @@ func (sb *smartBlock) Relations(s *state.State) relationutils.Relations {
 	} else {
 		links = s.GetRelationLinks()
 	}
-	rels, _ := sb.systemObjectService.FetchRelationByLinks(sb.SpaceID(), links)
+	rels, _ := sb.objectStore.FetchRelationByLinks(sb.SpaceID(), links)
 	return rels
 }
 
@@ -1258,9 +1303,6 @@ func (sb *smartBlock) GetDocInfo() DocInfo {
 func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	fileHashes := st.GetAllFileHashes(sb.FileRelationKeys(st))
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
-	if creator == "" {
-		creator = sb.coreService.ProfileID(sb.SpaceID())
-	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
 	links := pbtypes.GetStringList(sb.LocalDetails(), bundle.RelationKeyLinks.String())
@@ -1276,14 +1318,15 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		}
 	}
 	return DocInfo{
-		Id:         sb.Id(),
-		SpaceID:    sb.SpaceID(),
-		Links:      links,
-		Heads:      heads,
-		FileHashes: fileHashes,
-		Creator:    creator,
-		Details:    sb.CombinedDetails(),
-		Type:       sb.ObjectTypeKey(),
+		Id:             sb.Id(),
+		Space:          sb.Space(),
+		Links:          links,
+		Heads:          heads,
+		FileHashes:     fileHashes,
+		Creator:        creator,
+		Details:        sb.CombinedDetails(),
+		Type:           sb.ObjectTypeKey(),
+		SmartblockType: sb.Type(),
 	}
 }
 
@@ -1395,7 +1438,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		log.Errorf("InjectDerivedDetails: failed to set space id for %s: no space id provided, but in details: %s", id, pbtypes.GetString(s.LocalDetails(), bundle.RelationKeySpaceId.String()))
 	}
 	if ot := s.ObjectTypeKey(); ot != "" {
-		typeID, err := sb.systemObjectService.GetTypeIdByKey(context.Background(), sb.SpaceID(), ot)
+		typeID, err := sb.space.GetTypeIdByKey(context.Background(), ot)
 		if err != nil {
 			log.Errorf("failed to get type id for %s: %v", ot, err)
 		}

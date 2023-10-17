@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -30,12 +29,11 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(a core.Service, s *state.State, fn FileNamer) converter.Converter {
-	return &MD{a: a, s: s, fn: fn}
+func NewMDConverter(s *state.State, fn FileNamer) converter.Converter {
+	return &MD{s: s, fn: fn}
 }
 
 type MD struct {
-	a core.Service
 	s *state.State
 
 	fileHashes  []string

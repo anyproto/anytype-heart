@@ -22,6 +22,7 @@ const (
 	AnytypeMarketplaceWorkspace = "_anytype_marketplace"
 	VirtualPrefix               = "_virtual"
 	DatePrefix                  = "_date_"
+	IdentityPrefix              = "_id_"
 
 	MissingObject = "_missing_object"
 )
@@ -31,6 +32,7 @@ func IsBundledId(id string) bool {
 		strings.HasPrefix(id, BundledObjectTypeURLPrefix) ||
 		strings.HasPrefix(id, BundledTemplatesURLPrefix) ||
 		strings.HasPrefix(id, DatePrefix) ||
+		strings.HasPrefix(id, IdentityPrefix) ||
 		id == AnytypeMarketplaceWorkspace ||
 		id == MissingObject ||
 		id == AnytypeProfileId
@@ -57,4 +59,15 @@ func ExtractVirtualSourceType(id string) (model.SmartBlockType, error) {
 
 func TimeToID(t time.Time) string {
 	return DatePrefix + t.Format("2006-01-02")
+}
+
+func AccountIdToIdentityObjectId(identity string) string {
+	return IdentityPrefix + identity
+}
+
+func IdentityObjectIdToAccountId(objectId string) (string, error) {
+	if !strings.HasPrefix(objectId, IdentityPrefix) {
+		return "", fmt.Errorf("invalid identity object id")
+	}
+	return strings.TrimPrefix(objectId, IdentityPrefix), nil
 }
