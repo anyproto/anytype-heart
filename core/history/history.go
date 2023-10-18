@@ -95,13 +95,16 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		}
 	}
 
-	rels, _ := h.objectStore.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
+	relations, err := h.objectStore.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
+	}
 	return &model.ObjectView{
 		RootId:        id.ObjectID,
 		Type:          model.SmartBlockType(sbType),
 		Blocks:        s.Blocks(),
 		Details:       details,
-		RelationLinks: rels.RelationLinks(),
+		RelationLinks: relations.RelationLinks(),
 	}, ver, nil
 }
 

@@ -67,6 +67,7 @@ func Test_ImportSuccess(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
+		SpaceId:               "space1",
 	})
 
 	assert.Nil(t, err)
@@ -95,6 +96,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, err)
@@ -141,6 +143,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  0,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -187,6 +190,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -235,6 +239,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  1,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -286,6 +291,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
+		SpaceId:               "space1",
 	})
 	assert.Nil(t, res)
 }
@@ -310,6 +316,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
+		SpaceId:               "space1",
 	})
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), cv.ErrNoObjectsToImport.Error())
@@ -475,6 +482,7 @@ func Test_ImportCancelError(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -498,6 +506,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -536,6 +545,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -582,6 +592,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -621,6 +632,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -660,6 +672,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 		UpdateExistingObjects: false,
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		SpaceId:               "space1",
 	})
 
 	assert.NotNil(t, res)
@@ -773,6 +786,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  0,
+			SpaceId:               "space1",
 		})
 
 		// then
@@ -818,6 +832,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  0,
+			SpaceId:               "space1",
 		})
 
 		// then
@@ -855,6 +870,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  0,
+			SpaceId:               "space1",
 		})
 
 		// then
@@ -900,6 +916,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			UpdateExistingObjects: false,
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
+			SpaceId:               "space1",
 		})
 
 		// then

@@ -42,6 +42,12 @@ func (s *service) createPersonalSpace(ctx context.Context) (err error) {
 }
 
 func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
+	// Check that space exists. If not, probably user is migrating from legacy version
+	_, err = s.spaceCore.Get(ctx, s.personalSpaceID)
+	if err != nil {
+		return err
+	}
+
 	err = s.startLoad(ctx, s.personalSpaceID)
 	// This could happen for old accounts
 	if errors.Is(err, ErrSpaceNotExists) {
