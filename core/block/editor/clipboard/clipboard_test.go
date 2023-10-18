@@ -1127,7 +1127,45 @@ func Test_PasteText(t *testing.T) {
 
 func Test_CopyAndCutText(t *testing.T) {
 
-	t.Run("copy/cut do not preserve style - when not full text copied", func(t *testing.T) {
+	t.Run("preserve style - when empty text copied", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+					blockbuilder.BackgroundColor("grey"),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+		})
+		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+		})
+
+		// then
+		require.NoError(t, err)
+
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCopy[0].GetText().Style)
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCut[0].GetText().Style)
+
+		assert.Equal(t, "", anySlotCopy[0].GetText().Text)
+		assert.Equal(t, "", anySlotCut[0].GetText().Text)
+
+		assert.Equal(t, "grey", anySlotCopy[0].BackgroundColor)
+		assert.Equal(t, "grey", anySlotCut[0].BackgroundColor)
+	})
+
+	t.Run("do not preserve style - when not empty and not full text copied", func(t *testing.T) {
 		// given
 		sb := smarttest.New("text")
 		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -1144,10 +1182,10 @@ func Test_CopyAndCutText(t *testing.T) {
 		cb := NewClipboard(sb, nil, nil, nil, nil)
 		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
 			Blocks:            []*model.Block{sb.Pick("2").Model()},
-			SelectedTextRange: &model.Range{From: 1, To: 1},
+			SelectedTextRange: &model.Range{From: 1, To: 2},
 		})
 		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
-			SelectedTextRange: &model.Range{From: 1, To: 1},
+			SelectedTextRange: &model.Range{From: 1, To: 2},
 			Blocks:            []*model.Block{sb.Pick("2").Model()},
 		})
 
