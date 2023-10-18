@@ -153,7 +153,7 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 		SetDetailsMs: time.Since(startTime).Milliseconds(),
 	}
 
-	var relationKeys []string
+	relationKeys := make([]string, 0, len(createState.Details().GetFields())+len(createState.LocalDetails().GetFields()))
 	for k := range createState.Details().GetFields() {
 		relationKeys = append(relationKeys, k)
 	}
