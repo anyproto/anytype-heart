@@ -29,7 +29,7 @@ var log = logger.NewNamed(CName)
 var (
 	ErrIncorrectSpaceID = errors.New("incorrect space id")
 	ErrSpaceNotExists   = errors.New("space not exists")
-	ErrSpaceDeleted     = errors.New("space is offloaded")
+	ErrSpaceDeleted     = errors.New("space is deleted")
 	ErrStatusUnkown     = errors.New("space status is unknown")
 )
 

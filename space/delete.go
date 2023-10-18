@@ -120,9 +120,9 @@ func (s *service) offload(ctx context.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
-	err = s.indexer.RemoveIndexes(id)
+	err = s.offloader.FilesSpaceOffload(ctx, id)
 	if err != nil {
 		return err
 	}
-	return s.offloader.FilesSpaceOffload(ctx, id)
+	return s.indexer.RemoveIndexes(id)
 }
