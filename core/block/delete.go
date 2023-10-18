@@ -16,13 +16,13 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *Service) DeleteObject(objectID string) (err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(objectID)
-	if err != nil {
-		return fmt.Errorf("resolve spaceID: %w", err)
-	}
+func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 	var sbType coresb.SmartBlockType
-	err = Do(s, objectID, func(b smartblock.SmartBlock) error {
+	spc, err := s.spaceService.Get(context.Background(), id.SpaceID)
+	if err != nil {
+		return
+	}
+	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
@@ -32,15 +32,10 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 	if err != nil {
 		return
 	}
-
-	id := domain.FullID{
-		SpaceID:  spaceID,
-		ObjectID: objectID,
-	}
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation:
-		err = Do(s, objectID, func(b smartblock.SmartBlock) error {
+		err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 			st := b.NewState()
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(true))
 			return b.Apply(st)
@@ -56,37 +51,38 @@ func (s *Service) DeleteObject(objectID string) (err error) {
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFile:
 		err = s.OnDelete(id, func() error {
-			if err := s.fileStore.DeleteFile(objectID); err != nil {
+			if err := s.fileStore.DeleteFile(id.ObjectID); err != nil {
 				return err
 			}
-			if err := s.fileSync.RemoveFile(spaceID, objectID); err != nil {
+			if err := s.fileSync.RemoveFile(id.SpaceID, id.ObjectID); err != nil {
 				return fmt.Errorf("failed to remove file from sync: %w", err)
 			}
-			_, err = s.fileService.FileOffload(context.Background(), objectID, true)
+			_, err = s.fileService.FileOffload(context.Background(), id.ObjectID, true)
 			if err != nil {
 				return err
 			}
 			return nil
 		})
 	default:
-		space, err := s.spaceService.Get(context.Background(), spaceID)
-		if err != nil {
-			return fmt.Errorf("get space: %w", err)
-		}
 		// this will call DeleteTree asynchronously in the end
-		return space.DeleteTree(context.Background(), objectID)
+		return spc.DeleteTree(context.Background(), id.ObjectID)
 	}
 	if err != nil {
 		return
 	}
 
-	sendOnRemoveEvent(s.eventSender, objectID)
-	spc, err := s.spaceService.Get(context.Background(), spaceID)
-	if err != nil {
-		return
-	}
-	err = spc.Remove(context.Background(), objectID)
+	sendOnRemoveEvent(s.eventSender, id.ObjectID)
+
+	err = spc.Remove(context.Background(), id.ObjectID)
 	return
+}
+
+func (s *Service) DeleteObject(objectId string) (err error) {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return fmt.Errorf("resolve spaceID: %w", err)
+	}
+	return s.DeleteObjectByFullID(domain.FullID{SpaceID: spaceId, ObjectID: objectId})
 }
 
 func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error {

@@ -182,13 +182,13 @@ func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 	return spc.GetObject(ctx, id.ObjectID)
 }
 
-func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(id)
+func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
+	id, err = s.resolveFullId(id)
 	if err != nil {
-		return nil, fmt.Errorf("resolve space id: %w", err)
+		return nil, fmt.Errorf("resolve full id: %w", err)
 	}
 	startTime := time.Now()
-	err = Do(s, id, func(ob smartblock.SmartBlock) error {
+	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			ob.EnabledRelationAsDependentObjects()
 		}
@@ -208,7 +208,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 			return fmt.Errorf("show: %w", err)
 		}
 		afterShowTime := time.Now()
-		_, err = s.syncStatus.Watch(spaceID, id, func() []string {
+		_, err = s.syncStatus.Watch(id.SpaceID, id.ObjectID, func() []string {
 			ob.Lock()
 			defer ob.Unlock()
 			bs := ob.NewState()
@@ -217,7 +217,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 		})
 		if err == nil {
 			ob.AddHook(func(_ smartblock.ApplyInfo) error {
-				s.syncStatus.Unwatch(spaceID, id)
+				s.syncStatus.Unwatch(id.SpaceID, id.ObjectID)
 				return nil
 			}, smartblock.HookOnClose)
 		}
@@ -227,7 +227,7 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 
 		afterHashesTime := time.Now()
 		metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
-			ObjectId:       id,
+			ObjectId:       id.ObjectID,
 			GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
 			DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
 			ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
@@ -240,29 +240,52 @@ func (s *Service) OpenBlock(sctx session.Context, id string, includeRelationsAsD
 	if err != nil {
 		return nil, err
 	}
-	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id] = true; return nil })
+	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id.ObjectID] = true; return nil })
 	return obj, nil
 }
 
-func (s *Service) ShowBlock(
-	id string, includeRelationsAsDependentObjects bool,
-) (obj *model.ObjectView, err error) {
-	err2 := Do(s, id, func(b smartblock.SmartBlock) error {
+func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock) error) error {
+	space, err := s.spaceService.Get(context.Background(), id.SpaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return space.Do(id.ObjectID, apply)
+}
+
+// resolveFullId resolves missing spaceId
+func (s *Service) resolveFullId(id domain.FullID) (domain.FullID, error) {
+	if id.SpaceID == "" {
+		var err error
+		id.SpaceID, err = s.resolver.ResolveSpaceID(id.ObjectID)
+		if err != nil {
+			return id, fmt.Errorf("resolve space id: %w", err)
+		}
+	}
+	return id, nil
+}
+
+func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
+	id, err = s.resolveFullId(id)
+	if err != nil {
+		return nil, fmt.Errorf("resolve full id: %w", err)
+	}
+	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
 		}
 		obj, err = b.Show()
 		return err
 	})
-	if err2 != nil {
-		return nil, err2
-	}
-	return
+	return obj, err
 }
 
-func (s *Service) CloseBlock(ctx session.Context, id string) error {
+func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
+	id, err := s.resolveFullId(id)
+	if err != nil {
+		return fmt.Errorf("resolve full id: %w", err)
+	}
 	var isDraft bool
-	err := Do(s, id, func(b smartblock.SmartBlock) error {
+	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
@@ -273,13 +296,13 @@ func (s *Service) CloseBlock(ctx session.Context, id string) error {
 	}
 
 	if isDraft {
-		if err = s.DeleteObject(id); err != nil {
+		if err = s.DeleteObjectByFullID(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
-			sendOnRemoveEvent(s.eventSender, id)
+			sendOnRemoveEvent(s.eventSender, id.ObjectID)
 		}
 	}
-	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id); return nil })
+	mutex.WithLock(s.openedObjs.lock, func() any { delete(s.openedObjs.objects, id.ObjectID); return nil })
 	return nil
 }
 
