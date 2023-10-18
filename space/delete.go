@@ -106,7 +106,7 @@ func (s *service) offload(ctx context.Context, id string) (err error) {
 	s.mu.Lock()
 	if sp, ok := s.loaded[id]; ok {
 		s.mu.Unlock()
-		err := sp.Close(ctx)
+		err = sp.Close(ctx)
 		if err != nil {
 			return
 		}
