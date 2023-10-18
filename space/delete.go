@@ -50,6 +50,7 @@ func (s *service) onOffload(id string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.offloading, id)
+	delete(s.loaded, id)
 	if err != nil {
 		log.Warn("offload error", zap.Error(err), zap.String("spaceId", id))
 		return
@@ -62,14 +63,16 @@ func (s *service) onOffload(id string, err error) {
 
 func (s *service) waitOffload(ctx context.Context, id string) (err error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if _, ok := s.offloaded[id]; ok {
+		s.mu.Unlock()
 		return nil
 	}
 	offloading, ok := s.offloading[id]
 	if !ok {
+		s.mu.Unlock()
 		return fmt.Errorf("space %s is not offloading", id)
 	}
+	s.mu.Unlock()
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -100,16 +103,17 @@ func (s *service) startDelete(ctx context.Context, id string) error {
 }
 
 func (s *service) offload(ctx context.Context, id string) (err error) {
-	sp, err := s.Get(ctx, id)
-	if err != nil && err != ErrSpaceDeleted {
-		return err
-	}
-	if err == nil {
-		err = sp.Close(ctx)
+	s.mu.Lock()
+	if sp, ok := s.loaded[id]; ok {
+		s.mu.Unlock()
+		err := sp.Close(ctx)
 		if err != nil {
 			return
 		}
+		s.mu.Lock()
 	}
+	delete(s.loaded, id)
+	s.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, deleteStorageLockTimeout)
 	err = s.storageService.DeleteSpaceStorage(ctx, id)
 	cancel()
