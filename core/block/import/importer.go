@@ -97,6 +97,9 @@ func (i *Import) Init(a *app.App) (err error) {
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (string, error) {
+	if req.SpaceId == "" {
+		return "", fmt.Errorf("spaceId is empty")
+	}
 	i.Lock()
 	defer i.Unlock()
 	progress := i.setupProgressBar(req)

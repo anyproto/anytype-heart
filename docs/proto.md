@@ -2548,6 +2548,7 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | accountId | [string](#string) |  |  |
+| personalSpaceId | [string](#string) |  |  |
 | error | [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error) |  |  |
 
 
