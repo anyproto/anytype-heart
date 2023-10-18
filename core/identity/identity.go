@@ -135,16 +135,18 @@ func (s *service) GetDetails(ctx context.Context, profileId string) (details *ty
 
 func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Struct {
 	name := pbtypes.GetString(details, bundle.RelationKeyName.String())
+	description := pbtypes.GetString(details, bundle.RelationKeyDescription.String())
 	image := pbtypes.GetString(details, bundle.RelationKeyIconImage.String())
 	profileId := pbtypes.GetString(details, bundle.RelationKeyId.String())
 	d := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():                pbtypes.String(name),
+		bundle.RelationKeyDescription.String():         pbtypes.String(description),
 		bundle.RelationKeyId.String():                  pbtypes.String(id),
 		bundle.RelationKeyIsReadonly.String():          pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String():          pbtypes.Bool(false),
 		bundle.RelationKeyIsHidden.String():            pbtypes.Bool(false),
 		bundle.RelationKeySpaceId.String():             pbtypes.String(spaceId),
-		bundle.RelationKeyType.String():                pbtypes.String(bundle.TypeKeyProfile.BundledURL()), // todo: we dont
+		bundle.RelationKeyType.String():                pbtypes.String(bundle.TypeKeyProfile.BundledURL()),
 		bundle.RelationKeyIdentityProfileLink.String(): pbtypes.String(profileId),
 		bundle.RelationKeyLayout.String():              pbtypes.Float64(float64(model.ObjectType_profile)),
 		bundle.RelationKeyLastModifiedBy.String():      pbtypes.String(id),
@@ -154,6 +156,7 @@ func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Str
 		d.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(image)
 	}
 
+	// deprecated, but we have exciting profiles which use this, so let's it be up for clients to decide either to render it or not
 	iconOption := pbtypes.Get(details, bundle.RelationKeyIconOption.String())
 	if iconOption != nil {
 		d.Fields[bundle.RelationKeyIconOption.String()] = iconOption
