@@ -125,7 +125,7 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 }
 
 func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
-	resp, err := mw.applicationService.CreateAccountFromExport(req)
+	resp, err := mw.applicationService.RecoverFromLegacy(req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountMismatch, pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT),
 		errToCode(application.ErrBadInput, pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT),

@@ -58,46 +58,46 @@ func getUserProfile(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*pb.Profi
 	return &profile, nil
 }
 
-type RecoverFromLegacyExportResponse struct {
+type RecoverFromLegacyResponse struct {
 	AccountId       string
 	PersonalSpaceId string
 }
 
-func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExportRequest) (RecoverFromLegacyExportResponse, error) {
+func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportRequest) (RecoverFromLegacyResponse, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	profile, err := getUserProfile(req)
 	if err != nil {
-		return RecoverFromLegacyExportResponse{}, oserror.TransformError(err)
+		return RecoverFromLegacyResponse{}, oserror.TransformError(err)
 	}
 
 	err = s.stop()
 	if err != nil {
-		return RecoverFromLegacyExportResponse{}, err
+		return RecoverFromLegacyResponse{}, err
 	}
 
 	res, err := core.WalletAccountAt(s.mnemonic, 0)
 	if err != nil {
-		return RecoverFromLegacyExportResponse{}, err
+		return RecoverFromLegacyResponse{}, err
 	}
 	address := res.Identity.GetPublic().Account()
 	if profile.Address != res.OldAccountKey.GetPublic().Account() && profile.Address != address {
-		return RecoverFromLegacyExportResponse{}, ErrAccountMismatch
+		return RecoverFromLegacyResponse{}, ErrAccountMismatch
 	}
 	s.rootPath = req.RootPath
 	err = os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
-		return RecoverFromLegacyExportResponse{}, oserror.TransformError(err)
+		return RecoverFromLegacyResponse{}, oserror.TransformError(err)
 	}
 	if _, statErr := os.Stat(filepath.Join(s.rootPath, address)); os.IsNotExist(statErr) {
 		if walletErr := core.WalletInitRepo(s.rootPath, res.Identity); walletErr != nil {
-			return RecoverFromLegacyExportResponse{}, walletErr
+			return RecoverFromLegacyResponse{}, walletErr
 		}
 	}
 	cfg, err := s.getBootstrapConfig(req)
 	if err != nil {
-		return RecoverFromLegacyExportResponse{}, err
+		return RecoverFromLegacyResponse{}, err
 	}
 
 	if profile.AnalyticsId != "" {
@@ -108,20 +108,20 @@ func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExp
 
 	err = s.startApp(cfg, res)
 	if err != nil {
-		return RecoverFromLegacyExportResponse{}, err
+		return RecoverFromLegacyResponse{}, err
 	}
 
 	err = s.setDetails(profile, req.Icon)
 	if err != nil {
-		return RecoverFromLegacyExportResponse{}, err
+		return RecoverFromLegacyResponse{}, err
 	}
 
 	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	if err = s.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
-		return RecoverFromLegacyExportResponse{}, errors.Join(ErrBadInput, err)
+		return RecoverFromLegacyResponse{}, errors.Join(ErrBadInput, err)
 	}
 
-	return RecoverFromLegacyExportResponse{
+	return RecoverFromLegacyResponse{
 		AccountId:       address,
 		PersonalSpaceId: spaceID,
 	}, nil
