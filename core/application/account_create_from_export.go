@@ -63,41 +63,41 @@ type RecoverFromLegacyExportResponse struct {
 	PersonalSpaceId string
 }
 
-func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExportRequest) (*RecoverFromLegacyExportResponse, error) {
+func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExportRequest) (RecoverFromLegacyExportResponse, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	profile, err := getUserProfile(req)
 	if err != nil {
-		return nil, oserror.TransformError(err)
+		return RecoverFromLegacyExportResponse{}, oserror.TransformError(err)
 	}
 
 	err = s.stop()
 	if err != nil {
-		return nil, err
+		return RecoverFromLegacyExportResponse{}, err
 	}
 
 	res, err := core.WalletAccountAt(s.mnemonic, 0)
 	if err != nil {
-		return nil, err
+		return RecoverFromLegacyExportResponse{}, err
 	}
 	address := res.Identity.GetPublic().Account()
 	if profile.Address != res.OldAccountKey.GetPublic().Account() && profile.Address != address {
-		return nil, ErrAccountMismatch
+		return RecoverFromLegacyExportResponse{}, ErrAccountMismatch
 	}
 	s.rootPath = req.RootPath
 	err = os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
-		return nil, oserror.TransformError(err)
+		return RecoverFromLegacyExportResponse{}, oserror.TransformError(err)
 	}
 	if _, statErr := os.Stat(filepath.Join(s.rootPath, address)); os.IsNotExist(statErr) {
 		if walletErr := core.WalletInitRepo(s.rootPath, res.Identity); walletErr != nil {
-			return nil, walletErr
+			return RecoverFromLegacyExportResponse{}, walletErr
 		}
 	}
 	cfg, err := s.getBootstrapConfig(req)
 	if err != nil {
-		return nil, err
+		return RecoverFromLegacyExportResponse{}, err
 	}
 
 	if profile.AnalyticsId != "" {
@@ -108,20 +108,20 @@ func (s *Service) CreateAccountFromExport(req *pb.RpcAccountRecoverFromLegacyExp
 
 	err = s.startApp(cfg, res)
 	if err != nil {
-		return nil, err
+		return RecoverFromLegacyExportResponse{}, err
 	}
 
 	err = s.setDetails(profile, req.Icon)
 	if err != nil {
-		return nil, err
+		return RecoverFromLegacyExportResponse{}, err
 	}
 
 	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	if err = s.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).InjectMigrationDashboard(spaceID); err != nil {
-		return nil, errors.Join(ErrBadInput, err)
+		return RecoverFromLegacyExportResponse{}, errors.Join(ErrBadInput, err)
 	}
 
-	return &RecoverFromLegacyExportResponse{
+	return RecoverFromLegacyExportResponse{
 		AccountId:       address,
 		PersonalSpaceId: spaceID,
 	}, nil
