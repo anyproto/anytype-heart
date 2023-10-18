@@ -25,7 +25,8 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 	)
 	return &pb.RpcObjectTypeRelationAddResponse{
 		Error: &pb.RpcObjectTypeRelationAddResponseError{
-			Code: code,
+			Code:        code,
+			Description: getErrorDescription(err),
 		},
 	}
 }
