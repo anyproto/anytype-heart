@@ -824,7 +824,7 @@
     "hidden": true,
     "key": "spaceId",
     "maxCount": 1,
-    "name": "SpaceID",
+    "name": "Space ID",
     "objectTypes": [
       "space"
     ],

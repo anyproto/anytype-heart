@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
@@ -43,7 +44,6 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 func WithInternalKey(internalKey string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.internalKey = internalKey
-		return
 	}
 }
 
@@ -816,8 +816,13 @@ func migrateAddMissingUniqueKey(sbType smartblock.SmartBlockType, snapshot *pb.C
 	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
 	uk, err := domain.UnmarshalUniqueKey(id)
 	if err != nil {
-		// Means that smartblock type is not supported
-		return
+		// Maybe it's a relation option?
+		if bson.IsObjectIdHex(id) {
+			uk = domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
+		} else {
+			// Means that smartblock type is not supported
+			return
+		}
 	}
 	if uk.SmartblockType() != sbType {
 		log.Errorf("missingKeyMigration: wrong sbtype %s != %s", uk.SmartblockType(), sbType)

@@ -126,7 +126,7 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 			}
 		}
 
-		cutBlock.GetText().Style = model.BlockContentText_Paragraph
+		clearStyle(cutBlock)
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
 		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
@@ -139,6 +139,11 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
+}
+
+func clearStyle(block *model.Block) {
+	block.GetText().Style = model.BlockContentText_Paragraph
+	block.BackgroundColor = ""
 }
 
 func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
@@ -192,7 +197,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 			}
 		}
 
-		cutBlock.GetText().Style = model.BlockContentText_Paragraph
+		clearStyle(cutBlock)
 		textSlot = cutBlock.GetText().Text
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
@@ -305,10 +310,6 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	}
 
 	textArr := strings.Split(req.TextSlot, "\n")
-
-	if !req.IsPartOfBlock && len(textArr) == 1 && len(req.SelectedBlockIds) <= 1 {
-		req.IsPartOfBlock = true
-	}
 
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)

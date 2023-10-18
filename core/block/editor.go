@@ -550,13 +550,7 @@ func (s *Service) Redo(
 
 func (s *Service) BookmarkFetch(ctx session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, false)
-	})
-}
-
-func (s *Service) BookmarkFetchSync(ctx session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
-	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, true)
+		return b.Fetch(ctx, req.BlockId, req.Url)
 	})
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5490bc4a969e1e3e5572c69cda10e33595f31e43c492f113c0a00aeba6e65224"
+const RelationChecksum = "bb93b4d284ec8747d1bda756807cd3a241015ebd30b232b0bf9af02fc1d99d02"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -1852,7 +1852,7 @@ var (
 			Id:               "_brspaceId",
 			Key:              "spaceId",
 			MaxCount:         1,
-			Name:             "SpaceID",
+			Name:             "Space ID",
 			ObjectTypes:      []string{TypePrefix + "space"},
 			ReadOnly:         true,
 			ReadOnlyRelation: true,

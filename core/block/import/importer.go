@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
@@ -88,13 +89,17 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.idProvider = objectid.NewIDProvider(store, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService)
+	objectCreator := app.MustComponent[objectcreator.Service](a)
+	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (string, error) {
+	if req.SpaceId == "" {
+		return "", fmt.Errorf("spaceId is empty")
+	}
 	i.Lock()
 	defer i.Unlock()
 	progress := i.setupProgressBar(req)

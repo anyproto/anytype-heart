@@ -399,7 +399,10 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 		return
 	}
 
-	restrictedSources, _ := d.listRestrictedSources(context.Background())
+	restrictedSources, err := d.listRestrictedSources(context.Background())
+	if err != nil {
+		return fmt.Errorf("list restricted sources: %w", err)
+	}
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]
 	info.State.Iterate(func(b simple.Block) (isContinue bool) {

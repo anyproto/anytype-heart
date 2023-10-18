@@ -3,6 +3,7 @@ package linkpreview
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -62,6 +63,10 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 			return l.makeNonHtml(fetchUrl, resp)
 		}
 		return model.LinkPreview{}, err
+	}
+
+	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
+		return model.LinkPreview{}, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
@@ -144,7 +149,7 @@ type proxyRoundTripper struct {
 }
 
 func (p *proxyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; AnytypeBot/1.0; +https://anytype.io/bot)")
 	resp, err := p.RoundTripper.RoundTrip(req)
 	if err == nil {
 		p.lastResponse = resp

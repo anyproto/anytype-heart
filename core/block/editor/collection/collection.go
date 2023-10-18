@@ -123,7 +123,7 @@ func (p *objectLinksCollection) ModifyLocalDetails(
 	err = p.Space().DoLockedIfNotExists(objectId, func() error {
 		return p.objectStore.UpdatePendingLocalDetails(objectId, modifier)
 	})
-	if err != nil && err != ocache.ErrExists {
+	if err != nil && !errors.Is(err, ocache.ErrExists) {
 		return err
 	}
 	err = p.Space().Do(objectId, func(b smartblock.SmartBlock) error {

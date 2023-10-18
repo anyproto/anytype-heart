@@ -19,14 +19,12 @@ type IDProvider interface {
 
 type Provider struct {
 	objectStore                objectstore.ObjectStore
-	spaceService               space.Service
 	idProviderBySmartBlockType map[sb.SmartBlockType]IDProvider
 }
 
 func NewIDProvider(objectStore objectstore.ObjectStore, spaceService space.Service) IDProvider {
 	p := &Provider{
 		objectStore:                objectStore,
-		spaceService:               spaceService,
 		idProviderBySmartBlockType: make(map[sb.SmartBlockType]IDProvider, 0),
 	}
 	initializeProviders(objectStore, p, spaceService)
@@ -43,7 +41,7 @@ func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, space
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeObjectType] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeRelationOption] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypePage] = treeObject
-	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject //TODO: fix it
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = treeObject //TODO: fix it
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
 }
 

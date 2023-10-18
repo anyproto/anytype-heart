@@ -61,22 +61,29 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 
 func (s *SpaceView) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 1,
-		Proc: func(s *state.State) {
-			template.InitTemplate(s,
-				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
-				template.WithRelations([]domain.RelationKey{
-					bundle.RelationKeySpaceLocalStatus,
-					bundle.RelationKeySpaceRemoteStatus,
-					bundle.RelationKeyTargetSpaceId,
-				}),
-			)
-		},
+		Version: 2,
+		Proc:    s.initTemplate,
 	}
 }
 
 func (s *SpaceView) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc:    s.initTemplate,
+		},
+	})
+}
+
+func (s *SpaceView) initTemplate(st *state.State) {
+	template.InitTemplate(st,
+		template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeySpaceView}, model.ObjectType_spaceView),
+		template.WithRelations([]domain.RelationKey{
+			bundle.RelationKeySpaceLocalStatus,
+			bundle.RelationKeySpaceRemoteStatus,
+			bundle.RelationKeyTargetSpaceId,
+		}),
+	)
 }
 
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -131,6 +138,7 @@ var workspaceKeysToCopy = []string{
 	bundle.RelationKeySpaceDashboardId.String(),
 	bundle.RelationKeyCreator.String(),
 	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeySpaceAccessibility.String(),
 }
 
 func (s *SpaceView) SetSpaceData(details *types.Struct) error {

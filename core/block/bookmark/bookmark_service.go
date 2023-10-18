@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -42,7 +41,7 @@ type Service interface {
 	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent ContentFuture) (objectId string, newDetails *types.Struct, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	// TODO Maybe Fetch and FetchBookmarkContent do the same thing differently?
-	Fetch(spaceID string, blockID string, params bookmark.FetchParams) (err error)
+	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
 	FetchBookmarkContent(spaceID string, url string) ContentFuture
 	ContentUpdaters(spaceID string, url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
 
@@ -50,7 +49,7 @@ type Service interface {
 }
 
 type ObjectCreator interface {
-	CreateSmartBlockFromState(ctx context.Context, spaceID string, sbType coresb.SmartBlockType, objectTypeKeys []domain.TypeKey, details *types.Struct, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
 }
 
 type DetailsSetter interface {
@@ -82,7 +81,7 @@ func (s *service) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (s service) Name() (name string) {
+func (s *service) Name() (name string) {
 	return CName
 }
 
@@ -132,13 +131,13 @@ func (s *service) CreateBookmarkObject(ctx context.Context, spaceID string, deta
 		rec := records[0]
 		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
 	} else {
+		creationState := state.NewDoc("", nil).(*state.State)
+		creationState.SetDetails(details)
 		objectId, newDetails, err = s.creator.CreateSmartBlockFromState(
 			ctx,
 			spaceID,
-			coresb.SmartBlockTypePage,
 			[]domain.TypeKey{bundle.TypeKeyBookmark},
-			details,
-			nil,
+			creationState,
 		)
 		if err != nil {
 			return "", nil, fmt.Errorf("create bookmark object: %w", err)
@@ -185,17 +184,12 @@ func (s *service) UpdateBookmarkObject(objectId string, getContent ContentFuture
 	})
 }
 
-func (s *service) Fetch(spaceID string, blockID string, params bookmark.FetchParams) (err error) {
-	if !params.Sync {
-		go func() {
-			if err := s.fetcher(spaceID, blockID, params); err != nil {
-				log.Errorf("fetch bookmark %s: %s", blockID, err)
-			}
-		}()
-		return nil
-	}
-
-	return s.fetcher(spaceID, blockID, params)
+func (s *service) FetchAsync(spaceID string, blockID string, params bookmark.FetchParams) {
+	go func() {
+		if err := s.fetcher(spaceID, blockID, params); err != nil {
+			log.Errorf("fetch bookmark %s: %s", blockID, err)
+		}
+	}()
 }
 
 func (s *service) FetchBookmarkContent(spaceID string, url string) ContentFuture {
@@ -230,7 +224,7 @@ func (s *service) ContentUpdaters(spaceID string, url string) (chan func(content
 	data, err := s.linkPreview.Fetch(ctx, url)
 	if err != nil {
 		updaters <- func(c *model.BlockContentBookmark) {
-			c.State = model.BlockContentBookmark_Error
+			c.State = model.BlockContentBookmark_Done
 			c.Url = url
 		}
 		close(updaters)
@@ -302,6 +296,7 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 	err = params.Updater(blockID, func(bm bookmark.Block) error {
 		for _, u := range upds {
 			bm.UpdateContent(u)
+			// todo: we have title/description of bookmark block deprecated but still update them
 		}
 		return nil
 	})
