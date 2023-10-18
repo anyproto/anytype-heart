@@ -52,8 +52,11 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	s.DisableLayouts()
-	s.spaceService.OnViewCreated(s.getSpaceInfo(ctx.State))
-	return s.setSpaceInfo(ctx.State, spaceinfo.SpaceInfo{SpaceID: spaceID})
+	info := s.getSpaceInfo(ctx.State)
+	newInfo := spaceinfo.SpaceInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
+	s.setSpaceInfo(ctx.State, newInfo)
+	s.spaceService.OnViewCreated(newInfo)
+	return
 }
 
 func (s *SpaceView) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -82,13 +85,11 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 
 func (s *SpaceView) SetSpaceInfo(info spaceinfo.SpaceInfo) (err error) {
 	st := s.NewState()
-	if err = s.setSpaceInfo(st, info); err != nil {
-		return
-	}
+	s.setSpaceInfo(st, info)
 	return s.Apply(st)
 }
 
-func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) (err error) {
+func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
