@@ -686,6 +686,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentProfileId))
+	s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
 
 	sb.beforeStateApply(s)
 
