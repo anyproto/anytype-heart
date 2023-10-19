@@ -52,11 +52,6 @@ func (s *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct) er
 }
 
 func (s *dsObjectStore) extractDetailsByKey(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
-	raw, ok := s.cache.Get(key)
-	if ok {
-		return raw.(*model.ObjectDetails), nil
-	}
-
 	it, err := txn.Get(key)
 	if err != nil {
 		return nil, fmt.Errorf("get item: %w", err)

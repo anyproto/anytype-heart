@@ -169,8 +169,16 @@ func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []da
 	var rec database.Record
 	var spaceID string
 	for _, f := range req.Filters {
-		if f.RelationKey == bundle.RelationKeySpaceId.String() && f.Condition == model.BlockContentDataviewFilter_Equal {
-			spaceID = f.Value.GetStringValue()
+		if f.RelationKey == bundle.RelationKeySpaceId.String() {
+			if f.Condition == model.BlockContentDataviewFilter_Equal {
+				spaceID = f.Value.GetStringValue()
+			}
+			if f.Condition == model.BlockContentDataviewFilter_In {
+				spaces := f.Value.GetListValue().Values
+				if len(spaces) > 0 {
+					spaceID = spaces[0].GetStringValue()
+				}
+			}
 			break
 		}
 	}
