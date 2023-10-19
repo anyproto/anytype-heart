@@ -60,6 +60,9 @@ func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
 		return nil, fmt.Errorf("get links relation id: %w", err)
 	}
 	dateTypeId, err := v.space.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
+	if err != nil {
+		return nil, fmt.Errorf("get date type id: %w", err)
+	}
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
 		bundle.RelationKeyId.String():         pbtypes.String(v.id),
