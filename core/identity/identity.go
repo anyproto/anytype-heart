@@ -156,7 +156,7 @@ func getDetailsFromProfile(id, spaceId string, details *types.Struct) *types.Str
 		d.Fields[bundle.RelationKeyIconImage.String()] = pbtypes.String(image)
 	}
 
-	// deprecated, but we have exciting profiles which use this, so let's it be up for clients to decide either to render it or not
+	// deprecated, but we have existing profiles which use this, so let's it be up for clients to decide either to render it or not
 	iconOption := pbtypes.Get(details, bundle.RelationKeyIconOption.String())
 	if iconOption != nil {
 		d.Fields[bundle.RelationKeyIconOption.String()] = iconOption
