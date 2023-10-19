@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -575,6 +576,19 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 			ids = append(ids, relId)
 		}
 		if !includeDetails {
+			continue
+		}
+
+		// handle corner cases first for specific formats
+		if rel.Format == model.RelationFormat_date &&
+			!lo.Contains(bundle.LocalRelationsKeys, rel.Key) &&
+			!lo.Contains(bundle.DerivedRelationsKeys, rel.Key) {
+			relInt := pbtypes.GetInt64(det, rel.Key)
+			if relInt > 0 {
+				t := time.Unix(relInt, 0)
+				t = t.In(time.Local)
+				ids = append(ids, addr.TimeToID(t))
+			}
 			continue
 		}
 
