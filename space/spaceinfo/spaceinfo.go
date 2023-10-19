@@ -29,7 +29,7 @@ type AccountStatus int
 
 const (
 	AccountStatusUnknown = AccountStatus(model.SpaceStatus_Unknown)
-	AccountStatusDeleted = AccountStatus(model.SpaceStatus_AccountDeleted)
+	AccountStatusDeleted = AccountStatus(model.SpaceStatus_SpaceDeleted)
 )
 
 type SpaceInfo struct {

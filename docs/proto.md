@@ -23148,7 +23148,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Error | 4 | Error - the space loading ended with an error |
 | RemoteWaitingDeletion | 5 | RemoteWaitingDeletion - network status is &#34;waiting deletion&#34; |
 | RemoteDeleted | 6 | RemoteDeleted - the space is deleted in the current network |
-| AccountDeleted | 7 | AccountDeleted - the space should be deleted in the network |
+| SpaceDeleted | 7 | SpaceDeleted - the space should be deleted in the network |
 
 
  
