@@ -123,6 +123,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 				Details:     getRelationDetails(relationName, id, float64(model.RelationFormat_longtext)),
 				ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+				Key:         id,
 			}},
 		})
 	}
