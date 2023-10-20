@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -78,7 +79,11 @@ func (s *Service) TemplateCloneInSpace(space space.Space, id string) (templateID
 		st             *state.State
 		objectTypeKeys []domain.TypeKey
 	)
-	if err = space.Do(id, func(b smartblock.SmartBlock) error {
+	marketplaceSpace, err := s.spaceService.Get(context.Background(), addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return "", fmt.Errorf("get marketplace space: %w", err)
+	}
+	if err = marketplaceSpace.Do(id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypeBundledTemplate {
 			return fmt.Errorf("can clone bundled templates only")
 		}
