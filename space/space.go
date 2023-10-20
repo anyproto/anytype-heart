@@ -80,18 +80,15 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, j
 
 func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	defer close(s.loadMandatoryObjectsCh)
-
+	s.loadMandatoryObjectsErr = s.service.indexer.ReindexSpace(s)
+	if s.loadMandatoryObjectsErr != nil {
+		return
+	}
 	s.loadMandatoryObjectsErr = s.LoadObjects(ctx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}
 	s.loadMandatoryObjectsErr = s.InstallBundledObjects(ctx)
-	if s.loadMandatoryObjectsErr != nil {
-		return
-	}
-
-	// TODO: move to service
-	s.loadMandatoryObjectsErr = s.service.indexer.ReindexSpace(s)
 	if s.loadMandatoryObjectsErr != nil {
 		return
 	}

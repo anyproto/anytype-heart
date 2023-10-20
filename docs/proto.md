@@ -10353,6 +10353,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | deprecated, GO-1926 |
 | objectId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | Required only for date objects |
 
 
 
@@ -11779,6 +11780,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | contextId | [string](#string) |  | id of the context blo1k |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | Required only for date objects |
 | includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 
@@ -12687,6 +12689,7 @@ DEPRECATED, GO-1926 |
 | contextId | [string](#string) |  | deprecated, GO-1926 |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | Required only for date objects |
 | includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 

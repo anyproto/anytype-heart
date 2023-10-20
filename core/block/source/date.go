@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -17,17 +18,17 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(spaceId string, id string) (s Source) {
+func NewDate(space Space, id string) (s Source) {
 	return &date{
-		spaceId: spaceId,
-		id:      id,
+		id:    id,
+		space: space,
 	}
 }
 
 type date struct {
-	spaceId string
-	id      string
-	t       time.Time
+	space Space
+	id    string
+	t     time.Time
 }
 
 func (v *date) ListIds() ([]string, error) {
@@ -43,7 +44,10 @@ func (v *date) Id() string {
 }
 
 func (v *date) SpaceID() string {
-	return v.spaceId
+	if v.space == nil {
+		return ""
+	}
+	return v.space.Id()
 }
 
 func (v *date) Type() smartblock.SmartBlockType {
@@ -51,6 +55,33 @@ func (v *date) Type() smartblock.SmartBlockType {
 }
 
 func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
+	linksRelationId, err := v.space.GetRelationIdByKey(ctx, bundle.RelationKeyLinks)
+	if err != nil {
+		return nil, fmt.Errorf("get links relation id: %w", err)
+	}
+	dateTypeId, err := v.space.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
+	if err != nil {
+		return nil, fmt.Errorf("get date type id: %w", err)
+	}
+	return &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
+		bundle.RelationKeyId.String():         pbtypes.String(v.id),
+		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
+		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
+		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_date)),
+		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
+		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
+		bundle.RelationKeySetOf.String():      pbtypes.StringList([]string{linksRelationId}),
+		bundle.RelationKeyType.String():       pbtypes.String(dateTypeId),
+	}}, nil
+}
+
+// TODO Fix?
+func (v *date) DetailsFromId() (*types.Struct, error) {
+	if err := v.parseId(); err != nil {
+		return nil, err
+	}
 	return &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyName.String():       pbtypes.String(v.t.Format("Mon Jan  2 2006")),
 		bundle.RelationKeyId.String():         pbtypes.String(v.id),
@@ -61,13 +92,6 @@ func (v *date) getDetails(ctx context.Context) (*types.Struct, error) {
 		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
 		bundle.RelationKeySpaceId.String():    pbtypes.String(v.SpaceID()),
 	}}, nil
-}
-
-func (v *date) DetailsFromId() (*types.Struct, error) {
-	if err := v.parseId(); err != nil {
-		return nil, err
-	}
-	return v.getDetails(context.Background())
 }
 
 func (v *date) parseId() error {

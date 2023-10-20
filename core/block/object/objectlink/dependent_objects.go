@@ -85,7 +85,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 			relInt := pbtypes.GetInt64(det, rel.Key)
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)
-				t = t.In(time.UTC)
+				t = t.In(time.Local)
 				ids = append(ids, addr.TimeToID(t))
 			}
 			continue

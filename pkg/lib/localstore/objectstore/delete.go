@@ -17,9 +17,7 @@ import (
 
 func (s *dsObjectStore) DeleteDetails(id string) error {
 	key := pagesDetailsBase.ChildString(id).Bytes()
-	return s.updateTxn(func(txn *badger.Txn) error {
-		s.cache.Del(key)
-
+	err := s.updateTxn(func(txn *badger.Txn) error {
 		for _, k := range []ds.Key{
 			pagesSnippetBase.ChildString(id),
 			pagesDetailsBase.ChildString(id),
@@ -32,6 +30,11 @@ func (s *dsObjectStore) DeleteDetails(id string) error {
 
 		return txn.Delete(key)
 	})
+	if err != nil {
+		return err
+	}
+	s.cache.Del(key)
+	return nil
 }
 
 // DeleteObject removes all details, leaving only id and isDeleted

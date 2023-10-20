@@ -138,7 +138,6 @@ func (i *indexer) Index(ctx context.Context, info smartblock.DocInfo, options ..
 
 	indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
-		saveIndexedHash()
 		return nil
 	}
 

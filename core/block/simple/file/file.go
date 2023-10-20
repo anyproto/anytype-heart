@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -169,7 +170,7 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	if e.Type != nil {
 		f.content.Type = e.Type.GetValue()
 		if f.content.Type == model.BlockContentFile_File {
-			f.content.Type = f.detectTypeByMIME(f.content.GetMime())
+			f.content.Type = DetectTypeByMIME(f.content.GetMime())
 		}
 	}
 	if e.State != nil {
@@ -200,8 +201,8 @@ func (f *File) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
-func (f *File) detectTypeByMIME(mime string) model.BlockContentFileType {
-	if strings.HasPrefix(mime, "image") {
+func DetectTypeByMIME(mime string) model.BlockContentFileType {
+	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image
 	}
 	if strings.HasPrefix(mime, "video") {

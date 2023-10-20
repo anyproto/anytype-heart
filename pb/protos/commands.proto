@@ -832,6 +832,7 @@ message Rpc {
                 string contextId = 1; // id of the context blo1k
                 string objectId = 2;
                 string traceId = 3;
+                string spaceId = 5; // Required only for date objects
 
                 bool includeRelationsAsDependentObjects = 4; // some clients may set this option instead if having the single subscription to all relations
             }
@@ -861,6 +862,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // deprecated, GO-1926
                 string objectId = 2;
+                string spaceId = 3; // Required only for date objects
             }
 
             message Response {
@@ -885,6 +887,7 @@ message Rpc {
                 string contextId = 1; // deprecated, GO-1926
                 string objectId = 2;
                 string traceId = 3;
+                string spaceId = 5; // Required only for date objects
 
                 bool includeRelationsAsDependentObjects = 4; // some clients may set this option instead if having the single subscription to all relations
             }

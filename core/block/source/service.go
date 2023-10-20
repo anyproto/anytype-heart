@@ -126,7 +126,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		case smartblock.SmartBlockTypeFile:
 			return NewFile(s.accountService, s.fileStore, s.fileService, space.Id(), id), nil
 		case smartblock.SmartBlockTypeDate:
-			return NewDate(space.Id(), id), nil
+			return NewDate(space, id), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
@@ -178,7 +178,7 @@ func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
 		return nil, fmt.Errorf("unsupported id")
 	}
 	// TODO Fix this, but how? It's broken by design, because no one pass spaceId here
-	ss := NewDate("", id)
+	ss := NewDate(nil, id)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()
