@@ -41,7 +41,7 @@ func initializeProviders(objectStore objectstore.ObjectStore, p *Provider, space
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeObjectType] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeRelationOption] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypePage] = treeObject
-	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = treeObject //TODO: fix it
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
 }
 

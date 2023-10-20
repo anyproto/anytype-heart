@@ -332,17 +332,19 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 }
 
 func (s *dsObjectStore) List(spaceID string) ([]*model.ObjectInfo, error) {
-	var infos []*model.ObjectInfo
-	err := s.db.View(func(txn *badger.Txn) error {
-		ids, err := listIDsByPrefix(txn, pagesDetailsBase.Bytes())
-		if err != nil {
-			return fmt.Errorf("list ids by prefix: %w", err)
-		}
-
-		infos, err = s.getObjectsInfo(txn, spaceID, ids)
-		return err
+	ids, _, err := s.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceID),
+			},
+		},
 	})
-	return infos, err
+	if err != nil {
+		return nil, fmt.Errorf("query object ids: %w", err)
+	}
+	return s.GetByIDs(spaceID, ids)
 }
 
 func (s *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
