@@ -2,10 +2,13 @@ package source
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
 
+	"github.com/gogs/chardet"
+	"github.com/qiniu/iconv"
 	"github.com/samber/lo"
 
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -27,14 +30,34 @@ func (z *Zip) Initialize(importPath string) error {
 		return err
 	}
 	fileReaders := make(map[string]*zip.File, len(archiveReader.File))
-	for _, f := range archiveReader.File {
+	for i, f := range archiveReader.File {
 		if strings.HasPrefix(f.Name, "__MACOSX/") {
 			continue
 		}
-		fileReaders[f.Name] = f
+		fileReaders[normalizeName(f, i)] = f
 	}
 	z.fileReaders = fileReaders
 	return nil
+}
+
+func normalizeName(f *zip.File, index int) string {
+	var fileName string
+	if f.NonUTF8 {
+		bestGuess, err := chardet.NewTextDetector().DetectBest([]byte(f.Name))
+		if err == nil {
+			open, err := iconv.Open("UTF-8", bestGuess.Charset)
+			defer open.Close()
+			if err == nil {
+				fileName = open.ConvString(f.Name)
+			}
+		}
+		if fileName == "" {
+			fileName = fmt.Sprintf("import file %d%s", index+1, filepath.Ext(f.Name))
+		}
+	} else {
+		fileName = f.Name
+	}
+	return fileName
 }
 
 func (z *Zip) Iterate(callback func(fileName string, fileReader io.ReadCloser) bool) error {
