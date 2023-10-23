@@ -1464,6 +1464,16 @@
     "source": "derived"
   },
   {
+    "description": "Relation that indicates the status of space that the user is set. Possible values: models.SpaceStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceAccountStatus",
+    "maxCount": 1,
+    "name": "Space account status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Link to the profile attached to Anytype Identity",
     "format": "object",
     "hidden": true,

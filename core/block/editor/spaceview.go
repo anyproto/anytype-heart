@@ -23,7 +23,7 @@ import (
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {
-	OnViewCreated(spaceId string)
+	OnViewUpdated(info spaceinfo.SpaceInfo)
 	OnWorkspaceChanged(spaceId string, details *types.Struct)
 }
 
@@ -52,8 +52,12 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	s.DisableLayouts()
-	s.spaceService.OnViewCreated(spaceID)
-	return s.setSpaceInfo(ctx.State, spaceinfo.SpaceInfo{SpaceID: spaceID})
+	info := s.getSpaceInfo(ctx.State)
+	newInfo := spaceinfo.SpaceInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
+	s.setSpaceInfo(ctx.State, newInfo)
+	s.spaceService.OnViewUpdated(newInfo)
+	s.AddHook(s.afterApply, smartblock.HookAfterApply)
+	return
 }
 
 func (s *SpaceView) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -89,16 +93,20 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 
 func (s *SpaceView) SetSpaceInfo(info spaceinfo.SpaceInfo) (err error) {
 	st := s.NewState()
-	if err = s.setSpaceInfo(st, info); err != nil {
-		return
-	}
+	s.setSpaceInfo(st, info)
 	return s.Apply(st)
 }
 
-func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) (err error) {
+func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
+	s.spaceService.OnViewUpdated(s.getSpaceInfo(info.State))
+	return nil
+}
+
+func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) {
 	st.SetLocalDetail(bundle.RelationKeyTargetSpaceId.String(), pbtypes.String(info.SpaceID))
 	st.SetLocalDetail(bundle.RelationKeySpaceLocalStatus.String(), pbtypes.Int64(int64(info.LocalStatus)))
 	st.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus.String(), pbtypes.Int64(int64(info.RemoteStatus)))
+	st.SetDetail(bundle.RelationKeySpaceAccountStatus.String(), pbtypes.Int64(int64(info.AccountStatus)))
 	return
 }
 
@@ -117,6 +125,16 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 		return "", fmt.Errorf("space key is empty")
 	}
 	return changePayload.Key, nil
+}
+
+func (s *SpaceView) getSpaceInfo(st *state.State) (info spaceinfo.SpaceInfo) {
+	details := st.CombinedDetails()
+	return spaceinfo.SpaceInfo{
+		SpaceID:       pbtypes.GetString(details, bundle.RelationKeyTargetSpaceId.String()),
+		LocalStatus:   spaceinfo.LocalStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceLocalStatus.String())),
+		RemoteStatus:  spaceinfo.RemoteStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceRemoteStatus.String())),
+		AccountStatus: spaceinfo.AccountStatus(pbtypes.GetInt64(details, bundle.RelationKeySpaceAccountStatus.String())),
+	}
 }
 
 var workspaceKeysToCopy = []string{

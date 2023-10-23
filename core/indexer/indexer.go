@@ -47,6 +47,7 @@ type Indexer interface {
 	StartFullTextIndex() error
 	ReindexMarketplaceSpace(space space.Space) error
 	ReindexSpace(space space.Space) error
+	RemoveIndexes(spaceId string) (err error)
 	Index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error
 	app.ComponentRunnable
 }

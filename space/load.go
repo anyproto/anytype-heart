@@ -12,8 +12,10 @@ import (
 func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	status := s.getStatus(spaceID)
+	if status.AccountStatus == spaceinfo.AccountStatusDeleted {
+		return ErrSpaceDeleted
+	}
 	// Do nothing if space is already loading
 	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
 		return nil
@@ -66,6 +68,7 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	}
 
 	s.loaded[spaceID] = sp
+	delete(s.loading, spaceID)
 
 	// TODO: check remote status
 	return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
