@@ -18004,9 +18004,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| NULL | 0 |  |
-| NO_SUCH_SPACE | 1 |  |
-| SPACE_IS_DELETED | 2 |  |
+| NULL | 0 | No error; mnemonic should be non-empty |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Root path is wrong |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
 
 
 
