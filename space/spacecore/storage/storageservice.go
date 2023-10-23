@@ -63,7 +63,7 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (store
 		store, err = newSpaceStorage(s.db, id, s)
 		return err
 	})
-	if err == ErrLocked {
+	if errors.Is(err, ErrLocked) {
 		select {
 		case <-ls.ch:
 			if ls.err != nil {
@@ -110,7 +110,7 @@ func (s *storageService) checkLock(id string, openFunc func() error) (ls *lockSp
 func (s *storageService) waitLock(ctx context.Context, id string, action func() error) (err error) {
 	var ls *lockSpace
 	ls, err = s.checkLock(id, action)
-	if err == ErrLocked {
+	if errors.Is(err, ErrLocked) {
 		select {
 		case <-ls.ch:
 			if ls.err != nil {

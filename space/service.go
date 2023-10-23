@@ -178,7 +178,7 @@ func (s *service) OnViewUpdated(info spaceinfo.SpaceInfo) {
 	go func() {
 		s.updateSpaceViewInfo(info)
 		err := s.startLoad(s.ctx, info.SpaceID)
-		if err != nil && err != ErrSpaceDeleted {
+		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
 		}
 		if info.AccountStatus != spaceinfo.AccountStatusDeleted {
