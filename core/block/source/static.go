@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -9,6 +10,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
+
+var ErrNotFound = fmt.Errorf("not found")
+
+func (s *service) NewStatic(id string) (Source, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	staticSrc, ok := s.staticIds[id]
+	if !ok || staticSrc == nil {
+		return nil, ErrNotFound
+	}
+	return staticSrc, nil
+}
 
 func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State) Source {
 	return &static{

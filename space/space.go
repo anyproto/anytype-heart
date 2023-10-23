@@ -63,6 +63,7 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, j
 		Space:                  coreSpace,
 		loadMandatoryObjectsCh: make(chan struct{}),
 		installer:              s.bundledObjectsInstaller,
+		sourceService:          s.sourceService,
 	}
 	sp.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, sp, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, sp.Cache)
@@ -151,7 +152,7 @@ func (s *space) Close(ctx context.Context) error {
 
 func (s *space) NewSource(ctx context.Context, id string, buildOptions source.BuildOptions) (source.Source, error) {
 	sbType, err := typeprovider.SmartblockTypeFromID(id)
-	if err == nil {
+	if err == nil && sbType != coresb.SmartBlockTypePage {
 		switch sbType {
 		case coresb.SmartBlockTypeFile:
 			return s.sourceService.NewFile(s.Id(), id), nil

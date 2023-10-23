@@ -15,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -62,6 +63,7 @@ type service struct {
 	bundledObjectsInstaller bundledObjectsInstaller
 	accountService          accountservice.Service
 	objectFactory           objectcache.ObjectFactory
+	sourceService           source.Service
 
 	personalSpaceID string
 	metadataPayload []byte
@@ -87,6 +89,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
+	s.sourceService = app.MustComponent[source.Service](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
 
 	s.createdSpaces = map[string]struct{}{}

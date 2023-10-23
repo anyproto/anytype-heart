@@ -7,7 +7,10 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/source"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
@@ -40,6 +43,7 @@ func (s *service) initTechSpace() error {
 			Space:                  techCoreSpace,
 			loadMandatoryObjectsCh: make(chan struct{}),
 			installer:              s.bundledObjectsInstaller,
+			sourceService:          s.sourceService,
 		},
 		TechSpace: s.techSpace,
 	}
@@ -52,4 +56,17 @@ func (s *service) initTechSpace() error {
 		return fmt.Errorf("run tech space: %w", err)
 	}
 	return nil
+}
+
+func (s *techSpace) NewSource(ctx context.Context, id string, buildOptions source.BuildOptions) (source.Source, error) {
+	sbType, err := typeprovider.SmartblockTypeFromID(id)
+	if err == nil && sbType != coresb.SmartBlockTypePage {
+		switch sbType {
+		case coresb.SmartBlockTypeIdentity:
+			return s.sourceService.NewIdentity(id), nil
+		default:
+			return nil, fmt.Errorf("unsupported id-based smartblock type: %s", sbType)
+		}
+	}
+	return s.sourceService.NewTreeSource(ctx, s, id, buildOptions.BuildTreeOpts())
 }

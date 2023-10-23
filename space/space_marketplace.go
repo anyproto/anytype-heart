@@ -17,8 +17,11 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 type marketplaceSpace struct {
@@ -32,6 +35,7 @@ func (s *service) initMarketplaceSpace() error {
 			service:                s,
 			Space:                  coreSpace,
 			installer:              s.bundledObjectsInstaller,
+			sourceService:          s.sourceService,
 			loadMandatoryObjectsCh: make(chan struct{}),
 		},
 	}
@@ -53,6 +57,23 @@ func (s *marketplaceSpace) GetRelationIdByKey(ctx context.Context, key domain.Re
 
 func (s *marketplaceSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
 	return addr.BundledObjectTypeURLPrefix + key.String(), nil
+}
+
+func (s *marketplaceSpace) NewSource(ctx context.Context, id string, buildOptions source.BuildOptions) (source.Source, error) {
+	sbType, err := typeprovider.SmartblockTypeFromID(id)
+	if err == nil && sbType != coresb.SmartBlockTypePage {
+		switch sbType {
+		case coresb.SmartBlockTypeAnytypeProfile:
+			return s.sourceService.NewAnytypeProfile(id), nil
+		case coresb.SmartBlockTypeBundledRelation:
+			return s.sourceService.NewBundledRelation(id), nil
+		case coresb.SmartBlockTypeBundledObjectType:
+			return s.sourceService.NewBundledObjectType(id), nil
+		default:
+			return nil, fmt.Errorf("unsupported id-based smartblock type: %s", sbType)
+		}
+	}
+	return s.sourceService.NewStatic(id)
 }
 
 func newMarketplaceCommon() commonspace.Space {

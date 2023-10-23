@@ -60,7 +60,7 @@ type Service interface {
 	NewIdentity(id string) Source
 	NewTreeSource(ctx context.Context, space Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error)
 	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State) Source
-
+	NewStatic(id string) (Source, error)
 	app.Component
 }
 
@@ -145,11 +145,9 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		}
 	}
 
-	s.mu.Lock()
-	staticSrc := s.staticIds[id]
-	s.mu.Unlock()
-	if staticSrc != nil {
-		return staticSrc, nil
+	static, err := s.NewStatic(id)
+	if err == nil {
+		return static, nil
 	}
 
 	return s.NewTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
