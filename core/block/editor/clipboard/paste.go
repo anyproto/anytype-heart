@@ -141,7 +141,7 @@ func isSpecificStyle(block text.Block) bool {
 }
 
 func isRequiredBlock(block text.Block) bool {
-	return block != nil && isRequiredRelation(block.Model().Id)
+	return block != nil && state.IsRequiredBlockId(block.Model().Id)
 }
 
 func (p *pasteCtrl) getFirstSelectedText() text.Block {
@@ -206,7 +206,7 @@ func (p *pasteCtrl) singleRange() (err error) {
 		return target.PasteInside(p.s, p.ps, secondBlock)
 	}
 
-	isPasteToHeader := isRequiredRelation(targetId)
+	isPasteToHeader := state.IsRequiredBlockId(targetId)
 
 	pos := model.Block_Bottom
 	if isPasteToHeader {
@@ -287,7 +287,7 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	)
 	if len(p.selIds) > 0 {
 		targetId = p.selIds[0]
-		if isRequiredRelation(targetId) {
+		if state.IsRequiredBlockId(targetId) {
 			targetId = template.HeaderLayoutId
 		}
 		targetPos = model.Block_Bottom
@@ -303,16 +303,9 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	})
 }
 
-func isRequiredRelation(targetID string) bool {
-	return targetID == template.TitleBlockId ||
-		targetID == template.DescriptionBlockId ||
-		targetID == template.FeaturedRelationsId ||
-		targetID == template.HeaderLayoutId
-}
-
 func (p *pasteCtrl) removeSelection() {
 	for _, toRemove := range p.selIds {
-		if !isRequiredRelation(toRemove) {
+		if !state.IsRequiredBlockId(toRemove) {
 			p.s.Unlink(toRemove)
 		}
 	}
