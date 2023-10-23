@@ -46,18 +46,20 @@ func (s *service) startOffload(ctx context.Context, id string) (err error) {
 	return nil
 }
 
-func (s *service) onOffload(id string, err error) {
+func (s *service) onOffload(id string, offloadErr error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.offloading, id)
 	delete(s.loaded, id)
-	if err != nil {
-		log.Warn("offload error", zap.Error(err), zap.String("spaceId", id))
+	if offloadErr != nil {
+		log.Warn("offload error", zap.Error(offloadErr), zap.String("spaceId", id))
 		return
 	}
 	status := s.getStatus(id)
 	status.LocalStatus = spaceinfo.LocalStatusMissing
-	_ = s.setStatus(s.ctx, status)
+	if err := s.setStatus(s.ctx, status); err != nil {
+		log.Debug("set status error", zap.Error(err), zap.String("spaceId", id))
+	}
 	s.offloaded[id] = struct{}{}
 }
 
