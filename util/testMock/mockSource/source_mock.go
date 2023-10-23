@@ -119,7 +119,7 @@ func (mr *MockServiceMockRecorder) NewSource(arg0, arg1, arg2, arg3 any) *gomock
 }
 
 // NewStaticSource mocks base method.
-func (m *MockService) NewStaticSource(arg0 domain.FullID, arg1 smartblock.SmartBlockType, arg2 *state.State, arg3 func(source.PushChangeParams) (string, error)) source.SourceWithType {
+func (m *MockService) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State) source.SourceWithType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewStaticSource", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(source.SourceWithType)

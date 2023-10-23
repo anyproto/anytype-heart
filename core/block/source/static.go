@@ -10,13 +10,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
-func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType {
+func (s *service) NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State) Source {
 	return &static{
-		id:         id,
-		sbType:     sbType,
-		doc:        doc,
-		s:          s,
-		pushChange: pushChange,
+		id:     id,
+		sbType: sbType,
+		doc:    doc,
+		s:      s,
 	}
 }
 

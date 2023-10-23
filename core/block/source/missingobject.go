@@ -16,7 +16,7 @@ import (
 type missingObject struct {
 }
 
-func NewMissingObject() (s Source) {
+func (s *service) NewMissingObject() Source {
 	return &missingObject{}
 }
 

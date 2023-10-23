@@ -19,15 +19,15 @@ import (
 
 var getFileTimeout = 60 * time.Second
 
-func NewFile(accountService accountService, fileStore filestore.FileStore, fileService files.Service, spaceID string, id string) (s Source) {
+func (s *service) NewFile(spaceID string, id string) Source {
 	return &file{
 		id: domain.FullID{
 			SpaceID:  spaceID,
 			ObjectID: id,
 		},
-		accountService: accountService,
-		fileStore:      fileStore,
-		fileService:    fileService,
+		accountService: s.accountService,
+		fileStore:      s.fileStore,
+		fileService:    s.fileService,
 	}
 }
 

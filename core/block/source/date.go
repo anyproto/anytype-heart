@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewDate(space Space, id string) (s Source) {
+func (s *service) NewDate(space Space, id string) Source {
 	return &date{
 		id:    id,
 		space: space,

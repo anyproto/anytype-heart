@@ -39,7 +39,7 @@ type cacheOpts struct {
 type InitFunc = func(id string) *smartblock.InitContext
 
 type ObjectFactory interface {
-	InitObject(space smartblock.Space, id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
+	InitObject(space smartblock.Space, source source.Source, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
 }
 
 type Cache interface {
@@ -64,15 +64,21 @@ type objectCache struct {
 	cache           ocache.OCache
 	closing         chan struct{}
 	space           smartblock.Space
+	sourceBuilder   sourceBuilder
 }
 
-func New(accountService accountservice.Service, objectFactory ObjectFactory, personalSpaceId string, space smartblock.Space) Cache {
+type sourceBuilder interface {
+	NewSource(ctx context.Context, id string, buildOptions source.BuildOptions) (source.Source, error)
+}
+
+func New(accountService accountservice.Service, objectFactory ObjectFactory, personalSpaceId string, sourceBuilder sourceBuilder, space smartblock.Space) Cache {
 	c := &objectCache{
 		personalSpaceId: personalSpaceId,
 		accountService:  accountService,
 		objectFactory:   objectFactory,
 		closing:         make(chan struct{}),
 		space:           space,
+		sourceBuilder:   sourceBuilder,
 	}
 	c.cache = ocache.New(
 		c.cacheLoad,
@@ -114,7 +120,11 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 			BuildOpts: opts.buildOption,
 			SpaceID:   opts.spaceId,
 		}
-		return c.objectFactory.InitObject(c.space, id, initCtx)
+		sc, err := c.sourceBuilder.NewSource(initCtx.Ctx, id, initCtx.BuildOpts)
+		if err != nil {
+			return
+		}
+		return c.objectFactory.InitObject(c.space, sc, initCtx)
 	}
 	createObject := func() (sb smartblock.SmartBlock, err error) {
 		initCtx := opts.createOption.initFunc(id)
@@ -122,7 +132,11 @@ func (c *objectCache) cacheLoad(ctx context.Context, id string) (value ocache.Ob
 		initCtx.Ctx = ctx
 		initCtx.SpaceID = opts.spaceId
 		initCtx.BuildOpts = opts.buildOption
-		return c.objectFactory.InitObject(c.space, id, initCtx)
+		sc, err := c.sourceBuilder.NewSource(initCtx.Ctx, id, initCtx.BuildOpts)
+		if err != nil {
+			return
+		}
+		return c.objectFactory.InitObject(c.space, sc, initCtx)
 	}
 
 	switch {

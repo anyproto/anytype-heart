@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func NewBundledObjectType(id string) (s Source) {
+func (s *service) NewBundledObjectType(id string) Source {
 	return &bundledObjectType{
 		id:            id,
 		objectTypeKey: domain.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),

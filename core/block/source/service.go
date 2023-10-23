@@ -45,13 +45,22 @@ type Space interface {
 }
 
 type Service interface {
-	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
+	// NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
 	RegisterStaticSource(s Source) error
-	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
+
+	NewAnytypeProfile(id string) Source
+	NewBundledObjectType(id string) Source
+	NewBundledRelation(id string) Source
+	NewDate(space Space, id string) Source
+	NewFile(spaceID string, id string) Source
+	NewIdentity(id string) Source
+	NewTreeSource(ctx context.Context, space Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error)
+	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State) Source
+
 	app.Component
 }
 
@@ -115,24 +124,24 @@ func (s *service) NewSource(ctx context.Context, space Space, id string, buildOp
 
 func (s *service) newSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (Source, error) {
 	if id == addr.AnytypeProfileId {
-		return NewAnytypeProfile(id), nil
+		return s.NewAnytypeProfile(id), nil
 	}
 	if id == addr.MissingObject {
-		return NewMissingObject(), nil
+		return s.NewMissingObject(), nil
 	}
 	st, err := typeprovider.SmartblockTypeFromID(id)
 	if err == nil {
 		switch st {
 		case smartblock.SmartBlockTypeFile:
-			return NewFile(s.accountService, s.fileStore, s.fileService, space.Id(), id), nil
+			return s.NewFile(space.Id(), id), nil
 		case smartblock.SmartBlockTypeDate:
-			return NewDate(space, id), nil
+			return s.NewDate(space, id), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
-			return NewBundledObjectType(id), nil
+			return s.NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
-			return NewBundledRelation(id), nil
+			return s.NewBundledRelation(id), nil
 		case smartblock.SmartBlockTypeIdentity:
-			return NewIdentity(s.identityService, id), nil
+			return s.NewIdentity(id), nil
 		}
 	}
 
@@ -143,7 +152,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 		return staticSrc, nil
 	}
 
-	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
+	return s.NewTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
 }
 
 func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error) {
@@ -159,7 +168,7 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil, nil), nil
+		return s.NewStaticSource(domain.FullID{}, smartblock.SmartBlockTypeBundledTemplate, nil).(*static), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
@@ -178,7 +187,7 @@ func (s *service) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
 		return nil, fmt.Errorf("unsupported id")
 	}
 	// TODO Fix this, but how? It's broken by design, because no one pass spaceId here
-	ss := NewDate(nil, id)
+	ss := s.NewDate(nil, id)
 	defer ss.Close()
 	if v, ok := ss.(SourceIdEndodedDetails); ok {
 		return v.DetailsFromId()

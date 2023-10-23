@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -24,8 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
 const CName = "builtintemplate"
@@ -132,7 +131,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	}
 
 	fullID := domain.FullID{SpaceID: addr.AnytypeMarketplaceWorkspace, ObjectID: id}
-	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
+	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy()))
 	if err != nil {
 		return fmt.Errorf("register static source: %w", err)
 	}

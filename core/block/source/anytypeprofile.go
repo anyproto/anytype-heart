@@ -14,8 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// TODO Is it used?
-func NewAnytypeProfile(id string) (s Source) {
+func (s *service) NewAnytypeProfile(id string) Source {
 	return &anytypeProfile{
 		id: id,
 	}

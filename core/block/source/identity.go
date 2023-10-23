@@ -16,10 +16,10 @@ type identityService interface {
 	GetDetails(ctx context.Context, identity string) (details *types.Struct, err error)
 }
 
-func NewIdentity(identityService identityService, id string) (s Source) {
+func (s *service) NewIdentity(id string) Source {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &identity{
-		identityService: identityService,
+		identityService: s.identityService,
 		id:              id,
 		closingCtx:      ctx,
 		closingCtxFunc:  cancel,

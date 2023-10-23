@@ -11,11 +11,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 type Space interface {
@@ -44,9 +46,10 @@ type space struct {
 	objectcache.Cache
 	objectprovider.ObjectProvider
 
-	service    *service
-	derivedIDs threads.DerivedSmartblockIds
-	installer  bundledObjectsInstaller
+	service       *service
+	derivedIDs    threads.DerivedSmartblockIds
+	installer     bundledObjectsInstaller
+	sourceService source.Service
 
 	commonspace.Space
 
@@ -61,7 +64,7 @@ func (s *service) newSpace(ctx context.Context, coreSpace *spacecore.AnySpace, j
 		loadMandatoryObjectsCh: make(chan struct{}),
 		installer:              s.bundledObjectsInstaller,
 	}
-	sp.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, sp)
+	sp.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, sp, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(coreSpace.Id(), s.personalSpaceID, sp.Cache)
 	var err error
 	sp.derivedIDs, err = sp.ObjectProvider.DeriveObjectIDs(ctx)
@@ -144,4 +147,20 @@ func (s *space) Close(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *space) NewSource(ctx context.Context, id string, buildOptions source.BuildOptions) (source.Source, error) {
+	sbType, err := typeprovider.SmartblockTypeFromID(id)
+	if err == nil {
+		switch sbType {
+		case coresb.SmartBlockTypeFile:
+			return s.sourceService.NewFile(s.Id(), id), nil
+		case coresb.SmartBlockTypeDate:
+			return s.sourceService.NewDate(s, id), nil
+		default:
+			return nil, fmt.Errorf("unsupported id-based smartblock type: %s", sbType)
+		}
+	}
+
+	return s.sourceService.NewTreeSource(ctx, s, id, buildOptions.BuildTreeOpts())
 }

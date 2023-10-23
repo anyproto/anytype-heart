@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewBundledRelation(id string) (s Source) {
+func (s *service) NewBundledRelation(id string) Source {
 	return &bundledRelation{
 		id:     id,
 		relKey: domain.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)),

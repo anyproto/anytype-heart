@@ -43,7 +43,7 @@ func (s *service) initTechSpace() error {
 		},
 		TechSpace: s.techSpace,
 	}
-	sp.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, sp)
+	sp.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, sp, sp)
 
 	err = s.techSpace.Run(techCoreSpace, sp.Cache)
 

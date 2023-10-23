@@ -75,11 +75,7 @@ func (f *ObjectFactory) Name() (name string) {
 	return CName
 }
 
-func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := f.sourceService.NewSource(initCtx.Ctx, space, id, initCtx.BuildOpts)
-	if err != nil {
-		return
-	}
+func (f *ObjectFactory) InitObject(space smartblock.Space, sc source.Source, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
 
 	var ot objecttree.ObjectTree
 	if p, ok := sc.(source.ObjectTreeProvider); ok {
