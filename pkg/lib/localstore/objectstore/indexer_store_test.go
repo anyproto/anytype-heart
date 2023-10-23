@@ -56,9 +56,9 @@ func TestIndexerChecksums(t *testing.T) {
 			FilestoreKeysForceReindexCounter: 6,
 		}
 
-		require.NoError(t, s.SaveGlobalChecksums(want))
+		require.NoError(t, s.SaveChecksums("spaceX", want))
 
-		got, err := s.GetGlobalChecksums()
+		got, err := s.GetChecksums("spaceX")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})

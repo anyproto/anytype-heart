@@ -73,7 +73,7 @@ test-deps:
 	@go build -o deps go.uber.org/mock/mockgen
 	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
-	@mockery --all
+	@$(DEPS_PATH)/mockery --all
 
 clear-test-deps:
 	@echo 'Removing test mocks...'
