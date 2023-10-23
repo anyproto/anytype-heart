@@ -594,6 +594,7 @@ func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
 
 	if !o.dontSetStyle && t.content != nil && t.content.Text == "" {
 		t.SetStyle(text.content.Style)
+		t.BackgroundColor = text.BackgroundColor
 	}
 
 	if !ok {

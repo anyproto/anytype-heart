@@ -222,11 +222,14 @@ func (ds *Service) getRelationSnapshot(relationKey string, databaseProperty prop
 	relationSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     relationDetails,
 		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+		Key:         relationKey,
 	}
 	snapshot := &converter.Snapshot{
-		Id:       relationKey,
-		Snapshot: &pb.ChangeSnapshot{Data: relationSnapshot},
-		SbType:   sb.SmartBlockTypeRelation,
+		Id: relationKey,
+		Snapshot: &pb.ChangeSnapshot{
+			Data: relationSnapshot,
+		},
+		SbType: sb.SmartBlockTypeRelation,
 	}
 	return relationSnapshot, snapshot
 }

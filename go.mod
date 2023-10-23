@@ -31,6 +31,7 @@ require (
 	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
+	github.com/golang/mock v1.6.0
 	github.com/golang/snappy v0.0.4
 	github.com/google/uuid v1.3.1
 	github.com/gosimple/slug v1.13.1
@@ -83,7 +84,7 @@ require (
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/image v0.13.0
-	golang.org/x/mobile v0.0.0-20230531173138-3c911d8e3eda
+	golang.org/x/mobile v0.0.0-20231006135142-2b44d11868fe
 	golang.org/x/net v0.17.0
 	golang.org/x/oauth2 v0.13.0
 	golang.org/x/text v0.13.0
