@@ -57,7 +57,8 @@ jobs:
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install --ignore-dependencies swift-protobuf
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1  brew install mingw-w64
           brew tap filosottile/musl-cross
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install libiconv
           npm i -g node-gyp
         if: github.event.inputs.run-on-runner != 'self-hosted'
       - name: Checkout
@@ -274,9 +275,10 @@ jobs:
           sudo apt update
           sudo apt install -y protobuf-compiler libprotoc-dev
           curl -O https://musl.cc/aarch64-linux-musl-cross.tgz
-          curl -O https://musl.cc/x86_64-linux-musl-native.tgz
+          curl -O https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz
           tar xzf aarch64-linux-musl-cross.tgz -C $HOME
           tar xzf x86_64-linux-musl-native.tgz -C $HOME
+          tar xzf libiconv-1.17.tar.gz -C $HOME
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v3
