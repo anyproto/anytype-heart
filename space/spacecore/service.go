@@ -59,7 +59,8 @@ type SpaceCoreService interface {
 	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
-	Delete(ctx context.Context, spaceID string) (err error)
+	Delete(ctx context.Context, spaceID string) (payload NetworkStatus, err error)
+	RevertDeletion(ctx context.Context, spaceID string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 
 	StreamPool() streampool.StreamPool
@@ -214,13 +215,23 @@ func (s *service) StreamPool() streampool.StreamPool {
 	return s.streamPool
 }
 
-func (s *service) Delete(ctx context.Context, spaceID string) (err error) {
+func (s *service) Delete(ctx context.Context, spaceID string) (payload NetworkStatus, err error) {
 	networkID := s.nodeConf.Configuration().NetworkId
 	delConf, err := coordinatorproto.PrepareDeleteConfirmation(s.accountKeys.SignKey, spaceID, s.accountKeys.PeerId, networkID)
 	if err != nil {
 		return
 	}
-	err = s.coordinator.SpaceDelete(ctx, spaceID, delConf)
+	status, err := s.coordinator.ChangeStatus(ctx, spaceID, delConf)
+	if err != nil {
+		err = convertCoordError(err)
+		return
+	}
+	payload = NewSpaceStatus(status)
+	return
+}
+
+func (s *service) RevertDeletion(ctx context.Context, spaceID string) (err error) {
+	_, err = s.coordinator.ChangeStatus(ctx, spaceID, nil)
 	if err != nil {
 		err = convertCoordError(err)
 		return
