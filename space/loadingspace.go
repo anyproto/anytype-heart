@@ -74,9 +74,11 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 		err = sp.WaitMandatoryObjects(ctx)
 	}
 	if err != nil {
-		closeErr := sp.Close(ctx)
-		if closeErr != nil {
-			log.WarnCtx(ctx, "space close error", zap.Error(closeErr))
+		if sp != nil {
+			closeErr := sp.Close(ctx)
+			if closeErr != nil {
+				log.WarnCtx(ctx, "space close error", zap.Error(closeErr))
+			}
 		}
 		ls.loadErr = err
 	} else {
