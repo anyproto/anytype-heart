@@ -508,6 +508,7 @@ message Rpc {
 
             message Response {
                 string accountId = 1;
+                string personalSpaceId = 3;
                 Error error = 2;
 
                 message Error {
@@ -614,7 +615,7 @@ message Rpc {
             }
         }
 
-        message Info {
+        message Open {
             message Request {
                 string spaceId = 1;
             }
@@ -708,10 +709,10 @@ message Rpc {
             }
         }
 
-        message SetIsHighlighted {
+        message SetInfo {
             message Request {
-                string objectId = 1;
-                bool isHighlighted = 2;
+                string spaceId = 1;
+                google.protobuf.Struct details = 2;
             }
 
             message Response {
@@ -786,6 +787,7 @@ message Rpc {
                 string contextId = 1; // id of the context blo1k
                 string objectId = 2;
                 string traceId = 3;
+                string spaceId = 5; // Required only for date objects
 
                 bool includeRelationsAsDependentObjects = 4; // some clients may set this option instead if having the single subscription to all relations
             }
@@ -815,6 +817,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // deprecated, GO-1926
                 string objectId = 2;
+                string spaceId = 3; // Required only for date objects
             }
 
             message Response {
@@ -839,6 +842,7 @@ message Rpc {
                 string contextId = 1; // deprecated, GO-1926
                 string objectId = 2;
                 string traceId = 3;
+                string spaceId = 5; // Required only for date objects
 
                 bool includeRelationsAsDependentObjects = 4; // some clients may set this option instead if having the single subscription to all relations
             }
@@ -2310,31 +2314,6 @@ message Rpc {
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
                             READONLY_OBJECT_TYPE = 3;
-                            // ...
-                        }
-                    }
-                }
-            }
-
-            message List {
-                message Request {
-                    string objectTypeUrl = 1;
-                    bool appendRelationsFromOtherTypes = 2; // add relations from other object types in the end
-                }
-
-                message Response {
-                    Error error = 1;
-                    repeated anytype.model.RelationLink relations = 2;
-
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
-
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            UNKNOWN_OBJECT_TYPE_URL = 3;
                             // ...
                         }
                     }

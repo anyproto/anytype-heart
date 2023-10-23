@@ -9,11 +9,13 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -67,10 +69,10 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	}
 	resultSnapshots = append(resultSnapshots, sn)
 	for _, objectsSnapshot := range subObjectsSnapshots {
-		id := pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String())
+		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
 		resultSnapshots = append(resultSnapshots, &converter.Snapshot{
-			Id:       id,
-			SbType:   smartblock.SmartBlockTypeSubObject,
+			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
+			SbType:   sbType,
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
 		})
 	}
@@ -138,7 +140,7 @@ func (pt *Task) handlePageProperties(object *DataObject, details map[string]*typ
 	for name, prop := range pt.p.Properties {
 		relation, relationLink, err := pt.retrieveRelation(object, name, prop, details, hasTag, tagExist)
 		if err != nil {
-			logger.With("method", "handlePageProperties").Error(err)
+			log.With("method", "handlePageProperties").Error(err)
 			continue
 		}
 		relationsSnapshots = append(relationsSnapshots, relation...)
@@ -203,6 +205,7 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 	rel := &model.SmartBlockSnapshotBase{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+		Key:         key,
 	}
 	return rel, key
 }
@@ -227,6 +230,12 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relation))
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
+	if err != nil {
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
+		return details
+	}
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
 	return details
 }
 
@@ -260,7 +269,7 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, propObject 
 				apiKey,
 				propObject.GetPropertyType(),
 			); err != nil {
-			return fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+			return fmt.Errorf("failed to get paginated property, %s, %w", propObject.GetPropertyType(), err)
 		}
 		pt.handlePaginatedProperties(propObject, properties)
 	}
@@ -288,6 +297,13 @@ func (pt *Task) setDetails(propObject property.Object, key string, details map[s
 	}
 	ds.SetDetail(key, details)
 	return nil
+}
+
+func (pt *Task) getSmartBlockTypeAndID(objectSnapshot *model.SmartBlockSnapshotBase) smartblock.SmartBlockType {
+	if lo.Contains(objectSnapshot.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
+		return smartblock.SmartBlockTypeRelationOption
+	}
+	return smartblock.SmartBlockTypeRelation
 }
 
 func handlePeopleItem(properties []interface{}, pr *property.PeopleItem) {
@@ -449,23 +465,30 @@ func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStor
 }
 
 func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *model.SmartBlockSnapshotBase) {
-	details := getDetailsForRelationOption(name, rel)
+	id, details := getDetailsForRelationOption(name, rel)
 	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
 	optSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
+		Key:         id,
 	}
 	return details, optSnapshot
 }
 
-func getDetailsForRelationOption(name, rel string) *types.Struct {
+func getDetailsForRelationOption(name, rel string) (string, *types.Struct) {
+	id := bson.NewObjectId().Hex()
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
 	details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(rel)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_relationOption))
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
-	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(bson.NewObjectId().Hex())
-	return details
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
+	if err != nil {
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
+		return id, details
+	}
+	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
+	return id, details
 }
 
 func isPageContainsTagProperty(properties property.Properties) bool {

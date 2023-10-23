@@ -2,7 +2,6 @@ package source
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -12,31 +11,31 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var getFileTimeout = 60 * time.Second
 
-func NewFile(a core.Service, fileStore filestore.FileStore, fileService files.Service, spaceID string, id string) (s Source) {
+func NewFile(accountService accountService, fileStore filestore.FileStore, fileService files.Service, spaceID string, id string) (s Source) {
 	return &file{
 		id: domain.FullID{
 			SpaceID:  spaceID,
 			ObjectID: id,
 		},
-		a:           a,
-		fileStore:   fileStore,
-		fileService: fileService,
+		accountService: accountService,
+		fileStore:      fileStore,
+		fileService:    fileService,
 	}
 }
 
 type file struct {
-	id          domain.FullID
-	a           core.Service
-	fileStore   filestore.FileStore
-	fileService files.Service
+	id             domain.FullID
+	accountService accountService
+	fileStore      filestore.FileStore
+	fileService    files.Service
 }
 
 func (f *file) ReadOnly() bool {
@@ -60,7 +59,7 @@ func (f *file) getDetailsForFileOrImage(ctx context.Context) (*types.Struct, dom
 	if err != nil {
 		return nil, "", err
 	}
-	if strings.HasPrefix(file.Info().Media, "image") {
+	if mill.IsImage(file.Info().Media) {
 		image, err := f.fileService.ImageByHash(ctx, f.id)
 		if err != nil {
 			return nil, "", err
@@ -116,4 +115,9 @@ func (f *file) Heads() []string {
 
 func (f *file) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
+}
+
+func (f *file) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+	creatorObjectId = f.accountService.IdentityObjectId()
+	return
 }

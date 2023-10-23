@@ -49,13 +49,13 @@ func (p *pbc) Convert(sbType model.SmartBlockType) []byte {
 		m := jsonpb.Marshaler{Indent: " "}
 		result, err := m.MarshalToString(mo)
 		if err != nil {
-			log.Errorf("failed to convert object to json: %s", err.Error())
+			log.Errorf("failed to convert object to json: %s", err)
 		}
 		return []byte(result)
 	}
 	result, err := mo.Marshal()
 	if err != nil {
-		log.Errorf("failed to marshal object: %s", err.Error())
+		log.Errorf("failed to marshal object: %s", err)
 	}
 	return result
 }

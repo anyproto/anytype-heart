@@ -1,7 +1,6 @@
 package restriction
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -9,12 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
-	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 type fixture struct {
@@ -29,12 +26,9 @@ func newFixture(t *testing.T) *fixture {
 	sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	sbtProvider.EXPECT().Name().Return("sbtProvider")
 
-	systemObjectService := mock_system_object.NewMockService(t)
-
 	a := &app.App{}
 	a.Register(objectStore)
 	a.Register(sbtProvider)
-	a.Register(testutil.PrepareMock(context.Background(), a, systemObjectService))
 	s := New()
 	err := s.Init(a)
 	require.NoError(t, err)

@@ -386,7 +386,6 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	if u.fileType == model.BlockContentFile_Image {
 		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
-			log.Infof("can't add file '%s' as image: add as file", u.name)
 			e = nil
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
 		}
@@ -441,24 +440,7 @@ func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
 		return model.BlockContentFile_File
 	}
 	tp, _ := filetype.Match(b)
-	return u.detectTypeByMIME(tp.MIME.Value)
-}
-
-func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
-	if strings.HasPrefix(mime, "image") {
-		return model.BlockContentFile_Image
-	}
-	if strings.HasPrefix(mime, "video") {
-		return model.BlockContentFile_Video
-	}
-	if strings.HasPrefix(mime, "audio") {
-		return model.BlockContentFile_Audio
-	}
-	if strings.HasPrefix(mime, "application/pdf") {
-		return model.BlockContentFile_PDF
-	}
-
-	return model.BlockContentFile_File
+	return file.DetectTypeByMIME(tp.MIME.Value)
 }
 
 func (u *uploader) updateBlock() {

@@ -113,7 +113,7 @@ func validateToken(privKey []byte, rawToken string) error {
 		return privKey, nil
 	})
 	if err != nil {
-		return fmt.Errorf("parse token %s: %w", rawToken, err)
+		return fmt.Errorf("parse token: %w", err)
 	}
 
 	if token != nil && !token.Valid {

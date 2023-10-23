@@ -223,7 +223,7 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		return
 	}
 	if err := s.InsertTo(HeaderLayoutId, model.Block_InnerFirst, TitleBlockId); err != nil {
-		log.Errorf("template WithTitle failed to insert: %w", err)
+		log.Errorf("template WithTitle failed to insert: %v", err)
 	}
 })
 
@@ -317,7 +317,7 @@ var WithForcedDescription = func(s *state.State) {
 	if err := s.InsertTo(TitleBlockId, model.Block_Bottom, DescriptionBlockId); err != nil {
 		if err = s.InsertTo(FeaturedRelationsId, model.Block_Top, DescriptionBlockId); err != nil {
 			if err = s.InsertTo(HeaderLayoutId, model.Block_Inner, DescriptionBlockId); err != nil {
-				log.Errorf("template WithDescription failed to insert: %s", err.Error())
+				log.Errorf("template WithDescription failed to insert: %s", err)
 			}
 		}
 	}
@@ -421,7 +421,7 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 	}
 
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, FeaturedRelationsId); err != nil {
-		log.Errorf("template FeaturedRelations failed to insert: %w", err)
+		log.Errorf("template FeaturedRelations failed to insert: %v", err)
 	}
 })
 
@@ -449,13 +449,13 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 			s.Add(simple.New(block))
 			err := s.InsertTo(s.RootId(), model.Block_Inner, block.Id)
 			if err != nil {
-				log.Errorf("template WithDataview failed to insert: %w", err)
+				log.Errorf("template WithDataview failed to insert: %v", err)
 			}
 		}
 	}
 }
 
-var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+var WithDataviewID = func(id string, dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		WithEmpty(s)
 		// remove old dataview
@@ -484,11 +484,11 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 		})
 
 		if blockNeedToUpdate || !s.Exists(id) {
-			s.Set(simple.New(&model.Block{Content: &dataview, Id: id}))
+			s.Set(simple.New(&model.Block{Content: dataview, Id: id}))
 			if !s.IsParentOf(s.RootId(), id) {
 				err := s.InsertTo(s.RootId(), model.Block_Inner, id)
 				if err != nil {
-					log.Errorf("template WithDataview failed to insert: %w", err)
+					log.Errorf("template WithDataview failed to insert: %v", err)
 				}
 			}
 		}
@@ -496,7 +496,7 @@ var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forc
 	}
 }
 
-var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+var WithDataview = func(dataview *model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return WithDataviewID(DataviewBlockId, dataview, forceViews)
 }
 
@@ -660,7 +660,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 	}
 
 	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
-		log.Errorf("insert relation blocks: %w", err)
+		log.Errorf("insert relation blocks: %v", err)
 		return
 	}
 }

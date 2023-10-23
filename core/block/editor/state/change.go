@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -23,6 +24,7 @@ import (
 
 type snapshotOptions struct {
 	changeId           string
+	internalKey        string
 	uniqueKeyMigration *uniqueKeyMigration
 }
 
@@ -36,6 +38,12 @@ func WithChangeId(changeId string) func(*snapshotOptions) {
 	return func(o *snapshotOptions) {
 		o.changeId = changeId
 		return
+	}
+}
+
+func WithInternalKey(internalKey string) func(*snapshotOptions) {
+	return func(o *snapshotOptions) {
+		o.internalKey = internalKey
 	}
 }
 
@@ -96,6 +104,11 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		storeKeyRemoved:   removedCollectionKeysMap,
 		uniqueKeyInternal: snapshot.Data.Key,
 	}
+
+	if sOpts.internalKey != "" {
+		s.uniqueKeyInternal = sOpts.internalKey
+	}
+
 	if s.store != nil {
 		for collName, coll := range s.store.Fields {
 			if c := coll.GetStructValue(); s != nil {
@@ -109,11 +122,11 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	return s
 }
 
-func (s *State) SetLastModified(ts int64, profileId string) {
+func (s *State) SetLastModified(ts int64, identityLink string) {
 	if ts > 0 {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(ts))
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(profileId))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(identityLink))
 }
 
 func (s *State) SetChangeId(id string) {
@@ -239,7 +252,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 		}
 	}
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	//set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
+	// set.Value = shortenValueToLimit(s.rootId, set.Key, set.Value)
 	s.details = pbtypes.CopyStruct(det)
 	if set.Value != nil {
 		s.details.Fields[set.Key] = set.Value
@@ -350,7 +363,7 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 	merr := multierror.Error{}
 	for _, ev := range update.Events {
 		if err := s.applyEvent(ev); err != nil {
-			merr.Errors = append(merr.Errors, fmt.Errorf("failed to apply event %T: %s", ev.Value, err.Error()))
+			merr.Errors = append(merr.Errors, fmt.Errorf("failed to apply event %T: %w", ev.Value, err))
 		}
 	}
 	return merr.ErrorOrNil()
@@ -414,7 +427,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 				b1, _ = msg.Msg.Marshal()
 				b2, _ = msgs[i-1].Msg.Marshal()
 				if bytes.Equal(b1, b2) {
-					log.With("objectID", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
+					log.With("objectID", s.rootId).Errorf("duplicate change: %T", msg.Msg.GetValue())
 				}
 			}
 		}
@@ -496,7 +509,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockSetRestrictions:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
-			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)
+			log.Errorf("unexpected event - can't convert to changes: %T", msg.Msg.GetValue())
 		}
 	}
 	var cb = &changeBuilder{changes: s.changes}
@@ -803,8 +816,13 @@ func migrateAddMissingUniqueKey(sbType smartblock.SmartBlockType, snapshot *pb.C
 	id := pbtypes.GetString(snapshot.Data.Details, bundle.RelationKeyId.String())
 	uk, err := domain.UnmarshalUniqueKey(id)
 	if err != nil {
-		// Means that smartblock type is not supported
-		return
+		// Maybe it's a relation option?
+		if bson.IsObjectIdHex(id) {
+			uk = domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
+		} else {
+			// Means that smartblock type is not supported
+			return
+		}
 	}
 	if uk.SmartblockType() != sbType {
 		log.Errorf("missingKeyMigration: wrong sbtype %s != %s", uk.SmartblockType(), sbType)

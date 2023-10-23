@@ -60,7 +60,7 @@ func (s *State) normalizeSize() (err error) {
 		return iErr
 	}
 	if err != nil {
-		log.With("objectID", s.rootId).Errorf(err.Error())
+		log.With("objectID", s.rootId).Error(err)
 	}
 	return err
 }

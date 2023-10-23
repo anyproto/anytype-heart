@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/mock_system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -31,18 +29,16 @@ func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string)
 
 	objectStore := testMock.NewMockObjectStore(ctrl)
 
-	systemObjectService := mock_system_object.NewMockService(t)
 	templ := &Template{
 		Page: &Page{
-			SmartBlock:          sb,
-			objectStore:         objectStore,
-			systemObjectService: systemObjectService,
+			SmartBlock:  sb,
+			objectStore: objectStore,
 		},
 	}
 	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, bundle.TypeKeyPage.String())
 	require.NoError(t, err)
 
-	systemObjectService.EXPECT().GetObjectByUniqueKey(mock.Anything, uniqueKey).Return(&model.ObjectDetails{
+	objectStore.EXPECT().GetObjectByUniqueKey(gomock.Any(), uniqueKey).Return(&model.ObjectDetails{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(model.ObjectType_basic)),

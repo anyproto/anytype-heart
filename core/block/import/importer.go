@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,10 +11,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
@@ -21,24 +22,24 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/import/notion"
+	"github.com/anyproto/anytype-heart/core/block/import/objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -52,9 +53,8 @@ type Import struct {
 	converters      map[string]converter.Converter
 	s               *block.Service
 	oc              Creator
-	objectIDGetter  IDGetter
+	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
 	fileSync        filesync.FileSync
 	sync.Mutex
 }
@@ -66,14 +66,15 @@ func New() Importer {
 }
 
 func (i *Import) Init(a *app.App) (err error) {
-	i.s = a.MustComponent(block.CName).(*block.Service)
-	coreService := a.MustComponent(core.CName).(core.Service)
+	i.s = app.MustComponent[*block.Service](a)
+	accountService := app.MustComponent[account.Service](a)
+	spaceService := app.MustComponent[space.Service](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(col, i.sbtProvider, coreService),
+		pbc.New(col, accountService),
 		web.NewConverter(),
 		html.New(col, i.tempDirProvider),
 		txt.New(col),
@@ -82,21 +83,23 @@ func (i *Import) Init(a *app.App) (err error) {
 	for _, c := range converters {
 		i.converters[c.Name()] = c
 	}
-	objectCache := app.MustComponent[objectcache.Cache](a)
 	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.objectIDGetter = NewObjectIDGetter(store, coreService, objectCache)
+	i.idProvider = objectid.NewIDProvider(store, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objectCache, coreService, factory, store, relationSyncer, fileStore)
-	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	i.fileSync = a.MustComponent(filesync.CName).(filesync.FileSync)
+	objectCreator := app.MustComponent[objectcreator.Service](a)
+	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
+	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
 func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (string, error) {
+	if req.SpaceId == "" {
+		return "", fmt.Errorf("spaceId is empty")
+	}
 	i.Lock()
 	defer i.Unlock()
 	progress := i.setupProgressBar(req)
@@ -347,7 +350,6 @@ func (i *Import) getObjectID(
 	updateExisting bool,
 ) error {
 	var (
-		err         error
 		id          string
 		payload     treestorage.TreeStorageCreatePayload
 		createdTime time.Time
@@ -358,17 +360,15 @@ func (i *Import) getObjectID(
 	} else {
 		createdTime = time.Now()
 	}
-	if id, payload, err = i.objectIDGetter.Get(spaceID, snapshot, createdTime, updateExisting); err == nil {
-		oldIDToNew[snapshot.Id] = id
-		if snapshot.SbType == sb.SmartBlockTypeSubObject && id == "" {
-			oldIDToNew[snapshot.Id] = snapshot.Id
-		}
-		if payload.RootRawChange != nil {
-			createPayloads[id] = payload
-		}
-		return nil
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, createdTime, updateExisting)
+	if err != nil {
+		return err
 	}
-	return err
+	oldIDToNew[snapshot.Id] = id
+	if payload.RootRawChange != nil {
+		createPayloads[id] = payload
+	}
+	return nil
 }
 
 func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {
@@ -390,7 +390,7 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(errors.Wrap(converter.ErrCancel, err.Error()))
+			allErrors.Add(fmt.Errorf("%w: %w", converter.ErrCancel, err))
 			pool.Stop()
 			return nil
 		}

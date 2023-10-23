@@ -12,19 +12,17 @@ import (
 
 // PayloadDerivationParams is a struct for deriving a payload
 type PayloadDerivationParams struct {
-	Key           domain.UniqueKey
-	TargetSpaceID string
+	Key domain.UniqueKey
 }
 
 // PayloadCreationParams is a struct for creating a payload
 type PayloadCreationParams struct {
 	Time           time.Time
 	SmartblockType coresb.SmartBlockType
-	TargetSpaceID  string
 }
 
 type PayloadCreator interface {
-	CreateTreePayload(ctx context.Context, spaceID string, params PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error)
-	DeriveTreePayload(ctx context.Context, spaceID string, params PayloadDerivationParams) (storagePayload treestorage.TreeStorageCreatePayload, err error)
-	DeriveObjectID(ctx context.Context, spaceID string, uniqueKey domain.UniqueKey) (id string, err error)
+	CreateTreePayload(ctx context.Context, params PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error)
+	DeriveTreePayload(ctx context.Context, params PayloadDerivationParams) (storagePayload treestorage.TreeStorageCreatePayload, err error)
+	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 }

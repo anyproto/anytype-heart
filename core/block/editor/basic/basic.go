@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -46,7 +45,7 @@ type CommonOperations interface {
 	SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error
 
 	SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error
-	AddRelationAndSet(ctx session.Context, service system_object.Service, req pb.RpcBlockRelationAddRequest) error
+	AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationAddRequest) error
 	FeaturedRelationAdd(ctx session.Context, relations ...string) error
 	FeaturedRelationRemove(ctx session.Context, relations ...string) error
 
@@ -95,26 +94,19 @@ type Updatable interface {
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-func NewBasic(
-	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
-	layoutConverter converter.LayoutConverter,
-) AllOperations {
+func NewBasic(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) AllOperations {
 	return &basic{
-		SmartBlock:          sb,
-		objectStore:         objectStore,
-		systemObjectService: systemObjectService,
-		layoutConverter:     layoutConverter,
+		SmartBlock:      sb,
+		objectStore:     objectStore,
+		layoutConverter: layoutConverter,
 	}
 }
 
 type basic struct {
 	smartblock.SmartBlock
 
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	layoutConverter     converter.LayoutConverter
+	objectStore     objectstore.ObjectStore
+	layoutConverter converter.LayoutConverter
 }
 
 func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id string, err error) {
@@ -367,14 +359,14 @@ func (bs *basic) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRe
 	return bs.Apply(s, smartblock.NoEvent)
 }
 
-func (bs *basic) AddRelationAndSet(ctx session.Context, systemObjectService system_object.Service, req pb.RpcBlockRelationAddRequest) (err error) {
+func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationAddRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	rel, err := systemObjectService.FetchRelationByKey(bs.SpaceID(), req.RelationKey)
+	rel, err := bs.objectStore.FetchRelationByKey(bs.SpaceID(), req.RelationKey)
 	if err != nil {
 		return
 	}
@@ -404,7 +396,7 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 			if !bs.HasRelation(s, r) {
 				err = bs.addRelationLink(r, s)
 				if err != nil {
-					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %s", r, err.Error())
+					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
 				}
 			}
 		}

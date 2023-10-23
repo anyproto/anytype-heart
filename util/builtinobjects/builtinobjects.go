@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -26,11 +26,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
-	_ "embed"
 )
 
 const (
@@ -128,12 +127,11 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	service             *block.Service
-	coreService         core.Service
-	importer            importer.Importer
-	store               objectstore.ObjectStore
-	tempDirService      core.TempDirProvider
-	systemObjectService system_object.Service
+	service        *block.Service
+	importer       importer.Importer
+	store          objectstore.ObjectStore
+	tempDirService core.TempDirProvider
+	spaceService   space.Service
 }
 
 func New() BuiltinObjects {
@@ -142,11 +140,10 @@ func New() BuiltinObjects {
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.service = a.MustComponent(block.CName).(*block.Service)
-	b.coreService = a.MustComponent(core.CName).(core.Service)
 	b.importer = a.MustComponent(importer.CName).(importer.Importer)
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
-	b.systemObjectService = app.MustComponent[system_object.Service](a)
+	b.spaceService = app.MustComponent[space.Service](a)
 	return
 }
 
@@ -173,8 +170,8 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 
 	if err = b.inject(ctx, spaceID, useCase, archive); err != nil {
 		return pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
-			fmt.Errorf("failed to import builtinObjects for Use Case %s: %s",
-				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err.Error())
+			fmt.Errorf("failed to import builtinObjects for Use Case %s: %w",
+				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
 	}
 
 	spent := time.Now().Sub(start)
@@ -195,7 +192,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch experience from '%s': not OK status code: %s", source, resp.Status)
+		return fmt.Errorf("failed to fetch experience: not OK status code: %s", resp.Status)
 	}
 	defer func() {
 		if err = resp.Body.Close(); err != nil {
@@ -237,7 +234,7 @@ func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
 func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
-		return fmt.Errorf("failed to save use case archive to temporary file: %s", err.Error())
+		return fmt.Errorf("failed to save use case archive to temporary file: %w", err)
 	}
 
 	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
@@ -249,19 +246,23 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	if useCase != migrationUseCase {
 		oldID, err = b.getOldSpaceDashboardId(archive)
 		if err != nil {
-			log.Errorf("Failed to get old id of space dashboard object: %s", err.Error())
+			log.Errorf("Failed to get old id of space dashboard object: %s", err)
 			return nil
 		}
 	}
 
 	newID, err := b.getNewSpaceDashboardId(spaceID, oldID)
 	if err != nil {
-		log.Errorf("Failed to get new id of space dashboard object: %s", err.Error())
+		log.Errorf("Failed to get new id of space dashboard object: %s", err)
 		return nil
 	}
 
-	b.handleSpaceDashboard(spaceID, newID)
-	b.createWidgets(ctx, spaceID, useCase)
+	spc, err := b.spaceService.Get(context.Background(), spaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	b.handleSpaceDashboard(spc, newID)
+	b.createWidgets(ctx, spc, useCase)
 	return
 }
 
@@ -283,7 +284,7 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path
 	}
 
 	if err = os.Remove(path); err != nil {
-		log.Errorf("failed to remove temporary file: %s", err.Error())
+		log.Errorf("failed to remove temporary file: %s", err)
 	}
 
 	return nil
@@ -338,16 +339,16 @@ func (b *builtinObjects) getNewSpaceDashboardId(spaceID string, oldID string) (i
 				Value:       pbtypes.String(spaceID),
 			},
 		},
-	}, nil)
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}
 	return "", err
 }
 
-func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
+func (b *builtinObjects) handleSpaceDashboard(spc space.Space, id string) {
 	if err := b.service.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: b.coreService.PredefinedObjects(spaceID).Workspace,
+		ContextId: spc.DerivedIDs().Workspace,
 		Details: []*pb.RpcObjectSetDetailsDetail{
 			{
 				Key:   bundle.RelationKeySpaceDashboardId.String(),
@@ -355,19 +356,19 @@ func (b *builtinObjects) handleSpaceDashboard(spaceID string, id string) {
 			},
 		},
 	}); err != nil {
-		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err.Error())
+		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
 	}
 }
 
-func (b *builtinObjects) createWidgets(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spc space.Space, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
 	var err error
-	widgetObjectID := b.coreService.PredefinedObjects(spaceID).Widgets
+	widgetObjectID := spc.DerivedIDs().Widgets
 
 	if err = block.DoStateCtx(b.service, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		for _, param := range widgetParams[useCase] {
 			objectID := param.objectID
 			if param.isObjectIDChanged {
-				objectID, err = b.getNewObjectID(spaceID, objectID)
+				objectID, err = b.getNewObjectID(spc.Id(), objectID)
 				if err != nil {
 					log.Errorf("Skipping creation of widget block as failed to get new object id using old one '%s': %v", objectID, err)
 					continue
@@ -417,7 +418,7 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 				Value:       pbtypes.String(spaceID),
 			},
 		},
-	}, nil)
+	})
 	if err == nil && len(ids) > 0 {
 		return ids[0], nil
 	}

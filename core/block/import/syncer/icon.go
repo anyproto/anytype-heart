@@ -54,12 +54,12 @@ func (is *IconSyncer) Sync(id string, b simple.Block) error {
 			return nil
 		}, b.Model().Id)
 		if upErr != nil {
-			return fmt.Errorf("failed to update block: %s", err)
+			return fmt.Errorf("failed to update block: %w", err)
 		}
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update block: %s", err)
+		return fmt.Errorf("failed to update block: %w", err)
 	}
 	return nil
 }

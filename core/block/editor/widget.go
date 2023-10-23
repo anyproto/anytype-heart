@@ -10,15 +10,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-const BlockAdditionError = "failed to add widget '%s': %v"
 
 type WidgetObject struct {
 	smartblock.SmartBlock
@@ -27,24 +24,16 @@ type WidgetObject struct {
 	basic.Unlinkable
 	basic.Updatable
 	widget.Widget
-
-	systemObjectService system_object.Service
 }
 
-func NewWidgetObject(
-	sb smartblock.SmartBlock,
-	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
-	layoutConverter converter.LayoutConverter,
-) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter)
+func NewWidgetObject(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) *WidgetObject {
+	bs := basic.NewBasic(sb, objectStore, layoutConverter)
 	return &WidgetObject{
-		SmartBlock:          sb,
-		Movable:             bs,
-		Updatable:           bs,
-		IHistory:            basic.NewHistory(sb),
-		Widget:              widget.NewWidget(sb),
-		systemObjectService: systemObjectService,
+		SmartBlock: sb,
+		Movable:    bs,
+		Updatable:  bs,
+		IHistory:   basic.NewHistory(sb),
+		Widget:     widget.NewWidget(sb),
 	}
 }
 
@@ -93,7 +82,7 @@ func (w *WidgetObject) withDefaultWidgets(st *state.State) {
 				},
 			},
 		}); err != nil {
-			log.Errorf(BlockAdditionError, id, err)
+			log.Errorf("failed to add widget '%s': %v", id, err)
 		}
 	}
 }

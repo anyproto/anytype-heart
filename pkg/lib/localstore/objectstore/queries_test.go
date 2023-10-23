@@ -13,12 +13,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -206,42 +204,6 @@ func TestQuery(t *testing.T) {
 				obj2,
 			}, recs)
 		})
-	})
-
-	t.Run("without system objects", func(t *testing.T) {
-		s := NewStoreFixture(t)
-		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		s.sbtProvider = typeProvider
-
-		obj1 := TestObject{
-			bundle.RelationKeyId:      pbtypes.String("id1"),
-			bundle.RelationKeyName:    pbtypes.String("Favorites page"),
-			bundle.RelationKeySpaceId: pbtypes.String("space1"),
-		}
-		typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypeHome, nil)
-
-		obj2 := TestObject{
-			bundle.RelationKeyId:      pbtypes.String("id2"),
-			bundle.RelationKeyName:    pbtypes.String("name2"),
-			bundle.RelationKeySpaceId: pbtypes.String("space1"),
-		}
-		typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypePage, nil)
-
-		obj3 := TestObject{
-			bundle.RelationKeyId:      pbtypes.String("id3"),
-			bundle.RelationKeyName:    pbtypes.String("Archive page"),
-			bundle.RelationKeySpaceId: pbtypes.String("space1"),
-		}
-		typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypeArchive, nil)
-
-		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
-
-		recs, _, err := s.Query(database.Query{})
-		require.NoError(t, err)
-
-		assertRecordsEqual(t, []TestObject{
-			obj2,
-		}, recs)
 	})
 
 	t.Run("with ascending order and filter", func(t *testing.T) {
@@ -486,69 +448,18 @@ func TestQueryObjectIds(t *testing.T) {
 		obj3 := makeObjectWithName("id3", "name3")
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-		ids, _, err := s.QueryObjectIDs(database.Query{}, nil)
+		ids, _, err := s.QueryObjectIDs(database.Query{})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"id1", "id2", "id3"}, ids)
-	})
-
-	t.Run("with smartblock types filter", func(t *testing.T) {
-		// Given
-		s := NewStoreFixture(t)
-		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		s.sbtProvider = typeProvider
-
-		obj1 := makeObjectWithName("id1", "file1")
-		typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypeFile, nil)
-
-		obj2 := makeObjectWithName("id2", "type2")
-		typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypeSubObject, nil)
-
-		obj3 := makeObjectWithName("id3", "page3")
-		typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypePage, nil)
-		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
-
-		// When
-		ids, _, err := s.QueryObjectIDs(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
-		require.NoError(t, err)
-
-		// Then
-		assert.Equal(t, []string{"id1", "id3"}, ids)
-
-		t.Run("with limit", func(t *testing.T) {
-			// When
-			ids, _, err := s.QueryObjectIDs(database.Query{
-				Limit: 1,
-			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
-			require.NoError(t, err)
-			// Then
-			assert.Equal(t, []string{"id1"}, ids)
-		})
-		t.Run("with limit and offset", func(t *testing.T) {
-			// When
-			ids, _, err := s.QueryObjectIDs(database.Query{
-				Limit:  1,
-				Offset: 1,
-			}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypePage})
-			require.NoError(t, err)
-			// Then
-			assert.Equal(t, []string{"id3"}, ids)
-		})
 	})
 
 	t.Run("with basic filter and smartblock types filter", func(t *testing.T) {
 		// Given
 		s := NewStoreFixture(t)
-		typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		s.sbtProvider = typeProvider
 
 		obj1 := makeObjectWithNameAndDescription("id1", "file1", "foo")
-		typeProvider.EXPECT().Type("space1", "id1").Return(smartblock.SmartBlockTypeFile, nil)
-
 		obj2 := makeObjectWithNameAndDescription("id2", "page2", "foo")
-		typeProvider.EXPECT().Type("space1", "id2").Return(smartblock.SmartBlockTypePage, nil)
-
 		obj3 := makeObjectWithNameAndDescription("id3", "page3", "bar")
-		typeProvider.EXPECT().Type("space1", "id3").Return(smartblock.SmartBlockTypePage, nil)
 
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
@@ -561,11 +472,11 @@ func TestQueryObjectIds(t *testing.T) {
 					Value:       pbtypes.String("foo"),
 				},
 			},
-		}, []smartblock.SmartBlockType{smartblock.SmartBlockTypePage})
+		})
 		require.NoError(t, err)
 
 		// Then
-		assert.Equal(t, []string{"id2"}, ids)
+		assert.Equal(t, []string{"id1", "id2"}, ids)
 	})
 }
 

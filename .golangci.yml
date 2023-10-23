@@ -27,11 +27,19 @@ linters-settings:
     locale: US
     ignore-words:
       - commonspace
+  errorlint:
+    errorf: true
+    errorf-multi: true
+    asserts: false
+    comparison: true
   revive:
     rules:
       - name: var-naming
         severity: warning
         disabled: true
+  gosec:
+    excludes:
+      - G602
 
 linters:
   disable-all: true
@@ -52,6 +60,7 @@ linters:
     - gosimple
     - govet
     - unconvert
+    - errorlint
   max-issues-per-linter: 0
   max-same-issues: 0
 
@@ -60,4 +69,5 @@ severity:
   rules:
       - severity: warning
         linters:
-          - lll
+          - errcheck
+          - gosimple

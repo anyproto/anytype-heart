@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/disintegration/imaging"
 	"github.com/dsoprea/go-exif/v3"
@@ -38,6 +39,24 @@ const (
 	WEBP Format = "webp"
 	HEIC Format = "heic"
 )
+
+func IsImage(mime string) bool {
+	parts := strings.SplitN(mime, "/", 2)
+	if len(parts) == 1 {
+		return false
+	}
+	mimeType := parts[0]
+	mimeSubtype := parts[1]
+	return mimeType == "image" && isImageFormatSupported(Format(mimeSubtype))
+}
+
+func isImageFormatSupported(format Format) bool {
+	switch format {
+	case JPEG, PNG, GIF, ICO, WEBP, HEIC:
+		return true
+	}
+	return false
+}
 
 var ErrFormatSupportNotEnabled = errors.New("this image format support is not enabled in this build")
 
@@ -122,7 +141,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	var exifData []byte
 	exifData, err = getExifData(r)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get exif data %s", err.Error())
+		return nil, fmt.Errorf("failed to get exif data %w", err)
 	}
 
 	_, err = r.Seek(0, io.SeekStart)
@@ -136,7 +155,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	if exifData != nil {
 		orientation, err = getJpegOrientation(exifData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get jpeg orientation: %s", err.Error())
+			return nil, fmt.Errorf("failed to get jpeg orientation: %w", err)
 		}
 		_, err = r.Seek(0, io.SeekStart)
 		if err != nil {
@@ -152,7 +171,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 
 		img = reverseOrientation(img, orientation)
 		if err != nil {
-			err = fmt.Errorf("failed to fix img orientation: %s", err.Error())
+			err = fmt.Errorf("failed to fix img orientation: %w", err)
 			return nil, err
 		}
 		imgConfig.Width, imgConfig.Height = img.Bounds().Max.X, img.Bounds().Max.Y
@@ -376,7 +395,7 @@ func patchReaderRemoveExif(r io.ReadSeeker) (io.Reader, error) {
 	buff := bytes.NewBuffer(make([]byte, 0, size))
 	intfc, err := jmp.Parse(r, int(size))
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file to read exif: %s", err.Error())
+		return nil, fmt.Errorf("failed to open file to read exif: %w", err)
 	}
 	sl := intfc.(*jpegstructure.SegmentList)
 

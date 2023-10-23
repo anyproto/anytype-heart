@@ -2,21 +2,20 @@ package techspace
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace"
+	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -24,100 +23,153 @@ const CName = "client.space.techspace"
 
 var log = logger.NewNamed(CName)
 
-func New() TechSpace {
-	return &techSpace{}
-}
+var (
+	ErrSpaceViewExists    = errors.New("spaceView exists")
+	ErrSpaceViewNotExists = errors.New("spaceView not exists")
+	ErrNotASpaceView      = errors.New("smartblock not a spaceView")
+)
 
 type TechSpace interface {
-	CreateSpaceView(ctx context.Context, spaceID string) (spaceView *editor.SpaceView, err error)
-	DeriveSpaceViewID(ctx context.Context, spaceID string) (string, error)
-	SetStatuses(ctx context.Context, spaceID string, local spaceinfo.LocalStatus, remote spaceinfo.RemoteStatus) (err error)
+	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error)
+	Close(ctx context.Context) (err error)
+
+	TechSpaceId() string
+	SpaceViewCreate(ctx context.Context, spaceId string) (err error)
+	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
+	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
+	SpaceViewId(id string) (string, error)
+}
 
-	GetInfo(spaceID string) spaceinfo.SpaceInfo
+type SpaceView interface {
+	sync.Locker
+	SetSpaceData(details *types.Struct) error
+	SetSpaceInfo(info spaceinfo.SpaceInfo) (err error)
+}
 
-	app.ComponentRunnable
+func New() TechSpace {
+	s := &techSpace{
+		viewIds: make(map[string]string),
+	}
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	return s
 }
 
 type techSpace struct {
-	techCore         *spacecore.AnySpace
-	spaceCoreService spacecore.SpaceCoreService
-	objectCache      objectcache.Cache
+	techCore    commonspace.Space
+	objectCache objectcache.Cache
 
-	info map[string]spaceinfo.SpaceInfo
-	mu   sync.Mutex
+	mu sync.Mutex
 
 	ctx        context.Context
 	ctxCancel  context.CancelFunc
 	idsWakedUp chan struct{}
+	viewIds    map[string]string
 }
 
-func (s *techSpace) Init(a *app.App) (err error) {
-	s.info = make(map[string]spaceinfo.SpaceInfo)
-	s.objectCache = app.MustComponent[objectcache.Cache](a)
-	s.spaceCoreService = app.MustComponent[spacecore.SpaceCoreService](a)
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	return
-}
-
-func (s *techSpace) Name() (name string) {
-	return CName
-}
-
-func (s *techSpace) Run(ctx context.Context) (err error) {
-	if s.techCore, err = s.spaceCoreService.Derive(ctx, spacecore.TechSpaceType); err != nil {
-		return
-	}
+func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache) (err error) {
+	s.techCore = techCoreSpace
+	s.objectCache = objectCache
 	s.idsWakedUp = make(chan struct{})
 	go func() {
 		defer close(s.idsWakedUp)
-		if e := s.wakeUpViews(); e != nil {
-			log.Warn("wake up views error", zap.Error(e))
-		}
+		s.wakeUpViews()
 	}()
 	return
 }
 
-func (s *techSpace) wakeUpViews() (err error) {
+func (s *techSpace) wakeUpViews() {
 	for _, id := range s.techCore.StoredIds() {
-		_ = s.doSpaceView(s.ctx, "", id, func(spaceView *editor.SpaceView) error {
-			return nil
-		})
+		select {
+		case <-s.ctx.Done():
+			return
+		default:
+		}
+
+		s.mu.Lock()
+		if _, err := s.objectCache.GetObject(s.ctx, id); err != nil {
+			log.Warn("wakeUp views: get object error", zap.String("objectId", id), zap.Error(err))
+		}
+		s.mu.Unlock()
 	}
 	s.techCore.TreeSyncer().StartSync()
 	return
 }
 
-func (s *techSpace) CreateSpaceView(ctx context.Context, spaceID string) (spaceView *editor.SpaceView, err error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, "")
+func (s *techSpace) TechSpaceId() string {
+	return s.techCore.Id()
+}
+
+func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
+		return spaceView.SetSpaceInfo(info)
+	})
+}
+
+func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string) (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	viewId, err := s.getViewId(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	_, err = s.objectCache.GetObject(ctx, viewId)
+	if err != nil { // TODO: check specific error
+		return s.spaceViewCreate(ctx, spaceId)
+	}
+	return ErrSpaceViewExists
+}
+
+func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	viewId, err := s.getViewId(ctx, spaceId)
 	if err != nil {
 		return
 	}
-	obj, err := s.objectCache.DeriveTreeObject(ctx, s.techCore.Id(), objectcache.TreeDerivationParams{
+	_, getErr := s.objectCache.GetObject(ctx, viewId)
+	return getErr == nil, nil
+}
+
+func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
+	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
+		return spaceView.SetSpaceData(details)
+	})
+}
+
+func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.getViewId(context.TODO(), spaceId)
+}
+
+func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
+	if err != nil {
+		return
+	}
+	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 		Key: uniqueKey,
 		InitFunc: func(id string) *editorsb.InitContext {
 			return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: state.NewDoc(id, nil).(*state.State)}
 		},
-		TargetSpaceID: spaceID,
 	})
 	if err != nil {
 		return
 	}
-	spaceView, ok := obj.(*editor.SpaceView)
-	if !ok {
-		return nil, fmt.Errorf("smartblock not a spaceView")
-	}
-	return spaceView, nil
+	return
 }
 
-func (s *techSpace) DeriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, "")
+func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (string, error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
 	if err != nil {
 		return "", err
 	}
-	payload, err := s.objectCache.DeriveTreePayload(ctx, s.techCore.Id(), payloadcreator.PayloadDerivationParams{
-		Key:           uniqueKey,
-		TargetSpaceID: spaceID,
+	payload, err := s.objectCache.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
+		Key: uniqueKey,
 	})
 	if err != nil {
 		return "", err
@@ -125,77 +177,34 @@ func (s *techSpace) DeriveSpaceViewID(ctx context.Context, spaceID string) (stri
 	return payload.RootRawChange.Id, nil
 }
 
-func (s *techSpace) getOrCreate(ctx context.Context, spaceID, viewID string) (*editor.SpaceView, error) {
-	obj, err := s.objectCache.GetObject(ctx, domain.FullID{
-		ObjectID: viewID,
-		SpaceID:  s.techCore.Id(),
-	})
-	if err != nil { // TODO: check specific error
-		return s.CreateSpaceView(ctx, spaceID)
-	}
-	spaceView, ok := obj.(*editor.SpaceView)
-	if !ok {
-		return nil, fmt.Errorf("smartblock not a spaceView")
-	}
-	return spaceView, nil
-}
-
-func (s *techSpace) doSpaceView(ctx context.Context, spaceID, viewID string, apply func(spaceView *editor.SpaceView) error) (err error) {
-	spaceView, err := s.getOrCreate(ctx, spaceID, viewID)
+func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error) {
+	viewId, err := s.getViewId(ctx, spaceID)
 	if err != nil {
-		return err
+		return
 	}
+	obj, err := s.objectCache.GetObject(ctx, viewId)
+	if err != nil {
+		return ErrSpaceViewNotExists
+	}
+	spaceView, ok := obj.(SpaceView)
+	if !ok {
+		return ErrNotASpaceView
+	}
+
 	spaceView.Lock()
 	defer spaceView.Unlock()
 	return apply(spaceView)
 }
 
-func (s *techSpace) SetStatuses(ctx context.Context, spaceID string, local spaceinfo.LocalStatus, remote spaceinfo.RemoteStatus) (err error) {
-	s.mu.Lock()
-	info, ok := s.info[spaceID]
-	if !ok {
-		s.mu.Unlock()
-		return fmt.Errorf("space info not found")
-	}
-	var isChanged bool
-	if info.LocalStatus != local {
-		info.LocalStatus = local
-		isChanged = true
-	}
-	if info.RemoteStatus != remote {
-		info.RemoteStatus = remote
-		isChanged = true
-	}
-	if isChanged {
-		s.info[spaceID] = info
-	}
-	s.mu.Unlock()
-	if !isChanged {
+func (s *techSpace) getViewId(ctx context.Context, spaceId string) (viewId string, err error) {
+	if viewId = s.viewIds[spaceId]; viewId != "" {
 		return
 	}
-	return s.doSpaceView(ctx, info.SpaceID, info.ViewID, func(spaceView *editor.SpaceView) error {
-		return spaceView.SetSpaceInfo(info)
-	})
-}
-
-func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
-	s.mu.Lock()
-	// do nothing if it's identical
-	if s.info[info.SpaceID] == info {
-		s.mu.Unlock()
-		return nil
+	if viewId, err = s.deriveSpaceViewID(ctx, spaceId); err != nil {
+		return
 	}
-	s.info[info.SpaceID] = info
-	s.mu.Unlock()
-	return s.doSpaceView(ctx, info.SpaceID, info.ViewID, func(spaceView *editor.SpaceView) error {
-		return spaceView.SetSpaceInfo(info)
-	})
-}
-
-func (s *techSpace) GetInfo(spaceID string) spaceinfo.SpaceInfo {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.info[spaceID]
+	s.viewIds[spaceId] = viewId
+	return
 }
 
 func (s *techSpace) Close(ctx context.Context) (err error) {
@@ -203,5 +212,5 @@ func (s *techSpace) Close(ctx context.Context) (err error) {
 	if s.idsWakedUp != nil {
 		<-s.idsWakedUp
 	}
-	return
+	return nil
 }
