@@ -67,7 +67,7 @@ func TestCsv_GetSnapshots(t *testing.T) {
 
 	var found bool
 	for _, snapshot := range sn.Snapshots {
-		if snapshot.FileName == rootCollectionName {
+		if strings.Contains(snapshot.FileName, rootCollectionName) {
 			found = true
 			assert.NotEmpty(t, snapshot.Snapshot.Data.ObjectTypes)
 			assert.Equal(t, snapshot.Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())

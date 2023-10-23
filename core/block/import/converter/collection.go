@@ -1,6 +1,9 @@
 package converter
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
@@ -16,6 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const importDateLayout = "02.01.2006 15:04:05"
+
 type RootCollection struct {
 	service *collection.Service
 }
@@ -25,7 +30,9 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 }
 
 func (r *RootCollection) MakeRootCollection(collectionName string, targetObjects []string) (*Snapshot, error) {
-	detailsStruct := r.getCreateCollectionRequest(collectionName)
+	importDate := time.Now().Format(importDateLayout)
+	nameWithDate := fmt.Sprintf("%s %s", collectionName, importDate)
+	detailsStruct := r.getCreateCollectionRequest(nameWithDate)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
@@ -41,7 +48,7 @@ func (r *RootCollection) MakeRootCollection(collectionName string, targetObjects
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
 
-	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct), nil
+	return r.getRootCollectionSnapshot(nameWithDate, st, detailsStruct), nil
 }
 
 func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *state.State, detailsStruct *types.Struct) *Snapshot {
