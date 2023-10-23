@@ -31,7 +31,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails(origin *model.ObjectOrigin) *types.Struct
+	ToDetails(origin model.ObjectOrigin) *types.Struct
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *model.BlockContentBookmark))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -46,14 +46,14 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails(origin *model.ObjectOrigin) *types.Struct {
+func (b *Bookmark) ToDetails(origin model.ObjectOrigin) *types.Struct {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
 		},
 	}
-	if origin != nil {
-		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(*origin))
+	if origin != 0 {
+		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
 	}
 	return details
 }

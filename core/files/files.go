@@ -1006,10 +1006,10 @@ func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOpt
 	return f, nil
 }
 
-func (s *service) getFileOrigin(hash string) *int {
+func (s *service) getFileOrigin(hash string) int {
 	fileOrigin, err := s.fileStore.GetFileOrigin(hash)
 	if err != nil {
-		return nil
+		return 0
 	}
-	return &fileOrigin
+	return fileOrigin
 }

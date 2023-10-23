@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/objectorigin"
 	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/strutil"
 	textutil "github.com/anyproto/anytype-heart/util/text"
@@ -506,7 +505,7 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 			Bytes:  fs.Data,
 			Path:   fs.LocalPath,
 			Name:   fs.Name,
-			Origin: objectorigin.Ptr(model.ObjectOrigin_clipboard),
+			Origin: model.ObjectOrigin_clipboard,
 		}, false); err != nil {
 			return
 		}

@@ -6,7 +6,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
@@ -23,10 +22,4 @@ type Importer interface {
 	ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) (string, *types.Struct, error)
 	// nolint: lll
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) (pb.RpcObjectImportNotionValidateTokenResponseErrorCode, error)
-}
-
-// Creator incapsulate logic with creation of given smartblocks
-type Creator interface {
-	//nolint:lll
-	Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error)
 }

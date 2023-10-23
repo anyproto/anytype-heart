@@ -25,7 +25,7 @@ var log = logging.Logger("bookmark")
 
 type CreateAndFetchRequest struct {
 	pb.RpcBlockBookmarkCreateAndFetchRequest
-	Origin *model.ObjectOrigin
+	Origin model.ObjectOrigin
 }
 
 func NewBookmark(sb smartblock.SmartBlock, bookmarkSvc BookmarkService, objectStore objectstore.ObjectStore) Bookmark {
@@ -37,9 +37,9 @@ func NewBookmark(sb smartblock.SmartBlock, bookmarkSvc BookmarkService, objectSt
 }
 
 type Bookmark interface {
-	Fetch(ctx session.Context, id string, url string, origin *model.ObjectOrigin) (err error)
+	Fetch(ctx session.Context, id string, url string, origin model.ObjectOrigin) (err error)
 	CreateAndFetch(ctx session.Context, req CreateAndFetchRequest) (newID string, err error)
-	UpdateBookmark(ctx session.Context, id, groupID string, apply func(b bookmark.Block) error, origin *model.ObjectOrigin) (err error)
+	UpdateBookmark(ctx session.Context, id, groupID string, apply func(b bookmark.Block) error, origin model.ObjectOrigin) (err error)
 }
 
 type BookmarkService interface {
@@ -58,7 +58,7 @@ type BlockService interface {
 	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
-func (b *sbookmark) Fetch(ctx session.Context, id string, url string, origin *model.ObjectOrigin) (err error) {
+func (b *sbookmark) Fetch(ctx session.Context, id string, url string, origin model.ObjectOrigin) (err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
 	if err = b.fetch(ctx, s, id, url, origin); err != nil {
 		return
@@ -66,7 +66,7 @@ func (b *sbookmark) Fetch(ctx session.Context, id string, url string, origin *mo
 	return b.Apply(s)
 }
 
-func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, origin *model.ObjectOrigin) (err error) {
+func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, origin model.ObjectOrigin) (err error) {
 	bb := s.Get(id)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
@@ -121,7 +121,7 @@ func (b *sbookmark) CreateAndFetch(ctx session.Context, req CreateAndFetchReques
 	return
 }
 
-func (b *sbookmark) UpdateBookmark(ctx session.Context, id, groupID string, apply func(b bookmark.Block) error, origin *model.ObjectOrigin) error {
+func (b *sbookmark) UpdateBookmark(ctx session.Context, id, groupID string, apply func(b bookmark.Block) error, origin model.ObjectOrigin) error {
 	s := b.NewState().SetGroupId(groupID)
 	if bb := s.Get(id); bb != nil {
 		if bm, ok := bb.(bookmark.Block); ok {
@@ -138,7 +138,7 @@ func (b *sbookmark) UpdateBookmark(ctx session.Context, id, groupID string, appl
 }
 
 // updateBlock updates a block and creates associated Bookmark object
-func (b *sbookmark) updateBlock(_ session.Context, block bookmark.Block, apply func(bookmark.Block) error, origin *model.ObjectOrigin) error {
+func (b *sbookmark) updateBlock(_ session.Context, block bookmark.Block, apply func(bookmark.Block) error, origin model.ObjectOrigin) error {
 	if err := apply(block); err != nil {
 		return err
 	}

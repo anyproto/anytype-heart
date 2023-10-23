@@ -14,7 +14,7 @@ import (
 
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/converter/mock_converter"
-	"github.com/anyproto/anytype-heart/core/block/import/mock_importer"
+	"github.com/anyproto/anytype-heart/core/block/import/creator/mock_creator"
 	"github.com/anyproto/anytype-heart/core/block/import/objectid/mock_objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
@@ -49,8 +49,8 @@ func Test_ImportSuccess(t *testing.T) {
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 
 	idGetter := mock_objectid.NewMockIDGetter(t)
@@ -82,7 +82,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	i.idProvider = idGetter
@@ -126,9 +126,9 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -174,8 +174,8 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -222,9 +222,9 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -252,8 +252,8 @@ func Test_ImportExternalPlugin(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -301,7 +301,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	i.idProvider = idGetter
@@ -326,7 +326,7 @@ func Test_ListImports(t *testing.T) {
 	i := Import{}
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = pbc.New(nil, nil)
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	i.idProvider = idGetter
@@ -343,7 +343,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	i.idProvider = mock_objectid.NewMockIDGetter(t)
 	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
@@ -362,7 +362,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	i.idProvider = mock_objectid.NewMockIDGetter(t)
 	parser := parsers.NewMockParser(ctrl)
@@ -392,8 +392,8 @@ func Test_ImportWebSuccess(t *testing.T) {
 
 	i.converters[web.Name] = web.NewConverter()
 
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -432,9 +432,9 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", errors.New("error")).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("error")).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -575,9 +575,9 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -767,8 +767,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		}, nil).Times(1)
 		i.converters = make(map[string]cv.Converter, 0)
 		i.converters["Notion"] = converter
-		creator := mock_importer.NewMockCreator(t)
-		creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+		creator := mock_creator.NewMockService(t)
+		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 		i.oc = creator
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
@@ -814,8 +814,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.converters = make(map[string]cv.Converter, 0)
 		i.converters["Notion"] = converter
 
-		creator := mock_importer.NewMockCreator(t)
-		creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", creatorError).Times(1)
+		creator := mock_creator.NewMockService(t)
+		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", creatorError).Times(1)
 		i.oc = creator
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
@@ -898,8 +898,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.converters = make(map[string]cv.Converter, 0)
 		i.converters["Notion"] = converter
 
-		creator := mock_importer.NewMockCreator(t)
-		creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+		creator := mock_creator.NewMockService(t)
+		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 		i.oc = creator
 
 		idGetter := mock_objectid.NewMockIDGetter(t)

@@ -32,17 +32,17 @@ var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
 
 type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
-	Origin *model.ObjectOrigin
+	Origin model.ObjectOrigin
 }
 
 type UploadRequest struct {
 	pb.RpcBlockUploadRequest
-	Origin *model.ObjectOrigin
+	Origin model.ObjectOrigin
 }
 
 type BookmarkFetchRequest struct {
 	pb.RpcBlockBookmarkFetchRequest
-	Origin *model.ObjectOrigin
+	Origin model.ObjectOrigin
 }
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {

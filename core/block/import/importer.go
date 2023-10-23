@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/creator"
 	"github.com/anyproto/anytype-heart/core/block/import/csv"
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
@@ -53,7 +54,7 @@ const workerPoolSize = 10
 type Import struct {
 	converters      map[string]converter.Converter
 	s               *block.Service
-	oc              Creator
+	oc              creator.Service
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
 	fileSync        filesync.FileSync
@@ -91,7 +92,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
-	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
+	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
@@ -276,7 +277,7 @@ func (i *Import) createObjects(ctx context.Context,
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(ctx, oldIDToNew, createPayloads, filesIDs, origin, req.SpaceId)
+	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, filesIDs, origin, req.SpaceId)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(req.SpaceId, res, pool)
@@ -376,7 +377,7 @@ func (i *Import) getObjectID(
 
 func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
-		t := NewTask(spaceID, snapshot, i.oc)
+		t := creator.NewTask(spaceID, snapshot, i.oc)
 		stop := pool.AddWork(t)
 		if stop {
 			break
@@ -397,15 +398,15 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 			pool.Stop()
 			return nil
 		}
-		res := r.(*Result)
-		if res.err != nil {
-			allErrors.Add(res.err)
+		res := r.(*creator.Result)
+		if res.Err != nil {
+			allErrors.Add(res.Err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				pool.Stop()
 				return nil
 			}
 		}
-		details[res.newID] = res.details
+		details[res.NewID] = res.Details
 	}
 	return details
 }

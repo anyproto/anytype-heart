@@ -133,9 +133,6 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 	return nodeHash, variantsByWidth, nil
 }
 
-func (s *service) isImported(origin *model.ObjectOrigin) bool {
-	if origin == nil {
-		return false
-	}
-	return *origin == model.ObjectOrigin_import
+func (s *service) isImported(origin model.ObjectOrigin) bool {
+	return origin == model.ObjectOrigin_import
 }

@@ -46,7 +46,7 @@ func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	}
 	dto := block.UploadRequest{
 		RpcBlockUploadRequest: params,
-		Origin:                &origin,
+		Origin:                origin,
 	}
 	_, err := fs.service.UploadFileBlockWithHash(id, dto)
 	if err != nil {

@@ -31,7 +31,7 @@ func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOri
 			BlockId:   b.Model().GetId(),
 			Url:       b.Model().GetBookmark().Url,
 		},
-		Origin: &origin,
+		Origin: origin,
 	}
 	err := bs.service.BookmarkFetch(nil, dto)
 	if err != nil {

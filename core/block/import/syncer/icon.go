@@ -45,7 +45,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: req,
-		Origin:               &origin,
+		Origin:               origin,
 	}
 	hash, err := is.service.UploadFile(context.Background(), spaceID, dto)
 	if err != nil {

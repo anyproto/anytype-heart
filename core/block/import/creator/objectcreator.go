@@ -1,4 +1,4 @@
-package importer
+package creator
 
 import (
 	"context"
@@ -28,12 +28,19 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const relationsLimit = 10
+var log = logging.Logger("import")
+
+// Service incapsulate logic with creation of given smartblocks
+type Service interface {
+	//nolint:lll
+	Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error)
+}
 
 type ObjectCreator struct {
 	service        *block.Service
@@ -46,7 +53,14 @@ type ObjectCreator struct {
 	mu             sync.Mutex
 }
 
-func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.Service, objectCreator objectcreator.Service) Creator {
+func New(service *block.Service,
+	syncFactory *syncer.Factory,
+	objectStore objectstore.ObjectStore,
+	relationSyncer syncer.RelationSyncer,
+	fileStore filestore.FileStore,
+	spaceService space.Service,
+	objectCreator objectcreator.Service,
+) Service {
 	return &ObjectCreator{
 		service:        service,
 		syncFactory:    syncFactory,
@@ -98,8 +112,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 		}
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
-	oc.setFileAsImported(st)
-	oc.setFileOrigin(st, origin)
+	oc.setFileImportedFlagAndOrigin(st, origin)
 	var respDetails *types.Struct
 	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
 	if err != nil {
@@ -147,6 +160,7 @@ func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, st *state.S
 			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModifiedDate))
 		}
 	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin)))
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -454,7 +468,7 @@ func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.Sta
 	st.UpdateStoreSlice(template.CollectionStoreKey, result)
 }
 
-func (oc *ObjectCreator) setFileAsImported(st *state.State) {
+func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin model.ObjectOrigin) {
 	var fileHashes []string
 	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
 		if fh, ok := bl.(simple.FileHashes); ok {
@@ -471,23 +485,7 @@ func (oc *ObjectCreator) setFileAsImported(st *state.State) {
 		if err != nil {
 			log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
 		}
-	}
-}
-
-func (oc *ObjectCreator) setFileOrigin(st *state.State, origin model.ObjectOrigin) {
-	var fileHashes []string
-	err := st.Iterate(func(bl simple.Block) (isContinue bool) {
-		if fh, ok := bl.(simple.FileHashes); ok {
-			fileHashes = fh.FillFileHashes(fileHashes)
-		}
-		return true
-	})
-	if err != nil {
-		log.Errorf("failed to collect file hashes in state, %s", err)
-	}
-
-	for _, hash := range fileHashes {
-		err = oc.fileStore.SetFileOrigin(hash, &origin)
+		err = oc.fileStore.SetFileOrigin(hash, origin)
 		if err != nil {
 			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}

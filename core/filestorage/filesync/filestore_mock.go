@@ -10,12 +10,12 @@ package filesync
 
 import (
 	context "context"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	reflect "reflect"
 
 	app "github.com/anyproto/any-sync/app"
 	localstore "github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	filestore "github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -401,7 +401,7 @@ func (mr *MockFileStoreMockRecorder) SetChunksCount(arg0, arg1 any) *gomock.Call
 }
 
 // SetFileOrigin mocks base method.
-func (m *MockFileStore) SetFileOrigin(arg0 string, arg1 *model.ObjectOrigin) error {
+func (m *MockFileStore) SetFileOrigin(arg0 string, arg1 model.ObjectOrigin) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetFileOrigin", arg0, arg1)
 	ret0, _ := ret[0].(error)

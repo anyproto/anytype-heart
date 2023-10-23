@@ -68,11 +68,11 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		err  error
 	)
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
-		dto := block.FileUploadRequest{
+		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
-			Origin:               &origin,
+			Origin:               origin,
 		}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, dto)
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}
@@ -81,11 +81,11 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 		if err == nil {
 			return file
 		}
-		dto := block.FileUploadRequest{
+		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
-			Origin:               &origin,
+			Origin:               origin,
 		}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, dto)
+		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}

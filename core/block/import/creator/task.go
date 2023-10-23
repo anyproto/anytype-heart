@@ -1,4 +1,4 @@
-package importer
+package creator
 
 import (
 	"context"
@@ -20,9 +20,9 @@ type DataObject struct {
 }
 
 type Result struct {
-	details *types.Struct
-	newID   string
-	err     error
+	Details *types.Struct
+	NewID   string
+	Err     error
 }
 
 func NewDataObject(ctx context.Context,
@@ -45,10 +45,10 @@ func NewDataObject(ctx context.Context,
 type Task struct {
 	spaceID string
 	sn      *converter.Snapshot
-	oc      Creator
+	oc      Service
 }
 
-func NewTask(spaceID string, sn *converter.Snapshot, oc Creator) *Task {
+func NewTask(spaceID string, sn *converter.Snapshot, oc Service) *Task {
 	return &Task{sn: sn, oc: oc, spaceID: spaceID}
 }
 
@@ -56,8 +56,8 @@ func (t *Task) Execute(data interface{}) interface{} {
 	dataObject := data.(*DataObject)
 	details, newID, err := t.oc.Create(dataObject, t.sn)
 	return &Result{
-		details: details,
-		newID:   newID,
-		err:     err,
+		Details: details,
+		NewID:   newID,
+		Err:     err,
 	}
 }

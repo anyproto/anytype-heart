@@ -107,7 +107,7 @@ type FileStore interface {
 	SetIsFileImported(hash string, isImported bool) error
 	SetFileSize(hash string, size int) error
 	GetFileSize(hash string) (int, error)
-	SetFileOrigin(hash string, origin *model.ObjectOrigin) error
+	SetFileOrigin(hash string, origin model.ObjectOrigin) error
 	GetFileOrigin(hash string) (int, error)
 }
 
@@ -542,12 +542,9 @@ func (m *dsFileStore) SetFileSize(hash string, status int) error {
 	return m.setInt(key, status)
 }
 
-func (ls *dsFileStore) SetFileOrigin(hash string, origin *model.ObjectOrigin) error {
-	if origin == nil {
-		return nil
-	}
+func (ls *dsFileStore) SetFileOrigin(hash string, origin model.ObjectOrigin) error {
 	key := fileOrigin.ChildString(hash)
-	return ls.setInt(key, int(*origin))
+	return ls.setInt(key, int(origin))
 }
 
 func (ls *dsFileStore) GetFileOrigin(hash string) (int, error) {
