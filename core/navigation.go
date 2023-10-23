@@ -60,7 +60,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 			if err != nil {
 				log.Error("get smartblock type: %v", err)
 			}
-			if sbType == smartblock.SmartBlockTypeArchive || sbType == smartblock.SmartBlockTypeFile {
+			if sbType == smartblock.SmartBlockTypeArchive || sbType == smartblock.SmartBlockTypeFile || sbType == smartblock.SmartBlockTypeWidget {
 				continue
 			}
 
