@@ -303,14 +303,16 @@ func TestText_Merge(t *testing.T) {
 	})
 
 	t.Run("merge styled blocks", func(t *testing.T) {
-		b1 := NewText(&model.Block{
+		// given
+		mergeTo := NewText(&model.Block{
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{
 					Text: "",
 				},
 			},
 		}).(*Text)
-		b2 := NewText(&model.Block{
+
+		mergeFrom := NewText(&model.Block{
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{
 					Text:  "One",
@@ -318,10 +320,15 @@ func TestText_Merge(t *testing.T) {
 				},
 			},
 		}).(*Text)
-		err := b1.Merge(b2)
-		require.NoError(t, err)
+		mergeFrom.BackgroundColor = "grey"
 
-		assert.Equal(t, b1.content.Style, model.BlockContentText_Header1)
+		// when
+		err := mergeTo.Merge(mergeFrom)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, mergeTo.content.Style, model.BlockContentText_Header1)
+		assert.Equal(t, mergeTo.BackgroundColor, "grey")
 	})
 }
 
