@@ -8,6 +8,7 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
+	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -15,25 +16,29 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (s *dsObjectStore) DeleteDetails(id string) error {
-	key := pagesDetailsBase.ChildString(id).Bytes()
-	err := s.updateTxn(func(txn *badger.Txn) error {
-		for _, k := range []ds.Key{
-			pagesSnippetBase.ChildString(id),
-			pagesDetailsBase.ChildString(id),
-			indexedHeadsState.ChildString(id),
-		} {
-			if err := txn.Delete(k.Bytes()); err != nil {
-				return fmt.Errorf("delete key %s: %w", k, err)
-			}
-		}
+func (s *dsObjectStore) DeleteDetails(ids ...string) error {
+	for _, chunk := range lo.Chunk(ids, 100) {
+		err := s.updateTxn(func(txn *badger.Txn) error {
+			for _, id := range chunk {
+				s.cache.Del(pagesDetailsBase.ChildString(id).Bytes())
 
-		return txn.Delete(key)
-	})
-	if err != nil {
-		return err
+				for _, k := range []ds.Key{
+					pagesDetailsBase.ChildString(id),
+					pagesSnippetBase.ChildString(id),
+					pagesDetailsBase.ChildString(id),
+					indexedHeadsState.ChildString(id),
+				} {
+					if err := txn.Delete(k.Bytes()); err != nil {
+						return fmt.Errorf("delete key %s: %w", k, err)
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	}
-	s.cache.Del(key)
 	return nil
 }
 

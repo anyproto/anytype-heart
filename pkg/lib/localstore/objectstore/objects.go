@@ -127,7 +127,7 @@ type ObjectStore interface {
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
 	DeleteObject(id string) error
-	DeleteDetails(id string) error
+	DeleteDetails(id ...string) error
 	// EraseIndexes erase all indexes for objectstore. All objects need to be reindexed
 	EraseIndexes(spaceId string) error
 
