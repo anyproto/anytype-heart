@@ -174,6 +174,41 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, sb.Apply(st))
 		assert.Equal(t, []string{template.HeaderLayoutId, id0, id1}, s.Pick(s.RootId()).Model().ChildrenIds)
 	})
+	for _, relation := range []string{
+		template.TitleBlockId,
+		template.HeaderLayoutId,
+		template.DescriptionBlockId,
+		template.FeaturedRelationsId,
+	} {
+		t.Run("do not move block - when a required relation is ("+relation+")", func(t *testing.T) {
+			// given
+			testDoc := smarttest.New("test")
+			testDoc.
+				AddBlock(
+					simple.New(
+						&model.Block{
+							Id:          "root",
+							ChildrenIds: []string{relation},
+						},
+					),
+				).
+				AddBlock(
+					simple.New(
+						&model.Block{
+							Id: "target",
+						},
+					),
+				)
+			basic := NewBasic(testDoc, nil, converter.NewLayoutConverter())
+			state := testDoc.NewState()
+
+			// when
+			err := basic.Move(state, state, "target", model.Block_Bottom, []string{relation})
+
+			// then
+			require.Error(t, err)
+		})
+	}
 	t.Run("replace empty", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -193,8 +194,10 @@ func (bs *basic) Unlink(ctx session.Context, ids ...string) (err error) {
 
 	var someUnlinked bool
 	for _, id := range ids {
-		if s.Unlink(id) {
-			someUnlinked = true
+		if !state.IsRequiredBlockId(id) {
+			if s.Unlink(id) {
+				someUnlinked = true
+			}
 		}
 	}
 	if !someUnlinked {
@@ -204,6 +207,10 @@ func (bs *basic) Unlink(ctx session.Context, ids ...string) (err error) {
 }
 
 func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, position model.BlockPosition, blockIds []string) (err error) {
+	if lo.ContainsBy(blockIds, state.IsRequiredBlockId) {
+		return fmt.Errorf("can not move required block")
+	}
+
 	if srcState != destState && destState != nil {
 		_, err := bs.Duplicate(srcState, destState, targetBlockId, position, blockIds)
 		if err != nil {
