@@ -96,7 +96,7 @@ func (s *service) startDelete(ctx context.Context, id string) error {
 	if !status.RemoteStatus.IsDeleted() {
 		_, err := s.spaceCore.Delete(ctx, id)
 		if err != nil {
-			log.Warn("network delete error", zap.Error(err), zap.String("spaceId", id))
+			log.Debug("network delete error", zap.Error(err), zap.String("spaceId", id))
 		}
 	}
 	return s.startOffload(ctx, id)

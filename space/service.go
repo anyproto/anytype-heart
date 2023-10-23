@@ -174,9 +174,9 @@ func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceID == id
 }
 
-func (s *service) OnViewCreated(info spaceinfo.SpaceInfo) {
+func (s *service) OnViewUpdated(info spaceinfo.SpaceInfo) {
 	go func() {
-		s.setViewCreatedInfo(info)
+		s.updateSpaceViewInfo(info)
 		err := s.startLoad(s.ctx, info.SpaceID)
 		if err != nil && err != ErrSpaceDeleted {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))

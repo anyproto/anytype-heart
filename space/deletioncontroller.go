@@ -70,9 +70,8 @@ func (d *deletionController) updateStatuses(ctx context.Context) (statuses []spa
 		switch status {
 		case coordinatorproto.SpaceStatus_SpaceStatusCreated:
 			return spaceinfo.RemoteStatusOk
-		// TODO: [MR] uncomment when coordinator is updated
-		//case coordinatorproto.SpaceStatus_SpaceStatusPendingDeletion:
-		//	return spaceinfo.RemoteStatusWaitingDeletion
+		case coordinatorproto.SpaceStatus_SpaceStatusPendingDeletion:
+			return spaceinfo.RemoteStatusWaitingDeletion
 		default:
 			return spaceinfo.RemoteStatusDeleted
 		}
@@ -81,7 +80,7 @@ func (d *deletionController) updateStatuses(ctx context.Context) (statuses []spa
 		remoteStatus := convStatus(nodeStatus.Status)
 		status, err := d.deleter.updateRemoteStatusLocked(ctx, localStatuses[idx].SpaceID, remoteStatus)
 		if err != nil {
-			log.Warn("local status update error", zap.Error(err), zap.String("spaceId", localStatuses[idx].SpaceID))
+			log.Warn("remote status update error", zap.Error(err), zap.String("spaceId", localStatuses[idx].SpaceID))
 			return localStatuses
 		}
 		localStatuses[idx] = status
@@ -101,11 +100,5 @@ func (d *deletionController) checkStatuses(ctx context.Context, localStatuses []
 }
 
 func (d *deletionController) shouldDelete(localStatus spaceinfo.SpaceInfo) bool {
-	if localStatus.AccountStatus == spaceinfo.AccountStatusDeleted {
-		return localStatus.RemoteStatus != spaceinfo.RemoteStatusDeleted || localStatus.LocalStatus != spaceinfo.LocalStatusMissing
-	}
-	if localStatus.RemoteStatus == spaceinfo.RemoteStatusDeleted {
-		return localStatus.LocalStatus != spaceinfo.LocalStatusMissing
-	}
-	return false
+	return localStatus.AccountStatus == spaceinfo.AccountStatusDeleted && localStatus.LocalStatus != spaceinfo.LocalStatusMissing
 }

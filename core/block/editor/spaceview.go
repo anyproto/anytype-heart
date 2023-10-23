@@ -23,7 +23,7 @@ import (
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {
-	OnViewCreated(info spaceinfo.SpaceInfo)
+	OnViewUpdated(info spaceinfo.SpaceInfo)
 	OnWorkspaceChanged(spaceId string, details *types.Struct)
 }
 
@@ -55,7 +55,8 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	info := s.getSpaceInfo(ctx.State)
 	newInfo := spaceinfo.SpaceInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
 	s.setSpaceInfo(ctx.State, newInfo)
-	s.spaceService.OnViewCreated(newInfo)
+	s.spaceService.OnViewUpdated(newInfo)
+	s.AddHook(s.afterApply, smartblock.HookAfterApply)
 	return
 }
 
@@ -94,6 +95,11 @@ func (s *SpaceView) SetSpaceInfo(info spaceinfo.SpaceInfo) (err error) {
 	st := s.NewState()
 	s.setSpaceInfo(st, info)
 	return s.Apply(st)
+}
+
+func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
+	s.spaceService.OnViewUpdated(s.getSpaceInfo(info.State))
+	return nil
 }
 
 func (s *SpaceView) setSpaceInfo(st *state.State, info spaceinfo.SpaceInfo) {

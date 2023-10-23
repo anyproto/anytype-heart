@@ -34,7 +34,7 @@ func (s *service) updateRemoteStatusLocked(ctx context.Context, spaceID string, 
 	return status, nil
 }
 
-func (s *service) setViewCreatedInfo(status spaceinfo.SpaceInfo) {
+func (s *service) updateSpaceViewInfo(status spaceinfo.SpaceInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	info := s.getStatus(status.SpaceID)
