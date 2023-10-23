@@ -636,14 +636,19 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
 		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		prevModifiedBy := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedBy.String())
 		if s.localDetails != nil {
 			if _, isNull := prevModifiedDate.GetKind().(*types.Value_NullValue); prevModifiedDate == nil || isNull {
 				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
 			} else {
 				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
 			}
+			if _, isNull := prevModifiedBy.GetKind().(*types.Value_NullValue); prevModifiedBy == nil || isNull {
+				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed by: prev value is nil")
+			} else {
+				s.localDetails.Fields[bundle.RelationKeyLastModifiedBy.String()] = prevModifiedBy
+			}
 		}
-		// todo: revert lastModifiedBy?
 	}
 
 	if s.parent != nil && s.localDetails != nil {
