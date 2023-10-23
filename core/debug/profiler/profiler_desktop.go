@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	highMemoryUsageThreshold = 1024 * 1024 // 1 Gb
+	highMemoryUsageThreshold = 1024 * 1024 * 1024 // 1 Gb
 	maxProfiles              = 3
 	growthFactor             = 1.5
 )
