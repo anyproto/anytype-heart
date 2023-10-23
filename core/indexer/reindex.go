@@ -48,19 +48,26 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 		return reindexFlags{}, err
 	}
 	if checksums == nil {
-		checksums = &model.ObjectStoreChecksums{
-			// per space
-			ObjectsForceReindexCounter: ForceObjectsReindexCounter,
-			// ?
-			FilesForceReindexCounter: ForceFilesReindexCounter,
-			// global
-			IdxRebuildCounter: ForceIdxRebuildCounter,
-			// per space
-			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-			// per space
-			FulltextRebuild: ForceFulltextIndexCounter,
-			// global
-			BundledObjects: ForceBundledObjectsReindexCounter,
+		checksums, err = i.store.GetGlobalChecksums()
+		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+			return reindexFlags{}, err
+		}
+
+		if checksums == nil {
+			checksums = &model.ObjectStoreChecksums{
+				// per space
+				ObjectsForceReindexCounter: ForceObjectsReindexCounter,
+				// ?
+				FilesForceReindexCounter: ForceFilesReindexCounter,
+				// global
+				IdxRebuildCounter: ForceIdxRebuildCounter,
+				// per space
+				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+				// per space
+				FulltextRebuild: ForceFulltextIndexCounter,
+				// global
+				BundledObjects: ForceBundledObjectsReindexCounter,
+			}
 		}
 	}
 

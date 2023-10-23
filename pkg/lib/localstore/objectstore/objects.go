@@ -154,6 +154,7 @@ type IndexerStore interface {
 	ListIDsFromFullTextQueue() ([]string, error)
 	RemoveIDsFromFullTextQueue(ids []string)
 	FTSearch() ftsearch.FTSearch
+	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
