@@ -2,11 +2,27 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      alpha_version:
+        description: 'Alpha version'
+        default: ''
+      run-on-runner:
+        description: 'Specify the runner to use'
+        required: true
+        default: 'self-hosted'
+
 name: Build
 jobs:
   build:
-    runs-on: macos-11
+    runs-on: ${{ github.event_name == 'push' && 'macos-11' || github.event.inputs.run-on-runner }}
     steps:
+      - name: validate agent
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "self-hosted" ]]; then
+            echo "Invalid runner"
+            exit 1
+          fi
       - name: fix android ndk bundle
         run: |
           majorVersion=23
@@ -26,13 +42,14 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Install patched gox
         run: |
-          mkdir -p $GOPATH/src/github.com/mitchellh
-          cd $GOPATH/src/github.com/mitchellh
+          mkdir -p "$GOPATH/src/github.com/mitchellh"
+          cd "$GOPATH/src/github.com/mitchellh"
           git clone https://github.com/aslakhellesoy/gox
           cd gox
           git fetch
           git checkout db6184738b77fbd5089e5fa1112177f391c91b24
           go install github.com/mitchellh/gox
+        if: github.event.inputs.run-on-runner != 'self-hosted'
       - name: Install brew and node deps
         run: |
           curl https://raw.githubusercontent.com/Homebrew/homebrew-core/31b24d65a7210ea0a5689d5ad00dd8d1bf5211db/Formula/protobuf.rb --output protobuf.rb
@@ -42,6 +59,7 @@ jobs:
           brew tap filosottile/musl-cross
           HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install filosottile/musl-cross/musl-cross
           npm i -g node-gyp
+        if: github.event.inputs.run-on-runner != 'self-hosted'
       - name: Checkout
         uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -58,7 +76,17 @@ jobs:
         run: |
           GIT_SUMMARY=$(git describe --tags --always)
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultAmplitudeKey=${AMPLITUDE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION=${{ github.event.inputs.alpha_version }}
+            if [ -z "$VERSION" ]; then
+              VERSION=$(git rev-parse --short HEAD)
+            fi
+          fi
+          if [ -z "$VERSION" ]; then
+            VERSION=${GITHUB_REF##*/}
+          fi
+          echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
@@ -83,6 +111,7 @@ jobs:
           make protos-server
           CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -cgo -ldflags="$FLAGS -linkmode external -extldflags=-static" -osarch="windows/amd64" --tags="envproduction nographviz nowatchdog nosigar nomutexdeadlockdetector noheic" -output="{{.OS}}-{{.Arch}}" github.com/anyproto/anytype-heart/cmd/grpcserver
           ls -lha .
+        if: github.event_name == 'push'
       - name: Make JS protos
         run: |
           make protos-js
@@ -91,6 +120,7 @@ jobs:
           cp pb/protos/*.proto ./protobuf/protos
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+        if: github.event_name == 'push'
       - name: Add system relations/types jsons
         run: |
           mkdir -p json/
@@ -106,6 +136,7 @@ jobs:
             protobuf
           if-no-files-found: error
           retention-days: 1
+        if: github.event_name == 'push'
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
@@ -116,6 +147,7 @@ jobs:
           zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf json
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
+        if: github.event_name == 'push'
       - name: Pack server unix
         run: |
           declare -a arr=("darwin-amd64" "darwin-arm64")
@@ -126,6 +158,7 @@ jobs:
           tar -czf js_${VERSION}_${OSARCH}.tar.gz grpc-server protobuf json
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
+        if: github.event_name == 'push'
       - name: Make swift protos
         run: |
           mkdir -p .release
@@ -146,13 +179,18 @@ jobs:
           cp pkg/lib/bundle/internalTypes.json ./json
       - name: Compile ios lib
         run: |
-          go install github.com/vektra/mockery/v2@v2.32.0
+          go install github.com/vektra/mockery/v2@v2.35.3
           go install go.uber.org/mock/mockgen@v0.3.0
           make test-deps
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          sudo /usr/sbin/purge
-          gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf json
-          mv ios_framework_${VERSION}.tar.gz .release/
+          gtar --exclude ".*" -czvf ios_framework.tar.gz Lib.xcframework protobuf json
+          gradle publish
+          mv ios_framework.tar.gz .release/ios_framework_${VERSION}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
+          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
+          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
       - name: Make java protos
         run: |
           make protos-java
@@ -172,7 +210,6 @@ jobs:
       - name: Compile android lib
         run: |
           gomobile bind -tags "envproduction nogrpcserver gomobile nowatchdog nosigar nomutexdeadlockdetector" -ldflags "$FLAGS" -v -target=android -androidapi 19 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core || true
-          sudo /usr/sbin/purge
           gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf json
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven
@@ -181,7 +218,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
+          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
+          MAVEN_ARTIFACT_NAME: 'lib.aar'
       - name: Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
@@ -190,6 +230,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build_linux:
+    if: github.event_name == 'push'
     runs-on: ubuntu-22.04
     steps:
       - name: Install Go
@@ -306,6 +347,7 @@ jobs:
           mv js_${VERSION}_${OSARCH}.tar.gz .release/
           done
       - name: Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}

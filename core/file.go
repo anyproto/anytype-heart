@@ -93,7 +93,7 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 
 	bytesRemoved, err := fileService.FileOffload(cctx, req.Id, req.IncludeNotPinned)
 	if err != nil {
-		log.Errorf("failed to offload file %s: %s", req.Id, err.Error())
+		log.Errorf("failed to offload file %s: %s", req.Id, err)
 	}
 
 	return response(bytesRemoved, pb.RpcFileOffloadResponseError_NULL, nil)

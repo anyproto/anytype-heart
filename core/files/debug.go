@@ -31,7 +31,7 @@ type fileDebugInfo struct {
 func (s *service) debugFiles(_ *http.Request) ([]*fileDebugInfo, error) {
 	hashes, err := s.fileStore.ListTargets()
 	if err != nil {
-		return nil, fmt.Errorf("list targets: %s", err)
+		return nil, fmt.Errorf("list targets: %w", err)
 	}
 	result := make([]*fileDebugInfo, 0, len(hashes))
 	for _, hash := range hashes {
@@ -41,13 +41,13 @@ func (s *service) debugFiles(_ *http.Request) ([]*fileDebugInfo, error) {
 			err = nil
 		}
 		if err != nil {
-			return nil, fmt.Errorf("get status for %s: %s", hash, err)
+			return nil, fmt.Errorf("get status for %s: %w", hash, err)
 		}
 
 		var isIndexed bool
 		details, err := s.objectStore.GetDetails(hash)
 		if err != nil && !errors.Is(err, localstore.ErrNotFound) {
-			return nil, fmt.Errorf("get status for %s: %s", hash, err)
+			return nil, fmt.Errorf("get status for %s: %w", hash, err)
 		}
 		if details != nil && !pbtypes.IsStructEmpty(details.Details) {
 			isIndexed = true

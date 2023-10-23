@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
@@ -79,7 +78,6 @@ type service struct {
 	fileStorage       filestorage.FileStorage
 	syncStatusWatcher SyncStatusWatcher
 	objectStore       objectstore.ObjectStore
-	coreService       core.Service
 }
 
 func New() Service {
@@ -90,7 +88,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
-	s.coreService = app.MustComponent[core.Service](a)
 
 	s.dagService = s.commonFile.DAGService()
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
@@ -191,7 +188,6 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullID) (map[st
 
 				l := schema.LinkByName(innerLinks, ValidContentLinkNames)
 				if l == nil {
-					log.Errorf("con")
 					continue
 				}
 
@@ -811,7 +807,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 	keys, err := s.fileStore.GetFileKeys(id.ObjectID)
 	if err != nil {
 		// no keys means file is not encrypted or keys are missing
-		log.Debugf("failed to get file keys from filestore %s: %s", id.ObjectID, err.Error())
+		log.Debugf("failed to get file keys from filestore %s: %s", id.ObjectID, err)
 	}
 
 	var files []*storage.FileInfo
@@ -829,7 +825,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 
 			fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceID, id.ObjectID, id.ObjectID+"/"+index.Name, key)
 			if err != nil {
-				return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
+				return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 			}
 			files = append(files, fileIndex)
 		} else {
@@ -841,7 +837,7 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 
 				fileIndex, err := s.fileInfoFromPath(ctx, id.SpaceID, id.ObjectID, id.ObjectID+"/"+index.Name+"/"+link.Name, key)
 				if err != nil {
-					return nil, fmt.Errorf("fileInfoFromPath error: %s", err.Error())
+					return nil, fmt.Errorf("fileInfoFromPath error: %w", err)
 				}
 				files = append(files, fileIndex)
 			}
@@ -941,7 +937,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 		// info from ipfs
 		fileList, err = s.fileIndexInfo(ctx, id, false)
 		if err != nil {
-			log.With("cid", id.ObjectID).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
+			log.With("cid", id.ObjectID).Errorf("FileByHash: failed to retrieve from IPFS: %s", err)
 			return nil, domain.ErrFileNotFound
 		}
 		ok, err := s.fileStore.IsFileImported(id.ObjectID)

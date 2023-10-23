@@ -23,13 +23,13 @@ func GetFileConfig(configPath string, cfg interface{}) error {
 	if !errors.Is(err, os.ErrNotExist) {
 		info, err := cfgFile.Stat()
 		if err != nil {
-			return fmt.Errorf("fail to get info about config file: %s", err.Error())
+			return fmt.Errorf("fail to get info about config file: %w", err)
 		}
 
 		if info.Size() > 0 {
 			err = json.NewDecoder(cfgFile).Decode(cfg)
 			if err != nil {
-				return fmt.Errorf("invalid file config format: %s", err.Error())
+				return fmt.Errorf("invalid file config format: %w", err)
 			}
 		}
 	}
@@ -47,7 +47,7 @@ func WriteJsonConfig(configPath string, cfg interface{}) error {
 
 	newConfig, err := toMapInterface(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to marshal new config: %s", err.Error())
+		return fmt.Errorf("failed to marshal new config: %w", err)
 	}
 
 	for oldKey, oldData := range oldCfg {
@@ -58,13 +58,13 @@ func WriteJsonConfig(configPath string, cfg interface{}) error {
 
 	cfgFile, err := os.OpenFile(configPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
-		return fmt.Errorf("failed to open cfg file for updating: %s", err.Error())
+		return fmt.Errorf("failed to open cfg file for updating: %w", err)
 	}
 	defer cfgFile.Close()
 
 	err = json.NewEncoder(cfgFile).Encode(newConfig)
 	if err != nil {
-		return fmt.Errorf("failed to save data to the config file: %s", err.Error())
+		return fmt.Errorf("failed to save data to the config file: %w", err)
 	}
 
 	return nil

@@ -1,30 +1,34 @@
-package core
+package account
 
 import (
 	"errors"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
-type ProfileInfo interface {
-	LocalProfile(spaceID string) (Profile, error)
-	ProfileID(spaceID string) string
-}
-
 type Profile struct {
+	Id          string
 	AccountAddr string
 	Name        string
 	IconImage   string
 	IconColor   string
 }
 
-func (a *Anytype) LocalProfile(spaceID string) (Profile, error) {
-	profile := Profile{AccountAddr: a.wallet.GetAccountPrivkey().GetPublic().Account()}
-	profileID := a.PredefinedObjects(spaceID).Profile
+func (s *service) IdentityObjectId() string {
+	return addr.AccountIdToIdentityObjectId(s.AccountID())
+}
 
-	if a.objectStore == nil {
+func (s *service) LocalProfile() (Profile, error) {
+	profile := Profile{
+		Id:          s.IdentityObjectId(),
+		AccountAddr: s.wallet.GetAccountPrivkey().GetPublic().Account(),
+	}
+
+	if s.objectStore == nil {
 		return profile, errors.New("objectstore not available")
 	}
 
-	profileDetails, err := a.objectStore.GetDetails(profileID)
+	profileDetails, err := s.objectStore.GetDetails(profile.Id)
 	if err != nil {
 		return profile, err
 	}
@@ -45,8 +49,4 @@ func (a *Anytype) LocalProfile(spaceID string) (Profile, error) {
 	}
 
 	return profile, nil
-}
-
-func (a *Anytype) ProfileID(spaceID string) string {
-	return a.PredefinedObjects(spaceID).Profile
 }

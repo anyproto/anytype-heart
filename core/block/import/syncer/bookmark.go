@@ -35,7 +35,7 @@ func (bs *BookmarkSyncer) Sync(id string, b simple.Block, origin model.ObjectOri
 	}
 	err := bs.service.BookmarkFetch(nil, dto)
 	if err != nil {
-		return fmt.Errorf("failed syncing bookmark: %s", err)
+		return fmt.Errorf("failed syncing bookmark: %w", err)
 	}
 	return nil
 }

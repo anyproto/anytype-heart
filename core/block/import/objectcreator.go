@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -17,21 +16,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/syncer"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -39,31 +37,24 @@ const relationsLimit = 10
 
 type ObjectCreator struct {
 	service        *block.Service
-	objectCache    objectcache.Cache
-	core           core.Service
+	spaceService   space.Service
 	objectStore    objectstore.ObjectStore
 	relationSyncer syncer.RelationSyncer
 	syncFactory    *syncer.Factory
 	fileStore      filestore.FileStore
+	objectCreator  objectcreator.Service
 	mu             sync.Mutex
 }
 
-func NewCreator(service *block.Service,
-	cache objectcache.Cache,
-	core core.Service,
-	syncFactory *syncer.Factory,
-	objectStore objectstore.ObjectStore,
-	relationSyncer syncer.RelationSyncer,
-	fileStore filestore.FileStore,
-) Creator {
+func NewCreator(service *block.Service, syncFactory *syncer.Factory, objectStore objectstore.ObjectStore, relationSyncer syncer.RelationSyncer, fileStore filestore.FileStore, spaceService space.Service, objectCreator objectcreator.Service) Creator {
 	return &ObjectCreator{
 		service:        service,
-		core:           core,
 		syncFactory:    syncFactory,
 		objectStore:    objectStore,
 		relationSyncer: relationSyncer,
 		fileStore:      fileStore,
-		objectCache:    cache,
+		spaceService:   spaceService,
+		objectCreator:  objectCreator,
 	}
 }
 
@@ -91,7 +82,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
 
 	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
-		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err.Error())
+		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
 	if sn.SbType == coresb.SmartBlockTypeWorkspace {
@@ -112,12 +103,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 	var respDetails *types.Struct
 	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
 	if err != nil {
-		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err.Error())
+		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
 	if payload := dataObject.createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
-			log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
+			log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 			return nil, "", err
 		}
 	} else {
@@ -138,11 +129,10 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 }
 
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
-	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType
+	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
 func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, st *state.State, origin model.ObjectOrigin, spaceID string) {
-	// explicitly set last modified date, because all local details removed in NewDocFromSnapshot; createdDate covered in the object header
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
@@ -151,11 +141,12 @@ func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, st *state.S
 		} else {
 			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
 			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
-			log.With("objectID", sn.Id).With("ext", path.Ext(sn.FileName)).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
+			log.With("objectID", sn.Id).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
+		}
+		if lastModifiedDate > 0 {
+			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModifiedDate))
 		}
 	}
-	st.SetLastModified(lastModifiedDate, oc.core.ProfileID(spaceID))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin)))
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {
@@ -190,7 +181,11 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 		idsToCheck = append(idsToCheck, addr.BundledObjectTypeURLPrefix+string(typeKey))
 	}
 
-	_, _, err := oc.service.InstallBundledObjects(ctx, spaceID, idsToCheck)
+	spc, err := oc.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return fmt.Errorf("get space %s: %w", spaceID, err)
+	}
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck)
 	return err
 }
 
@@ -202,7 +197,11 @@ func (oc *ObjectCreator) createNewObject(
 	newID string,
 	oldIDtoNew map[string]string) (*types.Struct, error) {
 	var respDetails *types.Struct
-	sb, err := oc.objectCache.CreateTreeObjectWithPayload(ctx, spaceID, payload, func(id string) *smartblock.InitContext {
+	spc, err := oc.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return nil, fmt.Errorf("get space %s: %w", spaceID, err)
+	}
+	sb, err := spc.CreateTreeObjectWithPayload(ctx, payload, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,
@@ -213,7 +212,7 @@ func (oc *ObjectCreator) createNewObject(
 	if err == nil {
 		respDetails = sb.Details()
 	} else if errors.Is(err, treestorage.ErrTreeExists) {
-		err = getblock.Do(oc.service, newID, func(sb smartblock.SmartBlock) error {
+		err = spc.Do(newID, func(sb smartblock.SmartBlock) error {
 			respDetails = sb.Details()
 			return nil
 		})
@@ -221,7 +220,7 @@ func (oc *ObjectCreator) createNewObject(
 			return nil, fmt.Errorf("get existing object %s: %w", newID, err)
 		}
 	} else {
-		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err.Error())
+		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 		return nil, err
 	}
 	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
@@ -328,14 +327,19 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 		})
 	}
 	if len(details) > 0 {
-		err := block.Do(oc.service, oc.core.PredefinedObjects(spaceID).Workspace, func(ws basic.CommonOperations) error {
+		spc, err := oc.spaceService.Get(context.Background(), spaceID)
+		if err != nil {
+			log.Errorf("failed to get space: %v", err)
+			return
+		}
+		err = block.Do(oc.service, spc.DerivedIDs().Workspace, func(ws basic.CommonOperations) error {
 			if err := ws.SetDetails(nil, details, false); err != nil {
 				return err
 			}
 			return nil
 		})
 		if err != nil {
-			log.Errorf("failed to set spaceDashBoardID, %s", err.Error())
+			log.Errorf("failed to set spaceDashBoardID, %s", err)
 		}
 	}
 }
@@ -353,7 +357,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 	err := block.Do(oc.service, newID, func(b smartblock.SmartBlock) error {
 		err := history.ResetToVersion(b, st)
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
 		}
 		commonOperations, ok := b.(basic.CommonOperations)
 		if !ok {
@@ -361,13 +365,13 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *types.Struct
 		}
 		err = commonOperations.FeaturedRelationAdd(nil, bundle.RelationKeyType.String())
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err)
 		}
 		respDetails = b.CombinedDetails()
 		return nil
 	})
 	if err != nil {
-		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err.Error())
+		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err)
 	}
 	return respDetails
 }
@@ -377,7 +381,7 @@ func (oc *ObjectCreator) setFavorite(snapshot *model.SmartBlockSnapshotBase, new
 	if isFavorite {
 		err := oc.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newID, IsFavorite: true})
 		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err.Error())
+			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}
 	}
 }
@@ -388,7 +392,7 @@ func (oc *ObjectCreator) setArchived(snapshot *model.SmartBlockSnapshotBase, new
 		err := oc.service.SetPageIsArchived(pb.RpcObjectSetIsArchivedRequest{ContextId: newID, IsArchived: true})
 		if err != nil {
 			log.With(zap.String("object id", newID)).
-				Errorf("failed to set isFavorite when importing object %s: %s", newID, err.Error())
+				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)
 		}
 	}
 }

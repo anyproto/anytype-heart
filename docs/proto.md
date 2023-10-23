@@ -819,10 +819,6 @@
     - [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request)
     - [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response)
     - [Rpc.ObjectType.Relation.Add.Response.Error](#anytype-Rpc-ObjectType-Relation-Add-Response-Error)
-    - [Rpc.ObjectType.Relation.List](#anytype-Rpc-ObjectType-Relation-List)
-    - [Rpc.ObjectType.Relation.List.Request](#anytype-Rpc-ObjectType-Relation-List-Request)
-    - [Rpc.ObjectType.Relation.List.Response](#anytype-Rpc-ObjectType-Relation-List-Response)
-    - [Rpc.ObjectType.Relation.List.Response.Error](#anytype-Rpc-ObjectType-Relation-List-Response-Error)
     - [Rpc.ObjectType.Relation.Remove](#anytype-Rpc-ObjectType-Relation-Remove)
     - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
     - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
@@ -911,10 +907,6 @@
     - [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request)
     - [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response)
     - [Rpc.Workspace.GetCurrent.Response.Error](#anytype-Rpc-Workspace-GetCurrent-Response-Error)
-    - [Rpc.Workspace.Info](#anytype-Rpc-Workspace-Info)
-    - [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request)
-    - [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response)
-    - [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error)
     - [Rpc.Workspace.Object](#anytype-Rpc-Workspace-Object)
     - [Rpc.Workspace.Object.Add](#anytype-Rpc-Workspace-Object-Add)
     - [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request)
@@ -928,14 +920,18 @@
     - [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request)
     - [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response)
     - [Rpc.Workspace.Object.ListRemove.Response.Error](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error)
+    - [Rpc.Workspace.Open](#anytype-Rpc-Workspace-Open)
+    - [Rpc.Workspace.Open.Request](#anytype-Rpc-Workspace-Open-Request)
+    - [Rpc.Workspace.Open.Response](#anytype-Rpc-Workspace-Open-Response)
+    - [Rpc.Workspace.Open.Response.Error](#anytype-Rpc-Workspace-Open-Response-Error)
     - [Rpc.Workspace.Select](#anytype-Rpc-Workspace-Select)
     - [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request)
     - [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response)
     - [Rpc.Workspace.Select.Response.Error](#anytype-Rpc-Workspace-Select-Response-Error)
-    - [Rpc.Workspace.SetIsHighlighted](#anytype-Rpc-Workspace-SetIsHighlighted)
-    - [Rpc.Workspace.SetIsHighlighted.Request](#anytype-Rpc-Workspace-SetIsHighlighted-Request)
-    - [Rpc.Workspace.SetIsHighlighted.Response](#anytype-Rpc-Workspace-SetIsHighlighted-Response)
-    - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error)
+    - [Rpc.Workspace.SetInfo](#anytype-Rpc-Workspace-SetInfo)
+    - [Rpc.Workspace.SetInfo.Request](#anytype-Rpc-Workspace-SetInfo-Request)
+    - [Rpc.Workspace.SetInfo.Response](#anytype-Rpc-Workspace-SetInfo-Response)
+    - [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error)
     - [StreamRequest](#anytype-StreamRequest)
   
     - [Rpc.Account.ConfigUpdate.Response.Error.Code](#anytype-Rpc-Account-ConfigUpdate-Response-Error-Code)
@@ -1132,7 +1128,6 @@
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
-    - [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-List-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
@@ -1153,12 +1148,12 @@
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype-Rpc-Workspace-GetAll-Response-Error-Code)
     - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype-Rpc-Workspace-GetCurrent-Response-Error-Code)
-    - [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code)
     - [Rpc.Workspace.Object.Add.Response.Error.Code](#anytype-Rpc-Workspace-Object-Add-Response-Error-Code)
     - [Rpc.Workspace.Object.ListAdd.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListAdd-Response-Error-Code)
     - [Rpc.Workspace.Object.ListRemove.Response.Error.Code](#anytype-Rpc-Workspace-Object-ListRemove-Response-Error-Code)
+    - [Rpc.Workspace.Open.Response.Error.Code](#anytype-Rpc-Workspace-Open-Response-Error-Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype-Rpc-Workspace-Select-Response-Error-Code)
-    - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code)
+    - [Rpc.Workspace.SetInfo.Response.Error.Code](#anytype-Rpc-Workspace-SetInfo-Response-Error-Code)
   
     - [File-level Extensions](#pb_protos_commands-proto-extensions)
   
@@ -1405,6 +1400,9 @@
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
+    - [Metadata](#anytype-model-Metadata)
+    - [Metadata.Payload](#anytype-model-Metadata-Payload)
+    - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1493,14 +1491,14 @@
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
-| WorkspaceInfo | [Rpc.Workspace.Info.Request](#anytype-Rpc-Workspace-Info-Request) | [Rpc.Workspace.Info.Response](#anytype-Rpc-Workspace-Info-Response) |  |
+| WorkspaceOpen | [Rpc.Workspace.Open.Request](#anytype-Rpc-Workspace-Open-Request) | [Rpc.Workspace.Open.Response](#anytype-Rpc-Workspace-Open-Response) |  |
 | WorkspaceObjectAdd | [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request) | [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response) |  |
 | WorkspaceObjectListAdd | [Rpc.Workspace.Object.ListAdd.Request](#anytype-Rpc-Workspace-Object-ListAdd-Request) | [Rpc.Workspace.Object.ListAdd.Response](#anytype-Rpc-Workspace-Object-ListAdd-Response) |  |
 | WorkspaceObjectListRemove | [Rpc.Workspace.Object.ListRemove.Request](#anytype-Rpc-Workspace-Object-ListRemove-Request) | [Rpc.Workspace.Object.ListRemove.Response](#anytype-Rpc-Workspace-Object-ListRemove-Response) |  |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype-Rpc-Workspace-Select-Request) | [Rpc.Workspace.Select.Response](#anytype-Rpc-Workspace-Select-Response) |  |
 | WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype-Rpc-Workspace-GetCurrent-Request) | [Rpc.Workspace.GetCurrent.Response](#anytype-Rpc-Workspace-GetCurrent-Response) |  |
 | WorkspaceGetAll | [Rpc.Workspace.GetAll.Request](#anytype-Rpc-Workspace-GetAll-Request) | [Rpc.Workspace.GetAll.Response](#anytype-Rpc-Workspace-GetAll-Response) |  |
-| WorkspaceSetIsHighlighted | [Rpc.Workspace.SetIsHighlighted.Request](#anytype-Rpc-Workspace-SetIsHighlighted-Request) | [Rpc.Workspace.SetIsHighlighted.Response](#anytype-Rpc-Workspace-SetIsHighlighted-Response) |  |
+| WorkspaceSetInfo | [Rpc.Workspace.SetInfo.Request](#anytype-Rpc-Workspace-SetInfo-Request) | [Rpc.Workspace.SetInfo.Response](#anytype-Rpc-Workspace-SetInfo-Response) |  |
 | WorkspaceExport | [Rpc.Workspace.Export.Request](#anytype-Rpc-Workspace-Export-Request) | [Rpc.Workspace.Export.Response](#anytype-Rpc-Workspace-Export-Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request) | [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response) | Account *** |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
@@ -1564,7 +1562,6 @@
 | ObjectRelationRemoveFeatured | [Rpc.ObjectRelation.RemoveFeatured.Request](#anytype-Rpc-ObjectRelation-RemoveFeatured-Request) | [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response) |  |
 | ObjectRelationListAvailable | [Rpc.ObjectRelation.ListAvailable.Request](#anytype-Rpc-ObjectRelation-ListAvailable-Request) | [Rpc.ObjectRelation.ListAvailable.Response](#anytype-Rpc-ObjectRelation-ListAvailable-Response) |  |
 | ObjectCreateObjectType | [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request) | [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response) | ObjectType commands *** |
-| ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype-Rpc-ObjectType-Relation-List-Request) | [Rpc.ObjectType.Relation.List.Response](#anytype-Rpc-ObjectType-Relation-List-Response) |  |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
@@ -2551,6 +2548,7 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | accountId | [string](#string) |  |  |
+| personalSpaceId | [string](#string) |  |  |
 | error | [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error) |  |  |
 
 
@@ -10295,6 +10293,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | deprecated, GO-1926 |
 | objectId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | Required only for date objects |
 
 
 
@@ -11721,6 +11720,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | contextId | [string](#string) |  | id of the context blo1k |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | Required only for date objects |
 | includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 
@@ -12629,6 +12629,7 @@ DEPRECATED, GO-1926 |
 | contextId | [string](#string) |  | deprecated, GO-1926 |
 | objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | Required only for date objects |
 | includeRelationsAsDependentObjects | [bool](#bool) |  | some clients may set this option instead if having the single subscription to all relations |
 
 
@@ -13592,64 +13593,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-List"></a>
-
-### Rpc.ObjectType.Relation.List
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-List-Request"></a>
-
-### Rpc.ObjectType.Relation.List.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
-| appendRelationsFromOtherTypes | [bool](#bool) |  | add relations from other object types in the end |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-List-Response"></a>
-
-### Rpc.ObjectType.Relation.List.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Relation.List.Response.Error](#anytype-Rpc-ObjectType-Relation-List-Response-Error) |  |  |
-| relations | [model.RelationLink](#anytype-model-RelationLink) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-List-Response-Error"></a>
-
-### Rpc.ObjectType.Relation.List.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Relation.List.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-List-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -14881,63 +14824,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-Info"></a>
-
-### Rpc.Workspace.Info
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-Info-Request"></a>
-
-### Rpc.Workspace.Info.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-Info-Response"></a>
-
-### Rpc.Workspace.Info.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Workspace.Info.Response.Error](#anytype-Rpc-Workspace-Info-Response-Error) |  |  |
-| info | [model.Account.Info](#anytype-model-Account-Info) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-Info-Response-Error"></a>
-
-### Rpc.Workspace.Info.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Workspace.Info.Response.Error.Code](#anytype-Rpc-Workspace-Info-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Workspace-Object"></a>
 
 ### Rpc.Workspace.Object
@@ -15122,6 +15008,63 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Open"></a>
+
+### Rpc.Workspace.Open
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Open-Request"></a>
+
+### Rpc.Workspace.Open.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Open-Response"></a>
+
+### Rpc.Workspace.Open.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Open.Response.Error](#anytype-Rpc-Workspace-Open-Response-Error) |  |  |
+| info | [model.Account.Info](#anytype-model-Account-Info) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-Open-Response-Error"></a>
+
+### Rpc.Workspace.Open.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Open.Response.Error.Code](#anytype-Rpc-Workspace-Open-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Workspace-Select"></a>
 
 ### Rpc.Workspace.Select
@@ -15178,56 +15121,56 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted"></a>
+<a name="anytype-Rpc-Workspace-SetInfo"></a>
 
-### Rpc.Workspace.SetIsHighlighted
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Request"></a>
-
-### Rpc.Workspace.SetIsHighlighted.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectId | [string](#string) |  |  |
-| isHighlighted | [bool](#bool) |  |  |
+### Rpc.Workspace.SetInfo
 
 
 
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Response"></a>
 
-### Rpc.Workspace.SetIsHighlighted.Response
+<a name="anytype-Rpc-Workspace-SetInfo-Request"></a>
+
+### Rpc.Workspace.SetInfo.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error) |  |  |
+| spaceId | [string](#string) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 
 
 
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Response-Error"></a>
+<a name="anytype-Rpc-Workspace-SetInfo-Response"></a>
 
-### Rpc.Workspace.SetIsHighlighted.Response.Error
+### Rpc.Workspace.SetInfo.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code) |  |  |
+| error | [Rpc.Workspace.SetInfo.Response.Error](#anytype-Rpc-Workspace-SetInfo-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Workspace-SetInfo-Response-Error"></a>
+
+### Rpc.Workspace.SetInfo.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.SetInfo.Response.Error.Code](#anytype-Rpc-Workspace-SetInfo-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -17860,20 +17803,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-ObjectType-Relation-List-Response-Error-Code"></a>
-
-### Rpc.ObjectType.Relation.List.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
-
-
-
 <a name="anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Relation.Remove.Response.Error.Code
@@ -18140,19 +18069,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-Info-Response-Error-Code"></a>
-
-### Rpc.Workspace.Info.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-Workspace-Object-Add-Response-Error-Code"></a>
 
 ### Rpc.Workspace.Object.Add.Response.Error.Code
@@ -18192,6 +18108,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Workspace-Open-Response-Error-Code"></a>
+
+### Rpc.Workspace.Open.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Workspace-Select-Response-Error-Code"></a>
 
 ### Rpc.Workspace.Select.Response.Error.Code
@@ -18205,9 +18134,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Workspace-SetIsHighlighted-Response-Error-Code"></a>
+<a name="anytype-Rpc-Workspace-SetInfo-Response-Error-Code"></a>
 
-### Rpc.Workspace.SetIsHighlighted.Response.Error.Code
+### Rpc.Workspace.SetInfo.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20450,7 +20379,7 @@ Precondition: user A opened a block
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype-Event-Block-Dataview-ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype-Event-Block-Dataview-ViewDelete) |  |  |
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
-| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype-Event-Block-Dataview-SourceSet) |  | deprecated, source is no longer used |
 | blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
 | blockDataViewObjectOrderUpdate | [Event.Block.Dataview.ObjectOrderUpdate](#anytype-Event-Block-Dataview-ObjectOrderUpdate) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
@@ -21246,7 +21175,6 @@ Precondition: user A and user B opened the same block
 | relations | [Relation](#anytype-model-Relation) | repeated | DEPRECATED |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  | DEPRECATED |
-| objectType | [SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 
 
 
@@ -21445,8 +21373,9 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  |  |
-| workspaceObjectId | [string](#string) |  |  |
 | widgetsId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
+| techSpaceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 | localStoragePath | [string](#string) |  | path to local storage |
 | timeZone | [string](#string) |  | time zone from config |
@@ -22125,6 +22054,46 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Metadata"></a>
+
+### Metadata
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identity | [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload"></a>
+
+### Metadata.Payload
+
+
+
+
+
+
+
+<a name="anytype-model-Metadata-Payload-IdentityPayload"></a>
+
+### Metadata.Payload.IdentityPayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| profileSymKey | [bytes](#bytes) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Object"></a>
 
 ### Object
@@ -22621,6 +22590,7 @@ stored |
 | List | 1 |  |
 | Gallery | 2 |  |
 | Kanban | 3 |  |
+| Calendar | 4 |  |
 
 
 
@@ -23009,6 +22979,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STType | 528 |  |
 | STRelationOption | 529 |  |
 | SpaceView | 530 |  |
+| Identity | 532 |  |
 | MissingObject | 519 |  |
 
 

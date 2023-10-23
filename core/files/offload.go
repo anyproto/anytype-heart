@@ -105,7 +105,7 @@ func (s *service) FileListOffload(ctx context.Context, fileIDs []string, include
 		}
 		bytesRemoved, err := s.fileOffload(ctx, id)
 		if err != nil {
-			log.Errorf("failed to offload file %s: %s", fileID, err.Error())
+			log.Errorf("failed to offload file %s: %s", fileID, err)
 			continue
 		}
 		if bytesRemoved > 0 {
@@ -158,7 +158,7 @@ func (s *service) getAllExistingFileBlocksCids(ctx context.Context, id domain.Fu
 		ctx = context.WithValue(ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
 		n, err := dagService.Get(ctx, c)
 		if err != nil {
-			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
+			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err)
 		}
 		cancel()
 		if n != nil {

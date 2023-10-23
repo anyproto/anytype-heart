@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -75,7 +76,11 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, err = bs.OpenBlock(ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
+		id := domain.FullID{
+			SpaceID:  req.SpaceId,
+			ObjectID: req.ObjectId,
+		}
+		obj, err = bs.OpenBlock(ctx, id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
 	if err != nil {
@@ -103,7 +108,11 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, err = bs.ShowBlock(req.ObjectId, req.IncludeRelationsAsDependentObjects)
+		id := domain.FullID{
+			SpaceID:  req.SpaceId,
+			ObjectID: req.ObjectId,
+		}
+		obj, err = bs.ShowBlock(id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
 	if err != nil {
@@ -128,7 +137,11 @@ func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.CloseBlock(ctx, req.ObjectId)
+		id := domain.FullID{
+			SpaceID:  req.SpaceId,
+			ObjectID: req.ObjectId,
+		}
+		return bs.CloseBlock(ctx, id)
 	})
 	if err != nil {
 		return response(pb.RpcObjectCloseResponseError_UNKNOWN_ERROR, err)

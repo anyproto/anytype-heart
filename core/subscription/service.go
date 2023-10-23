@@ -12,10 +12,11 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -70,12 +71,11 @@ type service struct {
 	subscriptions map[string]subscription
 	recBatch      *mb.MB
 
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	kanban              kanban.Service
-	collectionService   CollectionService
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	eventSender         event.Sender
+	objectStore       objectstore.ObjectStore
+	kanban            kanban.Service
+	collectionService CollectionService
+	sbtProvider       typeprovider.SmartBlockTypeProvider
+	eventSender       event.Sender
 
 	m      sync.Mutex
 	ctxBuf *opCtx
@@ -91,7 +91,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
-	s.systemObjectService = app.MustComponent[system_object.Service](a)
 	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
@@ -140,13 +139,9 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectS
 	}
 
 	if len(req.Source) > 0 {
-		spaceId, err := spaceIdFromFilters(req.Filters)
+		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
-			return nil, fmt.Errorf("source set but can't get spaceId from filters: %w", err)
-		}
-		sourceFilter, err := s.filtersFromSource(spaceId, req.Source)
-		if err != nil {
-			return nil, fmt.Errorf("can't make filter from source: %v", err)
+			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
 		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
 	}
@@ -235,7 +230,7 @@ func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, su
 		return err
 	}
 	if err = sub.init(entries); err != nil {
-		return fmt.Errorf("subscription init error: %v", err)
+		return fmt.Errorf("subscription init error: %w", err)
 	}
 	return nil
 }
@@ -243,7 +238,7 @@ func initSubEntries(objectStore objectstore.ObjectStore, f *database.Filters, su
 func queryEntries(objectStore objectstore.ObjectStore, f *database.Filters) ([]*entry, error) {
 	records, err := objectStore.QueryRaw(f, 0, 0)
 	if err != nil {
-		return nil, fmt.Errorf("objectStore query error: %v", err)
+		return nil, fmt.Errorf("objectStore query error: %w", err)
 	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
@@ -266,7 +261,7 @@ func (s *service) subscribeForCollection(req pb.RpcObjectSearchSubscribeRequest,
 		sub.sortedSub.forceSubIds = filterDepIds
 	}
 	if err := sub.init(nil); err != nil {
-		return nil, fmt.Errorf("subscription init error: %v", err)
+		return nil, fmt.Errorf("subscription init error: %w", err)
 	}
 	s.subscriptions[sub.sortedSub.id] = sub
 	prev, next := sub.counters()
@@ -347,9 +342,9 @@ func (s *service) SubscribeGroups(ctx session.Context, req pb.RpcObjectGroupsSub
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
+		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
-			return nil, fmt.Errorf("can't make filter from source: %v", err)
+			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
 		flt.FilterObj = database.FiltersAnd{flt.FilterObj, sourceFilter}
 	}
@@ -519,26 +514,56 @@ func (s *service) onChange(entries []*entry) time.Duration {
 	return dur
 }
 
-func (s *service) filtersFromSource(spaceID string, sources []string) (database.Filter, error) {
-	idsByType, err := s.sbtProvider.PartitionIDsByType(spaceID, sources)
-	if err != nil {
-		return nil, err
-	}
+func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 	var relTypeFilter database.FiltersOr
-	if len(idsByType[smartblock.SmartBlockTypeObjectType]) > 0 {
-		relTypeFilter = append(relTypeFilter, database.FilterIn{
-			Key:   bundle.RelationKeyType.String(),
-			Value: pbtypes.StringList(idsByType[smartblock.SmartBlockTypeObjectType]).GetListValue(),
-		})
+	var (
+		relKeys        []string
+		typeUniqueKeys []string
+	)
+
+	var err error
+	for _, source := range sources {
+		var uk domain.UniqueKey
+		if uk, err = domain.UnmarshalUniqueKey(source); err != nil {
+			// todo: gradually escalate to return error
+			log.Info("Using object id instead of uniqueKey is deprecated in the Source")
+
+			details, err := s.objectStore.GetDetails(source)
+			if err != nil {
+				return nil, fmt.Errorf("get object %s details: %w", source, err)
+			}
+
+			uk, err = domain.UnmarshalUniqueKey(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
+			if err != nil {
+				return nil, fmt.Errorf("object doesn't have uniqueKey: %w", err)
+			}
+		}
+		switch uk.SmartblockType() {
+		case smartblock.SmartBlockTypeRelation:
+			relKeys = append(relKeys, uk.InternalKey())
+		case smartblock.SmartBlockTypeObjectType:
+			typeUniqueKeys = append(typeUniqueKeys, uk.Marshal())
+		}
 	}
 
-	for _, relationID := range idsByType[smartblock.SmartBlockTypeRelation] {
-		relationDetails, err := s.objectStore.GetDetails(relationID)
+	if len(typeUniqueKeys) > 0 {
+		nestedFiler, err := database.MakeFilter("",
+			&model.BlockContentDataviewFilter{
+				RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList(typeUniqueKeys),
+			},
+			s.objectStore,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("get relation %s details: %w", relationDetails, err)
+			return nil, fmt.Errorf("make nested filter: %w", err)
 		}
+		relTypeFilter = append(relTypeFilter, nestedFiler)
+	}
+
+	for _, relKey := range relKeys {
 		relTypeFilter = append(relTypeFilter, database.FilterExists{
-			Key: pbtypes.GetString(relationDetails.Details, bundle.RelationKeyRelationKey.String()),
+			Key: relKey,
 		})
 	}
 	return relTypeFilter, nil

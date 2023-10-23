@@ -9,7 +9,6 @@ import (
 type RestrictionHolder interface {
 	Type() smartblock.SmartBlockType
 	Layout() (model.ObjectTypeLayout, bool)
-	ObjectTypeID() string
 	UniqueKey() domain.UniqueKey
 }
 

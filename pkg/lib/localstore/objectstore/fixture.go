@@ -10,16 +10,13 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -28,9 +25,6 @@ type StoreFixture struct {
 }
 
 func NewStoreFixture(t *testing.T) *StoreFixture {
-	typeProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-	typeProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
-
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
@@ -47,15 +41,22 @@ func NewStoreFixture(t *testing.T) *StoreFixture {
 	require.NoError(t, err)
 
 	ds := &dsObjectStore{
-		sbtProvider: typeProvider,
-		fts:         fullText,
-		db:          db,
+		fts:           fullText,
+		sourceService: &detailsFromId{},
+		db:            db,
 	}
 	err = ds.initCache()
 	require.NoError(t, err)
 	return &StoreFixture{
 		dsObjectStore: ds,
 	}
+}
+
+type detailsFromId struct {
+}
+
+func (d *detailsFromId) DetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	return nil, fmt.Errorf("not found")
 }
 
 func (fx *StoreFixture) Init(a *app.App) (err error) {

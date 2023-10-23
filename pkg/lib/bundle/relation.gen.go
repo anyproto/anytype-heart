@@ -159,6 +159,9 @@ const (
 	RelationKeyOrigin                    domain.RelationKey = "origin"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
+	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
+	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
+	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 )
 
 var (
@@ -889,6 +892,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIdentityProfileLink: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Link to the profile attached to Anytype Identity",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_bridentityProfileLink",
+			Key:              "identityProfileLink",
+			MaxCount:         1,
+			Name:             "Profile link",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyImdbRating: {
 
 			DataSource:       model.Relation_details,
@@ -1398,6 +1415,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyProfileOwnerIdentity: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Link the profile object to specific Identity",
+			Format:           model.RelationFormat_shorttext,
+			Id:               "_brprofileOwnerIdentity",
+			Key:              "profileOwnerIdentity",
+			MaxCount:         1,
+			Name:             "Anytype Identity",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyProgress: {
 
 			DataSource:       model.Relation_details,
@@ -1821,7 +1851,7 @@ var (
 			Id:               "_brspaceId",
 			Key:              "spaceId",
 			MaxCount:         1,
-			Name:             "SpaceID",
+			Name:             "Space ID",
 			ObjectTypes:      []string{TypePrefix + "space"},
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
@@ -1929,6 +1959,20 @@ var (
 			Name:             "Template's Type",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTargetSpaceId: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates the real space id on the spaceView",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brtargetSpaceId",
+			Key:              "targetSpaceId",
+			MaxCount:         1,
+			Name:             "Target space id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -11,8 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -96,7 +96,7 @@ func applyDetailUpdates(oldDetails *types.Struct, updates []*detailUpdate) *type
 func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDetailsDetail) (*detailUpdate, error) {
 	if detail.Value != nil {
 		if err := pbtypes.ValidateValue(detail.Value); err != nil {
-			return nil, fmt.Errorf("detail %s validation error: %s", detail.Key, err.Error())
+			return nil, fmt.Errorf("detail %s validation error: %w", detail.Key, err)
 		}
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
 			return nil, fmt.Errorf("special case: %w", err)
@@ -115,7 +115,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail *pb.RpcObjectSetDeta
 }
 
 func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value) error {
-	r, err := bs.systemObjectService.FetchRelationByKey(spaceID, key)
+	r, err := bs.objectStore.FetchRelationByKey(spaceID, key)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (bs *basic) validateDetailFormat(spaceID string, key string, v *types.Value
 		if s != "" {
 			err := uri.ValidateURI(strings.TrimSpace(v.GetStringValue()))
 			if err != nil {
-				return fmt.Errorf("failed to parse URL: %s", err.Error())
+				return fmt.Errorf("failed to parse URL: %w", err)
 			}
 		}
 		// todo: should we allow schemas other than http/https?
@@ -258,15 +258,11 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 }
 
 func (bs *basic) addRelationLink(relationKey string, st *state.State) error {
-	// TODO: add relation.WithWorkspaceId(workspaceId) filter
-	rel, err := bs.systemObjectService.FetchRelationByKey(bs.SpaceID(), relationKey)
-	if err != nil || rel == nil {
+	relLink, err := bs.objectStore.GetRelationLink(bs.SpaceID(), relationKey)
+	if err != nil || relLink == nil {
 		return fmt.Errorf("failed to get relation: %w", err)
 	}
-	st.AddRelationLinks(&model.RelationLink{
-		Format: rel.Format,
-		Key:    rel.Key,
-	})
+	st.AddRelationLinks(relLink)
 	return nil
 }
 
@@ -327,7 +323,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 	}
 
 	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
-		return fmt.Errorf("objectType change is restricted for object '%s': %v", bs.Id(), err)
+		return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
@@ -344,7 +340,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	if err != nil {
 		return 0, fmt.Errorf("create unique key: %w", err)
 	}
-	typeDetails, err := bs.systemObjectService.GetObjectByUniqueKey(bs.SpaceID(), uk)
+	typeDetails, err := bs.objectStore.GetObjectByUniqueKey(bs.SpaceID(), uk)
 	if err != nil {
 		return 0, fmt.Errorf("get object by unique key: %w", err)
 	}
@@ -354,7 +350,7 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
 	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
-		return fmt.Errorf("layout change is restricted for object '%s': %v", bs.Id(), err)
+		return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
 	}
 
 	return bs.SetLayoutInStateAndIgnoreRestriction(s, toLayout)
@@ -365,7 +361,7 @@ func (bs *basic) SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout m
 
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
 
-	if err = bs.layoutConverter.Convert(s, fromLayout, toLayout); err != nil {
+	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
 	}
 	return nil

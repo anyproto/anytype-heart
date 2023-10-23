@@ -26,7 +26,7 @@ func registerGelfSink(config *logger.Config) {
 	gelfSinkWrapper.batch = mb.New(1000)
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
-		fmt.Printf("failed to init gelf tls: %s", err.Error())
+		fmt.Printf("failed to init gelf tls: %s", err)
 	} else {
 		tlsWriter.MaxReconnect = 0
 		tlsWriter.ReconnectDelay = time.Second
@@ -73,7 +73,7 @@ func (gs *gelfSink) Run() {
 			err := gs.gelfWriter.WriteMessage(&msgCasted)
 			if err != nil {
 				if gs.lastErrorAt.IsZero() || gs.lastErrorAt.Add(printErrorThreshold).Before(time.Now()) {
-					fmt.Fprintf(os.Stderr, "failed to write to gelf: %v\n", err.Error())
+					fmt.Fprintf(os.Stderr, "failed to write to gelf: %v\n", err)
 				}
 				gs.lastErrorAt = time.Now()
 				_ = gs.batch.TryAdd(msg)

@@ -2,19 +2,19 @@ package pb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/exp/rand"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -25,11 +25,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -42,17 +39,15 @@ const (
 )
 
 type Pb struct {
-	service     *collection.Service
-	sbtProvider typeprovider.SmartBlockTypeProvider
-	core        core.Service
-	iconOption  int64
+	service        *collection.Service
+	accountService account.Service
+	iconOption     int64
 }
 
-func New(service *collection.Service, sbtProvider typeprovider.SmartBlockTypeProvider, core core.Service) converter.Converter {
+func New(service *collection.Service, accountService account.Service) converter.Converter {
 	return &Pb{
-		service:     service,
-		sbtProvider: sbtProvider,
-		core:        core,
+		service:        service,
+		accountService: accountService,
 	}
 }
 
@@ -151,7 +146,7 @@ func (p *Pb) handleImportPath(
 		}
 	}
 	if profile != nil {
-		pr, e := p.core.LocalProfile(spaceID)
+		pr, e := p.accountService.LocalProfile()
 		if e != nil {
 			allErrors.Add(e)
 			if allErrors.ShouldAbortImport(pathCount, pb.RpcObjectImportRequest_Pb) {
@@ -274,7 +269,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{}
 		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", uErr)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
 		return snapshot, nil
 	}
@@ -282,10 +277,10 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		snapshot := &pb.SnapshotWithType{}
 		data, err := io.ReadAll(rd)
 		if err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %s", err)
+			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
 		return snapshot, nil
 	}
@@ -302,20 +297,36 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 	}
 
 	if snapshot.SbType == model.SmartBlockType_SubObject {
+		details := snapshot.Snapshot.Data.Details
+		originalId := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
+		var sourceObjectId string
 		// migrate old sub objects into real objects
-		if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_objectType.String() {
+		if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyObjectType.URL() {
 			snapshot.SbType = model.SmartBlockType_STType
-		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relation.String() {
+			typeKey, err := bundle.TypeKeyFromUrl(originalId)
+			if err == nil {
+				sourceObjectId = typeKey.BundledURL()
+			}
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelation.URL() {
 			snapshot.SbType = model.SmartBlockType_STRelation
-		} else if snapshot.Snapshot.Data.ObjectTypes[0] == addr.ObjectTypeKeyToIdPrefix+model.ObjectType_relationOption.String() {
-			snapshot.SbType = model.SmartBlockType_Page
+			relationKey, err := bundle.RelationKeyFromID(originalId)
+			if err == nil {
+				sourceObjectId = relationKey.BundledURL()
+			}
+		} else if snapshot.Snapshot.Data.ObjectTypes[0] == bundle.TypeKeyRelationOption.URL() {
+			snapshot.SbType = model.SmartBlockType_STRelationOption
 		} else {
 			return "", fmt.Errorf("unknown sub object type %s", snapshot.Snapshot.Data.ObjectTypes[0])
+		}
+		if sourceObjectId != "" {
+			if pbtypes.GetString(details, bundle.RelationKeySourceObject.String()) == "" {
+				details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
+			}
 		}
 	}
 
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {
-		id = p.getIDForUserProfile(spaceID, snapshot, profileID, id, isMigration)
+		id = p.getIDForUserProfile(snapshot, profileID, id, isMigration)
 		p.setProfileIconOption(snapshot, profileID)
 	}
 	if snapshot.SbType == model.SmartBlockType_Page {
@@ -324,19 +335,10 @@ func (p *Pb) normalizeSnapshot(spaceID string, snapshot *pb.SnapshotWithType, id
 	return id, nil
 }
 
-// getIDForSubObject preserves original id from snapshot for relations and object types
-func (p *Pb) getIDForSubObject(sn *pb.SnapshotWithType, id string) string {
-	originalID := pbtypes.GetString(sn.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	if strings.HasPrefix(originalID, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(originalID, addr.RelationKeyToIdPrefix) {
-		return originalID
-	}
-	return id
-}
-
-func (p *Pb) getIDForUserProfile(spaceID string, mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
+func (p *Pb) getIDForUserProfile(mo *pb.SnapshotWithType, profileID string, id string, isMigration bool) string {
 	objectID := pbtypes.GetString(mo.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	if objectID == profileID && isMigration {
-		return p.core.ProfileID(spaceID)
+		return p.accountService.IdentityObjectId()
 	}
 	return id
 }
@@ -437,7 +439,8 @@ func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
 		return key != bundle.RelationKeyIsFavorite.String() &&
 			key != bundle.RelationKeyIsArchived.String() &&
 			key != bundle.RelationKeyCreatedDate.String() &&
-			key != bundle.RelationKeyLastModifiedDate.String()
+			key != bundle.RelationKeyLastModifiedDate.String() &&
+			key != bundle.RelationKeyId.String()
 	})
 
 	for _, snapshot := range snapshots {
@@ -476,7 +479,8 @@ func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *con
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
 		rootObjects = lo.FilterMap(allObjects, func(item *converter.Snapshot, index int) (string, bool) {
-			if item.SbType != smartblock.SmartBlockTypeSubObject && item.SbType != smartblock.SmartBlockTypeTemplate {
+			if item.SbType != smartblock.SmartBlockTypeSubObject && item.SbType != smartblock.SmartBlockTypeTemplate &&
+				item.SbType != smartblock.SmartBlockTypeRelation && item.SbType != smartblock.SmartBlockTypeObjectType {
 				return item.Id, true
 			}
 			return item.Id, false
@@ -513,7 +517,8 @@ func (p *Pb) getObjectsFromWidgets(widgetSnapshot *converter.Snapshot, oldToNewI
 func (p *Pb) filterObjects(objectTypesToImport widgets.ImportWidgetFlags, objectsNotInWidget []*converter.Snapshot) []string {
 	var rootObjects []string
 	for _, snapshot := range objectsNotInWidget {
-		if snapshot.SbType == smartblock.SmartBlockTypeSubObject || snapshot.SbType == smartblock.SmartBlockTypeTemplate {
+		if snapshot.SbType == smartblock.SmartBlockTypeSubObject || snapshot.SbType == smartblock.SmartBlockTypeTemplate ||
+			snapshot.SbType == smartblock.SmartBlockTypeRelation || snapshot.SbType == smartblock.SmartBlockTypeObjectType {
 			continue
 		}
 		if objectTypesToImport.ImportCollection && lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyCollection.URL()) {

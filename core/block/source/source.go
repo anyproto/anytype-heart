@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/snappy"
@@ -22,10 +23,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -109,10 +110,7 @@ type Source interface {
 	ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
 	Close() (err error)
-}
-
-type CreationInfoProvider interface {
-	GetCreationInfo() (creator string, createdDate int64, err error)
+	GetCreationInfo() (creatorObjectId string, createdDate int64, err error)
 }
 
 type SourceIdEndodedDetails interface {
@@ -131,31 +129,31 @@ type SourceWithType interface {
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-type sourceDeps struct {
-	sbt smartblock.SmartBlockType
-	ot  objecttree.ObjectTree
+func (s *service) newTreeSource(ctx context.Context, space Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error) {
+	ot, err := space.TreeBuilder().BuildTree(ctx, id, buildOpts)
+	if err != nil {
+		return nil, fmt.Errorf("build tree: %w", err)
+	}
 
-	coreService         core.Service
-	accountService      accountservice.Service
-	spaceService        spacecore.SpaceCoreService
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	fileService         files.Service
-	systemObjectService system_object.Service
-}
+	sbt, key, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+	if err != nil {
+		return nil, err
+	}
 
-func newTreeSource(spaceID string, id string, deps sourceDeps) (s Source, err error) {
 	return &source{
-		ObjectTree:          deps.ot,
-		id:                  id,
-		spaceID:             spaceID,
-		coreService:         deps.coreService,
-		spaceService:        deps.spaceService,
-		openedAt:            time.Now(),
-		smartblockType:      deps.sbt,
-		accountService:      deps.accountService,
-		sbtProvider:         deps.sbtProvider,
-		fileService:         deps.fileService,
-		systemObjectService: deps.systemObjectService,
+		ObjectTree:         ot,
+		id:                 id,
+		headerKey:          key,
+		space:              space,
+		spaceID:            space.Id(),
+		spaceService:       s.spaceCoreService,
+		openedAt:           time.Now(),
+		smartblockType:     sbt,
+		accountService:     s.accountService,
+		accountKeysService: s.accountKeysService,
+		sbtProvider:        s.sbtProvider,
+		fileService:        s.fileService,
+		objectStore:        s.objectStore,
 	}, nil
 }
 
@@ -166,8 +164,10 @@ type ObjectTreeProvider interface {
 type source struct {
 	objecttree.ObjectTree
 	id                   string
+	space                Space
 	spaceID              string
 	smartblockType       smartblock.SmartBlockType
+	headerKey            string // used for header(id) derivation together with smartblockType
 	lastSnapshotId       string
 	changesSinceSnapshot int
 	receiver             ChangeReceiver
@@ -176,12 +176,12 @@ type source struct {
 	closed               chan struct{}
 	openedAt             time.Time
 
-	coreService         core.Service
-	fileService         files.Service
-	accountService      accountservice.Service
-	spaceService        spacecore.SpaceCoreService
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	systemObjectService system_object.Service
+	fileService        files.Service
+	accountService     accountService
+	accountKeysService accountservice.Service
+	spaceService       spacecore.SpaceCoreService
+	sbtProvider        typeprovider.SmartBlockTypeProvider
+	objectStore        objectstore.ObjectStore
 }
 
 var _ updatelistener.UpdateListener = (*source)(nil)
@@ -196,7 +196,7 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
-		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, s.coreService.PredefinedObjects(s.spaceID).Profile)
+		st, changes, sinceSnapshot, err := BuildStateFull(d.(*state.State), ot, "")
 		if prevSnapshot != s.lastSnapshotId {
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
@@ -258,10 +258,11 @@ func (s *source) readDoc(receiver ChangeReceiver) (doc state.Doc, err error) {
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree, s.coreService.PredefinedObjects(s.spaceID).Profile)
+	st, _, changesAppliedSinceSnapshot, err := BuildState(nil, s.ObjectTree)
 	if err != nil {
 		return
 	}
+
 	validationErr := st.Validate()
 	if validationErr != nil {
 		log.With("objectID", s.id).Errorf("not valid state: %v", validationErr)
@@ -274,7 +275,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
-	migration := newSubObjectsLinksMigration(s.spaceID, s.systemObjectService)
+	// TODO: we can skip migration for non-personal spaces
+	migration := newSubObjectsAndProfileLinksMigration(s.space, s.accountService.IdentityObjectId(), s.objectStore)
 	migration.migrate(st)
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
@@ -290,9 +292,12 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	return st, nil
 }
 
-func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
-	createdDate = s.ObjectTree.UnmarshalledHeader().Timestamp
-	creator = s.coreService.PredefinedObjects(s.spaceID).Profile
+func (s *source) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
+	createdDate = s.ObjectTree.Root().Timestamp
+	root := s.ObjectTree.Root()
+	if root != nil && root.Identity != nil {
+		creatorObjectId = addr.AccountIdToIdentityObjectId(root.Identity.Account())
+	}
 	return
 }
 
@@ -326,7 +331,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:        data,
-		Key:         s.accountService.Account().SignKey,
+		Key:         s.accountKeysService.Account().SignKey,
 		IsSnapshot:  change.Snapshot != nil,
 		IsEncrypted: true,
 		DataType:    dataType,
@@ -494,7 +499,7 @@ func (s *source) Close() (err error) {
 	return s.ObjectTree.Close()
 }
 
-func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profileId string) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
+func BuildState(initState *state.State, ot objecttree.ReadableObjectTree) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
 		lastChange *objecttree.Change
@@ -508,6 +513,11 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 		startId = st.ChangeId()
 	}
 
+	// todo: can we avoid unmarshaling here? we already had this data
+	_, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+	if err != nil {
+		return
+	}
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId, UnmarshalChange,
 		func(change *objecttree.Change) bool {
@@ -515,7 +525,11 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			lastChange = change
 			// that means that we are starting from tree root
 			if change.Id == ot.Id() {
-				st = state.NewDoc(ot.Id(), nil).(*state.State)
+				if uniqueKeyInternalKey != "" {
+					st = state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State)
+				} else {
+					st = state.NewDoc(ot.Id(), nil).(*state.State)
+				}
 				st.SetChangeId(change.Id)
 				return true
 			}
@@ -527,7 +541,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 			if startId == change.Id {
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
-					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId)).(*state.State)
+					st = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey)).(*state.State)
 					return true
 				} else {
 					st = st.NewState()
@@ -556,7 +570,7 @@ func BuildState(initState *state.State, ot objecttree.ReadableObjectTree, profil
 
 	if lastChange != nil && !st.IsTheHeaderChange() {
 		// todo: why do we don't need to set last modified for the header change?
-		st.SetLastModified(lastChange.Timestamp, profileId)
+		st.SetLastModified(lastChange.Timestamp, addr.AccountIdToIdentityObjectId(lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
@@ -619,7 +633,8 @@ func BuildStateFull(initState *state.State, ot objecttree.ReadableObjectTree, pr
 		return
 	}
 	if lastChange != nil && !st.IsTheHeaderChange() {
-		st.SetLastModified(lastChange.Timestamp, profileId)
+		// todo: why do we don't need to set last modified for the header change?
+		st.SetLastModified(lastChange.Timestamp, addr.AccountIdToIdentityObjectId(lastChange.Identity.Account()))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return

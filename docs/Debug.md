@@ -83,6 +83,13 @@ grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -p
 echo '{"details": {"name": "hello there", "type": "ot-page"}}' | grpcurl -import-path ../anytype-heart/ -proto pb/protos/service/service.proto -plaintext -d @ localhost:31007 anytype.ClientCommands.ObjectCreate
 ```
 
+### High memory usage detector
+We have service for detecting high memory usage (core/debug/profiler package). It logs profiles, compressed via gzip and represented as base64 string.
+To analyze profile:
+1) Copy profile value string from log (from Graylog in instance)
+2) Decode base64 and decompress gzip. Example for macOS: `pbpaste | base64 -d | gzip -d > mem.profile`
+3) Analyze via `go tool pprof mem.profile`
+
 ## Running with prometheus and grafana
 - `cd metrics/docker` – cd into folder with docker-compose file
 - `docker-compose up` - run the prometheus/grafana

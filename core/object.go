@@ -16,15 +16,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -125,7 +126,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 
 	// Add dates only to the first page of search results
 	if req.Offset == 0 {
-		records, err = mw.enrichWithDateSuggestion(records, req, ds)
+		records, err = mw.enrichWithDateSuggestion(cctx, records, req, ds)
 		if err != nil {
 			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 		}
@@ -139,7 +140,7 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
 }
 
-func (mw *Middleware) enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
+func (mw *Middleware) enrichWithDateSuggestion(ctx context.Context, records []database.Record, req *pb.RpcObjectSearchRequest, store objectstore.ObjectStore) ([]database.Record, error) {
 	dt := suggestDateForSearch(time.Now(), req.FullText)
 	if dt.IsZero() {
 		return records, nil
@@ -168,12 +169,23 @@ func (mw *Middleware) enrichWithDateSuggestion(records []database.Record, req *p
 	var rec database.Record
 	var spaceID string
 	for _, f := range req.Filters {
-		if f.RelationKey == bundle.RelationKeySpaceId.String() && f.Condition == model.BlockContentDataviewFilter_Equal {
-			spaceID = f.Value.GetStringValue()
+		if f.RelationKey == bundle.RelationKeySpaceId.String() {
+			if f.Condition == model.BlockContentDataviewFilter_Equal {
+				spaceID = f.Value.GetStringValue()
+			}
+			if f.Condition == model.BlockContentDataviewFilter_In {
+				spaces := f.Value.GetListValue().Values
+				if len(spaces) > 0 {
+					spaceID = spaces[0].GetStringValue()
+				}
+			}
 			break
 		}
 	}
-	rec = mw.makeSuggestedDateRecord(spaceID, dt)
+	rec, err := mw.makeSuggestedDateRecord(ctx, spaceID, dt)
+	if err != nil {
+		return nil, fmt.Errorf("make date record: %w", err)
+	}
 	f, _ := database.MakeFiltersAnd(req.Filters, store) //nolint:errcheck
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
@@ -240,22 +252,28 @@ func deriveDateId(t time.Time) string {
 	return "_date_" + t.Format("2006-01-02")
 }
 
-func (mw *Middleware) makeSuggestedDateRecord(spaceID string, t time.Time) database.Record {
+func (mw *Middleware) makeSuggestedDateRecord(ctx context.Context, spaceID string, t time.Time) (database.Record, error) {
 	id := deriveDateId(t)
-
-	typeID := getService[core.Service](mw).GetSystemTypeID(spaceID, bundle.TypeKeyDate)
+	spc, err := getService[space.Service](mw).Get(ctx, spaceID)
+	if err != nil {
+		return database.Record{}, fmt.Errorf("get space: %w", err)
+	}
+	typeId, err := spc.GetTypeIdByKey(ctx, bundle.TypeKeyDate)
+	if err != nil {
+		return database.Record{}, fmt.Errorf("get date type id: %w", err)
+	}
 	d := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():        pbtypes.String(id),
 		bundle.RelationKeyName.String():      pbtypes.String(t.Format("Mon Jan  2 2006")),
 		bundle.RelationKeyLayout.String():    pbtypes.Int64(int64(model.ObjectType_date)),
-		bundle.RelationKeyType.String():      pbtypes.String(typeID),
+		bundle.RelationKeyType.String():      pbtypes.String(typeId),
 		bundle.RelationKeyIconEmoji.String(): pbtypes.String("📅"),
 		bundle.RelationKeySpaceId.String():   pbtypes.String(spaceID),
 	}}
 
 	return database.Record{
 		Details: d,
-	}
+	}, nil
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
@@ -713,15 +731,12 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		id, newDetails, err = bs.CreateObject(cctx, req.SpaceId, req, bundle.TypeKeyBookmark)
-		return err
-	})
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyBookmark,
+		Details:       req.Details,
+	}
+	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
 	if err != nil {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
 	}
@@ -781,7 +796,7 @@ func (mw *Middleware) ObjectSetInternalFlags(cctx context.Context, req *pb.RpcOb
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ModifyDetails(ctx, req.ContextId, func(current *types.Struct) (*types.Struct, error) {
+		return bs.ModifyDetails(req.ContextId, func(current *types.Struct) (*types.Struct, error) {
 			d := pbtypes.CopyStruct(current)
 			return internalflag.PutToDetails(d, req.InternalFlags), nil
 		})

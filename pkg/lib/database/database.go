@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -218,7 +218,7 @@ func (f *Filters) unmarshal(e query.Entry) *types.Struct {
 	var details model.ObjectDetails
 	err := proto.Unmarshal(e.Value, &details)
 	if err != nil {
-		log.Errorf("query filters decode error: %s", err.Error())
+		log.Errorf("query filters decode error: %s", err)
 		return nil
 	}
 	return details.Details

@@ -8,7 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -109,6 +109,6 @@ func (s *bundledObjectType) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *bundledObjectType) GetCreationInfo() (creator string, createdDate int64, err error) {
+func (s *bundledObjectType) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }

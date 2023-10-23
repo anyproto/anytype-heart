@@ -1,8 +1,6 @@
 .idea/*
-!.idea/vcs.xml
-!.idea/copyright
+!.idea/codeStyles/
 *.iml
-.idea/*.xml
 .project
 .DS_Store
 node_modules

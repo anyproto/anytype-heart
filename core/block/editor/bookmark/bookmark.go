@@ -3,7 +3,6 @@ package bookmark
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -29,29 +28,23 @@ type CreateAndFetchRequest struct {
 	Origin *model.ObjectOrigin
 }
 
-func NewBookmark(
-	sb smartblock.SmartBlock,
-	picker getblock.ObjectGetter,
-	bookmarkSvc BookmarkService,
-	objectStore objectstore.ObjectStore,
-) Bookmark {
+func NewBookmark(sb smartblock.SmartBlock, bookmarkSvc BookmarkService, objectStore objectstore.ObjectStore) Bookmark {
 	return &sbookmark{
 		SmartBlock:  sb,
-		picker:      picker,
 		bookmarkSvc: bookmarkSvc,
 		objectStore: objectStore,
 	}
 }
 
 type Bookmark interface {
-	Fetch(ctx session.Context, id string, url string, isSync bool, origin *model.ObjectOrigin) (err error)
+	Fetch(ctx session.Context, id string, url string, origin *model.ObjectOrigin) (err error)
 	CreateAndFetch(ctx session.Context, req CreateAndFetchRequest) (newID string, err error)
 	UpdateBookmark(ctx session.Context, id, groupID string, apply func(b bookmark.Block) error, origin *model.ObjectOrigin) (err error)
 }
 
 type BookmarkService interface {
 	CreateBookmarkObject(ctx context.Context, spaceID string, details *types.Struct, getContent bookmarksvc.ContentFuture) (objectId string, newDetails *types.Struct, err error)
-	Fetch(spaceID string, blockID string, params bookmark.FetchParams) (err error)
+	FetchAsync(spaceID string, blockID string, params bookmark.FetchParams)
 }
 
 type sbookmark struct {
@@ -65,15 +58,15 @@ type BlockService interface {
 	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
-func (b *sbookmark) Fetch(ctx session.Context, id string, url string, isSync bool, origin *model.ObjectOrigin) (err error) {
+func (b *sbookmark) Fetch(ctx session.Context, id string, url string, origin *model.ObjectOrigin) (err error) {
 	s := b.NewStateCtx(ctx).SetGroupId(bson.NewObjectId().Hex())
-	if err = b.fetch(ctx, s, id, url, isSync, origin); err != nil {
+	if err = b.fetch(ctx, s, id, url, origin); err != nil {
 		return
 	}
 	return b.Apply(s)
 }
 
-func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, isSync bool, origin *model.ObjectOrigin) (err error) {
+func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, origin *model.ObjectOrigin) (err error) {
 	bb := s.Get(id)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
@@ -83,28 +76,26 @@ func (b *sbookmark) fetch(ctx session.Context, s *state.State, id, url string, i
 		// Do nothing
 	}
 	groupId := s.GroupId()
-	var updMu sync.Mutex
 	bm, ok := bb.(bookmark.Block)
 	if !ok {
 		return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 	}
 	bm.SetState(model.BlockContentBookmark_Fetching)
 
-	err = b.bookmarkSvc.Fetch(b.SpaceID(), id, bookmark.FetchParams{
+	b.bookmarkSvc.FetchAsync(b.SpaceID(), id, bookmark.FetchParams{
 		Url: url,
 		Updater: func(blockID string, apply func(b bookmark.Block) error) (err error) {
-			if isSync {
-				updMu.Lock()
-				defer updMu.Unlock()
-				return b.updateBlock(ctx, bm, apply, origin)
-			}
-			return getblock.Do(b.picker, b.Id(), func(b Bookmark) error {
-				return b.UpdateBookmark(ctx, blockID, groupId, apply, origin)
+			return b.Space().Do(b.Id(), func(sb smartblock.SmartBlock) error {
+				bm, ok := sb.(Bookmark)
+				// Should never happen, because we're updating the same block
+				if !ok {
+					return fmt.Errorf("not a bookmark")
+				}
+				return bm.UpdateBookmark(ctx, blockID, groupId, apply, origin)
 			})
 		},
-		Sync: isSync,
 	})
-	return err
+	return nil
 }
 
 func (b *sbookmark) CreateAndFetch(ctx session.Context, req CreateAndFetchRequest) (newID string, err error) {
@@ -121,7 +112,7 @@ func (b *sbookmark) CreateAndFetch(ctx session.Context, req CreateAndFetchReques
 	if err = s.InsertTo(req.TargetId, req.Position, newID); err != nil {
 		return
 	}
-	if err = b.fetch(ctx, s, newID, req.Url, false, req.Origin); err != nil {
+	if err = b.fetch(ctx, s, newID, req.Url, req.Origin); err != nil {
 		return
 	}
 	if err = b.Apply(s); err != nil {

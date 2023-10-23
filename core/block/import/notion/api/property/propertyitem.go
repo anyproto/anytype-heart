@@ -489,7 +489,7 @@ type CreatedTimeItem struct {
 func (ct *CreatedTimeItem) SetDetail(key string, details map[string]*types.Value) {
 	t, err := time.Parse(time.RFC3339, ct.CreatedTime)
 	if err != nil {
-		logger.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
+		log.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
 		return
 	}
 	details[key] = pbtypes.Int64(t.Unix())
@@ -540,7 +540,7 @@ type LastEditedTimeItem struct {
 func (le *LastEditedTimeItem) SetDetail(key string, details map[string]*types.Value) {
 	t, err := time.Parse(time.RFC3339, le.LastEditedTime)
 	if err != nil {
-		logger.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
+		log.With(zap.String("method", "SetDetail")).Errorf("failed to parse time %v", err)
 		return
 	}
 	details[key] = pbtypes.Int64(t.Unix())

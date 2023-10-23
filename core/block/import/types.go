@@ -1,12 +1,9 @@
-//go:generate mockgen -package importer -exclude_interfaces Importer -self_package github.com/anyproto/anytype-heart/core/block/import -destination mock.go -source types.go
 package importer
 
 import (
 	"context"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
@@ -32,10 +29,4 @@ type Importer interface {
 type Creator interface {
 	//nolint:lll
 	Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error)
-}
-
-// IDGetter is interface for updating existing objects
-type IDGetter interface {
-	//nolint:lll
-	Get(spaceID string, cs *converter.Snapshot, createdTime time.Time, updateExisting bool) (string, treestorage.TreeStorageCreatePayload, error)
 }

@@ -28,7 +28,7 @@ import (
 
 const CName = "debug"
 
-var logger = logging.Logger("anytype-debug")
+var log = logging.Logger("anytype-debug")
 
 func New() Debug {
 	return new(debug)
@@ -45,7 +45,7 @@ type Debug interface {
 type debug struct {
 	block        *block.Service
 	store        objectstore.ObjectStore
-	spaceService space.SpaceService
+	spaceService space.Service
 	resolver     idresolver.Resolver
 
 	server *http.Server
@@ -58,7 +58,7 @@ type Debuggable interface {
 func (d *debug) Init(a *app.App) (err error) {
 	d.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	d.block = a.MustComponent(block.CName).(*block.Service)
-	d.spaceService = app.MustComponent[space.SpaceService](a)
+	d.spaceService = app.MustComponent[space.Service](a)
 	d.resolver = app.MustComponent[idresolver.Resolver](a)
 
 	d.initHandlers(a)
@@ -92,7 +92,7 @@ func (d *debug) Run(ctx context.Context) error {
 		go func() {
 			err := d.server.ListenAndServe()
 			if err != nil && err != http.ErrServerClosed {
-				logger.Error("debug server error:", err)
+				log.Error("debug server error:", err)
 			}
 		}()
 	}
@@ -182,7 +182,7 @@ func (d *debug) DumpTree(ctx context.Context, objectID string, path string, anon
 	}}
 	zipFilename, err := exporter.Export(ctx, path, tree)
 	if err != nil {
-		logger.Error("build tree error:", err)
+		log.Error("build tree error:", err)
 		return "", err
 	}
 
