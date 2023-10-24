@@ -32,7 +32,7 @@ type file struct {
 	hash    string
 	info    *storage.FileInfo
 	node    *service
-	origin  int
+	origin  model.ObjectOrigin
 }
 
 type FileMeta struct {

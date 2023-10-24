@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -1007,10 +1008,10 @@ func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOpt
 	return f, nil
 }
 
-func (s *service) getFileOrigin(hash string) int {
+func (s *service) getFileOrigin(hash string) model.ObjectOrigin {
 	fileOrigin, err := s.fileStore.GetFileOrigin(hash)
 	if err != nil {
 		return 0
 	}
-	return fileOrigin
+	return model.ObjectOrigin(fileOrigin)
 }

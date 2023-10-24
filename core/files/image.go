@@ -39,7 +39,7 @@ type image struct {
 	spaceID         string
 	variantsByWidth map[int]*storage.FileInfo
 	service         *service
-	origin          int
+	origin          model.ObjectOrigin
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
