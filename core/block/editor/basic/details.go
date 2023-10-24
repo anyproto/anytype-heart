@@ -304,6 +304,7 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 
 	flags := internalflag.NewFromState(s)
 	flags.Remove(model.InternalFlag_editorSelectType)
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
 
 	// send event here to send updated details to client
