@@ -178,7 +178,16 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	}
 
 	if flags.fulltext {
-		ids, err := i.getIdsForTypes(space.Id(), smartblock2.SmartBlockTypePage, smartblock2.SmartBlockTypeFile, smartblock2.SmartBlockTypeBundledRelation, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
+		ids, err := i.getIdsForTypes(space.Id(),
+			smartblock2.SmartBlockTypePage,
+			smartblock2.SmartBlockTypeFile,
+			smartblock2.SmartBlockTypeBundledRelation,
+			smartblock2.SmartBlockTypeBundledObjectType,
+			smartblock2.SmartBlockTypeAnytypeProfile,
+			smartblock2.SmartBlockTypeObjectType,
+			smartblock2.SmartBlockTypeRelation,
+			smartblock2.SmartBlockTypeRelationOption,
+		)
 		if err != nil {
 			return err
 		}
