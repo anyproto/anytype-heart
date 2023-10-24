@@ -109,11 +109,7 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 	}
 
 	// scenario: rangeCopy
-	if firstTextBlock != nil &&
-		req.SelectedTextRange != nil &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) &&
-		lastTextBlock == nil {
+	if isRangeSelect(firstTextBlock, lastTextBlock, req.SelectedTextRange) {
 		cutBlock, _, err := simple.New(firstTextBlock).(text.Block).RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %w", err)
@@ -125,8 +121,8 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.To - req.SelectedTextRange.From
 			}
 		}
+		tryClearStyle(cutBlock, req.SelectedTextRange)
 
-		clearStyle(cutBlock)
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
 		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
@@ -141,9 +137,11 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 	return textSlot, htmlSlot, anySlot, nil
 }
 
-func clearStyle(block *model.Block) {
-	block.GetText().Style = model.BlockContentText_Paragraph
-	block.BackgroundColor = ""
+func tryClearStyle(block *model.Block, rang *model.Range) {
+	if rang.To-rang.From > 0 {
+		block.GetText().Style = model.BlockContentText_Paragraph
+		block.BackgroundColor = ""
+	}
 }
 
 func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
@@ -176,11 +174,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	}
 
 	// scenario: rangeCut
-	if firstTextBlock != nil &&
-		lastTextBlock == nil &&
-		req.SelectedTextRange != nil &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) {
+	if isRangeSelect(firstTextBlock, lastTextBlock, req.SelectedTextRange) {
 		first := s.Get(firstTextBlock.Id).(text.Block)
 		cutBlock, initialBlock, err := first.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
@@ -197,7 +191,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 			}
 		}
 
-		clearStyle(cutBlock)
+		tryClearStyle(cutBlock, req.SelectedTextRange)
 		textSlot = cutBlock.GetText().Text
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
@@ -220,6 +214,13 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
+}
+
+func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang *model.Range) bool {
+	return firstTextBlock != nil &&
+		lastTextBlock == nil &&
+		rang != nil &&
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
 }
 
 func unlinkAndClearBlocks(

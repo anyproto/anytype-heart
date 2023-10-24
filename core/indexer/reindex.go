@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/util/slice"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/globalsign/mgo/bson"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -48,19 +51,26 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 		return reindexFlags{}, err
 	}
 	if checksums == nil {
-		checksums = &model.ObjectStoreChecksums{
-			// per space
-			ObjectsForceReindexCounter: ForceObjectsReindexCounter,
-			// ?
-			FilesForceReindexCounter: ForceFilesReindexCounter,
-			// global
-			IdxRebuildCounter: ForceIdxRebuildCounter,
-			// per space
-			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
-			// per space
-			FulltextRebuild: ForceFulltextIndexCounter,
-			// global
-			BundledObjects: ForceBundledObjectsReindexCounter,
+		checksums, err = i.store.GetGlobalChecksums()
+		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+			return reindexFlags{}, err
+		}
+
+		if checksums == nil {
+			checksums = &model.ObjectStoreChecksums{
+				// per space
+				ObjectsForceReindexCounter: ForceObjectsReindexCounter,
+				// ?
+				FilesForceReindexCounter: ForceFilesReindexCounter,
+				// global
+				IdxRebuildCounter: ForceIdxRebuildCounter,
+				// per space
+				FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
+				// per space
+				FulltextRebuild: ForceFulltextIndexCounter,
+				// global
+				BundledObjects: ForceBundledObjectsReindexCounter,
+			}
 		}
 	}
 
@@ -130,18 +140,28 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, space, ids...)
 
 		i.logFinishedReindexStat(metrics.ReindexTypeThreads, len(ids), successfullyReindexed, time.Since(start))
-
-		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
+		l := log.With(zap.String("space", space.Id()), zap.Int("total", len(ids)), zap.Int("succeed", successfullyReindexed))
+		if successfullyReindexed != len(ids) {
+			l.Errorf("reindex partially failed")
+		} else {
+			l.Infof("reindex finished")
+		}
 	} else {
 		// Index objects that updated, but not indexed yet
-		// TODO Write more informative comment
+		// we can have objects which actual state is newer than the indexed one
+		// this may happen e.g. if the app got closed in the middle of object updates processing
+		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
 		go func() {
 			start := time.Now()
 			total, success, err := i.reindexOutdatedObjects(ctx, space)
 			if err != nil {
-				log.Infof("failed to reindex outdated objects: %s", err)
+				log.Errorf("reindex outdated failed: %s", err)
+			}
+			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
+			if success != total {
+				l.Errorf("reindex outdated partially failed")
 			} else {
-				log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
+				l.Debugf("reindex outdated finished")
 			}
 			if total > 0 {
 				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
@@ -243,6 +263,34 @@ func (i *indexer) ReindexMarketplaceSpace(space space.Space) error {
 	return i.saveLatestChecksums(space.Id())
 }
 
+// removeOldObjects removes all objects that are not supported anymore (e.g. old subobjects) and no longer returned by the underlying source
+func (i *indexer) removeOldObjects() (err error) {
+	ids, err := i.store.ListIds()
+	if err != nil {
+		return err
+	}
+	ids = slice.Filter(ids, func(id string) bool {
+		if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
+			return true
+		}
+		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
+			return true
+		}
+		if bson.IsObjectIdHex(id) {
+			return true
+		}
+		return false
+	})
+
+	if len(ids) == 0 {
+		return
+	}
+
+	err = i.store.DeleteDetails(ids...)
+	log.With(zap.Int("count", len(ids)), zap.Error(err)).Warnf("removeOldObjects")
+	return err
+}
+
 func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
@@ -265,6 +313,11 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 	}
 
 	if flags.removeAllIndexedObjects {
+		err = i.removeOldObjects()
+		if err != nil {
+			err = nil
+			log.Errorf("reindex failed to removeOldObjects: %v", err)
+		}
 		ids, err := i.store.ListIdsBySpace(spaceId)
 		if err != nil {
 			log.Errorf("reindex failed to get all ids(removeAllIndexedObjects): %v", err)

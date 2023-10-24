@@ -2,6 +2,7 @@ package relationutils
 
 import (
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -17,11 +18,13 @@ type ObjectType struct {
 
 func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 	var (
-		relationKeys []string
+		relationIds []string
 	)
-
 	for _, rl := range ot.RelationLinks {
-		relationKeys = append(relationKeys, addr.BundledRelationURLPrefix+rl.Key)
+		relationIds = append(relationIds, domain.RelationKey(rl.Key).BundledURL())
+	}
+	if !slices.Contains(relationIds, bundle.RelationKeyDescription.BundledURL()) {
+		relationIds = append(relationIds, bundle.RelationKeyDescription.BundledURL())
 	}
 
 	var sbTypes = make([]int, 0, len(ot.Types))
@@ -41,7 +44,7 @@ func (ot *ObjectType) BundledTypeDetails() *types.Struct {
 		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
 		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
 		bundle.RelationKeyUniqueKey.String():            pbtypes.String(uk.Marshal()),
-		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),
+		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationIds),
 		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),
 		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),
 		bundle.RelationKeyId.String():                   pbtypes.String(ot.Url),
