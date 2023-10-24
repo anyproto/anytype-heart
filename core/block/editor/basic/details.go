@@ -303,10 +303,11 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 	}
 
 	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorSelectType)
 	flags.AddToState(s)
 
 	// send event here to send updated details to client
-	// KeepInternalFlags is set because we allow to choose object type and template further
+	// KeepInternalFlags is set because we allow to choose template further
 	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
 		return
 	}
