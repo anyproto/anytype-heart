@@ -127,7 +127,7 @@ type ObjectStore interface {
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
 	DeleteObject(id string) error
-	DeleteDetails(id string) error
+	DeleteDetails(id ...string) error
 	// EraseIndexes erase all indexes for objectstore. All objects need to be reindexed
 	EraseIndexes(spaceId string) error
 
@@ -154,6 +154,7 @@ type IndexerStore interface {
 	ListIDsFromFullTextQueue() ([]string, error)
 	RemoveIDsFromFullTextQueue(ids []string)
 	FTSearch() ftsearch.FTSearch
+	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
