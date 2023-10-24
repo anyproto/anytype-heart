@@ -65,13 +65,13 @@ func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsSe
 	prev, _ = prevBlock.(Block)
 
 	if td.keys.Text != "" {
-		if prev == nil || prev.GetText() != td.GetText() {
+		if prev == nil && !pbtypes.HasField(s.Details(), td.keys.Text) || prev != nil && prev.GetText() != td.GetText() {
 			s.SetDetail(td.keys.Text, pbtypes.String(td.GetText()))
 			ok = true
 		}
 	}
 	if td.keys.Checked != "" {
-		if prev == nil && td.GetChecked() || prev != nil && prev.GetChecked() != td.GetChecked() {
+		if prev == nil && !pbtypes.HasField(s.Details(), td.keys.Text) || prev != nil && prev.GetChecked() != td.GetChecked() {
 			s.SetDetail(td.keys.Checked, pbtypes.Bool(td.GetChecked()))
 			ok = true
 		}

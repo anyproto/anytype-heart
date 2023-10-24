@@ -147,7 +147,7 @@ func (s *space) Close(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return s.Space.Close()
 }
 
 func (s *space) NewSource(ctx context.Context, id string, buildOptions source.BuildOptions) (source.Source, error) {

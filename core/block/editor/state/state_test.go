@@ -131,6 +131,35 @@ func TestApplyState(t *testing.T) {
 		require.Len(t, msgs, 2)
 	})
 	t.Run("details handle", func(t *testing.T) {
+		t.Run("init new text-of-detail bloc", func(t *testing.T) {
+			d := NewDoc("1", map[string]simple.Block{
+				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{}}),
+			})
+			d.BlocksInit(d.(simple.DetailsService))
+			s := d.NewState()
+			s.SetDetails(&types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String("new name"),
+				},
+			})
+			s.Add(text.NewDetails(&model.Block{
+				Id: "title",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{},
+				},
+				Fields: &types.Struct{
+					Fields: map[string]*types.Value{
+						text.DetailsKeyFieldName: pbtypes.String("name"),
+					},
+				},
+			}, text.DetailsKeys{
+				Text:    "name",
+				Checked: "done",
+			}))
+			_, _, err := ApplyState(s, true)
+			assert.Equal(t, "new name", s.Pick("title").Model().GetText().Text)
+			require.NoError(t, err)
+		})
 		t.Run("text", func(t *testing.T) {
 			d := NewDoc("1", map[string]simple.Block{
 				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),

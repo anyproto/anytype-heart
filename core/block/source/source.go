@@ -130,6 +130,10 @@ type SourceWithType interface {
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
 func (s *service) NewTreeSource(ctx context.Context, space Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (Source, error) {
+	treeBuilder := space.TreeBuilder()
+	if treeBuilder == nil {
+		return nil, fmt.Errorf("space doesn't have tree builder")
+	}
 	ot, err := space.TreeBuilder().BuildTree(ctx, id, buildOpts)
 	if err != nil {
 		return nil, fmt.Errorf("build tree: %w", err)
