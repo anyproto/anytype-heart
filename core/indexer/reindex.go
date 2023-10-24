@@ -36,7 +36,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 58
+	ForceIdxRebuildCounter int32 = 59
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5
@@ -126,6 +126,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 			smartblock2.SmartBlockTypeWorkspace,
 			smartblock2.SmartBlockTypeObjectType,
 			smartblock2.SmartBlockTypeRelation,
+			smartblock2.SmartBlockTypeRelationOption,
 			smartblock2.SmartBlockTypeSpaceView,
 			smartblock2.SmartBlockTypeProfilePage,
 		}
