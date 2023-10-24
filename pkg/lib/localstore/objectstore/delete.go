@@ -22,14 +22,14 @@ func (s *dsObjectStore) DeleteDetails(ids ...string) error {
 			for _, id := range chunk {
 				s.cache.Del(pagesDetailsBase.ChildString(id).Bytes())
 
-				for _, k := range []ds.Key{
+				for _, key := range []ds.Key{
 					pagesDetailsBase.ChildString(id),
 					pagesSnippetBase.ChildString(id),
 					pagesDetailsBase.ChildString(id),
 					indexedHeadsState.ChildString(id),
 				} {
-					if err := txn.Delete(k.Bytes()); err != nil {
-						return fmt.Errorf("delete key %s: %w", k, err)
+					if err := txn.Delete(key.Bytes()); err != nil {
+						return fmt.Errorf("delete key %s: %w", key, err)
 					}
 				}
 			}
@@ -59,12 +59,12 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 		txn := s.db.NewTransaction(true)
 		defer txn.Discard()
 
-		for _, k := range []ds.Key{
+		for _, key := range []ds.Key{
 			pagesSnippetBase.ChildString(id),
 			indexQueueBase.ChildString(id),
 			indexedHeadsState.ChildString(id),
 		} {
-			if err = txn.Delete(k.Bytes()); err != nil {
+			if err = txn.Delete(key.Bytes()); err != nil {
 				return err
 			}
 		}
