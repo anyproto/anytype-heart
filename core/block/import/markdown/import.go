@@ -467,14 +467,6 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 			if link := block.GetLink(); link != nil {
 				target, err := url.PathUnescape(link.TargetBlockId)
 				if err != nil {
-					allErrors.Add(err)
-					if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Markdown) {
-						return
-					}
-				}
-
-				if err != nil {
-					allErrors.Add(err)
 					log.Warnf("error while url.PathUnescape: %s", err)
 					target = link.TargetBlockId
 				}
