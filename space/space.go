@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type Space interface {
@@ -39,6 +40,8 @@ type Space interface {
 	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
 
+	ListIds(sbType coresb.SmartBlockType) ([]string, error)
+
 	Close(ctx context.Context) error
 }
 
@@ -50,6 +53,7 @@ type space struct {
 	derivedIDs    threads.DerivedSmartblockIds
 	installer     bundledObjectsInstaller
 	sourceService source.Service
+	sbtProvider   typeprovider.SmartBlockTypeProvider
 
 	commonspace.Space
 
@@ -164,4 +168,19 @@ func (s *space) NewSource(ctx context.Context, id string, buildOptions source.Bu
 	}
 
 	return s.sourceService.NewTreeSource(ctx, s, id, buildOptions.BuildTreeOpts())
+}
+
+func (s *space) ListIds(sbType coresb.SmartBlockType) ([]string, error) {
+	if sbType == coresb.SmartBlockTypeFile {
+		// TODO consult file service
+		return nil, nil
+	}
+	ids := slice.Filter(s.StoredIds(), func(id string) bool {
+		t, err := s.sbtProvider.Type(s.Id(), id)
+		if err != nil {
+			return false
+		}
+		return t == sbType
+	})
+	return ids, nil
 }

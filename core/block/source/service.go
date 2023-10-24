@@ -50,7 +50,6 @@ type Service interface {
 	RemoveStaticSource(id string)
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
-	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
 
 	NewAnytypeProfile(id string) Source
 	NewBundledObjectType(id string) Source

@@ -119,10 +119,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 			smartblock2.SmartBlockTypeSpaceView,
 			smartblock2.SmartBlockTypeProfilePage,
 		}
-		ids, err := i.getIdsForTypes(
-			space.Id(),
-			types...,
-		)
+		ids, err := i.getIdsForTypes(space, types...)
 		if err != nil {
 			return err
 		}
@@ -157,7 +154,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	}
 
 	if flags.fulltext {
-		ids, err := i.getIdsForTypes(space.Id(), smartblock2.SmartBlockTypePage, smartblock2.SmartBlockTypeFile, smartblock2.SmartBlockTypeBundledRelation, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
+		ids, err := i.getIdsForTypes(space, smartblock2.SmartBlockTypePage, smartblock2.SmartBlockTypeFile, smartblock2.SmartBlockTypeBundledRelation, smartblock2.SmartBlockTypeBundledObjectType, smartblock2.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
 		}
@@ -288,7 +285,7 @@ func (i *indexer) removeCommonIndexes(spaceId string, flags reindexFlags) (err e
 }
 
 func (i *indexer) reindexIDsForSmartblockTypes(ctx context.Context, space smartblock.Space, reindexType metrics.ReindexType, sbTypes ...smartblock2.SmartBlockType) error {
-	ids, err := i.getIdsForTypes(space.Id(), sbTypes...)
+	ids, err := i.getIdsForTypes(space, sbTypes...)
 	if err != nil {
 		return err
 	}
@@ -372,18 +369,14 @@ func (i *indexer) saveLatestChecksums(spaceID string) error {
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 
-func (i *indexer) getIdsForTypes(spaceID string, sbt ...smartblock2.SmartBlockType) ([]string, error) {
+func (i *indexer) getIdsForTypes(space smartblock.Space, sbt ...smartblock2.SmartBlockType) ([]string, error) {
 	var ids []string
 	for _, t := range sbt {
-		lister, err := i.source.IDsListerBySmartblockType(spaceID, t)
+		idsForType, err := space.ListIds(t)
 		if err != nil {
 			return nil, err
 		}
-		idsT, err := lister.ListIds()
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, idsT...)
+		ids = append(ids, idsForType...)
 	}
 	return ids, nil
 }
