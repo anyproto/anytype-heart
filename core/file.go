@@ -109,7 +109,8 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var hash string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(cctx, req.SpaceId, *req)
+		dto := block.FileUploadRequest{RpcFileUploadRequest: *req}
+		hash, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		return
 	})
 	if err != nil {

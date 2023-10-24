@@ -1444,6 +1444,16 @@
     "source": "details"
   },
   {
+    "description": "Source of objects in Anytype (clipboard, import)",
+    "format": "number",
+    "hidden": false,
+    "key": "origin",
+    "maxCount": 1,
+    "name": "Origin",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Relation that indicates the local status of space. Possible values: models.SpaceStatus",
     "format": "number",
     "hidden": true,

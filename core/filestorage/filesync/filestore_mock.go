@@ -15,6 +15,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	localstore "github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	filestore "github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	storage "github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -210,6 +211,21 @@ func (mr *MockFileStoreMockRecorder) GetFileKeys(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileKeys", reflect.TypeOf((*MockFileStore)(nil).GetFileKeys), arg0)
 }
 
+// GetFileOrigin mocks base method.
+func (m *MockFileStore) GetFileOrigin(arg0 string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFileOrigin", arg0)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFileOrigin indicates an expected call of GetFileOrigin.
+func (mr *MockFileStoreMockRecorder) GetFileOrigin(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFileOrigin", reflect.TypeOf((*MockFileStore)(nil).GetFileOrigin), arg0)
+}
+
 // GetFileSize mocks base method.
 func (m *MockFileStore) GetFileSize(arg0 string) (int, error) {
 	m.ctrl.T.Helper()
@@ -382,6 +398,20 @@ func (m *MockFileStore) SetChunksCount(arg0 string, arg1 int) error {
 func (mr *MockFileStoreMockRecorder) SetChunksCount(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetChunksCount", reflect.TypeOf((*MockFileStore)(nil).SetChunksCount), arg0, arg1)
+}
+
+// SetFileOrigin mocks base method.
+func (m *MockFileStore) SetFileOrigin(arg0 string, arg1 model.ObjectOrigin) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetFileOrigin", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetFileOrigin indicates an expected call of SetFileOrigin.
+func (mr *MockFileStoreMockRecorder) SetFileOrigin(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetFileOrigin", reflect.TypeOf((*MockFileStore)(nil).SetFileOrigin), arg0, arg1)
 }
 
 // SetFileSize mocks base method.
