@@ -16,7 +16,12 @@ import (
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
 	blockService := getService[*block.Service](mw)
-	err := blockService.ObjectTypeRelationAdd(cctx, req)
+	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
+	for _, relKey := range req.RelationKeys {
+		keys = append(keys, domain.RelationKey(relKey))
+	}
+
+	err := blockService.ObjectTypeRelationAdd(cctx, req.ObjectTypeUrl, keys)
 	code := mapErrorCode(err,
 		errToCode(block.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE),
 	)
@@ -34,6 +39,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.Rpc
 	for _, relKey := range req.RelationKeys {
 		keys = append(keys, domain.RelationKey(relKey))
 	}
+
 	err := blockService.ObjectTypeRemoveRelations(cctx, req.ObjectTypeUrl, keys)
 	code := mapErrorCode(err,
 		errToCode(block.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE),
