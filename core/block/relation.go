@@ -7,6 +7,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -45,4 +46,23 @@ func (s *Service) ObjectTypeRelationAdd(ctx context.Context, req *pb.RpcObjectTy
 		return detCopy, nil
 	})
 	return err
+}
+
+func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
+	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
+		return ErrBundledTypeIsReadonly
+	}
+	return Do(s, objectTypeId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		list := pbtypes.GetStringList(st.Details(), bundle.RelationKeyRecommendedRelations.String())
+		for _, relKey := range relationKeys {
+			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
+			if err != nil {
+				return fmt.Errorf("get relation id by key %s: %w", relKey, err)
+			}
+			list = slice.Remove(list, relId)
+		}
+		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
+		return b.Apply(st)
+	})
 }

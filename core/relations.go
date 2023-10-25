@@ -3,18 +3,15 @@ package core
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
@@ -32,43 +29,21 @@ func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObj
 }
 
 func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
-	response := func(code pb.RpcObjectTypeRelationRemoveResponseErrorCode, err error) *pb.RpcObjectTypeRelationRemoveResponse {
-		m := &pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
+	blockService := getService[*block.Service](mw)
+	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
+	for _, relKey := range req.RelationKeys {
+		keys = append(keys, domain.RelationKey(relKey))
 	}
-
-	if strings.HasPrefix(req.ObjectTypeUrl, bundle.TypePrefix) {
-		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
+	err := blockService.ObjectTypeRemoveRelations(cctx, req.ObjectTypeUrl, keys)
+	code := mapErrorCode(err,
+		errToCode(block.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE),
+	)
+	return &pb.RpcObjectTypeRelationRemoveResponse{
+		Error: &pb.RpcObjectTypeRelationRemoveResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
 	}
-
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.ModifyDetails(req.ObjectTypeUrl, func(current *types.Struct) (*types.Struct, error) {
-			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
-			for _, relKey := range req.RelationKeys {
-				relId := addr.RelationKeyToIdPrefix + relKey
-				if pos := slice.FindPos(list, relId); pos != -1 {
-					list = append(list[:pos], list[pos+1:]...)
-				}
-			}
-
-			detCopy := pbtypes.CopyStruct(current)
-			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
-			return detCopy, nil
-		})
-		if err != nil {
-			return err
-		}
-		return
-	})
-
-	if err != nil {
-		return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcObjectTypeRelationRemoveResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
