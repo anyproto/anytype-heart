@@ -1349,25 +1349,25 @@ func (_c *MockObjectStore_Init_Call) RunAndReturn(run func(*app.App) error) *Moc
 	return _c
 }
 
-// List provides a mock function with given fields: spaceID
-func (_m *MockObjectStore) List(spaceID string) ([]*model.ObjectInfo, error) {
-	ret := _m.Called(spaceID)
+// List provides a mock function with given fields: spaceID, includeArchived
+func (_m *MockObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {
+	ret := _m.Called(spaceID, includeArchived)
 
 	var r0 []*model.ObjectInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]*model.ObjectInfo, error)); ok {
-		return rf(spaceID)
+	if rf, ok := ret.Get(0).(func(string, bool) ([]*model.ObjectInfo, error)); ok {
+		return rf(spaceID, includeArchived)
 	}
-	if rf, ok := ret.Get(0).(func(string) []*model.ObjectInfo); ok {
-		r0 = rf(spaceID)
+	if rf, ok := ret.Get(0).(func(string, bool) []*model.ObjectInfo); ok {
+		r0 = rf(spaceID, includeArchived)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.ObjectInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(spaceID)
+	if rf, ok := ret.Get(1).(func(string, bool) error); ok {
+		r1 = rf(spaceID, includeArchived)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1382,13 +1382,14 @@ type MockObjectStore_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - spaceID string
-func (_e *MockObjectStore_Expecter) List(spaceID interface{}) *MockObjectStore_List_Call {
-	return &MockObjectStore_List_Call{Call: _e.mock.On("List", spaceID)}
+//   - includeArchived bool
+func (_e *MockObjectStore_Expecter) List(spaceID interface{}, includeArchived interface{}) *MockObjectStore_List_Call {
+	return &MockObjectStore_List_Call{Call: _e.mock.On("List", spaceID, includeArchived)}
 }
 
-func (_c *MockObjectStore_List_Call) Run(run func(spaceID string)) *MockObjectStore_List_Call {
+func (_c *MockObjectStore_List_Call) Run(run func(spaceID string, includeArchived bool)) *MockObjectStore_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(bool))
 	})
 	return _c
 }
@@ -1398,7 +1399,7 @@ func (_c *MockObjectStore_List_Call) Return(_a0 []*model.ObjectInfo, _a1 error) 
 	return _c
 }
 
-func (_c *MockObjectStore_List_Call) RunAndReturn(run func(string) ([]*model.ObjectInfo, error)) *MockObjectStore_List_Call {
+func (_c *MockObjectStore_List_Call) RunAndReturn(run func(string, bool) ([]*model.ObjectInfo, error)) *MockObjectStore_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
