@@ -19,8 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const importDateLayout = "02.01.2006 15:04:05"
-
 type RootCollection struct {
 	service *collection.Service
 }
@@ -30,7 +28,7 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 }
 
 func (r *RootCollection) MakeRootCollection(collectionName string, targetObjects []string) (*Snapshot, error) {
-	importDate := time.Now().Format(importDateLayout)
+	importDate := time.Now().Format(time.RFC3339)
 	nameWithDate := fmt.Sprintf("%s %s", collectionName, importDate)
 	detailsStruct := r.getCreateCollectionRequest(nameWithDate)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
