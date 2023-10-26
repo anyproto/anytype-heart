@@ -280,12 +280,9 @@ func (ds *Service) getCollectionDetails(d Database) map[string]*types.Value {
 	}
 	details[bundle.RelationKeyCreator.String()] = pbtypes.String(d.CreatedBy.Name)
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(d.Archived)
-	details[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(d.LastEditedBy.Name)
 	details[bundle.RelationKeyDescription.String()] = pbtypes.String(api.RichTextToDescription(d.Description))
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
-
-	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(d.LastEditedTime.Unix()))
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(d.CreatedTime.Unix()))
 	return details
 }

@@ -41,7 +41,7 @@ func GetSourceDetail(fileName, importPath string) string {
 }
 
 func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *types.Struct {
-	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
+	creationTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
 	}
@@ -49,12 +49,11 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 		emoji = slice.GetRandomString(randomIcons, name)
 	}
 	fields := map[string]*types.Value{
-		bundle.RelationKeyName.String():             pbtypes.String(name),
-		bundle.RelationKeySourceFilePath.String():   pbtypes.String(sourcePath),
-		bundle.RelationKeyIconEmoji.String():        pbtypes.String(emoji),
-		bundle.RelationKeyCreatedDate.String():      pbtypes.Int64(creationTime),
-		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(modTime),
-		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
+		bundle.RelationKeyName.String():           pbtypes.String(name),
+		bundle.RelationKeySourceFilePath.String(): pbtypes.String(sourcePath),
+		bundle.RelationKeyIconEmoji.String():      pbtypes.String(emoji),
+		bundle.RelationKeyCreatedDate.String():    pbtypes.Int64(creationTime),
+		bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(layout)),
 	}
 	return &types.Struct{Fields: fields}
 }

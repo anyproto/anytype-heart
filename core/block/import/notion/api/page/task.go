@@ -123,8 +123,6 @@ func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(pt.p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
 	createdTime := converter.ConvertStringToTime(pt.p.CreatedTime)
-	lastEditedTime := converter.ConvertStringToTime(pt.p.LastEditedTime)
-	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastEditedTime))
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(createdTime))
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
 	return details, relationLinks

@@ -29,15 +29,14 @@ func TestExtractFileTimes(t *testing.T) {
 
 		assert.Nil(t, err)
 
-		_, modification := ExtractFileTimes(filePath) // we can't check creation time, because we can't set creation time manually
+		creationTime := ExtractFileTimes(filePath) // we can't check creation time, because we can't set creation time manually
 
-		assert.Equal(t, modificationTime.Unix(), modification)
+		assert.NotZero(t, creationTime)
 	})
 	t.Run("error", func(t *testing.T) {
 		nonExistentFilePath := "non_existent_file"
-		creation, modification := ExtractFileTimes(nonExistentFilePath)
+		creation := ExtractFileTimes(nonExistentFilePath)
 
 		assert.Equal(t, int64(0), creation)
-		assert.Equal(t, int64(0), modification)
 	})
 }

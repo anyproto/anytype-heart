@@ -13,17 +13,16 @@ import (
 
 var log = logging.Logger("import")
 
-func ExtractFileTimes(fileName string) (int64, int64) {
+func ExtractFileTimes(fileName string) int64 {
 	fileInfo, err := os.Stat(fileName)
 	if err != nil {
 		log.Warnf("failed to get file info from path: %s", oserror.TransformError(err))
-		return 0, 0
+		return 0
 	}
 
 	if stat, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
 		creationTime := time.Unix(stat.Ctim.Sec, stat.Ctim.Nsec)
-		modTime := fileInfo.ModTime().Unix()
-		return creationTime.Unix(), modTime
+		return creationTime.Unix()
 	}
-	return 0, 0
+	return 0
 }
