@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
 )
@@ -72,6 +73,9 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
+		if errors.Is(err, treechangeproto.ErrGetTree) {
+			return false
+		}
 	}
 	if err != nil {
 		if sp != nil {
