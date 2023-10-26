@@ -19,42 +19,33 @@ var (
 func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteRequest) (*model.AccountStatus, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	convErr := func(err error) error {
-		switch err {
-		case spacecore.ErrSpaceIsDeleted:
-			return ErrAccountIsAlreadyDeleted
-		case spacecore.ErrSpaceDeletionPending:
-			return ErrAccountIsAlreadyDeleted
-		case spacecore.ErrSpaceIsCreated:
-			return ErrAccountIsActive
-		default:
-			return err
-		}
-	}
 	var (
 		accountService = s.app.MustComponent(account.CName).(account.Service)
 		status         *model.AccountStatus
 	)
-	if !req.Revert {
-		networkStatus, err := accountService.Delete(ctx)
-		if err != nil {
-			return nil, convErr(err)
-		}
-		status = &model.AccountStatus{
-			StatusType:   model.AccountStatusType(networkStatus.Status),
-			DeletionDate: networkStatus.DeletionDate.Unix(),
-		}
-	} else {
-		err := accountService.RevertDeletion(ctx)
-		if err != nil {
-			return nil, convErr(err)
-		}
-		status = &model.AccountStatus{
-			StatusType: model.AccountStatusType(spacecore.SpaceStatusCreated),
-		}
+	toBeDeleted, err := accountService.Delete(ctx)
+	if err != nil {
+		return nil, err
 	}
+	status = &model.AccountStatus{
+		StatusType:   model.Account_PendingDeletion,
+		DeletionDate: toBeDeleted,
+	}
+	s.refreshRemoteAccountState()
+	return status, nil
+}
 
-	// so we will receive updated account status
+func (s *Service) AccountRevertDeletion(ctx context.Context) (*model.AccountStatus, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	accountService := s.app.MustComponent(account.CName).(account.Service)
+	err := accountService.RevertDeletion(ctx)
+	if err != nil {
+		return nil, err
+	}
+	status := &model.AccountStatus{
+		StatusType: model.AccountStatusType(spacecore.SpaceStatusCreated),
+	}
 	s.refreshRemoteAccountState()
 	return status, nil
 }

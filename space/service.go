@@ -11,11 +11,13 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -27,6 +29,8 @@ var log = logger.NewNamed(CName)
 var (
 	ErrIncorrectSpaceID = errors.New("incorrect space id")
 	ErrSpaceNotExists   = errors.New("space not exists")
+	ErrSpaceDeleted     = errors.New("space is deleted")
+	ErrStatusUnkown     = errors.New("space status is unknown")
 )
 
 func New() Service {
@@ -36,6 +40,11 @@ func New() Service {
 type spaceIndexer interface {
 	ReindexMarketplaceSpace(space Space) error
 	ReindexSpace(space Space) error
+	RemoveIndexes(spaceID string) (err error)
+}
+
+type fileOffloader interface {
+	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
 }
 
 type isNewAccount interface {
@@ -47,6 +56,7 @@ type Service interface {
 	Create(ctx context.Context) (space Space, err error)
 
 	Get(ctx context.Context, id string) (space Space, err error)
+	Delete(ctx context.Context, id string) (err error)
 	GetPersonalSpace(ctx context.Context) (space Space, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 
@@ -58,10 +68,13 @@ type service struct {
 	spaceCore        spacecore.SpaceCoreService
 	techSpace        techspace.TechSpace
 	marketplaceSpace Space
+	delController    *deletionController
 
 	bundledObjectsInstaller bundledObjectsInstaller
 	accountService          accountservice.Service
 	objectFactory           objectcache.ObjectFactory
+	storageService          storage.ClientStorage
+	offloader               fileOffloader
 
 	personalSpaceID string
 	metadataPayload []byte
@@ -71,6 +84,8 @@ type service struct {
 	createdSpaces map[string]struct{}
 	statuses      map[string]spaceinfo.SpaceInfo
 	loading       map[string]*loadingSpace
+	offloading    map[string]*offloadingSpace
+	offloaded     map[string]struct{}
 	loaded        map[string]Space
 
 	mu sync.Mutex
@@ -88,11 +103,16 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.bundledObjectsInstaller = app.MustComponent[bundledObjectsInstaller](a)
 	s.newAccount = app.MustComponent[isNewAccount](a).IsNewAccount()
-
+	s.storageService = app.MustComponent[storage.ClientStorage](a)
+	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
+	s.delController = newDeletionController(s, coordClient)
+	s.offloader = app.MustComponent[fileOffloader](a)
 	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}
+	s.offloading = map[string]*offloadingSpace{}
 	s.loaded = map[string]Space{}
+	s.offloaded = map[string]struct{}{}
 
 	return err
 }
@@ -119,6 +139,7 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init personal space: %w", err)
 	}
+	s.delController.Run()
 	return nil
 }
 
@@ -153,10 +174,19 @@ func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceID == id
 }
 
-func (s *service) OnViewCreated(spaceID string) {
+func (s *service) OnViewUpdated(info spaceinfo.SpaceInfo) {
 	go func() {
-		if err := s.startLoad(s.ctx, spaceID); err != nil {
+		s.updateSpaceViewInfo(info)
+		err := s.startLoad(s.ctx, info.SpaceID)
+		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))
+		}
+		if info.AccountStatus != spaceinfo.AccountStatusDeleted {
+			return
+		}
+		err = s.startDelete(s.ctx, info.SpaceID)
+		if err != nil {
+			log.Warn("OnViewCreated.startDelete error", zap.Error(err))
 		}
 	}()
 }
@@ -187,7 +217,8 @@ func (s *service) Close(ctx context.Context) (err error) {
 			log.Error("close space", zap.String("spaceId", sp.Id()), zap.Error(err))
 		}
 	}
-	return nil
+	s.delController.Close()
+	return
 }
 
 func getRepKey(spaceID string) (uint64, error) {

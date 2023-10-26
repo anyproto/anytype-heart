@@ -14,7 +14,7 @@ import (
 
 	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/converter/mock_converter"
-	"github.com/anyproto/anytype-heart/core/block/import/mock_importer"
+	"github.com/anyproto/anytype-heart/core/block/import/creator/mock_creator"
 	"github.com/anyproto/anytype-heart/core/block/import/objectid/mock_objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
@@ -49,8 +49,8 @@ func Test_ImportSuccess(t *testing.T) {
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 
 	idGetter := mock_objectid.NewMockIDGetter(t)
@@ -68,7 +68,7 @@ func Test_ImportSuccess(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.Nil(t, err)
 }
@@ -82,7 +82,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	i.idProvider = idGetter
@@ -97,7 +97,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "converter error")
@@ -126,9 +126,9 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -144,7 +144,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	// assert.Contains(t, res.Error(), "creator error")
@@ -174,8 +174,8 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -191,7 +191,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), "converter error")
@@ -222,9 +222,9 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -240,7 +240,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), "converter error")
@@ -252,8 +252,8 @@ func Test_ImportExternalPlugin(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -292,7 +292,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 	assert.Nil(t, res)
 }
 
@@ -301,7 +301,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	i.idProvider = idGetter
@@ -317,7 +317,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), cv.ErrNoObjectsToImport.Error())
 }
@@ -326,7 +326,7 @@ func Test_ListImports(t *testing.T) {
 	i := Import{}
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = pbc.New(nil, nil)
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	i.idProvider = idGetter
@@ -343,7 +343,7 @@ func Test_ImportWebNoParser(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	i.idProvider = mock_objectid.NewMockIDGetter(t)
 	_, _, err := i.ImportWeb(context.Background(), &pb.RpcObjectImportRequest{
@@ -362,7 +362,7 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	i.oc = creator
 	i.idProvider = mock_objectid.NewMockIDGetter(t)
 	parser := parsers.NewMockParser(ctrl)
@@ -392,8 +392,8 @@ func Test_ImportWebSuccess(t *testing.T) {
 
 	i.converters[web.Name] = web.NewConverter()
 
-	creator := mock_importer.NewMockCreator(t)
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator := mock_creator.NewMockService(t)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -432,9 +432,9 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters[web.Name] = web.NewConverter()
 
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", errors.New("error")).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("error")).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -483,7 +483,7 @@ func Test_ImportCancelError(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrCancel))
@@ -507,7 +507,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrNoObjectsToImport))
@@ -546,7 +546,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrNoObjectsToImport))
@@ -575,9 +575,9 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 		Id:     "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
 	i.converters = make(map[string]cv.Converter, 0)
 	i.converters["Notion"] = converter
-	creator := mock_importer.NewMockCreator(t)
+	creator := mock_creator.NewMockService(t)
 	//nolint:lll
-	creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 	i.oc = creator
 	idGetter := mock_objectid.NewMockIDGetter(t)
 	idGetter.EXPECT().GetID(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
@@ -593,7 +593,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrNoObjectsToImport))
@@ -633,7 +633,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
@@ -673,7 +673,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	})
+	}, model.ObjectOrigin_import)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, cv.ErrLimitExceeded))
@@ -767,8 +767,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		}, nil).Times(1)
 		i.converters = make(map[string]cv.Converter, 0)
 		i.converters["Notion"] = converter
-		creator := mock_importer.NewMockCreator(t)
-		creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+		creator := mock_creator.NewMockService(t)
+		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 		i.oc = creator
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
@@ -787,7 +787,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		})
+		}, model.ObjectOrigin_import)
 
 		// then
 		assert.Nil(t, err)
@@ -814,8 +814,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.converters = make(map[string]cv.Converter, 0)
 		i.converters["Notion"] = converter
 
-		creator := mock_importer.NewMockCreator(t)
-		creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", creatorError).Times(1)
+		creator := mock_creator.NewMockService(t)
+		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", creatorError).Times(1)
 		i.oc = creator
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
@@ -833,7 +833,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		})
+		}, model.ObjectOrigin_import)
 
 		// then
 		assert.NotNil(t, err)
@@ -871,7 +871,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		})
+		}, model.ObjectOrigin_import)
 
 		// then
 		assert.NotNil(t, err)
@@ -898,8 +898,8 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		i.converters = make(map[string]cv.Converter, 0)
 		i.converters["Notion"] = converter
 
-		creator := mock_importer.NewMockCreator(t)
-		creator.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
+		creator := mock_creator.NewMockService(t)
+		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
 		i.oc = creator
 
 		idGetter := mock_objectid.NewMockIDGetter(t)
@@ -917,7 +917,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
-		})
+		}, model.ObjectOrigin_import)
 
 		// then
 		assert.NotNil(t, err)

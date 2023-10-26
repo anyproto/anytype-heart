@@ -21,8 +21,24 @@ const (
 	RemoteStatusError           = RemoteStatus(model.SpaceStatus_Error)
 )
 
+func (r RemoteStatus) IsDeleted() bool {
+	return r == RemoteStatusDeleted || r == RemoteStatusWaitingDeletion
+}
+
+type AccountStatus int
+
+const (
+	AccountStatusUnknown = AccountStatus(model.SpaceStatus_Unknown)
+	AccountStatusDeleted = AccountStatus(model.SpaceStatus_SpaceDeleted)
+)
+
 type SpaceInfo struct {
-	SpaceID      string
-	LocalStatus  LocalStatus
-	RemoteStatus RemoteStatus
+	SpaceID       string
+	LocalStatus   LocalStatus
+	RemoteStatus  RemoteStatus
+	AccountStatus AccountStatus
+}
+
+func (s SpaceInfo) IsDeleted() bool {
+	return s.RemoteStatus.IsDeleted() && s.LocalStatus == LocalStatusMissing && s.AccountStatus == AccountStatusDeleted
 }

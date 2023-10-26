@@ -143,5 +143,5 @@ func (s *space) Close(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return s.Space.Close()
 }

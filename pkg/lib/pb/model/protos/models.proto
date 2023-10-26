@@ -785,6 +785,17 @@ enum RelationFormat {
 
 }
 
+enum ObjectOrigin {
+    none = 0;
+    clipboard = 1;
+    dragAndDrop = 2;
+    import = 3;
+    webclipper = 4;
+    sharingExtension = 5;
+    usecase = 6;
+    builtin = 7;
+}
+
 message RelationLink {
   string key = 1;
   RelationFormat format = 2;
@@ -861,6 +872,8 @@ enum SpaceStatus {
   RemoteWaitingDeletion = 5;
   // RemoteDeleted - the space is deleted in the current network
   RemoteDeleted = 6;
+  // SpaceDeleted - the space should be deleted in the network
+  SpaceDeleted = 7;
 }
 
 message Metadata {

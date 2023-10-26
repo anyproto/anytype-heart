@@ -99,11 +99,24 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 	status, err := mw.applicationService.AccountDelete(cctx, req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountIsAlreadyDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
-		errToCode(application.ErrAccountIsActive, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE),
 	)
 	return &pb.RpcAccountDeleteResponse{
 		Status: status,
 		Error: &pb.RpcAccountDeleteResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountRevertDeletion(cctx context.Context, req *pb.RpcAccountRevertDeletionRequest) *pb.RpcAccountRevertDeletionResponse {
+	status, err := mw.applicationService.AccountRevertDeletion(cctx)
+	code := mapErrorCode(err,
+		errToCode(application.ErrAccountIsActive, pb.RpcAccountRevertDeletionResponseError_ACCOUNT_IS_ACTIVE),
+	)
+	return &pb.RpcAccountRevertDeletionResponse{
+		Status: status,
+		Error: &pb.RpcAccountRevertDeletionResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

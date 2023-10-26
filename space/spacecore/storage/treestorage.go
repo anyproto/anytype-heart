@@ -53,6 +53,11 @@ func createTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeSt
 		err = treestorage.ErrTreeExists
 		return
 	}
+	return forceCreateTreeStorage(db, spaceId, payload)
+}
+
+func forceCreateTreeStorage(db *badger.DB, spaceId string, payload treestorage.TreeStorageCreatePayload) (ts treestorage.TreeStorage, err error) {
+	keys := newTreeKeys(spaceId, payload.RootRawChange.Id)
 	err = db.Update(func(txn *badger.Txn) error {
 		err = txn.Set(keys.RawChangeKey(payload.RootRawChange.Id), payload.RootRawChange.GetRawChange())
 		if err != nil {
