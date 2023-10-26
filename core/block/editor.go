@@ -2,10 +2,8 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -23,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -32,6 +29,21 @@ import (
 )
 
 var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
+
+type FileUploadRequest struct {
+	pb.RpcFileUploadRequest
+	Origin model.ObjectOrigin
+}
+
+type UploadRequest struct {
+	pb.RpcBlockUploadRequest
+	Origin model.ObjectOrigin
+}
+
+type BookmarkFetchRequest struct {
+	pb.RpcBlockBookmarkFetchRequest
+	Origin model.ObjectOrigin
+}
 
 func (s *Service) MarkArchived(ctx session.Context, id string, archived bool) (err error) {
 	return Do(s, id, func(b basic.CommonOperations) error {
@@ -443,22 +455,24 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 	})
 }
 
-func (s *Service) UploadBlockFile(ctx session.Context, req pb.RpcBlockUploadRequest, groupID string) (err error) {
+func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: groupID,
+			Origin:  req.Origin,
 		}, false)
 		return err
 	})
 }
 
-func (s *Service) UploadBlockFileSync(ctx session.Context, req pb.RpcBlockUploadRequest) (err error) {
+func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path: req.FilePath,
-			Url:  req.Url,
+			Path:   req.FilePath,
+			Url:    req.Url,
+			Origin: req.Origin,
 		}, true)
 		return err
 	})
@@ -474,12 +488,13 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req pb.RpcFileUploadRequest) (hash string, err error) {
+func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUploadRequest) (hash string, err error) {
 	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
+	upl.SetOrigin(req.Origin)
 	upl.SetStyle(req.Style)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
@@ -513,13 +528,14 @@ func (s *Service) SetFileStyle(
 }
 
 func (s *Service) UploadFileBlockWithHash(
-	contextId string, req pb.RpcBlockUploadRequest,
+	contextID string, req UploadRequest,
 ) (hash string, err error) {
-	err = Do(s, contextId, func(b file.File) error {
+	err = Do(s, contextID, func(b file.File) error {
 		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: "",
+			Origin:  req.Origin,
 		})
 		if err != nil {
 			return err
@@ -551,21 +567,13 @@ func (s *Service) Redo(
 	return
 }
 
-func (s *Service) BookmarkFetch(ctx session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
+func (s *Service) BookmarkFetch(ctx session.Context, req BookmarkFetchRequest) (err error) {
 	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, false)
+		return b.Fetch(ctx, req.BlockId, req.Url, req.Origin)
 	})
 }
 
-func (s *Service) BookmarkFetchSync(ctx session.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {
-	return Do(s, req.ContextId, func(b bookmark.Bookmark) error {
-		return b.Fetch(ctx, req.BlockId, req.Url, true)
-	})
-}
-
-func (s *Service) BookmarkCreateAndFetch(
-	ctx session.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest,
-) (id string, err error) {
+func (s *Service) BookmarkCreateAndFetch(ctx session.Context, req bookmark.CreateAndFetchRequest) (id string, err error) {
 	err = Do(s, req.ContextId, func(b bookmark.Bookmark) error {
 		id, err = b.CreateAndFetch(ctx, req)
 		return err
@@ -575,7 +583,7 @@ func (s *Service) BookmarkCreateAndFetch(
 
 func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.AddRelationAndSet(ctx, s.systemObjectService, pb.RpcBlockRelationAddRequest{
+		return b.AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{
 			RelationKey: req.Key, BlockId: req.BlockId, ContextId: req.ContextId,
 		})
 	})
@@ -583,7 +591,7 @@ func (s *Service) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSet
 
 func (s *Service) AddRelationBlock(ctx session.Context, req pb.RpcBlockRelationAddRequest) error {
 	return Do(s, req.ContextId, func(b basic.CommonOperations) error {
-		return b.AddRelationAndSet(ctx, s.systemObjectService, req)
+		return b.AddRelationAndSet(ctx, req)
 	})
 }
 
@@ -596,11 +604,7 @@ func (s *Service) GetRelations(ctx session.Context, objectId string) (relations 
 }
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
-func (s *Service) ModifyDetails(
-	ctx session.Context,
-	objectId string,
-	modifier func(current *types.Struct) (*types.Struct, error),
-) (err error) {
+func (s *Service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
@@ -612,45 +616,6 @@ func (s *Service) ModifyDetails(
 
 		return b.Apply(b.NewState().SetDetails(dets))
 	})
-}
-
-// ModifyLocalDetails modifies local details of the object in cache,
-// and if it is not found, sets pending details in object store
-func (s *Service) ModifyLocalDetails(
-	objectId string,
-	modifier func(current *types.Struct) (*types.Struct, error),
-) (err error) {
-	if modifier == nil {
-		return fmt.Errorf("modifier is nil")
-	}
-	// we set pending details if object is not in cache
-	// we do this under lock to prevent races if the object is created in parallel
-	// because in that case we can lose changes
-	err = s.objectCache.DoLockedIfNotExists(objectId, func() error {
-		return s.objectStore.UpdatePendingLocalDetails(objectId, modifier)
-	})
-	if err != nil && err != ocache.ErrExists {
-		return err
-	}
-	err = Do(s, objectId, func(b smartblock.SmartBlock) error {
-		// we just need to invoke the smartblock so it reads from pending details
-		// no need to call modify twice
-		if err == nil {
-			return b.Apply(b.NewState())
-		}
-
-		dets, err := modifier(b.CombinedDetails())
-		if err != nil {
-			return err
-		}
-
-		return b.Apply(b.NewState().SetDetails(dets))
-	})
-	// that means that we will apply the change later as soon as the block is loaded by thread queue
-	if errors.Is(err, source.ErrObjectNotFound) {
-		return nil
-	}
-	return err
 }
 
 func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relationIds []string) (err error) {

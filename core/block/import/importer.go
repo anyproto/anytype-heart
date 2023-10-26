@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,13 +11,14 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/creator"
 	"github.com/anyproto/anytype-heart/core/block/import/csv"
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
@@ -28,7 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
@@ -38,8 +40,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -52,10 +54,9 @@ const workerPoolSize = 10
 type Import struct {
 	converters      map[string]converter.Converter
 	s               *block.Service
-	oc              Creator
+	oc              creator.Service
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
-	sbtProvider     typeprovider.SmartBlockTypeProvider
 	fileSync        filesync.FileSync
 	sync.Mutex
 }
@@ -68,14 +69,14 @@ func New() Importer {
 
 func (i *Import) Init(a *app.App) (err error) {
 	i.s = app.MustComponent[*block.Service](a)
-	coreService := app.MustComponent[core.Service](a)
-	spaceService := app.MustComponent[space.SpaceService](a)
+	accountService := app.MustComponent[account.Service](a)
+	spaceService := app.MustComponent[space.Service](a)
 	col := app.MustComponent[*collection.Service](a)
 	i.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	converters := []converter.Converter{
 		markdown.New(i.tempDirProvider, col),
 		notion.New(col),
-		pbc.New(col, i.sbtProvider, coreService),
+		pbc.New(col, accountService),
 		web.NewConverter(),
 		html.New(col, i.tempDirProvider),
 		txt.New(col),
@@ -84,21 +85,23 @@ func (i *Import) Init(a *app.App) (err error) {
 	for _, c := range converters {
 		i.converters[c.Name()] = c
 	}
-	objectCache := app.MustComponent[objectcache.Cache](a)
-	resolver := app.MustComponent[idresolver.Resolver](a)
+	resolver := a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	factory := syncer.New(syncer.NewFileSyncer(i.s), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, resolver))
 	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.idProvider = objectid.NewIDProvider(store, objectCache, spaceService)
+	i.idProvider = objectid.NewIDProvider(store, spaceService)
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
-	i.oc = NewCreator(i.s, objectCache, spaceService, factory, store, relationSyncer, fileStore)
-	i.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
+	objectCreator := app.MustComponent[objectcreator.Service](a)
+	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (string, error) {
+func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin) (string, error) {
+	if req.SpaceId == "" {
+		return "", fmt.Errorf("spaceId is empty")
+	}
 	i.Lock()
 	defer i.Unlock()
 	progress := i.setupProgressBar(req)
@@ -112,7 +115,7 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (st
 	}
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
+		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
 		return rootCollectionID, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
@@ -134,6 +137,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
 	progress process.Progress,
+	origin model.ObjectOrigin,
 ) (string, error) {
 	allErrors := converter.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
@@ -152,7 +156,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors)
+	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
@@ -176,7 +180,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		res := &converter.Response{
 			Snapshots: sn,
 		}
-		i.createObjects(ctx, res, progress, req, allErrors)
+		i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
 		}
@@ -250,7 +254,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 	}
 
 	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors)
+	details, _ := i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
@@ -262,6 +266,7 @@ func (i *Import) createObjects(ctx context.Context,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
 	allErrors *converter.ConvertError,
+	origin model.ObjectOrigin,
 ) (map[string]*types.Struct, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
 	if err != nil {
@@ -272,7 +277,7 @@ func (i *Import) createObjects(ctx context.Context,
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(oldIDToNew, createPayloads, filesIDs, ctx)
+	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, filesIDs, origin, req.SpaceId)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(req.SpaceId, res, pool)
@@ -372,7 +377,7 @@ func (i *Import) getObjectID(
 
 func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
-		t := NewTask(spaceID, snapshot, i.oc)
+		t := creator.NewTask(spaceID, snapshot, i.oc)
 		stop := pool.AddWork(t)
 		if stop {
 			break
@@ -389,19 +394,19 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	details := make(map[string]*types.Struct, 0)
 	for r := range pool.Results() {
 		if err := progress.TryStep(1); err != nil {
-			allErrors.Add(errors.Wrap(converter.ErrCancel, err.Error()))
+			allErrors.Add(fmt.Errorf("%w: %w", converter.ErrCancel, err))
 			pool.Stop()
 			return nil
 		}
-		res := r.(*Result)
-		if res.err != nil {
-			allErrors.Add(res.err)
+		res := r.(*creator.Result)
+		if res.Err != nil {
+			allErrors.Add(res.Err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				pool.Stop()
 				return nil
 			}
 		}
-		details[res.newID] = res.details
+		details[res.NewID] = res.Details
 	}
 	return details
 }

@@ -3,6 +3,7 @@ package objectstore
 import (
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
@@ -41,18 +42,20 @@ func (s *dsObjectStore) GetChecksums(spaceID string) (checksums *model.ObjectSto
 }
 
 func (s *dsObjectStore) SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error) {
+	// in case we have global checksums we need to remove them, because it should not be used for any new space
+	if spaceID != addr.AnytypeMarketplaceWorkspace {
+		_ = badgerhelper.DeleteValue(s.db, bundledChecksums.Bytes())
+	}
 	return badgerhelper.SetValue(s.db, bundledChecksums.ChildString(spaceID).Bytes(), checksums)
 }
 
+// GetGlobalChecksums is a migration method, it returns checksums stored before we started to store them per space
+// it will be deleted after the first SaveChecksums() call
 func (s *dsObjectStore) GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error) {
 	return badgerhelper.GetValue(s.db, bundledChecksums.Bytes(), func(raw []byte) (*model.ObjectStoreChecksums, error) {
 		checksums := &model.ObjectStoreChecksums{}
 		return checksums, proto.Unmarshal(raw, checksums)
 	})
-}
-
-func (s *dsObjectStore) SaveGlobalChecksums(checksums *model.ObjectStoreChecksums) (err error) {
-	return badgerhelper.SetValue(s.db, bundledChecksums.Bytes(), checksums)
 }
 
 // GetLastIndexedHeadsHash return empty hash without error if record was not found

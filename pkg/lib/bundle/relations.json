@@ -824,7 +824,7 @@
     "hidden": true,
     "key": "spaceId",
     "maxCount": 1,
-    "name": "SpaceID",
+    "name": "Space ID",
     "objectTypes": [
       "space"
     ],
@@ -1444,6 +1444,16 @@
     "source": "details"
   },
   {
+    "description": "Source of objects in Anytype (clipboard, import)",
+    "format": "number",
+    "hidden": false,
+    "key": "origin",
+    "maxCount": 1,
+    "name": "Origin",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Relation that indicates the local status of space. Possible values: models.SpaceStatus",
     "format": "number",
     "hidden": true,
@@ -1460,6 +1470,46 @@
     "key": "spaceRemoteStatus",
     "maxCount": 1,
     "name": "Space remote status",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Relation that indicates the status of space that the user is set. Possible values: models.SpaceStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceAccountStatus",
+    "maxCount": 1,
+    "name": "Space account status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Link to the profile attached to Anytype Identity",
+    "format": "object",
+    "hidden": true,
+    "key": "identityProfileLink",
+    "maxCount": 1,
+    "name": "Profile link",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Link the profile object to specific Identity",
+    "format": "shorttext",
+    "key": "profileOwnerIdentity",
+    "maxCount": 1,
+    "hidden": false,
+    "name": "Anytype Identity",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Relation that indicates the real space id on the spaceView",
+    "format": "longtext",
+    "hidden": true,
+    "key": "targetSpaceId",
+    "maxCount": 1,
+    "name": "Target space id",
     "readonly": true,
     "source": "derived"
   }

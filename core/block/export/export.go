@@ -17,6 +17,7 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
@@ -30,17 +31,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -60,15 +59,14 @@ type Export interface {
 }
 
 type export struct {
-	blockService        *block.Service
-	picker              getblock.ObjectGetter
-	objectStore         objectstore.ObjectStore
-	coreService         core.Service
-	sbtProvider         typeprovider.SmartBlockTypeProvider
-	fileService         files.Service
-	systemObjectService system_object.Service
-	spaceService        spacecore.SpaceCoreService
-	resolver            idresolver.Resolver
+	blockService   *block.Service
+	picker         getblock.ObjectGetter
+	objectStore    objectstore.ObjectStore
+	sbtProvider    typeprovider.SmartBlockTypeProvider
+	fileService    files.Service
+	resolver       idresolver.Resolver
+	spaceService   space.Service
+	accountService account.Service
 }
 
 func New() Export {
@@ -77,14 +75,13 @@ func New() Export {
 
 func (e *export) Init(a *app.App) (err error) {
 	e.blockService = a.MustComponent(block.CName).(*block.Service)
-	e.coreService = a.MustComponent(core.CName).(core.Service)
 	e.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	e.fileService = app.MustComponent[files.Service](a)
 	e.picker = app.MustComponent[getblock.ObjectGetter](a)
 	e.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
-	e.systemObjectService = app.MustComponent[system_object.Service](a)
-	e.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
+	e.spaceService = app.MustComponent[space.Service](a)
+	e.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -129,14 +126,14 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		if req.Format == pb.RpcObjectListExport_SVG {
 			format = dot.ExportFormatSVG
 		}
-		mc := dot.NewMultiConverter(format, e.sbtProvider, e.systemObjectService)
+		mc := dot.NewMultiConverter(format, e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
-		mc := graphjson.NewMultiConverter(e.sbtProvider, e.systemObjectService)
+		mc := graphjson.NewMultiConverter(e.sbtProvider)
 		mc.SetKnownDocs(docs)
 		var werr error
 		if succeed, werr = e.writeMultiDoc(ctx, mc, wr, docs, queue, req.IncludeFiles); werr != nil {
@@ -146,7 +143,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		if req.Format == pb.RpcObjectListExport_Protobuf {
 			if len(req.ObjectIds) == 0 {
 				if err = e.createProfileFile(req.SpaceId, wr); err != nil {
-					log.Errorf("failed to create profile file: %s", err.Error())
+					log.Errorf("failed to create profile file: %s", err)
 				}
 			}
 		}
@@ -249,7 +246,7 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
 	links, err := e.objectStore.GetOutboundLinksByID(id)
 	if err != nil {
-		log.Errorf("export failed to get outbound links for id: %s", err.Error())
+		log.Errorf("export failed to get outbound links for id: %s", err)
 		return
 	}
 	for _, link := range links {
@@ -264,7 +261,7 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 			}
 			rec, qErr := e.objectStore.QueryByID([]string{link})
 			if qErr != nil {
-				log.Errorf("failed to query id %s, err: %s", qErr, err.Error())
+				log.Errorf("failed to query id %s, err: %s", qErr, err)
 				continue
 			}
 			if len(rec) > 0 {
@@ -282,7 +279,11 @@ func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProto
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, info := range res {
-		if !e.objectValid(info.Id, info, includeArchived, isProtobuf) {
+		sbType, err := e.sbtProvider.Type(spaceID, info.Id)
+		if err != nil {
+			return nil, fmt.Errorf("get smartblock type: %w", err)
+		}
+		if !e.objectValid(sbType, info.Id, info, includeArchived, isProtobuf) {
 			continue
 		}
 		objectDetails[info.Id] = info.Details
@@ -299,7 +300,7 @@ func (e *export) writeMultiDoc(ctx context.Context, mw converter.MultiConverter,
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
 			werr := getblock.Do(e.picker, did, func(b sb.SmartBlock) error {
-				if err = mw.Add(b.NewState().Copy()); err != nil {
+				if err = mw.Add(b.Space(), b.NewState().Copy()); err != nil {
 					return err
 				}
 				if !includeFiles {
@@ -339,7 +340,7 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 		var conv converter.Converter
 		switch format {
 		case pb.RpcObjectListExport_Markdown:
-			conv = md.NewMDConverter(e.coreService, b.NewState(), wr.Namer())
+			conv = md.NewMDConverter(b.NewState(), wr.Namer())
 		case pb.RpcObjectListExport_Protobuf:
 			conv = pbc.NewConverter(b, isJSON)
 		case pb.RpcObjectListExport_JSON:
@@ -356,7 +357,7 @@ func (e *export) writeDoc(ctx context.Context, format pb.RpcObjectListExportForm
 			}
 			filename = wr.Namer().Get("", docID, name, conv.Ext())
 		}
-		if docID == e.coreService.PredefinedObjects(b.SpaceID()).Home {
+		if docID == b.Space().DerivedIDs().Home {
 			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
@@ -417,25 +418,29 @@ func (e *export) saveFile(ctx context.Context, wr writer, hash string) (err erro
 }
 
 func (e *export) createProfileFile(spaceID string, wr writer) error {
-	var spaceDashBoardID string
-	pr, err := e.coreService.LocalProfile(spaceID)
+	spc, err := e.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
 		return err
 	}
-	err = getblock.Do(e.picker, e.coreService.PredefinedObjects(spaceID).Workspace, func(b sb.SmartBlock) error {
+	var spaceDashBoardID string
+
+	pr, err := e.accountService.LocalProfile()
+	if err != nil {
+		return err
+	}
+	err = getblock.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
 		spaceDashBoardID = pbtypes.GetString(b.CombinedDetails(), bundle.RelationKeySpaceDashboardId.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	profileID := e.coreService.ProfileID(spaceID)
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountAddr,
 		Name:             pr.Name,
 		Avatar:           pr.IconImage,
-		ProfileId:        profileID,
+		ProfileId:        pr.Id,
 	}
 	data, err := profile.Marshal()
 	if err != nil {
@@ -448,14 +453,14 @@ func (e *export) createProfileFile(spaceID string, wr writer) error {
 	return nil
 }
 
-func (e *export) objectValid(id string, r *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
+func (e *export) objectValid(sbType smartblock.SmartBlockType, id string, r *model.ObjectInfo, includeArchived bool, isProtobuf bool) bool {
 	if r.Id == addr.AnytypeProfileId {
 		return false
 	}
-	if !isProtobuf && !validTypeForNonProtobuf(smartblock.SmartBlockType(r.ObjectType)) {
+	if !isProtobuf && !validTypeForNonProtobuf(sbType) {
 		return false
 	}
-	if isProtobuf && !validType(smartblock.SmartBlockType(r.ObjectType)) {
+	if isProtobuf && !validType(sbType) {
 		return false
 	}
 	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) || strings.HasPrefix(id, addr.BundledRelationURLPrefix) {

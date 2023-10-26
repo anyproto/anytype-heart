@@ -140,7 +140,7 @@ func (pt *Task) handlePageProperties(object *DataObject, details map[string]*typ
 	for name, prop := range pt.p.Properties {
 		relation, relationLink, err := pt.retrieveRelation(object, name, prop, details, hasTag, tagExist)
 		if err != nil {
-			logger.With("method", "handlePageProperties").Error(err)
+			log.With("method", "handlePageProperties").Error(err)
 			continue
 		}
 		relationsSnapshots = append(relationsSnapshots, relation...)
@@ -205,6 +205,7 @@ func (pt *Task) getRelationSnapshot(name string, propObject property.Object, has
 	rel := &model.SmartBlockSnapshotBase{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+		Key:         key,
 	}
 	return rel, key
 }
@@ -231,7 +232,7 @@ func (pt *Task) getRelationDetails(key string, name string, propObject property.
 	details.Fields[bundle.RelationKeySourceFilePath.String()] = pbtypes.String(propObject.GetID())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
 		return details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
@@ -268,7 +269,7 @@ func (pt *Task) handlePagination(ctx context.Context, apiKey string, propObject 
 				apiKey,
 				propObject.GetPropertyType(),
 			); err != nil {
-			return fmt.Errorf("failed to get paginated property, %s, %s", propObject.GetPropertyType(), err)
+			return fmt.Errorf("failed to get paginated property, %s, %w", propObject.GetPropertyType(), err)
 		}
 		pt.handlePaginatedProperties(propObject, properties)
 	}
@@ -464,16 +465,17 @@ func isOptionAlreadyExist(optName, rel string, relation *property.PropertiesStor
 }
 
 func provideRelationOptionSnapshot(name, color, rel string) (*types.Struct, *model.SmartBlockSnapshotBase) {
-	details := getDetailsForRelationOption(name, rel)
+	id, details := getDetailsForRelationOption(name, rel)
 	details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(api.NotionColorToAnytype[color])
 	optSnapshot := &model.SmartBlockSnapshotBase{
 		Details:     details,
 		ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
+		Key:         id,
 	}
 	return details, optSnapshot
 }
 
-func getDetailsForRelationOption(name, rel string) *types.Struct {
+func getDetailsForRelationOption(name, rel string) (string, *types.Struct) {
 	id := bson.NewObjectId().Hex()
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(name)
@@ -482,11 +484,11 @@ func getDetailsForRelationOption(name, rel string) *types.Struct {
 	details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Int64(time.Now().Unix())
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, id)
 	if err != nil {
-		logger.Warnf("failed to create unique key for Notion relation: %v", err)
-		return details
+		log.Warnf("failed to create unique key for Notion relation: %v", err)
+		return id, details
 	}
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(uniqueKey.Marshal())
-	return details
+	return id, details
 }
 
 func isPageContainsTagProperty(properties property.Properties) bool {

@@ -10,14 +10,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-var logger = logging.Logger("import-file-relation-syncer")
-
 type RelationSyncer interface {
-	Sync(spaceID string, state *state.State, relationName string) []string
+	Sync(spaceID string, state *state.State, relationName string, origin model.ObjectOrigin) []string
 }
 
 type FileRelationSyncer struct {
@@ -29,7 +27,7 @@ func NewFileRelationSyncer(service *block.Service, fileStore filestore.FileStore
 	return &FileRelationSyncer{service: service, fileStore: fileStore}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string) []string {
+func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationName string, origin model.ObjectOrigin) []string {
 	allFiles := fs.getFilesFromRelations(state, relationName)
 	var allFilesHashes, filesToDelete []string
 	for _, f := range allFiles {
@@ -37,7 +35,7 @@ func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationN
 			continue
 		}
 		var hash string
-		if hash = fs.uploadFile(spaceID, f); hash != "" {
+		if hash = fs.uploadFile(spaceID, f, origin); hash != "" {
 			allFilesHashes = append(allFilesHashes, hash)
 			filesToDelete = append(filesToDelete, hash)
 		}
@@ -64,26 +62,32 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 	return allFiles
 }
 
-func (fs *FileRelationSyncer) uploadFile(spaceID string, file string) string {
+func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin model.ObjectOrigin) string {
 	var (
 		hash string
 		err  error
 	)
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
-		req := pb.RpcFileUploadRequest{Url: file}
+		req := block.FileUploadRequest{
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
+			Origin:               origin,
+		}
 		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
-			logger.Errorf("file uploading %s", err)
+			log.Errorf("file uploading %s", err)
 		}
 	} else {
 		_, err = cid.Decode(file)
 		if err == nil {
 			return file
 		}
-		req := pb.RpcFileUploadRequest{LocalPath: file}
+		req := block.FileUploadRequest{
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
+			Origin:               origin,
+		}
 		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
-			logger.Errorf("file uploading %s", err)
+			log.Errorf("file uploading %s", err)
 		}
 	}
 	return hash

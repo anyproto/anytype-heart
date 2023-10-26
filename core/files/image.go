@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	imageObjectHiddenWidth = 256
+	imageObjectHiddenWidth = 263
 )
 
 type Image interface {
@@ -39,6 +39,7 @@ type image struct {
 	spaceID         string
 	variantsByWidth map[int]*storage.FileInfo
 	service         *service
+	origin          model.ObjectOrigin
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
@@ -144,7 +145,7 @@ func (i *image) Exif(ctx context.Context) (*mill.ImageExifSchema, error) {
 func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 	imageExif, err := i.Exif(ctx)
 	if err != nil {
-		log.Errorf("failed to get exif for image: %s", err.Error())
+		log.Errorf("failed to get exif for image: %s", err)
 		imageExif = &mill.ImageExifSchema{}
 	}
 
@@ -154,6 +155,10 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 		i.extractLastModifiedDate(ctx, imageExif),
 	)
 	commonDetails[bundle.RelationKeyIconImage.String()] = pbtypes.String(i.hash)
+
+	if i.origin != 0 {
+		commonDetails[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(i.origin))
+	}
 
 	details := &types.Struct{
 		Fields: commonDetails,
@@ -219,7 +224,6 @@ func (i *image) Details(ctx context.Context) (*types.Struct, error) {
 			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistURL)
 		}
 	}
-
 	return details, nil
 }
 

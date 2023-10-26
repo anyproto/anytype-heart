@@ -7,9 +7,11 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -73,7 +75,11 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, err = bs.OpenBlock(ctx, req.ObjectId, req.IncludeRelationsAsDependentObjects)
+		id := domain.FullID{
+			SpaceID:  req.SpaceId,
+			ObjectID: req.ObjectId,
+		}
+		obj, err = bs.OpenBlock(ctx, id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
 	if err != nil {
@@ -101,7 +107,11 @@ func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequ
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		obj, err = bs.ShowBlock(req.ObjectId, req.IncludeRelationsAsDependentObjects)
+		id := domain.FullID{
+			SpaceID:  req.SpaceId,
+			ObjectID: req.ObjectId,
+		}
+		obj, err = bs.ShowBlock(id, req.IncludeRelationsAsDependentObjects)
 		return err
 	})
 	if err != nil {
@@ -126,7 +136,11 @@ func (mw *Middleware) ObjectClose(cctx context.Context, req *pb.RpcObjectCloseRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.CloseBlock(ctx, req.ObjectId)
+		id := domain.FullID{
+			SpaceID:  req.SpaceId,
+			ObjectID: req.ObjectId,
+		}
+		return bs.CloseBlock(ctx, id)
 	})
 	if err != nil {
 		return response(pb.RpcObjectCloseResponseError_UNKNOWN_ERROR, err)
@@ -186,7 +200,8 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
 			r.ContextId = req.ContextId
-			if err = bs.UploadBlockFile(nil, r, groupId); err != nil {
+			req := block.UploadRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockUploadRequest: r}
+			if err = bs.UploadBlockFile(nil, req, groupId); err != nil {
 				return err
 			}
 		}
@@ -293,7 +308,8 @@ func (mw *Middleware) BlockUpload(cctx context.Context, req *pb.RpcBlockUploadRe
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.UploadBlockFile(nil, *req, "")
+		req := block.UploadRequest{RpcBlockUploadRequest: *req}
+		return bs.UploadBlockFile(nil, req, "")
 	})
 	if err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
@@ -983,7 +999,8 @@ func (mw *Middleware) BlockBookmarkFetch(cctx context.Context, req *pb.RpcBlockB
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.BookmarkFetch(ctx, *req)
+		req := block.BookmarkFetchRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkFetchRequest: *req}
+		return bs.BookmarkFetch(ctx, req)
 	})
 	if err != nil {
 		return response(pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, err)
@@ -1004,7 +1021,8 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 	}
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		id, err = bs.BookmarkCreateAndFetch(ctx, *req)
+		req := bookmark.CreateAndFetchRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkCreateAndFetchRequest: *req}
+		id, err = bs.BookmarkCreateAndFetch(ctx, req)
 		return
 	})
 	if err != nil {

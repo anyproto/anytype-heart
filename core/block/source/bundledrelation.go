@@ -9,11 +9,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object/relationutils"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -61,6 +62,7 @@ func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	details.Fields[bundle.RelationKeyIsReadonly.String()] = pbtypes.Bool(true)
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyRelation.BundledURL())
 	details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
+	details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(model.ObjectOrigin_builtin))
 
 	return details, nil
 }
@@ -109,6 +111,6 @@ func (s *bundledRelation) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *bundledRelation) GetCreationInfo() (creator string, createdDate int64, err error) {
+func (s *bundledRelation) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }

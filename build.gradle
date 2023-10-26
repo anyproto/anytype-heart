@@ -6,7 +6,15 @@ def githubProperties = new Properties()
 
 
 def getArtificatId = { ->
- return "anytype-heart-android"
+ return System.getenv("MAVEN_ARTIFACT_ID")
+}
+
+def getArtifactName = { ->
+ return System.getenv("MAVEN_ARTIFACT_NAME")
+}
+
+def getArtifactVersion = { ->
+ return System.getenv("MAVEN_ARTIFACT_VERSION")
 }
 
 buildscript {
@@ -26,7 +34,8 @@ publishing {
    bar(MavenPublication) {
       groupId 'io.anyproto' // Replace with group ID
       artifactId getArtificatId()
-      artifact("lib.aar")
+      artifact getArtifactName()
+      version getArtifactVersion()
     }
  }
 

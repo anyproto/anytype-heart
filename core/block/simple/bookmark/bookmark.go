@@ -31,7 +31,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
-	ToDetails() *types.Struct
+	ToDetails(origin model.ObjectOrigin) *types.Struct
 	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *model.BlockContentBookmark))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
@@ -46,12 +46,16 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 	return b.content
 }
 
-func (b *Bookmark) ToDetails() *types.Struct {
-	return &types.Struct{
+func (b *Bookmark) ToDetails(origin model.ObjectOrigin) *types.Struct {
+	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeySource.String(): pbtypes.String(b.content.Url),
 		},
 	}
+	if origin != 0 {
+		details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+	}
+	return details
 }
 
 func (b *Bookmark) UpdateContent(updater func(bookmark *model.BlockContentBookmark)) {
@@ -67,7 +71,6 @@ var _ Block = &Bookmark{}
 type FetchParams struct {
 	Url     string
 	Updater Updater
-	Sync    bool
 }
 
 type Updater func(blockID string, apply func(b Block) error) (err error)

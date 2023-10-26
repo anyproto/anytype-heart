@@ -63,6 +63,7 @@ func mkBlock(b *model.Block, opts ...Option) *Block {
 		apply(&o)
 	}
 	b.Restrictions = o.restrictions
+	b.BackgroundColor = o.backgroundColor
 	b.Fields = o.fields
 	b.Id = o.id
 	return &Block{
@@ -72,13 +73,14 @@ func mkBlock(b *model.Block, opts ...Option) *Block {
 }
 
 type options struct {
-	children     []*Block
-	color        string
-	restrictions *model.BlockRestrictions
-	textStyle    model.BlockContentTextStyle
-	marks        *model.BlockContentTextMarks
-	fields       *types.Struct
-	id           string
+	children        []*Block
+	color           string
+	restrictions    *model.BlockRestrictions
+	textStyle       model.BlockContentTextStyle
+	marks           *model.BlockContentTextMarks
+	fields          *types.Struct
+	id              string
+	backgroundColor string
 }
 
 type Option func(*options)
@@ -86,6 +88,12 @@ type Option func(*options)
 func ID(id string) Option {
 	return func(o *options) {
 		o.id = id
+	}
+}
+
+func BackgroundColor(color string) Option {
+	return func(o *options) {
+		o.backgroundColor = color
 	}
 }
 

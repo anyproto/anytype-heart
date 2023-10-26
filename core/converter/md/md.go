@@ -17,25 +17,23 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
-var logger = logging.Logger("md-export")
+var log = logging.Logger("md-export")
 
 type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(a core.Service, s *state.State, fn FileNamer) converter.Converter {
-	return &MD{a: a, s: s, fn: fn}
+func NewMDConverter(s *state.State, fn FileNamer) converter.Converter {
+	return &MD{s: s, fn: fn}
 }
 
 type MD struct {
-	a core.Service
 	s *state.State
 
 	fileHashes  []string
@@ -155,28 +153,28 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 	case model.BlockContentText_Header1, model.BlockContentText_Title:
 		_, err := buf.WriteString(`# `)
 		if err != nil {
-			logger.Warnf("failed to export header1 in markdown: %v", err)
+			log.Warnf("failed to export header1 in markdown: %v", err)
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header2:
 		_, err := buf.WriteString(`## `)
 		if err != nil {
-			logger.Warnf("failed to export header2 in markdown: %v", err)
+			log.Warnf("failed to export header2 in markdown: %v", err)
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header3:
 		_, err := buf.WriteString(`### `)
 		if err != nil {
-			logger.Warnf("failed to export header3 in markdown: %v", err)
+			log.Warnf("failed to export header3 in markdown: %v", err)
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Header4:
 		_, err := buf.WriteString(`#### `)
 		if err != nil {
-			logger.Warnf("failed to export header4 in markdown: %v", err)
+			log.Warnf("failed to export header4 in markdown: %v", err)
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)

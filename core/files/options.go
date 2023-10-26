@@ -12,6 +12,7 @@ import (
 	ipfspath "github.com/ipfs/boxo/path"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
@@ -23,7 +24,7 @@ type AddOptions struct {
 	Name             string
 	LastModifiedDate int64
 	Plaintext        bool
-	Imported         bool
+	Origin           model.ObjectOrigin
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -44,9 +45,9 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 	}
 }
 
-func WithImported(imported bool) AddOption {
+func WithOrigin(origin model.ObjectOrigin) AddOption {
 	return func(args *AddOptions) {
-		args.Imported = imported
+		args.Origin = origin
 	}
 }
 
@@ -80,7 +81,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 	if opts.Media == "" {
 		data, err := ioutil.ReadAll(io.LimitReader(opts.Reader, 512))
 		if err != nil && err != io.EOF {
-			return fmt.Errorf("failed to get first 512 bytes to detect content-type: %s", err)
+			return fmt.Errorf("failed to get first 512 bytes to detect content-type: %w", err)
 		}
 
 		_, err = opts.Reader.Seek(0, io.SeekStart)
@@ -90,7 +91,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 
 		t, err := filetype.Match(data)
 		if err != nil {
-			log.Warnf("filetype failed to match for %s: %s", opts.Name, err.Error())
+			log.Warnf("filetype failed to match: %s", err)
 			opts.Media = http.DetectContentType(data)
 		} else {
 			opts.Media = t.MIME.Value

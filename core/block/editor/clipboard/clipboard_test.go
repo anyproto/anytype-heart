@@ -627,7 +627,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 	})
 
 	for _, text := range []string{"", "full"} {
-		t.Run("paste - when ("+text+")", func(t *testing.T) {
+		t.Run("paste - when text is ("+text+")", func(t *testing.T) {
 			// given
 			sb := smarttest.New("text")
 			require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
@@ -637,6 +637,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 					blockbuilder.Text(
 						text,
 						blockbuilder.ID("1"),
+						blockbuilder.TextStyle(model.BlockContentText_Paragraph),
 					),
 					blockbuilder.Text(
 						"toggle",
@@ -651,11 +652,115 @@ func TestClipboard_TitleOps(t *testing.T) {
 				FocusedBlockId:    "1",
 				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
 				AnySlot:           []*model.Block{sb.Pick("2").Model()},
+				IsPartOfBlock:     true,
 			}, "")
 
 			// then
 			require.NoError(t, err)
 			assert.Equal(t, model.BlockContentText_Toggle, sb.Doc.Pick("1").Model().GetText().Style)
+		})
+	}
+	t.Run("paste - when text is empty, and style is not Paragraph", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"",
+					blockbuilder.ID("1"),
+					blockbuilder.TextStyle(model.BlockContentText_Numbered),
+				),
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "1",
+			SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
+			AnySlot:           []*model.Block{sb.Pick("2").Model()},
+			IsPartOfBlock:     true,
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentText_Numbered, sb.Doc.Pick("1").Model().GetText().Style)
+	})
+	for _, text := range []string{template.TitleBlockId, template.DescriptionBlockId} {
+		t.Run("paste - when to block with id ("+text+")", func(t *testing.T) {
+			// given
+			sb := smarttest.New("text")
+			require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						"whatever",
+						blockbuilder.ID(text),
+						blockbuilder.TextStyle(model.BlockContentText_Paragraph),
+					),
+					blockbuilder.Text(
+						"toggle",
+						blockbuilder.ID("2"),
+						blockbuilder.TextStyle(model.BlockContentText_Toggle),
+					),
+				)))
+
+			// when
+			cb := NewClipboard(sb, nil, nil, nil, nil)
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick(text).Model().GetText().Text))},
+				AnySlot:           []*model.Block{sb.Pick("2").Model()},
+				IsPartOfBlock:     true,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick(text).Model().GetText().Style)
+		})
+	}
+	for _, style := range []model.BlockContentTextStyle{
+		model.BlockContentText_Description,
+		model.BlockContentText_Title,
+	} {
+		t.Run("paste - when from block with style ("+style.String()+")", func(t *testing.T) {
+			// given
+			sb := smarttest.New("text")
+			require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						"whatever",
+						blockbuilder.ID("1"),
+						blockbuilder.TextStyle(model.BlockContentText_Paragraph),
+					),
+					blockbuilder.Text(
+						"toggle",
+						blockbuilder.ID("2"),
+						blockbuilder.TextStyle(style),
+					),
+				)))
+
+			// when
+			cb := NewClipboard(sb, nil, nil, nil, nil)
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(sb.Pick("1").Model().GetText().Text))},
+				AnySlot:           []*model.Block{sb.Pick("2").Model()},
+				IsPartOfBlock:     true,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("1").Model().GetText().Style)
 		})
 	}
 	t.Run("paste - when insert partially", func(t *testing.T) {
@@ -681,6 +786,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 			FocusedBlockId:    "1",
 			SelectedTextRange: &model.Range{From: 1, To: 1},
 			AnySlot:           []*model.Block{sb.Pick("2").Model()},
+			IsPartOfBlock:     true,
 		}, "")
 
 		// then
@@ -1021,7 +1127,7 @@ func Test_PasteText(t *testing.T) {
 
 func Test_CopyAndCutText(t *testing.T) {
 
-	t.Run("copy/cut do not preserve style - when full text copied", func(t *testing.T) {
+	t.Run("preserve style - when empty text copied", func(t *testing.T) {
 		// given
 		sb := smarttest.New("text")
 		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -1031,6 +1137,7 @@ func Test_CopyAndCutText(t *testing.T) {
 					"toggle",
 					blockbuilder.ID("2"),
 					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+					blockbuilder.BackgroundColor("grey"),
 				),
 			)))
 
@@ -1048,8 +1155,48 @@ func Test_CopyAndCutText(t *testing.T) {
 		// then
 		require.NoError(t, err)
 
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCopy[0].GetText().Style)
+		assert.Equal(t, model.BlockContentText_Toggle, anySlotCut[0].GetText().Style)
+
+		assert.Equal(t, "", anySlotCopy[0].GetText().Text)
+		assert.Equal(t, "", anySlotCut[0].GetText().Text)
+
+		assert.Equal(t, "grey", anySlotCopy[0].BackgroundColor)
+		assert.Equal(t, "grey", anySlotCut[0].BackgroundColor)
+	})
+
+	t.Run("do not preserve style - when not empty and not full text copied", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"toggle",
+					blockbuilder.ID("2"),
+					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+				),
+			)))
+
+		// when
+		cb := NewClipboard(sb, nil, nil, nil, nil)
+		_, _, anySlotCopy, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+			SelectedTextRange: &model.Range{From: 1, To: 2},
+		})
+		_, _, anySlotCut, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{From: 1, To: 2},
+			Blocks:            []*model.Block{sb.Pick("2").Model()},
+		})
+
+		// then
+		require.NoError(t, err)
+
 		assert.Equal(t, model.BlockContentText_Paragraph, anySlotCopy[0].GetText().Style)
 		assert.Equal(t, model.BlockContentText_Paragraph, anySlotCut[0].GetText().Style)
+
+		assert.Equal(t, "", anySlotCopy[0].BackgroundColor)
+		assert.Equal(t, "", anySlotCut[0].BackgroundColor)
 	})
 
 	t.Run("copy/cut preserve style - when full text copied", func(t *testing.T) {
@@ -1062,6 +1209,7 @@ func Test_CopyAndCutText(t *testing.T) {
 					"toggle",
 					blockbuilder.ID("2"),
 					blockbuilder.TextStyle(model.BlockContentText_Toggle),
+					blockbuilder.BackgroundColor("grey"),
 				),
 			)))
 
@@ -1081,6 +1229,9 @@ func Test_CopyAndCutText(t *testing.T) {
 
 		assert.Equal(t, model.BlockContentText_Toggle, anySlotCopy[0].GetText().Style)
 		assert.Equal(t, model.BlockContentText_Toggle, anySlotCut[0].GetText().Style)
+
+		assert.Equal(t, "grey", anySlotCopy[0].BackgroundColor)
+		assert.Equal(t, "grey", anySlotCut[0].BackgroundColor)
 	})
 
 	t.Run("copy/cut - when with children", func(t *testing.T) {
@@ -1229,7 +1380,6 @@ func Test_StyleAndTabExtraction(t *testing.T) {
 		expected  string
 		emoji     string
 	}
-
 	testData := []*fixture{
 		{"quote", model.BlockContentText_Quote, "\t> some text 1", ""},
 		{"code", model.BlockContentText_Code, "\t```some text 1```", ""},

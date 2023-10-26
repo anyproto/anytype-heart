@@ -296,7 +296,7 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	return newBlock, nil
 }
 
-func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error) {
+func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, copyStyle bool) (caretPosition int32, err error) {
 	caretPosition = -1
 	copiedText := copiedBlock.GetText()
 
@@ -314,8 +314,12 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 		return caretPosition, fmt.Errorf("out of range: range.from %d > range.to %d", rangeFrom, rangeTo)
 	}
 
-	if textLen == 0 || (rangeFrom == 0 && rangeTo == int32(textLen)) {
-		if !isPartOfBlock {
+	ifFullTextCopied := rangeFrom == 0 && rangeTo == int32(textLen)
+	isFullReplace := ifFullTextCopied && textLen > 0
+	isPlaceInEmptyParagraph := ifFullTextCopied && textLen == 0 && (t.content.Style == model.BlockContentText_Paragraph)
+
+	if isFullReplace || isPlaceInEmptyParagraph {
+		if copyStyle {
 			t.content.Style = copiedText.Style
 			t.content.Color = copiedText.Color
 			t.BackgroundColor = copiedBlock.BackgroundColor
@@ -590,6 +594,7 @@ func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
 
 	if !o.dontSetStyle && t.content != nil && t.content.Text == "" {
 		t.SetStyle(text.content.Style)
+		t.BackgroundColor = text.BackgroundColor
 	}
 
 	if !ok {

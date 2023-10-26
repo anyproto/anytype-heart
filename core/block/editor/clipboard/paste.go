@@ -28,14 +28,13 @@ type pasteCtrl struct {
 }
 
 type pasteMode struct {
-	toHeaderChild       bool
-	removeSelection     bool
-	multiRange          bool
-	singleRange         bool
-	intoBlock           bool
-	intoBlockPasteStyle bool
-	intoCodeBlock       bool
-	textBuf             string
+	removeSelection    bool
+	multiRange         bool
+	singleRange        bool
+	intoBlock          bool
+	intoBlockCopyStyle bool
+	intoCodeBlock      bool
+	textBuf            string
 }
 
 func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
@@ -115,18 +114,34 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 		}); err != nil {
 			return
 		}
-		selText := p.getFirstSelectedText()
-		p.mode.toHeaderChild = selText != nil && p.s.HasParent(selText.Model().Id, template.HeaderLayoutId)
-		p.mode.intoBlockPasteStyle = p.mode.toHeaderChild
-		if selText != nil && textCount == 1 && nonTextCount == 0 && req.IsPartOfBlock {
+
+		selectedText := p.getFirstSelectedText()
+		p.mode.intoBlockCopyStyle = !(isSpecificStyle(p.getFirstPasteText()) || isRequiredBlock(selectedText))
+
+		if selectedText != nil && textCount == 1 && nonTextCount == 0 && req.IsPartOfBlock {
 			p.mode.intoBlock = true
 		} else {
-			p.mode.intoBlock = selText != nil && selText.Model().GetText().Style == model.BlockContentText_Code
+			p.mode.intoBlock = selectedText != nil && selectedText.Model().GetText().Style == model.BlockContentText_Code
 		}
 	} else {
 		p.mode.singleRange = false
 	}
 	return
+}
+
+func isSpecificStyle(block text.Block) bool {
+	if block == nil {
+		return false
+	}
+	return lo.Contains([]model.BlockContentTextStyle{
+		model.BlockContentText_Description,
+		model.BlockContentText_Title,
+	}, block.Model().GetText().Style)
+
+}
+
+func isRequiredBlock(block text.Block) bool {
+	return block != nil && state.IsRequiredBlockId(block.Model().Id)
 }
 
 func (p *pasteCtrl) getFirstSelectedText() text.Block {
@@ -191,7 +206,7 @@ func (p *pasteCtrl) singleRange() (err error) {
 		return target.PasteInside(p.s, p.ps, secondBlock)
 	}
 
-	isPasteToHeader := isRequiredRelation(targetId)
+	isPasteToHeader := state.IsRequiredBlockId(targetId)
 
 	pos := model.Block_Bottom
 	if isPasteToHeader {
@@ -226,7 +241,7 @@ func (p *pasteCtrl) intoBlock() (err error) {
 	if firstSelText == nil || firstPasteText == nil {
 		return
 	}
-	p.caretPos, err = firstSelText.RangeTextPaste(p.selRange.From, p.selRange.To, firstPasteText.Model(), p.mode.intoBlockPasteStyle)
+	p.caretPos, err = firstSelText.RangeTextPaste(p.selRange.From, p.selRange.To, firstPasteText.Model(), p.mode.intoBlockCopyStyle)
 	p.ps.Unlink(firstPasteText.Model().Id)
 	return
 }
@@ -272,7 +287,7 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	)
 	if len(p.selIds) > 0 {
 		targetId = p.selIds[0]
-		if isRequiredRelation(targetId) {
+		if state.IsRequiredBlockId(targetId) {
 			targetId = template.HeaderLayoutId
 		}
 		targetPos = model.Block_Bottom
@@ -288,16 +303,9 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	})
 }
 
-func isRequiredRelation(targetID string) bool {
-	return targetID == template.TitleBlockId ||
-		targetID == template.DescriptionBlockId ||
-		targetID == template.FeaturedRelationsId ||
-		targetID == template.HeaderLayoutId
-}
-
 func (p *pasteCtrl) removeSelection() {
 	for _, toRemove := range p.selIds {
-		if !isRequiredRelation(toRemove) {
+		if !state.IsRequiredBlockId(toRemove) {
 			p.s.Unlink(toRemove)
 		}
 	}

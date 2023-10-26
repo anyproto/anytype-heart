@@ -20,9 +20,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/converter/html"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -42,28 +42,22 @@ type Clipboard interface {
 	Export(req pb.RpcBlockExportRequest) (path string, err error)
 }
 
-func NewClipboard(
-	sb smartblock.SmartBlock,
-	file file.File,
-	tempDirProvider core.TempDirProvider,
-	systemObjectService system_object.Service,
-	fileService files.Service,
-) Clipboard {
+func NewClipboard(sb smartblock.SmartBlock, file file.File, tempDirProvider core.TempDirProvider, objectStore objectstore.ObjectStore, fileService files.Service) Clipboard {
 	return &clipboard{
-		SmartBlock:          sb,
-		file:                file,
-		tempDirProvider:     tempDirProvider,
-		systemObjectService: systemObjectService,
-		fileService:         fileService,
+		SmartBlock:      sb,
+		file:            file,
+		tempDirProvider: tempDirProvider,
+		objectStore:     objectStore,
+		fileService:     fileService,
 	}
 }
 
 type clipboard struct {
 	smartblock.SmartBlock
-	file                file.File
-	tempDirProvider     core.TempDirProvider
-	systemObjectService system_object.Service
-	fileService         files.Service
+	file            file.File
+	tempDirProvider core.TempDirProvider
+	objectStore     objectstore.ObjectStore
+	fileService     files.Service
 }
 
 func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
@@ -115,14 +109,10 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 	}
 
 	// scenario: rangeCopy
-	if firstTextBlock != nil &&
-		req.SelectedTextRange != nil &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) &&
-		lastTextBlock == nil {
+	if isRangeSelect(firstTextBlock, lastTextBlock, req.SelectedTextRange) {
 		cutBlock, _, err := simple.New(firstTextBlock).(text.Block).RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %w", err)
 		}
 
 		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
@@ -131,8 +121,8 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.To - req.SelectedTextRange.From
 			}
 		}
+		tryClearStyle(cutBlock, req.SelectedTextRange)
 
-		cutBlock.GetText().Style = model.BlockContentText_Paragraph
 		textSlot = cutBlock.GetText().Text
 		s.Set(simple.New(cutBlock))
 		htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
@@ -145,6 +135,13 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 	htmlSlot = html.NewHTMLConverter(cb.SpaceID(), cb.fileService, s).Convert()
 	anySlot = cb.stateToBlocks(s)
 	return textSlot, htmlSlot, anySlot, nil
+}
+
+func tryClearStyle(block *model.Block, rang *model.Range) {
+	if rang.To-rang.From > 0 {
+		block.GetText().Style = model.BlockContentText_Paragraph
+		block.BackgroundColor = ""
+	}
 }
 
 func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
@@ -177,16 +174,12 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	}
 
 	// scenario: rangeCut
-	if firstTextBlock != nil &&
-		lastTextBlock == nil &&
-		req.SelectedTextRange != nil &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))) {
+	if isRangeSelect(firstTextBlock, lastTextBlock, req.SelectedTextRange) {
 		first := s.Get(firstTextBlock.Id).(text.Block)
 		cutBlock, initialBlock, err := first.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
 		if err != nil {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %w", err)
 		}
 
 		first.SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
@@ -198,7 +191,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 			}
 		}
 
-		cutBlock.GetText().Style = model.BlockContentText_Paragraph
+		tryClearStyle(cutBlock, req.SelectedTextRange)
 		textSlot = cutBlock.GetText().Text
 		anySlot = []*model.Block{cutBlock}
 		cbs := cb.blocksToState(req.Blocks)
@@ -221,6 +214,13 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
+}
+
+func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang *model.Range) bool {
+	return firstTextBlock != nil &&
+		lastTextBlock == nil &&
+		rang != nil &&
+		rang.To-rang.From != int32(textutil.UTF16RuneCountString(firstTextBlock.GetText().Text))
 }
 
 func unlinkAndClearBlocks(
@@ -311,10 +311,6 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	}
 
 	textArr := strings.Split(req.TextSlot, "\n")
-
-	if !req.IsPartOfBlock && len(textArr) == 1 && len(req.SelectedBlockIds) <= 1 {
-		req.IsPartOfBlock = true
-	}
 
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)
@@ -507,9 +503,10 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 		})
 		s.Add(b)
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes: fs.Data,
-			Path:  fs.LocalPath,
-			Name:  fs.Name,
+			Bytes:  fs.Data,
+			Path:   fs.LocalPath,
+			Name:   fs.Name,
+			Origin: model.ObjectOrigin_clipboard,
 		}, false); err != nil {
 			return
 		}
@@ -553,9 +550,9 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 	for k := range relationKeys {
 		relationKeysList = append(relationKeysList, k)
 	}
-	relations, err := cb.systemObjectService.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
+	relations, err := cb.objectStore.FetchRelationByKeys(cb.SpaceID(), relationKeysList...)
 	if err != nil {
-		return fmt.Errorf("failed to fetch relation keys of dataview: %v", err)
+		return fmt.Errorf("failed to fetch relation keys of dataview: %w", err)
 	}
 	links := make([]*model.RelationLink, 0, len(relations))
 	for _, r := range relations {

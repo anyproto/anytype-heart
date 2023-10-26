@@ -17,13 +17,13 @@ import (
 func GraphvizSvg(gv, svgFilename string) (err error) {
 	gvo, err := graphviz.ParseBytes([]byte(gv))
 	if err != nil {
-		logger.Fatal("can't open graphviz data:", err)
+		log.Fatal("can't open graphviz data:", err)
 		return err
 	}
 
 	f, err := os.Create(svgFilename)
 	if err != nil {
-		logger.Fatal("can't create SVG file:", err)
+		log.Fatal("can't create SVG file:", err)
 		return err
 	}
 	defer f.Close()

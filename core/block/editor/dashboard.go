@@ -11,9 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -26,26 +24,15 @@ type Dashboard struct {
 	basic.AllOperations
 	collection.Collection
 
-	DetailsModifier DetailsModifier
-	objectStore     objectstore.ObjectStore
-	anytype         core.Service
+	objectStore objectstore.ObjectStore
 }
 
-func NewDashboard(
-	sb smartblock.SmartBlock,
-	detailsModifier DetailsModifier,
-	objectStore objectstore.ObjectStore,
-	systemObjectService system_object.Service,
-	anytype core.Service,
-	layoutConverter converter.LayoutConverter,
-) *Dashboard {
+func NewDashboard(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
-		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb, objectStore, systemObjectService, layoutConverter),
-		Collection:      collection.NewCollection(sb),
-		DetailsModifier: detailsModifier,
-		objectStore:     objectStore,
-		anytype:         anytype,
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
+		Collection:    collection.NewCollection(sb, objectStore),
+		objectStore:   objectStore,
 	}
 }
 
@@ -68,7 +55,6 @@ func (p *Dashboard) CreationStateMigration(ctx *smartblock.InitContext) migratio
 				template.WithEmpty,
 				template.WithDetailName("Home"),
 				template.WithDetailIconEmoji("🏠"),
-				template.WithNoRootLink(p.anytype.PredefinedObjects(p.SpaceID()).Archive),
 				template.WithRequiredRelations(),
 				template.WithNoDuplicateLinks(),
 			)
@@ -111,7 +97,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeFavoritedIds, favoritedIds)
 	for _, removedId := range removedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},
@@ -126,7 +112,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 	for _, addedId := range addedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},

@@ -84,14 +84,22 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	return s
 }
 
+// NewDocWithUniqueKey creates a new state with the given uniqueKey.
+// it is used for creating new objects which ID is derived from the uniqueKey(smartblockType+key)
 func NewDocWithUniqueKey(rootId string, blocks map[string]simple.Block, key domain.UniqueKey) Doc {
+	return NewDocWithInternalKey(rootId, blocks, key.InternalKey())
+}
+
+// NewDocWithInternalKey creates a new state with the given internal key.
+// prefer creating new objects using NewDocWithUniqueKey instead, for the extra checks during the unique key creation
+func NewDocWithInternalKey(rootId string, blocks map[string]simple.Block, internalKey string) Doc {
 	if blocks == nil {
 		blocks = make(map[string]simple.Block)
 	}
 	s := &State{
 		rootId:            rootId,
 		blocks:            blocks,
-		uniqueKeyInternal: key.InternalKey(),
+		uniqueKeyInternal: internalKey,
 	}
 	return s
 }
@@ -484,6 +492,9 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		orig := s.PickOrigin(id)
 		if orig == nil {
 			bc := s.blocks[id].Copy()
+			if db, ok := bc.(simple.DetailsHandler); ok {
+				db.DetailsInit(s)
+			}
 			newBlocks = append(newBlocks, bc.Model())
 			action.Add = append(action.Add, bc)
 		} else {
@@ -628,14 +639,19 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
 		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		prevModifiedBy := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedBy.String())
 		if s.localDetails != nil {
 			if _, isNull := prevModifiedDate.GetKind().(*types.Value_NullValue); prevModifiedDate == nil || isNull {
 				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
 			} else {
 				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
 			}
+			if _, isNull := prevModifiedBy.GetKind().(*types.Value_NullValue); prevModifiedBy == nil || isNull {
+				log.With("objectID", s.rootId).Debugf("failed to revert prev modifed by: prev value is nil")
+			} else {
+				s.localDetails.Fields[bundle.RelationKeyLastModifiedBy.String()] = prevModifiedBy
+			}
 		}
-		// todo: revert lastModifiedBy?
 	}
 
 	if s.parent != nil && s.localDetails != nil {
@@ -710,7 +726,7 @@ func (s *State) processTrailingDuplicatedEvents(msgs []simple.EventMessage) (fil
 			continue
 		}
 		if bytes.Equal(prev, curr) {
-			log.With("objectID", s.RootId()).Debugf("found trailing duplicated event %s", e.Msg.String())
+			log.With("objectID", s.RootId()).Debugf("found trailing duplicated event %T", e.Msg.GetValue())
 			continue
 		}
 		prev = curr
@@ -812,9 +828,9 @@ func (s *State) StringDebug() string {
 
 func (s *State) SetDetails(d *types.Struct) *State {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	//if d != nil && d.Fields != nil {
+	// if d != nil && d.Fields != nil {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
-	//}
+	// }
 	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
 		for k, v := range local.Fields {
@@ -873,7 +889,7 @@ func (s *State) SetLocalDetails(d *types.Struct) {
 
 func (s *State) SetDetail(key string, value *types.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	//value = shortenValueToLimit(s.rootId, key, value)
+	// value = shortenValueToLimit(s.rootId, key, value)
 
 	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
 		s.SetLocalDetail(key, value)
@@ -1637,6 +1653,7 @@ func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
+// AddRelationLinks adds relation links to the state in case they are not already present
 func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 	relLinks := s.GetRelationLinks()
 	for _, l := range links {
@@ -1780,4 +1797,11 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 // which will be unique and reproducible within the same space
 func (s *State) UniqueKeyInternal() string {
 	return s.uniqueKeyInternal
+}
+
+func IsRequiredBlockId(targetId string) bool {
+	return targetId == TitleBlockID ||
+		targetId == DescriptionBlockID ||
+		targetId == FeaturedRelationsID ||
+		targetId == HeaderLayoutID
 }

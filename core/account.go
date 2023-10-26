@@ -99,11 +99,24 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 	status, err := mw.applicationService.AccountDelete(cctx, req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountIsAlreadyDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
-		errToCode(application.ErrAccountIsActive, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE),
 	)
 	return &pb.RpcAccountDeleteResponse{
 		Status: status,
 		Error: &pb.RpcAccountDeleteResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountRevertDeletion(cctx context.Context, req *pb.RpcAccountRevertDeletionRequest) *pb.RpcAccountRevertDeletionResponse {
+	status, err := mw.applicationService.AccountRevertDeletion(cctx)
+	code := mapErrorCode(err,
+		errToCode(application.ErrAccountIsActive, pb.RpcAccountRevertDeletionResponseError_ACCOUNT_IS_ACTIVE),
+	)
+	return &pb.RpcAccountRevertDeletionResponse{
+		Status: status,
+		Error: &pb.RpcAccountRevertDeletionResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
@@ -125,13 +138,14 @@ func (mw *Middleware) AccountConfigUpdate(_ context.Context, req *pb.RpcAccountC
 }
 
 func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context, req *pb.RpcAccountRecoverFromLegacyExportRequest) *pb.RpcAccountRecoverFromLegacyExportResponse {
-	accountID, err := mw.applicationService.CreateAccountFromExport(req)
+	resp, err := mw.applicationService.RecoverFromLegacy(req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountMismatch, pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT),
 		errToCode(application.ErrBadInput, pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT),
 	)
 	return &pb.RpcAccountRecoverFromLegacyExportResponse{
-		AccountId: accountID,
+		AccountId:       resp.AccountId,
+		PersonalSpaceId: resp.PersonalSpaceId,
 		Error: &pb.RpcAccountRecoverFromLegacyExportResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

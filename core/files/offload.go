@@ -7,11 +7,50 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+func (s *service) FilesSpaceOffload(ctx context.Context, spaceID string) (err error) {
+	fileIDs, _, err := s.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceID),
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	fileIDs = slice.Filter(fileIDs, func(s string) bool {
+		c, err := cid.Decode(s)
+		if err != nil {
+			return false
+		}
+		return c.Prefix().Codec == cid.DagProtobuf && c.Prefix().MhType == multihash.SHA2_256
+	})
+	for _, fileID := range fileIDs {
+		id := domain.FullID{
+			SpaceID:  spaceID,
+			ObjectID: fileID,
+		}
+		_, err := s.fileOffload(ctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to offload file %s: %w", fileID, err)
+		}
+	}
+	return nil
+}
 
 func (s *service) FileOffload(ctx context.Context, fileID string, includeNotPinned bool) (totalSize uint64, err error) {
 	spaceID, err := s.resolver.ResolveSpaceID(fileID)
@@ -105,7 +144,7 @@ func (s *service) FileListOffload(ctx context.Context, fileIDs []string, include
 		}
 		bytesRemoved, err := s.fileOffload(ctx, id)
 		if err != nil {
-			log.Errorf("failed to offload file %s: %s", fileID, err.Error())
+			log.Errorf("failed to offload file %s: %s", fileID, err)
 			continue
 		}
 		if bytesRemoved > 0 {
@@ -158,7 +197,7 @@ func (s *service) getAllExistingFileBlocksCids(ctx context.Context, id domain.Fu
 		ctx = context.WithValue(ctx, filestorage.CtxKeyRemoteLoadDisabled, true)
 		n, err := dagService.Get(ctx, c)
 		if err != nil {
-			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
+			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err)
 		}
 		cancel()
 		if n != nil {

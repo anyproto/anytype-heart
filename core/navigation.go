@@ -7,11 +7,13 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 func (mw *Middleware) NavigationListObjects(cctx context.Context, req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -39,18 +41,6 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
-		var filtered []*model.ObjectInfo
-		for _, page := range Objects {
-			if page.ObjectType == model.SmartBlockType_Archive || page.ObjectType == model.SmartBlockType_File {
-				continue
-			}
-
-			filtered = append(filtered, page)
-		}
-		return filtered
-	}
-
 	resolver := getService[idresolver.Resolver](mw)
 	store := app.MustComponent[objectstore.ObjectStore](mw.applicationService.GetApp())
 	spaceID, err := resolver.ResolveSpaceID(req.ObjectId)
@@ -60,6 +50,23 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 	page, err := store.GetWithLinksInfoByID(spaceID, req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
+	sbTypeProvider := getService[typeprovider.SmartBlockTypeProvider](mw)
+	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
+		var filtered []*model.ObjectInfo
+		for _, obj := range Objects {
+			sbType, err := sbTypeProvider.Type(spaceID, obj.Id)
+			if err != nil {
+				log.Error("get smartblock type: %v", err)
+			}
+			if sbType == smartblock.SmartBlockTypeArchive || sbType == smartblock.SmartBlockTypeFile || sbType == smartblock.SmartBlockTypeWidget {
+				continue
+			}
+
+			filtered = append(filtered, obj)
+		}
+		return filtered
 	}
 
 	if req.Context != pb.RpcNavigation_Navigation && page.Links != nil {
@@ -83,15 +90,14 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		return m
 	}
 
-	var (
-		id         string
-		newDetails *types.Struct
-	)
-	err := mw.doBlockService(func(bs *block.Service) error {
-		var err error
-		id, newDetails, err = bs.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req, req.ObjectTypeUniqueKey)
-		return err
-	})
+	creator := getService[objectcreator.Service](mw)
+	createReq := objectcreator.CreateObjectRequest{
+		Details:       req.Details,
+		InternalFlags: req.InternalFlags,
+		TemplateId:    req.TemplateId,
+	}
+	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
+
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}

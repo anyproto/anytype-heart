@@ -93,7 +93,7 @@ func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRe
 
 	bytesRemoved, err := fileService.FileOffload(cctx, req.Id, req.IncludeNotPinned)
 	if err != nil {
-		log.Errorf("failed to offload file %s: %s", req.Id, err.Error())
+		log.Errorf("failed to offload file %s: %s", req.Id, err)
 	}
 
 	return response(bytesRemoved, pb.RpcFileOffloadResponseError_NULL, nil)
@@ -109,7 +109,8 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var hash string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(cctx, req.SpaceId, *req)
+		dto := block.FileUploadRequest{RpcFileUploadRequest: *req}
+		hash, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		return
 	})
 	if err != nil {

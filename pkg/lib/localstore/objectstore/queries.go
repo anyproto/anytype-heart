@@ -7,7 +7,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -75,11 +74,6 @@ func (s *dsObjectStore) buildQuery(q database.Query) (*database.Filters, error) 
 	if err != nil {
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
-	discardSystemObjects := newSmartblockTypesFilter(s.sbtProvider, true, []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeArchive,
-		smartblock.SmartBlockTypeHome,
-	})
-	filters.FilterObj = database.FiltersAnd{filters.FilterObj, discardSystemObjects}
 
 	if q.FullText != "" {
 		filters, err = s.makeFTSQuery(q.FullText, filters)
@@ -126,13 +120,10 @@ func iterateOverAndFilters(fs []database.Filter) (spaceID string) {
 }
 
 // TODO: objstore: no one uses total
-func (s *dsObjectStore) QueryObjectIDs(q database.Query, smartBlockTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
+func (s *dsObjectStore) QueryObjectIDs(q database.Query) (ids []string, total int, err error) {
 	filters, err := s.buildQuery(q)
 	if err != nil {
 		return nil, 0, fmt.Errorf("build query: %w", err)
-	}
-	if len(smartBlockTypes) > 0 {
-		filters.FilterObj = database.FiltersAnd{newSmartblockTypesFilter(s.sbtProvider, false, smartBlockTypes), filters.FilterObj}
 	}
 	recs, err := s.QueryRaw(filters, q.Limit, q.Offset)
 	if err != nil {

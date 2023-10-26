@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -86,9 +88,9 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
 	newAcc.Name = req.Name
 
-	spaceID := app.MustComponent[account.Service](s.app).PersonalSpaceID()
+	personalSpaceId := app.MustComponent[account.Service](s.app).PersonalSpaceID()
 	var err error
-	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, spaceID)
+	newAcc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx, personalSpaceId)
 	if err != nil {
 		return err
 	}
@@ -108,9 +110,11 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(context.Background(), spaceID, pb.RpcFileUploadRequest{
-			LocalPath: req.GetAvatarLocalPath(),
-			Type:      model.BlockContentFile_Image,
+		hash, err := bs.UploadFile(context.Background(), personalSpaceId, block.FileUploadRequest{
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{
+				LocalPath: req.GetAvatarLocalPath(),
+				Type:      model.BlockContentFile_Image,
+			},
 		})
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)
@@ -123,16 +127,22 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		}
 	}
 
-	coreService := s.app.MustComponent(core.CName).(core.Service)
+	spaceService := app.MustComponent[space.Service](s.app)
+	spc, err := spaceService.Get(ctx, personalSpaceId)
+	if err != nil {
+		return fmt.Errorf("get personal space: %w", err)
+	}
+	accountObjects := spc.DerivedIDs()
+
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.AccountObjects().Profile,
+		ContextId: accountObjects.Profile,
 		Details:   profileDetails,
 	}); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 
 	if err := bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: coreService.AccountObjects().Workspace,
+		ContextId: accountObjects.Workspace,
 		Details:   commonDetails,
 	}); err != nil {
 		return errors.Join(ErrSetDetails, err)

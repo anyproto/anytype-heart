@@ -90,6 +90,6 @@ func (s *anytypeProfile) PushChange(params PushChangeParams) (id string, err err
 	return
 }
 
-func (s *anytypeProfile) GetCreationInfo() (creator string, createdDate int64, err error) {
+func (s *anytypeProfile) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {
 	return addr.AnytypeProfileId, 0, nil
 }

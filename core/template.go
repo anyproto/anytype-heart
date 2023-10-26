@@ -8,8 +8,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -114,6 +114,7 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 	err := mw.doBlockService(func(_ *block.Service) error {
 		es := mw.applicationService.GetApp().MustComponent(export.CName).(export.Export)
 		ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
+
 		docIds, _, err := ds.QueryObjectIDs(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
@@ -121,8 +122,19 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Bool(false),
 				},
+				{
+					RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
+				},
+				// We don't want templates from marketplace
+				{
+					RelationKey: bundle.RelationKeySpaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
+				},
 			},
-		}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeTemplate})
+		})
 		if err != nil {
 			return err
 		}

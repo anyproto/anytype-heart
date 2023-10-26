@@ -1,8 +1,6 @@
-export GOPRIVATE=github.com/anyproto
 export GOLANGCI_LINT_VERSION=v1.54.2
 export custom_network_file=./core/anytype/config/nodes/custom.yml
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow
-
 ifndef $(GOPATH)
     GOPATH=$(shell go env GOPATH)
     export GOPATH
@@ -13,7 +11,9 @@ ifndef $(GOROOT)
     export GOROOT
 endif
 
-export PATH:=$(shell pwd)/deps:$(GOPATH)/bin:$(PATH)
+DEPS_PATH := $(shell pwd)/deps
+export PATH := $(DEPS_PATH):$(PATH)
+
 $(shell git config core.hooksPath .githooks)
 
 all:
@@ -73,7 +73,7 @@ test-deps:
 	@go build -o deps go.uber.org/mock/mockgen
 	@go build -o deps github.com/vektra/mockery/v2
 	@go generate ./...
-	@mockery --all
+	@$(DEPS_PATH)/mockery --all
 
 clear-test-deps:
 	@echo 'Removing test mocks...'
@@ -104,8 +104,10 @@ build-js-addon:
 	@npm install -C ./clientlibrary/jsaddon
 	@rm clientlibrary/jsaddon/lib.a clientlibrary/jsaddon/lib.h clientlibrary/jsaddon/bridge.h
 
+
 build-ios: setup-go setup-gomobile
-	gomobile init
+	# PATH is not working here, so we need to use absolute path
+	$(DEPS_PATH)/gomobile init
 	@echo 'Clear xcframework'
 	@rm -rf ./dist/ios/Lib.xcframework
 	@echo 'Building library for iOS...'
@@ -123,7 +125,7 @@ endif
 	@go mod tidy
 
 build-android: setup-go setup-gomobile
-	gomobile init
+	$(DEPS_PATH)/gomobile init
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
 	@$(eval TAGS := nogrpcserver gomobile nowatchdog nosigar)
@@ -274,14 +276,14 @@ install-linter:
 
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
-	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m
+	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --verbose
 else 
-	@golangci-lint run -v ./... --new-from-rev=main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m
+	@golangci-lint run -v ./... --new-from-rev=origin/main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --verbose
 endif
 
 run-linter-fix:
 ifdef GOLANGCI_LINT_BRANCH
 	@golangci-lint run -v ./... --new-from-rev=$(GOLANGCI_LINT_BRANCH) --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
 else 
-	@golangci-lint run -v ./... --new-from-rev=master --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
+	@golangci-lint run -v ./... --new-from-rev=origin/main --skip-files ".*_test.go" --skip-files "testMock/*" --timeout 15m --fix
 endif

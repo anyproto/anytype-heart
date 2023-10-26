@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/util/testMock"
-	"github.com/anyproto/anytype-heart/util/testMock/mockDetailsModifier"
 )
 
 func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
@@ -19,13 +18,10 @@ func NewArchiveTest(ctrl *gomock.Controller) (*Archive, error) {
 	objectStore := testMock.NewMockObjectStore(ctrl)
 	objectStore.EXPECT().GetDetails(gomock.Any()).AnyTimes()
 	objectStore.EXPECT().Query(gomock.Any()).AnyTimes()
-	dm := mockDetailsModifier.NewMockDetailsModifier(ctrl)
-	dm.EXPECT().ModifyLocalDetails(gomock.Any(), gomock.Any()).AnyTimes()
 	a := &Archive{
-		SmartBlock:      sb,
-		DetailsModifier: dm,
-		Collection:      collection.NewCollection(sb),
-		objectStore:     objectStore,
+		SmartBlock:  sb,
+		Collection:  collection.NewCollection(sb, objectStore),
+		objectStore: objectStore,
 	}
 
 	initCtx := &smartblock.InitContext{

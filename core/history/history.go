@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -9,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -16,16 +18,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/system_object"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -48,19 +48,17 @@ type History interface {
 }
 
 type history struct {
-	a                   core.Service
-	picker              block.ObjectGetter
-	objectStore         objectstore.ObjectStore
-	systemObjectService system_object.Service
-	spaceService        spacecore.SpaceCoreService
+	accountService account.Service
+	picker         block.ObjectGetter
+	objectStore    objectstore.ObjectStore
+	spaceService   space.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
-	h.a = a.MustComponent(core.CName).(core.Service)
 	h.picker = app.MustComponent[block.ObjectGetter](a)
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	h.systemObjectService = a.MustComponent(system_object.CName).(system_object.Service)
-	h.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
+	h.spaceService = app.MustComponent[space.Service](a)
+	h.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -69,11 +67,15 @@ func (h *history) Name() (name string) {
 }
 
 func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView, ver *pb.RpcHistoryVersion, err error) {
+	space, err := h.spaceService.Get(context.Background(), id.SpaceID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get space: %w", err)
+	}
 	s, sbType, ver, err := h.buildState(id, versionID)
 	if err != nil {
 		return
 	}
-	dependentObjectIDs := objectlink.DependentObjectIDs(s, h.systemObjectService, true, true, false, true, false)
+	dependentObjectIDs := objectlink.DependentObjectIDs(s, space, true, true, false, true, false)
 	// nolint:errcheck
 	metaD, _ := h.objectStore.QueryByID(dependentObjectIDs)
 	details := make([]*model.ObjectViewDetailsSet, 0, len(metaD))
@@ -93,13 +95,16 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		}
 	}
 
-	rels, _ := h.systemObjectService.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
+	relations, err := h.objectStore.FetchRelationByLinks(id.SpaceID, s.PickRelationLinks())
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
+	}
 	return &model.ObjectView{
 		RootId:        id.ObjectID,
 		Type:          model.SmartBlockType(sbType),
 		Blocks:        s.Blocks(),
 		Details:       details,
-		RelationLinks: rels.RelationLinks(),
+		RelationLinks: relations.RelationLinks(),
 	}, ver, nil
 }
 
@@ -107,7 +112,7 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int) (r
 	if limit <= 0 {
 		limit = 100
 	}
-	profileId, profileName, err := h.getProfileInfo(id.SpaceID)
+	profileId, profileName, err := h.getProfileInfo()
 	if err != nil {
 		return
 	}
@@ -212,7 +217,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 		return
 	}
 
-	st, _, _, err = source.BuildState(nil, tree, h.a.PredefinedObjects(id.SpaceID).Profile)
+	st, _, _, err = source.BuildState(nil, tree)
 	if err != nil {
 		return
 	}
@@ -222,7 +227,7 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 
 	st.BlocksInit(st)
 	if ch, e := tree.GetChange(versionId); e == nil {
-		profileId, profileName, e := h.getProfileInfo(id.SpaceID)
+		profileId, profileName, e := h.getProfileInfo()
 		if e != nil {
 			err = e
 			return
@@ -238,9 +243,9 @@ func (h *history) buildState(id domain.FullID, versionId string) (st *state.Stat
 	return
 }
 
-func (h *history) getProfileInfo(spaceID string) (profileId, profileName string, err error) {
-	profileId = h.a.ProfileID(spaceID)
-	lp, err := h.a.LocalProfile(spaceID)
+func (h *history) getProfileInfo() (profileId, profileName string, err error) {
+	profileId = h.accountService.IdentityObjectId()
+	lp, err := h.accountService.LocalProfile()
 	if err != nil {
 		return
 	}
