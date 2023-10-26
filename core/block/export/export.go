@@ -235,7 +235,11 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 		}
 	}
 
-	derivedObjects := e.getRelatedDerivedObjects(res)
+	derivedObjects, err := e.getRelatedDerivedObjects(res)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, do := range derivedObjects {
 		id := pbtypes.GetString(do.Details, bundle.RelationKeyId.String())
 		docs[id] = do.Details
@@ -536,36 +540,50 @@ func (e *export) cleanupFile(wr writer) {
 	os.Remove(wr.Path())
 }
 
-func (e *export) getRelatedDerivedObjects(objects []database.Record) []database.Record {
-	var derivedObjects []database.Record
+func (e *export) getRelatedDerivedObjects(objects []database.Record) ([]database.Record, error) {
+	var (
+		derivedObjects []database.Record
+		err            error
+	)
 
 	for _, object := range objects {
-		derivedObjects = e.processObject(object, derivedObjects)
+		derivedObjects, err = e.processObject(object, derivedObjects)
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	return derivedObjects
+	derivedObjects = lo.Union(derivedObjects)
+	return derivedObjects, nil
 }
 
-func (e *export) processObject(object database.Record, derivedObjects []database.Record) []database.Record {
+func (e *export) processObject(object database.Record, derivedObjects []database.Record) ([]database.Record, error) {
 	details := object.Details
 	for key, value := range details.Fields {
-		relation := e.getRelation(key)
+		relation, err := e.getRelation(key)
+		if err != nil {
+			return nil, err
+		}
 		if relation != nil {
-			derivedObjects = e.addRelationAndOptions(relation, value, derivedObjects)
+			derivedObjects, err = e.addRelationAndOptions(relation, value, derivedObjects)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	objectTypeDetails := e.getObjectType(details)
-	derivedObjects = lo.Union(derivedObjects, objectTypeDetails)
+	objectTypeDetails, err := e.objectStore.GetDetails(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	if err != nil {
+		return nil, err
+	}
 
-	return derivedObjects
+	derivedObjects = append(derivedObjects, database.Record{Details: objectTypeDetails.Details})
+	return derivedObjects, nil
 }
 
-func (e *export) getRelation(key string) *database.Record {
+func (e *export) getRelation(key string) (*database.Record, error) {
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
 	if err != nil {
-		log.Errorf("failed to get relation unique key %s: %s", key, err)
-		return nil
+		return nil, err
 	}
 	relation, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -587,36 +605,38 @@ func (e *export) getRelation(key string) *database.Record {
 		},
 	})
 	if err != nil {
-		log.Errorf("failed to query relation %s: %s", key, err)
-		return nil
+		return nil, err
 	}
 	if len(relation) == 0 {
-		return nil
+		return nil, nil
 	}
-	return &relation[0]
+	return &relation[0], nil
 }
 
-func (e *export) addRelationAndOptions(relation *database.Record, value *types.Value, derivedObjects []database.Record) []database.Record {
+func (e *export) addRelationAndOptions(relation *database.Record, value *types.Value, derivedObjects []database.Record) ([]database.Record, error) {
 	derivedObjects = e.addRelation(relation, derivedObjects)
-	format := relation.Get(bundle.RelationKeyRelationFormat.String()).GetNumberValue()
-	if format == float64(model.RelationFormat_tag) || format == float64(model.RelationFormat_status) {
-		relationOptions := e.getRelationOptions(value)
-		derivedObjects = lo.Union(derivedObjects, relationOptions)
+	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
+	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
+		relationOptions, err := e.getRelationOptions(value)
+		if err != nil {
+			return nil, err
+		}
+		derivedObjects = append(derivedObjects, relationOptions...)
 	}
 
-	return derivedObjects
+	return derivedObjects, nil
 }
 
 func (e *export) addRelation(relation *database.Record, derivedObjects []database.Record) []database.Record {
 	if relationKey := relation.Get(bundle.RelationKeyRelationKey.String()); relationKey != nil {
 		if !bundle.HasRelation(relationKey.GetStringValue()) {
-			derivedObjects = lo.Union(derivedObjects, []database.Record{*relation})
+			derivedObjects = append(derivedObjects, *relation)
 		}
 	}
 	return derivedObjects
 }
 
-func (e *export) getRelationOptions(relationOptions *types.Value) []database.Record {
+func (e *export) getRelationOptions(relationOptions *types.Value) ([]database.Record, error) {
 	var filter *model.BlockContentDataviewFilter
 	if relationOptions.GetStringValue() != "" {
 		filter = e.getFilterForStringOption(relationOptions, filter)
@@ -625,7 +645,7 @@ func (e *export) getRelationOptions(relationOptions *types.Value) []database.Rec
 		filter = e.getFilterForOptionsList(relationOptions, filter)
 	}
 	if filter == nil {
-		return nil
+		return nil, nil
 	}
 	relationOptionsDetails, _, err := e.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -643,10 +663,9 @@ func (e *export) getRelationOptions(relationOptions *types.Value) []database.Rec
 		},
 	})
 	if err != nil {
-		log.Errorf("failed to query relation options: %s", err)
-		return nil
+		return nil, err
 	}
-	return relationOptionsDetails
+	return relationOptionsDetails, nil
 }
 
 func (e *export) getFilterForOptionsList(relationOptions *types.Value, filter *model.BlockContentDataviewFilter) *model.BlockContentDataviewFilter {
@@ -670,17 +689,4 @@ func (e *export) getFilterForStringOption(value *types.Value, filter *model.Bloc
 		Value:       pbtypes.String(id),
 	}
 	return filter
-}
-
-func (e *export) getObjectType(details *types.Struct) []database.Record {
-	objectType := pbtypes.GetString(details, bundle.RelationKeyType.String())
-	objectTypeDetails, err := e.objectStore.QueryByID([]string{objectType})
-	if err != nil {
-		log.Errorf("failed to query objects type id %s: %s", objectType, err)
-		return nil
-	}
-	if len(objectTypeDetails) == 0 {
-		return nil
-	}
-	return objectTypeDetails
 }
