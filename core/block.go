@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 
 	"github.com/globalsign/mgo/bson"
 	"google.golang.org/grpc/metadata"
@@ -72,6 +74,9 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 			m.ObjectView = obj
 		}
 		return m
+	}
+	if rand.Intn(10) == 4 {
+		return response(pb.RpcObjectOpenResponseError_ANYTYPE_NEEDS_UPGRADE, fmt.Errorf("object updated on the newer version of anytype"))
 	}
 
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
