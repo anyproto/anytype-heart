@@ -15,7 +15,7 @@ import (
 
 type GroupTag struct {
 	Key     string
-	store   objectstore.ObjectStore
+	Store   objectstore.ObjectStore
 	Records []database.Record
 }
 
@@ -28,9 +28,6 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 
 	filterTag := database.FiltersAnd{
 		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
-	}
-	if spaceID != "" {
-		filterTag = append(filterTag, spaceFilter)
 	}
 
 	if f == nil {
@@ -56,7 +53,7 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 	}
 	f.FilterObj = database.FiltersOr{f.FilterObj, relationOptionFilter}
 
-	records, err := t.store.QueryRaw(f, 0, 0)
+	records, err := t.Store.QueryRaw(f, 0, 0)
 	if err != nil {
 		return fmt.Errorf("init kanban by tag, objectStore query error: %w", err)
 	}
