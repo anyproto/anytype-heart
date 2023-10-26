@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -129,7 +130,7 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 	}
 
 	nodeHash := node.Cid().String()
-	if err = s.fileIndexData(ctx, node, domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}, opts.Imported); err != nil {
+	if err = s.fileIndexData(ctx, node, domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}, s.isImported(opts.Origin)); err != nil {
 		return "", nil, err
 	}
 
@@ -145,6 +146,10 @@ func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) 
 		return "", nil, fmt.Errorf("store file size: %w", err)
 	}
 
+	err = s.fileStore.SetFileOrigin(nodeHash, opts.Origin)
+	if err != nil {
+		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
+	}
 	return nodeHash, fileInfo, nil
 }
 
@@ -956,6 +961,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 			}
 		}
 	}
+	origin := s.getFileOrigin(id.ObjectID)
 	if err := s.addToSyncQueue(id, false, false); err != nil {
 		return nil, fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
 	}
@@ -965,6 +971,7 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 		hash:    id.ObjectID,
 		info:    fileIndex,
 		node:    s,
+		origin:  origin,
 	}, nil
 }
 
@@ -999,4 +1006,12 @@ func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOpt
 		node:    s,
 	}
 	return f, nil
+}
+
+func (s *service) getFileOrigin(hash string) model.ObjectOrigin {
+	fileOrigin, err := s.fileStore.GetFileOrigin(hash)
+	if err != nil {
+		return 0
+	}
+	return model.ObjectOrigin(fileOrigin)
 }

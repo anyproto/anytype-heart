@@ -40,6 +40,7 @@ func TestUploader_Upload(t *testing.T) {
 		defer fx.tearDown()
 		im := fx.newImage("123")
 		fx.fileService.EXPECT().ImageAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(im, nil)
+
 		im.EXPECT().GetOriginalFile(gomock.Any()).Return(fx.file, nil)
 		b := newBlock(model.BlockContentFile_Image)
 		fx.picker.EXPECT().GetObject(mock.Anything, mock.Anything).Return(nil, nil)
@@ -153,6 +154,7 @@ func TestUploader_Upload(t *testing.T) {
 		defer fx.tearDown()
 		fx.picker.EXPECT().GetObject(mock.Anything, mock.Anything).Return(nil, nil)
 		fx.fileService.EXPECT().FileAdd(gomock.Any(), gomock.Any(), gomock.Any()).Return(fx.newFile("123", &files.FileMeta{}), nil)
+
 		res := fx.Uploader.SetBytes([]byte("my bytes")).SetName("filename").Upload(ctx)
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.Hash, "123")

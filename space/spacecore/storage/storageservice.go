@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/dgraph-io/badger/v3"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
@@ -144,7 +145,8 @@ func (s *storageService) deleteSpace(spaceId string) (err error) {
 
 		it := txn.NewIterator(opts)
 		for it.Rewind(); it.Valid(); it.Next() {
-			toBeDeleted = append(toBeDeleted, it.Item().Key())
+			key := slices.Clone(it.Item().Key())
+			toBeDeleted = append(toBeDeleted, key)
 		}
 		it.Close()
 		toBeDeleted = append(toBeDeleted, keys.HeaderKey())
