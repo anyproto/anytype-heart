@@ -178,12 +178,12 @@
   },
   {
     "desc": "Table with header",
-    "html": "<table>\n  <tr>\n    <th>Company</th>\n    <th>Contact</th>\n    <th>Country</th>\n  </tr>\n  <tr>\n    <td>Alfreds Futterkiste</td>\n    <td>Maria Anders</td>\n    <td>Germany</td>\n  </tr>\n</table>",
+    "html": "<table><tr><th>Company</th><th>Contact</th><th>Country</th></tr><tr><td>Alfreds Futterkiste</td><td>Maria Anders</td><td>Germany</td></tr></table>",
     "blocks": [{"id":"1","childrenIds":["2","3"],"Content":{"table":{}}},{"id":"2","childrenIds":["4","5","6"],"Content":{"layout":{"style":5}}},{"id":"3","childrenIds":["7","8"],"Content":{"layout":{"style":4}}},{"id":"4","Content":{"tableColumn":{}}},{"id":"5","Content":{"tableColumn":{}}},{"id":"6","Content":{"tableColumn":{}}},{"id":"7","childrenIds":["9","10","11"],"Content":{"tableRow":{"isHeader":true}}},{"id":"8","childrenIds":["12","13","14"],"Content":{"tableRow":{}}},{"id":"9","Content":{"text":{"text":"Company","marks":{}}}},{"id":"10","Content":{"text":{"text":"Contact","marks":{}}}},{"id":"11","Content":{"text":{"text":"Country","marks":{}}}},{"id":"12","Content":{"text":{"text":"Alfreds Futterkiste","marks":{}}}},{"id":"13","Content":{"text":{"text":"Maria Anders","marks":{}}}},{"id":"14","Content":{"text":{"text":"Germany","marks":{}}}}]
   },
   {
     "desc": "Table without header",
-    "html": "<table>\n  <tr>\n    <td>Alfreds Futterkiste</td>\n    <td>Maria Anders</td>\n    <td>Germany</td>\n  </tr>\n  <tr>\n    <td>Centro comercial Moctezuma</td>\n    <td>Francisco Chang</td>\n    <td>Mexico</td>\n  </tr>\n</table>",
+    "html": "<table><tr><td>Alfreds Futterkiste</td><td>Maria Anders</td><td>Germany</td></tr><tr><td>Centro comercial Moctezuma</td><td>Francisco Chang</td><td>Mexico</td></tr></table>",
     "blocks": [{"id":"1","childrenIds":["2","3"],"Content":{"table":{}}},{"id":"2","childrenIds":["4","5","6"],"Content":{"layout":{"style":5}}},{"id":"3","childrenIds":["7","8","9"],"Content":{"layout":{"style":4}}},{"id":"4","Content":{"tableColumn":{}}},{"id":"5","Content":{"tableColumn":{}}},{"id":"6","Content":{"tableColumn":{}}},{"id":"7","Content":{"tableRow":{"isHeader":true}}},{"id":"8","childrenIds":["10","11","12"],"Content":{"tableRow":{}}},{"id":"9","childrenIds":["13","14","15"],"Content":{"tableRow":{}}},{"id":"10","Content":{"text":{"text":"Alfreds Futterkiste","marks":{}}}},{"id":"11","Content":{"text":{"text":"Maria Anders","marks":{}}}},{"id":"12","Content":{"text":{"text":"Germany","marks":{}}}},{"id":"13","Content":{"text":{"text":"Centro comercial Moctezuma","marks":{}}}},{"id":"14","Content":{"text":{"text":"Francisco Chang","marks":{}}}},{"id":"15","Content":{"text":{"text":"Mexico","marks":{}}}}]
   },
   {
@@ -200,5 +200,10 @@
     "desc": "Image from wiki without alt",
     "html": "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\"><img style=\"display: block;-webkit-user-select: none;margin: auto;background-color: hsl(0, 0%, 90%);transition: background-color 300ms;\" src=\"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Sharon_Stone_%2833374127422%29_%28cropped%29.jpg/220px-Sharon_Stone_%2833374127422%29_%28cropped%29.jpg\">",
     "blocks": [{"id":"1","Content":{"file":{"name":"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Sharon_Stone_(33374127422)_(cropped).jpg/220px-Sharon_Stone_(33374127422)_(cropped).jpg","type":2}}}]
+  },
+  {
+    "desc": "List with spans with new line items",
+    "html": "<span>1. One\n</span><span>2. Two</span>",
+    "blocks": [{"id":"1","Content":{"text":{"text":"One","style":10,"marks":{}}}},{"id":"2","Content":{"text":{"text":"Two","style":10,"marks":{}}}}]
   }
 ]
