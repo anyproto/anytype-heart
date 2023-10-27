@@ -3,7 +3,6 @@ package editor
 import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -11,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -26,25 +24,27 @@ type Workspaces struct {
 	dataview.Dataview
 	stext.Text
 
-	spaceService spaceService
-	objectStore  objectstore.ObjectStore
-	config       *config.Config
+	spaceService   spaceService
+	objectStore    objectstore.ObjectStore
+	config         *config.Config
+	accountService accountService
 }
 
-func NewWorkspace(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, spaceService spaceService, layoutConverter converter.LayoutConverter, config *config.Config, eventSender event.Sender) *Workspaces {
+func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock) *Workspaces {
 	return &Workspaces{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			objectStore,
-			eventSender,
+			f.objectStore,
+			f.eventSender,
 		),
-		Dataview:     dataview.NewDataview(sb, objectStore),
-		objectStore:  objectStore,
-		spaceService: spaceService,
-		config:       config,
+		Dataview:       dataview.NewDataview(sb, f.objectStore),
+		objectStore:    f.objectStore,
+		spaceService:   f.spaceService,
+		config:         f.config,
+		accountService: f.accountService,
 	}
 }
 
@@ -73,12 +73,17 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
 	}
 
+	spaceAccessibility := SpacePrivate
+	if w.Space().Id() == w.accountService.PersonalSpaceID() {
+		spaceAccessibility = SpacePersonal
+	}
+
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
 		template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true)),
-		template.WithDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(0)),
+		template.WithForcedDetail(bundle.RelationKeySpaceAccessibility, pbtypes.Int64(int64(spaceAccessibility))),
 		template.WithForcedDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_space))),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),

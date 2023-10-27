@@ -108,7 +108,7 @@ func (s *State) normalizeChildren(b simple.Block) {
 	m := b.Model()
 	for _, cid := range m.ChildrenIds {
 		if !s.Exists(cid) {
-			m.ChildrenIds = slice.Remove(m.ChildrenIds, cid)
+			m.ChildrenIds = slice.RemoveMut(m.ChildrenIds, cid)
 			s.normalizeChildren(b)
 			return
 		}

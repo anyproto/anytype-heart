@@ -259,7 +259,7 @@ var WithRemovedFeaturedRelation = func(key domain.RelationKey) StateTransformer 
 	return func(s *state.State) {
 		var featRels = pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
 		if slice.FindPos(featRels, key.String()) > -1 {
-			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(slice.Remove(featRels, key.String())))
+			s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(slice.RemoveMut(featRels, key.String())))
 			return
 		}
 	}
@@ -272,7 +272,7 @@ var WithCreatorRemovedFromFeaturedRelations = StateTransformer(func(s *state.Sta
 		frc := make([]string, len(fr))
 		copy(frc, fr)
 
-		frc = slice.Remove(frc, bundle.RelationKeyCreator.String())
+		frc = slice.RemoveMut(frc, bundle.RelationKeyCreator.String())
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
 	}
 })

@@ -22,7 +22,7 @@ import (
 
 func NewTemplateTest(t *testing.T, ctrl *gomock.Controller, templateName string) (*Template, error) {
 	sb := smarttest.New("root")
-	_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{&pb.RpcObjectSetDetailsDetail{
+	_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{{
 		Key:   bundle.RelationKeyName.String(),
 		Value: pbtypes.String(templateName),
 	}}, false)
@@ -81,5 +81,14 @@ func TestTemplate_GetNewPageState(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue(), customName)
 		require.Equal(t, st.Get(template.TitleBlockId).Model().GetText().Text, "")
+	})
+
+	t.Run("object type key is set from target type", func(t *testing.T) {
+		tmpl, err := NewTemplateTest(t, ctrl, templateName)
+		require.NoError(t, err)
+
+		st, err := tmpl.GetNewPageState("")
+		require.NoError(t, err)
+		require.Equal(t, st.ObjectTypeKeys(), []domain.TypeKey{bundle.TypeKeyPage})
 	})
 }

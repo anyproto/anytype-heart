@@ -32,10 +32,11 @@ All objects can have relation `InternalFlags` set to its details. This relation 
 Client passes `internalFlags` value on object creation, and then the content of its value could be modified only by Middleware. However, it only deletes flags, and it deletes them on **ALL** commands where new state of object is applied **EXCEPT** these cases:
 
 1. ObjectApplyTemplate
-2. ObjectSetObjectType
+2. ObjectSetObjectType - deletes only `DeleteEmpty` and `SelectType`
 3. ObjectSetDetails - if one of details is `Name`
 4. ObjectOpen
-5. BlockTextSetText - if no changes in block were made OR it is **title** or **description** block
+5. ObjectClose
+6. BlockTextSetText - if no changes in block were made OR it is **title** or **description** block
 
 In all other cases Middleware performs state Non-Emptiness check. And if state is not empty, it wipes `internalFlags`.
 
