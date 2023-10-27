@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/identity"
+	"github.com/anyproto/anytype-heart/util/builtintemplate"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -78,7 +79,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/syncstatusprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
-	"github.com/anyproto/anytype-heart/util/builtintemplate"
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
 	"github.com/anyproto/anytype-heart/util/vcs"
@@ -212,8 +212,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		Register(source.New()).
-		Register(builtintemplate.New()).
 		Register(space.New()).
+		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).

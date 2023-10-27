@@ -142,10 +142,12 @@ func (s *service) reinstallBundledObjects(space space.Space, sourceObjectIDs []s
 	)
 	for _, rec := range uninstalledObjects {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		var typeKey domain.TypeKey
 		err = space.Do(id, func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+			typeKey = domain.TypeKey(st.UniqueKeyInternal())
 
 			ids = append(ids, id)
 			objects = append(objects, st.CombinedDetails())
@@ -157,6 +159,10 @@ func (s *service) reinstallBundledObjects(space space.Space, sourceObjectIDs []s
 			return nil, nil, fmt.Errorf("reinstall object %s (source object: %s): %w", id, sourceObjectID, err)
 		}
 
+		err = s.installTemplatesForObjectType(space, typeKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("install templates for object type %s: %w", typeKey, err)
+		}
 	}
 
 	return ids, objects, nil
