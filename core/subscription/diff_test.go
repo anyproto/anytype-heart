@@ -47,7 +47,7 @@ func TestListDiffFuzz(t *testing.T) {
 
 		for i, ch := range ctx.position {
 			if !ch.isAdd {
-				resAfter = slice.Remove(resAfter, ch.id)
+				resAfter = slice.RemoveMut(resAfter, ch.id)
 			}
 			if ch.afterId == "" {
 				resAfter = append([]string{ch.id}, resAfter...)
@@ -59,7 +59,7 @@ func TestListDiffFuzz(t *testing.T) {
 			debug = append(debug, fmt.Sprintf("%d:\t %v", i, resAfter))
 		}
 		for i, rm := range ctx.remove {
-			resAfter = slice.Remove(resAfter, rm.id)
+			resAfter = slice.RemoveMut(resAfter, rm.id)
 			debug = append(debug, fmt.Sprintf("%d:\t remove %+v", i, rm.id))
 			debug = append(debug, fmt.Sprintf("%d:\t %v", i, resAfter))
 		}

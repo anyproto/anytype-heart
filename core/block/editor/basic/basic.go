@@ -426,7 +426,7 @@ func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string
 			case bundle.RelationKeyDescription.String():
 				s.Unlink(state.DescriptionBlockID)
 			}
-			frc = slice.Remove(frc, r)
+			frc = slice.RemoveMut(frc, r)
 		}
 	}
 	if len(frc) != len(fr) {

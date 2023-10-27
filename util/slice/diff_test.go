@@ -107,7 +107,7 @@ func Test_DifferentLength(t *testing.T) {
 				continue
 			}
 			delIdx := randNum(0, l)
-			changed = Remove(changed, changed[delIdx])
+			changed = RemoveMut(changed, changed[delIdx])
 		}
 
 		insCnt := randNum(0, 10)

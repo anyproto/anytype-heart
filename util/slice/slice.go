@@ -87,8 +87,8 @@ func Insert[T any](s []T, pos int, v ...T) []T {
 	return append(s[:pos], append(v, s[pos:]...)...)
 }
 
-// Remove reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
-func Remove[T comparable](s []T, v T) []T {
+// RemoveMut reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
+func RemoveMut[T comparable](s []T, v T) []T {
 	var n int
 	for _, x := range s {
 		if x != v {
@@ -97,6 +97,19 @@ func Remove[T comparable](s []T, v T) []T {
 		}
 	}
 	return s[:n]
+}
+
+// Remove is an immutable analogue of RemoveMut function. Input slice is copied and then modified
+func Remove[T comparable](s []T, v T) []T {
+	var n int
+	sc := slices.Clone(s)
+	for _, x := range s {
+		if x != v {
+			sc[n] = x
+			n++
+		}
+	}
+	return sc[:n]
 }
 
 // RemoveIndex reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
