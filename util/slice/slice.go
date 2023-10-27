@@ -99,7 +99,7 @@ func RemoveMut[T comparable](s []T, v T) []T {
 	return s[:n]
 }
 
-// Remove is an immutable analogue of RemoveMut function. Input slice is copied and then modified
+// Remove is an immutable analog of RemoveMut function. Input slice is copied and then modified
 func Remove[T comparable](s []T, v T) []T {
 	var n int
 	sc := slices.Clone(s)
