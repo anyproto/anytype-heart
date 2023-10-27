@@ -3,6 +3,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 
@@ -14,8 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
-
-	_ "embed"
 )
 
 //go:embed rules.json
@@ -129,7 +128,7 @@ func doObjectTypeRule(s *pb.ChangeSnapshot, r *rule) {
 	}
 	switch r.Action {
 	case remove:
-		s.Data.ObjectTypes = slice.Remove(s.Data.ObjectTypes, r.ObjectType)
+		s.Data.ObjectTypes = slice.RemoveMut(s.Data.ObjectTypes, r.ObjectType)
 	case add:
 		s.Data.ObjectTypes = append(s.Data.ObjectTypes, r.ObjectType)
 	case change:
