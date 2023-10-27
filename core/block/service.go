@@ -30,7 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	template2 "github.com/anyproto/anytype-heart/core/block/template"
+	templateservice "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -699,7 +699,7 @@ func (s *Service) Close(ctx context.Context) (err error) {
 }
 
 func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, err error) {
-	if templateID == template2.BlankTemplateID || templateID == "" {
+	if templateID == templateservice.BlankTemplateID || templateID == "" {
 		return s.BlankTemplateState(), nil
 	}
 	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
@@ -836,7 +836,7 @@ func (s *Service) GetLogFields() []zap.Field {
 }
 
 func (s *Service) BlankTemplateState() (st *state.State) {
-	st = state.NewDoc(template2.BlankTemplateID, nil).NewState()
+	st = state.NewDoc(templateservice.BlankTemplateID, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,
