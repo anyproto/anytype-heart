@@ -25,14 +25,70 @@ func (s *service) InstallBundledObjects(
 	space space.Space,
 	sourceObjectIds []string,
 ) (ids []string, objects []*types.Struct, err error) {
-	spaceID := space.Id()
 
-	ids, objects, err = s.reinstallBundledObjects(space, sourceObjectIds)
+	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get marketplace space: %w", err)
+	}
+
+	ids, objects, err = s.reinstallBundledObjects(ctx, marketplaceSpace, space, sourceObjectIds)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reinstall bundled objects: %w", err)
 	}
 
-	// todo: replace this func to the universal space to space copy
+	existingObjectMap, err := s.listInstalledObjects(space, sourceObjectIds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list installed objects: %w", err)
+	}
+
+	for _, sourceObjectId := range sourceObjectIds {
+		if _, ok := existingObjectMap[sourceObjectId]; ok {
+			continue
+		}
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, sourceObjectId, space)
+		if err != nil {
+			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
+		}
+		id, newDetails, err := s.installObject(ctx, space, installingDetails)
+		if err != nil {
+			return nil, nil, fmt.Errorf("install object: %w", err)
+		}
+		if id != "" && newDetails != nil {
+			ids = append(ids, id)
+			objects = append(objects, newDetails)
+		}
+	}
+
+	return
+}
+
+func (s *service) installObject(ctx context.Context, space space.Space, installingDetails *types.Struct) (id string, newDetails *types.Struct, err error) {
+	uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(installingDetails, bundle.RelationKeyUniqueKey.String()))
+	if err != nil {
+		return "", nil, fmt.Errorf("unmarshal unique key: %w", err)
+	}
+	var objectTypeKey domain.TypeKey
+	if uk.SmartblockType() == coresb.SmartBlockTypeRelation {
+		objectTypeKey = bundle.TypeKeyRelation
+	} else if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
+		objectTypeKey = bundle.TypeKeyObjectType
+	} else {
+		return "", nil, fmt.Errorf("unsupported object type: %s", uk.SmartblockType())
+	}
+
+	id, newDetails, err = s.CreateObjectInSpace(ctx, space, CreateObjectRequest{
+		Details:       installingDetails,
+		ObjectTypeKey: objectTypeKey,
+	})
+	if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
+		// we don't want to stop adding other objects
+		log.Errorf("error while block create: %v", err)
+		return "", nil, nil
+	}
+	return id, newDetails, nil
+}
+
+func (s *service) listInstalledObjects(space space.Space, sourceObjectIds []string) (map[string]struct{}, error) {
 	existingObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -43,69 +99,21 @@ func (s *service) InstallBundledObjects(
 			{
 				RelationKey: bundle.RelationKeySpaceId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceID),
+				Value:       pbtypes.String(space.Id()),
 			},
 		},
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("query existing objects: %w", err)
+		return nil, fmt.Errorf("query existing objects: %w", err)
 	}
-	var existingObjectMap = make(map[string]struct{})
+	existingObjectMap := make(map[string]struct{}, len(existingObjects))
 	for _, existingObject := range existingObjects {
 		existingObjectMap[pbtypes.GetString(existingObject.Details, bundle.RelationKeySourceObject.String())] = struct{}{}
 	}
-
-	marketplaceSpace, err := s.spaceService.Get(ctx, addr.AnytypeMarketplaceWorkspace)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get marketplace space: %w", err)
-	}
-
-	for _, sourceObjectId := range sourceObjectIds {
-		if _, ok := existingObjectMap[sourceObjectId]; ok {
-			continue
-		}
-		err = marketplaceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
-			d, err := s.prepareDetailsForInstallingObject(ctx, space, b.CombinedDetails())
-			if err != nil {
-				return err
-			}
-
-			uk, err := domain.UnmarshalUniqueKey(pbtypes.GetString(d, bundle.RelationKeyUniqueKey.String()))
-			if err != nil {
-				return err
-			}
-			var objectTypeKey domain.TypeKey
-			if uk.SmartblockType() == coresb.SmartBlockTypeRelation {
-				objectTypeKey = bundle.TypeKeyRelation
-			} else if uk.SmartblockType() == coresb.SmartBlockTypeObjectType {
-				objectTypeKey = bundle.TypeKeyObjectType
-			} else {
-				return fmt.Errorf("unsupported object type: %s", b.Type())
-			}
-
-			id, object, err := s.CreateObjectInSpace(ctx, space, CreateObjectRequest{
-				Details:       d,
-				ObjectTypeKey: objectTypeKey,
-			})
-			if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-				// we don't want to stop adding other objects
-				log.Errorf("error while block create: %v", err)
-				return nil
-			}
-
-			ids = append(ids, id)
-			objects = append(objects, object)
-			return nil
-		})
-		if err != nil {
-			return
-		}
-	}
-
-	return
+	return existingObjectMap, nil
 }
 
-func (s *service) reinstallBundledObjects(space space.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
+func (s *service) reinstallBundledObjects(ctx context.Context, sourceSpace space.Space, space space.Space, sourceObjectIDs []string) ([]string, []*types.Struct, error) {
 	uninstalledObjects, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -135,10 +143,19 @@ func (s *service) reinstallBundledObjects(space space.Space, sourceObjectIDs []s
 	)
 	for _, rec := range uninstalledObjects {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		sourceObjectId := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, sourceObjectId, space)
+		if err != nil {
+			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
+		}
+
+		var typeKey domain.TypeKey
 		err = space.Do(id, func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
+			st.SetDetails(installingDetails)
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, pbtypes.Bool(false))
 			st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, pbtypes.Bool(false))
+			typeKey = domain.TypeKey(st.UniqueKeyInternal())
 
 			ids = append(ids, id)
 			objects = append(objects, st.CombinedDetails())
@@ -146,16 +163,28 @@ func (s *service) reinstallBundledObjects(space space.Space, sourceObjectIDs []s
 			return sb.Apply(st)
 		})
 		if err != nil {
-			sourceObjectID := pbtypes.GetString(rec.Details, bundle.RelationKeySourceObject.String())
-			return nil, nil, fmt.Errorf("reinstall object %s (source object: %s): %w", id, sourceObjectID, err)
+			return nil, nil, fmt.Errorf("reinstall object %s (source object: %s): %w", id, sourceObjectId, err)
 		}
 
+		err = s.installTemplatesForObjectType(space, typeKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("install templates for object type %s: %w", typeKey, err)
+		}
 	}
 
 	return ids, objects, nil
 }
 
-func (s *service) prepareDetailsForInstallingObject(ctx context.Context, spc space.Space, details *types.Struct) (*types.Struct, error) {
+func (s *service) prepareDetailsForInstallingObject(ctx context.Context, sourceSpace space.Space, sourceObjectId string, spc space.Space) (*types.Struct, error) {
+	var details *types.Struct
+	err := sourceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
+		details = b.CombinedDetails()
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get details from source space: %w", err)
+	}
+
 	spaceID := spc.Id()
 	sourceId := pbtypes.GetString(details, bundle.RelationKeyId.String())
 	details.Fields[bundle.RelationKeySpaceId.String()] = pbtypes.String(spaceID)

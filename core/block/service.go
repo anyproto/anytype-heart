@@ -183,10 +183,7 @@ func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	id, err = s.resolveFullId(id)
-	if err != nil {
-		return nil, fmt.Errorf("resolve full id: %w", err)
-	}
+	id = s.resolveFullId(id)
 	startTime := time.Now()
 	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
@@ -253,22 +250,18 @@ func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock
 }
 
 // resolveFullId resolves missing spaceId
-func (s *Service) resolveFullId(id domain.FullID) (domain.FullID, error) {
-	if id.SpaceID == "" {
-		var err error
-		id.SpaceID, err = s.resolver.ResolveSpaceID(id.ObjectID)
-		if err != nil {
-			return id, fmt.Errorf("resolve space id: %w", err)
-		}
+func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
+	// First try to resolve space. It's necessary if client accidentally passes wrong spaceId
+	spaceId, err := s.resolver.ResolveSpaceID(id.ObjectID)
+	if err == nil {
+		return domain.FullID{SpaceID: spaceId, ObjectID: id.ObjectID}
 	}
-	return id, nil
+	// Or use spaceId from request
+	return id
 }
 
 func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	id, err = s.resolveFullId(id)
-	if err != nil {
-		return nil, fmt.Errorf("resolve full id: %w", err)
-	}
+	id = s.resolveFullId(id)
 	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
@@ -280,12 +273,9 @@ func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects
 }
 
 func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
-	id, err := s.resolveFullId(id)
-	if err != nil {
-		return fmt.Errorf("resolve full id: %w", err)
-	}
+	id = s.resolveFullId(id)
 	var isDraft bool
-	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
+	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
