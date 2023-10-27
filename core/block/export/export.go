@@ -266,9 +266,16 @@ func (e *export) getNested(spaceID string, id string, docs map[string]*types.Str
 }
 
 func (e *export) getExistedObjects(spaceID string, includeArchived bool, isProtobuf bool) (map[string]*types.Struct, error) {
-	res, err := e.objectStore.List(spaceID)
+	res, err := e.objectStore.List(spaceID, false)
 	if err != nil {
 		return nil, err
+	}
+	if includeArchived {
+		archivedObjects, err := e.objectStore.List(spaceID, true)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, archivedObjects...)
 	}
 	objectDetails := make(map[string]*types.Struct, len(res))
 	for _, info := range res {
