@@ -130,7 +130,6 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 }
 
 func (f *fileSync) precacheSpaceStats() {
-	return
 	// TODO multi-spaces: init for each space: GO-1681
 	// TODO: [MR] adapt to multi-spaces
 	spaceID := f.personalIDGetter.PersonalSpaceID()
