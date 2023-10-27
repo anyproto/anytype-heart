@@ -15,7 +15,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/gosimple/slug"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -559,7 +558,6 @@ func (e *export) getRelatedDerivedObjects(objects []database.Record) ([]database
 			return nil, err
 		}
 	}
-	derivedObjects = lo.Union(derivedObjects)
 	return derivedObjects, nil
 }
 
