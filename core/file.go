@@ -138,3 +138,15 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 	}
 	return response(pb.RpcFileSpaceUsageResponseError_NULL, nil, usage)
 }
+
+func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
+	usage, err := getService[files.Service](mw).GetNodeUsage(ctx)
+	_ = usage
+	code := mapErrorCode[pb.RpcFileNodeUsageResponseErrorCode](err)
+	return &pb.RpcFileNodeUsageResponse{
+		Error: &pb.RpcFileNodeUsageResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

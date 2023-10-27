@@ -60,6 +60,7 @@ type Service interface {
 	FileOffload(ctx context.Context, fileID string, includeNotPinned bool) (totalSize uint64, err error)
 	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
+	GetNodeUsage(ctx context.Context) (filesync.NodeUsage, error)
 	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, error)
 	ImageByHash(ctx context.Context, id domain.FullID) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error

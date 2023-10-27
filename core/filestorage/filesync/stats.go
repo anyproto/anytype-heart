@@ -18,6 +18,13 @@ import (
 	"github.com/anyproto/anytype-heart/util/conc"
 )
 
+type NodeUsage struct {
+	AccountBytesLimit int
+	TotalBytesUsage   int
+	TotalCidsCount    int
+	Spaces            []SpaceStat
+}
+
 type SpaceStat struct {
 	SpaceId           string
 	FileCount         int
@@ -37,6 +44,12 @@ type FileStat struct {
 
 func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
+}
+
+func (s *fileSync) NodeUsage(ctx context.Context) (usage NodeUsage, err error) {
+	info, err := s.rpcStore.AccountInfo(ctx)
+	_ = info
+	return
 }
 
 func (f *fileSync) SpaceStat(ctx context.Context, spaceID string) (SpaceStat, error) {

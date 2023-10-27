@@ -3,6 +3,7 @@ package files
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -30,4 +31,8 @@ func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFil
 		BytesLimit:      uint64(stat.AccountBytesLimit),
 		LocalBytesUsage: usage,
 	}, nil
+}
+
+func (s *service) GetNodeUsage(ctx context.Context) (filesync.NodeUsage, error) {
+	return s.fileSync.NodeUsage(ctx)
 }
