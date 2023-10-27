@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type Template struct {
@@ -60,7 +61,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
 
-	if err = t.setTypeKeyToState(st); err != nil {
+	if err = t.updateTypeKey(st); err != nil {
 		return nil, err
 	}
 
@@ -91,23 +92,17 @@ func (t *Template) getTypeKeyById(typeId string) (domain.TypeKey, error) {
 	return domain.TypeKey(uniqueKey.InternalKey()), nil
 }
 
-func (t *Template) setTypeKeyToState(st *state.State) (err error) {
-	var typeKey domain.TypeKey
+func (t *Template) updateTypeKey(st *state.State) error {
 	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeID != "" {
-		typeKey, err = t.getTypeKeyById(objectTypeID)
+		typeKey, err := t.getTypeKeyById(objectTypeID)
 		if err != nil {
 			return fmt.Errorf("get target object type %s: %w", objectTypeID, err)
 		}
-	} else {
-		objectTypeKeys := t.ObjectTypeKeys()
-		for _, objectTypeKey := range objectTypeKeys {
-			if objectTypeKey != bundle.TypeKeyTemplate {
-				typeKey = objectTypeKey
-				break
-			}
-		}
+		st.SetObjectTypeKey(typeKey)
+		return nil
 	}
-	st.SetObjectTypeKey(typeKey)
+	updatedTypeKeys := slice.Remove(t.ObjectTypeKeys(), bundle.TypeKeyTemplate)
+	st.SetObjectTypeKeys(updatedTypeKeys)
 	return nil
 }
