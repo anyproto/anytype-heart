@@ -650,6 +650,7 @@ func TestService_Search(t *testing.T) {
 	})
 
 	t.Run("SubscribeGroup: tag group", func(t *testing.T) {
+		// given
 		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
@@ -697,6 +698,7 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
+		// when
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:      spaceID,
 			RelationKey:  relationKey,
@@ -704,6 +706,8 @@ func TestService_Search(t *testing.T) {
 			SubId:        subID,
 			CollectionId: collectionID,
 		})
+
+		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, groups)
 		assert.Equal(t, subID, groups.SubId)
@@ -721,6 +725,7 @@ func TestService_Search(t *testing.T) {
 		assert.Equal(t, "2", tagGroup.Tag.Ids[0])
 	})
 	t.Run("SubscribeGroup: tag group - no tags for relation", func(t *testing.T) {
+		// given
 		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
@@ -756,6 +761,7 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
+		// when
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:      spaceID,
 			RelationKey:  relationKey,
@@ -763,6 +769,8 @@ func TestService_Search(t *testing.T) {
 			SubId:        subID,
 			CollectionId: collectionID,
 		})
+
+		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, groups)
 		assert.Equal(t, subID, groups.SubId)
@@ -772,6 +780,7 @@ func TestService_Search(t *testing.T) {
 		assert.Len(t, tagGroup.Tag.Ids, 0)
 	})
 	t.Run("SubscribeGroup: status group", func(t *testing.T) {
+		// given
 		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
@@ -816,11 +825,14 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
+		// when
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},
 		})
+
+		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, groups)
 		assert.Len(t, groups.Groups, 3)
@@ -836,6 +848,7 @@ func TestService_Search(t *testing.T) {
 	})
 
 	t.Run("SubscribeGroup: status group - no statuses for relation", func(t *testing.T) {
+		// given
 		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
@@ -866,12 +879,14 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
+		// when
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},
 		})
 
+		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, groups)
 		assert.Len(t, groups.Groups, 1)
@@ -881,6 +896,7 @@ func TestService_Search(t *testing.T) {
 	})
 
 	t.Run("SubscribeGroup: checkbox group", func(t *testing.T) {
+		// given
 		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
@@ -911,12 +927,14 @@ func TestService_Search(t *testing.T) {
 			},
 		})
 
+		// when
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},
 		})
 
+		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, groups)
 		assert.Len(t, groups.Groups, 2)
