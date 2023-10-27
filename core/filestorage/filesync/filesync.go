@@ -137,8 +137,8 @@ func (f *fileSync) precacheSpaceStats() {
 	if err != nil {
 		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
 		f.setSpaceStats(spaceID, SpaceStat{
-			SpaceId:    spaceID,
-			BytesLimit: 1024 * 1024 * 1024, // 1 GB
+			SpaceId:           spaceID,
+			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
 		})
 		log.Error("can't init space stats", zap.String("spaceID", f.personalIDGetter.PersonalSpaceID()), zap.Error(err))
 	}

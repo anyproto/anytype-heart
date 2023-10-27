@@ -1460,6 +1460,7 @@
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
@@ -20482,6 +20483,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | bytesUsage | [uint64](#uint64) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -22989,6 +22991,24 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype-model-ObjectOrigin"></a>
+
+### ObjectOrigin
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| none | 0 |  |
+| clipboard | 1 |  |
+| dragAndDrop | 2 |  |
+| import | 3 |  |
+| webclipper | 4 |  |
+| sharingExtension | 5 |  |
+| usecase | 6 |  |
+| builtin | 7 |  |
 
 
 

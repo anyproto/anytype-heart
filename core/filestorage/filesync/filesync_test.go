@@ -12,11 +12,8 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/ipfs/go-cid"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -24,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -50,18 +46,6 @@ func TestFileSync_AddFile(t *testing.T) {
 		{}, // We can use just empty struct here, because we don't use any fields
 	}, nil).AnyTimes()
 	// TODO Test when limit is reached
-	fx.rpcStore.EXPECT().CheckAvailability(gomock.Any(), spaceId, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
-		res := lo.Map(cids, func(c cid.Cid, _ int) *fileproto.BlockAvailability {
-			return &fileproto.BlockAvailability{
-				Cid:    c.Bytes(),
-				Status: fileproto.AvailabilityStatus_NotExists,
-			}
-		})
-		return res, nil
-	})
-	// fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
-	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), spaceId).Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
-	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
 	require.NoError(t, fx.AddFile(spaceId, fileId, false, false))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
@@ -73,7 +57,6 @@ func TestFileSync_RemoveFile(t *testing.T) {
 	defer fx.Finish(t)
 	spaceId := "spaceId"
 	fileId := "fileId"
-	fx.rpcStore.EXPECT().DeleteFiles(gomock.Any(), spaceId, fileId).Return(nil)
 	require.NoError(t, fx.RemoveFile(spaceId, fileId))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
@@ -96,14 +79,6 @@ func newFixture(t *testing.T) *fixture {
 		a:           new(app.App),
 	}
 
-	fx.rpcStore = mock_rpcstore.NewMockRpcStore(fx.ctrl)
-	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), "space1").Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
-
-	mockRpcStoreService := mock_rpcstore.NewMockService(fx.ctrl)
-	mockRpcStoreService.EXPECT().Name().Return(rpcstore.CName).AnyTimes()
-	mockRpcStoreService.EXPECT().Init(gomock.Any()).AnyTimes()
-	mockRpcStoreService.EXPECT().NewStore().Return(fx.rpcStore)
-
 	fileStoreMock := NewMockFileStore(fx.ctrl)
 	fileStoreMock.EXPECT().Name().Return(filestore.CName).AnyTimes()
 	fileStoreMock.EXPECT().Init(gomock.Any()).AnyTimes()
@@ -121,7 +96,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.a.Register(fx.fileService).
 		Register(filestorage.NewInMemory()).
 		Register(datastore.NewInMemory()).
-		Register(mockRpcStoreService).
+		Register(rpcstore.NewInMemoryService()).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
 		Register(personalSpaceIdGetter).
@@ -133,7 +108,6 @@ func newFixture(t *testing.T) *fixture {
 type fixture struct {
 	FileSync
 	fileService   fileservice.FileService
-	rpcStore      *mock_rpcstore.MockRpcStore
 	fileStoreMock *MockFileStore
 	ctrl          *gomock.Controller
 	a             *app.App

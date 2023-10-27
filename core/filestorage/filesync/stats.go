@@ -19,11 +19,12 @@ import (
 )
 
 type SpaceStat struct {
-	SpaceId    string
-	FileCount  int
-	CidsCount  int
-	BytesUsage int
-	BytesLimit int
+	SpaceId           string
+	FileCount         int
+	CidsCount         int
+	TotalBytesUsage   int // Per account
+	SpaceBytesUsage   int // Per space
+	AccountBytesLimit int
 }
 
 type FileStat struct {
@@ -69,11 +70,12 @@ func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (s
 		return
 	}
 	newStats := SpaceStat{
-		SpaceId:    spaceID,
-		FileCount:  int(info.FilesCount),
-		CidsCount:  int(info.CidsCount),
-		BytesUsage: int(info.UsageBytes),
-		BytesLimit: int(info.LimitBytes),
+		SpaceId:           spaceID,
+		FileCount:         int(info.FilesCount),
+		CidsCount:         int(info.CidsCount),
+		TotalBytesUsage:   int(info.TotalUsageBytes),
+		SpaceBytesUsage:   int(info.SpaceUsageBytes),
+		AccountBytesLimit: int(info.LimitBytes),
 	}
 	f.spaceStatsLock.Lock()
 	prevStats, ok := f.spaceStats[spaceID]
@@ -85,7 +87,7 @@ func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (s
 		f.spaceStats[spaceID] = newStats
 		// Do not send event if it is first time we get stats
 		if ok {
-			f.sendSpaceUsageEvent(spaceID, uint64(newStats.BytesUsage))
+			f.sendSpaceUsageEvent(spaceID, uint64(newStats.SpaceBytesUsage))
 		}
 	}
 	f.spaceStatsLock.Unlock()
@@ -106,6 +108,7 @@ func (f *fileSync) sendSpaceUsageEvent(spaceID string, bytesUsage uint64) {
 				Value: &pb.EventMessageValueOfFileSpaceUsage{
 					FileSpaceUsage: &pb.EventFileSpaceUsage{
 						BytesUsage: bytesUsage,
+						SpaceId:    spaceID,
 					},
 				},
 			},

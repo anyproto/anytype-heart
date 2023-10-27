@@ -257,10 +257,23 @@ func (t *testServer) SpaceInfo(ctx context.Context, req *fileproto.SpaceInfoRequ
 		LimitBytes: 99999999,
 	}
 	for _, b := range t.data {
-		resp.UsageBytes += uint64(len(b))
+		resp.TotalUsageBytes += uint64(len(b))
 		resp.CidsCount++
 	}
 	resp.FilesCount = uint64(len(t.files))
+	return resp, nil
+}
+
+func (t *testServer) AccountInfo(ctx context.Context, req *fileproto.AccountInfoRequest) (*fileproto.AccountInfoResponse, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	resp := &fileproto.AccountInfoResponse{
+		LimitBytes: 99999999,
+	}
+	for _, b := range t.data {
+		resp.TotalUsageBytes += uint64(len(b))
+		resp.TotalCidsCount++
+	}
 	return resp, nil
 }
 

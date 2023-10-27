@@ -86,9 +86,22 @@ func (t *inMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*filepro
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	for _, b := range t.store {
-		info.UsageBytes += uint64(len(b.RawData()))
+		info.SpaceUsageBytes += uint64(len(b.RawData()))
 	}
 	info.CidsCount = uint64(len(t.store))
+	// TODO info.FilesCount after implementing file storage
+	info.LimitBytes = 10 * 1024 * 1024
+	return &info, nil
+}
+
+func (t *inMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
+	var info fileproto.AccountInfoResponse
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, b := range t.store {
+		info.TotalUsageBytes += uint64(len(b.RawData()))
+	}
+	info.TotalCidsCount = uint64(len(t.store))
 	// TODO info.FilesCount after implementing file storage
 	info.LimitBytes = 10 * 1024 * 1024
 	return &info, nil
