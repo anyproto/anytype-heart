@@ -23,13 +23,13 @@ func (s *Service) AccountDelete(ctx context.Context, req *pb.RpcAccountDeleteReq
 		accountService = s.app.MustComponent(account.CName).(account.Service)
 		status         *model.AccountStatus
 	)
-	networkStatus, err := accountService.Delete(ctx)
+	toBeDeleted, err := accountService.Delete(ctx)
 	if err != nil {
 		return nil, err
 	}
 	status = &model.AccountStatus{
-		StatusType:   model.AccountStatusType(networkStatus.Status),
-		DeletionDate: networkStatus.DeletionDate.Unix(),
+		StatusType:   model.Account_PendingDeletion,
+		DeletionDate: toBeDeleted,
 	}
 	s.refreshRemoteAccountState()
 	return status, nil

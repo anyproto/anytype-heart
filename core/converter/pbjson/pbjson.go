@@ -31,6 +31,7 @@ func (p *pbj) Convert(sbType model.SmartBlockType) []byte {
 			ObjectTypes:   slice.UnwrapStrings(st.ObjectTypeKeys()),
 			Collections:   st.Store(),
 			RelationLinks: st.PickRelationLinks(),
+			Key:           p.s.UniqueKeyInternal(),
 		},
 	}
 	for _, fk := range p.s.GetAndUnsetFileKeys() {

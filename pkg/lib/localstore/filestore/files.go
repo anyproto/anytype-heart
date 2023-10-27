@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -28,6 +29,7 @@ var (
 	syncStatusBase  = dsCtx.NewKey("/" + filesPrefix + "/sync_status")
 	fileSizeBase    = dsCtx.NewKey("/" + filesPrefix + "/file_size")
 	isImportedBase  = dsCtx.NewKey("/" + filesPrefix + "/is_imported")
+	fileOrigin      = dsCtx.NewKey("/" + filesPrefix + "/origin")
 
 	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
@@ -105,6 +107,8 @@ type FileStore interface {
 	SetIsFileImported(hash string, isImported bool) error
 	SetFileSize(hash string, size int) error
 	GetFileSize(hash string) (int, error)
+	SetFileOrigin(hash string, origin model.ObjectOrigin) error
+	GetFileOrigin(hash string) (int, error)
 }
 
 func New() FileStore {
@@ -536,6 +540,16 @@ func (m *dsFileStore) GetFileSize(hash string) (int, error) {
 func (m *dsFileStore) SetFileSize(hash string, status int) error {
 	key := fileSizeBase.ChildString(hash)
 	return m.setInt(key, status)
+}
+
+func (ls *dsFileStore) SetFileOrigin(hash string, origin model.ObjectOrigin) error {
+	key := fileOrigin.ChildString(hash)
+	return ls.setInt(key, int(origin))
+}
+
+func (ls *dsFileStore) GetFileOrigin(hash string) (int, error) {
+	key := fileOrigin.ChildString(hash)
+	return ls.getInt(key)
 }
 
 func (ls *dsFileStore) Close(ctx context.Context) (err error) {

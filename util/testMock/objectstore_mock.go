@@ -429,18 +429,18 @@ func (mr *MockObjectStoreMockRecorder) Init(arg0 any) *gomock.Call {
 }
 
 // List mocks base method.
-func (m *MockObjectStore) List(arg0 string) ([]*model.ObjectInfo, error) {
+func (m *MockObjectStore) List(arg0 string, arg1 bool) ([]*model.ObjectInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0)
+	ret := m.ctrl.Call(m, "List", arg0, arg1)
 	ret0, _ := ret[0].([]*model.ObjectInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockObjectStoreMockRecorder) List(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) List(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockObjectStore)(nil).List), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockObjectStore)(nil).List), arg0, arg1)
 }
 
 // ListAllRelations mocks base method.
