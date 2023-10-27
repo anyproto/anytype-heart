@@ -11,7 +11,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -651,7 +650,7 @@ func TestService_Search(t *testing.T) {
 	})
 
 	t.Run("SubscribeGroup: tag group", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
 		spaceID := "spaceId"
@@ -664,32 +663,39 @@ func TestService_Search(t *testing.T) {
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		key, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
 		assert.Nil(t, err)
 
-		fx.store.EXPECT().GetDetails(source).Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyUniqueKey.String(): pbtypes.String(key.Marshal()),
-			}},
-		}, nil).Times(1)
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
 
-		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
-			[]database.Record{
-				{Details: &types.Struct{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():          pbtypes.String("1"),
-					bundle.RelationKeyRelationKey.String(): pbtypes.String(relationKey),
-				}}},
-				{Details: &types.Struct{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():          pbtypes.String("2"),
-					bundle.RelationKeyRelationKey.String(): pbtypes.String(relationKey),
-				}}},
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
-			nil,
-		).AnyTimes()
-
-		fx.kanban.EXPECT().Grouper(spaceID, relationKey).Return(
-			&kanban.GroupTag{Key: relationKey, Store: fx.store}, nil,
-		).Times(1)
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("1"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("2"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+		})
 
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:      spaceID,
@@ -715,7 +721,7 @@ func TestService_Search(t *testing.T) {
 		assert.Equal(t, "2", tagGroup.Tag.Ids[0])
 	})
 	t.Run("SubscribeGroup: tag group - no tags for relation", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
 		spaceID := "spaceId"
@@ -728,22 +734,27 @@ func TestService_Search(t *testing.T) {
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		key, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
 		assert.Nil(t, err)
 
-		fx.store.EXPECT().GetDetails(source).Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyUniqueKey.String(): pbtypes.String(key.Marshal()),
-			}},
-		}, nil).Times(1)
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
 
-		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
-			[]database.Record{}, nil,
-		).AnyTimes()
-
-		fx.kanban.EXPECT().Grouper(spaceID, relationKey).Return(
-			&kanban.GroupTag{Key: relationKey, Store: fx.store}, nil,
-		).Times(1)
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
 
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:      spaceID,
@@ -761,7 +772,7 @@ func TestService_Search(t *testing.T) {
 		assert.Len(t, tagGroup.Tag.Ids, 0)
 	})
 	t.Run("SubscribeGroup: status group", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
 		spaceID := "spaceId"
@@ -769,35 +780,41 @@ func TestService_Search(t *testing.T) {
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		key, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
 		assert.Nil(t, err)
 
-		fx.store.EXPECT().GetDetails(source).Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyUniqueKey.String(): pbtypes.String(key.Marshal()),
-			}},
-		}, nil).Times(1)
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
 
-		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
-			[]database.Record{}, nil,
-		).AnyTimes()
-
-		fx.store.EXPECT().Query(gomock.Any()).Return(
-			[]database.Record{
-				{Details: &types.Struct{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():          pbtypes.String("1"),
-					bundle.RelationKeyRelationKey.String(): pbtypes.String(relationKey),
-					bundle.RelationKeyName.String():        pbtypes.String("Done"),
-				}}},
-				{Details: &types.Struct{Fields: map[string]*types.Value{
-					bundle.RelationKeyId.String():   pbtypes.String("2"),
-					bundle.RelationKeyName.String(): pbtypes.String("Not started"),
-				}}}}, 2, nil,
-		).Times(1)
-
-		fx.kanban.EXPECT().Grouper(spaceID, relationKey).Return(
-			&kanban.GroupStatus{Key: relationKey, Store: fx.store}, nil,
-		).Times(1)
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("1"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        pbtypes.String("Done"),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("2"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        pbtypes.String("Not started"),
+			},
+		})
 
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
@@ -819,7 +836,7 @@ func TestService_Search(t *testing.T) {
 	})
 
 	t.Run("SubscribeGroup: status group - no statuses for relation", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
 		spaceID := "spaceId"
@@ -827,32 +844,34 @@ func TestService_Search(t *testing.T) {
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		key, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
 		assert.Nil(t, err)
 
-		fx.store.EXPECT().GetDetails(source).Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyUniqueKey.String(): pbtypes.String(key.Marshal()),
-			}},
-		}, nil).Times(1)
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
 
-		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
-			[]database.Record{}, nil,
-		).AnyTimes()
-
-		fx.store.EXPECT().Query(gomock.Any()).Return(
-			[]database.Record{}, 2, nil,
-		).Times(1)
-
-		fx.kanban.EXPECT().Grouper(spaceID, relationKey).Return(
-			&kanban.GroupStatus{Key: relationKey, Store: fx.store}, nil,
-		).Times(1)
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
 
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},
 		})
+
 		assert.Nil(t, err)
 		assert.NotNil(t, groups)
 		assert.Len(t, groups.Groups, 1)
@@ -862,7 +881,7 @@ func TestService_Search(t *testing.T) {
 	})
 
 	t.Run("SubscribeGroup: checkbox group", func(t *testing.T) {
-		fx := newFixture(t)
+		fx := newFixtureWithRealObjectStore(t)
 
 		source := "source"
 		spaceID := "spaceId"
@@ -870,28 +889,34 @@ func TestService_Search(t *testing.T) {
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
-		key, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
 		assert.Nil(t, err)
 
-		fx.store.EXPECT().GetDetails(source).Return(&model.ObjectDetails{
-			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyUniqueKey.String(): pbtypes.String(key.Marshal()),
-			}},
-		}, nil).Times(1)
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
 
-		fx.store.EXPECT().QueryRaw(gomock.Any(), 0, 0).Return(
-			[]database.Record{}, nil,
-		).AnyTimes()
-
-		fx.kanban.EXPECT().Grouper(spaceID, relationKey).Return(
-			&kanban.GroupCheckBox{}, nil,
-		).Times(1)
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
 
 		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
 			SpaceId:     spaceID,
 			RelationKey: relationKey,
 			Source:      []string{source},
 		})
+
 		assert.Nil(t, err)
 		assert.NotNil(t, groups)
 		assert.Len(t, groups.Groups, 2)

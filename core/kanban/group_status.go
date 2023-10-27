@@ -9,13 +9,13 @@ import (
 )
 
 type GroupStatus struct {
-	Key     string
-	Store   objectstore.ObjectStore
+	key     string
+	store   objectstore.ObjectStore
 	Options []*model.RelationOption
 }
 
 func (gs *GroupStatus) InitGroups(spaceID string, f *database.Filters) error {
-	options, err := database.ListRelationOptions(gs.Store, spaceID, gs.Key)
+	options, err := database.ListRelationOptions(gs.store, spaceID, gs.key)
 	if err != nil {
 		return err
 	}
