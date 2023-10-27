@@ -17,7 +17,7 @@ type rpcHandler struct {
 }
 
 func (r *rpcHandler) AccountInfo(ctx context.Context, request *fileproto.AccountInfoRequest) (*fileproto.AccountInfoResponse, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
