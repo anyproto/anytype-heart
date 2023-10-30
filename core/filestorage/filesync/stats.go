@@ -2,12 +2,10 @@ package filesync
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
-	"github.com/dgraph-io/badger/v3"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/samber/lo"
@@ -76,29 +74,16 @@ func (s *fileSync) NodeUsage(ctx context.Context) (usage *NodeUsage, err error) 
 	}, nil
 }
 
+// SpaceStat returns cached space usage information
 func (f *fileSync) SpaceStat(ctx context.Context, spaceID string) (SpaceStat, error) {
-	f.spaceStatsLock.Lock()
-	stats, ok := f.spaceStats[spaceID]
-	f.spaceStatsLock.Unlock()
-	if ok {
-		return stats, nil
+	stats, ok, err := f.queue.getSpaceStats(spaceID)
+	if err != nil {
+		return SpaceStat{}, fmt.Errorf("get space info from store: %w", err)
 	}
-
-	stats, err := f.queue.getSpaceStats(spaceID)
-	if errors.Is(err, badger.ErrKeyNotFound) {
+	if !ok {
 		return f.getAndUpdateSpaceStat(ctx, spaceID)
 	}
-	if err != nil {
-		return SpaceStat{}, fmt.Errorf("get space info from badger: %w", err)
-	}
-	f.setSpaceStats(spaceID, stats)
 	return stats, nil
-}
-
-func (f *fileSync) setSpaceStats(spaceID string, stats SpaceStat) {
-	f.spaceStatsLock.Lock()
-	f.spaceStats[spaceID] = stats
-	f.spaceStatsLock.Unlock()
 }
 
 func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (ss SpaceStat, err error) {
@@ -114,20 +99,20 @@ func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (s
 		SpaceBytesUsage:   int(info.SpaceUsageBytes),
 		AccountBytesLimit: int(info.LimitBytes),
 	}
-	f.spaceStatsLock.Lock()
-	prevStats, ok := f.spaceStats[spaceID]
+	prevStats, prevStatsFound, err := f.queue.getSpaceStats(spaceID)
+	if err != nil {
+		return SpaceStat{}, fmt.Errorf("get space info from store: %w", err)
+	}
 	if prevStats != newStats {
-		err = f.queue.setSpaceInfo(spaceID, newStats)
+		err = f.queue.setSpaceStats(spaceID, newStats)
 		if err != nil {
-			return SpaceStat{}, fmt.Errorf("save space info to badger: %w", err)
+			return SpaceStat{}, fmt.Errorf("save space info to store: %w", err)
 		}
-		f.spaceStats[spaceID] = newStats
 		// Do not send event if it is first time we get stats
-		if ok {
+		if prevStatsFound {
 			f.sendSpaceUsageEvent(spaceID, uint64(newStats.SpaceBytesUsage))
 		}
 	}
-	f.spaceStatsLock.Unlock()
 
 	return newStats, nil
 }

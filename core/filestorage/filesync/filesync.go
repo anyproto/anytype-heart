@@ -76,16 +76,12 @@ type fileSync struct {
 	onUpload         func(spaceID, fileID string) error
 	personalIDGetter personalSpaceIDGetter
 
-	spaceStatsLock    sync.Mutex
-	spaceStats        map[string]SpaceStat
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
 }
 
 func New() FileSync {
-	return &fileSync{
-		spaceStats: map[string]SpaceStat{},
-	}
+	return &fileSync{}
 }
 
 func (f *fileSync) Init(a *app.App) (err error) {
@@ -137,10 +133,10 @@ func (f *fileSync) precacheSpaceStats() {
 	_, err := f.SpaceStat(context.Background(), spaceID)
 	if err != nil {
 		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-		f.setSpaceStats(spaceID, SpaceStat{
-			SpaceId:           spaceID,
-			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
-		})
+		//f.set(spaceID, SpaceStat{
+		//	SpaceId:           spaceID,
+		//	AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
+		//})
 		log.Error("can't init space stats", zap.String("spaceID", f.personalIDGetter.PersonalSpaceID()), zap.Error(err))
 	}
 }

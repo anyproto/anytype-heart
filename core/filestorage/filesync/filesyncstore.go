@@ -403,7 +403,7 @@ func (s *fileSyncStore) IsAlreadyUploaded(spaceId, fileId string) (done bool, er
 	return
 }
 
-func (s *fileSyncStore) getSpaceStats(spaceID string) (stats SpaceStat, err error) {
+func (s *fileSyncStore) getSpaceStats(spaceID string) (stats SpaceStat, ok bool, err error) {
 	err = s.db.View(func(txn *badger.Txn) error {
 		it, err := txn.Get(spaceInfoKey(spaceID))
 		if err != nil {
@@ -413,10 +413,16 @@ func (s *fileSyncStore) getSpaceStats(spaceID string) (stats SpaceStat, err erro
 			return json.Unmarshal(val, &stats)
 		})
 	})
-	return
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return SpaceStat{}, false, nil
+	}
+	if err != nil {
+		return SpaceStat{}, false, err
+	}
+	return stats, true, nil
 }
 
-func (s *fileSyncStore) setSpaceInfo(spaceID string, stats SpaceStat) error {
+func (s *fileSyncStore) setSpaceStats(spaceID string, stats SpaceStat) error {
 	return s.updateTxn(func(txn *badger.Txn) error {
 		data, err := json.Marshal(stats)
 		if err != nil {
@@ -428,6 +434,10 @@ func (s *fileSyncStore) setSpaceInfo(spaceID string, stats SpaceStat) error {
 
 func spaceInfoKey(spaceID string) []byte {
 	return []byte(keyPrefix + "space_info/" + spaceID)
+}
+
+func nodeUsageKey() []byte {
+	return []byte(keyPrefix + "node_usage/")
 }
 
 func uploadKey(spaceId, fileId string) (key []byte) {
