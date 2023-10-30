@@ -8,13 +8,13 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -49,7 +49,7 @@ type Service interface {
 }
 
 type service struct {
-	picker       block.ObjectGetter
+	picker       getblock.ObjectGetter
 	store        objectstore.ObjectStore
 	spaceService space.Service
 	creator      objectcreator.Service
@@ -66,7 +66,7 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.picker = app.MustComponent[block.ObjectGetter](a)
+	s.picker = app.MustComponent[getblock.ObjectGetter](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.creator = app.MustComponent[objectcreator.Service](a)
@@ -81,7 +81,7 @@ func (s *service) StateFromTemplate(templateID, name string) (st *state.State, e
 	if templateID == BlankTemplateID || templateID == "" {
 		return s.blankTemplateState(), nil
 	}
-	if err = block.Do(s.picker, templateID, func(b smartblock.SmartBlock) error {
+	if err = getblock.Do(s.picker, templateID, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
 			st, err = s.getNewPageState(tmpl, name)
 		} else {
@@ -98,7 +98,7 @@ func (s *service) StateFromTemplate(templateID, name string) (st *state.State, e
 }
 
 func (s *service) ObjectApplyTemplate(contextID, templateID string) error {
-	return block.Do(s.picker, contextID, func(b smartblock.SmartBlock) error {
+	return getblock.Do(s.picker, contextID, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
 		ts, err := s.StateFromTemplate(templateID, "")
 		if err != nil {
@@ -135,7 +135,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		objectTypeKeys []domain.TypeKey
 	)
 
-	if err = block.Do(s.picker, id, func(b smartblock.SmartBlock) error {
+	if err = getblock.Do(s.picker, id, func(b smartblock.SmartBlock) error {
 		if b.Type() != coresb.SmartBlockTypePage {
 			return fmt.Errorf("can't make template from this obect type")
 		}
