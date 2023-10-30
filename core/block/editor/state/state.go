@@ -260,7 +260,7 @@ func (s *State) PickOrigin(id string) (b simple.Block) {
 func (s *State) Unlink(id string) (ok bool) {
 	if parent := s.GetParentOf(id); parent != nil {
 		parentM := parent.Model()
-		parentM.ChildrenIds = slice.Remove(parentM.ChildrenIds, id)
+		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
 		return true
 	}
 	return

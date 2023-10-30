@@ -64,10 +64,14 @@ var migrationDashboardZip []byte
 //go:embed data/strategic_writing.zip
 var strategicWritingZip []byte
 
+//go:embed data/empty.zip
+var emptyZip []byte
+
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
+		pb.RpcObjectImportUseCaseRequest_EMPTY:             emptyZip,
 		pb.RpcObjectImportUseCaseRequest_SKIP:              skipZip,
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: personalProjectsZip,
 		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE:    knowledgeBaseZip,
@@ -77,33 +81,32 @@ var (
 
 	// TODO: GO-2009 Now we need to create widgets by hands, widget import is not implemented yet
 	widgetParams = map[pb.RpcObjectImportUseCaseRequestUseCase][]widgetParameters{
+		pb.RpcObjectImportUseCaseRequest_EMPTY: {
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
+		},
 		pb.RpcObjectImportUseCaseRequest_SKIP: {
-			{model.BlockContentWidget_Link, "bafyreiag57kbhehecmhe4xks5nv7p5x5flr3xoc6gm7y4i7uznp2f2spum", "", true},
+			{model.BlockContentWidget_Link, "bafyreiembqdejpkqhupwhukcyqtsjhi43bnqkbp6zfszu26r4c5o6zkeyu", "", true},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_PERSONAL_PROJECTS: {
-			{model.BlockContentWidget_Link, "bafyreier6tne4keezldgkfj5qmix4a64gehznuu4vbpqq3edl53qjoswk4", "", true},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, "bafyreicigdupziu7vg56l7chnd6shof3e53tkcqqya33ub2v67fmclbjki", "", true}, // Task tracker
-			{model.BlockContentWidget_CompactList, "bafyreigtcovw3g3kaowacqzty7t6wcnp2u2365zjzytvgezb7rqjzokbwe", "", true}, // My Notes
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
+			{model.BlockContentWidget_CompactList, "bafyreibdfkwnnj6xndyzazkm2gersm5fk3yg2274d5hqr6drurncxiyeoi", "", true}, // Tasks
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_KNOWLEDGE_BASE: {
 			{model.BlockContentWidget_Link, "bafyreiaszkibjyfls2og3ztgxfllqlom422y5ic64z7w3k3oio6f3pc2ia", "", true},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, "bafyreiatdyctn5noworljilcvmhhanzyiszrtch6njw3ekz4eichw6g4eu", "", true}, // Task tracker
-			{model.BlockContentWidget_CompactList, "bafyreidjcztbyyee3qcxbkk3gp6nbkwjc5zftguubhznwvjej6q5jflp5q", "", true}, // My Notes
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},
 		pb.RpcObjectImportUseCaseRequest_NOTES_DIARY: {
 			{model.BlockContentWidget_Link, "bafyreiexkrata5ofvswxyisuumukmkyerdwv3xa34qkxpgx6jtl7waah34", "", true},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetFavorite, "", false},
-			{model.BlockContentWidget_CompactList, "bafyreighzavahzdk3ewvlcftwfid6uebirl4asymohgikhpanwbzmfdaq4", "", true}, // Task tracker
-			{model.BlockContentWidget_CompactList, "bafyreignt4iidebdxh5ydjohhp75yrffebcqhgo4wjonzc3thobitdari4", "", true}, // My Notes
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetRecent, "", false},
 		},

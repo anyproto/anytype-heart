@@ -98,8 +98,8 @@ github.com/anyproto/go-slip10 v1.0.0 h1:uAEtSuudR3jJBOfkOXf3bErxVoxbuKwdoJN55M1i
 github.com/anyproto/go-slip10 v1.0.0/go.mod h1:BCmIlM1KB8wX6K4/8pOvxPl9oVKfEvZ5vsmO5rkK6vg=
 github.com/anyproto/go-slip21 v1.0.0 h1:CI7lUqTIwmPOEGVAj4jyNLoICvueh++0U2HoAi3m2ZY=
 github.com/anyproto/go-slip21 v1.0.0/go.mod h1:gbIJt7HAdr5DuT4f2pFTKCBSUWYsm/fysHBNqgsuxT0=
-github.com/anyproto/html-to-markdown v0.0.0-20230919201515-d902dc00305a h1:pKk0MAExujMR5WYNapOGm0ax3odnHRC0dqxIM2ORbSA=
-github.com/anyproto/html-to-markdown v0.0.0-20230919201515-d902dc00305a/go.mod h1:1zaDDQVWTRwNksmTUTkcVXqgNF28YHiEUIm8FL9Z+II=
+github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139 h1:Wp9z0Q2kAstznWUmTZyOb9UgpVmUgYt1LXRvK/cg10E=
+github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139/go.mod h1:1zaDDQVWTRwNksmTUTkcVXqgNF28YHiEUIm8FL9Z+II=
 github.com/anyproto/protobuf v1.3.3-0.20230114170705-8e2cb769640b h1:aRyhmcoIQ7jFHxFPHEAhihoDA5/7GtvAvvrlUW1K0aY=
 github.com/anyproto/protobuf v1.3.3-0.20230114170705-8e2cb769640b/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20230303151330-fa3ab41a4941 h1:sXnKo0P45QWddNR4Gfh9CgbgdQXiKjry+KJjU8evoyw=
@@ -468,8 +468,8 @@ github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm4
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
-github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.4.0 h1:MtMxsa51/r9yyhkyLsVeVt0B+BGQZzpQiTQ4eHZ8bc4=
+github.com/google/uuid v1.4.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
 github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8/go.mod h1:dvDLG8qkwmyD9a/MJJN3XJcT3xFxOKAvTZGvuZmac9g=

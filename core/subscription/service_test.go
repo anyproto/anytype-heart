@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -645,6 +647,303 @@ func TestService_Search(t *testing.T) {
 		assert.Len(t, resp.Records, 1)
 		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyName.String()))
 		assert.Equal(t, "1", pbtypes.GetString(resp.Records[0], bundle.RelationKeyId.String()))
+	})
+
+	t.Run("SubscribeGroup: tag group", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+		subID := "subId"
+		collectionID := "collectionId"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subID).Return([]string{"1"}, nil, nil).Times(1)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subID).Return().Times(1)
+
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		assert.Nil(t, err)
+
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("1"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("2"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+			},
+		})
+
+		// when
+		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+			SpaceId:      spaceID,
+			RelationKey:  relationKey,
+			Source:       []string{source},
+			SubId:        subID,
+			CollectionId: collectionID,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, groups)
+		assert.Equal(t, subID, groups.SubId)
+		assert.Len(t, groups.Groups, 3)
+
+		tagGroup := groups.Groups[0].Value.(*model.BlockContentDataviewGroupValueOfTag)
+		assert.Len(t, tagGroup.Tag.Ids, 0)
+
+		tagGroup = groups.Groups[1].Value.(*model.BlockContentDataviewGroupValueOfTag)
+		assert.Len(t, tagGroup.Tag.Ids, 1)
+		assert.Equal(t, "1", tagGroup.Tag.Ids[0])
+
+		tagGroup = groups.Groups[2].Value.(*model.BlockContentDataviewGroupValueOfTag)
+		assert.Len(t, tagGroup.Tag.Ids, 1)
+		assert.Equal(t, "2", tagGroup.Tag.Ids[0])
+	})
+	t.Run("SubscribeGroup: tag group - no tags for relation", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+		subID := "subId"
+		collectionID := "collectionId"
+
+		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subID).Return([]string{"1"}, nil, nil).Times(1)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subID).Return().Times(1)
+
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		assert.Nil(t, err)
+
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
+
+		// when
+		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+			SpaceId:      spaceID,
+			RelationKey:  relationKey,
+			Source:       []string{source},
+			SubId:        subID,
+			CollectionId: collectionID,
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, groups)
+		assert.Equal(t, subID, groups.SubId)
+		assert.Len(t, groups.Groups, 1)
+
+		tagGroup := groups.Groups[0].Value.(*model.BlockContentDataviewGroupValueOfTag)
+		assert.Len(t, tagGroup.Tag.Ids, 0)
+	})
+	t.Run("SubscribeGroup: status group", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		assert.Nil(t, err)
+
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("1"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        pbtypes.String("Done"),
+			},
+			{
+				bundle.RelationKeyId:          pbtypes.String("2"),
+				bundle.RelationKeySpaceId:     pbtypes.String(spaceID),
+				bundle.RelationKeyRelationKey: pbtypes.String(relationKey),
+				bundle.RelationKeyLayout:      pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyName:        pbtypes.String("Not started"),
+			},
+		})
+
+		// when
+		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+			SpaceId:     spaceID,
+			RelationKey: relationKey,
+			Source:      []string{source},
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, groups)
+		assert.Len(t, groups.Groups, 3)
+
+		tagGroup := groups.Groups[0].Value.(*model.BlockContentDataviewGroupValueOfStatus)
+		assert.Equal(t, tagGroup.Status.Id, "")
+
+		tagGroup = groups.Groups[1].Value.(*model.BlockContentDataviewGroupValueOfStatus)
+		assert.Equal(t, tagGroup.Status.Id, "1")
+
+		tagGroup = groups.Groups[2].Value.(*model.BlockContentDataviewGroupValueOfStatus)
+		assert.Equal(t, tagGroup.Status.Id, "2")
+	})
+
+	t.Run("SubscribeGroup: status group - no statuses for relation", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		assert.Nil(t, err)
+
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
+
+		// when
+		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+			SpaceId:     spaceID,
+			RelationKey: relationKey,
+			Source:      []string{source},
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, groups)
+		assert.Len(t, groups.Groups, 1)
+
+		tagGroup := groups.Groups[0].Value.(*model.BlockContentDataviewGroupValueOfStatus)
+		assert.Equal(t, tagGroup.Status.Id, "")
+	})
+
+	t.Run("SubscribeGroup: checkbox group", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		source := "source"
+		spaceID := "spaceId"
+		relationKey := "key"
+
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		objectTypeKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, source)
+		assert.Nil(t, err)
+
+		relationUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		assert.Nil(t, err)
+
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             pbtypes.String(relationKey),
+				bundle.RelationKeyUniqueKey:      pbtypes.String(relationUniqueKey.Marshal()),
+				bundle.RelationKeySpaceId:        pbtypes.String(spaceID),
+				bundle.RelationKeyRelationFormat: pbtypes.Int64(int64(model.RelationFormat_checkbox)),
+				bundle.RelationKeyLayout:         pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:        pbtypes.String(source),
+				bundle.RelationKeyUniqueKey: pbtypes.String(objectTypeKey.Marshal()),
+				bundle.RelationKeySpaceId:   pbtypes.String(spaceID),
+				bundle.RelationKeyLayout:    pbtypes.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
+
+		// when
+		groups, err := fx.SubscribeGroups(nil, pb.RpcObjectGroupsSubscribeRequest{
+			SpaceId:     spaceID,
+			RelationKey: relationKey,
+			Source:      []string{source},
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, groups)
+		assert.Len(t, groups.Groups, 2)
+
+		tagGroup := groups.Groups[0].Value.(*model.BlockContentDataviewGroupValueOfCheckbox)
+		assert.Equal(t, tagGroup.Checkbox.Checked, true)
+
+		tagGroup = groups.Groups[1].Value.(*model.BlockContentDataviewGroupValueOfCheckbox)
+		assert.Equal(t, tagGroup.Checkbox.Checked, false)
 	})
 }
 

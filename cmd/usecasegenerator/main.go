@@ -263,7 +263,9 @@ func processAccountRelatedDetails(s *pb.ChangeSnapshot) {
 		switch key {
 		case bundle.RelationKeyLastOpenedDate.String(),
 			bundle.RelationKeyCreatedDate.String(),
-			bundle.RelationKeyLastModifiedDate.String():
+			bundle.RelationKeyLastModifiedDate.String(),
+			bundle.RelationKeySpaceId.String(),
+			bundle.RelationKeyRelationFormatObjectTypes.String():
 
 			delete(s.Data.Details.Fields, key)
 
