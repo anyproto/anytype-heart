@@ -543,5 +543,5 @@ func (p *Pb) filterObjects(objectTypesToImport widgets.ImportWidgetFlags, object
 }
 
 func (p *Pb) validateSnapshot(snapshot *pb.SnapshotWithType) bool {
-	return snapshot == nil || snapshot.Snapshot == nil || snapshot.Snapshot.Data == nil
+	return !(snapshot == nil || snapshot.Snapshot == nil || snapshot.Snapshot.Data == nil)
 }
