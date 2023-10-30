@@ -13,15 +13,19 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 )
 
-type inMemoryService struct{}
+type inMemoryService struct {
+	store RpcStore
+}
 
-func NewInMemoryService() Service {
-	return &inMemoryService{}
+func NewInMemoryService(store RpcStore) Service {
+	return &inMemoryService{
+		store: store,
+	}
 }
 
 func (s *inMemoryService) Name() string          { return CName }
 func (s *inMemoryService) Init(_ *app.App) error { return nil }
-func (s *inMemoryService) NewStore() RpcStore    { return NewInMemoryStore(1024 * 1024) }
+func (s *inMemoryService) NewStore() RpcStore    { return s.store }
 
 func NewInMemoryStore(limit int) RpcStore {
 	ts := &inMemoryStore{

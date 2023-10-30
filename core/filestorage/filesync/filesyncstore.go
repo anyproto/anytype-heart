@@ -28,7 +28,6 @@ var (
 	removeKeyPrefix       = []byte(keyPrefix + "queue/remove/")
 	discardedKeyPrefix    = []byte(keyPrefix + "queue/discarded/")
 	queueSchemaVersionKey = []byte(keyPrefix + "queue/schema_version")
-	spaceStatsPrefix      = keyPrefix + "space_info/"
 )
 
 type fileSyncStore struct {
@@ -405,7 +404,6 @@ func (s *fileSyncStore) IsAlreadyUploaded(spaceId, fileId string) (done bool, er
 }
 
 func (s *fileSyncStore) setNodeUsage(usage NodeUsage) error {
-	fmt.Println("set node usage", usage)
 	data, err := json.Marshal(usage)
 	if err != nil {
 		return err
