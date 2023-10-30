@@ -35,7 +35,7 @@ func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFil
 }
 
 type NodeUsageResponse struct {
-	Usage           *filesync.NodeUsage
+	Usage           filesync.NodeUsage
 	LocalUsageBytes uint64
 }
 

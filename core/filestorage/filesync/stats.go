@@ -2,10 +2,12 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/samber/lo"
@@ -22,6 +24,19 @@ type NodeUsage struct {
 	TotalCidsCount    int
 	BytesLeft         uint64
 	Spaces            []SpaceStat
+}
+
+func (u NodeUsage) GetSpaceUsage(spaceId string) SpaceStat {
+	for _, space := range u.Spaces {
+		if space.SpaceId == spaceId {
+			return space
+		}
+	}
+	return SpaceStat{
+		SpaceId:           spaceId,
+		TotalBytesUsage:   u.TotalBytesUsage,
+		AccountBytesLimit: u.AccountBytesLimit,
+	}
 }
 
 type SpaceStat struct {
@@ -45,10 +60,32 @@ func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
 }
 
-func (s *fileSync) NodeUsage(ctx context.Context) (usage *NodeUsage, err error) {
+func (s *fileSync) NodeUsage(ctx context.Context) (NodeUsage, error) {
+	usage, ok, err := s.getCachedNodeUsage()
+	if err != nil {
+		return NodeUsage{}, fmt.Errorf("get cached node usage: %w", err)
+	}
+	if !ok {
+		return s.getAndUpdateNodeUsage(ctx)
+	}
+	return usage, err
+}
+
+func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
+	usage, err := s.queue.getNodeUsage()
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return NodeUsage{}, false, nil
+	}
+	if err != nil {
+		return NodeUsage{}, false, err
+	}
+	return usage, true, nil
+}
+
+func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error) {
 	info, err := s.rpcStore.AccountInfo(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get node usage info: %w", err)
+		return NodeUsage{}, fmt.Errorf("get node usage info: %w", err)
 	}
 	spaces := make([]SpaceStat, 0, len(info.Spaces))
 	for _, space := range info.Spaces {
@@ -65,55 +102,48 @@ func (s *fileSync) NodeUsage(ctx context.Context) (usage *NodeUsage, err error) 
 	if info.LimitBytes > info.TotalUsageBytes {
 		left = info.LimitBytes - info.TotalUsageBytes
 	}
-	return &NodeUsage{
+	usage := NodeUsage{
 		AccountBytesLimit: int(info.LimitBytes),
 		TotalCidsCount:    int(info.TotalCidsCount),
 		TotalBytesUsage:   int(info.TotalUsageBytes),
 		BytesLeft:         left,
 		Spaces:            spaces,
-	}, nil
+	}
+	err = s.queue.setNodeUsage(usage)
+	if err != nil {
+		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
+	}
+	return usage, nil
 }
 
 // SpaceStat returns cached space usage information
-func (f *fileSync) SpaceStat(ctx context.Context, spaceID string) (SpaceStat, error) {
-	stats, ok, err := f.queue.getSpaceStats(spaceID)
+func (f *fileSync) SpaceStat(ctx context.Context, spaceId string) (SpaceStat, error) {
+	usage, err := f.NodeUsage(ctx)
 	if err != nil {
-		return SpaceStat{}, fmt.Errorf("get space info from store: %w", err)
+		return SpaceStat{}, err
 	}
-	if !ok {
-		return f.getAndUpdateSpaceStat(ctx, spaceID)
-	}
-	return stats, nil
+	return usage.GetSpaceUsage(spaceId), nil
 }
 
-func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (ss SpaceStat, err error) {
-	info, err := f.rpcStore.SpaceInfo(ctx, spaceID)
+func (s *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error) {
+	prevUsage, prevUsageFound, err := s.getCachedNodeUsage()
 	if err != nil {
-		return
-	}
-	newStats := SpaceStat{
-		SpaceId:           spaceID,
-		FileCount:         int(info.FilesCount),
-		CidsCount:         int(info.CidsCount),
-		TotalBytesUsage:   int(info.TotalUsageBytes),
-		SpaceBytesUsage:   int(info.SpaceUsageBytes),
-		AccountBytesLimit: int(info.LimitBytes),
-	}
-	prevStats, prevStatsFound, err := f.queue.getSpaceStats(spaceID)
-	if err != nil {
-		return SpaceStat{}, fmt.Errorf("get space info from store: %w", err)
-	}
-	if prevStats != newStats {
-		err = f.queue.setSpaceStats(spaceID, newStats)
-		if err != nil {
-			return SpaceStat{}, fmt.Errorf("save space info to store: %w", err)
-		}
-		// Do not send event if it is first time we get stats
-		if prevStatsFound {
-			f.sendSpaceUsageEvent(spaceID, uint64(newStats.SpaceBytesUsage))
-		}
+		return SpaceStat{}, fmt.Errorf("get cached node usage: %w", err)
 	}
 
+	curUsage, err := s.getAndUpdateNodeUsage(ctx)
+	if err != nil {
+		return SpaceStat{}, fmt.Errorf("get and update node usage: %w", err)
+	}
+
+	prevStats := prevUsage.GetSpaceUsage(spaceId)
+	newStats := curUsage.GetSpaceUsage(spaceId)
+	if prevStats != newStats {
+		// Do not send event if it is first time we get stats
+		if prevUsageFound {
+			s.sendSpaceUsageEvent(spaceId, uint64(newStats.SpaceBytesUsage))
+		}
+	}
 	return newStats, nil
 }
 

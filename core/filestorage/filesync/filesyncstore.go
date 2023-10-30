@@ -28,6 +28,7 @@ var (
 	removeKeyPrefix       = []byte(keyPrefix + "queue/remove/")
 	discardedKeyPrefix    = []byte(keyPrefix + "queue/discarded/")
 	queueSchemaVersionKey = []byte(keyPrefix + "queue/schema_version")
+	spaceStatsPrefix      = keyPrefix + "space_info/"
 )
 
 type fileSyncStore struct {
@@ -403,37 +404,21 @@ func (s *fileSyncStore) IsAlreadyUploaded(spaceId, fileId string) (done bool, er
 	return
 }
 
-func (s *fileSyncStore) getSpaceStats(spaceID string) (stats SpaceStat, ok bool, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		it, err := txn.Get(spaceInfoKey(spaceID))
-		if err != nil {
-			return err
-		}
-		return it.Value(func(val []byte) error {
-			return json.Unmarshal(val, &stats)
-		})
-	})
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return SpaceStat{}, false, nil
-	}
+func (s *fileSyncStore) setNodeUsage(usage NodeUsage) error {
+	fmt.Println("set node usage", usage)
+	data, err := json.Marshal(usage)
 	if err != nil {
-		return SpaceStat{}, false, err
+		return err
 	}
-	return stats, true, nil
+	return badgerhelper.SetValue(s.db, nodeUsageKey(), data)
 }
 
-func (s *fileSyncStore) setSpaceStats(spaceID string, stats SpaceStat) error {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		data, err := json.Marshal(stats)
-		if err != nil {
-			return err
-		}
-		return txn.Set(spaceInfoKey(spaceID), data)
+func (s *fileSyncStore) getNodeUsage() (NodeUsage, error) {
+	return badgerhelper.GetValue(s.db, nodeUsageKey(), func(raw []byte) (NodeUsage, error) {
+		var usage NodeUsage
+		err := json.Unmarshal(raw, &usage)
+		return usage, err
 	})
-}
-
-func spaceInfoKey(spaceID string) []byte {
-	return []byte(keyPrefix + "space_info/" + spaceID)
 }
 
 func nodeUsageKey() []byte {

@@ -34,7 +34,7 @@ type FileSync interface {
 	AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error)
 	OnUpload(func(spaceID, fileID string) error)
 	RemoveFile(spaceId, fileId string) (err error)
-	NodeUsage(ctx context.Context) (usage *NodeUsage, err error)
+	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)
@@ -127,17 +127,17 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 }
 
 func (f *fileSync) precacheSpaceStats() {
-	// TODO multi-spaces: init for each space: GO-1681
-	// TODO: [MR] adapt to multi-spaces
-	spaceID := f.personalIDGetter.PersonalSpaceID()
-	_, err := f.SpaceStat(context.Background(), spaceID)
+	_, err := f.NodeUsage(context.Background())
 	if err != nil {
+		log.Error("can't init node usage cache", zap.Error(err))
+
 		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-		//f.set(spaceID, SpaceStat{
-		//	SpaceId:           spaceID,
-		//	AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
-		//})
-		log.Error("can't init space stats", zap.String("spaceID", f.personalIDGetter.PersonalSpaceID()), zap.Error(err))
+		err = f.queue.setNodeUsage(NodeUsage{
+			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
+		})
+		if err != nil {
+			log.Error("can't set default limits", zap.Error(err))
+		}
 	}
 }
 

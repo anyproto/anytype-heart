@@ -1,6 +1,7 @@
 package filesync
 
 import (
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -205,4 +206,54 @@ type storeFixture struct {
 func (sf *storeFixture) Finish() {
 	_ = sf.db.Close()
 	_ = os.RemoveAll(sf.dir)
+}
+
+func TestSpaceStats(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		fx := newStoreFixture(t)
+		defer fx.Finish()
+
+		_, ok, err := fx.getSpaceStats("space1")
+		require.NoError(t, err)
+		assert.False(t, ok)
+
+		statsList, err := fx.getAllSpaceStats()
+		require.NoError(t, err)
+		assert.Empty(t, statsList)
+	})
+
+	t.Run("with added spaces", func(t *testing.T) {
+		fx := newStoreFixture(t)
+		defer fx.Finish()
+
+		space1 := generateSpaceStats("space1")
+		space2 := generateSpaceStats("space2")
+
+		err := fx.setSpaceStats(space1.SpaceId, space1)
+		require.NoError(t, err)
+		err = fx.setSpaceStats(space2.SpaceId, space2)
+		require.NoError(t, err)
+
+		got, ok, err := fx.getSpaceStats("space1")
+		require.NoError(t, err)
+		assert.Equal(t, space1, got)
+		assert.True(t, ok)
+
+		statsList, err := fx.getAllSpaceStats()
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []SpaceStat{space1, space2}, statsList)
+	})
+
+	// TODO Space delete
+}
+
+func generateSpaceStats(spaceId string) (stats SpaceStat) {
+	return SpaceStat{
+		SpaceId:           spaceId,
+		FileCount:         rand.Intn(100),
+		CidsCount:         rand.Intn(100),
+		TotalBytesUsage:   rand.Intn(100),
+		SpaceBytesUsage:   rand.Intn(100),
+		AccountBytesLimit: rand.Intn(100),
+	}
 }
