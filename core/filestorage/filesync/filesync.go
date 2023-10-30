@@ -34,7 +34,7 @@ type FileSync interface {
 	AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error)
 	OnUpload(func(spaceID, fileID string) error)
 	RemoveFile(spaceId, fileId string) (err error)
-	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
+	NodeUsage(ctx context.Context) (usage *NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)

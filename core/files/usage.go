@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
@@ -33,6 +34,24 @@ func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFil
 	}, nil
 }
 
-func (s *service) GetNodeUsage(ctx context.Context) (filesync.NodeUsage, error) {
-	return s.fileSync.NodeUsage(ctx)
+type NodeUsageResponse struct {
+	Usage           *filesync.NodeUsage
+	LocalUsageBytes uint64
+}
+
+func (s *service) GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error) {
+	usage, err := s.fileSync.NodeUsage(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("node usage: %w", err)
+	}
+
+	localUsage, err := s.fileStorage.LocalDiskUsage(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &NodeUsageResponse{
+		Usage:           usage,
+		LocalUsageBytes: localUsage,
+	}, nil
 }

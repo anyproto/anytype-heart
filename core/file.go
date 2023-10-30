@@ -141,12 +141,32 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 
 func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
 	usage, err := getService[files.Service](mw).GetNodeUsage(ctx)
-	_ = usage
 	code := mapErrorCode[pb.RpcFileNodeUsageResponseErrorCode](err)
-	return &pb.RpcFileNodeUsageResponse{
+	resp := &pb.RpcFileNodeUsageResponse{
 		Error: &pb.RpcFileNodeUsageResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
 	}
+	if usage != nil {
+		resp.Usage = &pb.RpcFileNodeUsageResponseUsage{
+			CidsCount:       uint64(usage.Usage.TotalCidsCount),
+			BytesUsage:      uint64(usage.Usage.TotalBytesUsage),
+			BytesLimit:      uint64(usage.Usage.AccountBytesLimit),
+			BytesLeft:       usage.Usage.BytesLeft,
+			LocalBytesUsage: usage.LocalUsageBytes,
+		}
+
+		resp.Spaces = make([]*pb.RpcFileNodeUsageResponseSpace, 0, len(usage.Usage.Spaces))
+		for _, space := range usage.Usage.Spaces {
+			resp.Spaces = append(resp.Spaces, &pb.RpcFileNodeUsageResponseSpace{
+				SpaceId:    space.SpaceId,
+				FilesCount: uint64(space.FileCount),
+				CidsCount:  uint64(space.CidsCount),
+				BytesUsage: uint64(space.SpaceBytesUsage),
+			})
+		}
+	}
+
+	return resp
 }

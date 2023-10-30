@@ -22,6 +22,7 @@ type NodeUsage struct {
 	AccountBytesLimit int
 	TotalBytesUsage   int
 	TotalCidsCount    int
+	BytesLeft         uint64
 	Spaces            []SpaceStat
 }
 
@@ -46,10 +47,33 @@ func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
 }
 
-func (s *fileSync) NodeUsage(ctx context.Context) (usage NodeUsage, err error) {
+func (s *fileSync) NodeUsage(ctx context.Context) (usage *NodeUsage, err error) {
 	info, err := s.rpcStore.AccountInfo(ctx)
-	_ = info
-	return
+	if err != nil {
+		return nil, fmt.Errorf("get node usage info: %w", err)
+	}
+	spaces := make([]SpaceStat, 0, len(info.Spaces))
+	for _, space := range info.Spaces {
+		spaces = append(spaces, SpaceStat{
+			SpaceId:           space.SpaceId,
+			FileCount:         int(space.FilesCount),
+			CidsCount:         int(space.CidsCount),
+			TotalBytesUsage:   int(space.TotalUsageBytes),
+			SpaceBytesUsage:   int(space.SpaceUsageBytes),
+			AccountBytesLimit: int(space.LimitBytes),
+		})
+	}
+	left := uint64(0)
+	if info.LimitBytes > info.TotalUsageBytes {
+		left = info.LimitBytes - info.TotalUsageBytes
+	}
+	return &NodeUsage{
+		AccountBytesLimit: int(info.LimitBytes),
+		TotalCidsCount:    int(info.TotalCidsCount),
+		TotalBytesUsage:   int(info.TotalUsageBytes),
+		BytesLeft:         left,
+		Spaces:            spaces,
+	}, nil
 }
 
 func (f *fileSync) SpaceStat(ctx context.Context, spaceID string) (SpaceStat, error) {
