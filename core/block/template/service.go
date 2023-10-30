@@ -43,7 +43,7 @@ type Service interface {
 	TemplateCloneInSpace(space space.Space, id string) (templateID string, err error)
 	TemplateClone(spaceID string, id string) (templateID string, err error)
 
-	TemplateExportAll(ctx context.Context, path string) error
+	TemplateExportAll(ctx context.Context, path string) (string, error)
 
 	app.Component
 }
@@ -207,7 +207,7 @@ func (s *service) TemplateClone(spaceID string, id string) (templateID string, e
 	return s.TemplateCloneInSpace(spaceObject, id)
 }
 
-func (s *service) TemplateExportAll(ctx context.Context, path string) error {
+func (s *service) TemplateExportAll(ctx context.Context, path string) (string, error) {
 	docIds, _, err := s.store.QueryObjectIDs(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -229,10 +229,10 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) error {
 		},
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	if len(docIds) == 0 {
-		return fmt.Errorf("no templates")
+		return "", fmt.Errorf("no templates")
 	}
 	path, _, err = s.exporter.Export(ctx, pb.RpcObjectListExportRequest{
 		Path:      path,
@@ -240,7 +240,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) error {
 		Format:    pb.RpcObjectListExport_Protobuf,
 		Zip:       true,
 	})
-	return err
+	return path, err
 }
 
 func (s *service) blankTemplateState() (st *state.State) {

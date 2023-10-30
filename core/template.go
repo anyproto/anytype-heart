@@ -47,7 +47,7 @@ func (mw *Middleware) TemplateClone(_ context.Context, req *pb.RpcTemplateCloneR
 	return response(templateId, err)
 }
 
-func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
+func (mw *Middleware) ObjectApplyTemplate(_ context.Context, req *pb.RpcObjectApplyTemplateRequest) *pb.RpcObjectApplyTemplateResponse {
 	response := func(err error) *pb.RpcObjectApplyTemplateResponse {
 		m := &pb.RpcObjectApplyTemplateResponse{
 			Error: &pb.RpcObjectApplyTemplateResponseError{Code: pb.RpcObjectApplyTemplateResponseError_NULL},
@@ -83,8 +83,9 @@ func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplate
 	var (
 		path string
 	)
-	err := mw.doTemplateService(func(ts template.Service) error {
-		return ts.TemplateExportAll(ctx, req.Path)
+	err := mw.doTemplateService(func(ts template.Service) (exportErr error) {
+		path, exportErr = ts.TemplateExportAll(ctx, req.Path)
+		return exportErr
 	})
 	return response(path, err)
 }
