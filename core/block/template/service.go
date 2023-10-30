@@ -139,8 +139,8 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		if b.Type() != coresb.SmartBlockTypePage {
 			return fmt.Errorf("can't make template from this obect type")
 		}
-		objectTypeKeys = b.ObjectTypeKeys()
 		st, err = s.templateCreateFromObjectState(b)
+		objectTypeKeys = st.ObjectTypeKeys()
 		return err
 	}); err != nil {
 		return
