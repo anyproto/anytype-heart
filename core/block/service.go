@@ -23,14 +23,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	templateservice "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -698,23 +696,6 @@ func (s *Service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *Service) StateFromTemplate(templateID, name string) (st *state.State, err error) {
-	if templateID == templateservice.BlankTemplateID || templateID == "" {
-		return s.BlankTemplateState(), nil
-	}
-	if err = Do(s, templateID, func(b smartblock.SmartBlock) error {
-		if tmpl, ok := b.(*editor.Template); ok {
-			st, err = tmpl.GetNewPageState(name)
-		} else {
-			return fmt.Errorf("object '%s' is not a template", templateID)
-		}
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("can't apply template: %w", err)
-	}
-	return
-}
-
 func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
 	sb, err := s.GetObject(context.Background(), id)
 	if err != nil {
@@ -725,38 +706,6 @@ func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error 
 		return apply(bb)
 	}
 	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
-}
-
-func (s *Service) ObjectApplyTemplate(contextID, templateID string) error {
-	return Do(s, contextID, func(b smartblock.SmartBlock) error {
-		orig := b.NewState().ParentState()
-		ts, err := s.StateFromTemplate(templateID, "")
-		if err != nil {
-			return err
-		}
-		ts.SetRootId(contextID)
-		ts.SetParent(orig)
-
-		layout, found := orig.Layout()
-		if found {
-			if commonOperations, ok := b.(basic.CommonOperations); ok {
-				if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
-					return fmt.Errorf("convert layout: %w", err)
-				}
-			}
-		}
-
-		ts.BlocksInit(ts)
-
-		objType := orig.ObjectTypeKey()
-		ts.SetObjectTypeKey(objType)
-
-		flags := internalflag.NewFromState(orig)
-		flags.AddToState(ts)
-
-		// we provide KeepInternalFlags to allow further template applying and object type change
-		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
-	})
 }
 
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
@@ -833,16 +782,4 @@ func (s *Service) GetLogFields() []zap.Field {
 		fields = append(fields, zap.Bool("predefined_object_was_missing", true))
 	}
 	return fields
-}
-
-func (s *Service) BlankTemplateState() (st *state.State) {
-	st = state.NewDoc(templateservice.BlankTemplateID, nil).NewState()
-	template.InitTemplate(st, template.WithEmpty,
-		template.WithDefaultFeaturedRelations,
-		template.WithFeaturedRelations,
-		template.WithRequiredRelations(),
-		template.WithTitle,
-		template.WithDescription,
-	)
-	return
 }

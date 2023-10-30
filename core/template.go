@@ -2,20 +2,12 @@ package core
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/anyproto/anytype-heart/core/block"
-	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func (mw *Middleware) TemplateCreateFromObject(cctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
+func (mw *Middleware) TemplateCreateFromObject(ctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
 	response := func(templateId string, err error) *pb.RpcTemplateCreateFromObjectResponse {
 		m := &pb.RpcTemplateCreateFromObjectResponse{
 			Error: &pb.RpcTemplateCreateFromObjectResponseError{Code: pb.RpcTemplateCreateFromObjectResponseError_NULL},
@@ -28,14 +20,14 @@ func (mw *Middleware) TemplateCreateFromObject(cctx context.Context, req *pb.Rpc
 		return m
 	}
 	var templateId string
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateCreateFromObject(cctx, req.ContextId)
+	err := mw.doTemplateService(func(ts template.Service) (err error) {
+		templateId, err = ts.TemplateCreateFromObject(ctx, req.ContextId)
 		return
 	})
 	return response(templateId, err)
 }
 
-func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
+func (mw *Middleware) TemplateClone(_ context.Context, req *pb.RpcTemplateCloneRequest) *pb.RpcTemplateCloneResponse {
 	response := func(templateId string, err error) *pb.RpcTemplateCloneResponse {
 		m := &pb.RpcTemplateCloneResponse{
 			Error: &pb.RpcTemplateCloneResponseError{Code: pb.RpcTemplateCloneResponseError_NULL},
@@ -48,8 +40,8 @@ func (mw *Middleware) TemplateClone(cctx context.Context, req *pb.RpcTemplateClo
 		return m
 	}
 	var templateId string
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		templateId, err = bs.TemplateClone(req.SpaceId, req.ContextId)
+	err := mw.doTemplateService(func(ts template.Service) (err error) {
+		templateId, err = ts.TemplateClone(req.SpaceId, req.ContextId)
 		return
 	})
 	return response(templateId, err)
@@ -66,33 +58,13 @@ func (mw *Middleware) ObjectApplyTemplate(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ObjectApplyTemplate(req.ContextId, req.TemplateId)
+	err := mw.doTemplateService(func(ts template.Service) (err error) {
+		return ts.ObjectApplyTemplate(req.ContextId, req.TemplateId)
 	})
 	return response(err)
 }
 
-func (mw *Middleware) TemplateCreateFromObjectType(cctx context.Context, req *pb.RpcTemplateCreateFromObjectTypeRequest) *pb.RpcTemplateCreateFromObjectTypeResponse {
-	response := func(templateId string, err error) *pb.RpcTemplateCreateFromObjectTypeResponse {
-		m := &pb.RpcTemplateCreateFromObjectTypeResponse{
-			Error: &pb.RpcTemplateCreateFromObjectTypeResponseError{Code: pb.RpcTemplateCreateFromObjectTypeResponseError_NULL},
-			Id:    templateId,
-		}
-		if err != nil {
-			m.Error.Code = pb.RpcTemplateCreateFromObjectTypeResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	var templateId string
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		// templateId, err = bs.TemplateCreateFromObjectByObjectType(cctx, req.ObjectType)
-		return
-	})
-	return response(templateId, err)
-}
-
-func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
+func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplateExportAllRequest) *pb.RpcTemplateExportAllResponse {
 	response := func(path string, err error) (res *pb.RpcTemplateExportAllResponse) {
 		res = &pb.RpcTemplateExportAllResponse{
 			Error: &pb.RpcTemplateExportAllResponseError{
@@ -111,43 +83,8 @@ func (mw *Middleware) TemplateExportAll(cctx context.Context, req *pb.RpcTemplat
 	var (
 		path string
 	)
-	err := mw.doBlockService(func(_ *block.Service) error {
-		es := mw.applicationService.GetApp().MustComponent(export.CName).(export.Export)
-		ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-
-		docIds, _, err := ds.QueryObjectIDs(database.Query{
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyIsArchived.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Bool(false),
-				},
-				{
-					RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
-				},
-				// We don't want templates from marketplace
-				{
-					RelationKey: bundle.RelationKeySpaceId.String(),
-					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.String(addr.AnytypeMarketplaceWorkspace),
-				},
-			},
-		})
-		if err != nil {
-			return err
-		}
-		if len(docIds) == 0 {
-			return fmt.Errorf("no templates")
-		}
-		path, _, err = es.Export(cctx, pb.RpcObjectListExportRequest{
-			Path:      req.Path,
-			ObjectIds: docIds,
-			Format:    pb.RpcObjectListExport_Protobuf,
-			Zip:       true,
-		})
-		return err
+	err := mw.doTemplateService(func(ts template.Service) error {
+		return ts.TemplateExportAll(ctx, req.Path)
 	})
 	return response(path, err)
 }

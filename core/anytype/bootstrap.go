@@ -25,8 +25,6 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/identity"
-
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -44,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	templateservice "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
@@ -52,6 +51,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/history"
+	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/recordsbatcher"
@@ -245,7 +245,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
 		Register(profiler.New()).
-		Register(identity.New())
+		Register(identity.New()).
+		Register(templateservice.New())
 }
 
 func MiddlewareVersion() string {
