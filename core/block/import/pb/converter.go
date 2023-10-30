@@ -243,7 +243,7 @@ func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMi
 	if errGS != nil {
 		return nil, errGS
 	}
-	if valid := p.validateSnapshot(snapshot); !valid {
+	if valid := p.isSnapshotValid(snapshot); !valid {
 		return nil, fmt.Errorf("snapshot is not valid: %s", name)
 	}
 	id := uuid.New().String()
@@ -542,6 +542,6 @@ func (p *Pb) filterObjects(objectTypesToImport widgets.ImportWidgetFlags, object
 	return rootObjects
 }
 
-func (p *Pb) validateSnapshot(snapshot *pb.SnapshotWithType) bool {
+func (p *Pb) isSnapshotValid(snapshot *pb.SnapshotWithType) bool {
 	return !(snapshot == nil || snapshot.Snapshot == nil || snapshot.Snapshot.Data == nil)
 }
