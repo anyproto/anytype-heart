@@ -69,10 +69,11 @@ func (f *fileSync) getAndUpdateSpaceStat(ctx context.Context, spaceID string) (s
 		return
 	}
 	newStats := SpaceStat{
-		SpaceId:    spaceID,
-		FileCount:  int(info.FilesCount),
-		CidsCount:  int(info.CidsCount),
-		BytesUsage: int(info.UsageBytes),
+		SpaceId:   spaceID,
+		FileCount: int(info.FilesCount),
+		CidsCount: int(info.CidsCount),
+		// TODO implement new UsageBytes
+		//BytesUsage: int(info.UsageBytes),
 		BytesLimit: int(info.LimitBytes),
 	}
 	f.spaceStatsLock.Lock()

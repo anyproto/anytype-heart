@@ -51,7 +51,7 @@ func (s *service) loadPersonalSpace(ctx context.Context) (err error) {
 	err = s.startLoad(ctx, s.personalSpaceID)
 	// This could happen for old accounts
 	if errors.Is(err, ErrSpaceNotExists) {
-		err = s.techSpace.SpaceViewCreate(ctx, s.personalSpaceID)
+		err = s.techSpace.SpaceViewCreate(ctx, s.personalSpaceID, false)
 		if err != nil {
 			return err
 		}

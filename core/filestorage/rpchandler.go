@@ -16,6 +16,11 @@ type rpcHandler struct {
 	spaceStorage storage.ClientStorage
 }
 
+func (r *rpcHandler) AccountInfo(ctx context.Context, request *fileproto.AccountInfoRequest) (*fileproto.AccountInfoResponse, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (r *rpcHandler) FilesDelete(ctx context.Context, request *fileproto.FilesDeleteRequest) (*fileproto.FilesDeleteResponse, error) {
 	return nil, fileprotoerr.ErrForbidden
 }
