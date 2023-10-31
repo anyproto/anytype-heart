@@ -86,11 +86,9 @@ func (s *techSpace) wakeUpViews() {
 		default:
 		}
 
-		s.mu.Lock()
 		if _, err := s.objectCache.GetObject(s.ctx, id); err != nil {
 			log.Warn("wakeUp views: get object error", zap.String("objectId", id), zap.Error(err))
 		}
-		s.mu.Unlock()
 	}
 	s.techCore.TreeSyncer().StartSync()
 	return
