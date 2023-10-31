@@ -9,8 +9,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"

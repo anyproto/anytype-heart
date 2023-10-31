@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	te "github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 )

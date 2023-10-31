@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
-	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"

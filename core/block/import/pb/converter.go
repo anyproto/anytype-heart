@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	widgets "github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
@@ -320,6 +320,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profile
 				details.Fields[bundle.RelationKeySourceObject.String()] = pbtypes.String(sourceObjectId)
 			}
 		}
+		id = originalId
 	}
 
 	if snapshot.SbType == model.SmartBlockType_ProfilePage {

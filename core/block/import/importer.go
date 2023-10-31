@@ -18,17 +18,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/creator"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/creator"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/objectid"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/syncer"
+	"github.com/anyproto/anytype-heart/core/block/import/converter/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/import/csv"
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/import/notion"
-	"github.com/anyproto/anytype-heart/core/block/import/objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
-	"github.com/anyproto/anytype-heart/core/block/import/syncer"
 	"github.com/anyproto/anytype-heart/core/block/import/txt"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
-	"github.com/anyproto/anytype-heart/core/block/import/workerpool"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -338,8 +338,7 @@ func (i *Import) replaceRelationKeyWithNew(option *converter.Snapshot, oldIDToNe
 		return
 	}
 	key := pbtypes.GetString(option.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
-	relationID := addr.RelationKeyToIdPrefix + key
-	if newRelationID, ok := oldIDToNew[relationID]; ok {
+	if newRelationID, ok := oldIDToNew[key]; ok {
 		key = strings.TrimPrefix(newRelationID, addr.RelationKeyToIdPrefix)
 	}
 	option.Snapshot.Data.Details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(key)
