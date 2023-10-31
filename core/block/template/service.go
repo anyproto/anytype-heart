@@ -280,10 +280,11 @@ func (s *service) getNewPageState(tmpl *editor.Template, name string) (st *state
 	return
 }
 
-func (s *service) updateTypeKey(st *state.State) error {
+func (s *service) updateTypeKey(st *state.State) (err error) {
 	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeID != "" {
-		uniqueKey, err := s.store.GetUniqueKeyByID(objectTypeID)
+		var uniqueKey domain.UniqueKey
+		uniqueKey, err = s.store.GetUniqueKeyByID(objectTypeID)
 		if err != nil {
 			err = fmt.Errorf("get target object type %s: %w", objectTypeID, err)
 		} else if uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {
@@ -297,7 +298,7 @@ func (s *service) updateTypeKey(st *state.State) error {
 	}
 	updatedTypeKeys := slice.Remove(st.ObjectTypeKeys(), bundle.TypeKeyTemplate)
 	if len(updatedTypeKeys) != 1 {
-		return fmt.Errorf("cannot gather type key from template's ObjectTypeKeys: %v", st.ObjectTypeKeys())
+		return fmt.Errorf("failed to gather type key from template's ObjectTypeKeys (%v) and from object store: %w", st.ObjectTypeKeys(), err)
 	}
 	st.SetObjectTypeKey(updatedTypeKeys[0])
 	return nil
