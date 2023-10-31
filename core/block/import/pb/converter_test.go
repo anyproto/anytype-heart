@@ -184,10 +184,11 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 		}},
 		UpdateExistingObjects: false,
 		Type:                  0,
-		Mode:                  0,
+		Mode:                  1,
 	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.Nil(t, ce)
+	assert.NotNil(t, ce, 1)
+	assert.Contains(t, ce.Error().Error(), "snapshot is not valid: test")
 	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 2)
 

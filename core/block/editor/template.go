@@ -66,7 +66,7 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	}
 
 	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
-	st.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(t.Id()))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(t.Id()))
 	// clean-up local details from the template state
 	st.SetLocalDetails(nil)
 

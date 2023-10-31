@@ -2,10 +2,12 @@ package objectcreator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
@@ -88,7 +90,10 @@ func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.
 	var createState *state.State
 	if templateID != "" {
 		if createState, err = s.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
-			return
+			if !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+				return
+			}
+			createState = state.NewDoc("", nil).NewState()
 		}
 	} else {
 		createState = state.NewDoc("", nil).NewState()
