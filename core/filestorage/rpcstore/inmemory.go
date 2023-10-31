@@ -85,10 +85,10 @@ func (t *inMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*filepro
 	var info fileproto.SpaceInfoResponse
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	// TODO implement new space info
-	// for _, b := range t.store {
-	//	 info.UsageBytes += uint64(len(b.RawData()))
-	// }
+	for _, b := range t.store {
+		info.TotalUsageBytes += uint64(len(b.RawData()))
+	}
+	info.SpaceUsageBytes = info.TotalUsageBytes
 	info.CidsCount = uint64(len(t.store))
 	// TODO info.FilesCount after implementing file storage
 	info.LimitBytes = 10 * 1024 * 1024
