@@ -281,25 +281,25 @@ func (s *service) getNewPageState(tmpl *editor.Template, name string) (st *state
 }
 
 func (s *service) updateTypeKey(st *state.State) error {
-	var typeKey domain.TypeKey
 	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
 	if objectTypeID != "" {
 		uniqueKey, err := s.store.GetUniqueKeyByID(objectTypeID)
 		if err != nil {
-			return fmt.Errorf("get target object type %s: %w", objectTypeID, err)
+			err = fmt.Errorf("get target object type %s: %w", objectTypeID, err)
+		} else if uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {
+			err = fmt.Errorf("unique key %s does not belong to object type", uniqueKey.InternalKey())
 		}
-		if uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {
-			return fmt.Errorf("unique key %s does not belong to object type", uniqueKey.InternalKey())
+		if err == nil {
+			st.SetObjectTypeKey(domain.TypeKey(uniqueKey.InternalKey()))
+			return nil
 		}
-		typeKey = domain.TypeKey(uniqueKey.InternalKey())
-	} else {
-		updatedTypeKeys := slice.Remove(st.ObjectTypeKeys(), bundle.TypeKeyTemplate)
-		if len(updatedTypeKeys) != 1 {
-			return fmt.Errorf("cannot gather type key from template's ObjectTypeKeys: %v", st.ObjectTypeKeys())
-		}
-		typeKey = updatedTypeKeys[0]
+		log.Errorf(err.Error())
 	}
-	st.SetObjectTypeKey(typeKey)
+	updatedTypeKeys := slice.Remove(st.ObjectTypeKeys(), bundle.TypeKeyTemplate)
+	if len(updatedTypeKeys) != 1 {
+		return fmt.Errorf("cannot gather type key from template's ObjectTypeKeys: %v", st.ObjectTypeKeys())
+	}
+	st.SetObjectTypeKey(updatedTypeKeys[0])
 	return nil
 }
 
