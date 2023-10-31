@@ -181,6 +181,11 @@ type testServer struct {
 	files map[string][][]byte
 }
 
+func (t *testServer) AccountInfo(ctx context.Context, request *fileproto.AccountInfoRequest) (*fileproto.AccountInfoResponse, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -256,8 +261,8 @@ func (t *testServer) SpaceInfo(ctx context.Context, req *fileproto.SpaceInfoRequ
 	resp := &fileproto.SpaceInfoResponse{
 		LimitBytes: 99999999,
 	}
-	for _, b := range t.data {
-		resp.UsageBytes += uint64(len(b))
+	for _, _ = range t.data {
+		//resp.UsageBytes += uint64(len(b))
 		resp.CidsCount++
 	}
 	resp.FilesCount = uint64(len(t.files))

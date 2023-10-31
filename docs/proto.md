@@ -1460,6 +1460,7 @@
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
@@ -15404,6 +15405,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 
@@ -15479,6 +15481,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ACTIVE | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 
@@ -22989,6 +22992,24 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype-model-ObjectOrigin"></a>
+
+### ObjectOrigin
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| none | 0 |  |
+| clipboard | 1 |  |
+| dragAndDrop | 2 |  |
+| import | 3 |  |
+| webclipper | 4 |  |
+| sharingExtension | 5 |  |
+| usecase | 6 |  |
+| builtin | 7 |  |
 
 
 

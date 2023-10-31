@@ -52,16 +52,20 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	if ls.load(ctx) {
 		return
 	}
-	ticker := time.NewTicker(ls.retryTimeout)
+	timeout := 1 * time.Second
 	for {
 		select {
 		case <-ctx.Done():
 			ls.loadErr = ctx.Err()
 			return
-		case <-ticker.C:
+		case <-time.After(timeout):
 			if ls.load(ctx) {
 				return
 			}
+		}
+		timeout *= 2
+		if timeout > ls.retryTimeout {
+			timeout = ls.retryTimeout
 		}
 	}
 }
