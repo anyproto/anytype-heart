@@ -145,7 +145,8 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 	}
 	// Index
 	return space.Do(id, func(sb smartblock2.SmartBlock) error {
-		return sb.Apply(sb.NewState())
+		st.SetParent(sb.NewState())
+		return sb.Apply(st)
 	})
 }
 
