@@ -133,6 +133,7 @@ type ObjectStore interface {
 
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
+	GetUniqueKeyByID(id string) (key domain.UniqueKey, err error)
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
 
@@ -330,6 +331,18 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 		return nil, err
 	}
 	return details, nil
+}
+
+func (s *dsObjectStore) GetUniqueKeyByID(id string) (domain.UniqueKey, error) {
+	details, err := s.GetDetails(id)
+	if err != nil {
+		return nil, err
+	}
+	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
+	if rawUniqueKey == "" {
+		return nil, fmt.Errorf("object %s does not have %s set in details", id, bundle.RelationKeyUniqueKey.String())
+	}
+	return domain.UnmarshalUniqueKey(rawUniqueKey)
 }
 
 func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {

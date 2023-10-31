@@ -24,16 +24,20 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
 	CName           = "template"
 	BlankTemplateID = "blank"
 )
+
+var log = logging.Logger("anytype-mw-api")
 
 type Service interface {
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
@@ -258,7 +262,7 @@ func (s *service) blankTemplateState() (st *state.State) {
 func (s *service) getNewPageState(tmpl *editor.Template, name string) (st *state.State, err error) {
 	st = tmpl.NewState().Copy()
 
-	if err = tmpl.UpdateTypeKey(st); err != nil {
+	if err = s.updateTypeKey(st); err != nil {
 		return nil, err
 	}
 
@@ -274,6 +278,29 @@ func (s *service) getNewPageState(tmpl *editor.Template, name string) (st *state
 		}
 	}
 	return
+}
+
+func (s *service) updateTypeKey(st *state.State) error {
+	var typeKey domain.TypeKey
+	objectTypeID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
+	if objectTypeID != "" {
+		uniqueKey, err := s.store.GetUniqueKeyByID(objectTypeID)
+		if err != nil {
+			return fmt.Errorf("get target object type %s: %w", objectTypeID, err)
+		}
+		if uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {
+			return fmt.Errorf("unique key %s does not belong to object type", uniqueKey.InternalKey())
+		}
+		typeKey = domain.TypeKey(uniqueKey.InternalKey())
+	} else {
+		updatedTypeKeys := slice.Remove(st.ObjectTypeKeys(), bundle.TypeKeyTemplate)
+		if len(updatedTypeKeys) != 1 {
+			return fmt.Errorf("cannot gather type key from template's ObjectTypeKeys: %v", st.ObjectTypeKeys())
+		}
+		typeKey = updatedTypeKeys[0]
+	}
+	st.SetObjectTypeKey(typeKey)
+	return nil
 }
 
 func (s *service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*state.State, error) {

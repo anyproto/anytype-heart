@@ -1185,6 +1185,60 @@ func (_c *MockObjectStore_GetRelationLink_Call) RunAndReturn(run func(string, st
 	return _c
 }
 
+// GetUniqueKeyByID provides a mock function with given fields: id
+func (_m *MockObjectStore) GetUniqueKeyByID(id string) (domain.UniqueKey, error) {
+	ret := _m.Called(id)
+
+	var r0 domain.UniqueKey
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (domain.UniqueKey, error)); ok {
+		return rf(id)
+	}
+	if rf, ok := ret.Get(0).(func(string) domain.UniqueKey); ok {
+		r0 = rf(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(domain.UniqueKey)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_GetUniqueKeyByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUniqueKeyByID'
+type MockObjectStore_GetUniqueKeyByID_Call struct {
+	*mock.Call
+}
+
+// GetUniqueKeyByID is a helper method to define mock.On call
+//   - id string
+func (_e *MockObjectStore_Expecter) GetUniqueKeyByID(id interface{}) *MockObjectStore_GetUniqueKeyByID_Call {
+	return &MockObjectStore_GetUniqueKeyByID_Call{Call: _e.mock.On("GetUniqueKeyByID", id)}
+}
+
+func (_c *MockObjectStore_GetUniqueKeyByID_Call) Run(run func(id string)) *MockObjectStore_GetUniqueKeyByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetUniqueKeyByID_Call) Return(key domain.UniqueKey, err error) *MockObjectStore_GetUniqueKeyByID_Call {
+	_c.Call.Return(key, err)
+	return _c
+}
+
+func (_c *MockObjectStore_GetUniqueKeyByID_Call) RunAndReturn(run func(string) (domain.UniqueKey, error)) *MockObjectStore_GetUniqueKeyByID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetWithLinksInfoByID provides a mock function with given fields: spaceID, id
 func (_m *MockObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
 	ret := _m.Called(spaceID, id)

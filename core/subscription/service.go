@@ -527,15 +527,9 @@ func (s *service) filtersFromSource(sources []string) (database.Filter, error) {
 		if uk, err = domain.UnmarshalUniqueKey(source); err != nil {
 			// todo: gradually escalate to return error
 			log.Info("Using object id instead of uniqueKey is deprecated in the Source")
-
-			details, err := s.objectStore.GetDetails(source)
+			uk, err = s.objectStore.GetUniqueKeyByID(source)
 			if err != nil {
-				return nil, fmt.Errorf("get object %s details: %w", source, err)
-			}
-
-			uk, err = domain.UnmarshalUniqueKey(pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String()))
-			if err != nil {
-				return nil, fmt.Errorf("object doesn't have uniqueKey: %w", err)
+				return nil, err
 			}
 		}
 		switch uk.SmartblockType() {
