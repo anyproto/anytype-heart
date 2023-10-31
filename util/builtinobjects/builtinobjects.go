@@ -159,10 +159,6 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	spaceID string,
 	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
-	if useCase == pb.RpcObjectImportUseCaseRequest_EMPTY {
-		return pb.RpcObjectImportUseCaseResponseError_NULL, err
-	}
-
 	start := time.Now()
 
 	archive, found := archives[useCase]
