@@ -8,8 +8,8 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 
-	ce "github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/converter/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -34,7 +34,7 @@ func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
 }
 
-func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
 	files := m.processFiles(importPath, allErrors, importSource)
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
@@ -42,7 +42,7 @@ func (m *mdConverter) markdownToBlocks(importPath string, importSource source.So
 	return files
 }
 
-func (m *mdConverter) processFiles(importPath string, allErrors *ce.ConvertError, importSource source.Source) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertError, importSource source.Source) map[string]*FileInfo {
 	err := importSource.Initialize(importPath)
 	if err != nil {
 		allErrors.Add(err)
@@ -51,7 +51,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *ce.ConvertError
 		}
 	}
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
-		allErrors.Add(ce.ErrNoObjectsToImport)
+		allErrors.Add(common.ErrNoObjectsToImport)
 		return nil
 	}
 	fileInfo := m.getFileInfo(importSource, allErrors)
@@ -64,7 +64,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *ce.ConvertError
 	return fileInfo
 }
 
-func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *ce.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
 	fileInfo := make(map[string]*FileInfo, 0)
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		if err := m.fillFilesInfo(fileInfo, fileName, fileReader); err != nil {
@@ -161,7 +161,7 @@ func (m *mdConverter) processFileBlock(block *model.Block, importedSource source
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
 		}
-		name, _, err := ce.ProvideFileName(block.GetFile().Name, importedSource, importPath, m.tempDirProvider)
+		name, _, err := common.ProvideFileName(block.GetFile().Name, importedSource, importPath, m.tempDirProvider)
 		if err != nil {
 			log.Errorf("failed to update file block, %v", err)
 		}

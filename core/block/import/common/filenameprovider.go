@@ -1,4 +1,4 @@
-package converter
+package common
 
 import (
 	"bufio"
@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 )
