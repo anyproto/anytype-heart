@@ -37,12 +37,15 @@ func newSubObjectsAndProfileLinksMigration(space Space, identityObjectID string,
 func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
 	for _, rel := range s.GetRelationLinks() {
 		if m.canRelationContainObjectValues(rel.Format) {
-			if oldId := pbtypes.GetString(s.Details(), rel.Key); oldId != "" {
+			rawValue := s.Details().GetFields()[rel.Key]
+
+			if oldId := rawValue.GetStringValue(); oldId != "" {
 				newId := m.migrateId(oldId)
 				if oldId != newId {
 					s.SetDetail(rel.Key, pbtypes.String(newId))
 				}
-			} else if ids := pbtypes.GetStringList(s.Details(), rel.Key); len(ids) > 0 {
+			} else if rawIds := rawValue.GetListValue(); rawIds != nil {
+				ids := pbtypes.ListValueToStrings(rawIds)
 				changed := false
 				for i, oldId := range ids {
 					newId := m.migrateId(oldId)
