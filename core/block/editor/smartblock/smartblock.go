@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -353,6 +355,24 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+
+	prevRawTypes := ctx.State.RawObjectTypes()
+	var newRawTypes []string
+	var anyFixed bool
+	for _, ot := range prevRawTypes {
+		if strings.HasPrefix(ot, addr.ObjectTypeKeyToIdPrefix) || strings.HasPrefix(ot, addr.BundledObjectTypeURLPrefix) {
+			newRawTypes = append(newRawTypes, ot)
+		} else {
+			anyFixed = true
+			newRawTypes = append(newRawTypes, addr.ObjectTypeKeyToIdPrefix+ot)
+		}
+	}
+	if anyFixed {
+		newRawTypes = lo.Uniq(newRawTypes)
+		ctx.State.SetRawObjectTypes(newRawTypes)
+		fmt.Println("FIXED", sb.Id(), prevRawTypes, "->", newRawTypes)
+	}
+
 	return
 }
 
@@ -690,6 +710,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	s.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(sb.currentProfileId))
 	s.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModified.Unix()))
 
+	objectTypesFixed := s.RawObjectTypesFixed()
 	sb.beforeStateApply(s)
 
 	if !keepInternalFlags {
@@ -769,7 +790,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasStoreChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
+	} else if hasStoreChanges(changes) || migrationVersionUpdated || objectTypesFixed { // TODO: change to len(changes) > 0
+		if objectTypesFixed {
+			fmt.Println("PUSH FIXED OT", sb.Id())
+		}
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {

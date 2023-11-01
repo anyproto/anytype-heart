@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -98,6 +99,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		blocks:            blocks,
 		details:           detailsToSave,
 		relationLinks:     snapshot.Data.RelationLinks,
+		rawObjectTypes:    snapshot.Data.ObjectTypes,
 		objectTypeKeys:    migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
 		fileKeys:          fileKeys,
 		store:             snapshot.Data.Collections,
@@ -298,6 +300,10 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 		add.Key = strings.TrimPrefix(add.Url, addr.ObjectTypeKeyToIdPrefix)
 	}
 
+	if !slices.Contains(s.rawObjectTypes, add.Url) {
+		s.rawObjectTypes = append(s.rawObjectTypes, add.Url)
+	}
+
 	for _, ot := range s.ObjectTypeKeys() {
 		if ot == domain.TypeKey(add.Key) {
 			return nil
@@ -313,6 +319,13 @@ func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error 
 	if remove.Url != "" {
 		remove.Key = strings.TrimPrefix(remove.Url, addr.ObjectTypeKeyToIdPrefix)
 	}
+
+	s.rawObjectTypes = slice.Remove(s.rawObjectTypes, remove.Url)
+
+	if !strings.HasPrefix(remove.Url, addr.ObjectTypeKeyToIdPrefix) {
+		return nil
+	}
+
 	s.objectTypeKeys = slice.Filter(s.ObjectTypeKeys(), func(key domain.TypeKey) bool {
 		if key == domain.TypeKey(remove.Key) {
 			found = true
@@ -685,24 +698,24 @@ func (s *State) collapseSameKeyStoreChanges() {
 }
 
 func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
-	if s.objectTypeKeys == nil {
+	if s.rawObjectTypes == nil {
 		return nil
 	}
-	var prev []domain.TypeKey
+	var prev []string
 	if s.parent != nil {
-		prev = s.parent.ObjectTypeKeys()
+		prev = s.parent.RawObjectTypes()
 	}
 
-	var prevMap = make(map[domain.TypeKey]struct{}, len(prev))
-	var curMap = make(map[domain.TypeKey]struct{}, len(s.objectTypeKeys))
+	var prevMap = make(map[string]struct{}, len(prev))
+	var curMap = make(map[string]struct{}, len(s.rawObjectTypes))
 
-	for _, v := range s.objectTypeKeys {
+	for _, v := range s.rawObjectTypes {
 		curMap[v] = struct{}{}
 		_, ok := prevMap[v]
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeAdd{
-					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v.URL()},
+					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v},
 				},
 			})
 		}
@@ -712,7 +725,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeRemove{
-					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v.URL()},
+					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v},
 				},
 			})
 		}

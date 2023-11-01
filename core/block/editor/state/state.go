@@ -126,7 +126,9 @@ type State struct {
 	storeKeyRemoved         map[string]struct{}
 	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
-	objectTypeKeys []domain.TypeKey // here we store object type keys, not IDs
+	rawObjectTypesFixed bool
+	rawObjectTypes      []string
+	objectTypeKeys      []domain.TypeKey // here we store object type keys, not IDs
 
 	changesStructureIgnoreIds []string
 
@@ -628,6 +630,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
+	if s.parent != nil && s.rawObjectTypes != nil {
+		s.parent.rawObjectTypes = s.rawObjectTypes
+	}
+
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -702,6 +708,9 @@ func (s *State) intermediateApply() {
 
 	if s.objectTypeKeys != nil {
 		s.parent.objectTypeKeys = s.objectTypeKeys
+	}
+	if s.rawObjectTypes != nil {
+		s.parent.rawObjectTypes = s.rawObjectTypes
 	}
 
 	if s.store != nil {
@@ -1029,6 +1038,22 @@ func (s *State) ObjectTypeKeys() []domain.TypeKey {
 	return s.objectTypeKeys
 }
 
+func (s *State) RawObjectTypesFixed() bool {
+	return s.rawObjectTypesFixed
+}
+
+func (s *State) RawObjectTypes() []string {
+	if s.rawObjectTypes == nil && s.parent != nil {
+		return s.parent.RawObjectTypes()
+	}
+	return s.rawObjectTypes
+}
+
+func (s *State) SetRawObjectTypes(rawObjectTypes []string) {
+	s.rawObjectTypesFixed = true
+	s.rawObjectTypes = rawObjectTypes
+}
+
 // ObjectTypeKey returns only the first objectType key and produce warning in case the state has more than 1 object type
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
 func (s *State) ObjectTypeKey() domain.TypeKey {
@@ -1246,6 +1271,10 @@ func (s *State) Copy() *State {
 	for i := range storeKeyRemoved {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
+
+	rawObjTypes := make([]string, len(s.rawObjectTypes))
+	copy(rawObjTypes, s.rawObjectTypes)
+
 	copy := &State{
 		ctx:                     s.ctx,
 		blocks:                  blocks,
@@ -1254,6 +1283,7 @@ func (s *State) Copy() *State {
 		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
 		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
 		objectTypeKeys:          objTypes,
+		rawObjectTypes:          rawObjTypes,
 		noObjectType:            s.noObjectType,
 		migrationVersion:        s.migrationVersion,
 		store:                   pbtypes.CopyStruct(s.Store()),
