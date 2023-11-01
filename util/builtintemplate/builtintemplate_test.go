@@ -29,9 +29,6 @@ func Test_registerBuiltin(t *testing.T) {
 	marketplaceSpace.EXPECT().Id().Return(addr.AnytypeMarketplaceWorkspace)
 	marketplaceSpace.EXPECT().Do(mock.Anything, mock.Anything).Return(nil)
 
-	spaceService := mock_space.NewMockService(t)
-	spaceService.EXPECT().Get(mock.Anything, addr.AnytypeMarketplaceWorkspace).Return(marketplaceSpace, nil)
-
 	objectStore := mock_objectstore.NewMockObjectStore(t)
 
 	builtInTemplates := New()
@@ -39,13 +36,12 @@ func Test_registerBuiltin(t *testing.T) {
 	ctx := context.Background()
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(ctx, a, sourceService))
-	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(builtInTemplates)
 	a.Register(config.New())
 	a.Register(testutil.PrepareMock(ctx, a, objectStore))
 
 	err := builtInTemplates.Init(a)
 	assert.NoError(t, err)
-	err = builtInTemplates.Run(context.Background())
+	err = builtInTemplates.RegisterBuiltinTemplates(marketplaceSpace)
 	assert.NoError(t, err)
 }

@@ -46,14 +46,12 @@ type BuiltinTemplate interface {
 type builtinTemplate struct {
 	source        source.Service
 	objectStore   objectstore.ObjectStore
-	spaceService  space.Service
 	generatedHash string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = app.MustComponent[source.Service](a)
 	b.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	b.spaceService = app.MustComponent[space.Service](a)
 
 	b.makeGenHash(4)
 	return
