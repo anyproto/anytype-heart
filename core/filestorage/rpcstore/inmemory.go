@@ -17,6 +17,7 @@ type inMemoryService struct {
 	store RpcStore
 }
 
+// NewInMemoryService creates new service for testing purposes
 func NewInMemoryService(store RpcStore) Service {
 	return &inMemoryService{
 		store: store,
@@ -27,6 +28,7 @@ func (s *inMemoryService) Name() string          { return CName }
 func (s *inMemoryService) Init(_ *app.App) error { return nil }
 func (s *inMemoryService) NewStore() RpcStore    { return s.store }
 
+// NewInMemoryStore creates new in-memory store for testing purposes
 func NewInMemoryStore(limit int) RpcStore {
 	ts := &inMemoryStore{
 		store:      make(map[cid.Cid]blocks.Block),

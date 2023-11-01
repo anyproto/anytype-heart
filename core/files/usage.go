@@ -47,7 +47,7 @@ func (s *service) GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error) 
 
 	localUsage, err := s.fileStorage.LocalDiskUsage(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("local disk usage: %w", err)
 	}
 
 	return &NodeUsageResponse{
