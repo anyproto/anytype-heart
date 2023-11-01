@@ -163,7 +163,11 @@ func (c *configFetcher) Close(ctx context.Context) (err error) {
 
 func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayload) {
 	s := convertToAccountStatusModel(status)
+	if c.lastStatus == s.StatusType {
+		return
+	}
 
+	c.lastStatus = s.StatusType
 	ev := &pbMiddle.Event{
 		Messages: []*pbMiddle.EventMessage{
 			{
