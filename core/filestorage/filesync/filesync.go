@@ -118,27 +118,12 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	go f.precacheSpaceStats()
+	go f.precacheNodeUsage()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.addLoop()
 	go f.removeLoop()
 	return
-}
-
-func (f *fileSync) precacheSpaceStats() {
-	_, err := f.NodeUsage(context.Background())
-	if err != nil {
-		log.Error("can't init node usage cache", zap.Error(err))
-
-		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-		err = f.queue.setNodeUsage(NodeUsage{
-			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
-		})
-		if err != nil {
-			log.Error("can't set default limits", zap.Error(err))
-		}
-	}
 }
 
 func (f *fileSync) Close(ctx context.Context) (err error) {

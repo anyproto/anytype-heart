@@ -15504,6 +15504,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 
@@ -15579,6 +15580,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ACTIVE | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 

@@ -331,7 +331,6 @@
     "readonly": false,
     "source": "details",
     "objectTypes": [
-      "task",
       "project"
     ]
   },

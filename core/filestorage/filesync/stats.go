@@ -60,6 +60,33 @@ func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
 }
 
+func (f *fileSync) precacheNodeUsage() {
+	_, ok, err := f.getCachedNodeUsage()
+	// Init cache with default limits
+	if !ok || err != nil {
+		err = f.queue.setNodeUsage(NodeUsage{
+			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
+		})
+		if err != nil {
+			log.Error("can't set default limits", zap.Error(err))
+		}
+	}
+
+	// Load actual node usage
+	_, err = f.getAndUpdateNodeUsage(context.Background())
+	if err != nil {
+		log.Error("can't init node usage cache", zap.Error(err))
+
+		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
+		err = f.queue.setNodeUsage(NodeUsage{
+			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
+		})
+		if err != nil {
+			log.Error("can't set default limits", zap.Error(err))
+		}
+	}
+}
+
 func (s *fileSync) NodeUsage(ctx context.Context) (NodeUsage, error) {
 	usage, ok, err := s.getCachedNodeUsage()
 	if err != nil {
