@@ -26,6 +26,7 @@ var log = logging.Logger("anytype-mw-configfetcher")
 const (
 	refreshIntervalSecs = 300
 	timeout             = 10 * time.Second
+	initialStatus       = -1
 )
 
 const CName = "configfetcher"
@@ -99,6 +100,7 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
 	c.account = app.MustComponent[personalSpaceIDGetter](a)
 	c.fetched = make(chan struct{})
+	c.lastStatus = initialStatus
 	return nil
 }
 
