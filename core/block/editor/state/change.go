@@ -702,7 +702,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeAdd{
-					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: string(v)},
+					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v.URL()},
 				},
 			})
 		}
@@ -712,7 +712,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeRemove{
-					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: string(v)},
+					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v.URL()},
 				},
 			})
 		}
