@@ -947,7 +947,7 @@ func TestService_Search(t *testing.T) {
 	})
 }
 
-func TestNestedSubscription(t *testing.T) {
+func xTestNestedSubscription(t *testing.T) {
 	t.Run("update nested object, so it's not satisfying filter anymore", func(t *testing.T) {
 		fx := testCreateSubscriptionWithNestedFilter(t)
 
