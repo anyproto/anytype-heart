@@ -553,6 +553,58 @@ func (_c *MockFileSync_Name_Call) RunAndReturn(run func() string) *MockFileSync_
 	return _c
 }
 
+// NodeUsage provides a mock function with given fields: ctx
+func (_m *MockFileSync) NodeUsage(ctx context.Context) (filesync.NodeUsage, error) {
+	ret := _m.Called(ctx)
+
+	var r0 filesync.NodeUsage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (filesync.NodeUsage, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) filesync.NodeUsage); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(filesync.NodeUsage)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFileSync_NodeUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NodeUsage'
+type MockFileSync_NodeUsage_Call struct {
+	*mock.Call
+}
+
+// NodeUsage is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockFileSync_Expecter) NodeUsage(ctx interface{}) *MockFileSync_NodeUsage_Call {
+	return &MockFileSync_NodeUsage_Call{Call: _e.mock.On("NodeUsage", ctx)}
+}
+
+func (_c *MockFileSync_NodeUsage_Call) Run(run func(ctx context.Context)) *MockFileSync_NodeUsage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_NodeUsage_Call) Return(usage filesync.NodeUsage, err error) *MockFileSync_NodeUsage_Call {
+	_c.Call.Return(usage, err)
+	return _c
+}
+
+func (_c *MockFileSync_NodeUsage_Call) RunAndReturn(run func(context.Context) (filesync.NodeUsage, error)) *MockFileSync_NodeUsage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // OnUpload provides a mock function with given fields: _a0
 func (_m *MockFileSync) OnUpload(_a0 func(string, string) error) {
 	_m.Called(_a0)

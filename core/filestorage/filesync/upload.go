@@ -163,7 +163,7 @@ func (f *fileSync) uploadFile(ctx context.Context, spaceID string, fileID string
 		return fmt.Errorf("get space stat: %w", err)
 	}
 
-	bytesLeft := stat.BytesLimit - stat.BytesUsage
+	bytesLeft := stat.AccountBytesLimit - stat.TotalBytesUsage
 	if fileSize > bytesLeft {
 		return errReachedLimit
 	}

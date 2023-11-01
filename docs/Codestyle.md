@@ -9,13 +9,12 @@ https://github.com/golang/go/wiki/CodeReviewComments
 Below are listed some rules where we deviate from these recommendations.
 
 ## Rules
-### Package names
-https://go.dev/doc/effective_go#package-names
 
-We use `_` (snake_case) as word separators in package names.
-Our experience shows that this approach provides better clarity.
-
-Example: `package_name`, not `packagename`.
+### No underscores in file names
+Use underscores only for test files and for separating platform specific (build tag constrained) implementations:
+- `foo_test.go`
+- `foo_windows.go`
+- `foo_heic.go` 
 
 ### Variable names
 https://github.com/golang/go/wiki/CodeReviewComments#variable-names
