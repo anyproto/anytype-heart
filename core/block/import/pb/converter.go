@@ -329,6 +329,7 @@ func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profile
 	if snapshot.SbType == model.SmartBlockType_Page {
 		p.cleanupEmptyBlock(snapshot)
 	}
+	//p.setLayoutIfEmpty(snapshot)
 	return id, nil
 }
 
@@ -544,4 +545,13 @@ func (p *Pb) filterObjects(objectTypesToImport widgets.ImportWidgetFlags, object
 
 func (p *Pb) isSnapshotValid(snapshot *pb.SnapshotWithType) bool {
 	return !(snapshot == nil || snapshot.Snapshot == nil || snapshot.Snapshot.Data == nil)
+}
+
+func (p *Pb) setLayoutIfEmpty(snapshot *pb.SnapshotWithType) {
+	if pbtypes.Get(snapshot.Snapshot.Data.Details, bundle.RelationKeyLayout.String()) == nil {
+		if snapshot.Snapshot.Data.Details == nil || snapshot.Snapshot.Data.Details.Fields == nil {
+			snapshot.Snapshot.Data.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+		snapshot.Snapshot.Data.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
+	}
 }
