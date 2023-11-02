@@ -527,6 +527,7 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
 	return Do(s, req.ContextId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewStateCtx(ctx)
+		// nolint:errcheck
 		_ = st.Iterate(func(b simple.Block) (isContinue bool) {
 			if dv := b.Model().GetDataview(); dv != nil {
 				for _, view := range dv.Views {
