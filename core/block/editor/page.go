@@ -79,16 +79,18 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			layout, ok := ctx.State.Layout()
 			if !ok {
 				// nolint:errcheck
-				lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
-				uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, string(lastTypeKey))
-				if err != nil {
-					log.Errorf("failed to create unique key: %v", err)
-				} else {
-					otype, err := p.objectStore.GetObjectByUniqueKey(p.SpaceID(), uk)
+				if len(ctx.ObjectTypeKeys) != 0 {
+					lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
+					uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, string(lastTypeKey))
 					if err != nil {
-						log.Errorf("failed to get object by unique key: %v", err)
+						log.Errorf("failed to create unique key: %v", err)
 					} else {
-						layout = model.ObjectTypeLayout(pbtypes.GetInt64(otype.Details, bundle.RelationKeyRecommendedLayout.String()))
+						otype, err := p.objectStore.GetObjectByUniqueKey(p.SpaceID(), uk)
+						if err != nil {
+							log.Errorf("failed to get object by unique key: %v", err)
+						} else {
+							layout = model.ObjectTypeLayout(pbtypes.GetInt64(otype.Details, bundle.RelationKeyRecommendedLayout.String()))
+						}
 					}
 				}
 			}
