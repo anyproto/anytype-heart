@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/dgraph-io/badger/v3"
@@ -58,6 +59,23 @@ type FileStat struct {
 
 func (s FileStat) IsPinned() bool {
 	return s.UploadedChunksCount == s.TotalChunksCount
+}
+
+func (f *fileSync) runNodeUsageUpdater() {
+	f.precacheNodeUsage()
+
+	ticker := time.NewTicker(5 * time.Minute)
+	for {
+		select {
+		case <-ticker.C:
+			_, err := f.getAndUpdateNodeUsage(context.Background())
+			if err != nil {
+				log.Error("updater: can't update node usage", zap.Error(err))
+			}
+		case <-f.loopCtx.Done():
+			return
+		}
+	}
 }
 
 func (f *fileSync) precacheNodeUsage() {
