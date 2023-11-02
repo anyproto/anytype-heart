@@ -226,10 +226,11 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 			}
 			sf.Unlock()
 			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
-				SpaceId:   sf.SpaceID(),
-				ContextId: sf.Id(),
-				TargetId:  targetId,
-				Position:  pos,
+				SpaceId:             sf.SpaceID(),
+				ContextId:           sf.Id(),
+				ObjectTypeUniqueKey: bundle.TypeKeyPage.URL(),
+				TargetId:            targetId,
+				Position:            pos,
 				Details: &types.Struct{
 					Fields: map[string]*types.Value{
 						"type":      pbtypes.String(pageTypeId),

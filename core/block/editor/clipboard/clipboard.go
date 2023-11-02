@@ -30,6 +30,8 @@ import (
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
+const clipboardRootId = "cbRoot"
+
 var (
 	ErrAllSlotsEmpty = errors.New("all slots are empty")
 	log              = logging.Logger("anytype-clipboard")
@@ -358,7 +360,7 @@ func (cb *clipboard) pasteAny(
 ) {
 	s := cb.NewStateCtx(ctx).SetGroupId(groupID)
 
-	destState := state.NewDoc("", nil).(*state.State)
+	destState := state.NewDoc(clipboardRootId, nil).(*state.State)
 
 	for _, b := range req.AnySlot {
 		if b.Id == "" {
@@ -422,7 +424,7 @@ func (cb *clipboard) pasteAny(
 		}
 		destState.Add(b)
 	}
-
+	destState.SetRootId(oldToNew[clipboardRootId])
 	destState.BlocksInit(destState)
 	state.CleanupLayouts(destState)
 	if err = destState.Normalize(false); err != nil {
@@ -458,9 +460,9 @@ func (cb *clipboard) pasteAny(
 }
 
 func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
-	cbs = state.NewDoc("cbRoot", nil).(*state.State)
+	cbs = state.NewDoc(clipboardRootId, nil).(*state.State)
 	cbs.SetDetails(cb.Details())
-	cbs.Add(simple.New(&model.Block{Id: "cbRoot"}))
+	cbs.Add(simple.New(&model.Block{Id: clipboardRootId}))
 
 	var inChildrens, rootIds []string
 	for _, b := range blocks {
@@ -483,7 +485,7 @@ func (cb *clipboard) stateToBlocks(s *state.State) []*model.Block {
 	blocks := s.Blocks()
 	result := blocks[:0]
 	for _, b := range blocks {
-		if b.Id != "cbRoot" {
+		if b.Id != clipboardRootId {
 			result = append(result, b)
 		}
 	}
