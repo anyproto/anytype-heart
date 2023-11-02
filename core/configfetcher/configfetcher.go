@@ -64,6 +64,7 @@ type configFetcher struct {
 	account      personalSpaceIDGetter
 	wallet       wallet.Wallet
 	lastStatus   model.AccountStatusType
+	mutex        sync.Mutex
 }
 
 func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
@@ -165,6 +166,8 @@ func (c *configFetcher) Close(ctx context.Context) (err error) {
 
 func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayload) {
 	s := convertToAccountStatusModel(status)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	if c.lastStatus == s.StatusType {
 		return
 	}
