@@ -175,7 +175,9 @@ func (s *service) subscribeForQuery(req pb.RpcObjectSearchSubscribeRequest, f *d
 		sub.forceSubIds = filterDepIds
 	}
 
-	if withNested, ok := f.FilterObj.(database.WithNestedFilter); ok {
+	// FIXME Nested subscriptions disabled now. We should enable them only by client's request
+	// Uncomment test xTestNestedSubscription after enabling this
+	if withNested, ok := f.FilterObj.(database.WithNestedFilter); ok && false {
 		var nestedCount int
 		err := withNested.IterateNestedFilters(func(nestedFilter database.Filter) error {
 			nestedCount++
@@ -567,7 +569,7 @@ func (s *service) depIdsFromFilter(filters []*model.BlockContentDataviewFilter) 
 	for _, f := range filters {
 		if s.ds.isRelationObject(f.RelationKey) {
 			for _, id := range pbtypes.GetStringListValue(f.Value) {
-				if slice.FindPos(depIds, id) == -1 {
+				if slice.FindPos(depIds, id) == -1 && id != "" {
 					depIds = append(depIds, id)
 				}
 			}

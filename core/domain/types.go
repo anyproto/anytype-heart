@@ -25,3 +25,11 @@ func (tk TypeKey) URL() string {
 func (tk TypeKey) BundledURL() string {
 	return string(addr.BundledObjectTypeURLPrefix + tk)
 }
+
+func MarshalTypeKeys(typeKeys []TypeKey) []string {
+	res := make([]string, 0, len(typeKeys))
+	for _, tk := range typeKeys {
+		res = append(res, tk.URL())
+	}
+	return res
+}

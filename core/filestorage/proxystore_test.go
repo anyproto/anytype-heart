@@ -169,7 +169,7 @@ func newPSFixture(t *testing.T) *psFixture {
 
 	fx.proxyStore = &proxyStore{
 		localStore: cache,
-		origin:     rpcstore.NewInMemoryStore(),
+		origin:     rpcstore.NewInMemoryStore(1024 * 1024),
 	}
 	return fx
 }

@@ -101,7 +101,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.SpaceId, req.ObjectIds, req.IncludeNested, req.IncludeArchived, isProtobufExport(req.Format))
+	docs, err := e.docsForExport(req.SpaceId, req.ObjectIds, req.IncludeNested, req.IncludeArchived, isAnyblockExport(req.Format))
 	if err != nil {
 		return
 	}
@@ -183,8 +183,8 @@ func (e *export) renameZipArchive(req pb.RpcObjectListExportRequest, wr writer, 
 	return zipName, succeed, nil
 }
 
-func isProtobufExport(format pb.RpcObjectListExportFormat) bool {
-	return format == pb.RpcObjectListExport_Protobuf
+func isAnyblockExport(format pb.RpcObjectListExportFormat) bool {
+	return format == pb.RpcObjectListExport_Protobuf || format == pb.RpcObjectListExport_JSON
 }
 
 func (e *export) docsForExport(spaceID string, reqIds []string, includeNested bool, includeArchived bool, isProtobuf bool) (docs map[string]*types.Struct, err error) {
@@ -233,7 +233,17 @@ func (e *export) getObjectsByIDs(spaceID string, reqIds []string, includeNested 
 			e.getNested(spaceID, id, docs)
 		}
 	}
-	return docs, err
+
+	derivedObjects, err := e.getRelatedDerivedObjects(res)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, do := range derivedObjects {
+		id := pbtypes.GetString(do.Details, bundle.RelationKeyId.String())
+		docs[id] = do.Details
+	}
+	return docs, nil
 }
 
 func (e *export) getNested(spaceID string, id string, docs map[string]*types.Struct) {
@@ -534,4 +544,154 @@ func validTypeForNonProtobuf(sbType smartblock.SmartBlockType) bool {
 func (e *export) cleanupFile(wr writer) {
 	wr.Close()
 	os.Remove(wr.Path())
+}
+
+func (e *export) getRelatedDerivedObjects(objects []database.Record) ([]database.Record, error) {
+	var (
+		derivedObjects []database.Record
+		err            error
+	)
+
+	for _, object := range objects {
+		derivedObjects, err = e.processObject(object, derivedObjects)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return derivedObjects, nil
+}
+
+func (e *export) processObject(object database.Record, derivedObjects []database.Record) ([]database.Record, error) {
+	details := object.Details
+	for key, value := range details.Fields {
+		relation, err := e.getRelation(key)
+		if err != nil {
+			return nil, err
+		}
+		if relation != nil {
+			derivedObjects, err = e.addRelationAndOptions(relation, value, derivedObjects)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	objectTypeDetails, err := e.objectStore.GetDetails(pbtypes.GetString(details, bundle.RelationKeyType.String()))
+	if err != nil {
+		return nil, err
+	}
+
+	derivedObjects = append(derivedObjects, database.Record{Details: objectTypeDetails.Details})
+	return derivedObjects, nil
+}
+
+func (e *export) getRelation(key string) (*database.Record, error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
+	if err != nil {
+		return nil, err
+	}
+	relation, _, err := e.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(uniqueKey.Marshal()),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(relation) == 0 {
+		return nil, nil
+	}
+	return &relation[0], nil
+}
+
+func (e *export) addRelationAndOptions(relation *database.Record, value *types.Value, derivedObjects []database.Record) ([]database.Record, error) {
+	derivedObjects = e.addRelation(relation, derivedObjects)
+	format := pbtypes.GetInt64(relation.Details, bundle.RelationKeyRelationFormat.String())
+	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
+		relationOptions, err := e.getRelationOptions(value)
+		if err != nil {
+			return nil, err
+		}
+		derivedObjects = append(derivedObjects, relationOptions...)
+	}
+
+	return derivedObjects, nil
+}
+
+func (e *export) addRelation(relation *database.Record, derivedObjects []database.Record) []database.Record {
+	if relationKey := relation.Get(bundle.RelationKeyRelationKey.String()); relationKey != nil {
+		if !bundle.HasRelation(relationKey.GetStringValue()) {
+			derivedObjects = append(derivedObjects, *relation)
+		}
+	}
+	return derivedObjects
+}
+
+func (e *export) getRelationOptions(relationOptions *types.Value) ([]database.Record, error) {
+	var filter *model.BlockContentDataviewFilter
+	if relationOptions.GetStringValue() != "" {
+		filter = e.getFilterForStringOption(relationOptions, filter)
+	}
+	if relationOptions.GetListValue() != nil && len(relationOptions.GetListValue().Values) != 0 {
+		filter = e.getFilterForOptionsList(relationOptions, filter)
+	}
+	if filter == nil {
+		return nil, nil
+	}
+	relationOptionsDetails, _, err := e.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			filter,
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return relationOptionsDetails, nil
+}
+
+func (e *export) getFilterForOptionsList(relationOptions *types.Value, filter *model.BlockContentDataviewFilter) *model.BlockContentDataviewFilter {
+	ids := make([]string, 0, len(relationOptions.GetListValue().Values))
+	for _, id := range relationOptions.GetListValue().Values {
+		ids = append(ids, id.GetStringValue())
+	}
+	filter = &model.BlockContentDataviewFilter{
+		RelationKey: bundle.RelationKeyId.String(),
+		Condition:   model.BlockContentDataviewFilter_In,
+		Value:       pbtypes.StringList(ids),
+	}
+	return filter
+}
+
+func (e *export) getFilterForStringOption(value *types.Value, filter *model.BlockContentDataviewFilter) *model.BlockContentDataviewFilter {
+	id := value.GetStringValue()
+	filter = &model.BlockContentDataviewFilter{
+		RelationKey: bundle.RelationKeyId.String(),
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       pbtypes.String(id),
+	}
+	return filter
 }

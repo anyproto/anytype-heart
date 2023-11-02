@@ -2,29 +2,40 @@ package rpcstore
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 )
 
-type inMemoryService struct{}
+type inMemoryService struct {
+	store RpcStore
+}
 
-func NewInMemoryService() Service {
-	return &inMemoryService{}
+// NewInMemoryService creates new service for testing purposes
+func NewInMemoryService(store RpcStore) Service {
+	return &inMemoryService{
+		store: store,
+	}
 }
 
 func (s *inMemoryService) Name() string          { return CName }
 func (s *inMemoryService) Init(_ *app.App) error { return nil }
-func (s *inMemoryService) NewStore() RpcStore    { return NewInMemoryStore() }
+func (s *inMemoryService) NewStore() RpcStore    { return s.store }
 
-func NewInMemoryStore() RpcStore {
+// NewInMemoryStore creates new in-memory store for testing purposes
+func NewInMemoryStore(limit int) RpcStore {
 	ts := &inMemoryStore{
-		store: make(map[cid.Cid]blocks.Block),
-		files: make(map[string]map[cid.Cid]struct{}),
+		store:      make(map[cid.Cid]blocks.Block),
+		files:      make(map[string]map[cid.Cid]struct{}),
+		spaceFiles: map[string]map[string]struct{}{},
+		spaceCids:  map[string]map[cid.Cid]struct{}{},
+		limit:      limit,
 	}
 	return ts
 }
@@ -32,11 +43,23 @@ func NewInMemoryStore() RpcStore {
 type inMemoryStore struct {
 	store map[cid.Cid]blocks.Block
 	files map[string]map[cid.Cid]struct{}
-	// TODO Add spaces
-	mu sync.Mutex
+	limit int
+	// spaceId => fileId
+	spaceFiles map[string]map[string]struct{}
+	// spaceId => cid
+	spaceCids map[string]map[cid.Cid]struct{}
+	mu        sync.Mutex
 }
 
-func (t *inMemoryStore) CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
+func (t *inMemoryStore) isCidBinded(spaceId string, cid cid.Cid) bool {
+	if _, ok := t.spaceCids[spaceId]; !ok {
+		return false
+	}
+	_, ok := t.spaceCids[spaceId][cid]
+	return ok
+}
+
+func (t *inMemoryStore) CheckAvailability(ctx context.Context, spaceId string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -45,6 +68,9 @@ func (t *inMemoryStore) CheckAvailability(ctx context.Context, spaceID string, c
 		status := fileproto.AvailabilityStatus_NotExists
 		if _, ok := t.store[cid]; ok {
 			status = fileproto.AvailabilityStatus_Exists
+		}
+		if t.isCidBinded(spaceId, cid) {
+			status = fileproto.AvailabilityStatus_ExistsInSpace
 		}
 
 		checkResult = append(checkResult, &fileproto.BlockAvailability{
@@ -55,16 +81,59 @@ func (t *inMemoryStore) CheckAvailability(ctx context.Context, spaceID string, c
 	return checkResult, nil
 }
 
-func (t *inMemoryStore) BindCids(ctx context.Context, spaceID string, fileID string, cids []cid.Cid) (err error) {
-	// TODO implement
+func (t *inMemoryStore) BindCids(ctx context.Context, spaceId string, fileId string, cids []cid.Cid) (err error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	var bytesToBind int
+	for _, cid := range cids {
+		if !t.isCidBinded(spaceId, cid) {
+			bytesToBind += len(t.store[cid].RawData())
+		}
+	}
+	if !t.isWithinLimits(bytesToBind) {
+		return fileprotoerr.ErrSpaceLimitExceeded
+	}
+
+	for _, cid := range cids {
+		err = t.bindCid(spaceId, fileId, cid)
+		if err != nil {
+			return
+		}
+	}
+	return nil
+}
+
+func (t *inMemoryStore) bindCid(spaceId string, fileId string, cId cid.Cid) error {
+	if _, ok := t.store[cId]; !ok {
+		return fmt.Errorf("cid not exists: %s", cId)
+	}
+
+	if _, ok := t.spaceFiles[spaceId]; !ok {
+		t.spaceFiles[spaceId] = make(map[string]struct{})
+	}
+	t.spaceFiles[spaceId][fileId] = struct{}{}
+
+	if _, ok := t.spaceCids[spaceId]; !ok {
+		t.spaceCids[spaceId] = make(map[cid.Cid]struct{})
+	}
+	t.spaceCids[spaceId][cId] = struct{}{}
 	return nil
 }
 
 func (t *inMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId string, bs []blocks.Block) (err error) {
-	// TODO Check limits!
-
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
+	var bytesToAdd int
+	for _, b := range bs {
+		if !t.isCidBinded(spaceId, b.Cid()) {
+			bytesToAdd += len(b.RawData())
+		}
+	}
+	if !t.isWithinLimits(bytesToAdd) {
+		return fileprotoerr.ErrSpaceLimitExceeded
+	}
 
 	if _, ok := t.files[fileId]; !ok {
 		t.files[fileId] = make(map[cid.Cid]struct{})
@@ -73,6 +142,10 @@ func (t *inMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId st
 	for _, b := range bs {
 		t.store[b.Cid()] = b
 		cids[b.Cid()] = struct{}{}
+		err = t.bindCid(spaceId, fileId, b.Cid())
+		if err != nil {
+			return fmt.Errorf("bind cid: %w", err)
+		}
 	}
 	return nil
 }
@@ -82,16 +155,46 @@ func (t *inMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds
 }
 
 func (t *inMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
-	var info fileproto.SpaceInfoResponse
+	panic("not implemented")
+}
+
+func (t *inMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
+	var info fileproto.AccountInfoResponse
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	for _, b := range t.store {
-		info.UsageBytes += uint64(len(b.RawData()))
+	info.TotalUsageBytes = uint64(t.getTotalUsage())
+	info.TotalCidsCount = uint64(len(t.store))
+	info.LimitBytes = uint64(t.limit)
+
+	for spaceId, files := range t.spaceFiles {
+		var spaceUsageBytes int
+		for fileId := range files {
+			for cid := range t.files[fileId] {
+				spaceUsageBytes += len(t.store[cid].RawData())
+			}
+		}
+		info.Spaces = append(info.Spaces, &fileproto.SpaceInfoResponse{
+			SpaceId:         spaceId,
+			SpaceUsageBytes: uint64(spaceUsageBytes),
+			TotalUsageBytes: info.TotalUsageBytes,
+			FilesCount:      uint64(len(files)),
+			CidsCount:       uint64(len(t.spaceCids[spaceId])),
+			LimitBytes:      info.LimitBytes,
+		})
 	}
-	info.CidsCount = uint64(len(t.store))
-	// TODO info.FilesCount after implementing file storage
-	info.LimitBytes = 10 * 1024 * 1024
 	return &info, nil
+}
+
+func (t *inMemoryStore) getTotalUsage() int {
+	var totalUsage int
+	for _, b := range t.store {
+		totalUsage += len(b.RawData())
+	}
+	return totalUsage
+}
+
+func (t *inMemoryStore) isWithinLimits(bytesToUpload int) bool {
+	return t.getTotalUsage()+bytesToUpload <= t.limit
 }
 
 func (t *inMemoryStore) FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error) {

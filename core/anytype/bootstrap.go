@@ -212,8 +212,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		Register(source.New()).
-		Register(builtintemplate.New()).
 		Register(space.New()).
+		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).

@@ -113,11 +113,15 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
 	oc.setFileImportedFlagAndOrigin(st, origin)
-	var respDetails *types.Struct
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
+	typeKeys := st.ObjectTypeKeys()
+	if sn.SbType == coresb.SmartBlockTypeObjectType {
+		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
+	}
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
+	var respDetails *types.Struct
 	if payload := dataObject.createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {

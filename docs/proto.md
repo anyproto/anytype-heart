@@ -537,6 +537,12 @@
     - [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request)
     - [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response)
     - [Rpc.File.ListOffload.Response.Error](#anytype-Rpc-File-ListOffload-Response-Error)
+    - [Rpc.File.NodeUsage](#anytype-Rpc-File-NodeUsage)
+    - [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request)
+    - [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response)
+    - [Rpc.File.NodeUsage.Response.Error](#anytype-Rpc-File-NodeUsage-Response-Error)
+    - [Rpc.File.NodeUsage.Response.Space](#anytype-Rpc-File-NodeUsage-Response-Space)
+    - [Rpc.File.NodeUsage.Response.Usage](#anytype-Rpc-File-NodeUsage-Response-Usage)
     - [Rpc.File.Offload](#anytype-Rpc-File-Offload)
     - [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request)
     - [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response)
@@ -1059,6 +1065,7 @@
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
+    - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
@@ -1582,6 +1589,7 @@
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
 | FileDrop | [Rpc.File.Drop.Request](#anytype-Rpc-File-Drop-Request) | [Rpc.File.Drop.Response](#anytype-Rpc-File-Drop-Response) |  |
 | FileSpaceUsage | [Rpc.File.SpaceUsage.Request](#anytype-Rpc-File-SpaceUsage-Request) | [Rpc.File.SpaceUsage.Response](#anytype-Rpc-File-SpaceUsage-Response) |  |
+| FileNodeUsage | [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request) | [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
@@ -9450,6 +9458,97 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-File-NodeUsage"></a>
+
+### Rpc.File.NodeUsage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Request"></a>
+
+### Rpc.File.NodeUsage.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response"></a>
+
+### Rpc.File.NodeUsage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.NodeUsage.Response.Error](#anytype-Rpc-File-NodeUsage-Response-Error) |  |  |
+| usage | [Rpc.File.NodeUsage.Response.Usage](#anytype-Rpc-File-NodeUsage-Response-Usage) |  |  |
+| spaces | [Rpc.File.NodeUsage.Response.Space](#anytype-Rpc-File-NodeUsage-Response-Space) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Error"></a>
+
+### Rpc.File.NodeUsage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Space"></a>
+
+### Rpc.File.NodeUsage.Response.Space
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| filesCount | [uint64](#uint64) |  |  |
+| cidsCount | [uint64](#uint64) |  |  |
+| bytesUsage | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Usage"></a>
+
+### Rpc.File.NodeUsage.Response.Usage
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filesCount | [uint64](#uint64) |  |  |
+| cidsCount | [uint64](#uint64) |  |  |
+| bytesUsage | [uint64](#uint64) |  |  |
+| bytesLeft | [uint64](#uint64) |  |  |
+| bytesLimit | [uint64](#uint64) |  |  |
+| localBytesUsage | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File-Offload"></a>
 
 ### Rpc.File.Offload
@@ -15342,6 +15441,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 
@@ -15417,6 +15517,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ACTIVE | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 
@@ -16873,6 +16974,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NODE_NOT_STARTED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Error-Code"></a>
+
+### Rpc.File.NodeUsage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -20407,6 +20521,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | bytesUsage | [uint64](#uint64) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 

@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -243,8 +244,8 @@ func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMi
 	if errGS != nil {
 		return nil, errGS
 	}
-	if snapshot == nil {
-		return nil, nil
+	if valid := p.isSnapshotValid(snapshot); !valid {
+		return nil, fmt.Errorf("snapshot is not valid: %s", name)
 	}
 	id := uuid.New().String()
 	id, err := p.normalizeSnapshot(snapshot, id, profileID, isMigration)
@@ -425,7 +426,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*converter.Snapshot, allErrors *co
 func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
 	snapshot.Snapshot.Data.Details = pbtypes.StructMerge(snapshot.Snapshot.Data.Details, st.CombinedDetails(), false)
 	snapshot.Snapshot.Data.Blocks = st.Blocks()
-	snapshot.Snapshot.Data.ObjectTypes = slice.UnwrapStrings(st.ObjectTypeKeys())
+	snapshot.Snapshot.Data.ObjectTypes = domain.MarshalTypeKeys(st.ObjectTypeKeys())
 	snapshot.Snapshot.Data.Collections = st.Store()
 }
 
@@ -540,4 +541,8 @@ func (p *Pb) filterObjects(objectTypesToImport widgets.ImportWidgetFlags, object
 		}
 	}
 	return rootObjects
+}
+
+func (p *Pb) isSnapshotValid(snapshot *pb.SnapshotWithType) bool {
+	return !(snapshot == nil || snapshot.Snapshot == nil || snapshot.Snapshot.Data == nil)
 }

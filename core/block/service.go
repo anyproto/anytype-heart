@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -181,10 +182,7 @@ func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	id, err = s.resolveFullId(id)
-	if err != nil {
-		return nil, fmt.Errorf("resolve full id: %w", err)
-	}
+	id = s.resolveFullId(id)
 	startTime := time.Now()
 	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
@@ -251,22 +249,18 @@ func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock
 }
 
 // resolveFullId resolves missing spaceId
-func (s *Service) resolveFullId(id domain.FullID) (domain.FullID, error) {
-	if id.SpaceID == "" {
-		var err error
-		id.SpaceID, err = s.resolver.ResolveSpaceID(id.ObjectID)
-		if err != nil {
-			return id, fmt.Errorf("resolve space id: %w", err)
-		}
+func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
+	// First try to resolve space. It's necessary if client accidentally passes wrong spaceId
+	spaceId, err := s.resolver.ResolveSpaceID(id.ObjectID)
+	if err == nil {
+		return domain.FullID{SpaceID: spaceId, ObjectID: id.ObjectID}
 	}
-	return id, nil
+	// Or use spaceId from request
+	return id
 }
 
 func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
-	id, err = s.resolveFullId(id)
-	if err != nil {
-		return nil, fmt.Errorf("resolve full id: %w", err)
-	}
+	id = s.resolveFullId(id)
 	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
@@ -278,12 +272,9 @@ func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects
 }
 
 func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
-	id, err := s.resolveFullId(id)
-	if err != nil {
-		return fmt.Errorf("resolve full id: %w", err)
-	}
+	id = s.resolveFullId(id)
 	var isDraft bool
-	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
+	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
 		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
@@ -532,10 +523,22 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 }
 
 func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
-	return Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
-		st := b.NewStateCtx(ctx)
+	return Do(s, req.ContextId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewStateCtx(ctx)
+		// nolint:errcheck
+		_ = st.Iterate(func(b simple.Block) (isContinue bool) {
+			if dv := b.Model().GetDataview(); dv != nil {
+				for _, view := range dv.Views {
+					view.DefaultTemplateId = ""
+					view.DefaultObjectTypeId = ""
+				}
+				st.Set(b)
+				return false
+			}
+			return true
+		})
 		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
-		return b.Apply(st, smartblock.NoRestrictions)
+		return sb.Apply(st, smartblock.NoRestrictions)
 	})
 }
 

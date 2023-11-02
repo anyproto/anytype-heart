@@ -351,6 +351,7 @@ message Rpc {
                         BAD_INPUT = 2;
 
                         ACCOUNT_IS_ALREADY_DELETED = 101;
+                        UNABLE_TO_CONNECT = 102;
                     }
                 }
             }
@@ -374,6 +375,7 @@ message Rpc {
                         BAD_INPUT = 2;
 
                         ACCOUNT_IS_ACTIVE = 101;
+                        UNABLE_TO_CONNECT = 102;
                     }
                 }
             }
@@ -2646,6 +2648,44 @@ message Rpc {
                     uint64 bytesLeft = 4;
                     uint64 bytesLimit = 5;
                     uint64 localBytesUsage = 6;
+                }
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message NodeUsage {
+            message Request {}
+
+            message Response {
+                Error error = 1;
+                Usage usage = 2;
+                repeated Space spaces = 3;
+
+                message Usage {
+                    uint64 filesCount = 1;
+                    uint64 cidsCount  = 2;
+                    uint64 bytesUsage = 3;
+                    uint64 bytesLeft = 4;
+                    uint64 bytesLimit = 5;
+                    uint64 localBytesUsage = 6;
+                }
+
+                message Space {
+                    string spaceId = 1;
+                    uint64 filesCount = 2;
+                    uint64 cidsCount  = 3;
+                    uint64 bytesUsage = 4;
                 }
 
                 message Error {
