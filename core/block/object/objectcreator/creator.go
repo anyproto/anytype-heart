@@ -58,8 +58,8 @@ type CollectionService interface {
 }
 
 type TemplateService interface {
-	StateFromTemplate(templateID, name string) (st *state.State, err error)
-	TemplateCloneInSpace(space space.Space, id string) (templateID string, err error)
+	StateFromTemplate(templateId, name string) (st *state.State, err error)
+	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
 }
 
 func NewCreator() Service {
@@ -82,9 +82,9 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
+func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, details *types.Struct, templateId string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
-	if createState, err = s.templateService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+	if createState, err = s.templateService.StateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 		return
 	}
 	for k, v := range details.GetFields() {

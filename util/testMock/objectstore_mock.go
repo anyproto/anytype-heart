@@ -380,19 +380,19 @@ func (mr *MockObjectStoreMockRecorder) GetRelationLink(arg0, arg1 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationLink", reflect.TypeOf((*MockObjectStore)(nil).GetRelationLink), arg0, arg1)
 }
 
-// GetUniqueKeyByID mocks base method.
-func (m *MockObjectStore) GetUniqueKeyByID(arg0 string) (domain.UniqueKey, error) {
+// GetUniqueKeyById mocks base method.
+func (m *MockObjectStore) GetUniqueKeyById(arg0 string) (domain.UniqueKey, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUniqueKeyByID", arg0)
+	ret := m.ctrl.Call(m, "GetUniqueKeyById", arg0)
 	ret0, _ := ret[0].(domain.UniqueKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetUniqueKeyByID indicates an expected call of GetUniqueKeyByID.
-func (mr *MockObjectStoreMockRecorder) GetUniqueKeyByID(arg0 any) *gomock.Call {
+// GetUniqueKeyById indicates an expected call of GetUniqueKeyById.
+func (mr *MockObjectStoreMockRecorder) GetUniqueKeyById(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUniqueKeyByID", reflect.TypeOf((*MockObjectStore)(nil).GetUniqueKeyByID), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUniqueKeyById", reflect.TypeOf((*MockObjectStore)(nil).GetUniqueKeyById), arg0)
 }
 
 // GetWithLinksInfoByID mocks base method.

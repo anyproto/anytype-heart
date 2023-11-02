@@ -37,14 +37,14 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 		Version: 1,
 		Proc: func(s *state.State) {
 			if t.Type() == coresb.SmartBlockTypeTemplate && (len(t.ObjectTypeKeys()) != 2) {
-				targetObjectTypeID := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
-				if targetObjectTypeID != "" {
-					uniqueKey, err := t.objectStore.GetUniqueKeyByID(targetObjectTypeID)
+				targetObjectTypeId := pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())
+				if targetObjectTypeId != "" {
+					uniqueKey, err := t.objectStore.GetUniqueKeyById(targetObjectTypeId)
 					if err == nil && uniqueKey.SmartblockType() != coresb.SmartBlockTypeObjectType {
 						err = fmt.Errorf("unique key %s has wrong smartblock type %d", uniqueKey.InternalKey(), uniqueKey.SmartblockType())
 					}
 					if err != nil {
-						log.Errorf("get target object type %s: %s", targetObjectTypeID, err)
+						log.Errorf("get target object type %s: %s", targetObjectTypeId, err)
 					}
 					s.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, domain.TypeKey(uniqueKey.InternalKey())})
 				}

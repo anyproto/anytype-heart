@@ -133,7 +133,7 @@ type ObjectStore interface {
 
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
-	GetUniqueKeyByID(id string) (key domain.UniqueKey, err error)
+	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
 
@@ -333,7 +333,7 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	return details, nil
 }
 
-func (s *dsObjectStore) GetUniqueKeyByID(id string) (domain.UniqueKey, error) {
+func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
 	details, err := s.GetDetails(id)
 	if err != nil {
 		return nil, err

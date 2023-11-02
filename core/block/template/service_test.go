@@ -103,7 +103,7 @@ func TestService_StateFromTemplate(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateID)
+		assert.Equal(t, st.RootId(), BlankTemplateId)
 	})
 
 	t.Run("blank templateId", func(t *testing.T) {
@@ -112,11 +112,11 @@ func TestService_StateFromTemplate(t *testing.T) {
 		s := service{picker: &testPicker{sb: tmpl}}
 
 		// when
-		st, err := s.StateFromTemplate(BlankTemplateID, "")
+		st, err := s.StateFromTemplate(BlankTemplateId, "")
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateID)
+		assert.Equal(t, st.RootId(), BlankTemplateId)
 	})
 
 	t.Run("create blank template in case template object is deleted", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestService_StateFromTemplate(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateID)
+		assert.Equal(t, st.RootId(), BlankTemplateId)
 
 	})
 
