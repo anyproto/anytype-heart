@@ -237,12 +237,3 @@ func FilterCID(cids []string) []string {
 		return err == nil
 	})
 }
-
-// UnwrapStrings converts slice of type that has underlying type of string to slice of strings
-func UnwrapStrings[T ~string](values []T) []string {
-	res := make([]string, len(values))
-	for i, v := range values {
-		res[i] = string(v)
-	}
-	return res
-}

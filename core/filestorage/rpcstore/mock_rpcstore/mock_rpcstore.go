@@ -108,6 +108,21 @@ func (m *MockRpcStore) EXPECT() *MockRpcStoreMockRecorder {
 	return m.recorder
 }
 
+// AccountInfo mocks base method.
+func (m *MockRpcStore) AccountInfo(arg0 context.Context) (*fileproto.AccountInfoResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AccountInfo", arg0)
+	ret0, _ := ret[0].(*fileproto.AccountInfoResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AccountInfo indicates an expected call of AccountInfo.
+func (mr *MockRpcStoreMockRecorder) AccountInfo(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AccountInfo", reflect.TypeOf((*MockRpcStore)(nil).AccountInfo), arg0)
+}
+
 // Add mocks base method.
 func (m *MockRpcStore) Add(arg0 context.Context, arg1 []blocks.Block) error {
 	m.ctrl.T.Helper()

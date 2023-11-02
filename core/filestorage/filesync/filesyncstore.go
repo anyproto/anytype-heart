@@ -403,31 +403,24 @@ func (s *fileSyncStore) IsAlreadyUploaded(spaceId, fileId string) (done bool, er
 	return
 }
 
-func (s *fileSyncStore) getSpaceStats(spaceID string) (stats SpaceStat, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		it, err := txn.Get(spaceInfoKey(spaceID))
-		if err != nil {
-			return err
-		}
-		return it.Value(func(val []byte) error {
-			return json.Unmarshal(val, &stats)
-		})
-	})
-	return
+func (s *fileSyncStore) setNodeUsage(usage NodeUsage) error {
+	data, err := json.Marshal(usage)
+	if err != nil {
+		return err
+	}
+	return badgerhelper.SetValue(s.db, nodeUsageKey(), data)
 }
 
-func (s *fileSyncStore) setSpaceInfo(spaceID string, stats SpaceStat) error {
-	return s.updateTxn(func(txn *badger.Txn) error {
-		data, err := json.Marshal(stats)
-		if err != nil {
-			return err
-		}
-		return txn.Set(spaceInfoKey(spaceID), data)
+func (s *fileSyncStore) getNodeUsage() (NodeUsage, error) {
+	return badgerhelper.GetValue(s.db, nodeUsageKey(), func(raw []byte) (NodeUsage, error) {
+		var usage NodeUsage
+		err := json.Unmarshal(raw, &usage)
+		return usage, err
 	})
 }
 
-func spaceInfoKey(spaceID string) []byte {
-	return []byte(keyPrefix + "space_info/" + spaceID)
+func nodeUsageKey() []byte {
+	return []byte(keyPrefix + "node_usage/")
 }
 
 func uploadKey(spaceId, fileId string) (key []byte) {

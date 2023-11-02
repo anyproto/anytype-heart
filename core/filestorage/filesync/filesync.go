@@ -34,6 +34,7 @@ type FileSync interface {
 	AddFile(spaceID, fileID string, uploadedByUser, imported bool) (err error)
 	OnUpload(func(spaceID, fileID string) error)
 	RemoveFile(spaceId, fileId string) (err error)
+	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	FileStat(ctx context.Context, spaceId, fileId string) (fs FileStat, err error)
 	FileListStats(ctx context.Context, spaceId string, fileIDs []string) ([]FileStat, error)
@@ -75,16 +76,12 @@ type fileSync struct {
 	onUpload         func(spaceID, fileID string) error
 	personalIDGetter personalSpaceIDGetter
 
-	spaceStatsLock    sync.Mutex
-	spaceStats        map[string]SpaceStat
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
 }
 
 func New() FileSync {
-	return &fileSync{
-		spaceStats: map[string]SpaceStat{},
-	}
+	return &fileSync{}
 }
 
 func (f *fileSync) Init(a *app.App) (err error) {
@@ -121,27 +118,12 @@ func (f *fileSync) Run(ctx context.Context) (err error) {
 		return
 	}
 
-	go f.precacheSpaceStats()
+	go f.precacheNodeUsage()
 
 	f.loopCtx, f.loopCancel = context.WithCancel(context.Background())
 	go f.addLoop()
 	go f.removeLoop()
 	return
-}
-
-func (f *fileSync) precacheSpaceStats() {
-	// TODO multi-spaces: init for each space: GO-1681
-	// TODO: [MR] adapt to multi-spaces
-	spaceID := f.personalIDGetter.PersonalSpaceID()
-	_, err := f.SpaceStat(context.Background(), spaceID)
-	if err != nil {
-		// Don't confuse users with 0B limit in case of error, so set default 1GB limit
-		f.setSpaceStats(spaceID, SpaceStat{
-			SpaceId:    spaceID,
-			BytesLimit: 1024 * 1024 * 1024, // 1 GB
-		})
-		log.Error("can't init space stats", zap.String("spaceID", f.personalIDGetter.PersonalSpaceID()), zap.Error(err))
-	}
 }
 
 func (f *fileSync) Close(ctx context.Context) (err error) {
