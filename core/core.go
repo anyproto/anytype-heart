@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
-	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -77,14 +76,6 @@ func (mw *Middleware) doCollectionService(f func(bs *collection.Service) error) 
 		return ErrNotLoggedIn
 	}
 	return f(app.MustComponent[*collection.Service](a))
-}
-
-func (mw *Middleware) doTemplateService(f func(ts template.Service) error) (err error) {
-	a := mw.applicationService.GetApp()
-	if a == nil {
-		return ErrNotLoggedIn
-	}
-	return f(app.MustComponent[template.Service](a))
 }
 
 func getService[T any](mw *Middleware) T {

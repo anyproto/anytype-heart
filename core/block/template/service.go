@@ -7,8 +7,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -37,7 +37,7 @@ const (
 	BlankTemplateID = "blank"
 )
 
-var log = logging.Logger("anytype-mw-api")
+var log = logging.Logger("template")
 
 type Service interface {
 	StateFromTemplate(templateID, name string) (st *state.State, err error)
@@ -80,18 +80,18 @@ func (s *service) Init(a *app.App) error {
 }
 
 // StateFromTemplate creates clone of template object state with empty localDetails and updated objectTypes.
-// Blank template is created in case template object is not found or blank/empty templateID is provided
+// Blank template is created in case template object is deleted or blank/empty templateID is provided
 func (s *service) StateFromTemplate(templateID, name string) (st *state.State, err error) {
 	if templateID == BlankTemplateID || templateID == "" {
 		return s.blankTemplateState(), nil
 	}
-	if err = getblock.Do(s.picker, templateID, func(b smartblock.SmartBlock) error {
-		if tmpl, ok := b.(*editor.Template); ok {
-			st, err = s.getNewPageState(tmpl, name)
+	if err = getblock.Do(s.picker, templateID, func(b smartblock.SmartBlock) (innerErr error) {
+		if lo.Contains(b.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
+			st, innerErr = s.getNewPageState(b, name)
 		} else {
 			return fmt.Errorf("object '%s' is not a template", templateID)
 		}
-		return nil
+		return
 	}); err != nil {
 		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 			return s.blankTemplateState(), nil
@@ -259,15 +259,15 @@ func (s *service) blankTemplateState() (st *state.State) {
 	return
 }
 
-func (s *service) getNewPageState(tmpl *editor.Template, name string) (st *state.State, err error) {
-	st = tmpl.NewState().Copy()
+func (s *service) getNewPageState(sb smartblock.SmartBlock, name string) (st *state.State, err error) {
+	st = sb.NewState().Copy()
 
 	if err = s.updateTypeKey(st); err != nil {
 		return nil, err
 	}
 
 	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
-	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(tmpl.Id()))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
 	// clean-up local details from the template state
 	st.SetLocalDetails(nil)
 
