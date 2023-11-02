@@ -527,16 +527,17 @@ func (s *Service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 func (s *Service) SetSource(ctx session.Context, req pb.RpcObjectSetSourceRequest) (err error) {
 	return Do(s, req.ContextId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewStateCtx(ctx)
-		for _, b := range st.ParentState().Blocks() {
-			if dv := b.GetDataview(); dv != nil {
+		_ = st.Iterate(func(b simple.Block) (isContinue bool) {
+			if dv := b.Model().GetDataview(); dv != nil {
 				for _, view := range dv.Views {
 					view.DefaultTemplateId = ""
 					view.DefaultObjectTypeId = ""
 				}
-				st.Set(simple.New(b))
-				break
+				st.Set(b)
+				return false
 			}
-		}
+			return true
+		})
 		st.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
 		return sb.Apply(st, smartblock.NoRestrictions)
 	})
