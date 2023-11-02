@@ -241,7 +241,6 @@ func (oc *ObjectCreator) createNewObject(
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 		return nil, err
 	}
-	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
 
 	// update collection after we create it
 	if st.Store() != nil {
