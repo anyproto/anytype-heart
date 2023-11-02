@@ -861,10 +861,6 @@
     - [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request)
     - [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response)
     - [Rpc.Template.CreateFromObject.Response.Error](#anytype-Rpc-Template-CreateFromObject-Response-Error)
-    - [Rpc.Template.CreateFromObjectType](#anytype-Rpc-Template-CreateFromObjectType)
-    - [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request)
-    - [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response)
-    - [Rpc.Template.CreateFromObjectType.Response.Error](#anytype-Rpc-Template-CreateFromObjectType-Response-Error)
     - [Rpc.Template.ExportAll](#anytype-Rpc-Template-ExportAll)
     - [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request)
     - [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response)
@@ -1152,7 +1148,6 @@
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
-    - [Rpc.Template.CreateFromObjectType.Response.Error.Code](#anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype-Rpc-Unsplash-Download-Response-Error-Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
@@ -1598,7 +1593,6 @@
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
-| TemplateCreateFromObjectType | [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request) | [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response) | to be renamed to ObjectCreateTemplate |
 | TemplateClone | [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request) | [Rpc.Template.Clone.Response](#anytype-Rpc-Template-Clone-Response) |  |
 | TemplateExportAll | [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request) | [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
@@ -14199,63 +14193,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Template-CreateFromObjectType"></a>
-
-### Rpc.Template.CreateFromObjectType
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Request"></a>
-
-### Rpc.Template.CreateFromObjectType.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUniqueKey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Response"></a>
-
-### Rpc.Template.CreateFromObjectType.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Template.CreateFromObjectType.Response.Error](#anytype-Rpc-Template-CreateFromObjectType-Response-Error) |  |  |
-| id | [string](#string) |  | created template id |
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Response-Error"></a>
-
-### Rpc.Template.CreateFromObjectType.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Template.CreateFromObjectType.Response.Error.Code](#anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Template-ExportAll"></a>
 
 ### Rpc.Template.ExportAll
@@ -18143,19 +18080,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Template-CreateFromObject-Response-Error-Code"></a>
 
 ### Rpc.Template.CreateFromObject.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code"></a>
-
-### Rpc.Template.CreateFromObjectType.Response.Error.Code
 
 
 | Name | Number | Description |

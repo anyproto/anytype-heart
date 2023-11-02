@@ -157,13 +157,13 @@ func (_c *MockTechSpace_SetInfo_Call) RunAndReturn(run func(context.Context, spa
 	return _c
 }
 
-// SpaceViewCreate provides a mock function with given fields: ctx, spaceId
-func (_m *MockTechSpace) SpaceViewCreate(ctx context.Context, spaceId string) error {
-	ret := _m.Called(ctx, spaceId)
+// SpaceViewCreate provides a mock function with given fields: ctx, spaceId, force
+func (_m *MockTechSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool) error {
+	ret := _m.Called(ctx, spaceId, force)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, spaceId)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
+		r0 = rf(ctx, spaceId, force)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -179,13 +179,14 @@ type MockTechSpace_SpaceViewCreate_Call struct {
 // SpaceViewCreate is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
-func (_e *MockTechSpace_Expecter) SpaceViewCreate(ctx interface{}, spaceId interface{}) *MockTechSpace_SpaceViewCreate_Call {
-	return &MockTechSpace_SpaceViewCreate_Call{Call: _e.mock.On("SpaceViewCreate", ctx, spaceId)}
+//   - force bool
+func (_e *MockTechSpace_Expecter) SpaceViewCreate(ctx interface{}, spaceId interface{}, force interface{}) *MockTechSpace_SpaceViewCreate_Call {
+	return &MockTechSpace_SpaceViewCreate_Call{Call: _e.mock.On("SpaceViewCreate", ctx, spaceId, force)}
 }
 
-func (_c *MockTechSpace_SpaceViewCreate_Call) Run(run func(ctx context.Context, spaceId string)) *MockTechSpace_SpaceViewCreate_Call {
+func (_c *MockTechSpace_SpaceViewCreate_Call) Run(run func(ctx context.Context, spaceId string, force bool)) *MockTechSpace_SpaceViewCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(bool))
 	})
 	return _c
 }
@@ -195,7 +196,7 @@ func (_c *MockTechSpace_SpaceViewCreate_Call) Return(err error) *MockTechSpace_S
 	return _c
 }
 
-func (_c *MockTechSpace_SpaceViewCreate_Call) RunAndReturn(run func(context.Context, string) error) *MockTechSpace_SpaceViewCreate_Call {
+func (_c *MockTechSpace_SpaceViewCreate_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockTechSpace_SpaceViewCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }
