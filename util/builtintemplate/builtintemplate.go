@@ -22,8 +22,10 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -69,17 +71,46 @@ func (b *builtinTemplate) Name() (name string) {
 }
 
 func (b *builtinTemplate) RegisterBuiltinTemplates(space space.Space) error {
+	existingTemplates, _, err := b.objectStore.QueryObjectIDs(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyTemplateIsBundled.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(true),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to query bundled templates: %w", err)
+	}
+	existingTemplatesMap := make(map[string]struct{}, len(existingTemplates))
+	for _, templateID := range existingTemplates {
+		existingTemplatesMap[templateID] = struct{}{}
+	}
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
 		return fmt.Errorf("new reader: %w", err)
 	}
+	createdTemplates := make(map[string]struct{}, 0)
 	for _, zf := range zr.File {
 		rd, e := zf.Open()
 		if e != nil {
 			return e
 		}
-		if err = b.registerBuiltin(space, rd); err != nil {
+		var id string
+		if id, err = b.registerBuiltin(space, rd); err != nil {
 			return fmt.Errorf("register builtin: %w", err)
+		}
+		createdTemplates[id] = struct{}{}
+	}
+
+	for existingTemplateID := range existingTemplatesMap {
+		if _, ok := createdTemplates[existingTemplateID]; ok {
+			continue
+		}
+		err := b.objectStore.DeleteObject(existingTemplateID)
+		if err != nil {
+			return fmt.Errorf("failed to remove template %s from store: %w", existingTemplateID, err)
 		}
 	}
 	return nil
@@ -89,14 +120,13 @@ func (b *builtinTemplate) Hash() string {
 	return b.generatedHash
 }
 
-func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (err error) {
+func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (id string, err error) {
 	defer rd.Close()
 	data, err := io.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
 	if err = snapshot.Unmarshal(data); err != nil {
 		return
 	}
-	var id string
 	for _, block := range snapshot.Data.Blocks {
 		if block.GetSmartblock() != nil {
 			id = block.Id
@@ -114,7 +144,7 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 
 	err = b.setObjectTypes(st)
 	if err != nil {
-		return fmt.Errorf("set object types: %w", err)
+		return "", fmt.Errorf("set object types: %w", err)
 	}
 
 	// fix divergence between extra relations and simple block relations
@@ -135,10 +165,10 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 	fullID := domain.FullID{SpaceID: space.Id(), ObjectID: id}
 	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
 	if err != nil {
-		return fmt.Errorf("register static source: %w", err)
+		return "", fmt.Errorf("register static source: %w", err)
 	}
 	// Index
-	return space.Do(id, func(sb smartblock2.SmartBlock) error {
+	return id, space.Do(id, func(sb smartblock2.SmartBlock) error {
 		return sb.Apply(sb.NewState())
 	})
 }
