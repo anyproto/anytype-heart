@@ -73,17 +73,14 @@ func (b *builtinTemplate) RegisterBuiltinTemplates(space space.Space) error {
 	if err != nil {
 		return fmt.Errorf("new reader: %w", err)
 	}
-	createdTemplates := make(map[string]struct{}, 0)
 	for _, zf := range zr.File {
 		rd, e := zf.Open()
 		if e != nil {
 			return e
 		}
-		var id string
-		if id, err = b.registerBuiltin(space, rd); err != nil {
+		if err = b.registerBuiltin(space, rd); err != nil {
 			return fmt.Errorf("register builtin: %w", err)
 		}
-		createdTemplates[id] = struct{}{}
 	}
 	return nil
 }
@@ -92,13 +89,14 @@ func (b *builtinTemplate) Hash() string {
 	return b.generatedHash
 }
 
-func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (id string, err error) {
+func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (err error) {
 	defer rd.Close()
 	data, err := io.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
 	if err = snapshot.Unmarshal(data); err != nil {
 		return
 	}
+	var id string
 	for _, block := range snapshot.Data.Blocks {
 		if block.GetSmartblock() != nil {
 			id = block.Id
@@ -116,7 +114,7 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 
 	err = b.setObjectTypes(st)
 	if err != nil {
-		return "", fmt.Errorf("set object types: %w", err)
+		return fmt.Errorf("set object types: %w", err)
 	}
 
 	// fix divergence between extra relations and simple block relations
@@ -137,10 +135,10 @@ func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (
 	fullID := domain.FullID{SpaceID: space.Id(), ObjectID: id}
 	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy(), nil))
 	if err != nil {
-		return "", fmt.Errorf("register static source: %w", err)
+		return fmt.Errorf("register static source: %w", err)
 	}
 	// Index
-	return id, space.Do(id, func(sb smartblock2.SmartBlock) error {
+	return space.Do(id, func(sb smartblock2.SmartBlock) error {
 		return sb.Apply(sb.NewState())
 	})
 }
