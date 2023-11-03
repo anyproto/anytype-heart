@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -672,10 +673,11 @@ func (s *Service) MoveBlocksToNewPage(
 ) (linkID string, err error) {
 	// 1. Create new page, link
 	linkID, objectID, err := s.CreateLinkToTheNewObject(ctx, sctx, &pb.RpcBlockLinkCreateWithObjectRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.DropTargetId,
-		Position:  req.Position,
-		Details:   req.Details,
+		ContextId:           req.ContextId,
+		TargetId:            req.DropTargetId,
+		ObjectTypeUniqueKey: bundle.TypeKeyPage.URL(),
+		Position:            req.Position,
+		Details:             req.Details,
 	})
 	if err != nil {
 		return
