@@ -2945,7 +2945,7 @@ message Rpc {
                 }
 
                 message ManifestInfo {
-                    string schema = 1 [json_name="$schema"];
+                    string schema = 1;
                     string id = 2;
                     string name = 3;
                     string author = 4;
