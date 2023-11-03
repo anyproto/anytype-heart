@@ -115,6 +115,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 	oc.setFileImportedFlagAndOrigin(st, origin)
 	typeKeys := st.ObjectTypeKeys()
 	if sn.SbType == coresb.SmartBlockTypeObjectType {
+		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
 	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
@@ -241,7 +242,6 @@ func (oc *ObjectCreator) createNewObject(
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 		return nil, err
 	}
-	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
 
 	// update collection after we create it
 	if st.Store() != nil {

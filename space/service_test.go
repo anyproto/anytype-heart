@@ -105,7 +105,7 @@ func (fx *fixture) expectRun(newAccount bool) {
 	if newAccount {
 		fx.spaceCore.EXPECT().Derive(mock.Anything, spacecore.SpaceType).Return(&spacecore.AnySpace{Space: fx.personalSpace}, nil)
 		// fx.objectCache.EXPECT().DeriveTreeObject(mock.Anything, testPersonalSpaceID, mock.Anything).Return(nil, nil)
-		fx.techSpace.EXPECT().SpaceViewCreate(mock.Anything, testPersonalSpaceID).Return(nil)
+		fx.techSpace.EXPECT().SpaceViewCreate(mock.Anything, testPersonalSpaceID, nil).Return(nil)
 	}
 	// startLoad
 	fx.techSpace.EXPECT().SpaceViewExists(mock.Anything, testPersonalSpaceID).Return(true, nil)
