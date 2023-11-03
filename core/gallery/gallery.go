@@ -83,7 +83,7 @@ func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestI
 
 	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
 		if !isInWhitelist(urlToCheck) {
-			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", url)
+			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
 		}
 	}
 
