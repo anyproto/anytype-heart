@@ -213,7 +213,7 @@ func (s *service) RemoveStaticSource(id string) {
 func (s *service) GetStaticObjectsBySpaceID(spaceID string) []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var staticIDs []string
+	staticIDs := make([]string, 0, len(s.staticIds))
 	for id, objectSource := range s.staticIds {
 		if objectSource.SpaceID() != spaceID {
 			continue
