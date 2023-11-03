@@ -3,7 +3,6 @@ package builtintemplate
 import (
 	"archive/zip"
 	"bytes"
-	"context"
 	"crypto/md5"
 	_ "embed"
 	"encoding/binary"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -38,7 +39,8 @@ func New() BuiltinTemplate {
 
 type BuiltinTemplate interface {
 	Hash() string
-	app.ComponentRunnable
+	RegisterBuiltinTemplates(space space.Space) error
+	app.Component
 }
 
 type builtinTemplate struct {
@@ -66,28 +68,28 @@ func (b *builtinTemplate) Name() (name string) {
 	return CName
 }
 
-func (b *builtinTemplate) Run(context.Context) (err error) {
+func (b *builtinTemplate) RegisterBuiltinTemplates(space space.Space) error {
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
-		return
+		return fmt.Errorf("new reader: %w", err)
 	}
 	for _, zf := range zr.File {
 		rd, e := zf.Open()
 		if e != nil {
 			return e
 		}
-		if err = b.registerBuiltin(rd); err != nil {
-			return
+		if err = b.registerBuiltin(space, rd); err != nil {
+			return fmt.Errorf("register builtin: %w", err)
 		}
 	}
-	return
+	return nil
 }
 
 func (b *builtinTemplate) Hash() string {
 	return b.generatedHash
 }
 
-func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
+func (b *builtinTemplate) registerBuiltin(space space.Space, rd io.ReadCloser) (err error) {
 	defer rd.Close()
 	data, err := io.ReadAll(rd)
 	snapshot := &pb.ChangeSnapshot{}
@@ -130,12 +132,15 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return
 	}
 
-	fullID := domain.FullID{SpaceID: addr.AnytypeMarketplaceWorkspace, ObjectID: id}
+	fullID := domain.FullID{SpaceID: space.Id(), ObjectID: id}
 	err = b.source.RegisterStaticSource(b.source.NewStaticSource(fullID, smartblock.SmartBlockTypeBundledTemplate, st.Copy()))
 	if err != nil {
 		return fmt.Errorf("register static source: %w", err)
 	}
-	return
+	// Index
+	return space.Do(id, func(sb smartblock2.SmartBlock) error {
+		return sb.Apply(sb.NewState())
+	})
 }
 
 func (b *builtinTemplate) setObjectTypes(st *state.State) error {
@@ -169,8 +174,4 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	}
 	// todo: update templates and return the validation
 	return nil
-}
-
-func (b *builtinTemplate) Close(_ context.Context) (err error) {
-	return
 }

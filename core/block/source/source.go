@@ -366,7 +366,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:        params.State.BlocksToSave(),
 				Details:       params.State.Details(),
-				ObjectTypes:   slice.UnwrapStrings(params.State.ObjectTypeKeys()),
+				ObjectTypes:   domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
 				Collections:   params.State.Store(),
 				RelationLinks: params.State.PickRelationLinks(),
 				Key:           params.State.UniqueKeyInternal(),

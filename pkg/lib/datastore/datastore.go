@@ -19,6 +19,7 @@ type inMemoryDatastore struct {
 	db *badger.DB
 }
 
+// NewInMemory creates new in-memory store for testing purposes
 func NewInMemory() Datastore {
 	return &inMemoryDatastore{}
 }

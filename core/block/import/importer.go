@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/creator"
 	"github.com/anyproto/anytype-heart/core/block/import/csv"
 	"github.com/anyproto/anytype-heart/core/block/import/html"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown"
@@ -39,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -52,7 +54,7 @@ const workerPoolSize = 10
 type Import struct {
 	converters      map[string]converter.Converter
 	s               *block.Service
-	oc              Creator
+	oc              creator.Service
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
 	fileSync        filesync.FileSync
@@ -90,13 +92,13 @@ func (i *Import) Init(a *app.App) (err error) {
 	fileStore := app.MustComponent[filestore.FileStore](a)
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileStore)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
-	i.oc = NewCreator(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
+	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (string, error) {
+func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
@@ -113,7 +115,7 @@ func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest) (st
 	}
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress)
+		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
 		return rootCollectionID, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
@@ -135,6 +137,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
 	progress process.Progress,
+	origin model.ObjectOrigin,
 ) (string, error) {
 	allErrors := converter.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req, progress)
@@ -153,7 +156,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors)
+	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
@@ -177,7 +180,7 @@ func (i *Import) importFromExternalSource(ctx context.Context,
 		res := &converter.Response{
 			Snapshots: sn,
 		}
-		i.createObjects(ctx, res, progress, req, allErrors)
+		i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
 		if !allErrors.IsEmpty() {
 			return allErrors.GetResultError(req.Type)
 		}
@@ -251,7 +254,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 	}
 
 	progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, progress, req, allErrors)
+	details, _ := i.createObjects(ctx, res, progress, req, allErrors, model.ObjectOrigin_import)
 	if !allErrors.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
@@ -263,6 +266,7 @@ func (i *Import) createObjects(ctx context.Context,
 	progress process.Progress,
 	req *pb.RpcObjectImportRequest,
 	allErrors *converter.ConvertError,
+	origin model.ObjectOrigin,
 ) (map[string]*types.Struct, string) {
 	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req)
 	if err != nil {
@@ -273,7 +277,7 @@ func (i *Import) createObjects(ctx context.Context,
 	if len(res.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := NewDataObject(oldIDToNew, createPayloads, filesIDs, ctx)
+	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, filesIDs, origin, req.SpaceId)
 	pool := workerpool.NewPool(numWorkers)
 	progress.SetProgressMessage("Create objects")
 	go i.addWork(req.SpaceId, res, pool)
@@ -373,7 +377,7 @@ func (i *Import) getObjectID(
 
 func (i *Import) addWork(spaceID string, res *converter.Response, pool *workerpool.WorkerPool) {
 	for _, snapshot := range res.Snapshots {
-		t := NewTask(spaceID, snapshot, i.oc)
+		t := creator.NewTask(spaceID, snapshot, i.oc)
 		stop := pool.AddWork(t)
 		if stop {
 			break
@@ -394,15 +398,15 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 			pool.Stop()
 			return nil
 		}
-		res := r.(*Result)
-		if res.err != nil {
-			allErrors.Add(res.err)
+		res := r.(*creator.Result)
+		if res.Err != nil {
+			allErrors.Add(res.Err)
 			if mode == pb.RpcObjectImportRequest_ALL_OR_NOTHING {
 				pool.Stop()
 				return nil
 			}
 		}
-		details[res.newID] = res.details
+		details[res.NewID] = res.Details
 	}
 	return details
 }

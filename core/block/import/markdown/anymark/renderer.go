@@ -408,7 +408,7 @@ func (r *Renderer) renderText(_ util.BufWriter,
 
 	r.AddTextToBuffer(string(segment.Value(source)))
 	if n.HardLineBreak() {
-		r.ForceCloseTextBlock()
+		r.CloseTextBlock(model.BlockContentText_Paragraph)
 
 	} else if n.SoftLineBreak() {
 		r.AddTextToBuffer("\n")

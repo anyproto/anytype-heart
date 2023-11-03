@@ -6,10 +6,13 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/anyproto/anytype-heart/util/testMock/mockSource"
 )
@@ -21,6 +24,10 @@ func Test_registerBuiltin(t *testing.T) {
 	sourceService := mockSource.NewMockService(ctrl)
 	sourceService.EXPECT().NewStaticSource(gomock.Any(), gomock.Any(), gomock.Any(), nil).AnyTimes()
 	sourceService.EXPECT().RegisterStaticSource(gomock.Any()).AnyTimes()
+
+	marketplaceSpace := mock_space.NewMockSpace(t)
+	marketplaceSpace.EXPECT().Id().Return(addr.AnytypeMarketplaceWorkspace)
+	marketplaceSpace.EXPECT().Do(mock.Anything, mock.Anything).Return(nil)
 
 	objectStore := mock_objectstore.NewMockObjectStore(t)
 
@@ -35,6 +42,6 @@ func Test_registerBuiltin(t *testing.T) {
 
 	err := builtInTemplates.Init(a)
 	assert.NoError(t, err)
-	err = builtInTemplates.Run(context.Background())
+	err = builtInTemplates.RegisterBuiltinTemplates(marketplaceSpace)
 	assert.NoError(t, err)
 }

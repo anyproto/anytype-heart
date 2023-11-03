@@ -35,7 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -581,17 +580,6 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 		}
 
 		// handle corner cases first for specific formats
-		if rel.Format == model.RelationFormat_date &&
-			!lo.Contains(bundle.LocalRelationsKeys, rel.Key) &&
-			!lo.Contains(bundle.DerivedRelationsKeys, rel.Key) {
-			relInt := pbtypes.GetInt64(det, rel.Key)
-			if relInt > 0 {
-				t := time.Unix(relInt, 0)
-				t = t.In(time.Local)
-				ids = append(ids, addr.TimeToID(t))
-			}
-			continue
-		}
 
 		if rel.Format != model.RelationFormat_object {
 			continue
@@ -922,7 +910,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
 	links := sb.navigationalLinks(s)
-	links = slice.Remove(links, sb.Id())
+	links = slice.RemoveMut(links, sb.Id())
 	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
 }

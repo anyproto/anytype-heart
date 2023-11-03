@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
-	template2 "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,16 +45,21 @@ type Service interface {
 }
 
 type service struct {
-	blockService      BlockService
 	objectStore       objectstore.ObjectStore
 	collectionService CollectionService
 	bookmark          bookmark.Service
 	app               *app.App
 	spaceService      space.Service
+	templateService   TemplateService
 }
 
 type CollectionService interface {
 	CreateCollection(details *types.Struct, flags []*model.InternalFlag) (coresb.SmartBlockType, *types.Struct, *state.State, error)
+}
+
+type TemplateService interface {
+	StateFromTemplate(templateId, name string) (st *state.State, err error)
+	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
 }
 
 func NewCreator() Service {
@@ -63,11 +67,11 @@ func NewCreator() Service {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.blockService = app.MustComponent[BlockService](a)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmark = a.MustComponent(bookmark.CName).(bookmark.Service)
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
+	s.templateService = app.MustComponent[TemplateService](a)
 	s.app = a
 	return nil
 }
@@ -78,20 +82,10 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-// TODO Temporarily
-type BlockService interface {
-	StateFromTemplate(templateID, name string) (st *state.State, err error)
-	TemplateCloneInSpace(space space.Space, id string) (templateID string, err error)
-}
-
-func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, details *types.Struct, templateID string) (id string, newDetails *types.Struct, err error) {
+func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, details *types.Struct, templateId string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
-	if templateID != "" {
-		if createState, err = s.blockService.StateFromTemplate(templateID, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
-			return
-		}
-	} else {
-		createState = state.NewDoc("", nil).NewState()
+	if createState, err = s.templateService.StateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+		return
 	}
 	for k, v := range details.GetFields() {
 		createState.SetDetail(k, v)
@@ -262,10 +256,6 @@ func (s *service) CreateObjectInSpace(ctx context.Context, space space.Space, re
 		return s.createRelation(ctx, space, details)
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
-	}
-
-	if req.TemplateId == template2.BlankTemplateID {
-		req.TemplateId = ""
 	}
 
 	return s.createSmartBlockFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)

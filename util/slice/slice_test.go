@@ -48,9 +48,15 @@ func Test_Intersection(t *testing.T) {
 	assert.Equal(t, []string{"1", "2"}, res)
 }
 
+func Test_RemoveMut(t *testing.T) {
+	var ids = []string{"1", "2", "3"}
+	assert.Equal(t, []string{"1", "3"}, RemoveMut(ids, "2"))
+}
+
 func Test_Remove(t *testing.T) {
 	var ids = []string{"1", "2", "3"}
 	assert.Equal(t, []string{"1", "3"}, Remove(ids, "2"))
+	assert.Equal(t, []string{"1", "2", "3"}, ids)
 }
 
 func TestHasPrefix(t *testing.T) {

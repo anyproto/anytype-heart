@@ -87,8 +87,8 @@ func Insert[T any](s []T, pos int, v ...T) []T {
 	return append(s[:pos], append(v, s[pos:]...)...)
 }
 
-// Remove reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
-func Remove[T comparable](s []T, v T) []T {
+// RemoveMut reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
+func RemoveMut[T comparable](s []T, v T) []T {
 	var n int
 	for _, x := range s {
 		if x != v {
@@ -97,6 +97,19 @@ func Remove[T comparable](s []T, v T) []T {
 		}
 	}
 	return s[:n]
+}
+
+// Remove is an immutable analog of RemoveMut function. Input slice is copied and then modified
+func Remove[T comparable](s []T, v T) []T {
+	var n int
+	sc := slices.Clone(s)
+	for _, x := range s {
+		if x != v {
+			sc[n] = x
+			n++
+		}
+	}
+	return sc[:n]
 }
 
 // RemoveIndex reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
@@ -223,13 +236,4 @@ func FilterCID(cids []string) []string {
 		_, err := cid.Parse(item)
 		return err == nil
 	})
-}
-
-// UnwrapStrings converts slice of type that has underlying type of string to slice of strings
-func UnwrapStrings[T ~string](values []T) []string {
-	res := make([]string, len(values))
-	for i, v := range values {
-		res[i] = string(v)
-	}
-	return res
 }

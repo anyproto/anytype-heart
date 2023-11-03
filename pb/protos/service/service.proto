@@ -135,12 +135,12 @@ service ClientCommands {
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
+    rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
 
     rpc TemplateCreateFromObject (anytype.Rpc.Template.CreateFromObject.Request) returns (anytype.Rpc.Template.CreateFromObject.Response);
-    rpc TemplateCreateFromObjectType (anytype.Rpc.Template.CreateFromObjectType.Request) returns (anytype.Rpc.Template.CreateFromObjectType.Response); // to be renamed to ObjectCreateTemplate
     rpc TemplateClone (anytype.Rpc.Template.Clone.Request) returns (anytype.Rpc.Template.Clone.Response);
     rpc TemplateExportAll (anytype.Rpc.Template.ExportAll.Request) returns (anytype.Rpc.Template.ExportAll.Response);
 

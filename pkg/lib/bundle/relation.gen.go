@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "bb93b4d284ec8747d1bda756807cd3a241015ebd30b232b0bf9af02fc1d99d02"
+const RelationChecksum = "d9bac6d7e7ac3918a327e29c65c2587817ac04a02098b4440e337d93a7ee5038"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -156,6 +156,7 @@ const (
 	RelationKeyUniqueKey                 domain.RelationKey = "uniqueKey"
 	RelationKeyBacklinks                 domain.RelationKey = "backlinks"
 	RelationKeyIsUninstalled             domain.RelationKey = "isUninstalled"
+	RelationKeyOrigin                    domain.RelationKey = "origin"
 	RelationKeySpaceLocalStatus          domain.RelationKey = "spaceLocalStatus"
 	RelationKeySpaceRemoteStatus         domain.RelationKey = "spaceRemoteStatus"
 	RelationKeySpaceAccountStatus        domain.RelationKey = "spaceAccountStatus"
@@ -1184,7 +1185,7 @@ var (
 			Id:               "_brlinkedProjects",
 			Key:              "linkedProjects",
 			Name:             "Linked Projects",
-			ObjectTypes:      []string{TypePrefix + "task", TypePrefix + "project"},
+			ObjectTypes:      []string{TypePrefix + "project"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1331,6 +1332,19 @@ var (
 			Key:              "oldAnytypeID",
 			MaxCount:         1,
 			Name:             "Old Anytype ID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOrigin: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Source of objects in Anytype (clipboard, import)",
+			Format:           model.RelationFormat_number,
+			Id:               "_brorigin",
+			Key:              "origin",
+			MaxCount:         1,
+			Name:             "Origin",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

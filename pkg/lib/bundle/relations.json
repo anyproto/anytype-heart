@@ -331,7 +331,6 @@
     "readonly": false,
     "source": "details",
     "objectTypes": [
-      "task",
       "project"
     ]
   },
@@ -1440,6 +1439,16 @@
     "key": "isUninstalled",
     "maxCount": 1,
     "name": "Is uninstalled",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Source of objects in Anytype (clipboard, import)",
+    "format": "number",
+    "hidden": false,
+    "key": "origin",
+    "maxCount": 1,
+    "name": "Origin",
     "readonly": true,
     "source": "details"
   },

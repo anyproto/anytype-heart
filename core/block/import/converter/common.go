@@ -113,11 +113,6 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 }
 
 func updateObjectIDsInFilter(filter *model.BlockContentDataviewFilter, oldIDtoNew map[string]string) {
-	if filter.Format != model.RelationFormat_object &&
-		filter.Format != model.RelationFormat_tag &&
-		filter.Format != model.RelationFormat_status {
-		return
-	}
 	if objectIDs := pbtypes.GetStringListValue(filter.Value); objectIDs != nil {
 		var newIDs []string
 		for _, objectID := range objectIDs {
@@ -244,6 +239,9 @@ func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v *type
 
 func getNewObjectsIDForRelation(objectsIDs []string, oldIDtoNew map[string]string, filesIDs []string) []string {
 	for i, val := range objectsIDs {
+		if val == "" {
+			continue
+		}
 		if lo.Contains(filesIDs, val) {
 			continue
 		}

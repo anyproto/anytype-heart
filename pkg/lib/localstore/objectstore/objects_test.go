@@ -97,7 +97,7 @@ func TestList(t *testing.T) {
 
 	s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
-	got, err := s.List("space1")
+	got, err := s.List("space1", false)
 	require.NoError(t, err)
 
 	want := []*model.ObjectInfo{

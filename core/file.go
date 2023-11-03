@@ -109,7 +109,8 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	}
 	var hash string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		hash, err = bs.UploadFile(cctx, req.SpaceId, *req)
+		dto := block.FileUploadRequest{RpcFileUploadRequest: *req}
+		hash, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		return
 	})
 	if err != nil {
@@ -136,4 +137,36 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}
 	return response(pb.RpcFileSpaceUsageResponseError_NULL, nil, usage)
+}
+
+func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
+	usage, err := getService[files.Service](mw).GetNodeUsage(ctx)
+	code := mapErrorCode[pb.RpcFileNodeUsageResponseErrorCode](err)
+	resp := &pb.RpcFileNodeUsageResponse{
+		Error: &pb.RpcFileNodeUsageResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+	if usage != nil {
+		resp.Usage = &pb.RpcFileNodeUsageResponseUsage{
+			CidsCount:       uint64(usage.Usage.TotalCidsCount),
+			BytesUsage:      uint64(usage.Usage.TotalBytesUsage),
+			BytesLimit:      uint64(usage.Usage.AccountBytesLimit),
+			BytesLeft:       usage.Usage.BytesLeft,
+			LocalBytesUsage: usage.LocalUsageBytes,
+		}
+
+		resp.Spaces = make([]*pb.RpcFileNodeUsageResponseSpace, 0, len(usage.Usage.Spaces))
+		for _, space := range usage.Usage.Spaces {
+			resp.Spaces = append(resp.Spaces, &pb.RpcFileNodeUsageResponseSpace{
+				SpaceId:    space.SpaceId,
+				FilesCount: uint64(space.FileCount),
+				CidsCount:  uint64(space.CidsCount),
+				BytesUsage: uint64(space.SpaceBytesUsage),
+			})
+		}
+	}
+
+	return resp
 }

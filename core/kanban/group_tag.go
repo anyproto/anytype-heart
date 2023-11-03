@@ -29,9 +29,6 @@ func (t *GroupTag) InitGroups(spaceID string, f *database.Filters) error {
 	filterTag := database.FiltersAnd{
 		database.FilterNot{Filter: database.FilterEmpty{Key: t.Key}},
 	}
-	if spaceID != "" {
-		filterTag = append(filterTag, spaceFilter)
-	}
 
 	if f == nil {
 		f = &database.Filters{FilterObj: filterTag}

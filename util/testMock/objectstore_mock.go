@@ -76,17 +76,21 @@ func (mr *MockObjectStoreMockRecorder) Close(arg0 any) *gomock.Call {
 }
 
 // DeleteDetails mocks base method.
-func (m *MockObjectStore) DeleteDetails(arg0 string) error {
+func (m *MockObjectStore) DeleteDetails(arg0 ...string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteDetails", arg0)
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteDetails", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteDetails indicates an expected call of DeleteDetails.
-func (mr *MockObjectStoreMockRecorder) DeleteDetails(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) DeleteDetails(arg0 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDetails", reflect.TypeOf((*MockObjectStore)(nil).DeleteDetails), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDetails", reflect.TypeOf((*MockObjectStore)(nil).DeleteDetails), arg0...)
 }
 
 // DeleteObject mocks base method.
@@ -241,6 +245,21 @@ func (mr *MockObjectStoreMockRecorder) GetDetails(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDetails", reflect.TypeOf((*MockObjectStore)(nil).GetDetails), arg0)
 }
 
+// GetGlobalChecksums mocks base method.
+func (m *MockObjectStore) GetGlobalChecksums() (*model.ObjectStoreChecksums, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGlobalChecksums")
+	ret0, _ := ret[0].(*model.ObjectStoreChecksums)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGlobalChecksums indicates an expected call of GetGlobalChecksums.
+func (mr *MockObjectStoreMockRecorder) GetGlobalChecksums() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGlobalChecksums", reflect.TypeOf((*MockObjectStore)(nil).GetGlobalChecksums))
+}
+
 // GetInboundLinksByID mocks base method.
 func (m *MockObjectStore) GetInboundLinksByID(arg0 string) ([]string, error) {
 	m.ctrl.T.Helper()
@@ -361,6 +380,21 @@ func (mr *MockObjectStoreMockRecorder) GetRelationLink(arg0, arg1 any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelationLink", reflect.TypeOf((*MockObjectStore)(nil).GetRelationLink), arg0, arg1)
 }
 
+// GetUniqueKeyById mocks base method.
+func (m *MockObjectStore) GetUniqueKeyById(arg0 string) (domain.UniqueKey, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUniqueKeyById", arg0)
+	ret0, _ := ret[0].(domain.UniqueKey)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUniqueKeyById indicates an expected call of GetUniqueKeyById.
+func (mr *MockObjectStoreMockRecorder) GetUniqueKeyById(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUniqueKeyById", reflect.TypeOf((*MockObjectStore)(nil).GetUniqueKeyById), arg0)
+}
+
 // GetWithLinksInfoByID mocks base method.
 func (m *MockObjectStore) GetWithLinksInfoByID(arg0, arg1 string) (*model.ObjectInfoWithLinks, error) {
 	m.ctrl.T.Helper()
@@ -410,18 +444,18 @@ func (mr *MockObjectStoreMockRecorder) Init(arg0 any) *gomock.Call {
 }
 
 // List mocks base method.
-func (m *MockObjectStore) List(arg0 string) ([]*model.ObjectInfo, error) {
+func (m *MockObjectStore) List(arg0 string, arg1 bool) ([]*model.ObjectInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0)
+	ret := m.ctrl.Call(m, "List", arg0, arg1)
 	ret0, _ := ret[0].([]*model.ObjectInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockObjectStoreMockRecorder) List(arg0 any) *gomock.Call {
+func (mr *MockObjectStoreMockRecorder) List(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockObjectStore)(nil).List), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockObjectStore)(nil).List), arg0, arg1)
 }
 
 // ListAllRelations mocks base method.

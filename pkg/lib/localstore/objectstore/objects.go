@@ -115,7 +115,7 @@ type ObjectStore interface {
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(spaceID string, ids []string) ([]*model.ObjectInfo, error)
-	List(spaceID string) ([]*model.ObjectInfo, error)
+	List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error)
 	ListIds() ([]string, error)
 	ListIdsBySpace(spaceId string) ([]string, error)
 
@@ -127,12 +127,13 @@ type ObjectStore interface {
 	UpdatePendingLocalDetails(id string, proc func(details *types.Struct) (*types.Struct, error)) error
 
 	DeleteObject(id string) error
-	DeleteDetails(id string) error
+	DeleteDetails(id ...string) error
 	// EraseIndexes erase all indexes for objectstore. All objects need to be reindexed
 	EraseIndexes(spaceId string) error
 
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetObjectByUniqueKey(spaceId string, uniqueKey domain.UniqueKey) (*model.ObjectDetails, error)
+	GetUniqueKeyById(id string) (key domain.UniqueKey, err error)
 	GetInboundLinksByID(id string) ([]string, error)
 	GetOutboundLinksByID(id string) ([]string, error)
 
@@ -154,6 +155,7 @@ type IndexerStore interface {
 	ListIDsFromFullTextQueue() ([]string, error)
 	RemoveIDsFromFullTextQueue(ids []string)
 	FTSearch() ftsearch.FTSearch
+	GetGlobalChecksums() (checksums *model.ObjectStoreChecksums, err error)
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
@@ -331,15 +333,35 @@ func (s *dsObjectStore) GetDetails(id string) (*model.ObjectDetails, error) {
 	return details, nil
 }
 
-func (s *dsObjectStore) List(spaceID string) ([]*model.ObjectInfo, error) {
-	ids, _, err := s.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeySpaceId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(spaceID),
-			},
+func (s *dsObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
+	details, err := s.GetDetails(id)
+	if err != nil {
+		return nil, err
+	}
+	rawUniqueKey := pbtypes.GetString(details.Details, bundle.RelationKeyUniqueKey.String())
+	if rawUniqueKey == "" {
+		return nil, fmt.Errorf("object %s does not have %s set in details", id, bundle.RelationKeyUniqueKey.String())
+	}
+	return domain.UnmarshalUniqueKey(rawUniqueKey)
+}
+
+func (s *dsObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {
+	filters := []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeySpaceId.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(spaceID),
 		},
+	}
+	if includeArchived {
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyIsArchived.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Bool(true),
+		})
+	}
+	ids, _, err := s.QueryObjectIDs(database.Query{
+		Filters: filters,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("query object ids: %w", err)

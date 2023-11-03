@@ -7,6 +7,9 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
+	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -30,7 +33,7 @@ var log = logging.Logger(CName)
 type Service interface {
 	app.Component
 	GetInfo(ctx context.Context, spaceID string) (*model.AccountInfo, error)
-	Delete(ctx context.Context) (spacecore.NetworkStatus, error)
+	Delete(ctx context.Context) (toBeDeleted int64, err error)
 	RevertDeletion(ctx context.Context) error
 	AccountID() string
 	PersonalSpaceID() string
@@ -46,6 +49,9 @@ type service struct {
 	config       *config.Config
 	objectStore  objectstore.ObjectStore
 
+	nodeConf    nodeconf.Service
+	coordClient coordinatorclient.CoordinatorClient
+
 	picker          getblock.ObjectGetter
 	once            sync.Once
 	personalSpaceID string
@@ -60,6 +66,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.gateway = app.MustComponent[gateway.Gateway](a)
+	s.nodeConf = app.MustComponent[nodeconf.Service](a)
+	s.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.picker = app.MustComponent[getblock.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -67,12 +75,16 @@ func (s *service) Init(a *app.App) (err error) {
 	return
 }
 
-func (s *service) Delete(ctx context.Context) (spacecore.NetworkStatus, error) {
-	return spacecore.NetworkStatus{}, fmt.Errorf("not implemented")
+func (s *service) Delete(ctx context.Context) (toBeDeleted int64, err error) {
+	confirm, err := coordinatorproto.PrepareAccountDeleteConfirmation(s.wallet.GetAccountPrivkey(), s.wallet.GetDevicePrivkey().GetPublic().PeerId(), s.nodeConf.Configuration().NetworkId)
+	if err != nil {
+		return
+	}
+	return s.coordClient.AccountDelete(ctx, confirm)
 }
 
 func (s *service) RevertDeletion(ctx context.Context) error {
-	return fmt.Errorf("not implemented")
+	return s.coordClient.AccountRevertDeletion(ctx)
 }
 
 func (s *service) AccountID() string {

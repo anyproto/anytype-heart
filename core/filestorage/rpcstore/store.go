@@ -32,6 +32,7 @@ type RpcStore interface {
 	DeleteFiles(ctx context.Context, spaceId string, fileIds ...string) (err error)
 	SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error)
 	FilesInfo(ctx context.Context, spaceId string, fileIds ...string) ([]*fileproto.FileInfo, error)
+	AccountInfo(ctx context.Context) (info *fileproto.AccountInfoResponse, err error)
 }
 
 type store struct {
@@ -175,6 +176,12 @@ func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...stri
 		return nil, c.delete(ctx, spaceId, fileIds...)
 	})
 	return err
+}
+
+func (s *store) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
+	return writeOperation(ctx, s, "accountInfo", func(c *client) (*fileproto.AccountInfoResponse, error) {
+		return c.accountInfo(ctx)
+	})
 }
 
 func (s *store) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {

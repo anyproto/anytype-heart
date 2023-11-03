@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/net"
+
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -99,6 +101,7 @@ func (mw *Middleware) AccountDelete(cctx context.Context, req *pb.RpcAccountDele
 	status, err := mw.applicationService.AccountDelete(cctx, req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountIsAlreadyDeleted, pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED),
+		errToCode(net.ErrUnableToConnect, pb.RpcAccountDeleteResponseError_UNABLE_TO_CONNECT),
 	)
 	return &pb.RpcAccountDeleteResponse{
 		Status: status,
@@ -113,6 +116,7 @@ func (mw *Middleware) AccountRevertDeletion(cctx context.Context, req *pb.RpcAcc
 	status, err := mw.applicationService.AccountRevertDeletion(cctx)
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountIsActive, pb.RpcAccountRevertDeletionResponseError_ACCOUNT_IS_ACTIVE),
+		errToCode(net.ErrUnableToConnect, pb.RpcAccountRevertDeletionResponseError_UNABLE_TO_CONNECT),
 	)
 	return &pb.RpcAccountRevertDeletionResponse{
 		Status: status,

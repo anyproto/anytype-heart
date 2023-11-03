@@ -40,9 +40,9 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/objectid:
     interfaces:
       IdGetterProvider:
-  github.com/anyproto/anytype-heart/core/block/import:
+  github.com/anyproto/anytype-heart/core/block/import/creator:
     interfaces:
-      Creator:
+      Service:
   github.com/anyproto/anytype-heart/core/subscription:
     interfaces:
       CollectionService:
@@ -60,6 +60,8 @@ packages:
       TechSpace:
   github.com/anyproto/anytype-heart/space:
     interfaces:
+      Service:
+      Space:
       bundledObjectsInstaller:
         config:
           dir: "{{.InterfaceDir}}"

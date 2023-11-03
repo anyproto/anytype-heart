@@ -66,7 +66,7 @@ type Uploader interface {
 	SetFile(path string) Uploader
 	SetLastModifiedDate() Uploader
 	SetGroupId(groupId string) Uploader
-	SetImported(imported bool) Uploader
+	SetOrigin(origin model.ObjectOrigin) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AutoType(enable bool) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
@@ -122,7 +122,7 @@ type uploader struct {
 
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
-	imported        bool
+	origin          model.ObjectOrigin
 }
 
 type bufioSeekClose struct {
@@ -292,8 +292,8 @@ func (u *uploader) SetLastModifiedDate() Uploader {
 	return u
 }
 
-func (u *uploader) SetImported(imported bool) Uploader {
-	u.imported = imported
+func (u *uploader) SetOrigin(origin model.ObjectOrigin) Uploader {
+	u.origin = origin
 	return u
 }
 
@@ -376,7 +376,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		files.WithName(u.name),
 		files.WithLastModifiedDate(u.lastModifiedDate),
 		files.WithReader(buf),
-		files.WithImported(u.imported),
+		files.WithOrigin(u.origin),
 	}
 
 	if len(u.opts) > 0 {

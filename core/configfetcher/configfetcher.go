@@ -26,6 +26,7 @@ var log = logging.Logger("anytype-mw-configfetcher")
 const (
 	refreshIntervalSecs = 300
 	timeout             = 10 * time.Second
+	initialStatus       = -1
 )
 
 const CName = "configfetcher"
@@ -63,6 +64,7 @@ type configFetcher struct {
 	account      personalSpaceIDGetter
 	wallet       wallet.Wallet
 	lastStatus   model.AccountStatusType
+	mutex        sync.Mutex
 }
 
 func (c *configFetcher) GetAccountState() (state *pb.AccountState) {
@@ -99,6 +101,7 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.spaceService = a.MustComponent(spacecore.CName).(spacecore.SpaceCoreService)
 	c.account = app.MustComponent[personalSpaceIDGetter](a)
 	c.fetched = make(chan struct{})
+	c.lastStatus = initialStatus
 	return nil
 }
 
@@ -163,7 +166,13 @@ func (c *configFetcher) Close(ctx context.Context) (err error) {
 
 func (c *configFetcher) notifyClientApp(status *coordinatorproto.SpaceStatusPayload) {
 	s := convertToAccountStatusModel(status)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	if c.lastStatus == s.StatusType {
+		return
+	}
 
+	c.lastStatus = s.StatusType
 	ev := &pbMiddle.Event{
 		Messages: []*pbMiddle.EventMessage{
 			{
