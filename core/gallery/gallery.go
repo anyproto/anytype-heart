@@ -21,13 +21,12 @@ type schemaResponse struct {
 	Schema string `json:"$schema"`
 }
 
-//go:embed whitelist.json
-var whitelistJson []byte
-
-var whitelist []string
-
-func init() {
-	json.Unmarshal(whitelistJson, &whitelist)
+var whitelist = []string{
+	"raw.githubusercontent.com/anyproto",
+	"community.anytype.io",
+	"anytype.io",
+	"gallery.any.coop",
+	"github.com/anyproto",
 }
 
 func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
