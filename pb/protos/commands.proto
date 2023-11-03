@@ -2930,17 +2930,7 @@ message Rpc {
 
         message Response {
             Error error = 1;
-            string schema = 2;
-            string id = 3;
-            string name = 4;
-            string author = 5;
-            string license = 6;
-            string title = 7;
-            string description = 8;
-            repeated string screenshots = 9;
-            string downloadLink = 10;
-            int32 fileSize = 11;
-            repeated string categories = 12;
+            ManifestInfo info = 2;
 
             message Error {
                 Code code = 1;
@@ -2951,6 +2941,20 @@ message Rpc {
                     UNKNOWN_ERROR = 1;
                     BAD_INPUT = 2;
                 }
+            }
+
+            message ManifestInfo {
+                string schema = 1;
+                string id = 2;
+                string name = 3;
+                string author = 4;
+                string license = 5;
+                string title = 6;
+                string description = 7;
+                repeated string screenshots = 8;
+                string downloadLink = 9;
+                int32 fileSize = 10;
+                repeated string categories = 11;
             }
         }
     }
