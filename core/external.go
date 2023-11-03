@@ -90,17 +90,14 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	return response(hash, err)
 }
 
-func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGalleryDownloadManifestRequest) *pb.RpcGalleryDownloadManifestResponse {
-	response := func(info *pb.RpcGalleryDownloadManifestResponseManifestInfo, err error) *pb.RpcGalleryDownloadManifestResponse {
-		m := &pb.RpcGalleryDownloadManifestResponse{
-			Error: &pb.RpcGalleryDownloadManifestResponseError{Code: pb.RpcGalleryDownloadManifestResponseError_NULL},
-			Info:  info,
-		}
+func (mw *Middleware) DownloadManifest(_ context.Context, req *pb.RpcDownloadManifestRequest) *pb.RpcDownloadManifestResponse {
+	response := func(info *pb.RpcDownloadManifestResponse, err error) *pb.RpcDownloadManifestResponse {
+		info.Error = &pb.RpcDownloadManifestResponseError{Code: pb.RpcDownloadManifestResponseError_NULL}
 		if err != nil {
-			m.Error.Code = pb.RpcGalleryDownloadManifestResponseError_UNKNOWN_ERROR
-			m.Error.Description = err.Error()
+			info.Error.Code = pb.RpcDownloadManifestResponseError_UNKNOWN_ERROR
+			info.Error.Description = err.Error()
 		}
-		return m
+		return info
 	}
 	info, err := gallery.DownloadManifest(req.Url)
 	return response(info, err)

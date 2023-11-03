@@ -10,6 +10,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const timeout = time.Second * 2
@@ -18,9 +19,11 @@ type schemaHandler struct {
 	Schema string `json:"$schema"`
 }
 
-func DownloadManifest(url string) (info *pb.RpcGalleryDownloadManifestResponseManifestInfo, err error) {
+func DownloadManifest(url string) (response *pb.RpcDownloadManifestResponse, err error) {
+	if err = uri.ValidateURI(url); err != nil {
+		return nil, fmt.Errorf("provided URL is not valid: %w", err)
+	}
 	client := http.Client{Timeout: timeout}
-
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return
@@ -46,7 +49,7 @@ func DownloadManifest(url string) (info *pb.RpcGalleryDownloadManifestResponseMa
 		return nil, fmt.Errorf("failed to unmarshall json to get schema: %w", err)
 	}
 
-	err = json.Unmarshal(body, &info)
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall json to get manifest: %w", err)
 	}
@@ -54,7 +57,7 @@ func DownloadManifest(url string) (info *pb.RpcGalleryDownloadManifestResponseMa
 	if schemaWrapper.Schema != "" {
 		var result *gojsonschema.Result
 		schemaLoader := gojsonschema.NewReferenceLoader(schemaWrapper.Schema)
-		jsonLoader := gojsonschema.NewGoLoader(info)
+		jsonLoader := gojsonschema.NewGoLoader(response)
 		result, err = gojsonschema.Validate(schemaLoader, jsonLoader)
 		if err != nil {
 			return nil, err
@@ -62,8 +65,8 @@ func DownloadManifest(url string) (info *pb.RpcGalleryDownloadManifestResponseMa
 		if !result.Valid() {
 			return nil, fmt.Errorf("manifest does not correspond provided schema")
 		}
-		info.Schema = schemaWrapper.Schema
+		response.Schema = schemaWrapper.Schema
 	}
 
-	return info, nil
+	return response, nil
 }
