@@ -79,7 +79,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			layout, ok := ctx.State.Layout()
 			if !ok {
 				// nolint:errcheck
-				if len(ctx.ObjectTypeKeys) != 0 {
+				if len(ctx.ObjectTypeKeys) > 0 {
 					lastTypeKey := ctx.ObjectTypeKeys[len(ctx.ObjectTypeKeys)-1]
 					uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, string(lastTypeKey))
 					if err != nil {
