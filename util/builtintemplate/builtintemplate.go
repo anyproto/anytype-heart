@@ -22,10 +22,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -71,22 +69,6 @@ func (b *builtinTemplate) Name() (name string) {
 }
 
 func (b *builtinTemplate) RegisterBuiltinTemplates(space space.Space) error {
-	existingTemplates, _, err := b.objectStore.QueryObjectIDs(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyTemplateIsBundled.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(true),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to query bundled templates: %w", err)
-	}
-	existingTemplatesMap := make(map[string]struct{}, len(existingTemplates))
-	for _, templateID := range existingTemplates {
-		existingTemplatesMap[templateID] = struct{}{}
-	}
 	zr, err := zip.NewReader(bytes.NewReader(templatesZip), int64(len(templatesZip)))
 	if err != nil {
 		return fmt.Errorf("new reader: %w", err)
@@ -102,16 +84,6 @@ func (b *builtinTemplate) RegisterBuiltinTemplates(space space.Space) error {
 			return fmt.Errorf("register builtin: %w", err)
 		}
 		createdTemplates[id] = struct{}{}
-	}
-
-	for existingTemplateID := range existingTemplatesMap {
-		if _, ok := createdTemplates[existingTemplateID]; ok {
-			continue
-		}
-		err := b.objectStore.DeleteObject(existingTemplateID)
-		if err != nil {
-			return fmt.Errorf("failed to remove template %s from store: %w", existingTemplateID, err)
-		}
 	}
 	return nil
 }
