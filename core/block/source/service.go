@@ -204,7 +204,7 @@ func (s *service) RemoveStaticSource(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.staticIds, id)
-	err := s.objectStore.DeleteObject(id)
+	err := s.objectStore.DeleteDetails(id)
 	if err != nil {
 		log.Errorf("failed to delete objects details &s, err: %s", id, err)
 	}
