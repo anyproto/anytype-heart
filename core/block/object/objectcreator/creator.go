@@ -82,14 +82,19 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) createSmartBlockFromTemplate(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, details *types.Struct, templateId string) (id string, newDetails *types.Struct, err error) {
+func (s *service) createSmartBlockFromTemplate(
+	ctx context.Context,
+	space space.Space,
+	objectTypeKeys []domain.TypeKey,
+	details *types.Struct,
+	templateId string,
+) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if createState, err = s.templateService.StateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 		return
 	}
-	for k, v := range details.GetFields() {
-		createState.SetDetail(k, v)
-	}
+	createState = createState.NewState()
+	createState.AddDetails(details)
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
 }
 

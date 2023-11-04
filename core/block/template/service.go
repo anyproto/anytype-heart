@@ -110,6 +110,8 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		}
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
+		ts = ts.NewState()
+		ts.AddDetails(orig.Details())
 
 		layout, found := orig.Layout()
 		if found {
