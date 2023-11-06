@@ -74,7 +74,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 2,
+		Version: 3,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
@@ -83,9 +83,14 @@ func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.
 				template.WithFeaturedRelations,
 				template.WithRequiredRelations(),
 				migrationWithIdentityBlock,
+				migrationSetHidden,
 			)
 		},
 	}
+}
+
+func migrationSetHidden(st *state.State) {
+	st.SetDetail(bundle.RelationKeyIsHidden.String(), pbtypes.Bool(true))
 }
 
 func migrationWithIdentityBlock(st *state.State) {
@@ -109,10 +114,15 @@ func migrationWithIdentityBlock(st *state.State) {
 }
 
 func (p *Profile) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations([]migration.Migration{{
-		Version: 2,
-		Proc:    migrationWithIdentityBlock,
-	},
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc:    migrationWithIdentityBlock,
+		},
+		{
+			Version: 3,
+			Proc:    migrationSetHidden,
+		},
 	})
 }
 
