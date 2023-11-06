@@ -58,7 +58,7 @@ type CollectionService interface {
 }
 
 type TemplateService interface {
-	StateFromTemplate(templateId, name string) (st *state.State, err error)
+	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
 	TemplateCloneInSpace(space space.Space, id string) (templateId string, err error)
 }
 
@@ -89,12 +89,10 @@ func (s *service) createSmartBlockFromTemplate(
 	details *types.Struct,
 	templateId string,
 ) (id string, newDetails *types.Struct, err error) {
-	var createState *state.State
-	if createState, err = s.templateService.StateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
+	createState, err := s.templateService.CreateTemplateStateWithDetails(templateId, details)
+	if err != nil {
 		return
 	}
-	createState = createState.NewState()
-	createState.AddDetails(details)
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, objectTypeKeys, createState)
 }
 

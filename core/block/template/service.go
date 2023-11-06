@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -40,7 +41,7 @@ const (
 var log = logging.Logger("template")
 
 type Service interface {
-	StateFromTemplate(templateId, name string) (st *state.State, err error)
+	CreateTemplateStateWithDetails(templateId string, details *types.Struct) (st *state.State, err error)
 	ObjectApplyTemplate(contextId string, templateId string) error
 	TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error)
 
@@ -79,24 +80,52 @@ func (s *service) Init(a *app.App) error {
 	return nil
 }
 
-// StateFromTemplate creates clone of template object state with empty localDetails and updated objectTypes.
+// CreateTemplateStatePreservingDetails creates clone of template object state with empty localDetails and updated objectTypes.
 // Blank template is created in case template object is deleted or blank/empty templateIв is provided
-func (s *service) StateFromTemplate(templateId, name string) (st *state.State, err error) {
+func (s *service) CreateTemplateStateWithDetails(
+	templateId string,
+	details *types.Struct,
+) (targetState *state.State, err error) {
 	if templateId == BlankTemplateId || templateId == "" {
-		return s.blankTemplateState(), nil
+		targetState = s.createBlankTemplateState()
+	} else {
+		targetState, err = s.createCustomTemplateState(templateId)
+		if err != nil {
+			return
+		}
 	}
-	if err = getblock.Do(s.picker, templateId, func(b smartblock.SmartBlock) (innerErr error) {
-		if lo.Contains(b.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
-			st, innerErr = s.getNewPageState(b, name)
+
+	targetState = targetState.NewState()
+	targetState.AddDetails(details)
+
+	return targetState, nil
+}
+
+func (s *service) createCustomTemplateState(templateId string) (targetState *state.State, err error) {
+	err = getblock.Do(s.picker, templateId, func(sb smartblock.SmartBlock) (innerErr error) {
+		if lo.Contains(sb.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
+			targetState = sb.NewState().Copy()
+
+			innerErr = s.updateTypeKey(targetState)
+			if innerErr != nil {
+				return
+			}
+
+			targetState.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
+			targetState.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
+			targetState.SetLocalDetails(nil)
 		} else {
 			return fmt.Errorf("object '%s' is not a template", templateId)
 		}
 		return
-	}); err != nil {
+	})
+	if err != nil {
 		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-			return s.blankTemplateState(), nil
+			targetState = s.createBlankTemplateState()
+			err = nil
+		} else {
+			err = fmt.Errorf("can't apply template: %w", err)
 		}
-		return nil, fmt.Errorf("can't apply template: %w", err)
 	}
 	return
 }
@@ -104,14 +133,12 @@ func (s *service) StateFromTemplate(templateId, name string) (st *state.State, e
 func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 	return getblock.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
-		ts, err := s.StateFromTemplate(templateId, "")
+		ts, err := s.CreateTemplateStateWithDetails(templateId, nil)
 		if err != nil {
 			return err
 		}
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
-		ts = ts.NewState()
-		ts.AddDetails(orig.Details())
 
 		layout, found := orig.Layout()
 		if found {
@@ -249,7 +276,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	return path, err
 }
 
-func (s *service) blankTemplateState() (st *state.State) {
+func (s *service) createBlankTemplateState() (st *state.State) {
 	st = state.NewDoc(BlankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
@@ -262,16 +289,6 @@ func (s *service) blankTemplateState() (st *state.State) {
 }
 
 func (s *service) getNewPageState(sb smartblock.SmartBlock, name string) (st *state.State, err error) {
-	st = sb.NewState().Copy()
-
-	if err = s.updateTypeKey(st); err != nil {
-		return nil, err
-	}
-
-	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
-	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(sb.Id()))
-	// clean-up local details from the template state
-	st.SetLocalDetails(nil)
 
 	if name != "" {
 		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
