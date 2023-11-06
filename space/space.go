@@ -2,12 +2,14 @@ package space
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -86,6 +88,20 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context) {
 	}
 	s.loadMandatoryObjectsErr = s.LoadObjects(ctx, s.derivedIDs.IDs())
 	if s.loadMandatoryObjectsErr != nil {
+		// we had a bug that allowed some users to remove their profile
+		// this workaround is to allow these users to load their accounts without errors and export their anytype data
+		// todo: remove this after we don't have msgs in graylog or find a better way to fix this type of problems
+		if mErr, ok := s.loadMandatoryObjectsErr.(*multierror.Error); ok {
+			var shouldReturnError bool
+			for _, err := range mErr.Errors {
+				if !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+					shouldReturnError = true
+				}
+			}
+			if !shouldReturnError {
+				s.loadMandatoryObjectsErr = nil
+			}
+		}
 		return
 	}
 	s.loadMandatoryObjectsErr = s.InstallBundledObjects(ctx)

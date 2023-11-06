@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/util/slice"
+	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -105,9 +107,11 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 
 func (o *objectProvider) LoadObjects(ctx context.Context, objIDs []string) (err error) {
 	for _, id := range objIDs {
-		_, err = o.cache.GetObject(ctx, id)
-		if err != nil {
-			return err
+		_, errObject := o.cache.GetObject(ctx, id)
+		if errObject != nil {
+			predefinedIdPosition := slice.FindPos(o.derivedObjectIds.IDs(), id)
+			log.Error("loadObject failed", zap.Error(errObject), zap.String("objectID", id), zap.Int("predefinedIDPosition", predefinedIdPosition))
+			err = multierror.Append(err, errObject)
 		}
 	}
 	return
