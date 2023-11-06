@@ -6291,7 +6291,7 @@ set the current active view (persisted only within a session)
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| proccessor | [model.Block.Content.Embed.Processor](#anytype-model-Block-Content-Embed-Processor) |  |  |
+| processor | [model.Block.Content.Embed.Processor](#anytype-model-Block-Content-Embed-Processor) |  |  |
 
 
 

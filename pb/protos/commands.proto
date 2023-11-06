@@ -3627,7 +3627,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
-                model.Block.Content.Embed.Processor proccessor = 3;
+                model.Block.Content.Embed.Processor processor = 3;
             }
 
             message Response {
