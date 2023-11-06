@@ -54,7 +54,7 @@ message Event {
             Block.Set.Align blockSetAlign = 15;
             Block.Set.Div blockSetDiv = 17;
             Block.Set.Relation blockSetRelation = 21;
-            Block.Set.Latex blockSetLatex = 25;
+            Block.Set.Embed blockSetEmbed = 25;
             Block.Set.VerticalAlign blockSetVerticalAlign = 36;
             Block.Set.TableRow blockSetTableRow = 37;
             Block.Set.Widget blockSetWidget = 40;
@@ -336,11 +336,15 @@ message Event {
                     string value = 1;
                 }
             }
-            message Latex {
+            message Embed {
                 string id = 1;
                 Text text = 2;
                 message Text {
                     string value = 1;
+                }
+                Processor processor = 3;
+                message Processor {
+                    anytype.model.Block.Content.Embed.Processor value = 1;
                 }
             }
 

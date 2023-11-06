@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/block/simple/latex"
+	"github.com/anyproto/anytype-heart/core/block/simple/embed"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
@@ -43,7 +43,7 @@ type CommonOperations interface {
 
 	SetFields(ctx session.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	SetDivStyle(ctx session.Context, style model.BlockContentDivStyle, ids ...string) (err error)
-	SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error
+	SetEmbedText(ctx session.Context, req pb.RpcBlockEmbedSetTextRequest) error
 
 	SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationAddRequest) error
@@ -351,17 +351,17 @@ func (bs *basic) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetK
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) (err error) {
+func (bs *basic) SetEmbedText(ctx session.Context, req pb.RpcBlockEmbedSetTextRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
 
-	if rel, ok := b.(latex.Block); ok {
+	if rel, ok := b.(embed.Block); ok {
 		rel.SetText(req.Text)
 	} else {
-		return fmt.Errorf("unexpected block type: %T (want latex)", b)
+		return fmt.Errorf("unexpected block type: %T (want embed)", b)
 	}
 	return bs.Apply(s, smartblock.NoEvent)
 }

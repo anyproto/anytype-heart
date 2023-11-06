@@ -3597,12 +3597,13 @@ message Rpc {
         }
     }
 
-    message BlockLatex {
+    message BlockEmbed {
         message SetText {
             message Request {
                 string contextId = 1;
                 string blockId = 2;
                 string text = 3;
+                model.Block.Content.Embed.Processor processor = 4;
             }
 
             message Response {
@@ -3622,6 +3623,31 @@ message Rpc {
                 }
             }
         }
+        message SetProcessor {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                model.Block.Content.Embed.Processor proccessor = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
     }
 
     message BlockText {

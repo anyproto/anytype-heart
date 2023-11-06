@@ -68,7 +68,7 @@ message Block {
     Content.Dataview dataview = 21;
     Content.Relation relation = 22;
     Content.FeaturedRelations featuredRelations = 23;
-    Content.Latex latex = 24;
+    Content.Embed Embed = 24;
     Content.TableOfContents tableOfContents = 25;
     Content.Table table = 26;
     Content.TableColumn tableColumn = 27;
@@ -490,8 +490,13 @@ message Block {
       string key = 1;
     }
 
-    message Latex {
+    message Embed {
       string text = 1;
+      Processor processor = 2;
+      enum Processor {
+        Latex = 0;
+        Mermaid = 1;
+      }
     }
 
     message TableOfContents {

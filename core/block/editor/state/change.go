@@ -454,7 +454,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetRelation:
 			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockSetLatex:
+		case *pb.EventMessageValueOfBlockSetEmbed:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetWidget:
 			updMsgs = append(updMsgs, msg.Msg)

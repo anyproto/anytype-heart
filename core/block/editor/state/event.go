@@ -9,8 +9,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/block/simple/embed"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
-	"github.com/anyproto/anytype-heart/core/block/simple/latex"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/relation"
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
@@ -225,12 +225,12 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockSetLatex:
-		if err = apply(o.BlockSetLatex.Id, func(b simple.Block) error {
-			if f, ok := b.(latex.Block); ok {
-				return f.ApplyEvent(o.BlockSetLatex)
+	case *pb.EventMessageValueOfBlockSetEmbed:
+		if err = apply(o.BlockSetEmbed.Id, func(b simple.Block) error {
+			if f, ok := b.(embed.Block); ok {
+				return f.ApplyEvent(o.BlockSetEmbed)
 			}
-			return fmt.Errorf("not a latex block")
+			return fmt.Errorf("not an embed block")
 		}); err != nil {
 			return
 		}

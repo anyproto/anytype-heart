@@ -264,7 +264,7 @@ service ClientCommands {
     rpc BlockRelationSetKey (anytype.Rpc.BlockRelation.SetKey.Request) returns (anytype.Rpc.BlockRelation.SetKey.Response);
     rpc BlockRelationAdd (anytype.Rpc.BlockRelation.Add.Request) returns (anytype.Rpc.BlockRelation.Add.Response);
     rpc BlockDivListSetStyle (anytype.Rpc.BlockDiv.ListSetStyle.Request) returns (anytype.Rpc.BlockDiv.ListSetStyle.Response);
-    rpc BlockLatexSetText (anytype.Rpc.BlockLatex.SetText.Request) returns (anytype.Rpc.BlockLatex.SetText.Response);
+    rpc BlockEmbedSetText (anytype.Rpc.BlockEmbed.SetText.Request) returns (anytype.Rpc.BlockEmbed.SetText.Response);
 
     rpc ProcessCancel (anytype.Rpc.Process.Cancel.Request) returns (anytype.Rpc.Process.Cancel.Response);
 

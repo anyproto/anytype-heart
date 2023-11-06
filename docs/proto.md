@@ -316,6 +316,15 @@
     - [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request)
     - [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response)
     - [Rpc.BlockDiv.ListSetStyle.Response.Error](#anytype-Rpc-BlockDiv-ListSetStyle-Response-Error)
+    - [Rpc.BlockEmbed](#anytype-Rpc-BlockEmbed)
+    - [Rpc.BlockEmbed.SetProcessor](#anytype-Rpc-BlockEmbed-SetProcessor)
+    - [Rpc.BlockEmbed.SetProcessor.Request](#anytype-Rpc-BlockEmbed-SetProcessor-Request)
+    - [Rpc.BlockEmbed.SetProcessor.Response](#anytype-Rpc-BlockEmbed-SetProcessor-Response)
+    - [Rpc.BlockEmbed.SetProcessor.Response.Error](#anytype-Rpc-BlockEmbed-SetProcessor-Response-Error)
+    - [Rpc.BlockEmbed.SetText](#anytype-Rpc-BlockEmbed-SetText)
+    - [Rpc.BlockEmbed.SetText.Request](#anytype-Rpc-BlockEmbed-SetText-Request)
+    - [Rpc.BlockEmbed.SetText.Response](#anytype-Rpc-BlockEmbed-SetText-Response)
+    - [Rpc.BlockEmbed.SetText.Response.Error](#anytype-Rpc-BlockEmbed-SetText-Response-Error)
     - [Rpc.BlockFile](#anytype-Rpc-BlockFile)
     - [Rpc.BlockFile.CreateAndUpload](#anytype-Rpc-BlockFile-CreateAndUpload)
     - [Rpc.BlockFile.CreateAndUpload.Request](#anytype-Rpc-BlockFile-CreateAndUpload-Request)
@@ -338,11 +347,6 @@
     - [Rpc.BlockImage.SetWidth.Request](#anytype-Rpc-BlockImage-SetWidth-Request)
     - [Rpc.BlockImage.SetWidth.Response](#anytype-Rpc-BlockImage-SetWidth-Response)
     - [Rpc.BlockImage.SetWidth.Response.Error](#anytype-Rpc-BlockImage-SetWidth-Response-Error)
-    - [Rpc.BlockLatex](#anytype-Rpc-BlockLatex)
-    - [Rpc.BlockLatex.SetText](#anytype-Rpc-BlockLatex-SetText)
-    - [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request)
-    - [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response)
-    - [Rpc.BlockLatex.SetText.Response.Error](#anytype-Rpc-BlockLatex-SetText-Response-Error)
     - [Rpc.BlockLink](#anytype-Rpc-BlockLink)
     - [Rpc.BlockLink.CreateWithObject](#anytype-Rpc-BlockLink-CreateWithObject)
     - [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request)
@@ -1013,12 +1017,13 @@
     - [Rpc.BlockDataview.ViewRelation.Replace.Response.Error.Code](#anytype-Rpc-BlockDataview-ViewRelation-Replace-Response-Error-Code)
     - [Rpc.BlockDataview.ViewRelation.Sort.Response.Error.Code](#anytype-Rpc-BlockDataview-ViewRelation-Sort-Response-Error-Code)
     - [Rpc.BlockDiv.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockDiv-ListSetStyle-Response-Error-Code)
+    - [Rpc.BlockEmbed.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockEmbed-SetProcessor-Response-Error-Code)
+    - [Rpc.BlockEmbed.SetText.Response.Error.Code](#anytype-Rpc-BlockEmbed-SetText-Response-Error-Code)
     - [Rpc.BlockFile.CreateAndUpload.Response.Error.Code](#anytype-Rpc-BlockFile-CreateAndUpload-Response-Error-Code)
     - [Rpc.BlockFile.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockFile-ListSetStyle-Response-Error-Code)
     - [Rpc.BlockFile.SetName.Response.Error.Code](#anytype-Rpc-BlockFile-SetName-Response-Error-Code)
     - [Rpc.BlockImage.SetName.Response.Error.Code](#anytype-Rpc-BlockImage-SetName-Response-Error-Code)
     - [Rpc.BlockImage.SetWidth.Response.Error.Code](#anytype-Rpc-BlockImage-SetWidth-Response-Error-Code)
-    - [Rpc.BlockLatex.SetText.Response.Error.Code](#anytype-Rpc-BlockLatex-SetText-Response-Error-Code)
     - [Rpc.BlockLink.CreateWithObject.Response.Error.Code](#anytype-Rpc-BlockLink-CreateWithObject-Response-Error-Code)
     - [Rpc.BlockLink.ListSetAppearance.Response.Error.Code](#anytype-Rpc-BlockLink-ListSetAppearance-Response-Error-Code)
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype-Rpc-BlockRelation-Add-Response-Error-Code)
@@ -1266,6 +1271,9 @@
     - [Event.Block.Set.ChildrenIds](#anytype-Event-Block-Set-ChildrenIds)
     - [Event.Block.Set.Div](#anytype-Event-Block-Set-Div)
     - [Event.Block.Set.Div.Style](#anytype-Event-Block-Set-Div-Style)
+    - [Event.Block.Set.Embed](#anytype-Event-Block-Set-Embed)
+    - [Event.Block.Set.Embed.Processor](#anytype-Event-Block-Set-Embed-Processor)
+    - [Event.Block.Set.Embed.Text](#anytype-Event-Block-Set-Embed-Text)
     - [Event.Block.Set.Fields](#anytype-Event-Block-Set-Fields)
     - [Event.Block.Set.File](#anytype-Event-Block-Set-File)
     - [Event.Block.Set.File.Hash](#anytype-Event-Block-Set-File-Hash)
@@ -1276,8 +1284,6 @@
     - [Event.Block.Set.File.Style](#anytype-Event-Block-Set-File-Style)
     - [Event.Block.Set.File.Type](#anytype-Event-Block-Set-File-Type)
     - [Event.Block.Set.File.Width](#anytype-Event-Block-Set-File-Width)
-    - [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex)
-    - [Event.Block.Set.Latex.Text](#anytype-Event-Block-Set-Latex-Text)
     - [Event.Block.Set.Link](#anytype-Event-Block-Set-Link)
     - [Event.Block.Set.Link.CardStyle](#anytype-Event-Block-Set-Link-CardStyle)
     - [Event.Block.Set.Link.Description](#anytype-Event-Block-Set-Link-Description)
@@ -1392,10 +1398,10 @@
     - [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View)
     - [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup)
     - [Block.Content.Div](#anytype-model-Block-Content-Div)
+    - [Block.Content.Embed](#anytype-model-Block-Content-Embed)
     - [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations)
     - [Block.Content.File](#anytype-model-Block-Content-File)
     - [Block.Content.Icon](#anytype-model-Block-Content-Icon)
-    - [Block.Content.Latex](#anytype-model-Block-Content-Latex)
     - [Block.Content.Layout](#anytype-model-Block-Content-Layout)
     - [Block.Content.Link](#anytype-model-Block-Content-Link)
     - [Block.Content.Relation](#anytype-model-Block-Content-Relation)
@@ -1447,6 +1453,7 @@
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
     - [Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type)
     - [Block.Content.Div.Style](#anytype-model-Block-Content-Div-Style)
+    - [Block.Content.Embed.Processor](#anytype-model-Block-Content-Embed-Processor)
     - [Block.Content.File.State](#anytype-model-Block-Content-File-State)
     - [Block.Content.File.Style](#anytype-model-Block-Content-File-Style)
     - [Block.Content.File.Type](#anytype-model-Block-Content-File-Type)
@@ -1685,7 +1692,7 @@
 | BlockRelationSetKey | [Rpc.BlockRelation.SetKey.Request](#anytype-Rpc-BlockRelation-SetKey-Request) | [Rpc.BlockRelation.SetKey.Response](#anytype-Rpc-BlockRelation-SetKey-Response) |  |
 | BlockRelationAdd | [Rpc.BlockRelation.Add.Request](#anytype-Rpc-BlockRelation-Add-Request) | [Rpc.BlockRelation.Add.Response](#anytype-Rpc-BlockRelation-Add-Response) |  |
 | BlockDivListSetStyle | [Rpc.BlockDiv.ListSetStyle.Request](#anytype-Rpc-BlockDiv-ListSetStyle-Request) | [Rpc.BlockDiv.ListSetStyle.Response](#anytype-Rpc-BlockDiv-ListSetStyle-Response) |  |
-| BlockLatexSetText | [Rpc.BlockLatex.SetText.Request](#anytype-Rpc-BlockLatex-SetText-Request) | [Rpc.BlockLatex.SetText.Response](#anytype-Rpc-BlockLatex-SetText-Response) |  |
+| BlockEmbedSetText | [Rpc.BlockEmbed.SetText.Request](#anytype-Rpc-BlockEmbed-SetText-Request) | [Rpc.BlockEmbed.SetText.Response](#anytype-Rpc-BlockEmbed-SetText-Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request) | [Rpc.Process.Cancel.Response](#anytype-Rpc-Process-Cancel-Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype-Rpc-Log-Send-Request) | [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response) |  |
 | DebugTree | [Rpc.Debug.Tree.Request](#anytype-Rpc-Debug-Tree-Request) | [Rpc.Debug.Tree.Response](#anytype-Rpc-Debug-Tree-Response) |  |
@@ -6254,6 +6261,135 @@ set the current active view (persisted only within a session)
 
 
 
+<a name="anytype-Rpc-BlockEmbed"></a>
+
+### Rpc.BlockEmbed
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetProcessor"></a>
+
+### Rpc.BlockEmbed.SetProcessor
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetProcessor-Request"></a>
+
+### Rpc.BlockEmbed.SetProcessor.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| proccessor | [model.Block.Content.Embed.Processor](#anytype-model-Block-Content-Embed-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetProcessor-Response"></a>
+
+### Rpc.BlockEmbed.SetProcessor.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockEmbed.SetProcessor.Response.Error](#anytype-Rpc-BlockEmbed-SetProcessor-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetProcessor-Response-Error"></a>
+
+### Rpc.BlockEmbed.SetProcessor.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockEmbed.SetProcessor.Response.Error.Code](#anytype-Rpc-BlockEmbed-SetProcessor-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetText"></a>
+
+### Rpc.BlockEmbed.SetText
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetText-Request"></a>
+
+### Rpc.BlockEmbed.SetText.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| text | [string](#string) |  |  |
+| processor | [model.Block.Content.Embed.Processor](#anytype-model-Block-Content-Embed-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetText-Response"></a>
+
+### Rpc.BlockEmbed.SetText.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockEmbed.SetText.Response.Error](#anytype-Rpc-BlockEmbed-SetText-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetText-Response-Error"></a>
+
+### Rpc.BlockEmbed.SetText.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockEmbed.SetText.Response.Error.Code](#anytype-Rpc-BlockEmbed-SetText-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-BlockFile"></a>
 
 ### Rpc.BlockFile
@@ -6564,75 +6700,6 @@ set the current active view (persisted only within a session)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockImage.SetWidth.Response.Error.Code](#anytype-Rpc-BlockImage-SetWidth-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex"></a>
-
-### Rpc.BlockLatex
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText"></a>
-
-### Rpc.BlockLatex.SetText
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Request"></a>
-
-### Rpc.BlockLatex.SetText.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| text | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Response"></a>
-
-### Rpc.BlockLatex.SetText.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockLatex.SetText.Response.Error](#anytype-Rpc-BlockLatex-SetText-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Response-Error"></a>
-
-### Rpc.BlockLatex.SetText.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockLatex.SetText.Response.Error.Code](#anytype-Rpc-BlockLatex-SetText-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -16300,6 +16367,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockEmbed-SetProcessor-Response-Error-Code"></a>
+
+### Rpc.BlockEmbed.SetProcessor.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockEmbed-SetText-Response-Error-Code"></a>
+
+### Rpc.BlockEmbed.SetText.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockFile-CreateAndUpload-Response-Error-Code"></a>
 
 ### Rpc.BlockFile.CreateAndUpload.Response.Error.Code
@@ -16355,19 +16448,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockImage-SetWidth-Response-Error-Code"></a>
 
 ### Rpc.BlockImage.SetWidth.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockLatex-SetText-Response-Error-Code"></a>
-
-### Rpc.BlockLatex.SetText.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -19871,6 +19951,53 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-Embed"></a>
+
+### Event.Block.Set.Embed
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| text | [Event.Block.Set.Embed.Text](#anytype-Event-Block-Set-Embed-Text) |  |  |
+| processor | [Event.Block.Set.Embed.Processor](#anytype-Event-Block-Set-Embed-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Embed-Processor"></a>
+
+### Event.Block.Set.Embed.Processor
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Embed.Processor](#anytype-model-Block-Content-Embed-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Embed-Text"></a>
+
+### Event.Block.Set.Embed.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Set-Fields"></a>
 
 ### Event.Block.Set.Fields
@@ -20023,37 +20150,6 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [int32](#int32) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Set-Latex"></a>
-
-### Event.Block.Set.Latex
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| text | [Event.Block.Set.Latex.Text](#anytype-Event-Block-Set-Latex-Text) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Set-Latex-Text"></a>
-
-### Event.Block.Set.Latex.Text
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [string](#string) |  |  |
 
 
 
@@ -20567,7 +20663,7 @@ Precondition: user A opened a block
 | blockSetAlign | [Event.Block.Set.Align](#anytype-Event-Block-Set-Align) |  |  |
 | blockSetDiv | [Event.Block.Set.Div](#anytype-Event-Block-Set-Div) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation) |  |  |
-| blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
+| blockSetEmbed | [Event.Block.Set.Embed](#anytype-Event-Block-Set-Embed) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
 | blockSetTableRow | [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow) |  |  |
 | blockSetWidget | [Event.Block.Set.Widget](#anytype-Event-Block-Set-Widget) |  |  |
@@ -21624,7 +21720,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | dataview | [Block.Content.Dataview](#anytype-model-Block-Content-Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype-model-Block-Content-Relation) |  |  |
 | featuredRelations | [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations) |  |  |
-| latex | [Block.Content.Latex](#anytype-model-Block-Content-Latex) |  |  |
+| Embed | [Block.Content.Embed](#anytype-model-Block-Content-Embed) |  |  |
 | tableOfContents | [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents) |  |  |
 | table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
 | tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
@@ -21923,6 +22019,22 @@ Divider: block, that contains only one horizontal thin line
 
 
 
+<a name="anytype-model-Block-Content-Embed"></a>
+
+### Block.Content.Embed
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| processor | [Block.Content.Embed.Processor](#anytype-model-Block-Content-Embed-Processor) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Block-Content-FeaturedRelations"></a>
 
 ### Block.Content.FeaturedRelations
@@ -21964,21 +22076,6 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-model-Block-Content-Latex"></a>
-
-### Block.Content.Latex
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| text | [string](#string) |  |  |
 
 
 
@@ -22798,6 +22895,18 @@ stored |
 | ---- | ------ | ----------- |
 | Line | 0 |  |
 | Dots | 1 |  |
+
+
+
+<a name="anytype-model-Block-Content-Embed-Processor"></a>
+
+### Block.Content.Embed.Processor
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Latex | 0 |  |
+| Mermaid | 1 |  |
 
 
 
