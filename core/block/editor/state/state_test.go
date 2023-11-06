@@ -1880,7 +1880,7 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateDataview(t *testing.T) {
 
 }
 
-func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
+func TestState_ApplyChangeIgnoreErrBlockUpdateSetEmbed(t *testing.T) {
 	t.Run("apply BlockUpdate change: change embed text", func(t *testing.T) {
 		// given
 		st := NewDoc("root", map[string]simple.Block{
@@ -1889,8 +1889,8 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
 				ChildrenIds: []string{"embed"},
 			}),
 			"embed": simple.New(&model.Block{Id: "embed", Restrictions: &model.BlockRestrictions{Edit: true},
-				Content: &model.BlockContentOfLatex{
-					Latex: &model.BlockContentLatex{
+				Content: &model.BlockContentOfEmbed{
+					Embed: &model.BlockContentEmbed{
 						Text: "text",
 					},
 				},
@@ -1901,11 +1901,11 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
 			BlockUpdate: &pb.ChangeBlockUpdate{
 				Events: []*pb.EventMessage{
 					{
-						Value: &pb.EventMessageValueOfBlockSetLatex{
-							BlockSetLatex: &pb.EventBlockSetLatex{
+						Value: &pb.EventMessageValueOfBlockSetEmbed{
+							BlockSetEmbed: &pb.EventBlockSetEmbed{
 
 								Id:   "embed",
-								Text: &pb.EventBlockSetLatexText{Value: "new text"},
+								Text: &pb.EventBlockSetEmbedText{Value: "new text"},
 							},
 						},
 					},
@@ -1919,7 +1919,7 @@ func TestState_ApplyChangeIgnoreErrBlockUpdateSetLatex(t *testing.T) {
 		// then
 		b := st.Get("embed")
 		assert.NotNil(t, b)
-		assert.Equal(t, "new text", b.Model().GetLatex().Text)
+		assert.Equal(t, "new text", b.Model().GetEmbed().Text)
 	})
 }
 
