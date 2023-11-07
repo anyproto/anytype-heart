@@ -183,7 +183,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 
 func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error) {
 	if isLocal {
-		return b.importArchive(ctx, spaceID, source)
+		return b.importArchive(ctx, spaceID, source, false)
 	}
 	// nolint: gosec
 	resp, err := http.Get(source)
@@ -217,7 +217,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		return err
 	}
 
-	if err = b.importArchive(ctx, spaceID, path); err != nil {
+	if err = b.importArchive(ctx, spaceID, path, false); err != nil {
 		return err
 	}
 
@@ -236,7 +236,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		return fmt.Errorf("failed to save use case archive to temporary file: %w", err)
 	}
 
-	if err = b.importArchive(context.Background(), spaceID, path); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path, true); err != nil {
 		return err
 	}
 
@@ -265,13 +265,13 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, noProgress bool) (err error) {
 	if _, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
-		NoProgress:            true,
+		NoProgress:            noProgress,
 		IsMigration:           false,
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
 			PbParams: &pb.RpcObjectImportRequestPbParams{
