@@ -119,10 +119,7 @@ func isInWhitelist(url string) bool {
 	parsedURL, _ := uri.ParseURI(url)
 	for host, pathRegexp := range whitelist {
 		if strings.Contains(parsedURL.Host, host) {
-			if pathRegexp.MatchString(parsedURL.Path) {
-				return true
-			}
-			return false
+			return pathRegexp.MatchString(parsedURL.Path)
 		}
 	}
 	return false
