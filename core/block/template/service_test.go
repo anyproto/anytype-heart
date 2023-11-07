@@ -2,6 +2,7 @@ package template
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -86,13 +87,7 @@ func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 		Text:    template.DescriptionBlockId,
 		Checked: "done",
 	}))
-	applyState(sb.Doc.(*state.State))
 	return sb
-}
-
-func applyState(st *state.State) {
-	st.BlocksInit(st)
-	state.ApplyState(st, true)
 }
 
 func TestService_StateFromTemplate(t *testing.T) {
@@ -115,27 +110,31 @@ func TestService_StateFromTemplate(t *testing.T) {
 		assert.Equal(t, st.Get(template.TitleBlockId).Model().GetText().Text, templateName)
 	})
 
-	for _, templateName := range []string{templateName, "", BlankTemplateId} {
-		t.Run("custom page name and description - when template is: "+templateName, func(t *testing.T) {
-			// given
-			tmpl := NewTemplateTest(templateName, "")
-			s := service{picker: &testPicker{sb: tmpl}}
-			customName := "custom"
-			details := &types.Struct{Fields: map[string]*types.Value{}}
-			details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(customName)
-			details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(customName)
+	for templateIndex, templateName := range []string{templateName, "", BlankTemplateId} {
+		for addedDetail, expected := range map[string][]string{
+			"custom": {"custom", "custom", "custom"},
+			"":       {templateName, "", ""},
+		} {
+			t.Run(fmt.Sprintf("custom page name and description - "+
+				"when template is %s and target detail is %s", templateName, addedDetail), func(t *testing.T) {
+				// given
+				tmpl := NewTemplateTest(templateName, "")
+				s := service{picker: &testPicker{sb: tmpl}}
+				details := &types.Struct{Fields: map[string]*types.Value{}}
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(addedDetail)
+				details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(addedDetail)
 
-			// when
-			st, err := s.CreateTemplateStateWithDetails(templateName, details)
-			applyState(st)
+				// when
+				st, err := s.CreateTemplateStateWithDetails(templateName, details)
 
-			// then
-			assert.NoError(t, err)
-			assert.Equal(t, customName, st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue())
-			assert.Equal(t, customName, st.Details().Fields[bundle.RelationKeyDescription.String()].GetStringValue())
-			assert.Equal(t, customName, st.Get(template.TitleBlockId).Model().GetText().Text)
-			assert.Equal(t, customName, st.Get(template.DescriptionBlockId).Model().GetText().Text)
-		})
+				// then
+				assert.NoError(t, err)
+				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue())
+				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyDescription.String()].GetStringValue())
+				assert.Equal(t, expected[templateIndex], st.Get(template.TitleBlockId).Model().GetText().Text)
+				assert.Equal(t, expected[templateIndex], st.Get(template.DescriptionBlockId).Model().GetText().Text)
+			})
+		}
 	}
 
 	t.Run("empty templateId", func(t *testing.T) {
