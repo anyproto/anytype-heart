@@ -45,6 +45,7 @@ func (t *Template) CreationStateMigration(ctx *smartblock.InitContext) migration
 					}
 					if err != nil {
 						log.Errorf("get target object type %s: %s", targetObjectTypeId, err)
+						return
 					}
 					s.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, domain.TypeKey(uniqueKey.InternalKey())})
 				}
