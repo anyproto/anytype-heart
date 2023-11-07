@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,12 +22,13 @@ type schemaResponse struct {
 	Schema string `json:"$schema"`
 }
 
-var whitelist = []string{
-	"raw.githubusercontent.com/anyproto",
-	"community.anytype.io",
-	"anytype.io",
-	"gallery.any.coop",
-	"github.com/anyproto",
+// keys of whitelist are hosts and values are regular expressions of URL paths
+var whitelist = map[string]*regexp.Regexp{
+	"raw.githubusercontent.com": regexp.MustCompile(`/anyproto.*`),
+	"github.com":                regexp.MustCompile(`/anyproto.*`),
+	"community.anytype.io":      regexp.MustCompile(`.*`),
+	"anytype.io":                regexp.MustCompile(`.*`),
+	"gallery.any.coop":          regexp.MustCompile(`.*`),
 }
 
 func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
@@ -94,9 +96,14 @@ func isInWhitelist(url string) bool {
 	if len(whitelist) == 0 {
 		return true
 	}
-	for _, wlElement := range whitelist {
-		if strings.Contains(url, wlElement) {
-			return true
+	// nolint:errcheck
+	parsedURL, _ := uri.ParseURI(url)
+	for host, pathRegexp := range whitelist {
+		if strings.Contains(parsedURL.Host, host) {
+			if pathRegexp.MatchString(parsedURL.Path) {
+				return true
+			}
+			return false
 		}
 	}
 	return false
