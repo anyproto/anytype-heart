@@ -146,17 +146,16 @@ func (s *State) SetMigrationVersion(v uint32) {
 
 func (s *State) RootId() string {
 	if s.rootId == "" {
-		for id := range s.blocks {
-			var found bool
-			for _, b2 := range s.blocks {
-				if slice.FindPos(b2.Model().ChildrenIds, id) != -1 {
-					found = true
-					break
-				}
+		subIds := map[string]struct{}{}
+		for _, block := range s.blocks {
+			for _, id := range block.Model().ChildrenIds {
+				subIds[id] = struct{}{}
 			}
-			if !found {
+		}
+
+		for id := range s.blocks {
+			if _, isSub := subIds[id]; !isSub {
 				s.rootId = id
-				break
 			}
 		}
 	}

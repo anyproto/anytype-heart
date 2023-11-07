@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -2452,6 +2453,50 @@ func TestState_ApplyChangeIgnoreErrSliceUpdate(t *testing.T) {
 		assert.Len(t, st.Store().GetFields()["objects"].GetListValue().Values, 1)
 		assert.Equal(t, "id1", st.Store().GetFields()["objects"].GetListValue().Values[0].GetStringValue())
 	})
+}
+
+func TestState_RootId(t *testing.T) {
+	t.Run("root id - when set", func(t *testing.T) {
+		// given
+		st := NewDoc("root", nil).(*State)
+
+		// when
+		id := st.RootId()
+
+		// then
+		assert.Equal(t, "root", id)
+	})
+
+	t.Run("root id - when is not set", func(t *testing.T) {
+		// given
+		blocks := blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"text 1",
+					blockbuilder.ID("1"),
+					blockbuilder.Children(
+						blockbuilder.Text(
+							"text 2",
+							blockbuilder.ID("2"),
+						),
+					),
+				),
+			)).Build()
+
+		st := NewDoc("", map[string]simple.Block{
+			"1":    simple.New(blocks[1]),
+			"2":    simple.New(blocks[2]),
+			"root": simple.New(blocks[0]),
+		}).(*State)
+
+		// when
+		id := st.RootId()
+
+		// then
+		assert.Equal(t, "root", id)
+	})
+
 }
 
 // TODO: GO-2062 Need to review tests after details shortening refactor
