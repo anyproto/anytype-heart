@@ -215,7 +215,6 @@ func (s *Service) ObjectToCollection(id string) error {
 		if err != nil {
 			return fmt.Errorf("set layout: %w", err)
 		}
-		setDefaultObjectTypeToViews(st)
 		st.SetObjectTypeKey(bundle.TypeKeyCollection)
 		setDefaultObjectTypeToViews(st)
 		flags := internalflag.NewFromState(st)
@@ -240,9 +239,9 @@ func setDefaultObjectTypeToViews(st *state.State) {
 		return
 	}
 
-	//if isNotCreatableType(domain.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
-	//	return
-	//}
+	if isNotCreatableType(domain.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+		return
+	}
 
 	dataviewBlock := st.Get(state.DataviewBlockID)
 	if dataviewBlock == nil {

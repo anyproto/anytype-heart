@@ -10,7 +10,9 @@ import (
 	"strings"
 	"time"
 
+	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/xeipuuv/gojsonschema"
+	"golang.org/x/net/html"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -22,7 +24,7 @@ type schemaResponse struct {
 	Schema string `json:"$schema"`
 }
 
-// keys of whitelist are hosts and values are regular expressions of URL paths
+// whitelist maps allowed hosts to regular expressions of URL paths
 var whitelist = map[string]*regexp.Regexp{
 	"raw.githubusercontent.com": regexp.MustCompile(`/anyproto.*`),
 	"github.com":                regexp.MustCompile(`/anyproto.*`),
@@ -38,15 +40,46 @@ func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestI
 	if !isInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
+	raw, err := getRawManifest(url)
+	if err != nil {
+		return nil, err
+	}
+
+	schemaResp := schemaResponse{}
+	err = json.Unmarshal(raw, &schemaResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshall json to get schema: %w", err)
+	}
+
+	err = json.Unmarshal(raw, &info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshall json to get manifest: %w", err)
+	}
+
+	if err = validateSchema(schemaResp, info); err != nil {
+		return nil, err
+	}
+
+	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
+		if !isInWhitelist(urlToCheck) {
+			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
+		}
+	}
+
+	info.Description = stripTags(info.Description)
+	return info, nil
+}
+
+func getRawManifest(url string) ([]byte, error) {
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	res, err := client.Do(req)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	if res.Body != nil {
@@ -57,39 +90,25 @@ func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestI
 	if err != nil {
 		return nil, err
 	}
+	return body, nil
+}
 
-	schemaResp := schemaResponse{}
-	err = json.Unmarshal(body, &schemaResp)
+func validateSchema(schemaResp schemaResponse, info *pb.RpcDownloadManifestResponseManifestInfo) (err error) {
+	if schemaResp.Schema == "" {
+		return
+	}
+	var result *gojsonschema.Result
+	schemaLoader := gojsonschema.NewReferenceLoader(schemaResp.Schema)
+	jsonLoader := gojsonschema.NewGoLoader(info)
+	result, err = gojsonschema.Validate(schemaLoader, jsonLoader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshall json to get schema: %w", err)
+		return err
 	}
-
-	err = json.Unmarshal(body, &info)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshall json to get manifest: %w", err)
+	if !result.Valid() {
+		return fmt.Errorf("manifest does not correspond provided schema")
 	}
-
-	if schemaResp.Schema != "" {
-		var result *gojsonschema.Result
-		schemaLoader := gojsonschema.NewReferenceLoader(schemaResp.Schema)
-		jsonLoader := gojsonschema.NewGoLoader(info)
-		result, err = gojsonschema.Validate(schemaLoader, jsonLoader)
-		if err != nil {
-			return nil, err
-		}
-		if !result.Valid() {
-			return nil, fmt.Errorf("manifest does not correspond provided schema")
-		}
-		info.Schema = schemaResp.Schema
-	}
-
-	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
-		if !isInWhitelist(urlToCheck) {
-			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
-		}
-	}
-
-	return info, nil
+	info.Schema = schemaResp.Schema
+	return nil
 }
 
 func isInWhitelist(url string) bool {
@@ -107,4 +126,11 @@ func isInWhitelist(url string) bool {
 		}
 	}
 	return false
+}
+
+func stripTags(str string) string {
+	if _, err := html.Parse(strings.NewReader(str)); err != nil {
+		return str
+	}
+	return strip.StripTags(str)
 }
