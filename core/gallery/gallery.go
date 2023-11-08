@@ -37,7 +37,7 @@ func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestI
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
-	if !isInWhitelist(url) {
+	if !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
 	raw, err := getRawManifest(url)
@@ -61,13 +61,27 @@ func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestI
 	}
 
 	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
-		if !isInWhitelist(urlToCheck) {
+		if !IsInWhitelist(urlToCheck) {
 			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
 		}
 	}
 
 	info.Description = stripTags(info.Description)
 	return info, nil
+}
+
+func IsInWhitelist(url string) bool {
+	if len(whitelist) == 0 {
+		return true
+	}
+	// nolint:errcheck
+	parsedURL, _ := uri.ParseURI(url)
+	for host, pathRegexp := range whitelist {
+		if strings.Contains(parsedURL.Host, host) {
+			return pathRegexp.MatchString(parsedURL.Path)
+		}
+	}
+	return false
 }
 
 func getRawManifest(url string) ([]byte, error) {
@@ -109,20 +123,6 @@ func validateSchema(schemaResp schemaResponse, info *pb.RpcDownloadManifestRespo
 	}
 	info.Schema = schemaResp.Schema
 	return nil
-}
-
-func isInWhitelist(url string) bool {
-	if len(whitelist) == 0 {
-		return true
-	}
-	// nolint:errcheck
-	parsedURL, _ := uri.ParseURI(url)
-	for host, pathRegexp := range whitelist {
-		if strings.Contains(parsedURL.Host, host) {
-			return pathRegexp.MatchString(parsedURL.Path)
-		}
-	}
-	return false
 }
 
 func stripTags(str string) string {

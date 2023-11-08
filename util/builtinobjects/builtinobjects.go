@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -30,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/constant"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const (
@@ -182,39 +184,18 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 }
 
 func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, source string, isLocal bool) (err error) {
+	var path string
 	if isLocal {
-		return b.importArchive(ctx, spaceID, source, false)
-	}
-	// nolint: gosec
-	resp, err := http.Get(source)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch experience: not OK status code: %s", resp.Status)
-	}
-	defer func() {
-		if err = resp.Body.Close(); err != nil {
-			log.Errorf("failed to close response bode while downloading experience from '%s': %v", source, err)
+		path = source
+	} else {
+		if path, err = b.downloadZipToFile(source); err != nil {
+			return err
 		}
-	}()
-
-	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-	out, err := os.Create(path)
-	if err != nil {
-		return oserror.TransformError(err)
-	}
-	defer func() {
-		if err = out.Close(); err != nil {
-			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", source, err)
-		}
-		if err = os.Remove(path); err != nil {
-			log.Errorf("failed to remove temporary file: %v", oserror.TransformError(err))
-		}
-	}()
-
-	if _, err = io.Copy(out, resp.Body); err != nil {
-		return err
+		defer func() {
+			if rmErr := os.Remove(path); rmErr != nil {
+				log.Errorf("failed to remove temporary file: %v", oserror.TransformError(rmErr))
+			}
+		}()
 	}
 
 	if err = b.importArchive(ctx, spaceID, path, false); err != nil {
@@ -422,4 +403,45 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 		return ids[0], nil
 	}
 	return "", err
+}
+
+func (b *builtinObjects) downloadZipToFile(url string) (path string, err error) {
+	if err = uri.ValidateURI(url); err != nil {
+		return "", fmt.Errorf("provided URL is not valid: %w", err)
+	}
+	if !gallery.IsInWhitelist(url) {
+		return "", fmt.Errorf("URL '%s' is not in whitelist", url)
+	}
+	var resp *http.Response
+	// nolint: gosec
+	resp, err = http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch zip file: not OK status code: %s", resp.Status)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Errorf("failed to close response bode while downloading experience from '%s': %v", url, closeErr)
+		}
+	}()
+
+	path = filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	var out *os.File
+	out, err = os.Create(path)
+	if err != nil {
+		return "", oserror.TransformError(err)
+	}
+	defer func() {
+		if closeErr := out.Close(); closeErr != nil {
+			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", url, closeErr)
+		}
+	}()
+
+	if _, err = io.Copy(out, resp.Body); err != nil {
+		return "", err
+	}
+
+	return path, nil
 }
