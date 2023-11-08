@@ -170,9 +170,6 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 				// we use this state field to save the original created date, otherwise we use the one from the underlying objectTree
 				st.SetOriginalCreatedTimestamp(createdDate)
 			}
-			// we need this in order to create snapshot. Because it is the only way we can set OriginalCreatedTimestamp
-			// todo: ideally we create the spaceView with the info from workspace, but we don't do this to avoid deadlocks
-			return s.ResetToVersion(st)
 		}
 
 		return s.Apply(st, smartblock.NoRestrictions, smartblock.NoEvent, smartblock.NoHistory)

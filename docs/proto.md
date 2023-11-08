@@ -20,6 +20,7 @@
     - [Change.FileKeys.KeysEntry](#anytype-Change-FileKeys-KeysEntry)
     - [Change.ObjectTypeAdd](#anytype-Change-ObjectTypeAdd)
     - [Change.ObjectTypeRemove](#anytype-Change-ObjectTypeRemove)
+    - [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet)
     - [Change.RelationAdd](#anytype-Change-RelationAdd)
     - [Change.RelationRemove](#anytype-Change-RelationRemove)
     - [Change.Snapshot](#anytype-Change-Snapshot)
@@ -1842,6 +1843,7 @@ the element of change tree used to store and internal apply smartBlock history
 | storeKeySet | [Change.StoreKeySet](#anytype-Change-StoreKeySet) |  |  |
 | storeKeyUnset | [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset) |  |  |
 | storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
+| originalCreatedTimestampSet | [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet) |  |  |
 
 
 
@@ -1937,6 +1939,21 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | url | [string](#string) |  |  |
 | key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Change-OriginalCreatedTimestampSet"></a>
+
+### Change.OriginalCreatedTimestampSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ts | [int64](#int64) |  |  |
 
 
 
