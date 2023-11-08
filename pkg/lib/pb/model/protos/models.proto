@@ -15,7 +15,7 @@ message SmartBlockSnapshotBase {
   repeated string removedCollectionKeys = 8;
   repeated RelationLink relationLinks = 7;
   string key = 9; // only used for pb backup purposes, ignored in other cases
-  int64 originalCreatedTimestamp = 10; // original user-side object creation timestamp, e.g. from the file stat
+  int64 originalCreatedTimestamp = 10; // ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp
 }
 
 enum SmartBlockType {
