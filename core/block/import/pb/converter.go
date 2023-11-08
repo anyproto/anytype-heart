@@ -431,8 +431,7 @@ func (p *Pb) updateSnapshot(snapshot *converter.Snapshot, st *state.State) {
 }
 
 func (p *Pb) updateDetails(snapshots []*converter.Snapshot) {
-	removeKeys := make([]string, 0, len(bundle.LocalRelationsKeys)+len(bundle.DerivedRelationsKeys))
-	removeKeys = slice.Filter(removeKeys, func(key string) bool {
+	removeKeys := slice.Filter(bundle.LocalAndDerivedRelationKeys, func(key string) bool {
 		// preserve some keys we have special cases for
 		return key != bundle.RelationKeyIsFavorite.String() &&
 			key != bundle.RelationKeyIsArchived.String() &&
