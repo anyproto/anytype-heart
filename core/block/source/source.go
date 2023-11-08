@@ -206,6 +206,10 @@ func (s *source) Update(ot objecttree.ObjectTree) {
 		} else {
 			s.changesSinceSnapshot += sinceSnapshot
 		}
+		// we may receive the update from the pre-migration anytype client
+		// ideally we need to migrate changes here, but as this migration is temporary, lets make the things simple
+		migration := newSubObjectsAndProfileLinksMigration(s.space, s.accountService.IdentityObjectId(), s.objectStore)
+		migration.migrate(st)
 		return st, changes, err
 	})
 
@@ -224,7 +228,11 @@ func (s *source) Rebuild(ot objecttree.ObjectTree) {
 		log.With(zap.Error(err)).Debug("failed to build state")
 		return
 	}
-	err = s.receiver.StateRebuild(doc.(*state.State))
+	st := doc.(*state.State)
+	// we may receive the update from the pre-migration anytype client
+	migration := newSubObjectsAndProfileLinksMigration(s.space, s.accountService.IdentityObjectId(), s.objectStore)
+	migration.migrate(st)
+	err = s.receiver.StateRebuild(st)
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
 	}
@@ -319,6 +327,9 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	change := s.buildChange(params)
 
+	if s.id == "bafyreigv4y4jcfnxk4cb5iax3ko6mft3tgd5ptdwhnjwyrqbexb6mmgclu" {
+		fmt.Println("pushChange")
+	}
 	// TODO: GO-2151 Need to enable snappy compression when all clients will be able to decode snappy
 	// data, dataType, err := MarshalChange(change)
 	dataType := ""
