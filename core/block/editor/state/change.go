@@ -93,16 +93,17 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	}
 
 	s := &State{
-		changeId:          sOpts.changeId,
-		rootId:            rootId,
-		blocks:            blocks,
-		details:           detailsToSave,
-		relationLinks:     snapshot.Data.RelationLinks,
-		objectTypeKeys:    migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
-		fileKeys:          fileKeys,
-		store:             snapshot.Data.Collections,
-		storeKeyRemoved:   removedCollectionKeysMap,
-		uniqueKeyInternal: snapshot.Data.Key,
+		changeId:                 sOpts.changeId,
+		rootId:                   rootId,
+		blocks:                   blocks,
+		details:                  detailsToSave,
+		relationLinks:            snapshot.Data.RelationLinks,
+		objectTypeKeys:           migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
+		fileKeys:                 fileKeys,
+		store:                    snapshot.Data.Collections,
+		storeKeyRemoved:          removedCollectionKeysMap,
+		uniqueKeyInternal:        snapshot.Data.Key,
+		originalCreatedTimestamp: snapshot.Data.OriginalCreatedTimestamp,
 	}
 
 	if sOpts.internalKey != "" {

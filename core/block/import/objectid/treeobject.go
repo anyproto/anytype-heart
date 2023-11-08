@@ -22,7 +22,7 @@ func newTreeObject(existingObject *existingObject, spaceService space.Service) *
 }
 
 func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
-	id, payload, err := t.existingObject.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting)
+	id, payload, err := t.existingObject.GetIDAndPayload(ctx, spaceID, sn, getExisting)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
 	}
@@ -34,7 +34,7 @@ func (t *treeObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *co
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)
 	}
 	payload, err = spc.CreateTreePayload(ctx, payloadcreator.PayloadCreationParams{
-		Time:           createdTime,
+		Time:           time.Now(),
 		SmartblockType: sn.SbType,
 	})
 	if err != nil {

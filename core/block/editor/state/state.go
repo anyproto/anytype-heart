@@ -132,8 +132,9 @@ type State struct {
 
 	stringBuf []string
 
-	groupId      string
-	noObjectType bool
+	groupId                  string
+	noObjectType             bool
+	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -163,11 +164,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
 }
 
 func (s *State) Context() session.Context {
@@ -673,6 +674,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 	if s.parent != nil && s.storeKeyRemoved != nil {
 		s.parent.storeKeyRemoved = s.storeKeyRemoved
+	}
+
+	if s.parent != nil && s.originalCreatedTimestamp > 0 {
+		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
 	}
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
@@ -1246,19 +1251,20 @@ func (s *State) Copy() *State {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
-		ctx:                     s.ctx,
-		blocks:                  blocks,
-		rootId:                  s.rootId,
-		details:                 pbtypes.CopyStruct(s.Details()),
-		localDetails:            pbtypes.CopyStruct(s.LocalDetails()),
-		relationLinks:           s.GetRelationLinks(), // Get methods copy inside
-		objectTypeKeys:          objTypes,
-		noObjectType:            s.noObjectType,
-		migrationVersion:        s.migrationVersion,
-		store:                   pbtypes.CopyStruct(s.Store()),
-		storeLastChangeIdByPath: s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
-		storeKeyRemoved:         storeKeyRemovedCopy,
-		uniqueKeyInternal:       s.uniqueKeyInternal,
+		ctx:                      s.ctx,
+		blocks:                   blocks,
+		rootId:                   s.rootId,
+		details:                  pbtypes.CopyStruct(s.Details()),
+		localDetails:             pbtypes.CopyStruct(s.LocalDetails()),
+		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
+		objectTypeKeys:           objTypes,
+		noObjectType:             s.noObjectType,
+		migrationVersion:         s.migrationVersion,
+		store:                    pbtypes.CopyStruct(s.Store()),
+		storeLastChangeIdByPath:  s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
+		storeKeyRemoved:          storeKeyRemovedCopy,
+		uniqueKeyInternal:        s.uniqueKeyInternal,
+		originalCreatedTimestamp: s.originalCreatedTimestamp,
 	}
 	return copy
 }
@@ -1796,6 +1802,15 @@ func (s *State) AddBundledRelations(keys ...domain.RelationKey) {
 // which will be unique and reproducible within the same space
 func (s *State) UniqueKeyInternal() string {
 	return s.uniqueKeyInternal
+}
+
+func (s *State) OriginalCreatedTimestamp() int64 {
+	return s.originalCreatedTimestamp
+}
+
+// SetOriginalCreatedTimestamp should not be used in the normal flow, because there is no crdt changes for it
+func (s *State) SetOriginalCreatedTimestamp(ts int64) {
+	s.originalCreatedTimestamp = ts
 }
 
 func IsRequiredBlockId(targetId string) bool {

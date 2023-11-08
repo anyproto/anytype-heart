@@ -22594,7 +22594,8 @@ stored |
 | collections | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
-| key | [string](#string) |  | this field is not passing to the crdt changes and can be only set in the snapshot |
+| key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
+| originalCreatedTimestamp | [int64](#int64) |  | original user-side object creation timestamp, e.g. from the file stat |
 
 
 

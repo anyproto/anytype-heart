@@ -85,8 +85,10 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 	newID := oldIDtoNew[sn.Id]
 	oc.setRootBlock(snapshot, newID)
 
+	oc.injectImportDetails(sn, origin, spaceID)
 	st := state.NewDocFromSnapshot(newID, sn.Snapshot, state.WithUniqueKeyMigration(sn.SbType)).(*state.State)
-	oc.injectImportDetails(sn, st, origin, spaceID)
+	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(pbtypes.GetInt64(snapshot.Details, bundle.RelationKeyLastModifiedDate.String())))
+
 	var filesToDelete []string
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -150,22 +152,27 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, st *state.State, origin model.ObjectOrigin, spaceID string) {
+func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, origin model.ObjectOrigin, spaceID string) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
 		if createdDate != 0 {
-			lastModifiedDate = createdDate
+			sn.Snapshot.Data.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Int64(int64(createdDate))
 		} else {
 			// we can't fallback to time.Now() because it will be inconsistent with the time used in object tree header.
 			// So instead we should EXPLICITLY set creation date to the snapshot in all importers
 			log.With("objectID", sn.Id).Warnf("both lastModifiedDate and createdDate are not set in the imported snapshot")
 		}
-		if lastModifiedDate > 0 {
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate.String(), pbtypes.Int64(lastModifiedDate))
-		}
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, pbtypes.Int64(int64(origin)))
+
+	if createdDate > 0 {
+		// pass it explicitly to the snapshot
+		sn.Snapshot.Data.OriginalCreatedTimestamp = createdDate
+	}
+
+	sn.Snapshot.Data.Details.Fields[bundle.RelationKeyOrigin.String()] = pbtypes.Int64(int64(origin))
+	// we don't need to inject relatonLinks, they will be automatically injected for bundled relations
+
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *types.Struct {

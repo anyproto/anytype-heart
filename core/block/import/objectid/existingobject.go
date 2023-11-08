@@ -3,7 +3,6 @@ package objectid
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
@@ -23,7 +22,7 @@ func newExistingObject(objectStore objectstore.ObjectStore) *existingObject {
 	return &existingObject{objectStore: objectStore}
 }
 
-func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *converter.Snapshot, _ time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *converter.Snapshot, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	id, err := e.getObjectByOldAnytypeID(spaceID, sn)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get object by old anytype id: %w", err)
