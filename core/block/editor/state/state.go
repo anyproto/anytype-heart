@@ -830,12 +830,12 @@ func (s *State) SetDetails(d *types.Struct) *State {
 	// if d != nil && d.Fields != nil {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
 	// }
-	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+	local := pbtypes.StructFilterKeys(d, bundle.LocalAndDerivedRelationKeys)
 	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
 		for k, v := range local.Fields {
 			s.SetLocalDetail(k, v)
 		}
-		s.details = pbtypes.StructCutKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+		s.details = pbtypes.StructCutKeys(d, bundle.LocalAndDerivedRelationKeys)
 		return s
 	}
 	s.details = d
@@ -890,7 +890,7 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// value = shortenValueToLimit(s.rootId, key, value)
 
-	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
+	if slice.FindPos(bundle.LocalAndDerivedRelationKeys, key) > -1 {
 		s.SetLocalDetail(key, value)
 		return
 	}
