@@ -64,16 +64,17 @@ const (
 type Hook int
 
 type ApplyInfo struct {
-	State   *state.State
-	Events  []simple.EventMessage
-	Changes []*pb.ChangeContent
+	State              *state.State
+	Events             []simple.EventMessage
+	Changes            []*pb.ChangeContent
+	ReceivedFromRemote bool
 }
 
 type HookCallback func(info ApplyInfo) (err error)
 
 const (
 	HookOnNewState  Hook = iota
-	HookBeforeApply      // runs before user changes will be applied, provides the state that can be changed
+	HookBeforeApply      // runs before user/remote changes will be applied, provides the state that can be changed
 	HookAfterApply       // runs after changes applied from the user or externally via changeListener
 	HookOnClose
 	HookOnBlockClose
@@ -1051,7 +1052,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
-	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
+	sb.execHooks(HookBeforeApply, ApplyInfo{State: s, ReceivedFromRemote: true})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err
@@ -1068,7 +1069,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
-	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes})
+	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: changes, ReceivedFromRemote: true})
 
 	return nil
 }
@@ -1086,7 +1087,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
 	// todo: make store diff
-	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
+	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State), ReceivedFromRemote: true})
 	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if err != nil {
@@ -1103,7 +1104,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.runIndexer(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
+	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges(), ReceivedFromRemote: true})
 	return nil
 }
 

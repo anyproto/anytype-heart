@@ -106,6 +106,14 @@ func (w *Workspaces) StateMigrations() migration.Migrations {
 
 func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 	w.onWorkspaceChanged(info.State)
+	if !info.ReceivedFromRemote {
+		return nil
+	}
+	// only in case we got this changes from remote we need to try to migrate subobjects
+	subObjectMigration := subObjectsMigration{
+		workspace: w,
+	}
+	subObjectMigration.migrateSubObjects(info.State)
 	return nil
 }
 
