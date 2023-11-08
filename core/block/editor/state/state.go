@@ -886,6 +886,12 @@ func (s *State) SetLocalDetails(d *types.Struct) {
 	s.localDetails = d
 }
 
+func (s *State) AddDetails(details *types.Struct) {
+	for k, v := range details.GetFields() {
+		s.SetDetail(k, v)
+	}
+}
+
 func (s *State) SetDetail(key string, value *types.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// value = shortenValueToLimit(s.rootId, key, value)
