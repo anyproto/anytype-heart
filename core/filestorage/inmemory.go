@@ -17,6 +17,7 @@ type inMemBlockStore struct {
 	mu   sync.Mutex
 }
 
+// NewInMemory creates new in-memory store for testing purposes
 func NewInMemory() *inMemBlockStore {
 	return &inMemBlockStore{
 		data: make(map[string]blocks.Block),

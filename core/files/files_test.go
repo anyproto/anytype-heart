@@ -56,7 +56,8 @@ func TestFileAdd(t *testing.T) {
 
 	blockStorage := filestorage.NewInMemory()
 
-	rpcStorage := rpcstore.NewInMemoryService()
+	rpcStore := rpcstore.NewInMemoryStore(1024)
+	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
 
 	fileSyncService := filesync.New()
@@ -81,7 +82,7 @@ func TestFileAdd(t *testing.T) {
 	a.Register(personalSpaceIdGetter)
 	a.Register(spaceIdResolver)
 	a.Register(&dummySyncStatusWatcher{})
-	a.Register(rpcStorage)
+	a.Register(rpcStoreService)
 	err := a.Start(ctx)
 	require.NoError(t, err)
 

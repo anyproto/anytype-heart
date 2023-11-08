@@ -521,6 +521,8 @@ func (mw *Middleware) ObjectListSetObjectType(cctx context.Context, req *pb.RpcO
 		m := &pb.RpcObjectListSetObjectTypeResponse{Error: &pb.RpcObjectListSetObjectTypeResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = mw.getResponseEvent(ctx)
 		}
 		return m
 	}

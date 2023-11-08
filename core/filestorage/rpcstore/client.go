@@ -180,6 +180,18 @@ func (c *client) bind(ctx context.Context, spaceID string, fileID string, cids .
 	})
 }
 
+func (c *client) accountInfo(ctx context.Context) (info *fileproto.AccountInfoResponse, err error) {
+	p, err := c.s.pool.Get(ctx, c.peerId)
+	if err != nil {
+		return
+	}
+	err = p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		info, err = fileproto.NewDRPCFileClient(conn).AccountInfo(ctx, &fileproto.AccountInfoRequest{})
+		return err
+	})
+	return
+}
+
 func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error) {
 	p, err := c.s.pool.Get(ctx, c.peerId)
 	if err != nil {

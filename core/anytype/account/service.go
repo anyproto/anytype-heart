@@ -158,6 +158,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		TimeZone:               cfg.TimeZone,
 		AnalyticsId:            analyticsId,
 		NetworkId:              s.getNetworkID(),
+		TechSpaceId:            techSpaceId,
 	}, nil
 }
 

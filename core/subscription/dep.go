@@ -106,6 +106,9 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 }
 
 func (ds *dependencyService) isRelationObject(key string) bool {
+	if key == bundle.RelationKeySpaceId.String() {
+		return false
+	}
 	if strings.ContainsRune(key, '.') {
 		// skip nested keys like "assignee.type"
 		return false
@@ -125,7 +128,7 @@ func (ds *dependencyService) isRelationObject(key string) bool {
 
 func (ds *dependencyService) depKeys(keys []string) (depKeys []string) {
 	for _, key := range keys {
-		if key == bundle.RelationKeyId.String() {
+		if key == bundle.RelationKeyId.String() || key == bundle.RelationKeySpaceId.String() {
 			continue
 		}
 		if key == bundle.RelationKeyLinks.String() {

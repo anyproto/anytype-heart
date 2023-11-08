@@ -265,7 +265,8 @@ func processAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeyCreatedDate.String(),
 			bundle.RelationKeyLastModifiedDate.String(),
 			bundle.RelationKeySpaceId.String(),
-			bundle.RelationKeyRelationFormatObjectTypes.String():
+			bundle.RelationKeyRelationFormatObjectTypes.String(),
+			bundle.RelationKeySourceFilePath.String():
 
 			delete(s.Data.Details.Fields, key)
 

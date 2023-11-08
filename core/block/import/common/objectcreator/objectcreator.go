@@ -113,11 +113,16 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
 	oc.setFileImportedFlagAndOrigin(st, origin)
-	var respDetails *types.Struct
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
+	typeKeys := st.ObjectTypeKeys()
+	if sn.SbType == coresb.SmartBlockTypeObjectType {
+		// we widen typeKeys here to install bundled templates for imported object type
+		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
+	}
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
+	var respDetails *types.Struct
 	if payload := dataObject.createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
@@ -237,7 +242,6 @@ func (oc *ObjectCreator) createNewObject(
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 		return nil, err
 	}
-	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
 
 	// update collection after we create it
 	if st.Store() != nil {

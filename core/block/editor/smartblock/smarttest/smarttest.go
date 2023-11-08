@@ -161,10 +161,10 @@ func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hoo
 	return
 }
 
-func (sb *SmartTest) AddHookOnce(id string, f smartblock.HookCallback, events ...smartblock.Hook) {
-	if _, ok := sb.hooksOnce[id]; !ok {
-		sb.AddHook(f, events...)
-		sb.hooksOnce[id] = struct{}{}
+func (st *SmartTest) AddHookOnce(id string, f smartblock.HookCallback, events ...smartblock.Hook) {
+	if _, ok := st.hooksOnce[id]; !ok {
+		st.AddHook(f, events...)
+		st.hooksOnce[id] = struct{}{}
 	}
 }
 

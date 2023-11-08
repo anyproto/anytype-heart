@@ -5,18 +5,20 @@ package filesync
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
-	"github.com/ipfs/go-cid"
-	"github.com/samber/lo"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -24,7 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -33,47 +35,128 @@ import (
 var ctx = context.Background()
 
 func TestFileSync_AddFile(t *testing.T) {
-	fx := newFixture(t)
-	defer fx.Finish(t)
-	var buf = make([]byte, 1024*1024)
-	_, err := rand.Read(buf)
-	require.NoError(t, err)
-	n, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
-	require.NoError(t, err)
-	fileId := n.Cid().String()
-	spaceId := "space1"
+	t.Run("within limits", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
 
-	fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
-	fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
-	fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
-	fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
-		{}, // We can use just empty struct here, because we don't use any fields
-	}, nil).AnyTimes()
-	// TODO Test when limit is reached
-	fx.rpcStore.EXPECT().CheckAvailability(gomock.Any(), spaceId, gomock.Any()).DoAndReturn(func(_ context.Context, _ string, cids []cid.Cid) ([]*fileproto.BlockAvailability, error) {
-		res := lo.Map(cids, func(c cid.Cid, _ int) *fileproto.BlockAvailability {
-			return &fileproto.BlockAvailability{
-				Cid:    c.Bytes(),
-				Status: fileproto.AvailabilityStatus_NotExists,
+		// Add file to local DAG
+		buf := make([]byte, 1024*1024)
+		_, err := rand.Read(buf)
+		require.NoError(t, err)
+		fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
+		require.NoError(t, err)
+		fileId := fileNode.Cid().String()
+		spaceId := "space1"
+
+		// Save node usage
+		prevUsage, err := fx.NodeUsage(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, prevUsage.Spaces)
+		assert.Zero(t, prevUsage.TotalBytesUsage)
+		assert.Zero(t, prevUsage.TotalCidsCount)
+
+		fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
+		fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
+		fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
+		fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
+			{}, // We can use just empty struct here, because we don't use any fields
+		}, nil).AnyTimes()
+
+		// Add file to upload queue
+		err = fx.AddFile(spaceId, fileId, true, false)
+		require.NoError(t, err)
+		fx.waitEmptyQueue(t, time.Second*5)
+
+		// Check that file uploaded to in-memory node
+		wantSize, _ := fileNode.Size()
+		var gotSize int
+		var wantCids []string
+		walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(fileNode, fx.fileService.DAGService()))
+		err = walker.Iterate(func(node ipld.NavigableNode) error {
+			cId := node.GetIPLDNode().Cid()
+			gotBlock, err := fx.rpcStore.Get(ctx, cId)
+			if err != nil {
+				return fmt.Errorf("node: %w", err)
 			}
+			wantCids = append(wantCids, cId.String())
+			gotSize += len(gotBlock.RawData())
+			wantBlock, err := fx.localFileStorage.Get(ctx, cId)
+			if err != nil {
+				return fmt.Errorf("local: %w", err)
+			}
+			require.Equal(t, wantBlock.RawData(), gotBlock.RawData())
+			return nil
 		})
-		return res, nil
+		if !errors.Is(err, ipld.EndOfDag) {
+			require.NoError(t, err)
+		}
+		assert.Equal(t, int(wantSize), gotSize)
+
+		// Check that updated space usage event has been sent
+		fx.waitEvent(t, 1*time.Second, func(msg *pb.EventMessage) bool {
+			if usage := msg.GetFileSpaceUsage(); usage != nil {
+				if usage.SpaceId == spaceId && usage.BytesUsage == wantSize {
+					return true
+				}
+			}
+			return false
+		})
+
+		// Check node usage
+		currentUsage, err := fx.NodeUsage(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, int(wantSize), currentUsage.TotalBytesUsage)
+		assert.Equal(t, len(wantCids), currentUsage.TotalCidsCount)
+		assert.Equal(t, []SpaceStat{
+			{
+				SpaceId:           spaceId,
+				FileCount:         1,
+				CidsCount:         len(wantCids),
+				TotalBytesUsage:   currentUsage.TotalBytesUsage,
+				SpaceBytesUsage:   currentUsage.TotalBytesUsage, // Equals to total because we got only one space
+				AccountBytesLimit: currentUsage.AccountBytesLimit,
+			},
+		}, currentUsage.Spaces)
 	})
-	// fx.rpcStore.EXPECT().BindCids(gomock.Any(), spaceId, fileId, gomock.Any()).Return(nil)
-	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), spaceId).Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
-	fx.rpcStore.EXPECT().AddToFile(gomock.Any(), spaceId, fileId, gomock.Any()).AnyTimes()
-	require.NoError(t, fx.AddFile(spaceId, fileId, false, false))
-	fx.waitEmptyQueue(t, time.Second*5)
+
+	t.Run("limit has been reached", func(t *testing.T) {
+		fx := newFixture(t, 1024)
+		defer fx.Finish(t)
+
+		buf := make([]byte, 1024*1024)
+		_, err := rand.Read(buf)
+		require.NoError(t, err)
+		fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
+		require.NoError(t, err)
+		fileId := fileNode.Cid().String()
+		spaceId := "space1"
+
+		fx.fileStoreMock.EXPECT().GetSyncStatus(fileId).Return(int(syncstatus.StatusNotSynced), nil)
+		fx.fileStoreMock.EXPECT().GetFileSize(fileId).Return(0, fmt.Errorf("not found"))
+		fx.fileStoreMock.EXPECT().SetFileSize(fileId, gomock.Any()).Return(nil)
+		fx.fileStoreMock.EXPECT().ListByTarget(fileId).Return([]*storage.FileInfo{
+			{}, // We can use just empty struct here, because we don't use any fields
+		}, nil).AnyTimes()
+		require.NoError(t, fx.AddFile(spaceId, fileId, true, false))
+		fx.waitLimitReachedEvent(t, time.Second*5)
+		fx.waitEmptyQueue(t, time.Second*5)
+
+		_, err = fx.rpcStore.Get(ctx, fileNode.Cid())
+		assert.Error(t, err)
+
+		usage, err := fx.NodeUsage(ctx)
+		require.NoError(t, err)
+		assert.Zero(t, usage.TotalBytesUsage)
+	})
 }
 
 func TestFileSync_RemoveFile(t *testing.T) {
 	t.Skip("https://linear.app/anytype/issue/GO-1229/fix-testfilesync-removefile")
 	return
-	fx := newFixture(t)
+	fx := newFixture(t, 1024)
 	defer fx.Finish(t)
 	spaceId := "spaceId"
 	fileId := "fileId"
-	fx.rpcStore.EXPECT().DeleteFiles(gomock.Any(), spaceId, fileId).Return(nil)
 	require.NoError(t, fx.RemoveFile(spaceId, fileId))
 	fx.waitEmptyQueue(t, time.Second*5)
 }
@@ -88,21 +171,13 @@ func (s *personalSpaceIdStub) PersonalSpaceID() string {
 	return s.personalSpaceId
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t *testing.T, limit int) *fixture {
 	fx := &fixture{
 		FileSync:    New(),
 		fileService: fileservice.New(),
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),
 	}
-
-	fx.rpcStore = mock_rpcstore.NewMockRpcStore(fx.ctrl)
-	fx.rpcStore.EXPECT().SpaceInfo(gomock.Any(), "space1").Return(&fileproto.SpaceInfoResponse{LimitBytes: 2 * 1024 * 1024}, nil).AnyTimes()
-
-	mockRpcStoreService := mock_rpcstore.NewMockService(fx.ctrl)
-	mockRpcStoreService.EXPECT().Name().Return(rpcstore.CName).AnyTimes()
-	mockRpcStoreService.EXPECT().Init(gomock.Any()).AnyTimes()
-	mockRpcStoreService.EXPECT().NewStore().Return(fx.rpcStore)
 
 	fileStoreMock := NewMockFileStore(fx.ctrl)
 	fileStoreMock.EXPECT().Name().Return(filestore.CName).AnyTimes()
@@ -116,12 +191,20 @@ func newFixture(t *testing.T) *fixture {
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
 	sender.EXPECT().Init(mock.Anything).Return(nil)
-	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+	sender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
+		fx.eventsLock.Lock()
+		defer fx.eventsLock.Unlock()
+		fx.events = append(fx.events, e)
+	}).Maybe()
+
+	fx.rpcStore = rpcstore.NewInMemoryStore(limit)
+	localFileStorage := filestorage.NewInMemory()
+	fx.localFileStorage = localFileStorage
 
 	fx.a.Register(fx.fileService).
-		Register(filestorage.NewInMemory()).
+		Register(localFileStorage).
 		Register(datastore.NewInMemory()).
-		Register(mockRpcStoreService).
+		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.FileSync).
 		Register(fileStoreMock).
 		Register(personalSpaceIdGetter).
@@ -132,25 +215,56 @@ func newFixture(t *testing.T) *fixture {
 
 type fixture struct {
 	FileSync
-	fileService   fileservice.FileService
-	rpcStore      *mock_rpcstore.MockRpcStore
-	fileStoreMock *MockFileStore
-	ctrl          *gomock.Controller
-	a             *app.App
-	tmpDir        string
+	fileService      fileservice.FileService
+	fileStoreMock    *MockFileStore
+	localFileStorage fileblockstore.BlockStoreLocal
+	ctrl             *gomock.Controller
+	a                *app.App
+	tmpDir           string
+	rpcStore         rpcstore.RpcStore
+	eventsLock       sync.Mutex
+	events           []*pb.Event
+}
+
+func (f *fixture) waitLimitReachedEvent(t *testing.T, timeout time.Duration) {
+	f.waitEvent(t, timeout, func(msg *pb.EventMessage) bool {
+		return msg.GetFileLimitReached() != nil
+	})
+}
+
+func (f *fixture) waitEvent(t *testing.T, timeout time.Duration, pred func(msg *pb.EventMessage) bool) {
+	f.waitCondition(t, timeout, func() bool {
+		f.eventsLock.Lock()
+		defer f.eventsLock.Unlock()
+
+		for _, e := range f.events {
+			for _, msg := range e.Messages {
+				if pred(msg) {
+					return true
+				}
+			}
+		}
+		return false
+	})
 }
 
 func (f *fixture) waitEmptyQueue(t *testing.T, timeout time.Duration) {
+	f.waitCondition(t, timeout, func() bool {
+		ss, err := f.SyncStatus()
+		require.NoError(t, err)
+		return ss.QueueLen == 0
+	})
+}
+
+func (f *fixture) waitCondition(t *testing.T, timeout time.Duration, pred func() bool) {
 	retryTime := time.Millisecond * 10
 	for i := 0; i < int(timeout/retryTime); i++ {
 		time.Sleep(retryTime)
-		ss, err := f.SyncStatus()
-		require.NoError(t, err)
-		if ss.QueueLen == 0 {
+		if pred() {
 			return
 		}
 	}
-	require.False(t, true, "queue is not empty: timeout")
+	require.False(t, true, "condition is not met: timeout")
 }
 
 func (f *fixture) Finish(t *testing.T) {

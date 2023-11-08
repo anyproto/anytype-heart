@@ -1831,6 +1831,7 @@ message Rpc {
             }
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -2663,6 +2664,44 @@ message Rpc {
                 }
             }
         }
+
+        message NodeUsage {
+            message Request {}
+
+            message Response {
+                Error error = 1;
+                Usage usage = 2;
+                repeated Space spaces = 3;
+
+                message Usage {
+                    uint64 filesCount = 1;
+                    uint64 cidsCount  = 2;
+                    uint64 bytesUsage = 3;
+                    uint64 bytesLeft = 4;
+                    uint64 bytesLimit = 5;
+                    uint64 localBytesUsage = 6;
+                }
+
+                message Space {
+                    string spaceId = 1;
+                    uint64 filesCount = 2;
+                    uint64 cidsCount  = 3;
+                    uint64 bytesUsage = 4;
+                }
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
     }
 
     message Navigation {
@@ -2731,29 +2770,6 @@ message Rpc {
             message Request {
                 // id of block for making them template
                 string contextId = 1;
-            }
-
-            message Response {
-                Error error = 1;
-                // created template id
-                string id = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-        message CreateFromObjectType {
-            message Request {
-                string objectTypeUniqueKey = 1;
             }
 
             message Response {
@@ -2904,6 +2920,42 @@ message Rpc {
                         // ...
                     }
                 }
+            }
+        }
+    }
+
+    message DownloadManifest {
+        message Request {
+            string url = 1;
+        }
+
+        message Response {
+            Error error = 1;
+            ManifestInfo info = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                }
+            }
+
+            message ManifestInfo {
+                string schema = 1;
+                string id = 2;
+                string name = 3;
+                string author = 4;
+                string license = 5;
+                string title = 6;
+                string description = 7;
+                repeated string screenshots = 8;
+                string downloadLink = 9;
+                int32 fileSize = 10;
+                repeated string categories = 11;
             }
         }
     }

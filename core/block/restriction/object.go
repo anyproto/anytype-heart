@@ -98,6 +98,7 @@ var (
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
+		smartblock.SmartBlockTypeIdentity: objRestrictAll,
 		smartblock.SmartBlockTypeProfilePage: {
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
@@ -224,10 +225,9 @@ func GetRestrictionsForUniqueKey(uk domain.UniqueKey) (r ObjectRestrictions) {
 		if lo.Contains(bundle.SystemRelations, domain.RelationKey(key)) {
 			return sysRelationsRestrictions
 		}
-	case smartblock.SmartBlockTypeBundledObjectType:
-		return objRestrictAll
-	case smartblock.SmartBlockTypeBundledRelation:
-		return objRestrictAll
+	default:
+		// we assume that all sb types are exists in objectRestrictionsBySBType
+		return objectRestrictionsBySBType[uk.SmartblockType()]
 	}
 	return
 }
