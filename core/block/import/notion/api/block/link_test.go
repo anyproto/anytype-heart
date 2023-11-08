@@ -53,6 +53,7 @@ func Test_GetLinkToObjectBlockSuccess(t *testing.T) {
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
 
 func Test_GetLinkToObjectBlockTwoPagesWithSameName(t *testing.T) {
@@ -66,6 +67,7 @@ func Test_GetLinkToObjectBlockTwoPagesWithSameName(t *testing.T) {
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
 
 func Test_GetLinkToObjectBlockFail(t *testing.T) {
@@ -96,6 +98,7 @@ func Test_GetLinkToObjectBlockLinkToDatabase(t *testing.T) {
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
 
 func Test_GetLinkToObjectBlockInlineCollection(t *testing.T) {
@@ -128,12 +131,14 @@ func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameName(t *testing.T) {
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 
 	bl = c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	content, ok = bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId1")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
 
 func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameNotFail(t *testing.T) {
@@ -148,10 +153,12 @@ func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameNotFail(t *testin
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 
 	bl = c.GetLinkToObjectBlock(importContext, "parentID", "")
 	assert.NotNil(t, bl)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
 
 func Test_GetLinkToObjectBlockPageWithTwoChildPagesWithSameNameFail(t *testing.T) {
@@ -185,6 +192,7 @@ func Test_GetLinkToObjectBlockPageHasBlockParent(t *testing.T) {
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
 
 func Test_GetLinkToObjectBlockTwoPageHaveBlockParent(t *testing.T) {
@@ -198,10 +206,12 @@ func Test_GetLinkToObjectBlockTwoPageHaveBlockParent(t *testing.T) {
 	content, ok := bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 
 	bl = c.GetLinkToObjectBlock(importContext, "parentID", "blockID")
 	assert.NotNil(t, bl)
 	content, ok = bl.Content.(*model.BlockContentOfLink)
 	assert.True(t, ok)
 	assert.Equal(t, content.Link.TargetBlockId, "anytypeId1")
+	assert.Equal(t, content.Link.IconSize, model.BlockContentLink_SizeSmall)
 }
