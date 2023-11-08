@@ -26,8 +26,8 @@ type schemaResponse struct {
 
 // whitelist maps allowed hosts to regular expressions of URL paths
 var whitelist = map[string]*regexp.Regexp{
-	"raw.githubusercontent.com": regexp.MustCompile(`/anyproto.*`),
-	"github.com":                regexp.MustCompile(`/anyproto.*`),
+	"raw.githubusercontent.com": regexp.MustCompile(`^/anyproto.*`),
+	"github.com":                regexp.MustCompile(`^/anyproto.*`),
 	"community.anytype.io":      regexp.MustCompile(`.*`),
 	"anytype.io":                regexp.MustCompile(`.*`),
 	"gallery.any.coop":          regexp.MustCompile(`.*`),

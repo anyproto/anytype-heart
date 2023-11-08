@@ -11425,8 +11425,7 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| source | [string](#string) |  |  |
-| isLocal | [bool](#bool) |  |  |
+| url | [string](#string) |  |  |
 
 
 

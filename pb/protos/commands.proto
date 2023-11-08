@@ -2113,8 +2113,7 @@ message Rpc {
         message ImportExperience {
             message Request {
                 string spaceId = 1;
-                string source = 2;
-                bool isLocal = 3;
+                string url = 2;
             }
 
             message Response {
