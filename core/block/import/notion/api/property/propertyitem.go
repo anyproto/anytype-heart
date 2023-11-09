@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -215,17 +216,8 @@ type DateItem struct {
 
 func (dp *DateItem) SetDetail(key string, details map[string]*types.Value) {
 	if dp.Date != nil {
-		var date strings.Builder
-		if dp.Date.Start != "" {
-			date.WriteString(dp.Date.Start)
-		}
-		if dp.Date.End != "" {
-			if dp.Date.Start != "" {
-				date.WriteString(" ")
-			}
-			date.WriteString(dp.Date.End)
-		}
-		details[key] = pbtypes.String(date.String())
+		date := converter.ConvertStringToTime(dp.Date.Start)
+		details[key] = pbtypes.Int64(date)
 	}
 }
 
@@ -238,7 +230,7 @@ func (dp *DateItem) GetID() string {
 }
 
 func (dp *DateItem) GetFormat() model.RelationFormat {
-	return model.RelationFormat_longtext
+	return model.RelationFormat_date
 }
 
 const (
@@ -684,7 +676,7 @@ func (r *RollupItem) GetFormat() model.RelationFormat {
 	case rollupNumber:
 		return model.RelationFormat_number
 	case rollupDate:
-		return model.RelationFormat_longtext
+		return model.RelationFormat_date
 	case rollupArray:
 		return model.RelationFormat_tag
 	}
