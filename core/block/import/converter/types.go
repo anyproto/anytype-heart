@@ -10,13 +10,18 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
+type ProgressContext struct {
+	Progress       process.Progress
+	PercentsPassed int64
+}
+
 type ObjectTreeCreator interface {
 	CreateTreeObject(ctx context.Context, tp coresb.SmartBlockType, initFunc smartblock.InitFunc) (sb smartblock.SmartBlock, release func(), err error)
 }
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*Response, *ConvertError)
+	GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progressCtx *ProgressContext) (*Response, *ConvertError)
 	Name() string
 }
 

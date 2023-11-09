@@ -10,14 +10,18 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/miolini/datacounter"
 
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -40,6 +44,10 @@ const (
 
 	migrationUseCase       = -1
 	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
+
+	contentLengthHeader        = "Content-Length"
+	archiveDownloadingPercents = 30
+	archiveCopyingPercents     = 10
 )
 
 type widgetParameters struct {
@@ -137,6 +145,7 @@ type builtinObjects struct {
 	store          objectstore.ObjectStore
 	tempDirService core.TempDirProvider
 	spaceService   space.Service
+	progress       process.Service
 }
 
 func New() BuiltinObjects {
@@ -149,6 +158,7 @@ func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.store = app.MustComponent[objectstore.ObjectStore](a)
 	b.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	b.spaceService = app.MustComponent[space.Service](a)
+	b.progress = a.MustComponent(process.CName).(process.Service)
 	return
 }
 
@@ -184,11 +194,14 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 }
 
 func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url string) (err error) {
-	var path string
+	var (
+		path        string
+		progressCtx *converter.ProgressContext
+	)
 	if _, err = os.Stat(url); err == nil {
 		path = url
 	} else {
-		if path, err = b.downloadZipToFile(url); err != nil {
+		if path, progressCtx, err = b.downloadZipToFile(url); err != nil {
 			return err
 		}
 		defer func() {
@@ -198,7 +211,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}()
 	}
 
-	if err = b.importArchive(ctx, spaceID, path, false); err != nil {
+	if err = b.importArchive(ctx, spaceID, path, progressCtx); err != nil {
 		return err
 	}
 
@@ -223,7 +236,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(context.Background(), spaceID, path, true); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path, nil); err != nil {
 		return err
 	}
 
@@ -252,20 +265,20 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, noProgress bool) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, progressCtx *converter.ProgressContext) (err error) {
 	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
 		Type:                  pb.RpcObjectImportRequest_Pb,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
-		NoProgress:            noProgress,
+		NoProgress:            progressCtx == nil,
 		IsMigration:           false,
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
 			PbParams: &pb.RpcObjectImportRequestPbParams{
 				Path:         []string{path},
 				NoCollection: true,
 			}},
-	}, model.ObjectOrigin_usecase)
+	}, model.ObjectOrigin_usecase, progressCtx)
 
 	return err
 }
@@ -405,43 +418,105 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 	return "", err
 }
 
-func (b *builtinObjects) downloadZipToFile(url string) (path string, err error) {
+func (b *builtinObjects) downloadZipToFile(url string) (path string, progressCtx *converter.ProgressContext, err error) {
 	if err = uri.ValidateURI(url); err != nil {
-		return "", fmt.Errorf("provided URL is not valid: %w", err)
+		return "", nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if !gallery.IsInWhitelist(url) {
-		return "", fmt.Errorf("URL '%s' is not in whitelist", url)
+		return "", nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
-	var resp *http.Response
-	// nolint: gosec
-	resp, err = http.Get(url)
+
+	var (
+		countReader *datacounter.ReaderCounter
+		size        int64
+		reader      *io.ReadCloser
+	)
+	progress, cancel, err := b.setupProgress(countReader, &size)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to fetch zip file: not OK status code: %s", resp.Status)
+	defer cancel()
+
+	reader, size, err = getArchiveReaderAndLength(url)
+	if err != nil {
+		return "", nil, err
 	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			log.Errorf("failed to close response bode while downloading experience from '%s': %v", url, closeErr)
-		}
-	}()
+	defer (*reader).Close()
+
+	countReader = datacounter.NewReaderCounter(*reader)
 
 	path = filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	var out *os.File
 	out, err = os.Create(path)
 	if err != nil {
-		return "", oserror.TransformError(err)
+		return "", nil, oserror.TransformError(err)
 	}
-	defer func() {
-		if closeErr := out.Close(); closeErr != nil {
-			log.Errorf("failed to close temporary file while downloading experience from '%s': %v", url, closeErr)
+	defer out.Close()
+
+	if _, err = io.Copy(out, countReader); err != nil {
+		return "", nil, err
+	}
+
+	progressCtx = &converter.ProgressContext{
+		Progress:       *progress,
+		PercentsPassed: archiveDownloadingPercents + archiveCopyingPercents,
+	}
+
+	return path, progressCtx, nil
+}
+
+func (b *builtinObjects) setupProgress(
+	countReader *datacounter.ReaderCounter, size *int64,
+) (*process.Progress, context.CancelFunc, error) {
+	progress := process.NewProgress(pb.ModelProcess_Import)
+	if err := b.progress.Add(progress); err != nil {
+		return nil, nil, fmt.Errorf("failed to add progress bar: %w", err)
+	}
+
+	progress.SetProgressMessage("downloading archive")
+	progress.SetTotal(100)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		counter := int64(0)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-progress.Canceled():
+				cancel()
+			case <-time.After(time.Second):
+				if countReader != nil {
+					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*int64((*countReader).Count())/(*size)))
+				} else {
+					if counter < archiveDownloadingPercents {
+						counter++
+						progress.SetDone(counter)
+					}
+				}
+			}
 		}
 	}()
 
-	if _, err = io.Copy(out, resp.Body); err != nil {
-		return "", err
+	return &progress, cancel, nil
+}
+
+func getArchiveReaderAndLength(url string) (reader *io.ReadCloser, size int64, err error) {
+	var resp *http.Response
+	// nolint: gosec
+	resp, err = http.Get(url)
+	if err != nil {
+		return nil, 0, err
 	}
 
-	return path, nil
+	if resp.StatusCode != http.StatusOK {
+		return nil, 0, fmt.Errorf("failed to fetch zip file: not OK status code: %s", resp.Status)
+	}
+
+	contentLengthStr := resp.Header.Get(contentLengthHeader)
+	if size, err = strconv.ParseInt(contentLengthStr, 10, 64); err != nil {
+		return nil, 0, fmt.Errorf("failed to get zip size from Content-Length: %w", err)
+	}
+
+	return &resp.Body, size, nil
 }

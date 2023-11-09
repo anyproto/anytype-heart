@@ -98,24 +98,34 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin) (string, error) {
+func (i *Import) Import(
+	ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin model.ObjectOrigin,
+	progressContext *converter.ProgressContext,
+) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
-	progress := i.setupProgressBar(req)
+	var progress process.Progress
+	if progressContext != nil {
+		progress = progressContext.Progress
+	} else {
+		progress = i.setupProgressBar(req)
+	}
 	var returnedErr error
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
 	}()
-	if i.s != nil && !req.GetNoProgress() {
+	if i.s != nil && !req.GetNoProgress() && progressContext == nil {
 		i.s.ProcessAdd(progress)
 	}
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
+		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progressContext, origin)
 		return rootCollectionID, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
@@ -133,14 +143,15 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(ctx context.Context,
+func (i *Import) importFromBuiltinConverter(
+	ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
-	progress process.Progress,
+	progressCtx *converter.ProgressContext,
 	origin model.ObjectOrigin,
 ) (string, error) {
 	allErrors := converter.NewError(req.Mode)
-	res, err := c.GetSnapshots(ctx, req, progress)
+	res, err := c.GetSnapshots(ctx, req, progressCtx)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req) {
@@ -156,7 +167,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
+	_, rootCollectionID := i.createObjects(ctx, res, progressCtx.Progress, req, allErrors, origin)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
@@ -244,7 +255,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(ctx, req, progress)
+	res, err := w.GetSnapshots(ctx, req, &converter.ProgressContext{Progress: progress})
 
 	if err != nil {
 		return "", nil, err.Error()

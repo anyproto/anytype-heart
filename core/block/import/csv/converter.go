@@ -55,13 +55,15 @@ func (c *CSV) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportReque
 	return nil
 }
 
-func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (c *CSV) GetSnapshots(
+	_ context.Context, req *pb.RpcObjectImportRequest, progressCtx *converter.ProgressContext,
+) (*converter.Response, *converter.ConvertError) {
 	params := c.GetParams(req)
 	if params == nil {
 		return nil, nil
 	}
 	allErrors := converter.NewError(req.Mode)
-	result := c.createObjectsFromCSVFiles(req, progress, params, allErrors)
+	result := c.createObjectsFromCSVFiles(req, progressCtx.Progress, params, allErrors)
 	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
 	}
@@ -78,7 +80,7 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		result.snapshots = append(result.snapshots, rootCol)
 		rootCollectionID = rootCol.Id
 	}
-	progress.SetTotal(int64(len(result.snapshots)))
+	progressCtx.Progress.SetTotal(int64(len(result.snapshots)))
 	if allErrors.IsEmpty() {
 		return &converter.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, nil
 	}

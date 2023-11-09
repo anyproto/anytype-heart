@@ -44,14 +44,16 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
+func (t *TXT) GetSnapshots(
+	_ context.Context, req *pb.RpcObjectImportRequest, progressCtx *converter.ProgressContext,
+) (*converter.Response, *converter.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
 	}
-	progress.SetProgressMessage("Start creating snapshots from files")
+	progressCtx.Progress.SetProgressMessage("Start creating snapshots from files")
 	allErrors := converter.NewError(req.Mode)
-	snapshots, targetObjects := t.getSnapshots(req, progress, paths, allErrors)
+	snapshots, targetObjects := t.getSnapshots(req, progressCtx.Progress, paths, allErrors)
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
 	}
@@ -68,7 +70,7 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		snapshots = append(snapshots, rootCol)
 		rootCollectionID = rootCol.Id
 	}
-	progress.SetTotal(int64(numberOfStages * len(snapshots)))
+	progressCtx.Progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {
 		return &converter.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
 	}
