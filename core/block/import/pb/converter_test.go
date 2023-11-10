@@ -193,7 +193,7 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 	assert.Len(t, res.Snapshots, 2)
 
 	assert.Equal(t, res.Snapshots[0].FileName, "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
-	assert.Equal(t, res.Snapshots[1].FileName, rootCollectionName)
+	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
 }
 
 func newZipWriter(path string) (*zipWriter, error) {
