@@ -353,17 +353,11 @@ func (i *Import) getObjectID(
 	updateExisting bool,
 ) error {
 	var (
-		id          string
-		payload     treestorage.TreeStorageCreatePayload
-		createdTime time.Time
+		id      string
+		payload treestorage.TreeStorageCreatePayload
 	)
-	createdTimeTS := pbtypes.GetInt64(snapshot.Snapshot.GetData().GetDetails(), bundle.RelationKeyCreatedDate.String())
-	if createdTimeTS > 0 {
-		createdTime = time.Unix(createdTimeTS, 0)
-	} else {
-		createdTime = time.Now()
-	}
-	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, createdTime, updateExisting)
+
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting)
 	if err != nil {
 		return err
 	}

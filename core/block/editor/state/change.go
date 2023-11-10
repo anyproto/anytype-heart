@@ -92,16 +92,17 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	}
 
 	s := &State{
-		changeId:          sOpts.changeId,
-		rootId:            rootId,
-		blocks:            blocks,
-		details:           detailsToSave,
-		relationLinks:     snapshot.Data.RelationLinks,
-		objectTypeKeys:    migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
-		fileKeys:          fileKeys,
-		store:             snapshot.Data.Collections,
-		storeKeyRemoved:   removedCollectionKeysMap,
-		uniqueKeyInternal: snapshot.Data.Key,
+		changeId:                 sOpts.changeId,
+		rootId:                   rootId,
+		blocks:                   blocks,
+		details:                  detailsToSave,
+		relationLinks:            snapshot.Data.RelationLinks,
+		objectTypeKeys:           migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
+		fileKeys:                 fileKeys,
+		store:                    snapshot.Data.Collections,
+		storeKeyRemoved:          removedCollectionKeysMap,
+		uniqueKeyInternal:        snapshot.Data.Key,
+		originalCreatedTimestamp: snapshot.Data.OriginalCreatedTimestamp,
 	}
 
 	if sOpts.internalKey != "" {
@@ -235,6 +236,10 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 	case ch.GetStoreSliceUpdate() != nil:
 		// TODO optimize: collect changes then apply them on one shot
 		if err = s.changeStoreSliceUpdate(ch.GetStoreSliceUpdate()); err != nil {
+			return
+		}
+	case ch.GetOriginalCreatedTimestampSet() != nil:
+		if err = s.changeOriginalCreatedTimestampSet(ch.GetOriginalCreatedTimestampSet()); err != nil {
 			return
 		}
 	default:
@@ -407,6 +412,15 @@ func (s *State) changeStoreSliceUpdate(upd *pb.ChangeStoreSliceUpdate) error {
 	return nil
 }
 
+func (s *State) changeOriginalCreatedTimestampSet(set *pb.ChangeOriginalCreatedTimestampSet) error {
+	if set.Ts == 0 {
+		return nil
+	}
+
+	s.SetOriginalCreatedTimestamp(set.Ts)
+	return nil
+}
+
 func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
@@ -555,6 +569,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
+	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
 
 }
 
@@ -716,6 +731,23 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 			})
 		}
 	}
+	return
+}
+
+func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
+	if s.originalCreatedTimestamp == 0 {
+		return nil
+	}
+	if s.parent != nil && s.parent.originalCreatedTimestamp == s.originalCreatedTimestamp {
+		return nil
+	}
+
+	ch = append(ch, &pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfOriginalCreatedTimestampSet{
+			OriginalCreatedTimestampSet: &pb.ChangeOriginalCreatedTimestampSet{Ts: s.originalCreatedTimestamp},
+		},
+	})
+
 	return
 }
 
