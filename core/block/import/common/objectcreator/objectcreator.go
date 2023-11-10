@@ -1,4 +1,4 @@
-package creator
+package objectcreator
 
 import (
 	"context"
@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/history"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/syncer"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -39,7 +39,7 @@ var log = logging.Logger("import")
 // Service incapsulate logic with creation of given smartblocks
 type Service interface {
 	//nolint:lll
-	Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error)
+	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
 }
 
 type ObjectCreator struct {
@@ -73,7 +73,7 @@ func New(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error) {
+func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 	oldIDtoNew := dataObject.oldIDtoNew
 	fileIDs := dataObject.fileIDs
@@ -95,9 +95,9 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
+	common.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
 
-	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
+	if err = common.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
@@ -152,7 +152,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, origin model.ObjectOrigin, spaceID string) {
+func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin model.ObjectOrigin, spaceID string) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {

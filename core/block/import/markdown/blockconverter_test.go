@@ -8,8 +8,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
-	converter2 "github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -36,7 +36,7 @@ func Test_processFiles(t *testing.T) {
 		source := source.GetSource(absolutePath)
 
 		// when
-		files := converter.processFiles(absolutePath, converter2.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
+		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
 		assert.Len(t, files, 3)
@@ -68,7 +68,7 @@ func Test_processFiles(t *testing.T) {
 		absolutePath := filepath.Join(workingDir, "./testdata")
 
 		// when
-		files := converter.processFiles(absolutePath, converter2.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
+		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
 		assert.Len(t, files, 1)

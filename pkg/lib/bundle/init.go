@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -40,6 +42,7 @@ var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKe
 // filled in init
 var LocalRelationsKeys []string   // stored only in localstore
 var DerivedRelationsKeys []string // derived
+var LocalAndDerivedRelationKeys []string
 
 var ErrNotFound = fmt.Errorf("not found")
 
@@ -51,6 +54,8 @@ func init() {
 			DerivedRelationsKeys = append(DerivedRelationsKeys, r.Key)
 		}
 	}
+	LocalAndDerivedRelationKeys = slices.Clone(DerivedRelationsKeys)
+	LocalAndDerivedRelationKeys = append(LocalAndDerivedRelationKeys, LocalRelationsKeys...)
 }
 
 func HasObjectTypeID(id string) bool {
