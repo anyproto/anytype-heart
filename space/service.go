@@ -91,7 +91,8 @@ type service struct {
 	offloaded     map[string]struct{}
 	loaded        map[string]Space
 
-	mu sync.Mutex
+	virtualSpace VirtualSpaceService
+	mu           sync.Mutex
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -118,7 +119,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.offloading = map[string]*offloadingSpace{}
 	s.loaded = map[string]Space{}
 	s.offloaded = map[string]struct{}{}
-
+	s.virtualSpace = app.MustComponent[VirtualSpaceService](a)
 	return err
 }
 

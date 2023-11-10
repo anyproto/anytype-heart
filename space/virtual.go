@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
@@ -14,7 +15,65 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
+
+const name = "virtualSpaceService"
+
+type VirtualSpaceService interface {
+	app.ComponentRunnable
+	RegisterVirtualSpace(spaceID string) (err error)
+}
+
+type VirtualSpaceServiceImpl struct {
+	objectStore objectstore.ObjectStore
+}
+
+func (v *VirtualSpaceServiceImpl) Init(a *app.App) (err error) {
+	v.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	return nil
+}
+
+func (v *VirtualSpaceServiceImpl) Name() (name string) {
+	return name
+}
+
+func (v *VirtualSpaceServiceImpl) Run(ctx context.Context) (err error) {
+	spaces, err := v.objectStore.ListVirtualSpaces()
+	if err != nil {
+		return err
+	}
+	for _, id := range spaces {
+		err := v.objectStore.DeleteVirtualSpace(id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v *VirtualSpaceServiceImpl) Close(ctx context.Context) (err error) {
+	spaces, err := v.objectStore.ListVirtualSpaces()
+	if err != nil {
+		return err
+	}
+	for _, id := range spaces {
+		err := v.objectStore.DeleteVirtualSpace(id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v *VirtualSpaceServiceImpl) RegisterVirtualSpace(spaceID string) (err error) {
+	return v.objectStore.SaveVirtualSpace(spaceID)
+}
+
+func NewVirtualSpaceService() VirtualSpaceService {
+	return &VirtualSpaceServiceImpl{}
+}
 
 type VirtualSpace struct {
 	*space
@@ -33,86 +92,78 @@ func NewVirtualSpace(s *service, spaceID string) *VirtualSpace {
 	return vs
 }
 
-func (vs *VirtualSpace) Close(_ context.Context) error {
-	staticObjects := vs.service.sourceService.GetStaticObjectsBySpaceID(vs.Id())
-	for _, id := range staticObjects {
-		vs.service.sourceService.RemoveStaticSource(id)
-	}
-	return nil
-}
-
 func newCommonSpace(spaceID string) commonspace.Space {
-	return &commonSpace{spaceID: spaceID}
+	return &virtualCommonSpace{spaceID: spaceID}
 }
 
-type commonSpace struct {
+type virtualCommonSpace struct {
 	spaceID string
 }
 
-func (c *commonSpace) Id() string {
+func (c *virtualCommonSpace) Id() string {
 	return c.spaceID
 }
 
-func (c *commonSpace) Init(ctx context.Context) error {
+func (c *virtualCommonSpace) Init(ctx context.Context) error {
 	return nil
 }
 
-func (c *commonSpace) Acl() syncacl.SyncAcl {
+func (c *virtualCommonSpace) Acl() syncacl.SyncAcl {
 	return nil
 }
 
-func (c *commonSpace) StoredIds() []string {
+func (c *virtualCommonSpace) StoredIds() []string {
 	return nil
 }
 
-func (c *commonSpace) DebugAllHeads() []headsync.TreeHeads {
+func (c *virtualCommonSpace) DebugAllHeads() []headsync.TreeHeads {
 	return nil
 }
 
-func (c *commonSpace) Description() (desc commonspace.SpaceDescription, err error) {
+func (c *virtualCommonSpace) Description() (desc commonspace.SpaceDescription, err error) {
 	return
 }
 
-func (c *commonSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
+func (c *virtualCommonSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
 	return nil
 }
 
-func (c *commonSpace) TreeSyncer() treesyncer.TreeSyncer {
+func (c *virtualCommonSpace) TreeSyncer() treesyncer.TreeSyncer {
 	return nil
 }
 
-func (c *commonSpace) SyncStatus() syncstatus.StatusUpdater {
+func (c *virtualCommonSpace) SyncStatus() syncstatus.StatusUpdater {
 	return nil
 }
 
-func (c *commonSpace) Storage() spacestorage.SpaceStorage {
+func (c *virtualCommonSpace) Storage() spacestorage.SpaceStorage {
 	return nil
 }
 
-func (c *commonSpace) DeleteTree(ctx context.Context, id string) (err error) {
+func (c *virtualCommonSpace) DeleteTree(ctx context.Context, id string) (err error) {
 	return nil
 }
 
-func (c *commonSpace) GetNodePeers(ctx context.Context) (peer []peer.Peer, err error) {
+func (c *virtualCommonSpace) GetNodePeers(ctx context.Context) (peer []peer.Peer, err error) {
 	return
 }
 
-func (c *commonSpace) HandleMessage(ctx context.Context, msg objectsync.HandleMessage) (err error) {
+func (c *virtualCommonSpace) HandleMessage(ctx context.Context, msg objectsync.HandleMessage) (err error) {
 	return
 }
 
-func (c *commonSpace) HandleSyncRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
+func (c *virtualCommonSpace) HandleSyncRequest(ctx context.Context, req *spacesyncproto.ObjectSyncMessage) (resp *spacesyncproto.ObjectSyncMessage, err error) {
 	return
 }
 
-func (c *commonSpace) HandleRangeRequest(ctx context.Context, req *spacesyncproto.HeadSyncRequest) (resp *spacesyncproto.HeadSyncResponse, err error) {
+func (c *virtualCommonSpace) HandleRangeRequest(ctx context.Context, req *spacesyncproto.HeadSyncRequest) (resp *spacesyncproto.HeadSyncResponse, err error) {
 	return
 }
 
-func (c *commonSpace) TryClose(objectTTL time.Duration) (close bool, err error) {
+func (c *virtualCommonSpace) TryClose(objectTTL time.Duration) (close bool, err error) {
 	return
 }
 
-func (c *commonSpace) Close() error {
+func (c *virtualCommonSpace) Close() error {
 	return nil
 }
