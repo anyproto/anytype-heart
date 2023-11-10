@@ -163,6 +163,15 @@ func (s *SpaceView) SetSpaceData(details *types.Struct) error {
 	}
 
 	if changed {
+		if st.ParentState().ParentState() == nil {
+			// in case prev change was the first one
+			createdDate := pbtypes.GetInt64(details, bundle.RelationKeyCreatedDate.String())
+			if createdDate > 0 {
+				// we use this state field to save the original created date, otherwise we use the one from the underlying objectTree
+				st.SetOriginalCreatedTimestamp(createdDate)
+			}
+		}
+
 		return s.Apply(st, smartblock.NoRestrictions, smartblock.NoEvent, smartblock.NoHistory)
 	}
 	return nil
