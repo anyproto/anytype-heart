@@ -486,12 +486,10 @@ func (b *builtinObjects) setupProgress() (process.Progress, context.CancelFunc, 
 				cancel()
 			case <-time.After(time.Second):
 				if countReader != nil {
-					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*int64((*countReader).Count())/archiveSize))
-				} else {
-					if counter < archiveDownloadingPercents {
-						counter++
-						progress.SetDone(counter)
-					}
+					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*(*countReader).Count())/archiveSize)
+				} else if counter < archiveDownloadingPercents {
+					counter++
+					progress.SetDone(counter)
 				}
 			}
 		}
