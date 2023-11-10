@@ -158,7 +158,11 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 			}
 			tasks = append(tasks, f)
 		}
-		queue.Wait(tasks...)
+		err := queue.Wait(tasks...)
+		if err != nil {
+			e.cleanupFile(wr)
+			return "", 0, err
+		}
 	}
 	if err = queue.Finalize(); err != nil {
 		e.cleanupFile(wr)
