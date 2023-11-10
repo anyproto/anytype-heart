@@ -32,7 +32,7 @@ func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
 				RelationKey: bundle.RelationKeyId.String(),
-				Value:       pbtypes.String(addr.BundledObjectTypeURLPrefix),
+				Value:       pbtypes.String(addr.BundledRelationURLPrefix),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_NotLike,
@@ -43,6 +43,11 @@ func (s *dsObjectStore) DeleteVirtualSpace(spaceID string) error {
 				Condition:   model.BlockContentDataviewFilter_NotLike,
 				RelationKey: bundle.RelationKeyId.String(),
 				Value:       pbtypes.String(addr.BundledTemplatesURLPrefix),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_NotLike,
+				RelationKey: bundle.RelationKeyId.String(),
+				Value:       pbtypes.String(addr.AnytypeProfileId),
 			},
 		},
 	})
