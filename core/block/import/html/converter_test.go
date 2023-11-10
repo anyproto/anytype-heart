@@ -12,8 +12,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cv "github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/source"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -48,7 +48,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 	assert.Equal(t, sn.Snapshots[1].Snapshot.Data.ObjectTypes[0], bundle.TypeKeyCollection.String())
 
 	assert.NotEmpty(t, err)
-	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), cv.ErrNoObjectsToImport))
+	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Html), common.ErrNoObjectsToImport))
 }
 
 func TestHTML_provideFileName(t *testing.T) {
@@ -60,7 +60,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		source := source.GetSource(currentDir)
 
 		// when
-		newFileName, _, err := cv.ProvideFileName("http://example.com", source, currentDir, h.tempDirProvider)
+		newFileName, _, err := common.ProvideFileName("http://example.com", source, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -76,7 +76,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		// when
 		absPath, err := filepath.Abs("testdata/test")
 		assert.Nil(t, err)
-		newFileName, _, err := cv.ProvideFileName(absPath, source, currentDir, h.tempDirProvider)
+		newFileName, _, err := common.ProvideFileName(absPath, source, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -90,7 +90,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		source := source.GetSource(currentDir)
 
 		// when
-		newFileName, _, err := cv.ProvideFileName("testdata/test", source, currentDir, h.tempDirProvider)
+		newFileName, _, err := common.ProvideFileName("testdata/test", source, currentDir, h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)
@@ -109,7 +109,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		assert.Nil(t, err)
 
 		// when
-		newFileName, _, err := cv.ProvideFileName(testFileName, source, archiveName, h.tempDirProvider)
+		newFileName, _, err := common.ProvideFileName(testFileName, source, archiveName, h.tempDirProvider)
 		defer os.Remove(newFileName)
 
 		// then
@@ -123,7 +123,7 @@ func TestHTML_provideFileName(t *testing.T) {
 		source := source.GetSource("test")
 
 		// when
-		newFileName, _, err := cv.ProvideFileName("test", source, "imported path", h.tempDirProvider)
+		newFileName, _, err := common.ProvideFileName("test", source, "imported path", h.tempDirProvider)
 
 		// then
 		assert.Nil(t, err)

@@ -80,8 +80,7 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, blocks, deta
 
 		// handle corner cases first for specific formats
 		if rel.Format == model.RelationFormat_date &&
-			!lo.Contains(bundle.LocalRelationsKeys, rel.Key) &&
-			!lo.Contains(bundle.DerivedRelationsKeys, rel.Key) {
+			!lo.Contains(bundle.LocalAndDerivedRelationKeys, rel.Key) {
 			relInt := pbtypes.GetInt64(det, rel.Key)
 			if relInt > 0 {
 				t := time.Unix(relInt, 0)

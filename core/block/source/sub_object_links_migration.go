@@ -141,6 +141,13 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilters(dv dataview2.Block) 
 }
 
 func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockContentDataviewFilter) error {
+	if filter == nil {
+		return nil
+	}
+	if filter.Value == nil || filter.Value.Kind == nil {
+		log.With("relationKey", filter.RelationKey).Warnf("empty filter value")
+		return nil
+	}
 	relation, err := m.objectStore.GetRelationByKey(filter.RelationKey)
 	if err != nil {
 		log.Warnf("migration: failed to get relation by key %s: %s", filter.RelationKey, err)

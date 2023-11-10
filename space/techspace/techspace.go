@@ -136,6 +136,8 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 }
 
 func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
 	})

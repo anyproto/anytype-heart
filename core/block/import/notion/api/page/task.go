@@ -11,7 +11,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/block"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
@@ -36,8 +36,8 @@ func NewDataObject(ctx context.Context, apiKey string, mode pb.RpcObjectImportRe
 }
 
 type Result struct {
-	snapshot []*converter.Snapshot
-	ce       *converter.ConvertError
+	snapshot []*common.Snapshot
+	ce       *common.ConvertError
 }
 
 type Task struct {
@@ -54,14 +54,14 @@ func (pt *Task) ID() string {
 
 func (pt *Task) Execute(data interface{}) interface{} {
 	do := data.(*DataObject)
-	allErrors := converter.NewError(do.mode)
+	allErrors := common.NewError(do.mode)
 	snapshot, subObjectsSnapshots := pt.makeSnapshotFromPages(do, allErrors)
 	if allErrors.ShouldAbortImport(0, pb.RpcObjectImportRequest_Notion) {
 		return &Result{ce: allErrors}
 	}
 	pageID := do.request.NotionPageIdsToAnytype[pt.p.ID]
-	resultSnapshots := make([]*converter.Snapshot, 0, 1+len(subObjectsSnapshots))
-	sn := &converter.Snapshot{
+	resultSnapshots := make([]*common.Snapshot, 0, 1+len(subObjectsSnapshots))
+	sn := &common.Snapshot{
 		Id:       pageID,
 		FileName: pt.p.URL,
 		Snapshot: &pb.ChangeSnapshot{Data: snapshot},
@@ -70,7 +70,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	resultSnapshots = append(resultSnapshots, sn)
 	for _, objectsSnapshot := range subObjectsSnapshots {
 		sbType := pt.getSmartBlockTypeAndID(objectsSnapshot)
-		resultSnapshots = append(resultSnapshots, &converter.Snapshot{
+		resultSnapshots = append(resultSnapshots, &common.Snapshot{
 			Id:       pbtypes.GetString(objectsSnapshot.Details, bundle.RelationKeyId.String()),
 			SbType:   sbType,
 			Snapshot: &pb.ChangeSnapshot{Data: objectsSnapshot},
@@ -79,7 +79,7 @@ func (pt *Task) Execute(data interface{}) interface{} {
 	return &Result{snapshot: resultSnapshots, ce: allErrors}
 }
 
-func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *converter.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
+func (pt *Task) makeSnapshotFromPages(object *DataObject, allErrors *common.ConvertError) (*model.SmartBlockSnapshotBase, []*model.SmartBlockSnapshotBase) {
 	details, subObjectsSnapshots, relationLinks := pt.provideDetails(object)
 	notionBlocks, blocksAndChildrenErr := pt.blockService.GetBlocksAndChildren(object.ctx, pt.p.ID, object.apiKey, pageSize, object.mode)
 	if blocksAndChildrenErr != nil {
@@ -122,8 +122,8 @@ func (pt *Task) prepareDetails() (map[string]*types.Value, []*model.RelationLink
 	}
 	details[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(pt.p.Archived)
 	details[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
-	createdTime := converter.ConvertStringToTime(pt.p.CreatedTime)
-	lastEditedTime := converter.ConvertStringToTime(pt.p.LastEditedTime)
+	createdTime := common.ConvertStringToTime(pt.p.CreatedTime)
+	lastEditedTime := common.ConvertStringToTime(pt.p.LastEditedTime)
 	details[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastEditedTime))
 	details[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(createdTime))
 	details[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_basic))
