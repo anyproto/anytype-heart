@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -24,7 +24,7 @@ func newDerivedObject(existingObject *existingObject, spaceService space.Service
 	return &derivedObject{existingObject: existingObject, spaceService: spaceService}
 }
 
-func (r *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *converter.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (r *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn *common.Snapshot, createdTime time.Time, getExisting bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	id, payload, err := r.existingObject.GetIDAndPayload(ctx, spaceID, sn, createdTime, getExisting)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, err
