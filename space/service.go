@@ -70,6 +70,7 @@ type service struct {
 	marketplaceSpace Space
 	delController    *deletionController
 
+	builtinTemplateService  builtinTemplateService
 	bundledObjectsInstaller bundledObjectsInstaller
 	accountService          accountservice.Service
 	objectFactory           objectcache.ObjectFactory
@@ -107,6 +108,7 @@ func (s *service) Init(a *app.App) (err error) {
 	coordClient := app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.delController = newDeletionController(s, coordClient)
 	s.offloader = app.MustComponent[fileOffloader](a)
+	s.builtinTemplateService = app.MustComponent[builtinTemplateService](a)
 	s.createdSpaces = map[string]struct{}{}
 	s.statuses = map[string]spaceinfo.SpaceInfo{}
 	s.loading = map[string]*loadingSpace{}

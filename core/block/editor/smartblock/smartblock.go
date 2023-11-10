@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -35,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -580,17 +578,6 @@ func (sb *smartBlock) navigationalLinks(s *state.State) []string {
 		}
 
 		// handle corner cases first for specific formats
-		if rel.Format == model.RelationFormat_date &&
-			!lo.Contains(bundle.LocalRelationsKeys, rel.Key) &&
-			!lo.Contains(bundle.DerivedRelationsKeys, rel.Key) {
-			relInt := pbtypes.GetInt64(det, rel.Key)
-			if relInt > 0 {
-				t := time.Unix(relInt, 0)
-				t = t.In(time.Local)
-				ids = append(ids, addr.TimeToID(t))
-			}
-			continue
-		}
 
 		if rel.Format != model.RelationFormat_object {
 			continue
@@ -921,7 +908,7 @@ func (sb *smartBlock) AddRelationLinksToState(s *state.State, relationKeys ...st
 
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
 	links := sb.navigationalLinks(s)
-	links = slice.Remove(links, sb.Id())
+	links = slice.RemoveMut(links, sb.Id())
 	// todo: we need to move it to the injectDerivedDetails, but we don't call it now on apply
 	s.SetLocalDetail(bundle.RelationKeyLinks.String(), pbtypes.StringList(links))
 }
@@ -936,8 +923,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
-	keys := slices.Clone(bundle.LocalRelationsKeys) // Use Clone to avoid side effects on the bundle.LocalRelationsKeys slice
-	keys = append(keys, bundle.DerivedRelationsKeys...)
+	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
 	sb.updateBackLinks(localDetailsFromStore)

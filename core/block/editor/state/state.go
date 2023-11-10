@@ -146,17 +146,16 @@ func (s *State) SetMigrationVersion(v uint32) {
 
 func (s *State) RootId() string {
 	if s.rootId == "" {
-		for id := range s.blocks {
-			var found bool
-			for _, b2 := range s.blocks {
-				if slice.FindPos(b2.Model().ChildrenIds, id) != -1 {
-					found = true
-					break
-				}
+		subIds := map[string]struct{}{}
+		for _, block := range s.blocks {
+			for _, id := range block.Model().ChildrenIds {
+				subIds[id] = struct{}{}
 			}
-			if !found {
+		}
+
+		for id := range s.blocks {
+			if _, isSub := subIds[id]; !isSub {
 				s.rootId = id
-				break
 			}
 		}
 	}
@@ -260,7 +259,7 @@ func (s *State) PickOrigin(id string) (b simple.Block) {
 func (s *State) Unlink(id string) (ok bool) {
 	if parent := s.GetParentOf(id); parent != nil {
 		parentM := parent.Model()
-		parentM.ChildrenIds = slice.Remove(parentM.ChildrenIds, id)
+		parentM.ChildrenIds = slice.RemoveMut(parentM.ChildrenIds, id)
 		return true
 	}
 	return
@@ -831,12 +830,12 @@ func (s *State) SetDetails(d *types.Struct) *State {
 	// if d != nil && d.Fields != nil {
 	//	shortenDetailsToLimit(s.rootId, d.Fields)
 	// }
-	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+	local := pbtypes.StructFilterKeys(d, bundle.LocalAndDerivedRelationKeys)
 	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
 		for k, v := range local.Fields {
 			s.SetLocalDetail(k, v)
 		}
-		s.details = pbtypes.StructCutKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+		s.details = pbtypes.StructCutKeys(d, bundle.LocalAndDerivedRelationKeys)
 		return s
 	}
 	s.details = d
@@ -887,11 +886,17 @@ func (s *State) SetLocalDetails(d *types.Struct) {
 	s.localDetails = d
 }
 
+func (s *State) AddDetails(details *types.Struct) {
+	for k, v := range details.GetFields() {
+		s.SetDetail(k, v)
+	}
+}
+
 func (s *State) SetDetail(key string, value *types.Value) {
 	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
 	// value = shortenValueToLimit(s.rootId, key, value)
 
-	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
+	if slice.FindPos(bundle.LocalAndDerivedRelationKeys, key) > -1 {
 		s.SetLocalDetail(key, value)
 		return
 	}

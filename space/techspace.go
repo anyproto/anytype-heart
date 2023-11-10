@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -52,4 +54,11 @@ func (s *service) initTechSpace() error {
 		return fmt.Errorf("run tech space: %w", err)
 	}
 	return nil
+}
+
+func (s *techSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
+	if key == bundle.TypeKeyProfile {
+		return key.BundledURL(), nil
+	}
+	return s.space.GetTypeIdByKey(ctx, key)
 }

@@ -127,6 +127,35 @@ func (mr *MockFileServiceMockRecorder) FileOffload(arg0, arg1, arg2 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FileOffload", reflect.TypeOf((*MockFileService)(nil).FileOffload), arg0, arg1, arg2)
 }
 
+// FilesSpaceOffload mocks base method.
+func (m *MockFileService) FilesSpaceOffload(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FilesSpaceOffload", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// FilesSpaceOffload indicates an expected call of FilesSpaceOffload.
+func (mr *MockFileServiceMockRecorder) FilesSpaceOffload(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilesSpaceOffload", reflect.TypeOf((*MockFileService)(nil).FilesSpaceOffload), arg0, arg1)
+}
+
+// GetNodeUsage mocks base method.
+func (m *MockFileService) GetNodeUsage(arg0 context.Context) (*files.NodeUsageResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNodeUsage", arg0)
+	ret0, _ := ret[0].(*files.NodeUsageResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNodeUsage indicates an expected call of GetNodeUsage.
+func (mr *MockFileServiceMockRecorder) GetNodeUsage(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNodeUsage", reflect.TypeOf((*MockFileService)(nil).GetNodeUsage), arg0)
+}
+
 // GetSpaceUsage mocks base method.
 func (m *MockFileService) GetSpaceUsage(arg0 context.Context, arg1 string) (*pb.RpcFileSpaceUsageResponseUsage, error) {
 	m.ctrl.T.Helper()

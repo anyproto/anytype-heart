@@ -25,6 +25,10 @@ type marketplaceSpace struct {
 	*space
 }
 
+type builtinTemplateService interface {
+	RegisterBuiltinTemplates(space Space) error
+}
+
 func (s *service) initMarketplaceSpace() error {
 	coreSpace := newMarketplaceCommon()
 	spc := &marketplaceSpace{
@@ -39,7 +43,11 @@ func (s *service) initMarketplaceSpace() error {
 
 	s.preLoad(spc)
 
-	err := s.indexer.ReindexMarketplaceSpace(spc)
+	err := s.builtinTemplateService.RegisterBuiltinTemplates(spc)
+	if err != nil {
+		return fmt.Errorf("register builtin templates: %w", err)
+	}
+	err = s.indexer.ReindexMarketplaceSpace(spc)
 	if err != nil {
 		return fmt.Errorf("reindex marketplace space: %w", err)
 	}

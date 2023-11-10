@@ -267,7 +267,7 @@ func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 	st.RemoveDetail(bundle.RelationKeySetOf.String())
 
 	fr := pbtypes.GetStringList(st.Details(), bundle.RelationKeyFeaturedRelations.String())
-	fr = slice.Remove(fr, bundle.RelationKeySetOf.String())
+	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
 	st.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 }
 

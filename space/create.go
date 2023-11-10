@@ -11,7 +11,7 @@ func (s *service) create(ctx context.Context, coreSpace *spacecore.AnySpace) (Sp
 	s.createdSpaces[coreSpace.Id()] = struct{}{}
 	s.mu.Unlock()
 
-	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id()); err != nil {
+	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true); err != nil {
 		return nil, err
 	}
 

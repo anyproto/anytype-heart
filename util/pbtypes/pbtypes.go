@@ -108,6 +108,42 @@ func GetString(s *types.Struct, name string) string {
 	return ""
 }
 
+func IsEmptyValueOrAbsent(s *types.Struct, name string) bool {
+	if s == nil || s.Fields == nil {
+		return true
+	}
+
+	value, exists := s.Fields[name]
+	if !exists {
+		return true
+	}
+	if _, ok := value.Kind.(*types.Value_StringValue); ok {
+		return len(GetString(s, name)) == 0
+	}
+
+	if _, ok := value.Kind.(*types.Value_NumberValue); ok {
+		return GetFloat64(s, name) == 0
+	}
+
+	if _, ok := value.Kind.(*types.Value_BoolValue); ok {
+		return !GetBool(s, name)
+	}
+
+	if _, ok := value.Kind.(*types.Value_ListValue); ok {
+		return len(GetStringListValue(value)) == 0
+	}
+
+	if _, ok := value.Kind.(*types.Value_NullValue); ok {
+		return true
+	}
+
+	if _, ok := value.Kind.(*types.Value_StructValue); ok {
+		return false
+	}
+
+	return true
+}
+
 func GetStruct(s *types.Struct, name string) *types.Struct {
 	if s == nil || s.Fields == nil {
 		return nil
@@ -212,20 +248,24 @@ func GetStringListValue(v *types.Value) []string {
 	if v == nil {
 		return nil
 	}
-	var stringsSlice []string
 	if list, ok := v.Kind.(*types.Value_ListValue); ok {
-		if list.ListValue == nil {
-			return nil
-		}
-		for _, v := range list.ListValue.Values {
-			if _, ok := v.GetKind().(*types.Value_StringValue); ok {
-				stringsSlice = append(stringsSlice, v.GetStringValue())
-			}
-		}
+		return ListValueToStrings(list.ListValue)
 	} else if val, ok := v.Kind.(*types.Value_StringValue); ok && val.StringValue != "" {
 		return []string{val.StringValue}
 	}
+	return nil
+}
 
+func ListValueToStrings(list *types.ListValue) []string {
+	if list == nil {
+		return nil
+	}
+	stringsSlice := make([]string, 0, len(list.Values))
+	for _, v := range list.Values {
+		if _, ok := v.GetKind().(*types.Value_StringValue); ok {
+			stringsSlice = append(stringsSlice, v.GetStringValue())
+		}
+	}
 	return stringsSlice
 }
 

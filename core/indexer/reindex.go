@@ -26,7 +26,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 8
+	ForceObjectsReindexCounter int32 = 9
 
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 11 //
@@ -36,7 +36,7 @@ const (
 
 	// ForceIdxRebuildCounter erases localstore indexes and reindex all type of objects
 	// (no need to increase ForceObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceIdxRebuildCounter int32 = 59
+	ForceIdxRebuildCounter int32 = 61
 
 	// ForceFulltextIndexCounter  performs fulltext indexing for all type of objects (useful when we change fulltext config)
 	ForceFulltextIndexCounter int32 = 5

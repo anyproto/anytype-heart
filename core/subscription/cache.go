@@ -70,7 +70,7 @@ func (e *entry) IsFullDetailsSent(subIds ...string) bool {
 
 func (e *entry) RemoveSubId(subId string) {
 	if pos := slice.FindPos(e.subIds, subId); pos != -1 {
-		e.subIds = slice.Remove(e.subIds, subId)
+		e.subIds = slice.RemoveMut(e.subIds, subId)
 		e.subIsActive = append(e.subIsActive[:pos], e.subIsActive[pos+1:]...)
 		e.subFullDetailsSent = append(e.subFullDetailsSent[:pos], e.subFullDetailsSent[pos+1:]...)
 	}

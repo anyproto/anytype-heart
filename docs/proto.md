@@ -524,6 +524,11 @@
     - [Rpc.Debug.TreeHeads.Response](#anytype-Rpc-Debug-TreeHeads-Response)
     - [Rpc.Debug.TreeHeads.Response.Error](#anytype-Rpc-Debug-TreeHeads-Response-Error)
     - [Rpc.Debug.TreeInfo](#anytype-Rpc-Debug-TreeInfo)
+    - [Rpc.DownloadManifest](#anytype-Rpc-DownloadManifest)
+    - [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request)
+    - [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response)
+    - [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error)
+    - [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo)
     - [Rpc.File](#anytype-Rpc-File)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
@@ -537,6 +542,12 @@
     - [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request)
     - [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response)
     - [Rpc.File.ListOffload.Response.Error](#anytype-Rpc-File-ListOffload-Response-Error)
+    - [Rpc.File.NodeUsage](#anytype-Rpc-File-NodeUsage)
+    - [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request)
+    - [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response)
+    - [Rpc.File.NodeUsage.Response.Error](#anytype-Rpc-File-NodeUsage-Response-Error)
+    - [Rpc.File.NodeUsage.Response.Space](#anytype-Rpc-File-NodeUsage-Response-Space)
+    - [Rpc.File.NodeUsage.Response.Usage](#anytype-Rpc-File-NodeUsage-Response-Usage)
     - [Rpc.File.Offload](#anytype-Rpc-File-Offload)
     - [Rpc.File.Offload.Request](#anytype-Rpc-File-Offload-Request)
     - [Rpc.File.Offload.Response](#anytype-Rpc-File-Offload-Response)
@@ -855,10 +866,6 @@
     - [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request)
     - [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response)
     - [Rpc.Template.CreateFromObject.Response.Error](#anytype-Rpc-Template-CreateFromObject-Response-Error)
-    - [Rpc.Template.CreateFromObjectType](#anytype-Rpc-Template-CreateFromObjectType)
-    - [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request)
-    - [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response)
-    - [Rpc.Template.CreateFromObjectType.Response.Error](#anytype-Rpc-Template-CreateFromObjectType-Response-Error)
     - [Rpc.Template.ExportAll](#anytype-Rpc-Template-ExportAll)
     - [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request)
     - [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response)
@@ -1060,9 +1067,11 @@
     - [Rpc.Debug.Subscriptions.Response.Error.Code](#anytype-Rpc-Debug-Subscriptions-Response-Error-Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype-Rpc-Debug-Tree-Response-Error-Code)
     - [Rpc.Debug.TreeHeads.Response.Error.Code](#anytype-Rpc-Debug-TreeHeads-Response-Error-Code)
+    - [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
+    - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
@@ -1145,7 +1154,6 @@
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
-    - [Rpc.Template.CreateFromObjectType.Response.Error.Code](#anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype-Rpc-Unsplash-Download-Response-Error-Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
@@ -1460,6 +1468,7 @@
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
@@ -1586,15 +1595,16 @@
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
 | FileDrop | [Rpc.File.Drop.Request](#anytype-Rpc-File-Drop-Request) | [Rpc.File.Drop.Response](#anytype-Rpc-File-Drop-Response) |  |
 | FileSpaceUsage | [Rpc.File.SpaceUsage.Request](#anytype-Rpc-File-SpaceUsage-Request) | [Rpc.File.SpaceUsage.Response](#anytype-Rpc-File-SpaceUsage-Response) |  |
+| FileNodeUsage | [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request) | [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
-| TemplateCreateFromObjectType | [Rpc.Template.CreateFromObjectType.Request](#anytype-Rpc-Template-CreateFromObjectType-Request) | [Rpc.Template.CreateFromObjectType.Response](#anytype-Rpc-Template-CreateFromObjectType-Response) | to be renamed to ObjectCreateTemplate |
 | TemplateClone | [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request) | [Rpc.Template.Clone.Response](#anytype-Rpc-Template-Clone-Response) |  |
 | TemplateExportAll | [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request) | [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
 | UnsplashSearch | [Rpc.Unsplash.Search.Request](#anytype-Rpc-Unsplash-Search-Request) | [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response) |  |
 | UnsplashDownload | [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request) | [Rpc.Unsplash.Download.Response](#anytype-Rpc-Unsplash-Download-Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
+| DownloadManifest | [Rpc.DownloadManifest.Request](#anytype-Rpc-DownloadManifest-Request) | [Rpc.DownloadManifest.Response](#anytype-Rpc-DownloadManifest-Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype-Rpc-Block-Upload-Request) | [Rpc.Block.Upload.Response](#anytype-Rpc-Block-Upload-Response) | General Block commands *** |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype-Rpc-Block-Replace-Request) | [Rpc.Block.Replace.Response](#anytype-Rpc-Block-Replace-Response) |  |
 | BlockCreate | [Rpc.Block.Create.Request](#anytype-Rpc-Block-Create-Request) | [Rpc.Block.Create.Response](#anytype-Rpc-Block-Create-Response) |  |
@@ -9268,6 +9278,88 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-DownloadManifest"></a>
+
+### Rpc.DownloadManifest
+
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Request"></a>
+
+### Rpc.DownloadManifest.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Response"></a>
+
+### Rpc.DownloadManifest.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.DownloadManifest.Response.Error](#anytype-Rpc-DownloadManifest-Response-Error) |  |  |
+| info | [Rpc.DownloadManifest.Response.ManifestInfo](#anytype-Rpc-DownloadManifest-Response-ManifestInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Response-Error"></a>
+
+### Rpc.DownloadManifest.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.DownloadManifest.Response.Error.Code](#anytype-Rpc-DownloadManifest-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-DownloadManifest-Response-ManifestInfo"></a>
+
+### Rpc.DownloadManifest.Response.ManifestInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| schema | [string](#string) |  |  |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| author | [string](#string) |  |  |
+| license | [string](#string) |  |  |
+| title | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+| screenshots | [string](#string) | repeated |  |
+| downloadLink | [string](#string) |  |  |
+| fileSize | [int32](#int32) |  |  |
+| categories | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File"></a>
 
 ### Rpc.File
@@ -9449,6 +9541,97 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage"></a>
+
+### Rpc.File.NodeUsage
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Request"></a>
+
+### Rpc.File.NodeUsage.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response"></a>
+
+### Rpc.File.NodeUsage.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.NodeUsage.Response.Error](#anytype-Rpc-File-NodeUsage-Response-Error) |  |  |
+| usage | [Rpc.File.NodeUsage.Response.Usage](#anytype-Rpc-File-NodeUsage-Response-Usage) |  |  |
+| spaces | [Rpc.File.NodeUsage.Response.Space](#anytype-Rpc-File-NodeUsage-Response-Space) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Error"></a>
+
+### Rpc.File.NodeUsage.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Space"></a>
+
+### Rpc.File.NodeUsage.Response.Space
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| filesCount | [uint64](#uint64) |  |  |
+| cidsCount | [uint64](#uint64) |  |  |
+| bytesUsage | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Usage"></a>
+
+### Rpc.File.NodeUsage.Response.Usage
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filesCount | [uint64](#uint64) |  |  |
+| cidsCount | [uint64](#uint64) |  |  |
+| bytesUsage | [uint64](#uint64) |  |  |
+| bytesLeft | [uint64](#uint64) |  |  |
+| bytesLimit | [uint64](#uint64) |  |  |
+| localBytesUsage | [uint64](#uint64) |  |  |
 
 
 
@@ -11737,6 +11920,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ListSetObjectType.Response.Error](#anytype-Rpc-Object-ListSetObjectType-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -14099,63 +14283,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Template-CreateFromObjectType"></a>
-
-### Rpc.Template.CreateFromObjectType
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Request"></a>
-
-### Rpc.Template.CreateFromObjectType.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUniqueKey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Response"></a>
-
-### Rpc.Template.CreateFromObjectType.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Template.CreateFromObjectType.Response.Error](#anytype-Rpc-Template-CreateFromObjectType-Response-Error) |  |  |
-| id | [string](#string) |  | created template id |
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Response-Error"></a>
-
-### Rpc.Template.CreateFromObjectType.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Template.CreateFromObjectType.Response.Error.Code](#anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Template-ExportAll"></a>
 
 ### Rpc.Template.ExportAll
@@ -15404,6 +15531,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 
@@ -15479,6 +15607,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ACTIVE | 101 |  |
+| UNABLE_TO_CONNECT | 102 |  |
 
 
 
@@ -16898,6 +17027,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-DownloadManifest-Response-Error-Code"></a>
+
+### Rpc.DownloadManifest.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -16935,6 +17077,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NODE_NOT_STARTED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-File-NodeUsage-Response-Error-Code"></a>
+
+### Rpc.File.NodeUsage.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -18028,19 +18183,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Template-CreateFromObject-Response-Error-Code"></a>
 
 ### Rpc.Template.CreateFromObject.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-Template-CreateFromObjectType-Response-Error-Code"></a>
-
-### Rpc.Template.CreateFromObjectType.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -20482,6 +20624,7 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | bytesUsage | [uint64](#uint64) |  |  |
+| spaceId | [string](#string) |  |  |
 
 
 
@@ -22989,6 +23132,24 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype-model-ObjectOrigin"></a>
+
+### ObjectOrigin
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| none | 0 |  |
+| clipboard | 1 |  |
+| dragAndDrop | 2 |  |
+| import | 3 |  |
+| webclipper | 4 |  |
+| sharingExtension | 5 |  |
+| usecase | 6 |  |
+| builtin | 7 |  |
 
 
 

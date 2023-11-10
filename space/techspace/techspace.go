@@ -34,7 +34,7 @@ type TechSpace interface {
 	Close(ctx context.Context) (err error)
 
 	TechSpaceId() string
-	SpaceViewCreate(ctx context.Context, spaceId string) (err error)
+	SpaceViewCreate(ctx context.Context, spaceId string, force bool) (err error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
@@ -86,11 +86,9 @@ func (s *techSpace) wakeUpViews() {
 		default:
 		}
 
-		s.mu.Lock()
 		if _, err := s.objectCache.GetObject(s.ctx, id); err != nil {
 			log.Warn("wakeUp views: get object error", zap.String("objectId", id), zap.Error(err))
 		}
-		s.mu.Unlock()
 	}
 	s.techCore.TreeSyncer().StartSync()
 	return
@@ -108,9 +106,12 @@ func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err 
 	})
 }
 
-func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string) (err error) {
+func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if force {
+		return s.spaceViewCreate(ctx, spaceId)
+	}
 
 	viewId, err := s.getViewId(ctx, spaceId)
 	if err != nil {
@@ -135,6 +136,8 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 }
 
 func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
 	})

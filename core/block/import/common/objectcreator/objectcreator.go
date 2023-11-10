@@ -1,4 +1,4 @@
-package creator
+package objectcreator
 
 import (
 	"context"
@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/history"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
-	"github.com/anyproto/anytype-heart/core/block/import/syncer"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -39,7 +39,7 @@ var log = logging.Logger("import")
 // Service incapsulate logic with creation of given smartblocks
 type Service interface {
 	//nolint:lll
-	Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error)
+	Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error)
 }
 
 type ObjectCreator struct {
@@ -73,7 +73,7 @@ func New(service *block.Service,
 }
 
 // Create creates smart blocks from given snapshots
-func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) (*types.Struct, string, error) {
+func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*types.Struct, string, error) {
 	snapshot := sn.Snapshot.Data
 	oldIDtoNew := dataObject.oldIDtoNew
 	fileIDs := dataObject.fileIDs
@@ -93,9 +93,9 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 		oc.onFinish(err, st, filesToDelete)
 	}()
 
-	converter.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
+	common.UpdateObjectIDsInRelations(st, oldIDtoNew, fileIDs)
 
-	if err = converter.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
+	if err = common.UpdateLinksToObjects(st, oldIDtoNew, fileIDs); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
@@ -113,11 +113,16 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *converter.Snapshot) 
 	}
 	filesToDelete = append(filesToDelete, oc.handleCoverRelation(spaceID, st)...)
 	oc.setFileImportedFlagAndOrigin(st, origin)
-	var respDetails *types.Struct
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), st.ObjectTypeKeys())
+	typeKeys := st.ObjectTypeKeys()
+	if sn.SbType == coresb.SmartBlockTypeObjectType {
+		// we widen typeKeys here to install bundled templates for imported object type
+		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
+	}
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
+	var respDetails *types.Struct
 	if payload := dataObject.createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
@@ -145,7 +150,7 @@ func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation && sbType != coresb.SmartBlockTypeObjectType && sbType != coresb.SmartBlockTypeRelationOption
 }
 
-func (oc *ObjectCreator) injectImportDetails(sn *converter.Snapshot, st *state.State, origin model.ObjectOrigin, spaceID string) {
+func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, st *state.State, origin model.ObjectOrigin, spaceID string) {
 	lastModifiedDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyLastModifiedDate.String())
 	createdDate := pbtypes.GetInt64(sn.Snapshot.Data.Details, bundle.RelationKeyCreatedDate.String())
 	if lastModifiedDate == 0 {
@@ -237,7 +242,6 @@ func (oc *ObjectCreator) createNewObject(
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 		return nil, err
 	}
-	log.With("objectID", newID).Infof("import object created %s", pbtypes.GetString(st.CombinedDetails(), bundle.RelationKeyName.String()))
 
 	// update collection after we create it
 	if st.Store() != nil {

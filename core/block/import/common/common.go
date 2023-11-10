@@ -1,4 +1,4 @@
-package converter
+package common
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/converter/filetime"
+	"github.com/anyproto/anytype-heart/core/block/import/common/filetime"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
@@ -113,11 +113,6 @@ func handleDataviewBlock(block simple.Block, oldIDtoNew map[string]string, st *s
 }
 
 func updateObjectIDsInFilter(filter *model.BlockContentDataviewFilter, oldIDtoNew map[string]string) {
-	if filter.Format != model.RelationFormat_object &&
-		filter.Format != model.RelationFormat_tag &&
-		filter.Format != model.RelationFormat_status {
-		return
-	}
 	if objectIDs := pbtypes.GetStringListValue(filter.Value); objectIDs != nil {
 		var newIDs []string
 		for _, objectID := range objectIDs {

@@ -26,6 +26,7 @@ import (
 var log = logging.Logger("anytype-mw-editor")
 
 type accountService interface {
+	PersonalSpaceID() string
 	IdentityObjectId() string
 }
 
@@ -149,7 +150,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledTemplate:
 		return f.newTemplate(sb), nil
 	case coresb.SmartBlockTypeWorkspace:
-		return NewWorkspace(sb, f.objectStore, f.spaceService, f.layoutConverter, f.config, f.eventSender), nil
+		return f.newWorkspace(sb), nil
 	case coresb.SmartBlockTypeSpaceView:
 		return newSpaceView(
 			sb,

@@ -467,7 +467,7 @@ func (t *Editor) cleanupTables(_ smartblock.ApplyInfo) error {
 		log.Errorf("cleanup iterate: %s", err)
 	}
 
-	if err = t.sb.Apply(s); err != nil {
+	if err = t.sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
 		if err == source.ErrReadOnly {
 			return nil
 		}

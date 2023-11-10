@@ -456,7 +456,7 @@ func (m *dsFileStore) DeleteFile(hash string) error {
 			if err = localstore.RemoveIndexWithTxn(indexTargets, txn, file, file.Hash); err != nil {
 				return fmt.Errorf("remove index: %w", err)
 			}
-			file.Targets = slice.Remove(file.Targets, hash)
+			file.Targets = slice.RemoveMut(file.Targets, hash)
 
 			if len(file.Targets) == 0 {
 				if derr := m.deleteFile(txn, file); derr != nil {

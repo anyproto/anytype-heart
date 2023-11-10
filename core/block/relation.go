@@ -49,7 +49,7 @@ func (s *Service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 			if err != nil {
 				return fmt.Errorf("get relation id by key %s: %w", relKey, err)
 			}
-			list = slice.Remove(list, relId)
+			list = slice.RemoveMut(list, relId)
 		}
 		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(list))
 		return b.Apply(st)

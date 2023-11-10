@@ -27,7 +27,10 @@ func (r *rpcHandler) FilesInfo(ctx context.Context, request *fileproto.FilesInfo
 
 func (r *rpcHandler) SpaceInfo(ctx context.Context, request *fileproto.SpaceInfoRequest) (*fileproto.SpaceInfoResponse, error) {
 	return nil, fileprotoerr.ErrForbidden
+}
 
+func (r *rpcHandler) AccountInfo(ctx context.Context, request *fileproto.AccountInfoRequest) (*fileproto.AccountInfoResponse, error) {
+	return nil, fileprotoerr.ErrForbidden
 }
 
 func (r *rpcHandler) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {

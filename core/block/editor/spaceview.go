@@ -20,6 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+const (
+	SpacePrivate  = 0
+	SpacePersonal = 1
+)
+
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
 type spaceService interface {

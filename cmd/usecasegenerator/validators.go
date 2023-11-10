@@ -31,7 +31,6 @@ var validators = []validator{
 	validateObjectDetails,
 	validateObjectCustomTypes,
 	validateBlockLinks,
-	validateObjectCustomTypes,
 	validateFileKeys,
 }
 

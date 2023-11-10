@@ -1185,6 +1185,60 @@ func (_c *MockObjectStore_GetRelationLink_Call) RunAndReturn(run func(string, st
 	return _c
 }
 
+// GetUniqueKeyById provides a mock function with given fields: id
+func (_m *MockObjectStore) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
+	ret := _m.Called(id)
+
+	var r0 domain.UniqueKey
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (domain.UniqueKey, error)); ok {
+		return rf(id)
+	}
+	if rf, ok := ret.Get(0).(func(string) domain.UniqueKey); ok {
+		r0 = rf(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(domain.UniqueKey)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_GetUniqueKeyById_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUniqueKeyById'
+type MockObjectStore_GetUniqueKeyById_Call struct {
+	*mock.Call
+}
+
+// GetUniqueKeyById is a helper method to define mock.On call
+//   - id string
+func (_e *MockObjectStore_Expecter) GetUniqueKeyById(id interface{}) *MockObjectStore_GetUniqueKeyById_Call {
+	return &MockObjectStore_GetUniqueKeyById_Call{Call: _e.mock.On("GetUniqueKeyById", id)}
+}
+
+func (_c *MockObjectStore_GetUniqueKeyById_Call) Run(run func(id string)) *MockObjectStore_GetUniqueKeyById_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_GetUniqueKeyById_Call) Return(key domain.UniqueKey, err error) *MockObjectStore_GetUniqueKeyById_Call {
+	_c.Call.Return(key, err)
+	return _c
+}
+
+func (_c *MockObjectStore_GetUniqueKeyById_Call) RunAndReturn(run func(string) (domain.UniqueKey, error)) *MockObjectStore_GetUniqueKeyById_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetWithLinksInfoByID provides a mock function with given fields: spaceID, id
 func (_m *MockObjectStore) GetWithLinksInfoByID(spaceID string, id string) (*model.ObjectInfoWithLinks, error) {
 	ret := _m.Called(spaceID, id)
@@ -1349,25 +1403,25 @@ func (_c *MockObjectStore_Init_Call) RunAndReturn(run func(*app.App) error) *Moc
 	return _c
 }
 
-// List provides a mock function with given fields: spaceID
-func (_m *MockObjectStore) List(spaceID string) ([]*model.ObjectInfo, error) {
-	ret := _m.Called(spaceID)
+// List provides a mock function with given fields: spaceID, includeArchived
+func (_m *MockObjectStore) List(spaceID string, includeArchived bool) ([]*model.ObjectInfo, error) {
+	ret := _m.Called(spaceID, includeArchived)
 
 	var r0 []*model.ObjectInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) ([]*model.ObjectInfo, error)); ok {
-		return rf(spaceID)
+	if rf, ok := ret.Get(0).(func(string, bool) ([]*model.ObjectInfo, error)); ok {
+		return rf(spaceID, includeArchived)
 	}
-	if rf, ok := ret.Get(0).(func(string) []*model.ObjectInfo); ok {
-		r0 = rf(spaceID)
+	if rf, ok := ret.Get(0).(func(string, bool) []*model.ObjectInfo); ok {
+		r0 = rf(spaceID, includeArchived)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.ObjectInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(spaceID)
+	if rf, ok := ret.Get(1).(func(string, bool) error); ok {
+		r1 = rf(spaceID, includeArchived)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1382,13 +1436,14 @@ type MockObjectStore_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - spaceID string
-func (_e *MockObjectStore_Expecter) List(spaceID interface{}) *MockObjectStore_List_Call {
-	return &MockObjectStore_List_Call{Call: _e.mock.On("List", spaceID)}
+//   - includeArchived bool
+func (_e *MockObjectStore_Expecter) List(spaceID interface{}, includeArchived interface{}) *MockObjectStore_List_Call {
+	return &MockObjectStore_List_Call{Call: _e.mock.On("List", spaceID, includeArchived)}
 }
 
-func (_c *MockObjectStore_List_Call) Run(run func(spaceID string)) *MockObjectStore_List_Call {
+func (_c *MockObjectStore_List_Call) Run(run func(spaceID string, includeArchived bool)) *MockObjectStore_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(bool))
 	})
 	return _c
 }
@@ -1398,7 +1453,7 @@ func (_c *MockObjectStore_List_Call) Return(_a0 []*model.ObjectInfo, _a1 error) 
 	return _c
 }
 
-func (_c *MockObjectStore_List_Call) RunAndReturn(run func(string) ([]*model.ObjectInfo, error)) *MockObjectStore_List_Call {
+func (_c *MockObjectStore_List_Call) RunAndReturn(run func(string, bool) ([]*model.ObjectInfo, error)) *MockObjectStore_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

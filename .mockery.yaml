@@ -60,6 +60,8 @@ packages:
       TechSpace:
   github.com/anyproto/anytype-heart/space:
     interfaces:
+      Service:
+      Space:
       bundledObjectsInstaller:
         config:
           dir: "{{.InterfaceDir}}"

@@ -12,107 +12,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func (s *Service) TemplateCreateFromObject(ctx context.Context, id string) (templateID string, err error) {
-	var (
-		st             *state.State
-		objectTypeKeys []domain.TypeKey
-	)
-
-	if err = Do(s, id, func(b smartblock.SmartBlock) error {
-		if b.Type() != coresb.SmartBlockTypePage {
-			return fmt.Errorf("can't make template from this obect type")
-		}
-		objectTypeKeys = b.ObjectTypeKeys()
-		st, err = s.templateCreateFromObjectState(b)
-		return err
-	}); err != nil {
-		return
-	}
-
-	spaceID, err := s.resolver.ResolveSpaceID(id)
-	if err != nil {
-		return "", fmt.Errorf("resolve spaceID: %w", err)
-	}
-
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromState(ctx, spaceID, objectTypeKeys, st)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (s *Service) templateCreateFromObjectState(sb smartblock.SmartBlock) (*state.State, error) {
-	st := sb.NewState().Copy()
-	st.SetLocalDetails(nil)
-	targetObjectTypeID, err := sb.Space().GetTypeIdByKey(context.Background(), st.ObjectTypeKey())
-	if err != nil {
-		return nil, fmt.Errorf("get type id by key: %w", err)
-	}
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(targetObjectTypeID))
-	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
-	for _, rel := range sb.Relations(st) {
-		if rel.DataSource == model.Relation_details && !rel.Hidden {
-			st.RemoveDetail(rel.Key)
-		}
-	}
-	return st, nil
-}
-
-func (s *Service) TemplateClone(spaceID string, id string) (templateID string, err error) {
-	space, err := s.spaceService.Get(context.Background(), spaceID)
-	if err != nil {
-		return "", fmt.Errorf("get space: %w", err)
-	}
-	return s.TemplateCloneInSpace(space, id)
-}
-
-func (s *Service) TemplateCloneInSpace(space space.Space, id string) (templateID string, err error) {
-	var (
-		st             *state.State
-		objectTypeKeys []domain.TypeKey
-	)
-	marketplaceSpace, err := s.spaceService.Get(context.Background(), addr.AnytypeMarketplaceWorkspace)
-	if err != nil {
-		return "", fmt.Errorf("get marketplace space: %w", err)
-	}
-	if err = marketplaceSpace.Do(id, func(b smartblock.SmartBlock) error {
-		if b.Type() != coresb.SmartBlockTypeBundledTemplate {
-			return fmt.Errorf("can clone bundled templates only")
-		}
-		objectTypeKeys = b.ObjectTypeKeys()
-		st = b.NewState().Copy()
-		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
-		st.SetLocalDetails(nil)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, pbtypes.String(id))
-
-		targetObjectTypeBundledID := pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String())
-		targetObjectTypeKey, err := bundle.TypeKeyFromUrl(targetObjectTypeBundledID)
-		if err != nil {
-			return fmt.Errorf("get target object type key: %w", err)
-		}
-		targetObjectTypeID, err := space.GetTypeIdByKey(context.Background(), targetObjectTypeKey)
-		if err != nil {
-			return fmt.Errorf("get target object type id: %w", err)
-		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyTargetObjectType, pbtypes.String(targetObjectTypeID))
-		return nil
-	}); err != nil {
-		return
-	}
-	templateID, _, err = s.objectCreator.CreateSmartBlockFromStateInSpace(context.Background(), space, objectTypeKeys, st)
-	if err != nil {
-		return
-	}
-	return
-}
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
 	var (
@@ -141,36 +44,6 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		return
 	}
 	return
-}
-
-// TODO Seems like it unused by clients
-func (s *Service) TemplateCreateFromObjectByObjectType(ctx context.Context, objectTypeID string) (templateID string, err error) {
-	return
-	// spaceID, err := s.ResolveSpaceID(objectTypeID)
-	// if err != nil {
-	// 	return "", fmt.Errorf("resolve spaceID: %w", err)
-	// }
-	// if err = Do(s, objectTypeID, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
-	// 	return "", fmt.Errorf("can't open objectType: %v", err)
-	// }
-	// objectType, err := s.objectStore.GetObjectType(objectTypeID)
-	// if err != nil {
-	// 	return "", fmt.Errorf("get object type: %w", err)
-	// }
-	// st := state.NewDoc("", nil).(*state.State)
-	// st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(objectTypeID))
-	// templateID, _, err = s.objectCreator.CreateSmartBlockFromState(
-	// 	ctx,
-	// 	spaceID,
-	// 	coresb.SmartBlockTypeTemplate,
-	// 	[]bundle.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKey(objectType.Key)},
-	// 	nil,
-	// 	st,
-	// )
-	// if err != nil {
-	// 	return
-	// }
-	// return
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, err error) {

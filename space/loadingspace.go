@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
 )
@@ -51,16 +52,20 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	if ls.load(ctx) {
 		return
 	}
-	ticker := time.NewTicker(ls.retryTimeout)
+	timeout := 1 * time.Second
 	for {
 		select {
 		case <-ctx.Done():
 			ls.loadErr = ctx.Err()
 			return
-		case <-ticker.C:
+		case <-time.After(timeout):
 			if ls.load(ctx) {
 				return
 			}
+		}
+		timeout = timeout * 15 / 10
+		if timeout > ls.retryTimeout {
+			timeout = ls.retryTimeout
 		}
 	}
 }
@@ -72,6 +77,9 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
+		if errors.Is(err, treechangeproto.ErrGetTree) {
+			return false
+		}
 	}
 	if err != nil {
 		if sp != nil {

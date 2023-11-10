@@ -80,8 +80,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		removedCollectionKeysMap[t] = struct{}{}
 	}
 
-	detailsToSave := pbtypes.StructCutKeys(snapshot.Data.Details,
-		append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+	detailsToSave := pbtypes.StructCutKeys(snapshot.Data.Details, bundle.LocalAndDerivedRelationKeys)
 
 	if err := pbtypes.ValidateStruct(detailsToSave); err != nil {
 		log.Errorf("NewDocFromSnapshot details validation error: %v; details normalized", err)
@@ -702,7 +701,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeAdd{
-					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: string(v)},
+					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v.URL()},
 				},
 			})
 		}
@@ -712,7 +711,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfObjectTypeRemove{
-					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: string(v)},
+					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v.URL()},
 				},
 			})
 		}
