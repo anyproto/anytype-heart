@@ -102,30 +102,29 @@ func (i *Import) Import(
 	ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	origin model.ObjectOrigin,
-	progressContext *converter.ProgressContext,
+	progress process.Progress,
 ) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
-	var progress process.Progress
-	if progressContext != nil {
-		progress = progressContext.Progress
-	} else {
+	isNewProgress := false
+	if progress == nil {
 		progress = i.setupProgressBar(req)
+		isNewProgress = true
 	}
 	var returnedErr error
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
 	}()
-	if i.s != nil && !req.GetNoProgress() && progressContext == nil {
+	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progressContext, origin)
+		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
 		return rootCollectionID, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
@@ -147,11 +146,11 @@ func (i *Import) importFromBuiltinConverter(
 	ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
-	progressCtx *converter.ProgressContext,
+	progress process.Progress,
 	origin model.ObjectOrigin,
 ) (string, error) {
 	allErrors := converter.NewError(req.Mode)
-	res, err := c.GetSnapshots(ctx, req, progressCtx)
+	res, err := c.GetSnapshots(ctx, req, progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req) {
@@ -167,7 +166,7 @@ func (i *Import) importFromBuiltinConverter(
 		return "", fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	_, rootCollectionID := i.createObjects(ctx, res, progressCtx.Progress, req, allErrors, origin)
+	_, rootCollectionID := i.createObjects(ctx, res, progress, req, allErrors, origin)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
@@ -255,7 +254,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(ctx, req, &converter.ProgressContext{Progress: progress})
+	res, err := w.GetSnapshots(ctx, req, progress)
 
 	if err != nil {
 		return "", nil, err.Error()

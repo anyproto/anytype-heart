@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/page"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/property"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -40,16 +41,13 @@ func New(c *collection.Service) converter.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(
-	ctx context.Context, req *pb.RpcObjectImportRequest, progressCtx *converter.ProgressContext,
-) (*converter.Response, *converter.ConvertError) {
+func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	ce := converter.NewError(req.Mode)
 	apiKey := n.getParams(req)
 	if apiKey == "" {
 		ce.Add(fmt.Errorf("failed to extract apikey"))
 		return nil, ce
 	}
-	progress := progressCtx.Progress
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		select {

@@ -61,15 +61,13 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(
-	_ context.Context, req *pb.RpcObjectImportRequest, progressCtx *converter.ProgressContext,
-) (*converter.Response, *converter.ConvertError) {
+func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	paths := m.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
 	}
 	allErrors := converter.NewError(req.Mode)
-	allSnapshots := m.processFiles(req, progressCtx.Progress, paths, allErrors)
+	allSnapshots := m.processFiles(req, progress, paths, allErrors)
 	if allErrors.ShouldAbortImport(len(paths), req.Type) {
 		return nil, allErrors
 	}

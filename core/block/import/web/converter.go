@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -31,12 +32,10 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(
-	_ context.Context, req *pb.RpcObjectImportRequest, progressCtx *converter.ProgressContext,
-) (*converter.Response, *converter.ConvertError) {
+func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	we := converter.NewError(0)
 	url, err := c.getParams(req.Params)
-	progressCtx.Progress.SetTotal(1)
+	progress.SetTotal(1)
 	if err != nil {
 		we.Add(err)
 		return nil, we
@@ -47,7 +46,7 @@ func (c *Converter) GetSnapshots(
 		return nil, we
 	}
 	snapshots, err := p.ParseUrl(url)
-	progressCtx.Progress.AddDone(1)
+	progress.AddDone(1)
 
 	if err != nil {
 		we.Add(err)

@@ -52,15 +52,13 @@ func New(service *collection.Service, accountService account.Service) converter.
 	}
 }
 
-func (p *Pb) GetSnapshots(
-	_ context.Context, req *pb.RpcObjectImportRequest, progressCtx *converter.ProgressContext,
-) (*converter.Response, *converter.ConvertError) {
+func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*converter.Response, *converter.ConvertError) {
 	params, e := p.getParams(req.Params)
 	if e != nil || params == nil {
 		return nil, converter.NewFromError(fmt.Errorf("wrong parameters"), req.Mode)
 	}
 	allErrors := converter.NewError(req.Mode)
-	allSnapshots, widgetSnapshot := p.getSnapshots(progressCtx.Progress, params.GetPath(), req.IsMigration, allErrors)
+	allSnapshots, widgetSnapshot := p.getSnapshots(progress, params.GetPath(), req.IsMigration, allErrors)
 	oldToNewID := p.updateLinksToObjects(allSnapshots, allErrors, len(params.GetPath()))
 	p.updateDetails(allSnapshots)
 	if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
@@ -80,14 +78,7 @@ func (p *Pb) GetSnapshots(
 			rootCollectionID = rootCollection.Id
 		}
 	}
-	snapshotsNumber := int64(len(allSnapshots))
-	if progressCtx.PercentsPassed == 0 {
-		progressCtx.Progress.SetTotal(snapshotsNumber)
-	} else {
-		done := progressCtx.PercentsPassed * snapshotsNumber / (100 - progressCtx.PercentsPassed)
-		progressCtx.Progress.SetTotal(done + snapshotsNumber)
-		progressCtx.Progress.SetDone(done)
-	}
+	progress.SetTotalPreservingRatio(int64(len(allSnapshots)))
 	if allErrors.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 	}
