@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -924,8 +923,7 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached,
 	// so we don't need to traverse changes every time
-	keys := slices.Clone(bundle.LocalRelationsKeys) // Use Clone to avoid side effects on the bundle.LocalRelationsKeys slice
-	keys = append(keys, bundle.DerivedRelationsKeys...)
+	keys := bundle.LocalAndDerivedRelationKeys
 
 	localDetailsFromStore := pbtypes.StructFilterKeys(details, keys)
 	sb.updateBackLinks(localDetailsFromStore)

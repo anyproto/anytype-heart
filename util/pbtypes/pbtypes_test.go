@@ -107,3 +107,47 @@ func TestValidateValue(t *testing.T) {
 		})
 	}
 }
+
+func TestIsEmptyValueOrAbsent(t *testing.T) {
+	data := &types.Struct{Fields: map[string]*types.Value{
+		"structValue":      {Kind: &types.Value_StructValue{StructValue: &types.Struct{}}},
+		"stringValue":      {Kind: &types.Value_StringValue{StringValue: "42"}},
+		"emptyStringValue": {Kind: &types.Value_StringValue{StringValue: ""}},
+		"numberValue":      {Kind: &types.Value_NumberValue{NumberValue: 42}},
+		"emptyNumberValue": {Kind: &types.Value_NumberValue{NumberValue: 0}},
+		"boolValue":        {Kind: &types.Value_BoolValue{BoolValue: true}},
+		"emptyBoolValue":   {Kind: &types.Value_BoolValue{BoolValue: false}},
+		"listValue": {Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: []*types.Value{{
+			Kind: &types.Value_StringValue{StringValue: "Hello"}}}}}},
+		"emptyListValue": {Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: []*types.Value{}}}},
+		"nullValue":      Null(),
+	}}
+
+	tests := []struct {
+		name      string
+		s         *types.Struct
+		fieldName string
+		expected  bool
+	}{
+		{"NilStruct", nil, "field", true},
+		{"NilFields", &types.Struct{}, "nilField", true},
+		{"StructValue", data, "structValue", false},
+		{"AbsentField", data, "nonExistentField", true},
+		{"EmptyStringValue", data, "emptyStringValue", true},
+		{"NonEmptyStringValue", data, "stringValue", false},
+		{"ZeroNumberValue", data, "emptyNumberValue", true},
+		{"NonZeroNumberValue", data, "numberValue", false},
+		{"FalseBoolValue", data, "emptyBoolValue", true},
+		{"TrueBoolValue", data, "boolValue", false},
+		{"EmptyListValue", data, "emptyListValue", true},
+		{"NullValue", data, "nullValue", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsEmptyValueOrAbsent(tt.s, tt.fieldName); got != tt.expected {
+				t.Errorf("IsEmptyValueOrAbsent(%v, %v) = %v, want %v", tt.s, tt.fieldName, got, tt.expected)
+			}
+		})
+	}
+}
