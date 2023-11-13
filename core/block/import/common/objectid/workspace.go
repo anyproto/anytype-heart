@@ -7,7 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/space"
 )
 
@@ -19,7 +19,7 @@ func newWorkspace(spaceService space.Service) *workspace {
 	return &workspace{spaceService: spaceService}
 }
 
-func (w *workspace) GetIDAndPayload(ctx context.Context, spaceID string, _ *converter.Snapshot, _ time.Time, _ bool) (string, treestorage.TreeStorageCreatePayload, error) {
+func (w *workspace) GetIDAndPayload(ctx context.Context, spaceID string, _ *common.Snapshot, _ time.Time, _ bool) (string, treestorage.TreeStorageCreatePayload, error) {
 	spc, err := w.spaceService.Get(ctx, spaceID)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("get space : %w", err)

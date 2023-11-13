@@ -2,7 +2,6 @@ package collection
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -216,7 +214,7 @@ func (s *Service) ObjectToCollection(id string) error {
 			return fmt.Errorf("set layout: %w", err)
 		}
 		st.SetObjectTypeKey(bundle.TypeKeyCollection)
-		setDefaultObjectTypeToViews(st)
+		s.setDefaultObjectTypeToViews(st)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)
@@ -229,17 +227,17 @@ func (s *Service) ObjectToCollection(id string) error {
 	return nil
 }
 
-func setDefaultObjectTypeToViews(st *state.State) {
-	if !lo.Contains(st.ObjectTypeKeys(), bundle.TypeKeySet) {
+func (s *Service) setDefaultObjectTypeToViews(st *state.State) {
+	if !lo.Contains(st.ParentState().ObjectTypeKeys(), bundle.TypeKeySet) {
 		return
 	}
 
 	setOfValue := pbtypes.GetStringList(st.ParentState().Details(), bundle.RelationKeySetOf.String())
-	if len(setOfValue) == 0 || !strings.HasPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix) {
+	if len(setOfValue) == 0 {
 		return
 	}
 
-	if isNotCreatableType(domain.TypeKey(strings.TrimPrefix(setOfValue[0], addr.ObjectTypeKeyToIdPrefix))) {
+	if s.isNotCreatableType(setOfValue[0]) {
 		return
 	}
 
@@ -257,6 +255,13 @@ func setDefaultObjectTypeToViews(st *state.State) {
 	}
 }
 
-func isNotCreatableType(key domain.TypeKey) bool {
-	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType), key)
+func (s *Service) isNotCreatableType(id string) bool {
+	uk, err := s.objectStore.GetUniqueKeyById(id)
+	if err != nil {
+		return true
+	}
+	if uk.SmartblockType() != coresb.SmartBlockTypeObjectType {
+		return true
+	}
+	return lo.Contains(append(bundle.InternalTypes, bundle.TypeKeyObjectType), domain.TypeKey(uk.InternalKey()))
 }

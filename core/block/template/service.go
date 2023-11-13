@@ -123,6 +123,10 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		}
 		targetState = sb.NewState().Copy()
 
+		if pbtypes.GetBool(targetState.LocalDetails(), bundle.RelationKeyIsArchived.String()) {
+			return spacestorage.ErrTreeStorageAlreadyDeleted
+		}
+
 		innerErr = s.updateTypeKey(targetState)
 		if innerErr != nil {
 			return

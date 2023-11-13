@@ -15,7 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
@@ -825,11 +825,11 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 	}
 
 	switch {
-	case errors.Is(err, converter.ErrNoObjectsToImport):
+	case errors.Is(err, common.ErrNoObjectsToImport):
 		return response(pb.RpcObjectImportResponseError_NO_OBJECTS_TO_IMPORT, "", err)
-	case errors.Is(err, converter.ErrCancel):
+	case errors.Is(err, common.ErrCancel):
 		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
-	case errors.Is(err, converter.ErrLimitExceeded):
+	case errors.Is(err, common.ErrLimitExceeded):
 		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
 	default:
 		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
