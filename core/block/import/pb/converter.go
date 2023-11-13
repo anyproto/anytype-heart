@@ -39,7 +39,7 @@ const (
 	configFile         = "config.json"
 )
 
-var ErrAnyBlockExtension = errors.New("not valid extension")
+var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
 
 type Pb struct {
 	service        *collection.Service
@@ -245,7 +245,7 @@ func (p *Pb) makeSnapshot(name, profileID, path string, file io.ReadCloser, isMi
 
 	snapshot, errGS := p.getSnapshotFromFile(file, name)
 	if errGS != nil {
-		if errors.Is(errGS, ErrAnyBlockExtension) {
+		if errors.Is(errGS, ErrNotAnyBlockExtension) {
 			return nil, nil
 		}
 		return nil, errGS
@@ -288,7 +288,7 @@ func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*pb.SnapshotWit
 		}
 		return snapshot, nil
 	}
-	return nil, ErrAnyBlockExtension
+	return nil, ErrNotAnyBlockExtension
 }
 
 func (p *Pb) normalizeSnapshot(snapshot *pb.SnapshotWithType, id string, profileID string, isMigration bool) (string, error) {
