@@ -21,6 +21,9 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 		return nil
 	}
 
+	if s.techSpace == nil {
+		return fmt.Errorf("tech space is not initialised yet")
+	}
 	exists, err := s.techSpace.SpaceViewExists(ctx, spaceID)
 	if err != nil {
 		return
