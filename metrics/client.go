@@ -182,7 +182,6 @@ func (c *client) startSendingBatchMessages() {
 		msgs := b.WaitMinMax(10, 100)
 		// if batcher is closed
 		if len(msgs) == 0 {
-			c.sendNextBatch(nil, b.GetAll())
 			close(c.closeChannel)
 			return
 		}
