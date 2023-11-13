@@ -304,6 +304,7 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 
 	flags := internalflag.NewFromState(s)
 	flags.Remove(model.InternalFlag_editorSelectType)
+	// we should remove DeleteEmpty flag here, because client triggers ObjectClose cmd afterward
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
 

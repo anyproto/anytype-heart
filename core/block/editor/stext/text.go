@@ -343,11 +343,12 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 
 	// We create new context to avoid sending events to the current session
 	ctx := session.NewChildContext(parentCtx)
+	shouldKeepInternalFlags := t.shouldKeepInternalFlags()
 	s := t.newSetTextState(req.BlockId, req.SelectedTextRange, ctx)
 	wasEmpty := s.IsEmpty(true)
 
 	applyFlags := make([]smartblock.ApplyFlag, 0)
-	if t.shouldKeepInternalFlags() || wasEmpty {
+	if shouldKeepInternalFlags || wasEmpty {
 		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
 	}
 
@@ -500,7 +501,7 @@ func (t *textImpl) shouldKeepInternalFlags() bool {
 	if err != nil {
 		textChanged = true
 	}
-	return t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID || !textChanged
+	return !textChanged
 }
 
 func getText(s *state.State, id string) (text.Block, error) {

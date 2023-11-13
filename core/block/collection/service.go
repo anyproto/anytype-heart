@@ -217,7 +217,6 @@ func (s *Service) ObjectToCollection(id string) error {
 		s.setDefaultObjectTypeToViews(st)
 		flags := internalflag.NewFromState(st)
 		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		flags.AddToState(st)
 		return b.Apply(st)
 	}); err != nil {
