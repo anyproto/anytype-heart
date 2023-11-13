@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -50,7 +51,7 @@ func (fs *FileSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	}
 	_, err := fs.service.UploadFileBlockWithHash(id, dto)
 	if err != nil {
-		return fmt.Errorf("failed syncing file: %w", err)
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
 	}
 	return nil
 }
