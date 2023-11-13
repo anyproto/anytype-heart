@@ -130,11 +130,15 @@ func (f *fileSync) Close(ctx context.Context) (err error) {
 	if f.loopCancel != nil {
 		f.loopCancel()
 	}
-	if closer, ok := f.rpcStore.(io.Closer); ok {
-		if err = closer.Close(); err != nil {
-			log.Error("can't close rpc store", zap.Error(err))
+	// Don't wait
+	go func() {
+		if closer, ok := f.rpcStore.(io.Closer); ok {
+			if err = closer.Close(); err != nil {
+				log.Error("can't close rpc store", zap.Error(err))
+			}
 		}
-	}
+	}()
+
 	return nil
 }
 
