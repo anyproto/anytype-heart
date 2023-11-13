@@ -61,7 +61,9 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 	newPersistentInfo := spaceinfo.SpacePersistentInfo{SpaceID: spaceID, AccountStatus: info.AccountStatus}
 	s.setSpacePersistentInfo(ctx.State, newPersistentInfo)
 	s.setSpaceLocalInfo(ctx.State, spaceinfo.SpaceLocalInfo{
-		SpaceID: spaceID,
+		SpaceID:      spaceID,
+		LocalStatus:  spaceinfo.LocalStatusUnknown,
+		RemoteStatus: spaceinfo.RemoteStatusUnknown,
 	})
 	s.spaceService.OnViewUpdated(newPersistentInfo)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)

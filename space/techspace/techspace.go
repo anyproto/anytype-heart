@@ -143,8 +143,6 @@ func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, detail
 }
 
 func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.getViewIdLocked(context.TODO(), spaceId)
 }
 
