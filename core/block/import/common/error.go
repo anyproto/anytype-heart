@@ -75,6 +75,8 @@ func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType)
 			return fmt.Errorf("import type: %s: %w", importType.String(), ErrLimitExceeded)
 		case errors.Is(e, ErrFailedToReceiveListOfObjects):
 			return ErrFailedToReceiveListOfObjects
+		case errors.Is(e, ErrFileLoad):
+			return e
 		case errors.Is(e, ErrNoObjectsToImport):
 			countNoObjectsToImport++
 		}

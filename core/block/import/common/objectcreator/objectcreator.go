@@ -142,7 +142,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 
 	syncErr := oc.syncFilesAndLinks(newID, origin)
 	if syncErr != nil {
-		if errors.Is(err, common.ErrFileLoad) {
+		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
 		}
 	}
@@ -447,15 +447,17 @@ func (oc *ObjectCreator) syncFilesAndLinks(newID string, origin model.ObjectOrig
 	if err != nil {
 		return err
 	}
-	var syncErr error
+	var fileLoadErr error
 	for _, task := range tasks {
 		err = task()
 		if err != nil {
-			syncErr = err
-			log.With(zap.String("objectID", newID)).Errorf("failed to sync: %s", syncErr)
+			log.With(zap.String("objectID", newID)).Errorf("failed to sync: %s", err)
+			if errors.Is(err, common.ErrFileLoad) {
+				fileLoadErr = err
+			}
 		}
 	}
-	return syncErr
+	return fileLoadErr
 }
 
 func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew map[string]string, isNewCollection bool) {
