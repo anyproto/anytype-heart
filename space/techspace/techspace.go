@@ -45,8 +45,8 @@ type TechSpace interface {
 type SpaceView interface {
 	sync.Locker
 	SetSpaceData(details *types.Struct) error
-	SetLocalInfo(info spaceinfo.SpaceLocalInfo) error
-	SetPersistentInfo(info spaceinfo.SpacePersistentInfo) error
+	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
+	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 }
 
 func New() TechSpace {
@@ -102,13 +102,13 @@ func (s *techSpace) TechSpaceId() string {
 
 func (s *techSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
 	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
-		return spaceView.SetLocalInfo(info)
+		return spaceView.SetSpaceLocalInfo(info)
 	})
 }
 
 func (s *techSpace) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error) {
 	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
-		return spaceView.SetPersistentInfo(info)
+		return spaceView.SetSpacePersistentInfo(info)
 	})
 }
 
