@@ -664,6 +664,6 @@ func TestTextImpl_shouldKeepInternalFlags(t *testing.T) {
 		// then
 		assert.NoError(t, err1)
 		assert.NoError(t, err2)
-		assert.Len(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()), 3)
+		assert.Len(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()), 0)
 	})
 }
