@@ -29,6 +29,8 @@ func (s *service) CreateSet(ctx context.Context, space space.Space, req *pb.RpcO
 	if len(req.Source) > 0 {
 		newState.SetDetailAndBundledRelation(bundle.RelationKeySetOf, pbtypes.StringList(req.Source))
 	}
+	newState.AddDetails(req.Details)
+	newState.BlocksInit(newState)
 
 	tmpls := []template.StateTransformer{
 		template.WithRequiredRelations(),
