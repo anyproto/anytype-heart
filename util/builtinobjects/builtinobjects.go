@@ -128,10 +128,6 @@ var (
 			{model.BlockContentWidget_CompactList, widget.DefaultWidgetSet, "", false},
 		},
 	}
-
-	// these variables are used to calculate progress bar by goroutine
-	countReader *datacounter.ReaderCounter
-	archiveSize int64
 )
 
 type BuiltinObjects interface {
@@ -429,53 +425,17 @@ func (b *builtinObjects) downloadZipToFile(url string) (path string, progress pr
 		return "", nil, fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
 
-	var cancel context.CancelFunc
-	progress, cancel, err = b.setupProgress()
-	if err != nil {
+	var (
+		countReader *datacounter.ReaderCounter
+		archiveSize int64
+	)
+
+	if progress, err = b.setupProgress(); err != nil {
 		return "", nil, err
 	}
-	defer func() {
-		cancel()
-		archiveSize = 0
-		countReader = nil
-	}()
-
-	var reader io.ReadCloser
-	reader, archiveSize, err = getArchiveReaderAndSize(url)
-	if err != nil {
-		return "", nil, err
-	}
-	defer reader.Close()
-
-	countReader = datacounter.NewReaderCounter(reader)
-
-	path = filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
-	var out *os.File
-	out, err = os.Create(path)
-	if err != nil {
-		return "", nil, oserror.TransformError(err)
-	}
-	defer out.Close()
-
-	if _, err = io.Copy(out, countReader); err != nil {
-		return "", nil, err
-	}
-
-	progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents)
-
-	return path, progress, nil
-}
-
-func (b *builtinObjects) setupProgress() (process.Progress, context.CancelFunc, error) {
-	progress := process.NewProgress(pb.ModelProcess_Import)
-	if err := b.progress.Add(progress); err != nil {
-		return nil, nil, fmt.Errorf("failed to add progress bar: %w", err)
-	}
-
-	progress.SetProgressMessage("downloading archive")
-	progress.SetTotal(100)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
 		counter := int64(0)
 		for {
@@ -495,7 +455,38 @@ func (b *builtinObjects) setupProgress() (process.Progress, context.CancelFunc, 
 		}
 	}()
 
-	return progress, cancel, nil
+	var reader io.ReadCloser
+	reader, archiveSize, err = getArchiveReaderAndSize(url)
+	if err != nil {
+		return "", nil, err
+	}
+	defer reader.Close()
+	countReader = datacounter.NewReaderCounter(reader)
+
+	path = filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
+	var out *os.File
+	out, err = os.Create(path)
+	if err != nil {
+		return "", nil, oserror.TransformError(err)
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, countReader); err != nil {
+		return "", nil, err
+	}
+
+	progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents)
+	return path, progress, nil
+}
+
+func (b *builtinObjects) setupProgress() (process.Progress, error) {
+	progress := process.NewProgress(pb.ModelProcess_Import)
+	if err := b.progress.Add(progress); err != nil {
+		return nil, fmt.Errorf("failed to add progress bar: %w", err)
+	}
+	progress.SetProgressMessage("downloading archive")
+	progress.SetTotal(100)
+	return progress, nil
 }
 
 func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err error) {
@@ -507,11 +498,13 @@ func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err 
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		return nil, 0, fmt.Errorf("failed to fetch zip file: not OK status code: %s", resp.Status)
 	}
 
 	contentLengthStr := resp.Header.Get(contentLengthHeader)
 	if size, err = strconv.ParseInt(contentLengthStr, 10, 64); err != nil {
+		resp.Body.Close()
 		return nil, 0, fmt.Errorf("failed to get zip size from Content-Length: %w", err)
 	}
 
