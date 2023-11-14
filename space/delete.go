@@ -32,15 +32,10 @@ func (s *service) startOffload(ctx context.Context, id string) (err error) {
 	if _, ok := s.offloaded[id]; ok {
 		return nil
 	}
-	status := s.getStatus(id)
+	status := s.getLocalStatus(id)
 	if status.LocalStatus == spaceinfo.LocalStatusMissing {
 		s.offloaded[id] = struct{}{}
 		return
-	}
-	status.AccountStatus = spaceinfo.AccountStatusDeleted
-	err = s.setStatus(ctx, status)
-	if err != nil {
-		return err
 	}
 	s.offloading[id] = newOffloadingSpace(ctx, id, s)
 	return nil
@@ -55,9 +50,9 @@ func (s *service) onOffload(id string, offloadErr error) {
 		log.Warn("offload error", zap.Error(offloadErr), zap.String("spaceId", id))
 		return
 	}
-	status := s.getStatus(id)
+	status := s.getLocalStatus(id)
 	status.LocalStatus = spaceinfo.LocalStatusMissing
-	if err := s.setStatus(s.ctx, status); err != nil {
+	if err := s.setLocalStatus(s.ctx, status); err != nil {
 		log.Debug("set status error", zap.Error(err), zap.String("spaceId", id))
 	}
 	s.offloaded[id] = struct{}{}
@@ -85,17 +80,18 @@ func (s *service) waitOffload(ctx context.Context, id string) (err error) {
 
 func (s *service) startDelete(ctx context.Context, id string) error {
 	s.mu.Lock()
-	status := s.getStatus(id)
-	if status.AccountStatus != spaceinfo.AccountStatusDeleted {
-		status.AccountStatus = spaceinfo.AccountStatusDeleted
-		err := s.setStatus(ctx, status)
+	persistentStatus := s.getPersistentStatus(id)
+	if persistentStatus.AccountStatus != spaceinfo.AccountStatusDeleted {
+		persistentStatus.AccountStatus = spaceinfo.AccountStatusDeleted
+		err := s.setPersistentStatus(ctx, persistentStatus)
 		if err != nil {
 			s.mu.Unlock()
 			return err
 		}
 	}
+	localStatus := s.getLocalStatus(id)
 	s.mu.Unlock()
-	if !status.RemoteStatus.IsDeleted() {
+	if !localStatus.RemoteStatus.IsDeleted() {
 		err := s.spaceCore.Delete(ctx, id)
 		if err != nil {
 			log.Debug("network delete error", zap.Error(err), zap.String("spaceId", id))
