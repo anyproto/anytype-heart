@@ -47,7 +47,11 @@ func (s *spaceViewStub) SetSpaceData(details *types.Struct) error {
 	return nil
 }
 
-func (s *spaceViewStub) SetSpaceInfo(info spaceinfo.SpaceInfo) (err error) {
+func (s *spaceViewStub) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
+	return nil
+}
+
+func (s *spaceViewStub) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
 	return nil
 }
 
@@ -107,7 +111,7 @@ func TestTechSpace_SpaceViewExists(t *testing.T) {
 }
 
 func TestTechSpace_SetInfo(t *testing.T) {
-	info := spaceinfo.SpaceInfo{
+	info := spaceinfo.SpaceLocalInfo{
 		SpaceID: "space.id",
 	}
 	viewId := "viewid"
@@ -120,7 +124,7 @@ func TestTechSpace_SetInfo(t *testing.T) {
 		fx.expectDeriveTreePayload(viewId)
 		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(spaceView, nil)
 
-		require.NoError(t, fx.SetInfo(ctx, info))
+		require.NoError(t, fx.SetLocalInfo(ctx, info))
 	})
 
 	t.Run("err spaceView not exists", func(t *testing.T) {
@@ -130,7 +134,7 @@ func TestTechSpace_SetInfo(t *testing.T) {
 		fx.expectDeriveTreePayload(viewId)
 		fx.objectCache.EXPECT().GetObject(ctx, viewId).Return(nil, fmt.Errorf("object not found"))
 
-		require.EqualError(t, fx.SetInfo(ctx, info), ErrSpaceViewNotExists.Error())
+		require.EqualError(t, fx.SetLocalInfo(ctx, info), ErrSpaceViewNotExists.Error())
 	})
 }
 
