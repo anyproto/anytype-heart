@@ -12,12 +12,13 @@ import (
 func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	status := s.getStatus(spaceID)
-	if status.AccountStatus == spaceinfo.AccountStatusDeleted {
+	persistentStatus := s.getPersistentStatus(spaceID)
+	if persistentStatus.AccountStatus == spaceinfo.AccountStatusDeleted {
 		return ErrSpaceDeleted
 	}
+	localStatus := s.getLocalStatus(spaceID)
 	// Do nothing if space is already loading
-	if status.LocalStatus != spaceinfo.LocalStatusUnknown {
+	if localStatus.LocalStatus != spaceinfo.LocalStatusUnknown {
 		return nil
 	}
 
@@ -29,11 +30,11 @@ func (s *service) startLoad(ctx context.Context, spaceID string) (err error) {
 		return ErrSpaceNotExists
 	}
 
-	info := spaceinfo.SpaceInfo{
+	info := spaceinfo.SpaceLocalInfo{
 		SpaceID:     spaceID,
 		LocalStatus: spaceinfo.LocalStatusLoading,
 	}
-	if err = s.setStatus(ctx, info); err != nil {
+	if err = s.setLocalStatus(ctx, info); err != nil {
 		return
 	}
 	_, justCreated := s.createdSpaces[spaceID]
@@ -48,19 +49,19 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	switch {
 	case loadErr == nil:
 	case errors.Is(loadErr, spaceservice.ErrSpaceDeletionPending):
-		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+		return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
 			SpaceID:      spaceID,
 			LocalStatus:  spaceinfo.LocalStatusMissing,
 			RemoteStatus: spaceinfo.RemoteStatusWaitingDeletion,
 		})
 	case errors.Is(loadErr, spaceservice.ErrSpaceIsDeleted):
-		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+		return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
 			SpaceID:      spaceID,
 			LocalStatus:  spaceinfo.LocalStatusMissing,
 			RemoteStatus: spaceinfo.RemoteStatusDeleted,
 		})
 	default:
-		return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+		return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
 			SpaceID:      spaceID,
 			LocalStatus:  spaceinfo.LocalStatusMissing,
 			RemoteStatus: spaceinfo.RemoteStatusError,
@@ -71,7 +72,7 @@ func (s *service) onLoad(spaceID string, sp Space, loadErr error) (err error) {
 	delete(s.loading, spaceID)
 
 	// TODO: check remote status
-	return s.setStatus(s.ctx, spaceinfo.SpaceInfo{
+	return s.setLocalStatus(s.ctx, spaceinfo.SpaceLocalInfo{
 		SpaceID:      spaceID,
 		LocalStatus:  spaceinfo.LocalStatusOk,
 		RemoteStatus: spaceinfo.RemoteStatusUnknown,
@@ -83,16 +84,20 @@ func (s *service) preLoad(spc Space) {
 	defer s.mu.Unlock()
 
 	s.loaded[spc.Id()] = spc
-	s.statuses[spc.Id()] = spaceinfo.SpaceInfo{
+	s.localStatuses[spc.Id()] = spaceinfo.SpaceLocalInfo{
 		SpaceID:      spc.Id(),
 		LocalStatus:  spaceinfo.LocalStatusOk,
 		RemoteStatus: spaceinfo.RemoteStatusUnknown,
+	}
+	s.persistentStatuses[spc.Id()] = spaceinfo.SpacePersistentInfo{
+		SpaceID:       spc.Id(),
+		AccountStatus: spaceinfo.AccountStatusUnknown,
 	}
 }
 
 func (s *service) waitLoad(ctx context.Context, spaceID string) (sp Space, err error) {
 	s.mu.Lock()
-	status := s.getStatus(spaceID)
+	status := s.getLocalStatus(spaceID)
 
 	switch status.LocalStatus {
 	case spaceinfo.LocalStatusUnknown:
