@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
@@ -26,6 +27,7 @@ type marketplaceSpace struct {
 }
 
 type builtinTemplateService interface {
+	app.Component
 	RegisterBuiltinTemplates(space Space) error
 }
 

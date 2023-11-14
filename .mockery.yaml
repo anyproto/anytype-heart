@@ -49,6 +49,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/objectcache:
     interfaces:
       Cache:
+      ObjectFactory:
   github.com/anyproto/anytype-heart/core/indexer:
     interfaces:
       Indexer:
@@ -58,15 +59,15 @@ packages:
   github.com/anyproto/anytype-heart/space/techspace:
     interfaces:
       TechSpace:
+  github.com/anyproto/anytype-heart/space/spacecore/storage:
+    interfaces:
+      ClientStorage:
   github.com/anyproto/anytype-heart/space:
     interfaces:
       Service:
       Space:
+      spaceIndexer:
       bundledObjectsInstaller:
-        config:
-          dir: "{{.InterfaceDir}}"
-          inpackage: true
       isNewAccount:
-        config:
-          dir: "{{.InterfaceDir}}"
-          inpackage: true
+      fileOffloader:
+      builtinTemplateService:

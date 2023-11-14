@@ -1,4 +1,4 @@
-package space
+package space_test
 
 import (
 	"context"
@@ -7,14 +7,18 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer/mock_treesyncer"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
+	"github.com/anyproto/any-sync/testutil/accounttest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/space"
+	mock_space "github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -27,7 +31,7 @@ const (
 )
 
 // TODO Revive tests
-func xTestService_Init(t *testing.T) {
+func TestService_Init(t *testing.T) {
 	t.Run("existing account", func(t *testing.T) {
 		fx := newFixture(t, false)
 		defer fx.finish(t)
@@ -42,11 +46,11 @@ func xTestService_Init(t *testing.T) {
 type indexerStub struct {
 }
 
-func (i *indexerStub) ReindexMarketplaceSpace(space Space) error {
+func (i *indexerStub) ReindexMarketplaceSpace(space space.Space) error {
 	return nil
 }
 
-func (i *indexerStub) ReindexSpace(space Space) error {
+func (i *indexerStub) ReindexSpace(space space.Space) error {
 	return nil
 }
 
@@ -61,21 +65,33 @@ func (i *indexerStub) Name() (name string) {
 func newFixture(t *testing.T, newAccount bool) *fixture {
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
-		service:       New().(*service),
-		a:             new(app.App),
-		ctrl:          ctrl,
-		objectCache:   mock_objectcache.NewMockCache(t),
-		spaceCore:     mock_spacecore.NewMockSpaceCoreService(t),
-		installer:     NewMockbundledObjectsInstaller(t),
-		isNewAccount:  NewMockisNewAccount(t),
-		techSpace:     mock_techspace.NewMockTechSpace(t),
-		personalSpace: mock_commonspace.NewMockSpace(ctrl),
+		Service:           space.New(),
+		a:                 new(app.App),
+		ctrl:              ctrl,
+		objectFactory:     mock_objectcache.NewMockObjectFactory(t),
+		spaceCore:         mock_spacecore.NewMockSpaceCoreService(t),
+		installer:         mock_space.NewMockbundledObjectsInstaller(t),
+		isNewAccount:      mock_space.NewMockisNewAccount(t),
+		techSpace:         mock_techspace.NewMockTechSpace(t),
+		personalSpace:     mock_commonspace.NewMockSpace(ctrl),
+		indexer:           mock_space.NewMockspaceIndexer(t),
+		storage:           mock_storage.NewMockClientStorage(t),
+		coordinatorClient: mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
+		offloader:         mock_space.NewMockfileOffloader(t),
+		builtinTemplate:   mock_space.NewMockbuiltinTemplateService(t),
 	}
 	fx.a.Register(&indexerStub{}).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.installer)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.isNewAccount)).
-		Register(fx.service)
+		Register(testutil.PrepareMock(ctx, fx.a, fx.indexer)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.objectFactory)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.storage)).
+		Register(&accounttest.AccountTestService{}).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.coordinatorClient)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.offloader)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.builtinTemplate)).
+		Register(fx.Service)
 
 	fx.isNewAccount.EXPECT().IsNewAccount().Return(newAccount)
 	fx.personalSpace.EXPECT().Id().AnyTimes().Return(testPersonalSpaceID)
@@ -88,15 +104,20 @@ func newFixture(t *testing.T, newAccount bool) *fixture {
 }
 
 type fixture struct {
-	*service
-	a             *app.App
-	objectCache   *mock_objectcache.MockCache
-	spaceCore     *mock_spacecore.MockSpaceCoreService
-	installer     *MockbundledObjectsInstaller
-	ctrl          *gomock.Controller
-	isNewAccount  *MockisNewAccount
-	techSpace     *mock_techspace.MockTechSpace
-	personalSpace *mock_commonspace.MockSpace
+	space.Service
+	a                 *app.App
+	spaceCore         *mock_spacecore.MockSpaceCoreService
+	installer         *mock_space.MockbundledObjectsInstaller
+	ctrl              *gomock.Controller
+	isNewAccount      *mock_space.MockisNewAccount
+	techSpace         *mock_techspace.MockTechSpace
+	personalSpace     *mock_commonspace.MockSpace
+	indexer           *mock_space.MockspaceIndexer
+	objectFactory     *mock_objectcache.MockObjectFactory
+	storage           *mock_storage.MockClientStorage
+	coordinatorClient *mock_coordinatorclient.MockCoordinatorClient
+	offloader         *mock_space.MockfileOffloader
+	builtinTemplate   *mock_space.MockbuiltinTemplateService
 }
 
 func (fx *fixture) expectRun(newAccount bool) {
@@ -120,7 +141,7 @@ func (fx *fixture) expectRun(newAccount bool) {
 
 	// space init
 	// fx.objectCache.EXPECT().DeriveObjectID(mock.Anything, testPersonalSpaceID, mock.Anything).Return("derived", nil)
-	fx.objectCache.EXPECT().GetObject(mock.Anything, domain.FullID{ObjectID: "derived", SpaceID: testPersonalSpaceID}).Return(nil, nil)
+	//fx.objectFactory.EXPECT().(mock.Anything, domain.FullID{ObjectID: "derived", SpaceID: testPersonalSpaceID}).Return(nil, nil)
 	fx.installer.EXPECT().InstallBundledObjects(mock.Anything, testPersonalSpaceID, mock.Anything).Return(nil, nil, nil)
 	ts := mock_treesyncer.NewMockTreeSyncer(fx.ctrl)
 	ts.EXPECT().StartSync()

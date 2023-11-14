@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
@@ -39,6 +40,7 @@ type cacheOpts struct {
 type InitFunc = func(id string) *smartblock.InitContext
 
 type ObjectFactory interface {
+	app.Component
 	InitObject(space smartblock.Space, id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error)
 }
 

@@ -38,12 +38,14 @@ func New() Service {
 }
 
 type spaceIndexer interface {
+	app.Component
 	ReindexMarketplaceSpace(space Space) error
 	ReindexSpace(space Space) error
 	RemoveIndexes(spaceID string) (err error)
 }
 
 type fileOffloader interface {
+	app.Component
 	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
 }
 
