@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime/debug"
 
+	nsclient "github.com/anyproto/any-ns-node/client"
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/application"
@@ -58,6 +59,13 @@ func (mw *Middleware) AppSetDeviceState(cctx context.Context, req *pb.RpcAppSetD
 func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
 	if a := mw.applicationService.GetApp(); a != nil {
 		return a.MustComponent(block.CName).(*block.Service), nil
+	}
+	return nil, ErrNotLoggedIn
+}
+
+func (mw *Middleware) getNameService() (ns nsclient.AnyNsClientService, err error) {
+	if a := mw.applicationService.GetApp(); a != nil {
+		return a.MustComponent(nsclient.CName).(nsclient.AnyNsClientService), nil
 	}
 	return nil, ErrNotLoggedIn
 }

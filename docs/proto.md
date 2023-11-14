@@ -592,6 +592,15 @@
     - [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request)
     - [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response)
     - [Rpc.Metrics.SetParameters.Response.Error](#anytype-Rpc-Metrics-SetParameters-Response-Error)
+    - [Rpc.NameService](#anytype-Rpc-NameService)
+    - [Rpc.NameService.ResolveName](#anytype-Rpc-NameService-ResolveName)
+    - [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request)
+    - [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response)
+    - [Rpc.NameService.ResolveName.Response.Error](#anytype-Rpc-NameService-ResolveName-Response-Error)
+    - [Rpc.NameService.ReverseResolveName](#anytype-Rpc-NameService-ReverseResolveName)
+    - [Rpc.NameService.ReverseResolveName.Request](#anytype-Rpc-NameService-ReverseResolveName-Request)
+    - [Rpc.NameService.ReverseResolveName.Response](#anytype-Rpc-NameService-ReverseResolveName-Response)
+    - [Rpc.NameService.ReverseResolveName.Response.Error](#anytype-Rpc-NameService-ReverseResolveName-Response-Error)
     - [Rpc.Navigation](#anytype-Rpc-Navigation)
     - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype-Rpc-Navigation-GetObjectInfoWithLinks)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request)
@@ -1084,6 +1093,8 @@
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
     - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype-Rpc-Metrics-SetParameters-Response-Error-Code)
+    - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
+    - [Rpc.NameService.ReverseResolveName.Response.Error.Code](#anytype-Rpc-NameService-ReverseResolveName-Response-Error-Code)
     - [Rpc.Navigation.Context](#anytype-Rpc-Navigation-Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
@@ -1705,6 +1716,8 @@
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
+| NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
+| NameServiceReverseResolveName | [Rpc.NameService.ReverseResolveName.Request](#anytype-Rpc-NameService-ReverseResolveName-Request) | [Rpc.NameService.ReverseResolveName.Response](#anytype-Rpc-NameService-ReverseResolveName-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 
  
@@ -10281,6 +10294,135 @@ returns blockShow event for given version
 
 
 
+<a name="anytype-Rpc-NameService"></a>
+
+### Rpc.NameService
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName"></a>
+
+### Rpc.NameService.ResolveName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Request"></a>
+
+### Rpc.NameService.ResolveName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fullName | [string](#string) |  | including &#34;.any&#34; suffix |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response"></a>
+
+### Rpc.NameService.ResolveName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ResolveName.Response.Error](#anytype-Rpc-NameService-ResolveName-Response-Error) |  |  |
+| available | [bool](#bool) |  |  |
+| ownerEthAddress | [string](#string) |  | An Ethereum address that owns that name This field is non-empty only if name is &#34;already registered&#34; |
+| ownerAnyAddress | [string](#string) |  | A content hash attached to this name This field is non-empty only if name is &#34;already registered&#34; |
+| spaceId | [string](#string) |  | A SpaceID attached to this name This field is non-empty only if name is &#34;already registered&#34; |
+| nameExpires | [int64](#int64) |  | A timestamp when this name expires |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ResolveName-Response-Error"></a>
+
+### Rpc.NameService.ResolveName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName"></a>
+
+### Rpc.NameService.ReverseResolveName
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Request"></a>
+
+### Rpc.NameService.ReverseResolveName.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ownerEthAddress | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Response"></a>
+
+### Rpc.NameService.ReverseResolveName.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NameService.ReverseResolveName.Response.Error](#anytype-Rpc-NameService-ReverseResolveName-Response-Error) |  |  |
+| found | [bool](#bool) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Response-Error"></a>
+
+### Rpc.NameService.ReverseResolveName.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NameService.ReverseResolveName.Response.Error.Code](#anytype-Rpc-NameService-ReverseResolveName-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Navigation"></a>
 
 ### Rpc.Navigation
@@ -17257,6 +17399,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-NameService-ResolveName-Response-Error-Code"></a>
+
+### Rpc.NameService.ResolveName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-NameService-ReverseResolveName-Response-Error-Code"></a>
+
+### Rpc.NameService.ReverseResolveName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Navigation-Context"></a>
 
 ### Rpc.Navigation.Context
@@ -22715,7 +22883,7 @@ stored |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
-| originalCreatedTimestamp | [int64](#int64) |  | original user-side object creation timestamp, e.g. from the file stat |
+| originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
 
 
 

@@ -283,6 +283,9 @@ service ClientCommands {
 
     rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
 
+    rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
+    rpc NameServiceReverseResolveName( anytype.Rpc.NameService.ReverseResolveName.Request) returns (anytype.Rpc.NameService.ReverseResolveName.Response);
+
     // used only for lib-server via grpc
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);
 }

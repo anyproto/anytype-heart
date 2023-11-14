@@ -5739,6 +5739,72 @@ message Rpc {
             }
         }
     }
+
+    message NameService {
+        message ResolveName {
+            message Request {
+                // including ".any" suffix
+                string fullName = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                bool available = 2;
+  
+                // An Ethereum address that owns that name
+                // This field is non-empty only if name is "already registered"
+                string ownerEthAddress = 3;
+
+                // A content hash attached to this name
+                // This field is non-empty only if name is "already registered"
+                string ownerAnyAddress = 4;
+
+                // A SpaceID attached to this name
+                // This field is non-empty only if name is "already registered"
+                string spaceId = 5;
+
+                // A timestamp when this name expires
+                int64 nameExpires = 6;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message ReverseResolveName {
+            message Request {
+                string ownerEthAddress = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                bool found = 2;
+
+                string name = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+    }
 }
 
 message Empty {
