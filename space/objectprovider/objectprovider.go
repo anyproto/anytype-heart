@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -107,6 +108,7 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 }
 
 func (o *objectProvider) LoadObjects(ctx context.Context, objIDs []string) error {
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	for _, id := range objIDs {
 		_, err := o.cache.GetObject(ctx, id)
 		if err != nil {
