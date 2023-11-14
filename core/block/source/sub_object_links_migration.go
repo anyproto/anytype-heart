@@ -122,6 +122,12 @@ func subObjectIdToUniqueKey(id string) (uniqueKey domain.UniqueKey, valid bool) 
 	if bson.IsObjectIdHex(id) {
 		return domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id), true
 	}
+	// special case: we don't support bundled relations/types in uniqueKeys (GO-2394). So in case we got it, we need to replace the prefix
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		id = addr.ObjectTypeKeyToIdPrefix + strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)
+	} else if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		id = addr.RelationKeyToIdPrefix + strings.TrimPrefix(id, addr.BundledRelationURLPrefix)
+	}
 	uniqueKey, err := domain.UnmarshalUniqueKey(id)
 	if err != nil {
 		return nil, false
