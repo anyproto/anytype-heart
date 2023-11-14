@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -434,6 +435,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	readerMutex := sync.Mutex{}
 	defer cancel()
 	go func() {
 		counter := int64(0)
@@ -444,12 +446,14 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 			case <-progress.Canceled():
 				cancel()
 			case <-time.After(time.Second):
+				readerMutex.Lock()
 				if countReader != nil && size != 0 {
-					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*(*countReader).Count())/size)
+					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*countReader.Count())/size)
 				} else if counter < archiveDownloadingPercents {
 					counter++
 					progress.SetDone(counter)
 				}
+				readerMutex.Unlock()
 			}
 		}
 	}()
@@ -460,7 +464,9 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 		return "", err
 	}
 	defer reader.Close()
+	readerMutex.Lock()
 	countReader = datacounter.NewReaderCounter(reader)
+	readerMutex.Unlock()
 
 	path = filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	var out *os.File
@@ -489,9 +495,8 @@ func (b *builtinObjects) setupProgress() (process.Progress, error) {
 }
 
 func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err error) {
-	var resp *http.Response
 	// nolint: gosec
-	resp, err = http.Get(url)
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, 0, err
 	}
