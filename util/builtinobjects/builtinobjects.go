@@ -200,7 +200,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	if _, err = os.Stat(url); err == nil {
 		path = url
 	} else {
-		if path, progress, err = b.downloadZipToFile(url); err != nil {
+		if progress, err = b.setupProgress(); err != nil {
+			return err
+		}
+		if path, err = b.downloadZipToFile(url, progress); err != nil {
 			return err
 		}
 		defer func() {
@@ -417,22 +420,18 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 	return "", err
 }
 
-func (b *builtinObjects) downloadZipToFile(url string) (path string, progress process.Progress, err error) {
+func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress) (path string, err error) {
 	if err = uri.ValidateURI(url); err != nil {
-		return "", nil, fmt.Errorf("provided URL is not valid: %w", err)
+		return "", fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if !gallery.IsInWhitelist(url) {
-		return "", nil, fmt.Errorf("URL '%s' is not in whitelist", url)
+		return "", fmt.Errorf("URL '%s' is not in whitelist", url)
 	}
 
 	var (
 		countReader *datacounter.ReaderCounter
-		archiveSize int64
+		size        int64
 	)
-
-	if progress, err = b.setupProgress(); err != nil {
-		return "", nil, err
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -445,8 +444,8 @@ func (b *builtinObjects) downloadZipToFile(url string) (path string, progress pr
 			case <-progress.Canceled():
 				cancel()
 			case <-time.After(time.Second):
-				if countReader != nil {
-					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*(*countReader).Count())/archiveSize)
+				if countReader != nil && size != 0 {
+					progress.SetDone(archiveDownloadingPercents + int64(archiveCopyingPercents*(*countReader).Count())/size)
 				} else if counter < archiveDownloadingPercents {
 					counter++
 					progress.SetDone(counter)
@@ -456,9 +455,9 @@ func (b *builtinObjects) downloadZipToFile(url string) (path string, progress pr
 	}()
 
 	var reader io.ReadCloser
-	reader, archiveSize, err = getArchiveReaderAndSize(url)
+	reader, size, err = getArchiveReaderAndSize(url)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 	defer reader.Close()
 	countReader = datacounter.NewReaderCounter(reader)
@@ -467,16 +466,16 @@ func (b *builtinObjects) downloadZipToFile(url string) (path string, progress pr
 	var out *os.File
 	out, err = os.Create(path)
 	if err != nil {
-		return "", nil, oserror.TransformError(err)
+		return "", oserror.TransformError(err)
 	}
 	defer out.Close()
 
 	if _, err = io.Copy(out, countReader); err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	progress.SetDone(archiveDownloadingPercents + archiveCopyingPercents)
-	return path, progress, nil
+	return path, nil
 }
 
 func (b *builtinObjects) setupProgress() (process.Progress, error) {
