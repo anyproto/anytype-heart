@@ -58,15 +58,15 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 		return nil, converter.NewFromError(fmt.Errorf("wrong parameters"), req.Mode)
 	}
 	allErrors := converter.NewError(req.Mode)
-	allSnapshots, widgetSnapshot := p.getSnapshots(progress, params.GetPath(), req.IsMigration, allErrors)
+	allSnapshots, widgetSnapshot := p.getSnapshots(progress, params, req.IsMigration, allErrors)
 	oldToNewID := p.updateLinksToObjects(allSnapshots, allErrors, len(params.GetPath()))
 	p.updateDetails(allSnapshots)
 	if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
 		return nil, allErrors
 	}
 	var rootCollectionID string
-	if !params.GetNoCollection() {
-		rootCollection, colErr := p.provideRootCollection(allSnapshots, widgetSnapshot, oldToNewID)
+	if p.shouldCreateCollection(params) {
+		rootCollection, colErr := p.provideRootCollection(allSnapshots, widgetSnapshot, oldToNewID, params)
 		if colErr != nil {
 			allErrors.Add(colErr)
 			if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {
@@ -96,21 +96,19 @@ func (p *Pb) getParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 	return nil, errors.New("PB: getParams wrong parameters format")
 }
 
-func (p *Pb) getSnapshots(
-	progress process.Progress,
-	allPaths []string,
+func (p *Pb) getSnapshots(progress process.Progress,
+	params *pb.RpcObjectImportRequestPbParams,
 	isMigration bool,
-	allErrors *converter.ConvertError,
-) ([]*converter.Snapshot, *converter.Snapshot) {
+	allErrors *converter.ConvertError) ([]*converter.Snapshot, *converter.Snapshot) {
 	allSnapshots := make([]*converter.Snapshot, 0)
 	var widgetSnapshot *converter.Snapshot
-	for _, path := range allPaths {
+	for _, path := range params.GetPath() {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(converter.ErrCancel)
 			return nil, nil
 		}
-		snapshots, widget := p.handleImportPath(len(path), path, allErrors, isMigration)
-		if allErrors.ShouldAbortImport(len(allPaths), pb.RpcObjectImportRequest_Pb) {
+		snapshots, widget := p.handleImportPath(len(path), path, allErrors, isMigration, params.GetImportType())
+		if allErrors.ShouldAbortImport(len(params.GetPath()), pb.RpcObjectImportRequest_Pb) {
 			return nil, nil
 		}
 		allSnapshots = append(allSnapshots, snapshots...)
@@ -119,11 +117,11 @@ func (p *Pb) getSnapshots(
 	return allSnapshots, widgetSnapshot
 }
 
-func (p *Pb) handleImportPath(
-	pathCount int,
+func (p *Pb) handleImportPath(pathCount int,
 	path string,
 	allErrors *converter.ConvertError,
-	isMigration bool) ([]*converter.Snapshot, *converter.Snapshot) {
+	isMigration bool,
+	importType pb.RpcObjectImportRequestPbParamsType) ([]*converter.Snapshot, *converter.Snapshot) {
 	importSource := source.GetSource(path)
 	defer importSource.Close()
 	err := p.extractFiles(path, importSource)
@@ -152,7 +150,7 @@ func (p *Pb) handleImportPath(
 				return nil, nil
 			}
 		}
-		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr)
+		needToImportWidgets = p.needToImportWidgets(profile.Address, pr.AccountAddr, importType)
 		profileID = profile.ProfileId
 	}
 	return p.getSnapshotsFromProvidedFiles(pathCount, importSource, allErrors, path, profileID, needToImportWidgets, isMigration)
@@ -200,8 +198,8 @@ func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
 	return profile, nil
 }
 
-func (p *Pb) needToImportWidgets(address, accountID string) bool {
-	return address == accountID
+func (p *Pb) needToImportWidgets(address, accountID string, importType pb.RpcObjectImportRequestPbParamsType) bool {
+	return address == accountID && !(importType == pb.RpcObjectImportRequestPbParams_EXPERIENCE)
 }
 
 func (p *Pb) getSnapshotsFromProvidedFiles(
@@ -459,12 +457,27 @@ func (p *Pb) updateObjectsIDsInCollection(st *state.State, newToOldIDs map[strin
 	}
 }
 
-func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *converter.Snapshot, oldToNewID map[string]string) (*converter.Snapshot, error) {
+func (p *Pb) shouldCreateCollection(params *pb.RpcObjectImportRequestPbParams) bool {
+	return !params.GetNoCollection() || params.GetImportType() == pb.RpcObjectImportRequestPbParams_EXPERIENCE
+}
+
+func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot,
+	widget *converter.Snapshot,
+	oldToNewID map[string]string,
+	params *pb.RpcObjectImportRequestPbParams) (*converter.Snapshot, error) {
+	if params.GetImportType() == pb.RpcObjectImportRequestPbParams_EXPERIENCE {
+		return p.provideCollectionForGallery(widget, oldToNewID, params.GetCollectionTitle())
+	}
+	return p.provideCollectionForSpace(allObjects, widget, oldToNewID)
+}
+
+func (p *Pb) provideCollectionForSpace(allObjects []*converter.Snapshot, widget *converter.Snapshot, oldToNewID map[string]string) (*converter.Snapshot, error) {
 	var (
 		rootObjects         []string
 		widgetFlags         widgets.ImportWidgetFlags
 		objectsNotInWidgets []*converter.Snapshot
 	)
+
 	if widget != nil {
 		widgetFlags, rootObjects = p.getObjectsFromWidgets(widget, oldToNewID)
 		objectsNotInWidgets = lo.Filter(allObjects, func(item *converter.Snapshot, index int) bool {
@@ -484,8 +497,19 @@ func (p *Pb) provideRootCollection(allObjects []*converter.Snapshot, widget *con
 		})
 	}
 	rootCollection := converter.NewRootCollection(p.service)
-	rootCol, colErr := rootCollection.MakeRootCollection(rootCollectionName, rootObjects)
-	return rootCol, colErr
+	return rootCollection.MakeRootCollection(rootCollectionName, rootObjects)
+}
+
+func (p *Pb) provideCollectionForGallery(widget *converter.Snapshot, oldToNewID map[string]string, title string) (*converter.Snapshot, error) {
+	var (
+		rootCollection *converter.RootCollection
+		widgetObjects  []string
+	)
+	if widget != nil {
+		_, widgetObjects = p.getObjectsFromWidgets(widget, oldToNewID)
+		rootCollection = converter.NewRootCollection(p.service)
+	}
+	return rootCollection.MakeRootCollection(title, widgetObjects)
 }
 
 func (p *Pb) objectShouldBeSkipped(item *converter.Snapshot) bool {

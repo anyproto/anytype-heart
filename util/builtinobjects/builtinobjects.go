@@ -127,7 +127,7 @@ type BuiltinObjects interface {
 	app.Component
 
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-	CreateObjectsForExperience(ctx context.Context, spaceID, url string) (err error)
+	CreateObjectsForExperience(ctx context.Context, spaceID, url, title string) (err error)
 	InjectMigrationDashboard(spaceID string) error
 }
 
@@ -183,7 +183,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url string) (err error) {
+func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string) (err error) {
 	var path string
 	if _, err = os.Stat(url); err == nil {
 		path = url
@@ -198,7 +198,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}()
 	}
 
-	if err = b.importArchive(ctx, spaceID, path, false); err != nil {
+	if err = b.importArchive(ctx, spaceID, path, false, title); err != nil {
 		return err
 	}
 
@@ -223,7 +223,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(context.Background(), spaceID, path, true); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path, true, ""); err != nil {
 		return err
 	}
 
@@ -252,7 +252,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, noProgress bool) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, noProgress bool, title string) (err error) {
 	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
@@ -262,8 +262,10 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path
 		IsMigration:           false,
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
 			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:         []string{path},
-				NoCollection: true,
+				Path:            []string{path},
+				NoCollection:    true,
+				ImportType:      pb.RpcObjectImportRequestPbParams_EXPERIENCE,
+				CollectionTitle: title,
 			}},
 	}, model.ObjectOrigin_usecase)
 

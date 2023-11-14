@@ -7340,7 +7340,6 @@ func (m *EventBlockDataviewViewUpdateFields) GetDefaultObjectTypeId() string {
 
 type EventBlockDataviewViewUpdateFilter struct {
 	// Types that are valid to be assigned to Operation:
-	//
 	//	*EventBlockDataviewViewUpdateFilterOperationOfAdd
 	//	*EventBlockDataviewViewUpdateFilterOperationOfRemove
 	//	*EventBlockDataviewViewUpdateFilterOperationOfUpdate
@@ -7662,7 +7661,6 @@ func (m *EventBlockDataviewViewUpdateFilterMove) GetIds() []string {
 
 type EventBlockDataviewViewUpdateRelation struct {
 	// Types that are valid to be assigned to Operation:
-	//
 	//	*EventBlockDataviewViewUpdateRelationOperationOfAdd
 	//	*EventBlockDataviewViewUpdateRelationOperationOfRemove
 	//	*EventBlockDataviewViewUpdateRelationOperationOfUpdate
@@ -7990,7 +7988,6 @@ func (m *EventBlockDataviewViewUpdateRelationMove) GetIds() []string {
 
 type EventBlockDataviewViewUpdateSort struct {
 	// Types that are valid to be assigned to Operation:
-	//
 	//	*EventBlockDataviewViewUpdateSortOperationOfAdd
 	//	*EventBlockDataviewViewUpdateSortOperationOfRemove
 	//	*EventBlockDataviewViewUpdateSortOperationOfUpdate

@@ -244,7 +244,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 		p := Pb{}
 
 		// when
-		collection, err := p.provideRootCollection(nil, nil, nil)
+		collection, err := p.provideRootCollection(nil, nil, nil, "", 0)
 
 		// then
 		assert.Nil(t, err)
@@ -276,7 +276,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.provideRootCollection(allSnapshot, nil, nil)
+		collection, err := p.provideRootCollection(allSnapshot, nil, nil, "", 0)
 
 		// then
 		assert.Nil(t, err)
@@ -355,7 +355,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.provideRootCollection(allSnapshot, widgetSnapshot, nil)
+		collection, err := p.provideRootCollection(allSnapshot, widgetSnapshot, nil, "", 0)
 
 		// then
 		assert.Nil(t, err)
@@ -434,7 +434,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.provideRootCollection(allSnapshot, widgetSnapshot, nil)
+		collection, err := p.provideRootCollection(allSnapshot, widgetSnapshot, nil, "", 0)
 
 		// then
 		assert.Nil(t, err)
@@ -528,7 +528,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.provideRootCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"})
+		collection, err := p.provideRootCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, "", 0)
 
 		// then
 		assert.Nil(t, err)
