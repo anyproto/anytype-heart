@@ -7,8 +7,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
+// NameServiceResolveName does a name lookup: somename.any -> info
 func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNameServiceResolveNameRequest) *pb.RpcNameServiceResolveNameResponse {
-	// 1 - get name service object that connects to the remote "namingNode"
+	// Get name service object that connects to the remote "namingNode"
 	// in order for that to work, we need to have a "namingNode" node in the nodes section of the config
 	// see https://github.com/anyproto/any-ns-node/blob/main/etc/ for example
 	ns, err := mw.getNameService()
@@ -16,7 +17,7 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 	if err != nil {
 		return &pb.RpcNameServiceResolveNameResponse{
 			Error: &pb.RpcNameServiceResolveNameResponseError{
-				// TODO: map error code
+				// we don't map error codes here
 				Code:        -1,
 				Description: err.Error(),
 			},
@@ -30,13 +31,14 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 	if err != nil {
 		return &pb.RpcNameServiceResolveNameResponse{
 			Error: &pb.RpcNameServiceResolveNameResponseError{
-				// TODO: map error code
+				// we don't map error codes here
 				Code:        -1,
 				Description: err.Error(),
 			},
 		}
 	}
 
+	// Return the response
 	var out pb.RpcNameServiceResolveNameResponse
 	out.Available = nar.Available
 	out.OwnerAnyAddress = nar.OwnerAnyAddress
@@ -47,16 +49,16 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 	return &out
 }
 
+// NameServiceReverseResolveName does a reverse name lookup: address -> somename.any
 func (mw *Middleware) NameServiceReverseResolveName(ctx context.Context, req *pb.RpcNameServiceReverseResolveNameRequest) *pb.RpcNameServiceReverseResolveNameResponse {
-	// 1 - get name service object that connects to the remote "namingNode"
+	// Get name service object that connects to the remote "namingNode"
 	// in order for that to work, we need to have a "namingNode" node in the nodes section of the config
-	// see https://github.com/anyproto/any-ns-node/blob/main/etc/ for example
 	ns, err := mw.getNameService()
 
 	if err != nil {
 		return &pb.RpcNameServiceReverseResolveNameResponse{
 			Error: &pb.RpcNameServiceReverseResolveNameResponseError{
-				// TODO: map error code
+				// we don't map error codes here
 				Code:        -1,
 				Description: err.Error(),
 			},
@@ -70,13 +72,14 @@ func (mw *Middleware) NameServiceReverseResolveName(ctx context.Context, req *pb
 	if err != nil {
 		return &pb.RpcNameServiceReverseResolveNameResponse{
 			Error: &pb.RpcNameServiceReverseResolveNameResponseError{
-				// TODO: map error code
+				// we don't map error codes here
 				Code:        -1,
 				Description: err.Error(),
 			},
 		}
 	}
 
+	// Return the response
 	var out pb.RpcNameServiceReverseResolveNameResponse
 	out.Found = nar.Found
 	out.Name = nar.Name
