@@ -148,15 +148,15 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		}
 		tasks := make([]process.Task, 0, len(docs))
 		for docId := range docs {
-			var did = docId
-			f := func() {
+			did := docId
+			task := func() {
 				if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
-					log.With("threadId", did).Warnf("can't export doc: %v", werr)
+					log.With("objectID", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
 				}
 			}
-			tasks = append(tasks, f)
+			tasks = append(tasks, task)
 		}
 		err := queue.Wait(tasks...)
 		if err != nil {
