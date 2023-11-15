@@ -18,7 +18,7 @@ packages:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/block/import/converter:
+  github.com/anyproto/anytype-heart/core/block/import/common:
     interfaces:
       Converter:
   github.com/anyproto/anytype-heart/pkg/lib/database:
@@ -37,10 +37,10 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
-  github.com/anyproto/anytype-heart/core/block/import/objectid:
+  github.com/anyproto/anytype-heart/core/block/import/common/objectid:
     interfaces:
       IdGetterProvider:
-  github.com/anyproto/anytype-heart/core/block/import/creator:
+  github.com/anyproto/anytype-heart/core/block/import/common/objectcreator:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/core/subscription:

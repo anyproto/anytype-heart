@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/mock_objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -123,8 +124,9 @@ func TestBroadcast(t *testing.T) {
 
 func TestSetObjectTypeToViews(t *testing.T) {
 	var (
-		viewID1 = "view1"
-		viewID2 = "view2"
+		viewID1    = "view1"
+		viewID2    = "view2"
+		setOfValue = "randomId"
 
 		generateState = func(objectType domain.TypeKey, setOf string) *state.State {
 			parent := state.NewDoc("root", nil).(*state.State)
@@ -151,56 +153,38 @@ func TestSetObjectTypeToViews(t *testing.T) {
 
 	t.Run("object is not a set", func(t *testing.T) {
 		// given
-		st := generateState(bundle.TypeKeyPage, bundle.TypeKeySet.URL())
+		s := Service{}
+		st := generateState(bundle.TypeKeyPage, setOfValue)
 
 		// when
-		setDefaultObjectTypeToViews(st)
+		s.setDefaultObjectTypeToViews(st)
 
 		// then
 		assertViews(st, "")
 	})
 
-	t.Run("object is a set by relation", func(t *testing.T) {
-		// given
-		st := generateState(bundle.TypeKeySet, bundle.RelationKeyDescription.URL())
+	for _, testCase := range []struct {
+		name, key string
+		sbType    coresb.SmartBlockType
+		expected  string
+	}{
+		{name: "relation", key: bundle.RelationKeyDescription.String(), sbType: coresb.SmartBlockTypeRelation, expected: ""},
+		{name: "object type", key: bundle.TypeKeyBook.String(), sbType: coresb.SmartBlockTypeObjectType, expected: setOfValue},
+		{name: "internal type", key: bundle.TypeKeyFile.String(), sbType: coresb.SmartBlockTypeObjectType, expected: ""},
+		{name: "not creatable type", key: bundle.TypeKeyObjectType.String(), sbType: coresb.SmartBlockTypeObjectType, expected: ""},
+	} {
+		t.Run("object is a set by "+testCase.name, func(t *testing.T) {
+			// given
+			store := mock_objectstore.NewMockObjectStore(t)
+			store.EXPECT().GetUniqueKeyById(setOfValue).Return(domain.NewUniqueKey(testCase.sbType, testCase.key))
+			s := Service{objectStore: store}
+			st := generateState(bundle.TypeKeySet, setOfValue)
 
-		// when
-		setDefaultObjectTypeToViews(st)
+			// when
+			s.setDefaultObjectTypeToViews(st)
 
-		// then
-		assertViews(st, "")
-	})
-
-	t.Run("object is a set by object type", func(t *testing.T) {
-		// given
-		st := generateState(bundle.TypeKeySet, bundle.TypeKeyBook.URL())
-
-		// when
-		setDefaultObjectTypeToViews(st)
-
-		// then
-		assertViews(st, bundle.TypeKeyBook.URL())
-	})
-
-	t.Run("object is a set by internal type", func(t *testing.T) {
-		// given
-		st := generateState(bundle.TypeKeySet, bundle.TypeKeyFile.URL())
-
-		// when
-		setDefaultObjectTypeToViews(st)
-
-		// then
-		assertViews(st, "")
-	})
-
-	t.Run("object is a set by not creatable type", func(t *testing.T) {
-		// given
-		st := generateState(bundle.TypeKeySet, bundle.TypeKeyObjectType.URL())
-
-		// when
-		setDefaultObjectTypeToViews(st)
-
-		// then
-		assertViews(st, "")
-	})
+			// then
+			assertViews(st, testCase.expected)
+		})
+	}
 }

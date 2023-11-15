@@ -82,12 +82,13 @@ type service struct {
 
 	newAccount bool
 
-	createdSpaces map[string]struct{}
-	statuses      map[string]spaceinfo.SpaceInfo
-	loading       map[string]*loadingSpace
-	offloading    map[string]*offloadingSpace
-	offloaded     map[string]struct{}
-	loaded        map[string]Space
+	createdSpaces      map[string]struct{}
+	localStatuses      map[string]spaceinfo.SpaceLocalInfo
+	persistentStatuses map[string]spaceinfo.SpacePersistentInfo
+	loading            map[string]*loadingSpace
+	offloading         map[string]*offloadingSpace
+	offloaded          map[string]struct{}
+	loaded             map[string]Space
 
 	mu sync.Mutex
 
@@ -110,7 +111,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.offloader = app.MustComponent[fileOffloader](a)
 	s.builtinTemplateService = app.MustComponent[builtinTemplateService](a)
 	s.createdSpaces = map[string]struct{}{}
-	s.statuses = map[string]spaceinfo.SpaceInfo{}
+	s.localStatuses = map[string]spaceinfo.SpaceLocalInfo{}
+	s.persistentStatuses = map[string]spaceinfo.SpacePersistentInfo{}
 	s.loading = map[string]*loadingSpace{}
 	s.offloading = map[string]*offloadingSpace{}
 	s.loaded = map[string]Space{}
@@ -176,9 +178,9 @@ func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceID == id
 }
 
-func (s *service) OnViewUpdated(info spaceinfo.SpaceInfo) {
+func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 	go func() {
-		s.updateSpaceViewInfo(info)
+		s.updatePersistentStatusLocked(info)
 		err := s.startLoad(s.ctx, info.SpaceID)
 		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
 			log.Warn("OnViewCreated.startLoad error", zap.Error(err))

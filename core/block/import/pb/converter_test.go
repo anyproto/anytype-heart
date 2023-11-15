@@ -187,13 +187,12 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 		Mode:                  1,
 	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.NotNil(t, ce, 1)
-	assert.Contains(t, ce.Error().Error(), "snapshot is not valid: test")
+	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 2)
 
 	assert.Equal(t, res.Snapshots[0].FileName, "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
-	assert.Equal(t, res.Snapshots[1].FileName, rootCollectionName)
+	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
 }
 
 func newZipWriter(path string) (*zipWriter, error) {

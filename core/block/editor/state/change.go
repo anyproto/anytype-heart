@@ -92,16 +92,17 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	}
 
 	s := &State{
-		changeId:          sOpts.changeId,
-		rootId:            rootId,
-		blocks:            blocks,
-		details:           detailsToSave,
-		relationLinks:     snapshot.Data.RelationLinks,
-		objectTypeKeys:    migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
-		fileKeys:          fileKeys,
-		store:             snapshot.Data.Collections,
-		storeKeyRemoved:   removedCollectionKeysMap,
-		uniqueKeyInternal: snapshot.Data.Key,
+		changeId:                 sOpts.changeId,
+		rootId:                   rootId,
+		blocks:                   blocks,
+		details:                  detailsToSave,
+		relationLinks:            snapshot.Data.RelationLinks,
+		objectTypeKeys:           migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
+		fileKeys:                 fileKeys,
+		store:                    snapshot.Data.Collections,
+		storeKeyRemoved:          removedCollectionKeysMap,
+		uniqueKeyInternal:        snapshot.Data.Key,
+		originalCreatedTimestamp: snapshot.Data.OriginalCreatedTimestamp,
 	}
 
 	if sOpts.internalKey != "" {
@@ -237,6 +238,10 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeStoreSliceUpdate(ch.GetStoreSliceUpdate()); err != nil {
 			return
 		}
+	case ch.GetOriginalCreatedTimestampSet() != nil:
+		if err = s.changeOriginalCreatedTimestampSet(ch.GetOriginalCreatedTimestampSet()); err != nil {
+			return
+		}
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -288,13 +293,21 @@ func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
 	s.RemoveRelation(rem.RelationKey...)
 	return nil
 }
+func migrateObjectTypeIDToKey(old string) (new string, migrated bool) {
+	if strings.HasPrefix(old, addr.ObjectTypeKeyToIdPrefix) {
+		return strings.TrimPrefix(old, addr.ObjectTypeKeyToIdPrefix), true
+	} else if strings.HasPrefix(old, addr.BundledObjectTypeURLPrefix) {
+		return strings.TrimPrefix(old, addr.BundledObjectTypeURLPrefix), true
+	}
+	return old, false
+}
 
 func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 	if add.Url != "" {
 		// migration of the old type changes
 		// before we were storing the change ID instead of Key
 		// but it's pretty easy to convert it
-		add.Key = strings.TrimPrefix(add.Url, addr.ObjectTypeKeyToIdPrefix)
+		add.Key, _ = migrateObjectTypeIDToKey(add.Url)
 	}
 
 	for _, ot := range s.ObjectTypeKeys() {
@@ -310,7 +323,7 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
 	var found bool
 	if remove.Url != "" {
-		remove.Key = strings.TrimPrefix(remove.Url, addr.ObjectTypeKeyToIdPrefix)
+		remove.Key, _ = migrateObjectTypeIDToKey(remove.Url)
 	}
 	s.objectTypeKeys = slice.Filter(s.ObjectTypeKeys(), func(key domain.TypeKey) bool {
 		if key == domain.TypeKey(remove.Key) {
@@ -404,6 +417,15 @@ func (s *State) changeStoreSliceUpdate(upd *pb.ChangeStoreSliceUpdate) error {
 	old := pbtypes.GetStringList(store, upd.Key)
 	cur := slice.ApplyChanges(old, changes, slice.StringIdentity[string])
 	s.setInStore([]string{upd.Key}, pbtypes.StringList(cur))
+	return nil
+}
+
+func (s *State) changeOriginalCreatedTimestampSet(set *pb.ChangeOriginalCreatedTimestampSet) error {
+	if set.Ts == 0 {
+		return nil
+	}
+
+	s.SetOriginalCreatedTimestamp(set.Ts)
 	return nil
 }
 
@@ -555,6 +577,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
+	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
 
 }
 
@@ -719,6 +742,23 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 	return
 }
 
+func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
+	if s.originalCreatedTimestamp == 0 {
+		return nil
+	}
+	if s.parent != nil && s.parent.originalCreatedTimestamp == s.originalCreatedTimestamp {
+		return nil
+	}
+
+	ch = append(ch, &pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfOriginalCreatedTimestampSet{
+			OriginalCreatedTimestampSet: &pb.ChangeOriginalCreatedTimestampSet{Ts: s.originalCreatedTimestamp},
+		},
+	})
+
+	return
+}
+
 type dstrings struct{ a, b []string }
 
 func (d *dstrings) Equal(i, j int) bool { return d.a[i] == d.b[j] }
@@ -800,11 +840,9 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []domain.TypeKey {
 	objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeIDs))
 	for _, id := range objectTypeIDs {
 		var key domain.TypeKey
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			key = domain.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))
-		} else {
-			key = domain.TypeKey(id)
-		}
+		k, _ := migrateObjectTypeIDToKey(id)
+		key = domain.TypeKey(k)
+
 		objectTypeKeys = append(objectTypeKeys, key)
 	}
 	return objectTypeKeys
