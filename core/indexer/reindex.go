@@ -26,7 +26,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 10
+	ForceObjectsReindexCounter int32 = 11
 
 	// ForceFilesReindexCounter reindex ipfs-file-based objects
 	ForceFilesReindexCounter int32 = 11 //

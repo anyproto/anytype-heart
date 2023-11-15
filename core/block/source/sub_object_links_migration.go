@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -38,6 +39,24 @@ func NewSubObjectsAndProfileLinksMigration(space Space, identityObjectID string,
 
 func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
 	for _, rel := range s.GetRelationLinks() {
+		if rel.Key == bundle.RelationKeySourceObject.String() {
+			// migrate broken sourceObject after v0.29.11
+			uniqueKey, err := domain.UnmarshalUniqueKey(pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyUniqueKey.String()))
+			if err == nil {
+				switch uniqueKey.SmartblockType() {
+				case smartblock.SmartBlockTypeRelation:
+					if bundle.HasRelation(uniqueKey.InternalKey()) {
+						s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.RelationKey(uniqueKey.InternalKey()).BundledURL()))
+					}
+				case smartblock.SmartBlockTypeWorkspace:
+					if bundle.HasObjectTypeByKey(domain.TypeKey(uniqueKey.InternalKey())) {
+						s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.TypeKey(uniqueKey.InternalKey()).BundledURL()))
+					}
+
+				}
+				continue
+			}
+		}
 		if m.canRelationContainObjectValues(rel.Format) {
 			rawValue := s.Details().GetFields()[rel.Key]
 
