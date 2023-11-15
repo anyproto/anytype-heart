@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -12,6 +13,7 @@ import (
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -26,7 +28,7 @@ type subObjectsAndProfileLinksMigration struct {
 	objectStore      objectstore.ObjectStore
 }
 
-func newSubObjectsAndProfileLinksMigration(space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
@@ -62,7 +64,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 	}
 }
 
-func (m *subObjectsAndProfileLinksMigration) migrate(s *state.State) {
+func (m *subObjectsAndProfileLinksMigration) Migrate(s *state.State) {
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeProfilePage, "")
 	if err != nil {
 		log.Errorf("migration: failed to create unique key for profile: %s", err)
@@ -121,6 +123,12 @@ func subObjectIdToUniqueKey(id string) (uniqueKey domain.UniqueKey, valid bool) 
 	// so we need to handled it this ugly way
 	if bson.IsObjectIdHex(id) {
 		return domain.MustUniqueKey(smartblock.SmartBlockTypeRelationOption, id), true
+	}
+	// special case: we don't support bundled relations/types in uniqueKeys (GO-2394). So in case we got it, we need to replace the prefix
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		id = addr.ObjectTypeKeyToIdPrefix + strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)
+	} else if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		id = addr.RelationKeyToIdPrefix + strings.TrimPrefix(id, addr.BundledRelationURLPrefix)
 	}
 	uniqueKey, err := domain.UnmarshalUniqueKey(id)
 	if err != nil {
