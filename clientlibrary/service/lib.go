@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -27,14 +26,7 @@ func init() {
 
 	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
-	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
-	registerClientCommandsHandler(
-		&ClientCommandsHandlerProxy{
-			client: mw,
-			interceptors: []func(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error){
-				metrics.SharedLongMethodsInterceptor,
-			},
-		})
+	metrics.Service.InitAmplWithKey(metrics.DefaultAmplitudeKey)
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {
 			http.ListenAndServe(debug, nil)

@@ -222,7 +222,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		}
 
 		afterHashesTime := time.Now()
-		metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
+		metrics.Service.Send(metrics.OpenBlockEvent{
 			ObjectId:       id.ObjectID,
 			GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
 			DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),

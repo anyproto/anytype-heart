@@ -81,7 +81,7 @@ func main() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
-	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
+	metrics.Service.InitAmplWithKey(metrics.DefaultAmplitudeKey)
 
 	var signalChan = make(chan os.Signal, 2)
 	signal.Notify(signalChan, signals...)

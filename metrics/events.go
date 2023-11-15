@@ -1,44 +1,9 @@
 package metrics
 
-import (
-	"fmt"
-)
-
 const (
 	CtxKeyEntrypoint = "entrypoint"
 	CtxKeyRPC        = "rpc"
 )
-
-type RecordAcceptEventAggregated struct {
-	IsNAT      bool
-	RecordType string
-	Count      int
-}
-
-func (r RecordAcceptEventAggregated) ToEvent() *Event {
-	return &Event{
-		EventType: "thread_record_accepted",
-		EventData: map[string]interface{}{
-			"record_type": r.RecordType,
-			"is_nat":      r.IsNAT,
-			"count":       r.Count,
-		},
-	}
-}
-
-func (r RecordAcceptEventAggregated) Key() string {
-	return fmt.Sprintf("RecordAcceptEventAggregated%s%v", r.RecordType, r.IsNAT)
-}
-
-func (r RecordAcceptEventAggregated) Aggregate(other EventAggregatable) EventAggregatable {
-	ev, ok := other.(RecordAcceptEventAggregated)
-	// going here we already check the keys, so let's not do this another time
-	if !ok {
-		return r
-	}
-	r.Count += ev.Count
-	return r
-}
 
 type ReindexType int
 
@@ -87,14 +52,18 @@ type IndexEvent struct {
 	SetRelationsCount       int
 }
 
-func (c IndexEvent) ToEvent() *Event {
+func (c IndexEvent) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c IndexEvent) get() *anyEvent {
 	if c.IndexLinksTimeMs+c.IndexDetailsTimeMs+c.IndexSetRelationsTimeMs < IndexEventThresholdMs {
 		return nil
 	}
 
-	return &Event{
-		EventType: "index",
-		EventData: map[string]interface{}{
+	return &anyEvent{
+		eventType: "index",
+		eventData: map[string]interface{}{
 			"object_id":     c.ObjectId,
 			"links_ms":      c.IndexLinksTimeMs,
 			"details_ms":    c.IndexDetailsTimeMs,
@@ -117,13 +86,17 @@ type ReindexEvent struct {
 	IndexesRemoved bool
 }
 
-func (c ReindexEvent) ToEvent() *Event {
+func (c ReindexEvent) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c ReindexEvent) get() *anyEvent {
 	if c.SpentMs < ReindexEventThresholdsMs {
 		return nil
 	}
-	return &Event{
-		EventType: "store_reindex",
-		EventData: map[string]interface{}{
+	return &anyEvent{
+		eventType: "store_reindex",
+		eventData: map[string]interface{}{
 			"spent_ms":   c.SpentMs,
 			"total":      c.Total,
 			"failed":     c.Total - c.Succeed,
@@ -141,14 +114,18 @@ type BlockSplit struct {
 	ObjectId    string
 }
 
-func (c BlockSplit) ToEvent() *Event {
+func (c BlockSplit) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c BlockSplit) get() *anyEvent {
 	if c.ApplyMs+c.AlgorithmMs < BlockSplitEventThresholdsMs {
 		return nil
 	}
 
-	return &Event{
-		EventType: "block_merge",
-		EventData: map[string]interface{}{
+	return &anyEvent{
+		eventType: "block_merge",
+		eventData: map[string]interface{}{
 			"object_id":    c.ObjectId,
 			"algorithm_ms": c.AlgorithmMs,
 			"apply_ms":     c.ApplyMs,
@@ -165,10 +142,14 @@ type TreeBuild struct {
 	Request  string
 }
 
-func (c TreeBuild) ToEvent() *Event {
-	return &Event{
-		EventType: "tree_build",
-		EventData: map[string]interface{}{
+func (c TreeBuild) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c TreeBuild) get() *anyEvent {
+	return &anyEvent{
+		eventType: "tree_build",
+		eventData: map[string]interface{}{
 			"object_id": c.ObjectId,
 			"logs":      c.Logs,
 			"request":   c.Request,
@@ -189,14 +170,18 @@ type StateApply struct {
 	ObjectId       string
 }
 
-func (c StateApply) ToEvent() *Event {
+func (c StateApply) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c StateApply) get() *anyEvent {
 	total := c.StateApplyMs + c.PushChangeMs + c.BeforeApplyMs + c.ApplyHookMs + c.ReportChangeMs
 	if total <= StateApplyThresholdMs {
 		return nil
 	}
-	return &Event{
-		EventType: "state_apply",
-		EventData: map[string]interface{}{
+	return &anyEvent{
+		eventType: "state_apply",
+		eventData: map[string]interface{}{
 			"before_ms": c.BeforeApplyMs,
 			"apply_ms":  c.StateApplyMs,
 			"push_ms":   c.PushChangeMs,
@@ -215,20 +200,24 @@ type AppStart struct {
 	Extra     map[string]interface{}
 }
 
-func (c AppStart) ToEvent() *Event {
-	ev := &Event{
-		EventType: "app_start",
-		EventData: map[string]interface{}{
+func (c AppStart) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c AppStart) get() *anyEvent {
+	ev := &anyEvent{
+		eventType: "app_start",
+		eventData: map[string]interface{}{
 			"request": c.Request,
 			"time_ms": c.TotalMs,
 		},
 	}
 
 	for comp, ms := range c.PerCompMs {
-		ev.EventData["spent_"+comp] = ms
+		ev.eventData["spent_"+comp] = ms
 	}
 	for key, val := range c.Extra {
-		ev.EventData[key] = val
+		ev.eventData[key] = val
 	}
 	return ev
 }
@@ -239,10 +228,14 @@ type BlockMerge struct {
 	ObjectId    string
 }
 
-func (c BlockMerge) ToEvent() *Event {
-	return &Event{
-		EventType: "block_split",
-		EventData: map[string]interface{}{
+func (c BlockMerge) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c BlockMerge) get() *anyEvent {
+	return &anyEvent{
+		eventType: "block_split",
+		eventData: map[string]interface{}{
 			"object_id":    c.ObjectId,
 			"algorithm_ms": c.AlgorithmMs,
 			"apply_ms":     c.ApplyMs,
@@ -260,10 +253,14 @@ type CreateObjectEvent struct {
 	ObjectId                string
 }
 
-func (c CreateObjectEvent) ToEvent() *Event {
-	return &Event{
-		EventType: "create_object",
-		EventData: map[string]interface{}{
+func (c CreateObjectEvent) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c CreateObjectEvent) get() *anyEvent {
+	return &anyEvent{
+		eventType: "create_object",
+		eventData: map[string]interface{}{
 			"set_details_ms":              c.SetDetailsMs,
 			"get_workspace_block_wait_ms": c.GetWorkspaceBlockWaitMs,
 			"workspace_create_ms":         c.WorkspaceCreateMs,
@@ -285,10 +282,14 @@ type OpenBlockEvent struct {
 	ObjectId       string
 }
 
-func (c OpenBlockEvent) ToEvent() *Event {
-	return &Event{
-		EventType: "open_block",
-		EventData: map[string]interface{}{
+func (c OpenBlockEvent) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (c OpenBlockEvent) get() *anyEvent {
+	return &anyEvent{
+		eventType: "open_block",
+		eventData: map[string]interface{}{
 			"object_id":          c.ObjectId,
 			"get_block_ms":       c.GetBlockMs,
 			"dataview_notify_ms": c.DataviewMs,
@@ -301,15 +302,20 @@ func (c OpenBlockEvent) ToEvent() *Event {
 	}
 }
 
+
 type ImportStartedEvent struct {
 	ID         string
 	ImportType string
 }
 
+func (c ImportStartedEvent) getBackend() MetricsBackend {
+	return ampl
+}
+
 func (i ImportStartedEvent) ToEvent() *Event {
 	return &Event{
-		EventType: "import_started",
-		EventData: map[string]interface{}{
+		eventType: "import_started",
+		eventData: map[string]interface{}{
 			"import_id":   i.ID,
 			"import_type": i.ImportType,
 		},
@@ -323,8 +329,8 @@ type ImportFinishedEvent struct {
 
 func (i ImportFinishedEvent) ToEvent() *Event {
 	return &Event{
-		EventType: "import_finished",
-		EventData: map[string]interface{}{
+		eventType: "import_finished",
+		eventData: map[string]interface{}{
 			"import_id":   i.ID,
 			"import_type": i.ImportType,
 		},

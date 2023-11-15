@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const eventEndpoint = "https://amplitude.anytype.io/2/httpapi"
-
 // Client manages the communication to the Amplitude API
 type Client struct {
 	eventEndpoint string
@@ -42,7 +40,7 @@ type EventRequest struct {
 }
 
 // New client with API key
-func New(key string) *Client {
+func New(eventEndpoint string, key string) *Client {
 	return &Client{
 		eventEndpoint: eventEndpoint,
 		key:           key,
@@ -66,7 +64,7 @@ func (c *Client) Events(events []Event) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	r, err := http.NewRequestWithContext(ctx, "POST", eventEndpoint, bytes.NewReader(evJSON))
+	r, err := http.NewRequestWithContext(ctx, "POST", c.eventEndpoint, bytes.NewReader(evJSON))
 	if err != nil {
 		return err
 	}

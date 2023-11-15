@@ -482,7 +482,7 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 	}
 
 	if metrics.Enabled {
-		metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+		metrics.Service.Send(metrics.ReindexEvent{
 			ReindexType: reindexType,
 			Total:       totalIds,
 			Succeed:     succeedIds,
