@@ -17,11 +17,11 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestPb_provideRootCollection(t *testing.T) {
-	t.Run("no snapshots - root collection without objects", func(t *testing.T) {
+func TestGalleryImport_ProvideCollection(t *testing.T) {
+	t.Run("no widget in experience - root collection without objects", func(t *testing.T) {
 		// given
-		collectionProvider := SpaceImport{}
-		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+		collectionProvider := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{}
 
 		// when
 		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
@@ -33,57 +33,35 @@ func TestPb_provideRootCollection(t *testing.T) {
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 0)
 	})
-	t.Run("NoCollection parameter is true - no collection was created", func(t *testing.T) {
+	t.Run("CollectionTitle parameter is empty - collection with default name", func(t *testing.T) {
 		// given
-		collectionProvider := SpaceImport{}
-		params := &pb.RpcObjectImportRequestPbParams{NoCollection: true}
+		collectionProvider := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{}
 
 		// when
 		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
 
 		// then
 		assert.Nil(t, err)
-		assert.Nil(t, collection)
+		assert.NotNil(t, collection)
+		assert.Equal(t, rootCollectionName, collection.FileName)
 	})
-	t.Run("no widget object - add all objects (except template and subobjects) in Protobuf Import collection", func(t *testing.T) {
+	t.Run("CollectionTitle parameter is equeal \"test\" - collection with name test", func(t *testing.T) {
 		// given
-		p := SpaceImport{}
-		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
-
-		allSnapshot := []*converter.Snapshot{
-			{
-				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
-			},
-			{
-				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
-			},
-			{
-				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
-			},
-			{
-				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
-			},
-		}
+		collectionProvider := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{CollectionTitle: "test"}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, nil, nil, params, nil)
+		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
 
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
-		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 2)
-		assert.Equal(t, objectsInCollection[0], "id1")
-		assert.Equal(t, objectsInCollection[1], "id4")
+		assert.Equal(t, "test", collection.FileName)
 	})
-	t.Run("widget with sets - add only sets in Protobuf Import collection", func(t *testing.T) {
+	t.Run("widget with sets - root collection without objects as we ignore default sets", func(t *testing.T) {
 		// given
-		p := SpaceImport{}
+		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		allSnapshot := []*converter.Snapshot{
@@ -158,105 +136,14 @@ func TestPb_provideRootCollection(t *testing.T) {
 		assert.NotNil(t, collection)
 		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 1)
-		assert.Equal(t, objectsInCollection[0], "id5")
+		assert.Len(t, objectsInCollection, 0)
 	})
-	t.Run("widget with collection - add collection in Protobuf Import collection", func(t *testing.T) {
+	t.Run("default sets and objects in widget - root collection with objects from widget", func(t *testing.T) {
 		// given
-		p := SpaceImport{}
+		p := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		allSnapshot := []*converter.Snapshot{
-			// skip objects
-			{
-				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
-			},
-			{
-				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
-			},
-			// page
-			{
-				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
-						ObjectTypes: []string{bundle.TypeKeyPage.URL()},
-					},
-				},
-			},
-			// collection
-			{
-				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
-						ObjectTypes: []string{bundle.TypeKeyCollection.URL()},
-					},
-				},
-			},
-			// set
-			{
-				Id:     "id5",
-				SbType: smartblock2.SmartBlockTypePage,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details:     &types.Struct{Fields: map[string]*types.Value{}},
-						ObjectTypes: []string{bundle.TypeKeySet.URL()},
-					},
-				},
-			},
-		}
-
-		// collection widget
-		widgetSnapshot := &converter.Snapshot{
-			Id:     "widgetID",
-			SbType: smartblock2.SmartBlockTypeWidget,
-			Snapshot: &pb.ChangeSnapshot{
-				Data: &model.SmartBlockSnapshotBase{
-					Blocks: []*model.Block{
-						{
-							Id: "widgetID",
-							Content: &model.BlockContentOfLink{
-								Link: &model.BlockContentLink{
-									TargetBlockId: widget.DefaultWidgetCollection,
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-
-		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil)
-
-		// then
-		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
-		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 1)
-		assert.Equal(t, objectsInCollection[0], "id4")
-	})
-	t.Run("there are favorites objects, dashboard and objects in widget - favorites, objects in widget, dashboard in Protobuf Import", func(t *testing.T) {
-		// given
-		p := SpaceImport{}
-		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
-
-		allSnapshot := []*converter.Snapshot{
-			// skip object
-			{
-				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
-			},
-			{
-				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
-			},
 			// favorite page
 			{
 				Id:     "id1",
@@ -292,19 +179,6 @@ func TestPb_provideRootCollection(t *testing.T) {
 					},
 				},
 			},
-			// dashboard
-			{
-				Id:     "id6",
-				SbType: smartblock2.SmartBlockTypeWorkspace,
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details: &types.Struct{Fields: map[string]*types.Value{
-							bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("spaceDashboardId"),
-						}},
-						ObjectTypes: []string{bundle.TypeKeyDashboard.URL()},
-					},
-				},
-			},
 		}
 
 		// object with widget
@@ -328,16 +202,101 @@ func TestPb_provideRootCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, nil)
+		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil)
 
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, objectsInCollection, 3)
-		assert.Equal(t, objectsInCollection[0], "newObjectInWidget")
-		assert.Equal(t, objectsInCollection[1], "id1")
-		assert.Equal(t, objectsInCollection[2], "spaceDashboardId")
+		assert.Len(t, objectsInCollection, 1)
+		assert.Equal(t, objectsInCollection[0], "oldObjectInWidget")
+	})
+	t.Run("widget is empty - root collection without objects", func(t *testing.T) {
+		// given
+		p := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		// object with widget
+		widgetSnapshot := &converter.Snapshot{
+			Id:     "widgetID",
+			SbType: smartblock2.SmartBlockTypeWidget,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Blocks: []*model.Block{},
+				},
+			},
+		}
+
+		// when
+		collection, err := p.ProvideCollection(nil, widgetSnapshot, nil, params, nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, collection)
+		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
+		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, objectsInCollection, 0)
+	})
+	t.Run("workspace is empty - root collection without icon", func(t *testing.T) {
+		// given
+		p := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		// when
+		collection, err := p.ProvideCollection(nil, nil, nil, params, nil)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, collection)
+		assert.Empty(t, pbtypes.GetString(collection.Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+	})
+	t.Run("workspace without icon - root collection without icon", func(t *testing.T) {
+		// given
+		p := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		workspace := &converter.Snapshot{
+			Id:     "workspace",
+			SbType: smartblock2.SmartBlockTypeWorkspace,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details:     &types.Struct{Fields: map[string]*types.Value{}},
+					ObjectTypes: []string{bundle.TypeKeyDashboard.URL()},
+				},
+			},
+		}
+		// when
+		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, collection)
+		assert.Empty(t, pbtypes.GetString(collection.Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
+	})
+	t.Run("workspace with icon - root collection with icon", func(t *testing.T) {
+		// given
+		p := GalleryImport{}
+		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
+
+		workspace := &converter.Snapshot{
+			Id:     "workspace",
+			SbType: smartblock2.SmartBlockTypeWorkspace,
+			Snapshot: &pb.ChangeSnapshot{
+				Data: &model.SmartBlockSnapshotBase{
+					Details: &types.Struct{Fields: map[string]*types.Value{
+						bundle.RelationKeyIconImage.String(): pbtypes.String("icon"),
+					}},
+					ObjectTypes: []string{bundle.TypeKeyDashboard.URL()},
+				},
+			},
+		}
+		// when
+		collection, err := p.ProvideCollection(nil, nil, nil, params, workspace)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, collection)
+		assert.Equal(t, "icon", pbtypes.GetString(collection.Snapshot.Data.Details, bundle.RelationKeyIconImage.String()))
 	})
 }

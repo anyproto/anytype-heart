@@ -198,7 +198,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}()
 	}
 
-	if err = b.importArchive(ctx, spaceID, path, false, title); err != nil {
+	if err = b.importArchive(ctx, spaceID, path, false, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE); err != nil {
 		return err
 	}
 
@@ -223,7 +223,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(context.Background(), spaceID, path, true, ""); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path, true, "", pb.RpcObjectImportRequestPbParams_SPACE); err != nil {
 		return err
 	}
 
@@ -252,7 +252,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, noProgress bool, title string) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, noProgress bool, title string, importType pb.RpcObjectImportRequestPbParamsType) (err error) {
 	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
@@ -264,8 +264,8 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path
 			PbParams: &pb.RpcObjectImportRequestPbParams{
 				Path:            []string{path},
 				NoCollection:    true,
-				ImportType:      pb.RpcObjectImportRequestPbParams_EXPERIENCE,
 				CollectionTitle: title,
+				ImportType:      importType,
 			}},
 	}, model.ObjectOrigin_usecase)
 

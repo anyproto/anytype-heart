@@ -56,7 +56,7 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		return nil, allErrors
 	}
 	rootCollection := converter.NewRootCollection(t.service)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
