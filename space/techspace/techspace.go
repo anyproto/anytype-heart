@@ -36,7 +36,8 @@ type TechSpace interface {
 	TechSpaceId() string
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool) (err error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
-	SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error)
+	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
+	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error)
 	SpaceViewId(id string) (string, error)
 }
@@ -44,7 +45,8 @@ type TechSpace interface {
 type SpaceView interface {
 	sync.Locker
 	SetSpaceData(details *types.Struct) error
-	SetSpaceInfo(info spaceinfo.SpaceInfo) (err error)
+	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
+	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 }
 
 func New() TechSpace {
@@ -98,22 +100,23 @@ func (s *techSpace) TechSpaceId() string {
 	return s.techCore.Id()
 }
 
-func (s *techSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) (err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *techSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error) {
 	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
-		return spaceView.SetSpaceInfo(info)
+		return spaceView.SetSpaceLocalInfo(info)
+	})
+}
+
+func (s *techSpace) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error) {
+	return s.doSpaceView(ctx, info.SpaceID, func(spaceView SpaceView) error {
+		return spaceView.SetSpacePersistentInfo(info)
 	})
 }
 
 func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool) (err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if force {
 		return s.spaceViewCreate(ctx, spaceId)
 	}
-
-	viewId, err := s.getViewId(ctx, spaceId)
+	viewId, err := s.getViewIdLocked(ctx, spaceId)
 	if err != nil {
 		return err
 	}
@@ -125,9 +128,7 @@ func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force b
 }
 
 func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	viewId, err := s.getViewId(ctx, spaceId)
+	viewId, err := s.getViewIdLocked(ctx, spaceId)
 	if err != nil {
 		return
 	}
@@ -136,17 +137,13 @@ func (s *techSpace) SpaceViewExists(ctx context.Context, spaceId string) (exists
 }
 
 func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *types.Struct) (err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.doSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
 	})
 }
 
 func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.getViewId(context.TODO(), spaceId)
+	return s.getViewIdLocked(context.TODO(), spaceId)
 }
 
 func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string) (err error) {
@@ -181,7 +178,7 @@ func (s *techSpace) deriveSpaceViewID(ctx context.Context, spaceID string) (stri
 }
 
 func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error) {
-	viewId, err := s.getViewId(ctx, spaceID)
+	viewId, err := s.getViewIdLocked(ctx, spaceID)
 	if err != nil {
 		return
 	}
@@ -199,7 +196,9 @@ func (s *techSpace) doSpaceView(ctx context.Context, spaceID string, apply func(
 	return apply(spaceView)
 }
 
-func (s *techSpace) getViewId(ctx context.Context, spaceId string) (viewId string, err error) {
+func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId string, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if viewId = s.viewIds[spaceId]; viewId != "" {
 		return
 	}

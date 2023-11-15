@@ -110,6 +110,6 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 }
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
-	details := pbtypes.CopyStruct(state.Details())
+	details := pbtypes.CopyStruct(state.CombinedDetails())
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
 }

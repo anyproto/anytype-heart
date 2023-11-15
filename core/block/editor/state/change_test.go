@@ -764,3 +764,47 @@ func buildStateFromAST(root *Block) *State {
 	ApplyState(st, true)
 	return st.NewState()
 }
+
+func Test_migrateObjectTypeIDToKey(t *testing.T) {
+	type args struct {
+		old string
+	}
+	tests := []struct {
+		name         string
+		args         args
+		wantNew      string
+		wantMigrated bool
+	}{
+		{
+			name: "type url to key",
+			args: args{
+				old: "ot-task",
+			},
+			wantNew:      "task",
+			wantMigrated: true,
+		},
+		{
+			name: "type bundled url to key",
+			args: args{
+				old: "_ottask",
+			},
+			wantNew:      "task",
+			wantMigrated: true,
+		},
+		{
+			name: "no migration",
+			args: args{
+				old: "task",
+			},
+			wantNew:      "task",
+			wantMigrated: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotNew, gotMigrated := migrateObjectTypeIDToKey(tt.args.old)
+			assert.Equalf(t, tt.wantNew, gotNew, "migrateObjectTypeIDToKey(%v)", tt.args.old)
+			assert.Equalf(t, tt.wantMigrated, gotMigrated, "migrateObjectTypeIDToKey(%v)", tt.args.old)
+		})
+	}
+}
