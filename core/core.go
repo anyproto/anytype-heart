@@ -9,7 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	nsclient "github.com/anyproto/any-ns-node/client"
+	"github.com/anyproto/any-ns-node/client"
 
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
@@ -65,9 +65,9 @@ func (mw *Middleware) getBlockService() (bs *block.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
-func (mw *Middleware) getNameService() (ns nsclient.AnyNsClientService, err error) {
+func (mw *Middleware) getNameService() (ns client.AnyNsClientService, err error) {
 	if a := mw.applicationService.GetApp(); a != nil {
-		return a.MustComponent(nsclient.CName).(nsclient.AnyNsClientService), nil
+		return a.MustComponent(client.CName).(client.AnyNsClientService), nil
 	}
 	return nil, ErrNotLoggedIn
 }
