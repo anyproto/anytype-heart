@@ -41,7 +41,6 @@ jobs:
           python3 tools/generate.py --platform golang
           cd ..
           gem install --user-install license_finder
-          export PATH="$PATH:$HOME/.local/share/gem/ruby/3.0.0/bin"
           license_finder inherited_decisions add open/decisions.yml
           license_finder --enabled-package-managers gomodules
       - name: Generate mocks
