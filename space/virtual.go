@@ -26,20 +26,28 @@ type VirtualSpaceService interface {
 	RegisterVirtualSpace(spaceID string) (err error)
 }
 
-type VirtualSpaceServiceImpl struct {
+type virtualSpaceService struct {
 	objectStore objectstore.ObjectStore
 }
 
-func (v *VirtualSpaceServiceImpl) Init(a *app.App) (err error) {
+func (v *virtualSpaceService) Init(a *app.App) (err error) {
 	v.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
-func (v *VirtualSpaceServiceImpl) Name() (name string) {
+func (v *virtualSpaceService) Name() (name string) {
 	return name
 }
 
-func (v *VirtualSpaceServiceImpl) Run(ctx context.Context) (err error) {
+func (v *virtualSpaceService) Run(ctx context.Context) (err error) {
+	return v.cleanupVirtualSpaces(err)
+}
+
+func (v *virtualSpaceService) Close(ctx context.Context) (err error) {
+	return v.cleanupVirtualSpaces(err)
+}
+
+func (v *virtualSpaceService) cleanupVirtualSpaces(err error) error {
 	spaces, err := v.objectStore.ListVirtualSpaces()
 	if err != nil {
 		return err
@@ -53,26 +61,12 @@ func (v *VirtualSpaceServiceImpl) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (v *VirtualSpaceServiceImpl) Close(ctx context.Context) (err error) {
-	spaces, err := v.objectStore.ListVirtualSpaces()
-	if err != nil {
-		return err
-	}
-	for _, id := range spaces {
-		err := v.objectStore.DeleteVirtualSpace(id)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (v *VirtualSpaceServiceImpl) RegisterVirtualSpace(spaceID string) (err error) {
+func (v *virtualSpaceService) RegisterVirtualSpace(spaceID string) (err error) {
 	return v.objectStore.SaveVirtualSpace(spaceID)
 }
 
 func NewVirtualSpaceService() VirtualSpaceService {
-	return &VirtualSpaceServiceImpl{}
+	return &virtualSpaceService{}
 }
 
 type VirtualSpace struct {
@@ -80,7 +74,7 @@ type VirtualSpace struct {
 }
 
 func NewVirtualSpace(s *service, spaceID string) *VirtualSpace {
-	coreSpace := newCommonSpace(spaceID)
+	coreSpace := newVirtualCommonSpace(spaceID)
 	vs := &VirtualSpace{
 		space: &space{
 			service:                s,
@@ -92,7 +86,7 @@ func NewVirtualSpace(s *service, spaceID string) *VirtualSpace {
 	return vs
 }
 
-func newCommonSpace(spaceID string) commonspace.Space {
+func newVirtualCommonSpace(spaceID string) commonspace.Space {
 	return &virtualCommonSpace{spaceID: spaceID}
 }
 

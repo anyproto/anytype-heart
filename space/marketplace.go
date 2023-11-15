@@ -23,7 +23,7 @@ func (s *service) initMarketplaceSpace() error {
 	marketplace.Cache = objectcache.New(s.accountService, s.objectFactory, s.personalSpaceID, marketplace)
 	s.preLoad(marketplace)
 
-	err := s.virtualSpace.RegisterVirtualSpace(addr.AnytypeMarketplaceWorkspace)
+	err := s.virtualSpaceService.RegisterVirtualSpace(addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		return fmt.Errorf("register virtual space: %w", err)
 	}
