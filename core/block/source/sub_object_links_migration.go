@@ -47,21 +47,21 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			if s.UniqueKeyInternal() == "" {
 				continue
 			}
-			uniqueKey, err := domain.NewUniqueKey(m.sbType, s.UniqueKeyInternal())
-			if err == nil {
-				switch uniqueKey.SmartblockType() {
-				case smartblock.SmartBlockTypeRelation:
-					if bundle.HasRelation(uniqueKey.InternalKey()) {
-						s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.RelationKey(uniqueKey.InternalKey()).BundledURL()))
-					}
-				case smartblock.SmartBlockTypeObjectType:
-					if bundle.HasObjectTypeByKey(domain.TypeKey(uniqueKey.InternalKey())) {
-						s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.TypeKey(uniqueKey.InternalKey()).BundledURL()))
-					}
 
+			internalKey := s.UniqueKeyInternal()
+			switch m.sbType {
+			case smartblock.SmartBlockTypeRelation:
+				if bundle.HasRelation(internalKey) {
+					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.RelationKey(internalKey).BundledURL()))
 				}
-				continue
+			case smartblock.SmartBlockTypeObjectType:
+				if bundle.HasObjectTypeByKey(domain.TypeKey(internalKey)) {
+					s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.TypeKey(internalKey).BundledURL()))
+				}
+
 			}
+
+			continue
 		}
 		if m.canRelationContainObjectValues(rel.Format) {
 			rawValue := s.Details().GetFields()[rel.Key]
