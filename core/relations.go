@@ -110,6 +110,15 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 
+	// nolint:errcheck
+	_ = mw.doBlockService(func(bs *block.Service) error {
+		updErr := bs.UpdateLastUsedDate(req.SpaceId, bundle.TypeKeySet)
+		if updErr != nil {
+			log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeySet, updErr)
+		}
+		return nil
+	})
+
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
 }
 
