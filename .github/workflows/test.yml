@@ -37,7 +37,6 @@ jobs:
       - name: debug
         run: |
           go version
-          echo $PWD
           which go
           env
       - name: Check licenses
