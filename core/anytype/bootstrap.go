@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/any-ns-node/client"
+	nsclient "github.com/anyproto/any-ns-node/client"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -249,7 +249,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(profiler.New()).
 		Register(identity.New()).
 		Register(templateservice.New()).
-		Register(client.New())
+		Register(nsclient.New())
 }
 
 func MiddlewareVersion() string {
