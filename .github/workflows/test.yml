@@ -37,7 +37,7 @@ jobs:
       - name: debug
         run: |
           go version
-          which go
+          whitch go
           env
       - name: Check licenses
         run: |
