@@ -92,6 +92,7 @@ func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObject
 		return nil
 	})
 	_ = mw.doBlockService(func(bs *block.Service) error {
+		//nolint:errcheck
 		sb, _ := bs.GetObject(cctx, req.ContextId)
 		if sb != nil {
 			if updErr := bs.UpdateLastUsedDate(sb.SpaceID(), bundle.TypeKeyCollection); updErr != nil {

@@ -149,7 +149,7 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 		col = map[string]chan []string{}
 		s.collections[collectionID] = col
 	}
-	err := block.DoStateAsync(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
+	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
 		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)

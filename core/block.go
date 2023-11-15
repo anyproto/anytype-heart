@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -1022,8 +1023,18 @@ func (mw *Middleware) BlockBookmarkCreateAndFetch(cctx context.Context, req *pb.
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		req := bookmark.CreateAndFetchRequest{Origin: model.ObjectOrigin_clipboard, RpcBlockBookmarkCreateAndFetchRequest: *req}
-		id, err = bs.BookmarkCreateAndFetch(ctx, req)
-		return
+		if id, err = bs.BookmarkCreateAndFetch(ctx, req); err != nil {
+			return err
+		}
+		// nolint:errcheck
+		sb, _ := bs.GetObject(cctx, req.ContextId)
+		if sb != nil {
+			updErr := bs.UpdateLastUsedDate(sb.SpaceID(), bundle.TypeKeyBookmark)
+			if updErr != nil {
+				log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeyBookmark, updErr)
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return response(pb.RpcBlockBookmarkCreateAndFetchResponseError_UNKNOWN_ERROR, "", err)

@@ -100,6 +100,7 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	}
 	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
 
+	//nolint:errcheck
 	key, _ := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
 	if updErr := mw.doBlockService(func(bs *block.Service) error {
 		return bs.UpdateLastUsedDate(req.SpaceId, key)
