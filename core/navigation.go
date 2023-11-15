@@ -7,8 +7,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -97,6 +99,13 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 		TemplateId:    req.TemplateId,
 	}
 	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
+
+	key, _ := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+	if updErr := mw.doBlockService(func(bs *block.Service) error {
+		return bs.UpdateLastUsedDate(req.SpaceId, key)
+	}); updErr != nil {
+		log.Errorf("failed to update lastUsedDate of type object '%s': %w", key, updErr)
+	}
 
 	if err != nil {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)

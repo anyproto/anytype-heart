@@ -719,6 +719,13 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		if err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
 			return err
 		}
+		sb, _ := bs.GetObject(cctx, req.ContextId)
+		if sb != nil {
+			updErr := bs.UpdateLastUsedDate(sb.SpaceID(), bundle.TypeKeySet)
+			if updErr != nil {
+				log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeySet, updErr)
+			}
+		}
 		return nil
 	})
 	return response(err)

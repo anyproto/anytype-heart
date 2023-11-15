@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -99,6 +100,11 @@ func (s *Service) CreateLinkToTheNewObject(
 	if err != nil {
 		return
 	}
+
+	if err = s.UpdateLastUsedDate(req.SpaceId, objectTypeKey); err != nil {
+		log.Errorf("failed to update lastUsedDate of type object '%s': %w", objectTypeKey, err)
+	}
+
 	if req.ContextId == "" {
 		return
 	}
@@ -149,4 +155,24 @@ func (s *Service) ObjectToSet(id string, source []string) error {
 	}
 
 	return nil
+}
+
+func (s *Service) UpdateLastUsedDate(spaceId string, key domain.TypeKey) error {
+	uk, err := domain.UnmarshalUniqueKey(key.URL())
+	if err != nil {
+		return fmt.Errorf("failed to unmarshall type key '%s': %v", key.String(), err)
+	}
+	details, err := s.objectStore.GetObjectByUniqueKey(spaceId, uk)
+	if err != nil {
+		return fmt.Errorf("failed to get details of type object '%s': %v", key.String(), err)
+	}
+	id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
+	if id == "" {
+		return fmt.Errorf("failed to get id from details of type object '%s': %v", key.String(), err)
+	}
+
+	return DoStateAsync(s, id, func(st *state.State, sb smartblock.SmartBlock) error {
+		st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(time.Now().Unix()))
+		return nil
+	})
 }

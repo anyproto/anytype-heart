@@ -3,8 +3,10 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 func (mw *Middleware) ObjectCollectionAdd(cctx context.Context, req *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
@@ -86,6 +88,15 @@ func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObject
 	err = mw.doCollectionService(func(cs *collection.Service) (err error) {
 		if err = cs.ObjectToCollection(req.ContextId); err != nil {
 			return err
+		}
+		return nil
+	})
+	_ = mw.doBlockService(func(bs *block.Service) error {
+		sb, _ := bs.GetObject(cctx, req.ContextId)
+		if sb != nil {
+			if updErr := bs.UpdateLastUsedDate(sb.SpaceID(), bundle.TypeKeyCollection); updErr != nil {
+				log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeyCollection, updErr)
+			}
 		}
 		return nil
 	})
