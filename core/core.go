@@ -7,9 +7,9 @@ import (
 	"os"
 	"runtime/debug"
 
-	nsclient "github.com/anyproto/any-ns-node/client"
 	"github.com/anyproto/any-sync/app"
 
+	nsclient "github.com/anyproto/any-ns-node/client"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
