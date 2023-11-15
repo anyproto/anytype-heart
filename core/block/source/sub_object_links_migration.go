@@ -25,14 +25,16 @@ import (
 type subObjectsAndProfileLinksMigration struct {
 	profileID        string
 	identityObjectID string
+	sbType           smartblock.SmartBlockType
 	space            Space
 	objectStore      objectstore.ObjectStore
 }
 
-func NewSubObjectsAndProfileLinksMigration(space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore objectstore.ObjectStore) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
+		sbType:           sbType,
 		objectStore:      objectStore,
 	}
 }
@@ -41,14 +43,18 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 	for _, rel := range s.GetRelationLinks() {
 		if rel.Key == bundle.RelationKeySourceObject.String() {
 			// migrate broken sourceObject after v0.29.11
-			uniqueKey, err := domain.UnmarshalUniqueKey(pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyUniqueKey.String()))
+			// todo: remove this
+			if s.UniqueKeyInternal() == "" {
+				continue
+			}
+			uniqueKey, err := domain.NewUniqueKey(m.sbType, s.UniqueKeyInternal())
 			if err == nil {
 				switch uniqueKey.SmartblockType() {
 				case smartblock.SmartBlockTypeRelation:
 					if bundle.HasRelation(uniqueKey.InternalKey()) {
 						s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.RelationKey(uniqueKey.InternalKey()).BundledURL()))
 					}
-				case smartblock.SmartBlockTypeWorkspace:
+				case smartblock.SmartBlockTypeObjectType:
 					if bundle.HasObjectTypeByKey(domain.TypeKey(uniqueKey.InternalKey())) {
 						s.SetDetail(bundle.RelationKeySourceObject.String(), pbtypes.String(domain.TypeKey(uniqueKey.InternalKey()).BundledURL()))
 					}
