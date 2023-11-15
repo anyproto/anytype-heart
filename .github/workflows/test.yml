@@ -34,6 +34,11 @@ jobs:
           repository: anyproto/open
           ref: refs/heads/main
           path: ./open
+      - name: debug
+        run: |
+          go version
+          whitch go
+          env
       - name: Check licenses
         run: |
           cd open
