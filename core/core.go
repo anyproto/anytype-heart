@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	nsclient "github.com/anyproto/any-ns-node/client"
+
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -17,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+
 	utildebug "github.com/anyproto/anytype-heart/util/debug"
 )
 

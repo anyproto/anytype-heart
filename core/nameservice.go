@@ -4,6 +4,7 @@ import (
 	"context"
 
 	aa "github.com/anyproto/any-ns-node/pb/anyns_api"
+
 	"github.com/anyproto/anytype-heart/pb"
 )
 

@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 
 	nsclient "github.com/anyproto/any-ns-node/client"
+
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
