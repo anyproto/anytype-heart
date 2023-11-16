@@ -318,8 +318,10 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 		log.With("objectID", s.RootId()).Warnf("set object types: more than one object type, setting layout to the first one")
 	}
 
-	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) && !ignoreRestrictions {
-		return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
+	if !ignoreRestrictions {
+		if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
+			return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
+		}
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
@@ -349,8 +351,10 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 }
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
-	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) && !ignoreRestriction {
-		return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
+	if !ignoreRestriction {
+		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
+			return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
+		}
 	}
 
 	fromLayout, _ := s.Layout()
