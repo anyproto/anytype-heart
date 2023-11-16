@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -324,7 +324,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 
-	if err = bs.updateLastUsedDate(objectTypeKeys); err != nil {
+	if err = objecttype.UpdateLastUsedDate(bs.Space(), bs.objectStore, objectTypeKeys); err != nil {
 		return err
 	}
 
@@ -357,31 +357,6 @@ func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayou
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
 	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
-	}
-	return nil
-}
-
-func (bs *basic) updateLastUsedDate(keys []domain.TypeKey) error {
-	for _, key := range keys {
-		uk, err := domain.UnmarshalUniqueKey(key.URL())
-		if err != nil {
-			return fmt.Errorf("failed to unmarshall type key '%s': %w", key.String(), err)
-		}
-		details, err := bs.objectStore.GetObjectByUniqueKey(bs.SpaceID(), uk)
-		if err != nil {
-			return fmt.Errorf("failed to get details of type object '%s': %w", key.String(), err)
-		}
-		id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
-		if id == "" {
-			return fmt.Errorf("failed to get id from details of type object '%s': %w", key.String(), err)
-		}
-		if err = bs.Space().Do(id, func(sb smartblock.SmartBlock) error {
-			st := sb.NewState()
-			st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(time.Now().Unix()))
-			return sb.Apply(st)
-		}); err != nil {
-			return fmt.Errorf("failed to set lastUsedDate to type object '%s': %w", key.String(), err)
-		}
 	}
 	return nil
 }
