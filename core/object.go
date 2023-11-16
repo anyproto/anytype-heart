@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -712,52 +711,10 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		}
 		return resp
 	}
-	var (
-		err error
-	)
-	err = mw.doBlockService(func(bs *block.Service) error {
-		if err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
-			return err
-		}
-		//nolint:errcheck
-		sb, _ := bs.GetObject(cctx, req.ContextId)
-		if sb != nil {
-			updErr := bs.UpdateLastUsedDate(sb.SpaceID(), bundle.TypeKeySet)
-			if updErr != nil {
-				log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeySet, updErr)
-			}
-		}
-		return nil
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ObjectToSet(req.ContextId, req.Source)
 	})
 	return response(err)
-}
-
-func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
-		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
-	creator := getService[objectcreator.Service](mw)
-	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       req.Details,
-	}
-	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
-	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
-	}
-	err = mw.doBlockService(func(bs *block.Service) error {
-		updErr := bs.UpdateLastUsedDate(req.SpaceId, bundle.TypeKeyBookmark)
-		if updErr != nil {
-			log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeyBookmark, updErr)
-		}
-		return nil
-	})
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
@@ -791,18 +748,8 @@ func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectTo
 	var id string
 	err := mw.doBlockService(func(bs *block.Service) error {
 		var err error
-		if id, err = bs.ObjectToBookmark(cctx, req.ContextId, req.Url); err != nil {
-			return err
-		}
-		//nolint:errcheck
-		sb, _ := bs.GetObject(cctx, req.ContextId)
-		if sb != nil {
-			updErr := bs.UpdateLastUsedDate(sb.SpaceID(), bundle.TypeKeyBookmark)
-			if updErr != nil {
-				log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeyBookmark, updErr)
-			}
-		}
-		return nil
+		id, err = bs.ObjectToBookmark(cctx, req.ContextId, req.Url)
+		return err
 	})
 
 	if err != nil {

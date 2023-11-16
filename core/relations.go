@@ -75,53 +75,6 @@ func (mw *Middleware) ObjectCreateObjectType(cctx context.Context, req *pb.RpcOb
 	return response(pb.RpcObjectCreateObjectTypeResponseError_NULL, id, newDetails, nil)
 }
 
-func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateSetResponse {
-		m := &pb.RpcObjectCreateSetResponse{Error: &pb.RpcObjectCreateSetResponseError{Code: code}, ObjectId: id}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-			m.Details = newDetails
-		}
-		return m
-	}
-
-	if req.Details == nil {
-		req.Details = &types.Struct{}
-	}
-	if req.Details.Fields == nil {
-		req.Details.Fields = map[string]*types.Value{}
-	}
-	req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-
-	creator := getService[objectcreator.Service](mw)
-	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeySet,
-		InternalFlags: req.InternalFlags,
-		Details:       req.Details,
-	}
-	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
-	if err != nil {
-		if errors.Is(err, block.ErrUnknownObjectType) {
-			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", nil, err)
-		}
-		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
-	}
-
-	// nolint:errcheck
-	_ = mw.doBlockService(func(bs *block.Service) error {
-		updErr := bs.UpdateLastUsedDate(req.SpaceId, bundle.TypeKeySet)
-		if updErr != nil {
-			log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeySet, updErr)
-		}
-		return nil
-	})
-
-	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails, nil)
-}
-
 func (mw *Middleware) ObjectCreateRelation(cctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
 	response := func(id string, object *types.Struct, err error) *pb.RpcObjectCreateRelationResponse {
 		if err != nil {

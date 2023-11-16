@@ -1,7 +1,6 @@
 package collection
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -203,28 +202,10 @@ func (s *Service) CreateCollection(details *types.Struct, flags []*model.Interna
 }
 
 func (s *Service) ObjectToCollection(id string) error {
-	if err := block.Do(s.picker, id, func(b smartblock.SmartBlock) error {
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
-		}
-		st := b.NewState()
-		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_collection)
-		if err != nil {
-			return fmt.Errorf("set layout: %w", err)
-		}
-		st.SetObjectTypeKey(bundle.TypeKeyCollection)
+	return block.DoState(s.picker, id, func(st *state.State, b basic.CommonOperations) error {
 		s.setDefaultObjectTypeToViews(st)
-		flags := internalflag.NewFromState(st)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorDeleteEmpty)
-		flags.AddToState(st)
-		return b.Apply(st)
-	}); err != nil {
-		return err
-	}
-
-	return nil
+		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeyCollection}, true)
+	})
 }
 
 func (s *Service) setDefaultObjectTypeToViews(st *state.State) {

@@ -193,6 +193,10 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 		}
 	}
 
+	if err = s.updateLastUsedDate(spc, objectTypeKeys); err != nil {
+		return "", nil, err
+	}
+
 	id = sb.Id()
 	ev.SmartblockCreateMs = time.Since(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
@@ -271,4 +275,29 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spac
 	}
 	req.ObjectTypeKey = objectTypeKey
 	return s.CreateObject(ctx, spaceID, req)
+}
+
+func (s *service) updateLastUsedDate(space space.Space, keys []domain.TypeKey) error {
+	for _, key := range keys {
+		uk, err := domain.UnmarshalUniqueKey(key.URL())
+		if err != nil {
+			return fmt.Errorf("failed to unmarshall type key '%s': %w", key.String(), err)
+		}
+		details, err := s.objectStore.GetObjectByUniqueKey(space.Id(), uk)
+		if err != nil {
+			return fmt.Errorf("failed to get details of type object '%s': %w", key.String(), err)
+		}
+		id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
+		if id == "" {
+			return fmt.Errorf("failed to get id from details of type object '%s': %w", key.String(), err)
+		}
+		if err = space.Do(id, func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(time.Now().Unix()))
+			return sb.Apply(st)
+		}); err != nil {
+			return fmt.Errorf("failed to set lastUsedDate to type object '%s': %w", key.String(), err)
+		}
+	}
+	return nil
 }

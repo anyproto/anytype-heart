@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -14,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -100,11 +98,6 @@ func (s *Service) CreateLinkToTheNewObject(
 	if err != nil {
 		return
 	}
-
-	if err = s.UpdateLastUsedDate(req.SpaceId, objectTypeKey); err != nil {
-		log.Errorf("failed to update lastUsedDate of type object '%s': %w", objectTypeKey, err)
-	}
-
 	if req.ContextId == "" {
 		return
 	}
@@ -132,47 +125,8 @@ func (s *Service) CreateLinkToTheNewObject(
 }
 
 func (s *Service) ObjectToSet(id string, source []string) error {
-	if err := Do(s, id, func(b smartblock.SmartBlock) error {
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
-		}
-		st := b.NewState()
+	return DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_set)
-		if err != nil {
-			return fmt.Errorf("set layout: %w", err)
-		}
-		st.SetObjectTypeKey(bundle.TypeKeySet)
-		flags := internalflag.NewFromState(st)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorDeleteEmpty)
-		flags.AddToState(st)
-
-		return b.Apply(st)
-	}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *Service) UpdateLastUsedDate(spaceId string, key domain.TypeKey) error {
-	uk, err := domain.UnmarshalUniqueKey(key.URL())
-	if err != nil {
-		return fmt.Errorf("failed to unmarshall type key '%s': %w", key.String(), err)
-	}
-	details, err := s.objectStore.GetObjectByUniqueKey(spaceId, uk)
-	if err != nil {
-		return fmt.Errorf("failed to get details of type object '%s': %w", key.String(), err)
-	}
-	id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
-	if id == "" {
-		return fmt.Errorf("failed to get id from details of type object '%s': %w", key.String(), err)
-	}
-
-	return DoState(s, id, func(st *state.State, sb smartblock.SmartBlock) error {
-		st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(time.Now().Unix()))
-		return nil
+		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeySet}, true)
 	})
 }

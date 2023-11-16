@@ -629,27 +629,17 @@ func (s *Service) AddExtraRelations(ctx session.Context, objectId string, relati
 }
 
 func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTypeUniqueKeys []string) (err error) {
-	objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeUniqueKeys))
-	for _, rawUniqueKey := range objectTypeUniqueKeys {
-		objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
-		if err != nil {
-			return fmt.Errorf("get type key from raw unique key: %w", err)
-		}
-		objectTypeKeys = append(objectTypeKeys, objectTypeKey)
-	}
-	err = Do(s, objectId, func(b basic.CommonOperations) error {
-		return b.SetObjectTypes(ctx, objectTypeKeys)
-	})
-	if err == nil {
-		//nolint:errcheck
-		spaceId, _ := s.resolver.ResolveSpaceID(objectId)
-		for _, key := range objectTypeKeys {
-			if updErr := s.UpdateLastUsedDate(spaceId, key); updErr != nil {
-				log.Errorf("failed to update lastUsedDate of type object '%s': %w", key, updErr)
+	return Do(s, objectId, func(b basic.CommonOperations) error {
+		objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeUniqueKeys))
+		for _, rawUniqueKey := range objectTypeUniqueKeys {
+			objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
+			if err != nil {
+				return fmt.Errorf("get type key from raw unique key: %w", err)
 			}
+			objectTypeKeys = append(objectTypeKeys, objectTypeKey)
 		}
-	}
-	return err
+		return b.SetObjectTypes(ctx, objectTypeKeys, false)
+	})
 }
 
 func (s *Service) RemoveExtraRelations(ctx session.Context, objectTypeId string, relationKeys []string) (err error) {

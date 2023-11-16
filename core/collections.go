@@ -3,10 +3,8 @@ package core
 import (
 	"context"
 
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 func (mw *Middleware) ObjectCollectionAdd(cctx context.Context, req *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
@@ -69,7 +67,7 @@ func (mw *Middleware) ObjectCollectionSort(cctx context.Context, req *pb.RpcObje
 	return response(pb.RpcObjectCollectionSortResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObjectToCollectionRequest) *pb.RpcObjectToCollectionResponse {
+func (mw *Middleware) ObjectToCollection(_ context.Context, req *pb.RpcObjectToCollectionRequest) *pb.RpcObjectToCollectionResponse {
 	response := func(err error) *pb.RpcObjectToCollectionResponse {
 		resp := &pb.RpcObjectToCollectionResponse{
 			Error: &pb.RpcObjectToCollectionResponseError{
@@ -82,24 +80,8 @@ func (mw *Middleware) ObjectToCollection(cctx context.Context, req *pb.RpcObject
 		}
 		return resp
 	}
-	var (
-		err error
-	)
-	err = mw.doCollectionService(func(cs *collection.Service) (err error) {
-		if err = cs.ObjectToCollection(req.ContextId); err != nil {
-			return err
-		}
-		return nil
-	})
-	_ = mw.doBlockService(func(bs *block.Service) error {
-		//nolint:errcheck
-		sb, _ := bs.GetObject(cctx, req.ContextId)
-		if sb != nil {
-			if updErr := bs.UpdateLastUsedDate(sb.SpaceID(), bundle.TypeKeyCollection); updErr != nil {
-				log.Errorf("failed to update lastUsedDate of type object '%s': %w", bundle.TypeKeyCollection, updErr)
-			}
-		}
-		return nil
+	err := mw.doCollectionService(func(cs *collection.Service) error {
+		return cs.ObjectToCollection(req.ContextId)
 	})
 	return response(err)
 }

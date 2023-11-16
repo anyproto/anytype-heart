@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 
@@ -252,7 +253,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail *pb.RpcObjectSetD
 	}
 	if detail.Key == bundle.RelationKeyLayout.String() {
 		// special case when client sets the layout detail directly instead of using SetLayoutInState command
-		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.GetNumberValue()))
+		return bs.SetLayoutInState(st, model.ObjectTypeLayout(detail.Value.GetNumberValue()), false)
 	}
 	return nil
 }
@@ -285,20 +286,16 @@ func (bs *basic) discardOwnSetDetailsEvent(ctx session.Context, showEvent bool) 
 }
 
 func (bs *basic) SetLayout(ctx session.Context, layout model.ObjectTypeLayout) (err error) {
-	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); err != nil {
-		return
-	}
-
 	s := bs.NewStateCtx(ctx)
-	if err = bs.SetLayoutInState(s, layout); err != nil {
+	if err = bs.SetLayoutInState(s, layout, false); err != nil {
 		return
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
-func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey) (err error) {
+func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error) {
 	s := bs.NewStateCtx(ctx)
-	if err = bs.SetObjectTypesInState(s, objectTypeKeys); err != nil {
+	if err = bs.SetObjectTypesInState(s, objectTypeKeys, ignoreRestrictions); err != nil {
 		return
 	}
 
@@ -309,13 +306,10 @@ func (bs *basic) SetObjectTypes(ctx session.Context, objectTypeKeys []domain.Typ
 
 	// send event here to send updated details to client
 	// KeepInternalFlags is set because we allow to choose template further
-	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
-		return
-	}
-	return
+	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
-func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey) (err error) {
+func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error) {
 	if len(objectTypeKeys) == 0 {
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
@@ -324,17 +318,21 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 		log.With("objectID", s.RootId()).Warnf("set object types: more than one object type, setting layout to the first one")
 	}
 
-	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_TypeChange); errors.Is(err, restriction.ErrRestricted) && !ignoreRestrictions {
 		return fmt.Errorf("objectType change is restricted for object '%s': %w", bs.Id(), err)
 	}
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 
+	if err = bs.updateLastUsedDate(objectTypeKeys); err != nil {
+		return err
+	}
+
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
-	return bs.SetLayoutInState(s, toLayout)
+	return bs.SetLayoutInState(s, toLayout, ignoreRestrictions)
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {
@@ -350,21 +348,40 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 	return model.ObjectTypeLayout(rawLayout), nil
 }
 
-func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
-	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {
+func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) && !ignoreRestriction {
 		return fmt.Errorf("layout change is restricted for object '%s': %w", bs.Id(), err)
 	}
 
-	return bs.SetLayoutInStateAndIgnoreRestriction(s, toLayout)
-}
-
-func (bs *basic) SetLayoutInStateAndIgnoreRestriction(s *state.State, toLayout model.ObjectTypeLayout) (err error) {
 	fromLayout, _ := s.Layout()
-
 	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(toLayout)))
-
 	if err = bs.layoutConverter.Convert(bs.Space(), s, fromLayout, toLayout); err != nil {
 		return fmt.Errorf("convert layout: %w", err)
+	}
+	return nil
+}
+
+func (bs *basic) updateLastUsedDate(keys []domain.TypeKey) error {
+	for _, key := range keys {
+		uk, err := domain.UnmarshalUniqueKey(key.URL())
+		if err != nil {
+			return fmt.Errorf("failed to unmarshall type key '%s': %w", key.String(), err)
+		}
+		details, err := bs.objectStore.GetObjectByUniqueKey(bs.SpaceID(), uk)
+		if err != nil {
+			return fmt.Errorf("failed to get details of type object '%s': %w", key.String(), err)
+		}
+		id := pbtypes.GetString(details.Details, bundle.RelationKeyId.String())
+		if id == "" {
+			return fmt.Errorf("failed to get id from details of type object '%s': %w", key.String(), err)
+		}
+		if err = bs.Space().Do(id, func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			st.SetLocalDetail(bundle.RelationKeyLastUsedDate.String(), pbtypes.Int64(time.Now().Unix()))
+			return sb.Apply(st)
+		}); err != nil {
+			return fmt.Errorf("failed to set lastUsedDate to type object '%s': %w", key.String(), err)
+		}
 	}
 	return nil
 }

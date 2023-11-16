@@ -161,7 +161,7 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		layout, found := orig.Layout()
 		if found {
 			if commonOperations, ok := b.(basic.CommonOperations); ok {
-				if err = commonOperations.SetLayoutInStateAndIgnoreRestriction(ts, layout); err != nil {
+				if err = commonOperations.SetLayoutInState(ts, layout, true); err != nil {
 					return fmt.Errorf("convert layout: %w", err)
 				}
 			}
