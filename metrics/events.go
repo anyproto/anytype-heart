@@ -308,12 +308,12 @@ type ImportStartedEvent struct {
 	ImportType string
 }
 
-func (c ImportStartedEvent) getBackend() MetricsBackend {
+func (i ImportStartedEvent) getBackend() MetricsBackend {
 	return ampl
 }
 
-func (i ImportStartedEvent) ToEvent() *Event {
-	return &Event{
+func (i ImportStartedEvent) Tget() *anyEvent {
+	return &anyEvent{
 		eventType: "import_started",
 		eventData: map[string]interface{}{
 			"import_id":   i.ID,
@@ -327,12 +327,45 @@ type ImportFinishedEvent struct {
 	ImportType string
 }
 
-func (i ImportFinishedEvent) ToEvent() *Event {
-	return &Event{
+func (i ImportFinishedEvent) getBackend() MetricsBackend {
+	return ampl
+}
+
+func (i ImportFinishedEvent) get() *anyEvent {
+	return &anyEvent{
 		eventType: "import_finished",
 		eventData: map[string]interface{}{
 			"import_id":   i.ID,
 			"import_type": i.ImportType,
 		},
 	}
+}
+
+type MethodEvent struct {
+	methodName string
+	middleTime int64
+	errorCode   int64
+	description string
+}
+
+func (c MethodEvent) getBackend() MetricsBackend {
+	return inhouse
+}
+
+func (c MethodEvent) get() *anyEvent {
+	return &anyEvent{
+		eventType: "MethodEvent",
+		eventData: map[string]interface{}{
+			"methodName": c.methodName,
+			"middleTime": c.middleTime,
+			"errorCode":   c.errorCode,
+			"description": c.description,
+		},
+	}
+}
+
+type MethodSuccessEvent struct {
+	methodName  string
+	errorCode   int64
+	description string
 }

@@ -108,6 +108,7 @@ func main() {
 	if metrics.Enabled {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
+	unaryInterceptors = append(unaryInterceptors, metrics.UnaryTraceInterceptor())
 	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		resp, err = mw.Authorize(ctx, req, info, handler)
 		if err != nil {
