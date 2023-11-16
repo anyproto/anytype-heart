@@ -96,7 +96,6 @@ func (c *layoutConverter) Convert(space smartblock.Space, st *state.State, fromL
 func (c *layoutConverter) fromAnyToAny(st *state.State) error {
 	template.InitTemplate(st,
 		template.WithTitle,
-		template.WithDescription,
 	)
 	return nil
 }
@@ -116,7 +115,6 @@ func (c *layoutConverter) fromAnyToTodo(st *state.State) error {
 	}
 	template.InitTemplate(st,
 		template.WithTitle,
-		template.WithDescription,
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyDone}),
 	)
 	return nil
@@ -129,7 +127,6 @@ func (c *layoutConverter) fromNoteToSet(space smartblock.Space, st *state.State)
 
 	template.InitTemplate(st,
 		template.WithTitle,
-		template.WithDescription,
 	)
 	err2 := c.fromAnyToSet(space, st)
 	if err2 != nil {
@@ -217,7 +214,6 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 
 	template.InitTemplate(st,
 		template.WithTitle,
-		template.WithDescription,
 	)
 
 	return c.fromAnyToCollection(st)

@@ -140,14 +140,6 @@ func (s *Subscription) Close() {
 func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
 	var initialObjectIDs []string
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	col, ok := s.collections[collectionID]
-	if !ok {
-		col = map[string]chan []string{}
-		s.collections[collectionID] = col
-	}
 	err := block.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
 		s.collectionAddHookOnce(sb)
 
@@ -156,6 +148,15 @@ func (s *Service) SubscribeForCollection(collectionID string, subscriptionID str
 	})
 	if err != nil {
 		return nil, nil, err
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	col, ok := s.collections[collectionID]
+	if !ok {
+		col = map[string]chan []string{}
+		s.collections[collectionID] = col
 	}
 
 	ch, ok := col[subscriptionID]

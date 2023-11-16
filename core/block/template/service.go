@@ -302,7 +302,6 @@ func (s *service) createBlankTemplateState() (st *state.State) {
 		template.WithFeaturedRelations,
 		template.WithRequiredRelations(),
 		template.WithTitle,
-		template.WithDescription,
 	)
 	return
 }
