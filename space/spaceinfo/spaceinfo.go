@@ -32,13 +32,20 @@ const (
 	AccountStatusDeleted = AccountStatus(model.SpaceStatus_SpaceDeleted)
 )
 
+type SpaceLocalInfo struct {
+	SpaceID      string
+	LocalStatus  LocalStatus
+	RemoteStatus RemoteStatus
+}
+
+type SpacePersistentInfo struct {
+	SpaceID       string
+	AccountStatus AccountStatus
+}
+
 type SpaceInfo struct {
 	SpaceID       string
 	LocalStatus   LocalStatus
 	RemoteStatus  RemoteStatus
 	AccountStatus AccountStatus
-}
-
-func (s SpaceInfo) IsDeleted() bool {
-	return s.RemoteStatus.IsDeleted() && s.LocalStatus == LocalStatusMissing && s.AccountStatus == AccountStatusDeleted
 }

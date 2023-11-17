@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
@@ -30,13 +31,24 @@ type subObjectsMigration struct {
 }
 
 // we use this key to store the flag that subobject has been migrated, so we never migrate it again
-const migratedKey = "_migrated"
+const (
+	migratedKey = "_migrated"
+)
+
+func migrationSettingName(path []string) string {
+	return migratedKey + "_" + strings.Join(path, "-")
+}
 
 func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 	migratedSubObjects := 0
 	m.iterateAllSubObjects(
 		st,
 		func(info smartblock.DocInfo, path []string) {
+			if st.GetSetting(migrationSettingName(path)) != nil {
+				// already migrated
+				return
+			}
+
 			if pbtypes.GetBool(info.Details, migratedKey) {
 				return
 			}
@@ -73,11 +85,13 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 				return
 			}
 
-			st.SetInStore(append(path, migratedKey), pbtypes.Bool(true))
+			st.SetSetting(migrationSettingName(path), pbtypes.Bool(true))
 
 			// restrict all edits for older clients to avoid inconsistencies (migration only done once, changes are not going to sync)
 			if needToAddRestrictions {
-				st.SetInStore(append(path, bundle.RelationKeyRestrictions.String()), pbtypes.IntList(1, 3, 4))
+				// we can't add restrictions as it can lead to removing this field on the old client
+				// todo: revise this
+				// st.SetInStore(append(path, bundle.RelationKeyRestrictions.String()), pbtypes.IntList(1, 3, 4))
 			}
 
 			migratedSubObjects++

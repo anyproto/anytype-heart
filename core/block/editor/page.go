@@ -132,20 +132,17 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_relation:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithDescription,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 				)
 			case model.ObjectType_objectType:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithDescription,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
 				)
 				// TODO case for relationOption?
 			default:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithDescription,
 				)
 			}
 
