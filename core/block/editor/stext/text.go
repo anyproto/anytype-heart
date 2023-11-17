@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -282,15 +283,11 @@ func (t *textImpl) newSetTextState(blockID string, selectedRange *model.Range, c
 
 func (t *textImpl) flushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
-		applyFlags := []smartblock.ApplyFlag{smartblock.NoHooks}
-		if t.shouldKeepInternalFlags() {
-			applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
-		}
-
 		// We create new context to avoid sending events to the current session
 		ctx := session.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
-		if err := t.Apply(t.lastSetTextState, applyFlags...); err != nil {
+		t.removeInternalFlags(t.lastSetTextState)
+		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks, smartblock.KeepInternalFlags); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
 		}
 		t.sendEvents(ctx)
@@ -346,11 +343,6 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 	s := t.newSetTextState(req.BlockId, req.SelectedTextRange, ctx)
 	wasEmpty := s.IsEmpty(true)
 
-	applyFlags := make([]smartblock.ApplyFlag, 0)
-	if t.shouldKeepInternalFlags() || wasEmpty {
-		applyFlags = append(applyFlags, smartblock.KeepInternalFlags)
-	}
-
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
 		return
@@ -358,10 +350,11 @@ func (t *textImpl) SetText(parentCtx session.Context, req pb.RpcBlockTextSetText
 	beforeIds := tb.FillSmartIds(nil)
 	tb.SetText(req.Text, req.Marks)
 	afterIds := tb.FillSmartIds(nil)
+	t.removeInternalFlags(s)
 
 	if _, ok := tb.(text.DetailsBlock); ok || wasEmpty {
 		defer t.cancelSetTextState()
-		if err = t.Apply(s, applyFlags...); err != nil {
+		if err = t.Apply(s, smartblock.KeepInternalFlags); err != nil {
 			return
 		}
 		t.sendEvents(ctx)
@@ -493,14 +486,20 @@ func (t *textImpl) isLastTextBlockChanged() (bool, error) {
 	return len(messages) != 0, err
 }
 
-// shouldKeepInternalFlags is used to keep internal flags in case no change on general text blocks were made
-// We keep internal flags because we allow user to change object type and apply some template further
-func (t *textImpl) shouldKeepInternalFlags() bool {
-	textChanged, err := t.isLastTextBlockChanged()
-	if err != nil {
-		textChanged = true
+func (t *textImpl) removeInternalFlags(s *state.State) {
+	flags := internalflag.NewFromState(s.ParentState())
+	if flags.IsEmpty() {
+		return
 	}
-	return t.lastSetTextId == state.TitleBlockID || t.lastSetTextId == state.DescriptionBlockID || !textChanged
+	if textChanged, err := t.isLastTextBlockChanged(); err == nil && !textChanged {
+		return
+	}
+	flags.Remove(model.InternalFlag_editorDeleteEmpty)
+	if t.lastSetTextId != state.TitleBlockID && t.lastSetTextId != state.DescriptionBlockID {
+		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.Remove(model.InternalFlag_editorSelectTemplate)
+	}
+	flags.AddToState(s)
 }
 
 func getText(s *state.State, id string) (text.Block, error) {
