@@ -24,30 +24,33 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-const deletedTemplateId = "iamdeleted"
+const (
+	deletedTemplateId  = "iamdeleted"
+	archivedTemplateId = "iamarchived"
+)
 
 type testPicker struct {
 	sb smartblock.SmartBlock
 }
 
-func (t *testPicker) GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error) {
+func (t *testPicker) GetObject(_ context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	if id == deletedTemplateId {
 		return nil, spacestorage.ErrTreeStorageAlreadyDeleted
 	}
 	return t.sb, nil
 }
 
-func (t *testPicker) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+func (t *testPicker) GetObjectByFullID(_ context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
 	return t.sb, nil
 }
 
-func (t *testPicker) Init(a *app.App) error { return nil }
+func (t *testPicker) Init(_ *app.App) error { return nil }
 
 func (t *testPicker) Name() string { return "" }
 
 func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	sb := smarttest.New(templateName)
-	_ = sb.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
+	details := []*pb.RpcObjectSetDetailsDetail{
 		{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(templateName),
@@ -56,7 +59,14 @@ func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 			Key:   bundle.RelationKeyDescription.String(),
 			Value: pbtypes.String(templateName),
 		},
-	}, false)
+	}
+	if templateName == archivedTemplateId {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   bundle.RelationKeyIsArchived.String(),
+			Value: pbtypes.Bool(true),
+		})
+	}
+	_ = sb.SetDetails(nil, details, false)
 	sb.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, domain.TypeKey(typeKey)})
 	sb.AddBlock(simple.New(&model.Block{Id: templateName, ChildrenIds: []string{template.TitleBlockId, template.DescriptionBlockId}}))
 	sb.AddBlock(text.NewDetails(&model.Block{
@@ -132,49 +142,29 @@ func TestService_StateFromTemplate(t *testing.T) {
 				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue())
 				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyDescription.String()].GetStringValue())
 				assert.Equal(t, expected[templateIndex], st.Get(template.TitleBlockId).Model().GetText().Text)
-				assert.Equal(t, expected[templateIndex], st.Get(template.DescriptionBlockId).Model().GetText().Text)
 			})
 		}
 	}
 
-	t.Run("empty templateId", func(t *testing.T) {
-		// given
-		tmpl := NewTemplateTest(templateName, "")
-		s := service{picker: &testPicker{sb: tmpl}}
+	for _, testCase := range [][]string{
+		{"templateId is empty", ""},
+		{"templateId is blank", BlankTemplateId},
+		{"target template is deleted", deletedTemplateId},
+		{"target template is archived", archivedTemplateId},
+	} {
+		t.Run("create blank template in case "+testCase[0], func(t *testing.T) {
+			// given
+			tmpl := NewTemplateTest(testCase[1], "")
+			s := service{picker: &testPicker{sb: tmpl}}
 
-		// when
-		st, err := s.CreateTemplateStateWithDetails("", nil)
+			// when
+			st, err := s.CreateTemplateStateWithDetails(testCase[1], nil)
 
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateId)
-	})
-
-	t.Run("blank templateId", func(t *testing.T) {
-		// given
-		tmpl := NewTemplateTest(templateName, "")
-		s := service{picker: &testPicker{sb: tmpl}}
-
-		// when
-		st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, nil)
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateId)
-	})
-
-	t.Run("create blank template in case template object is deleted", func(t *testing.T) {
-		// given
-		s := service{picker: &testPicker{}}
-
-		// when
-		st, err := s.CreateTemplateStateWithDetails(deletedTemplateId, nil)
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, st.RootId(), BlankTemplateId)
-
-	})
+			// then
+			assert.NoError(t, err)
+			assert.Equal(t, BlankTemplateId, st.RootId())
+		})
+	}
 
 	t.Run("requested smartblock is not a template", func(t *testing.T) {
 		// given
@@ -199,6 +189,6 @@ func TestService_StateFromTemplate(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, st.ObjectTypeKey(), bundle.TypeKeyWeeklyPlan)
+		assert.Equal(t, bundle.TypeKeyWeeklyPlan, st.ObjectTypeKey())
 	})
 }

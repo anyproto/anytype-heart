@@ -90,6 +90,7 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 
 		if typeKey := domain.TypeKey(pbtypes.GetString(m.Details, bundle.RelationKeyType.String())); typeKey != "" {
 			if slice.FindPos(uniqueObjTypes, typeKey) == -1 {
+				// todo: what is happening here?
 				uniqueObjTypes = append(uniqueObjTypes, typeKey)
 			}
 		}

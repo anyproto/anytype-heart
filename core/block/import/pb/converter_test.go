@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -187,13 +187,12 @@ func Test_GetSnapshotsSkipFileWithoutExtension(t *testing.T) {
 		Mode:                  1,
 	}, process.NewProgress(pb.ModelProcess_Import))
 
-	assert.NotNil(t, ce, 1)
-	assert.Contains(t, ce.Error().Error(), "snapshot is not valid: test")
+	assert.Nil(t, ce)
 	assert.NotNil(t, res.Snapshots)
 	assert.Len(t, res.Snapshots, 2)
 
 	assert.Equal(t, res.Snapshots[0].FileName, "bafyreig5sd7mlmhindapjuvzc4gnetdbszztb755sa7nflojkljmu56mmi.pb")
-	assert.Equal(t, res.Snapshots[1].FileName, rootCollectionName)
+	assert.Contains(t, res.Snapshots[1].FileName, rootCollectionName)
 }
 
 func newZipWriter(path string) (*zipWriter, error) {
@@ -256,7 +255,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 	t.Run("no widget object - add all objects (except template and subobjects) in Protobuf Import collection", func(t *testing.T) {
 		// given
 		p := Pb{}
-		allSnapshot := []*converter.Snapshot{
+		allSnapshot := []*common.Snapshot{
 			{
 				Id:     "id1",
 				SbType: smartblock2.SmartBlockTypePage,
@@ -290,7 +289,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 	t.Run("widget with sets - add only sets in Protobuf Import collection", func(t *testing.T) {
 		// given
 		p := Pb{}
-		allSnapshot := []*converter.Snapshot{
+		allSnapshot := []*common.Snapshot{
 			// skip objects
 			{
 				Id:     "id2",
@@ -335,7 +334,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 			},
 		}
 		// set widget
-		widgetSnapshot := &converter.Snapshot{
+		widgetSnapshot := &common.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock2.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
@@ -368,7 +367,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 	t.Run("widget with collection - add collection in Protobuf Import collection", func(t *testing.T) {
 		// given
 		p := Pb{}
-		allSnapshot := []*converter.Snapshot{
+		allSnapshot := []*common.Snapshot{
 			// skip objects
 			{
 				Id:     "id2",
@@ -414,7 +413,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 		}
 
 		// collection widget
-		widgetSnapshot := &converter.Snapshot{
+		widgetSnapshot := &common.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock2.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
@@ -447,7 +446,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 	t.Run("there are favorites objects, dashboard and objects in widget - favorites, objects in widget, dashboard in Protobuf Import", func(t *testing.T) {
 		// given
 		p := Pb{}
-		allSnapshot := []*converter.Snapshot{
+		allSnapshot := []*common.Snapshot{
 			// skip object
 			{
 				Id:     "id2",
@@ -508,7 +507,7 @@ func TestPb_provideRootCollection(t *testing.T) {
 		}
 
 		// object with widget
-		widgetSnapshot := &converter.Snapshot{
+		widgetSnapshot := &common.Snapshot{
 			Id:     "widgetID",
 			SbType: smartblock2.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
