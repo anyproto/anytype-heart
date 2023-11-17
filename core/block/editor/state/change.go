@@ -293,13 +293,21 @@ func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
 	s.RemoveRelation(rem.RelationKey...)
 	return nil
 }
+func migrateObjectTypeIDToKey(old string) (new string, migrated bool) {
+	if strings.HasPrefix(old, addr.ObjectTypeKeyToIdPrefix) {
+		return strings.TrimPrefix(old, addr.ObjectTypeKeyToIdPrefix), true
+	} else if strings.HasPrefix(old, addr.BundledObjectTypeURLPrefix) {
+		return strings.TrimPrefix(old, addr.BundledObjectTypeURLPrefix), true
+	}
+	return old, false
+}
 
 func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 	if add.Url != "" {
 		// migration of the old type changes
 		// before we were storing the change ID instead of Key
 		// but it's pretty easy to convert it
-		add.Key = strings.TrimPrefix(add.Url, addr.ObjectTypeKeyToIdPrefix)
+		add.Key, _ = migrateObjectTypeIDToKey(add.Url)
 	}
 
 	for _, ot := range s.ObjectTypeKeys() {
@@ -315,7 +323,7 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
 	var found bool
 	if remove.Url != "" {
-		remove.Key = strings.TrimPrefix(remove.Url, addr.ObjectTypeKeyToIdPrefix)
+		remove.Key, _ = migrateObjectTypeIDToKey(remove.Url)
 	}
 	s.objectTypeKeys = slice.Filter(s.ObjectTypeKeys(), func(key domain.TypeKey) bool {
 		if key == domain.TypeKey(remove.Key) {
@@ -832,11 +840,9 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []domain.TypeKey {
 	objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeIDs))
 	for _, id := range objectTypeIDs {
 		var key domain.TypeKey
-		if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
-			key = domain.TypeKey(strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix))
-		} else {
-			key = domain.TypeKey(id)
-		}
+		k, _ := migrateObjectTypeIDToKey(id)
+		key = domain.TypeKey(k)
+
 		objectTypeKeys = append(objectTypeKeys, key)
 	}
 	return objectTypeKeys

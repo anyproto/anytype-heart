@@ -152,6 +152,87 @@ func Test_handlePagePropertiesRichText(t *testing.T) {
 	assert.NotEmpty(t, details[key])
 }
 
+func Test_handlePagePropertiesDate(t *testing.T) {
+	t.Run("parse Date property: date and time", func(t *testing.T) {
+		// given
+		c := client.NewClient()
+		details := make(map[string]*types.Value, 0)
+
+		dateProperty := property.DateItem{
+			ID:   "id",
+			Type: string(property.PropertyConfigTypeDate),
+			Date: &api.DateObject{
+				Start: "2023-11-08T20:27:00.000Z",
+			},
+		}
+		properties := property.Properties{"Date": &dateProperty}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: properties},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			ctx:       context.Background(),
+			request:   &api.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := pageTask.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 1) // 1 relation
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+		key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
+		assert.Equal(t, int(details[key].GetNumberValue()), 1699475220)
+	})
+	t.Run("parse Date property: only date", func(t *testing.T) {
+		// given
+		c := client.NewClient()
+		details := make(map[string]*types.Value, 0)
+
+		richTextProperty := property.DateItem{
+			ID:   "id",
+			Type: string(property.PropertyConfigTypeDate),
+			Date: &api.DateObject{
+				Start: "2023-11-08",
+			},
+		}
+		properties := property.Properties{"Date": &richTextProperty}
+		pageTask := Task{
+			propertyService:        property.New(c),
+			relationOptCreateMutex: &sync.Mutex{},
+			relationCreateMutex:    &sync.Mutex{},
+			p:                      Page{Properties: properties},
+		}
+		req := &property.PropertiesStore{
+			PropertyIdsToSnapshots: map[string]*model.SmartBlockSnapshotBase{},
+			RelationsIdsToOptions:  map[string][]*model.SmartBlockSnapshotBase{},
+		}
+		do := &DataObject{
+			ctx:       context.Background(),
+			request:   &api.NotionImportContext{},
+			relations: req,
+		}
+
+		// when
+		snapshots, _ := pageTask.handlePageProperties(do, details)
+
+		// then
+		assert.Len(t, snapshots, 1) // 1 relation
+		assert.Len(t, req.PropertyIdsToSnapshots, 1)
+		assert.NotEmpty(t, req.PropertyIdsToSnapshots["id"])
+		key := pbtypes.GetString(req.PropertyIdsToSnapshots["id"].Details, bundle.RelationKeyRelationKey.String())
+		assert.Equal(t, int(details[key].GetNumberValue()), 1699401600)
+	})
+}
+
 func Test_handlePagePropertiesStatus(t *testing.T) {
 	c := client.NewClient()
 	details := make(map[string]*types.Value, 0)
@@ -570,7 +651,7 @@ func Test_handleRollupProperties(t *testing.T) {
 		Rollup: property.RollupObject{
 			Type: "date",
 			Date: &api.DateObject{
-				Start: "12-12-2022",
+				Start: "2023-02-07",
 			},
 		},
 	}
@@ -612,7 +693,7 @@ func Test_handleRollupProperties(t *testing.T) {
 
 	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id2"])
 	key = pbtypes.GetString(store.PropertyIdsToSnapshots["id2"].Details, bundle.RelationKeyRelationKey.String())
-	assert.Equal(t, details[key].GetStringValue(), "12-12-2022")
+	assert.Equal(t, int(details[key].GetNumberValue()), 1675728000)
 
 	assert.NotEmpty(t, store.PropertyIdsToSnapshots["id3"])
 	key = pbtypes.GetString(store.PropertyIdsToSnapshots["id3"].Details, bundle.RelationKeyRelationKey.String())
