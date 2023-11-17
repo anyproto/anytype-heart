@@ -285,6 +285,7 @@ service ClientCommands {
 
     rpc NameServiceResolveName( anytype.Rpc.NameService.ResolveName.Request) returns (anytype.Rpc.NameService.ResolveName.Response);
     rpc NameServiceReverseResolveName( anytype.Rpc.NameService.ReverseResolveName.Request) returns (anytype.Rpc.NameService.ReverseResolveName.Response);
+    rpc NameServiceUserAccountGet( anytype.Rpc.NameService.UserAccount.Get.Request) returns (anytype.Rpc.NameService.UserAccount.Get.Response);
 
     // used only for lib-server via grpc
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);

@@ -5804,6 +5804,37 @@ message Rpc {
                 }
             }
         }
+
+        message UserAccount {
+            message Get {
+                message Request {
+                    string ownerEthAddress = 1;
+                }
+
+                message Response {
+                    Error error = 1;
+                    
+                    // Number of names that the user can reserve
+                    uint64 namesCountLeft = 2;
+
+                    // Number of operations: update name, add new data, etc
+                    uint64 operationsCountLeft = 3;
+
+                    // TODO: all operations list
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

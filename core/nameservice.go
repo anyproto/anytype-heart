@@ -19,7 +19,7 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 		return &pb.RpcNameServiceResolveNameResponse{
 			Error: &pb.RpcNameServiceResolveNameResponseError{
 				// we don't map error codes here
-				Code:        -1,
+				Code:        pb.RpcNameServiceResolveNameResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
 			},
 		}
@@ -33,7 +33,7 @@ func (mw *Middleware) NameServiceResolveName(ctx context.Context, req *pb.RpcNam
 		return &pb.RpcNameServiceResolveNameResponse{
 			Error: &pb.RpcNameServiceResolveNameResponseError{
 				// we don't map error codes here
-				Code:        -1,
+				Code:        pb.RpcNameServiceResolveNameResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
 			},
 		}
@@ -60,7 +60,7 @@ func (mw *Middleware) NameServiceReverseResolveName(ctx context.Context, req *pb
 		return &pb.RpcNameServiceReverseResolveNameResponse{
 			Error: &pb.RpcNameServiceReverseResolveNameResponseError{
 				// we don't map error codes here
-				Code:        -1,
+				Code:        pb.RpcNameServiceReverseResolveNameResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
 			},
 		}
@@ -74,7 +74,7 @@ func (mw *Middleware) NameServiceReverseResolveName(ctx context.Context, req *pb
 		return &pb.RpcNameServiceReverseResolveNameResponse{
 			Error: &pb.RpcNameServiceReverseResolveNameResponseError{
 				// we don't map error codes here
-				Code:        -1,
+				Code:        pb.RpcNameServiceReverseResolveNameResponseError_UNKNOWN_ERROR,
 				Description: err.Error(),
 			},
 		}
@@ -84,6 +84,42 @@ func (mw *Middleware) NameServiceReverseResolveName(ctx context.Context, req *pb
 	var out pb.RpcNameServiceReverseResolveNameResponse
 	out.Found = nar.Found
 	out.Name = nar.Name
+
+	return &out
+}
+
+func (mw *Middleware) NameServiceUserAccountGet(ctx context.Context, req *pb.RpcNameServiceUserAccountGetRequest) *pb.RpcNameServiceUserAccountGetResponse {
+	// Get name service object that connects to the remote "namingNode"
+	// in order for that to work, we need to have a "namingNode" node in the nodes section of the config
+	ns, err := mw.getNameService()
+
+	if err != nil {
+		return &pb.RpcNameServiceUserAccountGetResponse{
+			Error: &pb.RpcNameServiceUserAccountGetResponseError{
+				// we don't map error codes here
+				Code:        pb.RpcNameServiceUserAccountGetResponseError_UNKNOWN_ERROR,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	var in aa.GetUserAccountRequest
+	in.OwnerEthAddress = req.OwnerEthAddress
+
+	nar, err := ns.GetUserAccount(ctx, &in)
+	if err != nil {
+		return &pb.RpcNameServiceUserAccountGetResponse{
+			Error: &pb.RpcNameServiceUserAccountGetResponseError{
+				Code:        pb.RpcNameServiceUserAccountGetResponseError_UNKNOWN_ERROR,
+				Description: err.Error(),
+			},
+		}
+	}
+
+	// Return the response
+	var out pb.RpcNameServiceUserAccountGetResponse
+	out.NamesCountLeft = nar.NamesCountLeft
+	out.OperationsCountLeft = nar.OperationsCountLeft
 
 	return &out
 }
