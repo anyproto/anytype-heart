@@ -239,7 +239,8 @@ func isBlockCanHaveChild(block model.Block) bool {
 		return t.Style == model.BlockContentText_Numbered ||
 			t.Style == model.BlockContentText_Marked ||
 			t.Style == model.BlockContentText_Toggle ||
-			t.Style == model.BlockContentText_Quote
+			t.Style == model.BlockContentText_Quote ||
+			t.Style == model.BlockContentText_Checkbox
 	}
 
 	return false
@@ -362,7 +363,7 @@ func (r *blocksRenderer) removeMarkedBlock(parentBlock *textBlock) *textBlock {
 
 func (r *blocksRenderer) isEmptyMarkedBlock(markedBlock *textBlock) bool {
 	return markedBlock.GetText() != nil && markedBlock.GetText().Text == "" &&
-		markedBlock.GetText().Style == model.BlockContentText_Marked
+		markedBlock.GetText().Style == model.BlockContentText_Marked && markedBlock.textBuffer == ""
 }
 
 func (r *blocksRenderer) adjustMarkdownRange(t *model.BlockContentText, adjustNumber int) {
