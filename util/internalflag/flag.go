@@ -57,6 +57,10 @@ func (s Set) AddToState(st *state.State) {
 	st.SetDetailAndBundledRelation(relationKey, pbtypes.IntList(s.flags...))
 }
 
+func (s Set) IsEmpty() bool {
+	return len(s.flags) == 0
+}
+
 func PutToDetails(details *types.Struct, flags []*model.InternalFlag) *types.Struct {
 	ints := make([]int, 0, len(flags))
 	for _, f := range flags {
