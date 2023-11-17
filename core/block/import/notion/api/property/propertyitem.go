@@ -10,7 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -216,7 +216,7 @@ type DateItem struct {
 
 func (dp *DateItem) SetDetail(key string, details map[string]*types.Value) {
 	if dp.Date != nil {
-		date := converter.ConvertStringToTime(dp.Date.Start)
+		date := common.ConvertStringToTime(dp.Date.Start)
 		details[key] = pbtypes.Int64(date)
 	}
 }
