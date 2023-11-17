@@ -130,7 +130,7 @@ func TestPreprocessBlocksThreeCodeBlock(t *testing.T) {
 }
 
 func TestCloseTextBlock(t *testing.T) {
-	t.Run("1 checkbox blocks is a child of another checkbox block", func(t *testing.T) {
+	t.Run("1 checkbox block is a child of another checkbox block", func(t *testing.T) {
 		// given
 		renderer := newBlocksRenderer("", nil)
 		renderer.openedTextBlocks = append(renderer.openedTextBlocks,
@@ -182,7 +182,7 @@ func TestCloseTextBlock(t *testing.T) {
 		assert.Len(t, renderer.blocks[1].ChildrenIds, 1)
 		assert.Equal(t, "id2", renderer.blocks[1].ChildrenIds[0])
 	})
-	t.Run("1 checkbox blocks is a child of another block", func(t *testing.T) {
+	t.Run("1 checkbox block is a child of another block", func(t *testing.T) {
 		// given
 		renderer := newBlocksRenderer("", nil)
 		renderer.openedTextBlocks = append(renderer.openedTextBlocks,
