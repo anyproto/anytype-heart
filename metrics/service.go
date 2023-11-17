@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/metrics/amplitude"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -183,7 +183,7 @@ func (s *service) Run() {
 	defer s.lock.Unlock()
 	for _, c := range s.clients {
 		c.ctx, c.cancel = context.WithCancel(context.Background())
-		c.batcher = mb.New(0)
+		c.batcher = mb.New[amplitude.Event](0)
 		c.closeChannel = make(chan struct{})
 		go c.startAggregating(s)
 		go c.startSendingBatchMessages(s)

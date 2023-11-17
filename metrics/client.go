@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cheggaaa/mb"
+	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/metrics/amplitude"
 )
@@ -17,7 +17,7 @@ type client struct {
 	aggregatableChan chan SamplableEvent
 	ctx              context.Context
 	cancel           context.CancelFunc
-	batcher          *mb.MB
+	batcher          *mb.MB[amplitude.Event]
 	closeChannel     chan struct{}
 }
 
@@ -69,14 +69,16 @@ func (c *client) startSendingBatchMessages(info appInfoProvider) {
 		if b == nil {
 			return
 		}
-		msgs := b.WaitMinMax(10, 100)
-		// if batcher is closed
-		if len(msgs) == 0 {
+		ctx = mb.CtxWithTimeLimit(ctx, time.Minute)
+		msgs, err := b.NewCond().WithMin(10).WithMax(100).Wait(ctx)
+
+		if err == mb.ErrClosed {
 			close(c.closeChannel)
 			return
 		}
+
 		timeout := time.Second * 2
-		err := c.sendNextBatch(info, b, msgs)
+		err = c.sendNextBatch(info, b, msgs)
 		if err != nil {
 			timeout = time.Second * 5 * time.Duration(attempt+1)
 			if timeout > maxTimeout {
@@ -110,14 +112,14 @@ func (c *client) Close() {
 	c.batcher = nil
 }
 
-func (c *client) sendNextBatch(info appInfoProvider, b *mb.MB, msgs []interface{}) (err error) {
+func (c *client) sendNextBatch(info appInfoProvider, b *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
 	if len(msgs) == 0 {
 		return
 	}
 
 	var events []amplitude.Event
 	for _, ev := range msgs {
-		events = append(events, ev.(amplitude.Event))
+		events = append(events, ev)
 	}
 	err = c.amplitude.Events(events)
 	if err != nil {
@@ -125,7 +127,7 @@ func (c *client) sendNextBatch(info appInfoProvider, b *mb.MB, msgs []interface{
 			With("unsent messages", len(msgs)+c.batcher.Len()).
 			Error("failed to send messages")
 		if b != nil {
-			b.Add(msgs...)
+			b.Add(c.ctx, msgs...)
 		}
 	} else {
 		clientMetricsLog.
@@ -178,7 +180,7 @@ func (c *client) send(info appInfoProvider, e Event) {
 	if b == nil {
 		return
 	}
-	b.Add(ampEvent)
+	b.Add(c.ctx, ampEvent)
 	clientMetricsLog.
 		With("event-type", ev.eventType).
 		With("event-data", ev.eventData).
