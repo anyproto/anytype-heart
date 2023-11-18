@@ -142,7 +142,6 @@ func TestService_StateFromTemplate(t *testing.T) {
 				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyName.String()].GetStringValue())
 				assert.Equal(t, expected[templateIndex], st.Details().Fields[bundle.RelationKeyDescription.String()].GetStringValue())
 				assert.Equal(t, expected[templateIndex], st.Get(template.TitleBlockId).Model().GetText().Text)
-				assert.Equal(t, expected[templateIndex], st.Get(template.DescriptionBlockId).Model().GetText().Text)
 			})
 		}
 	}

@@ -210,11 +210,11 @@ func (dp *DatabaseDate) GetID() string {
 }
 
 func (dp *DatabaseDate) SetDetail(key string, details map[string]*types.Value) {
-	details[key] = pbtypes.String("")
+	details[key] = pbtypes.Int64(0)
 }
 
 func (dp *DatabaseDate) GetFormat() model.RelationFormat {
-	return model.RelationFormat_longtext
+	return model.RelationFormat_date
 }
 
 type DatabaseRelation struct {
