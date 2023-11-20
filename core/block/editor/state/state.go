@@ -10,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/state/objecttypes"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -80,7 +79,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	s := &State{
 		rootId:     rootId,
 		blocks:     blocks,
-		ObjectType: objecttypes.NewObjectTypes(nil, nil),
+		ObjectType: NewObjectTypes(nil, nil),
 	}
 	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
 	return s
@@ -102,13 +101,13 @@ func NewDocWithInternalKey(rootId string, blocks map[string]simple.Block, intern
 		rootId:            rootId,
 		blocks:            blocks,
 		uniqueKeyInternal: internalKey,
-		ObjectType:        objecttypes.NewObjectTypes(nil, nil),
+		ObjectType:        NewObjectTypes(nil, nil),
 	}
 	return s
 }
 
 type State struct {
-	objecttypes.ObjectType
+	ObjectType
 
 	ctx    session.Context
 	parent *State
@@ -166,11 +165,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: objecttypes.NewObjectTypes(nil, s.ObjectType)}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: NewObjectTypes(nil, nil)}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: objecttypes.NewObjectTypes(nil, s.ObjectType)}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: NewObjectTypes(nil, nil)}
 }
 
 func (s *State) Context() session.Context {
@@ -1040,7 +1039,7 @@ func (s *State) Snippet() (snippet string) {
 func (s *State) FileRelationKeys() []string {
 	var keys []string
 	for _, rel := range s.GetRelationLinks() {
-		// coverId can contain both hash or predefined  cover id
+		// coverId can contain both hash or predefined cover id
 		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
 			if slice.FindPos(keys, rel.Key) == -1 {
 				keys = append(keys, rel.Key)
@@ -1134,6 +1133,7 @@ func (s *State) CheckRestrictions() (err error) {
 func (s *State) SetParent(parent *State) {
 	s.rootId = parent.rootId
 	s.parent = parent
+	s.ObjectType.SetParentObjectType(parent.ObjectType)
 }
 
 func (s *State) Validate() (err error) {
@@ -1219,7 +1219,7 @@ func (s *State) Copy() *State {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
-		ObjectType:               objecttypes.NewObjectTypes(objTypes, nil),
+		ObjectType:               NewObjectTypes(objTypes, nil),
 		ctx:                      s.ctx,
 		blocks:                   blocks,
 		rootId:                   s.rootId,

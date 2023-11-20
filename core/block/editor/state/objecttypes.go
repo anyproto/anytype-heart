@@ -1,4 +1,4 @@
-package objecttypes
+package state
 
 import (
 	"strings"
@@ -6,11 +6,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-var log = logging.Logger("anytype-mw-state")
 
 type ChangeApplier interface {
 	ApplyChanges(ch *pb.ChangeContent)
@@ -21,11 +18,12 @@ type ChangeGetter interface {
 }
 
 type ObjectType interface {
-	ChangeGetter
 	ChangeApplier
+	ChangeGetter
 	ObjectTypeKeys() []domain.TypeKey
 	ObjectTypeKey() domain.TypeKey
 	SetObjectTypeKeys(objectTypeKeys []domain.TypeKey)
+	SetParentObjectType(parent ObjectType)
 	SetObjectTypeKey(objectTypeKey domain.TypeKey)
 	SetNoObjectType(noObjectType bool)
 }
@@ -69,6 +67,10 @@ func (o *ObjectTypes) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) {
 
 func (o *ObjectTypes) SetNoObjectType(noObjectType bool) {
 	o.noObjectType = noObjectType
+}
+
+func (o *ObjectTypes) SetParentObjectType(parent ObjectType) {
+	o.parent = parent
 }
 
 func (o *ObjectTypes) Diff() (ch []*pb.ChangeContent) {

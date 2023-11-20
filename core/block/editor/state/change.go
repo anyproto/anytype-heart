@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/state/objecttypes"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -292,14 +291,6 @@ func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
 	s.RemoveRelation(rem.RelationKey...)
 	return nil
 }
-func migrateObjectTypeIDToKey(old string) (new string, migrated bool) {
-	if strings.HasPrefix(old, addr.ObjectTypeKeyToIdPrefix) {
-		return strings.TrimPrefix(old, addr.ObjectTypeKeyToIdPrefix), true
-	} else if strings.HasPrefix(old, addr.BundledObjectTypeURLPrefix) {
-		return strings.TrimPrefix(old, addr.BundledObjectTypeURLPrefix), true
-	}
-	return old, false
-}
 
 func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 	var bIds = make([]string, 0, len(bc.Blocks))
@@ -390,7 +381,7 @@ func (s *State) changeOriginalCreatedTimestampSet(set *pb.ChangeOriginalCreatedT
 	return nil
 }
 
-func (s *State) Diff() []*pb.ChangeContent {
+func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
 
@@ -539,7 +530,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.ObjectType.Diff()...)
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
-
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
@@ -761,7 +751,7 @@ func (cb *changeBuilder) Build() []*pb.ChangeContent {
 	return cb.changes
 }
 
-func migrateObjectTypeIDsToKeys(objectTypeIDs []string) objecttypes.ObjectType {
+func migrateObjectTypeIDsToKeys(objectTypeIDs []string) ObjectType {
 	objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeIDs))
 	for _, id := range objectTypeIDs {
 		var key domain.TypeKey
@@ -770,7 +760,7 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) objecttypes.ObjectType {
 
 		objectTypeKeys = append(objectTypeKeys, key)
 	}
-	return objecttypes.NewObjectTypes(objectTypeKeys, nil)
+	return NewObjectTypes(objectTypeKeys, nil)
 }
 
 // Adds missing unique key for supported smartblock types

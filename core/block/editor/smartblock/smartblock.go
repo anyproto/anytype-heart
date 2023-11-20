@@ -721,7 +721,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
-	changes := st.Diff()
+	changes := st.GetChanges()
 	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
@@ -1117,7 +1117,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.runIndexer(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).Diff()})
+	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
 	return nil
 }
 
