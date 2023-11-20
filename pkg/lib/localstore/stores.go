@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	dsCtx "github.com/ipfs/go-datastore"
