@@ -78,7 +78,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 			rootCollectionID = rootCollection.Id
 		}
 	}
-	progress.SetTotal(int64(len(allSnapshots)))
+	progress.SetTotalPreservingRatio(int64(len(allSnapshots)))
 	if allErrors.IsEmpty() {
 		return &converter.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
 	}
