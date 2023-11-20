@@ -41,6 +41,9 @@ func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, spa
 
 func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
 	for _, rel := range s.GetRelationLinks() {
+		if rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+			continue
+		}
 		if rel.Key == bundle.RelationKeySourceObject.String() {
 			// migrate broken sourceObject after v0.29.11
 			// todo: remove this
