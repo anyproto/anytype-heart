@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/mb0/diff"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state/objecttypes"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -92,12 +93,12 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 	}
 
 	s := &State{
+		ObjectType:               migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
 		changeId:                 sOpts.changeId,
 		rootId:                   rootId,
 		blocks:                   blocks,
 		details:                  detailsToSave,
 		relationLinks:            snapshot.Data.RelationLinks,
-		objectTypeKeys:           migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
 		fileKeys:                 fileKeys,
 		store:                    snapshot.Data.Collections,
 		storeKeyRemoved:          removedCollectionKeysMap,
@@ -215,14 +216,8 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeRelationRemove(ch.GetRelationRemove()); err != nil {
 			return
 		}
-	case ch.GetObjectTypeAdd() != nil:
-		if err = s.changeObjectTypeAdd(ch.GetObjectTypeAdd()); err != nil {
-			return
-		}
-	case ch.GetObjectTypeRemove() != nil:
-		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
-			return
-		}
+	case s.isObjectTypeChange(ch):
+		s.ObjectType.ApplyChanges(ch)
 	case ch.GetStoreKeySet() != nil:
 		if err = s.changeStoreKeySet(ch.GetStoreKeySet()); err != nil {
 			return
@@ -246,6 +241,10 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
 	return
+}
+
+func (s *State) isObjectTypeChange(ch *pb.ChangeContent) bool {
+	return ch.GetObjectTypeAdd() != nil || ch.GetObjectTypeRemove() != nil
 }
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
@@ -300,44 +299,6 @@ func migrateObjectTypeIDToKey(old string) (new string, migrated bool) {
 		return strings.TrimPrefix(old, addr.BundledObjectTypeURLPrefix), true
 	}
 	return old, false
-}
-
-func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
-	if add.Url != "" {
-		// migration of the old type changes
-		// before we were storing the change ID instead of Key
-		// but it's pretty easy to convert it
-		add.Key, _ = migrateObjectTypeIDToKey(add.Url)
-	}
-
-	for _, ot := range s.ObjectTypeKeys() {
-		if ot == domain.TypeKey(add.Key) {
-			return nil
-		}
-	}
-	objectTypes := append(s.ObjectTypeKeys(), domain.TypeKey(add.Key))
-	s.SetObjectTypeKeys(objectTypes)
-	return nil
-}
-
-func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
-	var found bool
-	if remove.Url != "" {
-		remove.Key, _ = migrateObjectTypeIDToKey(remove.Url)
-	}
-	s.objectTypeKeys = slice.Filter(s.ObjectTypeKeys(), func(key domain.TypeKey) bool {
-		if key == domain.TypeKey(remove.Key) {
-			found = true
-			return false
-		}
-		return true
-	})
-	if !found {
-		log.Warnf("changeObjectTypeRemove: type to remove not found: '%s'", remove.Url)
-	} else {
-		s.SetObjectTypeKeys(s.objectTypeKeys)
-	}
-	return nil
 }
 
 func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
@@ -429,7 +390,7 @@ func (s *State) changeOriginalCreatedTimestampSet(set *pb.ChangeOriginalCreatedT
 	return nil
 }
 
-func (s *State) GetChanges() []*pb.ChangeContent {
+func (s *State) Diff() []*pb.ChangeContent {
 	return s.changes
 }
 
@@ -576,7 +537,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.collapseSameKeyStoreChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
-	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
+	s.changes = append(s.changes, s.ObjectType.Diff()...)
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
 
 }
@@ -706,42 +667,6 @@ func (s *State) collapseSameKeyStoreChanges() {
 	s.changes = filteredChanges
 }
 
-func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
-	if s.objectTypeKeys == nil {
-		return nil
-	}
-	var prev []domain.TypeKey
-	if s.parent != nil {
-		prev = s.parent.ObjectTypeKeys()
-	}
-
-	var prevMap = make(map[domain.TypeKey]struct{}, len(prev))
-	var curMap = make(map[domain.TypeKey]struct{}, len(s.objectTypeKeys))
-
-	for _, v := range s.objectTypeKeys {
-		curMap[v] = struct{}{}
-		_, ok := prevMap[v]
-		if !ok {
-			ch = append(ch, &pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfObjectTypeAdd{
-					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v.URL()},
-				},
-			})
-		}
-	}
-	for _, v := range prev {
-		_, ok := curMap[v]
-		if !ok {
-			ch = append(ch, &pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfObjectTypeRemove{
-					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v.URL()},
-				},
-			})
-		}
-	}
-	return
-}
-
 func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
 	if s.originalCreatedTimestamp == 0 {
 		return nil
@@ -836,7 +761,7 @@ func (cb *changeBuilder) Build() []*pb.ChangeContent {
 	return cb.changes
 }
 
-func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []domain.TypeKey {
+func migrateObjectTypeIDsToKeys(objectTypeIDs []string) objecttypes.ObjectType {
 	objectTypeKeys := make([]domain.TypeKey, 0, len(objectTypeIDs))
 	for _, id := range objectTypeIDs {
 		var key domain.TypeKey
@@ -845,7 +770,7 @@ func migrateObjectTypeIDsToKeys(objectTypeIDs []string) []domain.TypeKey {
 
 		objectTypeKeys = append(objectTypeKeys, key)
 	}
-	return objectTypeKeys
+	return objecttypes.NewObjectTypes(objectTypeKeys, nil)
 }
 
 // Adds missing unique key for supported smartblock types

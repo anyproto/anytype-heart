@@ -721,7 +721,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
-	changes := st.GetChanges()
+	changes := st.Diff()
 	var changeId string
 	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
@@ -875,13 +875,15 @@ func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
 }
 
 func (sb *smartBlock) NewState() *state.State {
-	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
+	s := sb.Doc.NewState()
+	s.SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
 
 func (sb *smartBlock) NewStateCtx(ctx session.Context) *state.State {
-	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
+	s := sb.Doc.NewStateCtx(ctx)
+	s.SetNoObjectType(sb.Type() == smartblock.SmartBlockTypeArchive)
 	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
@@ -1115,7 +1117,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.runIndexer(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
+	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).Diff()})
 	return nil
 }
 

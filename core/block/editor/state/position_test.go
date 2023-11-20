@@ -270,7 +270,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 
 	t.Run("move multiple existing blocks", func(t *testing.T) {
@@ -289,7 +289,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 
 	t.Run("try to move missing block", func(t *testing.T) {
@@ -298,7 +298,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 		state.addChangesForSideMoving("1", model.Block_Left, "4")
 
 		var want []*pb.ChangeContent
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 
 	t.Run("add one new block", func(t *testing.T) {
@@ -321,7 +321,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 	t.Run("add multiple new blocks", func(t *testing.T) {
 		state := makeState()
@@ -346,7 +346,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 	t.Run("add one new block and move multiple existing blocks", func(t *testing.T) {
 		state := makeState()
@@ -377,7 +377,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 	t.Run("move multiple existing blocks and add multiple new blocks", func(t *testing.T) {
 		state := makeState()
@@ -411,7 +411,7 @@ func Test_addChangesForSideMoving(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 	t.Run("move multiple existing blocks and add multiple new blocks, but mixed", func(t *testing.T) {
 		state := makeState()
@@ -464,6 +464,6 @@ func Test_addChangesForSideMoving(t *testing.T) {
 				},
 			},
 		}
-		assert.Equal(t, want, state.GetChanges())
+		assert.Equal(t, want, state.Diff())
 	})
 }

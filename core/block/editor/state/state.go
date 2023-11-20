@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state/objecttypes"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -77,8 +78,9 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		blocks = make(map[string]simple.Block)
 	}
 	s := &State{
-		rootId: rootId,
-		blocks: blocks,
+		rootId:     rootId,
+		blocks:     blocks,
+		ObjectType: objecttypes.NewObjectTypes(nil, nil),
 	}
 	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
 	return s
@@ -100,11 +102,14 @@ func NewDocWithInternalKey(rootId string, blocks map[string]simple.Block, intern
 		rootId:            rootId,
 		blocks:            blocks,
 		uniqueKeyInternal: internalKey,
+		ObjectType:        objecttypes.NewObjectTypes(nil, nil),
 	}
 	return s
 }
 
 type State struct {
+	objecttypes.ObjectType
+
 	ctx    session.Context
 	parent *State
 	blocks map[string]simple.Block
@@ -126,14 +131,11 @@ type State struct {
 	storeKeyRemoved         map[string]struct{}
 	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
-	objectTypeKeys []domain.TypeKey // here we store object type keys, not IDs
-
 	changesStructureIgnoreIds []string
 
 	stringBuf []string
 
 	groupId                  string
-	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects
 }
 
@@ -164,11 +166,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: objecttypes.NewObjectTypes(nil, s.ObjectType)}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: objecttypes.NewObjectTypes(nil, s.ObjectType)}
 }
 
 func (s *State) Context() session.Context {
@@ -620,11 +622,11 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
-	if s.parent != nil && s.objectTypeKeys != nil {
+	if s.parent != nil && s.ObjectType != nil {
 		prev := s.parent.ObjectTypeKeys()
-		if !slice.UnsortedEqual(prev, s.objectTypeKeys) {
+		if !slice.UnsortedEqual(prev, s.ObjectTypeKeys()) {
 			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypeKeys()}
-			s.parent.objectTypeKeys = s.objectTypeKeys
+			s.parent.SetObjectTypeKeys(s.ObjectTypeKeys())
 		}
 	}
 
@@ -704,8 +706,8 @@ func (s *State) intermediateApply() {
 		s.parent.relationLinks = s.relationLinks
 	}
 
-	if s.objectTypeKeys != nil {
-		s.parent.objectTypeKeys = s.objectTypeKeys
+	if len(s.ObjectTypeKeys()) > 0 {
+		s.parent.SetObjectTypeKeys(s.ObjectTypeKeys())
 	}
 
 	if s.store != nil {
@@ -977,18 +979,6 @@ type ObjectTypePair struct {
 	Key domain.TypeKey
 }
 
-// SetObjectTypeKey sets the object type key. Smartblocks derive Type relation from it.
-func (s *State) SetObjectTypeKey(objectTypeKey domain.TypeKey) *State {
-	return s.SetObjectTypeKeys([]domain.TypeKey{objectTypeKey})
-}
-
-// SetObjectTypeKeys sets the object type keys. Smartblocks derive Type relation from it.
-func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
-	s.objectTypeKeys = objectTypeKeys
-	// we don't set it in the localDetails here
-	return s
-}
-
 func (s *State) InjectLocalDetails(localDetails *types.Struct) {
 	for key, v := range localDetails.GetFields() {
 		if v == nil {
@@ -1030,34 +1020,6 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-// ObjectTypeKeys returns the object types keys of the object
-// in order to get object type id you need to derive it for the space
-func (s *State) ObjectTypeKeys() []domain.TypeKey {
-	if s.objectTypeKeys == nil && s.parent != nil {
-		return s.parent.ObjectTypeKeys()
-	}
-	return s.objectTypeKeys
-}
-
-// ObjectTypeKey returns only the first objectType key and produce warning in case the state has more than 1 object type
-// this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
-func (s *State) ObjectTypeKey() domain.TypeKey {
-	objTypes := s.ObjectTypeKeys()
-	if len(objTypes) == 0 && !s.noObjectType {
-		log.Debugf("object %s (%s) has %d object types instead of 1",
-			s.RootId(),
-			pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()),
-			len(objTypes),
-		)
-	}
-
-	if len(objTypes) > 0 {
-		return objTypes[0]
-	}
-
-	return ""
-}
-
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title && text.Style != model.BlockContentText_Description {
@@ -1078,7 +1040,7 @@ func (s *State) Snippet() (snippet string) {
 func (s *State) FileRelationKeys() []string {
 	var keys []string
 	for _, rel := range s.GetRelationLinks() {
-		// coverId can contain both hash or predefined cover id
+		// coverId can contain both hash or predefined  cover id
 		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
 			if slice.FindPos(keys, rel.Key) == -1 {
 				keys = append(keys, rel.Key)
@@ -1257,14 +1219,13 @@ func (s *State) Copy() *State {
 		storeKeyRemovedCopy[i] = struct{}{}
 	}
 	copy := &State{
+		ObjectType:               objecttypes.NewObjectTypes(objTypes, nil),
 		ctx:                      s.ctx,
 		blocks:                   blocks,
 		rootId:                   s.rootId,
 		details:                  pbtypes.CopyStruct(s.Details()),
 		localDetails:             pbtypes.CopyStruct(s.LocalDetails()),
 		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
-		objectTypeKeys:           objTypes,
-		noObjectType:             s.noObjectType,
 		migrationVersion:         s.migrationVersion,
 		store:                    pbtypes.CopyStruct(s.Store()),
 		storeLastChangeIdByPath:  s.StoreLastChangeIdByPath(), // todo: do we need to copy it?
@@ -1290,11 +1251,6 @@ func (s *State) Len() (l int) {
 		return true
 	})
 	return
-}
-
-func (s *State) SetNoObjectType(noObjectType bool) *State {
-	s.noObjectType = noObjectType
-	return s
 }
 
 func (s *State) SetRootId(newRootId string) {

@@ -47,7 +47,7 @@ func TestState_ChangesCreate_MoveAdd(t *testing.T) {
 	require.NoError(t, s.InsertTo("2", model.Block_Bottom, "3.1"))
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	require.Len(t, changes, 4)
 	assert.Equal(t, []*pb.ChangeContent{
 		newMoveChange("b", model.Block_Inner, "1", "2"),
@@ -63,7 +63,7 @@ func TestState_ChangesCreate_Collection_Set(t *testing.T) {
 	s.SetInStore([]string{"coll1", "key1"}, pbtypes.String("1"))
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	require.Len(t, changes, 1)
 	assert.Equal(t, (&pb.ChangeContent{
 		Value: &pb.ChangeContentValueOfStoreKeySet{
@@ -82,7 +82,7 @@ func TestState_ChangesCreate_Collection_Unset(t *testing.T) {
 	s.RemoveFromStore([]string{"coll1", "key1"})
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	require.Len(t, changes, 1)
 	assert.Equal(t, (&pb.ChangeContent{
 		Value: &pb.ChangeContentValueOfStoreKeyUnset{
@@ -199,7 +199,7 @@ func TestState_ChangesCreate_StoreSlice(t *testing.T) {
 			_, _, err := ApplyState(newState, false)
 			require.NoError(t, err)
 
-			got := doc.(*State).GetChanges()
+			got := doc.(*State).Diff()
 			gotContent := make([]pb.IsChangeContentValue, 0, len(got))
 			for _, c := range got {
 				gotContent = append(gotContent, c.Value)
@@ -233,7 +233,7 @@ func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
 
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState(s2, true)
@@ -265,7 +265,7 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState(s2, true)
@@ -291,7 +291,7 @@ func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
 
 		_, _, err := ApplyState(state, true)
 		require.NoError(t, err)
-		changes := state.GetChanges()
+		changes := state.Diff()
 		err = originalState.ApplyChange(changes...)
 		require.NoError(t, err)
 
@@ -371,7 +371,7 @@ func TestState_SetParent(t *testing.T) {
 	require.NoError(t, err)
 
 	st2 := orig.Copy()
-	require.NoError(t, st2.ApplyChange(st.GetChanges()...))
+	require.NoError(t, st2.ApplyChange(st.Diff()...))
 	assert.Equal(t, st.StringDebug(), st2.StringDebug())
 }
 
@@ -404,7 +404,7 @@ func TestStateNormalizeMerge(t *testing.T) {
 		_, _, err = ApplyState(stateA, true)
 		require.NoError(t, err)
 		// t.Log(docA.String())
-		changesA := stateA.GetChanges()
+		changesA := stateA.Diff()
 
 		docB := d.Copy()
 		stateB := docB.NewState()
@@ -413,7 +413,7 @@ func TestStateNormalizeMerge(t *testing.T) {
 		_, _, err = ApplyState(stateB, true)
 		require.NoError(t, err)
 		// t.Log(docB.String())
-		changesB := stateB.GetChanges()
+		changesB := stateB.Diff()
 
 		s = d.NewState()
 		require.NoError(t, s.ApplyChange(changesB...))
@@ -451,7 +451,7 @@ func TestStateNormalizeMerge(t *testing.T) {
 		stateA.InsertTo("common0", model.Block_Top, aIds...)
 		_, _, err = ApplyState(stateA, true)
 		require.NoError(t, err)
-		changesA := stateA.GetChanges()
+		changesA := stateA.Diff()
 
 		bIds := []string{}
 		docB := d.Copy()
@@ -464,7 +464,7 @@ func TestStateNormalizeMerge(t *testing.T) {
 		stateB.InsertTo("common40", model.Block_Bottom, bIds...)
 		_, _, err = ApplyState(stateB, true)
 		require.NoError(t, err)
-		changesB := stateB.GetChanges()
+		changesB := stateB.Diff()
 
 		s = d.NewState()
 		require.NoError(t, s.ApplyChange(changesB...))
@@ -506,7 +506,7 @@ func TestState_ChangeDataviewOrder(t *testing.T) {
 
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState(s2, true)
@@ -533,12 +533,12 @@ func TestState_ChangeDataviewUnlink(t *testing.T) {
 	}}))
 	s.InsertTo("root", model.Block_Inner, "dv")
 	_, _, err := ApplyState(s, true)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	s = d.NewState()
 	s.Unlink("dv")
 	_, _, err = ApplyState(s, true)
 	require.NoError(t, err)
-	changes = append(changes, d.(*State).GetChanges()...)
+	changes = append(changes, d.(*State).Diff()...)
 
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
@@ -570,12 +570,12 @@ func TestState_ChangeDataviewRemoveAdd(t *testing.T) {
 	}}))
 	s.InsertTo("root", model.Block_Inner, "dv")
 	_, _, err := ApplyState(s, true)
-	changes := d.(*State).GetChanges()
+	changes := d.(*State).Diff()
 	s = d.NewState()
 	s.Unlink("dv")
 	_, _, err = ApplyState(s, true)
 	require.NoError(t, err)
-	changes = append(changes, d.(*State).GetChanges()...)
+	changes = append(changes, d.(*State).Diff()...)
 	s = d.NewState()
 	s.Add(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
@@ -588,7 +588,7 @@ func TestState_ChangeDataviewRemoveAdd(t *testing.T) {
 	_, _, err = ApplyState(s, true)
 	require.NoError(t, err)
 
-	changes = append(changes, d.(*State).GetChanges()...)
+	changes = append(changes, d.(*State).Diff()...)
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	require.NotNil(t, s2.Get("dv"))
@@ -693,7 +693,7 @@ func TestRelationChanges(t *testing.T) {
 	b.relationLinks = []*model.RelationLink{{Key: "3"}, {Key: "4"}, {Key: "5"}}
 	_, _, err := ApplyState(b, false)
 	require.NoError(t, err)
-	chs := a.GetChanges()
+	chs := a.Diff()
 	require.NoError(t, ac.ApplyChange(chs...))
 	require.Equal(t, a.relationLinks, ac.relationLinks)
 }
@@ -707,7 +707,7 @@ func TestRootBlockChanges(t *testing.T) {
 
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
-	changes := s.GetChanges()
+	changes := s.Diff()
 
 	b := a.NewState()
 	require.NoError(t, b.ApplyChange(changes...))
