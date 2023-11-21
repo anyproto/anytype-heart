@@ -433,7 +433,7 @@ func (b *builtinObjects) downloadZipToFile(url string, progress process.Progress
 		return "", fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if !gallery.IsInWhitelist(url) {
-		return "", fmt.Errorf("URL '%s' is not in whitelist", url)
+		return "", fmt.Errorf("provided URL is not in whitelist")
 	}
 
 	var (
