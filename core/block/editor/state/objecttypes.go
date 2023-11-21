@@ -43,7 +43,7 @@ func NewObjectTypes(objectTypeKeys []domain.TypeKey, parent ObjectType) ObjectTy
 
 func (o *ObjectTypes) GetObjectTypeHistory() *undo.ObjectType {
 	var ot *undo.ObjectType
-	if o.parent != nil {
+	if o.parent != nil && o.objectTypeKeys != nil {
 		prev := o.parent.ObjectTypeKeys()
 		if !slice.UnsortedEqual(prev, o.objectTypeKeys) {
 			ot = &undo.ObjectType{Before: prev, After: o.objectTypeKeys}
