@@ -528,7 +528,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.collapseSameKeyStoreChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
-	s.changes = append(s.changes, s.ObjectType.Diff()...)
+	s.changes = append(s.changes, s.Diff()...)
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
 }
 

@@ -635,13 +635,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
-	if s.parent != nil && s.ObjectType != nil {
-		prev := s.parent.ObjectTypeKeys()
-		if !slice.UnsortedEqual(prev, s.ObjectTypeKeys()) {
-			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypeKeys()}
-			s.parent.SetObjectTypeKeys(s.ObjectTypeKeys())
-		}
-	}
+	action.ObjectTypes = s.GetObjectTypeHistory()
 
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
@@ -719,9 +713,7 @@ func (s *State) intermediateApply() {
 		s.parent.relationLinks = s.relationLinks
 	}
 
-	if len(s.ObjectTypeKeys()) > 0 {
-		s.parent.SetObjectTypeKeys(s.ObjectTypeKeys())
-	}
+	s.SetParentObjectType()
 
 	if s.store != nil {
 		s.parent.store = s.store
@@ -1147,7 +1139,7 @@ func (s *State) CheckRestrictions() (err error) {
 func (s *State) SetParent(parent *State) {
 	s.rootId = parent.rootId
 	s.parent = parent
-	s.ObjectType.SetParentObjectType(parent.ObjectType)
+	s.ObjectType.SetParent(parent.ObjectType)
 }
 
 func (s *State) Validate() (err error) {

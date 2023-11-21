@@ -3,6 +3,7 @@ package state
 import (
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -23,9 +24,11 @@ type ObjectType interface {
 	ObjectTypeKeys() []domain.TypeKey
 	ObjectTypeKey() domain.TypeKey
 	SetObjectTypeKeys(objectTypeKeys []domain.TypeKey)
-	SetParentObjectType(parent ObjectType)
+	SetParent(parent ObjectType)
 	SetObjectTypeKey(objectTypeKey domain.TypeKey)
 	SetNoObjectType(noObjectType bool)
+	GetObjectTypeHistory() *undo.ObjectType
+	SetParentObjectType()
 }
 
 type ObjectTypes struct {
@@ -36,6 +39,24 @@ type ObjectTypes struct {
 
 func NewObjectTypes(objectTypeKeys []domain.TypeKey, parent ObjectType) ObjectType {
 	return &ObjectTypes{objectTypeKeys: objectTypeKeys, parent: parent}
+}
+
+func (o *ObjectTypes) GetObjectTypeHistory() *undo.ObjectType {
+	var ot *undo.ObjectType
+	if o.parent != nil {
+		prev := o.parent.ObjectTypeKeys()
+		if !slice.UnsortedEqual(prev, o.objectTypeKeys) {
+			ot = &undo.ObjectType{Before: prev, After: o.objectTypeKeys}
+			o.parent.SetObjectTypeKeys(o.objectTypeKeys)
+		}
+	}
+	return ot
+}
+
+func (o *ObjectTypes) SetParentObjectType() {
+	if len(o.objectTypeKeys) > 0 {
+		o.parent.SetObjectTypeKeys(o.ObjectTypeKeys())
+	}
 }
 
 func (o *ObjectTypes) SetObjectTypeKey(objectTypeKey domain.TypeKey) {
@@ -69,7 +90,7 @@ func (o *ObjectTypes) SetNoObjectType(noObjectType bool) {
 	o.noObjectType = noObjectType
 }
 
-func (o *ObjectTypes) SetParentObjectType(parent ObjectType) {
+func (o *ObjectTypes) SetParent(parent ObjectType) {
 	o.parent = parent
 }
 
