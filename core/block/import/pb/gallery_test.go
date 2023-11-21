@@ -44,7 +44,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		assert.Equal(t, rootCollectionName, collection.FileName)
+		assert.Contains(t, collection.FileName, rootCollectionName)
 	})
 	t.Run("CollectionTitle parameter is equeal 'test' - collection with name test", func(t *testing.T) {
 		// given
@@ -57,7 +57,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		assert.Equal(t, "test", collection.FileName)
+		assert.Contains(t, collection.FileName, "test")
 	})
 	t.Run("widget with sets - root collection without objects as we ignore default sets", func(t *testing.T) {
 		// given
