@@ -389,6 +389,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		opts = append(opts, u.opts...)
 	}
 
+	var fileHash string
 	if u.fileType == model.BlockContentFile_Image {
 		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
@@ -399,7 +400,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			err = e
 			return
 		}
-		result.Hash = im.Hash()
+		fileHash = im.Hash()
 		orig, _ := im.GetOriginalFile(ctx)
 		if orig != nil {
 			result.MIME = orig.Meta().Media
@@ -411,7 +412,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			err = e
 			return
 		}
-		result.Hash = fl.Hash()
+		fileHash = fl.Hash()
 		if meta := fl.Meta(); meta != nil {
 			result.MIME = meta.Media
 			result.Size = meta.Size
@@ -421,12 +422,12 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	fileId, fileDetails, err := u.objectCreator.CreateObject(ctx, u.spaceID, objectcreator.CreateObjectRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyFileHash.String(): pbtypes.String(result.Hash),
+				bundle.RelationKeyFileHash.String(): pbtypes.String(fileHash),
 			},
 		},
 		ObjectTypeKey: bundle.TypeKeyFile,
 	})
-	_ = fileId
+	result.Hash = fileId
 	_ = fileDetails
 	if err != nil {
 		return UploadResult{Err: err}
