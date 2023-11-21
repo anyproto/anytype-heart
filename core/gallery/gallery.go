@@ -75,7 +75,10 @@ func IsInWhitelist(url string) bool {
 		return true
 	}
 	// nolint:errcheck
-	parsedURL, _ := uri.ParseURI(url)
+	parsedURL, err := uri.ParseURI(url)
+	if err != nil {
+		return false
+	}
 	for host, pathRegexp := range whitelist {
 		if strings.Contains(parsedURL.Host, host) {
 			return pathRegexp.MatchString(parsedURL.Path)
