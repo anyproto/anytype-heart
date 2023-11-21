@@ -252,7 +252,12 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, noProgress bool, title string, importType pb.RpcObjectImportRequestPbParamsType) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context,
+	spaceID, path string,
+	noProgress bool,
+	title string,
+	importType pb.RpcObjectImportRequestPbParamsType,
+) (err error) {
 	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,

@@ -95,12 +95,8 @@ func (p *Pb) getParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 func (p *Pb) getSnapshots(progress process.Progress,
 	params *pb.RpcObjectImportRequestPbParams,
 	isMigration bool,
-	allErrors *converter.ConvertError) ([]*converter.Snapshot, *converter.Snapshot, *converter.Snapshot) {
-	allSnapshots := make([]*converter.Snapshot, 0)
-	var (
-		widgetSnapshot    *converter.Snapshot
-		workspaceSnapshot *converter.Snapshot
-	)
+	allErrors *converter.ConvertError,
+) (allSnapshots []*converter.Snapshot, widgetSnapshot *converter.Snapshot, workspaceSnapshot *converter.Snapshot) {
 	for _, path := range params.GetPath() {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(converter.ErrCancel)
@@ -208,12 +204,8 @@ func (p *Pb) getSnapshotsFromProvidedFiles(pathCount int,
 	allErrors *converter.ConvertError,
 	path, profileID string,
 	needToImportWidgets, isMigration bool,
-	importType pb.RpcObjectImportRequestPbParamsType) ([]*converter.Snapshot, *converter.Snapshot, *converter.Snapshot) {
-	allSnapshots := make([]*converter.Snapshot, 0)
-	var (
-		widgetSnapshot    *converter.Snapshot
-		workspaceSnapshot *converter.Snapshot
-	)
+	importType pb.RpcObjectImportRequestPbParamsType,
+) (allSnapshots []*converter.Snapshot, widgetSnapshot *converter.Snapshot, workspaceSnapshot *converter.Snapshot) {
 	if iterateErr := pbFiles.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
 		snapshot, err := p.makeSnapshot(fileName, profileID, path, fileReader, isMigration)
 		if err != nil {

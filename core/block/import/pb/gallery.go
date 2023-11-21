@@ -23,7 +23,12 @@ func NewGalleryImport(service *collection.Service) *GalleryImport {
 	return &GalleryImport{service: service}
 }
 
-func (g *GalleryImport) ProvideCollection(_ []*converter.Snapshot, widget *converter.Snapshot, _ map[string]string, params *pb.RpcObjectImportRequestPbParams, workspaceSnapshot *converter.Snapshot) (*converter.Snapshot, error) {
+func (g *GalleryImport) ProvideCollection(_ []*converter.Snapshot,
+	widget *converter.Snapshot,
+	_ map[string]string,
+	params *pb.RpcObjectImportRequestPbParams,
+	workspaceSnapshot *converter.Snapshot,
+) (*converter.Snapshot, error) {
 	var widgetObjects []string
 	if widget != nil {
 		widgetObjects = g.getObjectsFromWidgets(widget)

@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/converter"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	smartblock2 "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -46,7 +46,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		assert.NotNil(t, collection)
 		assert.Equal(t, rootCollectionName, collection.FileName)
 	})
-	t.Run("CollectionTitle parameter is equeal \"test\" - collection with name test", func(t *testing.T) {
+	t.Run("CollectionTitle parameter is equeal 'test' - collection with name test", func(t *testing.T) {
 		// given
 		collectionProvider := GalleryImport{}
 		params := &pb.RpcObjectImportRequestPbParams{CollectionTitle: "test"}
@@ -68,16 +68,16 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			// skip objects
 			{
 				Id:     "id2",
-				SbType: smartblock2.SmartBlockTypeSubObject,
+				SbType: smartblock.SmartBlockTypeSubObject,
 			},
 			{
 				Id:     "id3",
-				SbType: smartblock2.SmartBlockTypeTemplate,
+				SbType: smartblock.SmartBlockTypeTemplate,
 			},
 			// page
 			{
 				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
+				SbType: smartblock.SmartBlockTypePage,
 				Snapshot: &pb.ChangeSnapshot{
 					Data: &model.SmartBlockSnapshotBase{
 						Details:     &types.Struct{Fields: map[string]*types.Value{}},
@@ -88,7 +88,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			// collection
 			{
 				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
+				SbType: smartblock.SmartBlockTypePage,
 				Snapshot: &pb.ChangeSnapshot{
 					Data: &model.SmartBlockSnapshotBase{
 						Details:     &types.Struct{Fields: map[string]*types.Value{}},
@@ -99,7 +99,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			// set
 			{
 				Id:     "id5",
-				SbType: smartblock2.SmartBlockTypePage,
+				SbType: smartblock.SmartBlockTypePage,
 				Snapshot: &pb.ChangeSnapshot{
 					Data: &model.SmartBlockSnapshotBase{
 						Details:     &types.Struct{Fields: map[string]*types.Value{}},
@@ -111,7 +111,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// set widget
 		widgetSnapshot := &converter.Snapshot{
 			Id:     "widgetID",
-			SbType: smartblock2.SmartBlockTypeWidget,
+			SbType: smartblock.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Blocks: []*model.Block{
@@ -147,7 +147,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			// favorite page
 			{
 				Id:     "id1",
-				SbType: smartblock2.SmartBlockTypePage,
+				SbType: smartblock.SmartBlockTypePage,
 				Snapshot: &pb.ChangeSnapshot{
 					Data: &model.SmartBlockSnapshotBase{
 						Details: &types.Struct{Fields: map[string]*types.Value{
@@ -160,7 +160,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			// collection
 			{
 				Id:     "id4",
-				SbType: smartblock2.SmartBlockTypePage,
+				SbType: smartblock.SmartBlockTypePage,
 				Snapshot: &pb.ChangeSnapshot{
 					Data: &model.SmartBlockSnapshotBase{
 						Details:     &types.Struct{Fields: map[string]*types.Value{}},
@@ -171,7 +171,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 			// set
 			{
 				Id:     "id5",
-				SbType: smartblock2.SmartBlockTypePage,
+				SbType: smartblock.SmartBlockTypePage,
 				Snapshot: &pb.ChangeSnapshot{
 					Data: &model.SmartBlockSnapshotBase{
 						Details:     &types.Struct{Fields: map[string]*types.Value{}},
@@ -184,7 +184,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// object with widget
 		widgetSnapshot := &converter.Snapshot{
 			Id:     "widgetID",
-			SbType: smartblock2.SmartBlockTypeWidget,
+			SbType: smartblock.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Blocks: []*model.Block{
@@ -220,7 +220,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		// object with widget
 		widgetSnapshot := &converter.Snapshot{
 			Id:     "widgetID",
-			SbType: smartblock2.SmartBlockTypeWidget,
+			SbType: smartblock.SmartBlockTypeWidget,
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Blocks: []*model.Block{},
@@ -258,7 +258,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		workspace := &converter.Snapshot{
 			Id:     "workspace",
-			SbType: smartblock2.SmartBlockTypeWorkspace,
+			SbType: smartblock.SmartBlockTypeWorkspace,
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Details:     &types.Struct{Fields: map[string]*types.Value{}},
@@ -281,7 +281,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 
 		workspace := &converter.Snapshot{
 			Id:     "workspace",
-			SbType: smartblock2.SmartBlockTypeWorkspace,
+			SbType: smartblock.SmartBlockTypeWorkspace,
 			Snapshot: &pb.ChangeSnapshot{
 				Data: &model.SmartBlockSnapshotBase{
 					Details: &types.Struct{Fields: map[string]*types.Value{
