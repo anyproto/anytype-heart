@@ -214,7 +214,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}()
 	}
 
-	if err = b.importArchive(ctx, spaceID, path, false, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress); err != nil {
+	if err = b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress); err != nil {
 		return err
 	}
 
@@ -239,7 +239,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(context.Background(), spaceID, path, true, "", pb.RpcObjectImportRequestPbParams_SPACE, nil); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path, "", pb.RpcObjectImportRequestPbParams_SPACE, nil); err != nil {
 		return err
 	}
 
@@ -270,7 +270,6 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 
 func (b *builtinObjects) importArchive(ctx context.Context,
 	spaceID, path string,
-	noProgress bool,
 	title string,
 	importType pb.RpcObjectImportRequestPbParamsType,
 	progress process.Progress,
