@@ -27,7 +27,7 @@ func (s *SpaceImport) ProvideCollection(
 	widgetSnapshot *common.Snapshot,
 	oldToNewID map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	workspaceSnapshot *common.Snapshot,
+	_ *common.Snapshot,
 ) (*common.Snapshot, error) {
 	if params.GetNoCollection() {
 		return nil, nil
@@ -35,18 +35,18 @@ func (s *SpaceImport) ProvideCollection(
 	var (
 		rootObjects        []string
 		widgetFlags        widget.ImportWidgetFlags
-		objectsNotInwidget []*common.Snapshot
+		objectsNotInWidget []*common.Snapshot
 	)
 
 	if widgetSnapshot != nil {
-		widgetFlags, rootObjects = s.getObjectsFromwidget(widgetSnapshot, oldToNewID)
-		objectsNotInwidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
+		widgetFlags, rootObjects = s.getObjectsFromWidget(widgetSnapshot, oldToNewID)
+		objectsNotInWidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
 	}
 	if !widgetFlags.IsEmpty() || len(rootObjects) > 0 {
 		// add to root collection only objects from widget, dashboard and favorites
-		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInwidget)...)
+		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInWidget)...)
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
 		rootObjects = lo.FilterMap(snapshots, func(item *common.Snapshot, index int) (string, bool) {
@@ -66,13 +66,13 @@ func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
 		item.SbType == smartblock.SmartBlockTypeRelationOption
 }
 
-func (s *SpaceImport) getObjectsFromwidget(widgetnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
-	widgettate := state.NewDocFromSnapshot("", widgetnapshot.Snapshot).(*state.State)
+func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
+	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot).(*state.State)
 	var (
 		objectsInWidget     []string
 		objectTypesToImport widget.ImportWidgetFlags
 	)
-	err := widgettate.Iterate(func(b simple.Block) (isContinue bool) {
+	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId != "" {
 			if builtinWidget := widget.FillImportFlags(link, &objectTypesToImport); builtinWidget {
 				return true
