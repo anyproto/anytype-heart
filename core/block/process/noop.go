@@ -30,6 +30,9 @@ func (n *noOp) Done() chan struct{} {
 func (n *noOp) SetTotal(total int64) {
 }
 
+func (n *noOp) SetTotalPreservingRatio(total int64) {
+}
+
 func (n *noOp) SetDone(done int64) {
 }
 

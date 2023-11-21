@@ -98,19 +98,28 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin) (string, error) {
+func (i *Import) Import(
+	ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin model.ObjectOrigin,
+	progress process.Progress,
+) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
-	progress := i.setupProgressBar(req)
+	isNewProgress := false
+	if progress == nil {
+		progress = i.setupProgressBar(req)
+		isNewProgress = true
+	}
 	var returnedErr error
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
 	}()
-	if i.s != nil && !req.GetNoProgress() {
+	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
 	var rootCollectionID string
@@ -133,7 +142,8 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(ctx context.Context,
+func (i *Import) importFromBuiltinConverter(
+	ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c converter.Converter,
 	progress process.Progress,
