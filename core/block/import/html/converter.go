@@ -65,7 +65,7 @@ func (h *HTML) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest,
 		return nil, allErrors
 	}
 	rootCollection := common.NewRootCollection(h.collectionService)
-	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil)
+	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, targetObjects, "", nil, true)
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(len(path), req.Type) {

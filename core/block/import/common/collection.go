@@ -27,15 +27,17 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 	return &RootCollection{service: service}
 }
 
-func (r *RootCollection) MakeRootCollection(
-	collectionName string,
+func (r *RootCollection) MakeRootCollection(collectionName string,
 	targetObjects []string,
 	icon string,
 	fileKeys []*pb.ChangeFileKeys,
+	needToAddDate bool,
 ) (*Snapshot, error) {
-	importDate := time.Now().Format(time.RFC3339)
-	nameWithDate := fmt.Sprintf("%s %s", collectionName, importDate)
-	detailsStruct := r.getCreateCollectionRequest(nameWithDate, icon)
+	if needToAddDate {
+		importDate := time.Now().Format(time.RFC3339)
+		collectionName = fmt.Sprintf("%s %s", collectionName, importDate)
+	}
+	detailsStruct := r.getCreateCollectionRequest(collectionName, icon)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
@@ -51,7 +53,7 @@ func (r *RootCollection) MakeRootCollection(
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
 
-	return r.getRootCollectionSnapshot(nameWithDate, st, detailsStruct, fileKeys), nil
+	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct, fileKeys), nil
 }
 
 func (r *RootCollection) getRootCollectionSnapshot(
