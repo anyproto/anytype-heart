@@ -14,9 +14,7 @@ import (
 
 const Name = "web"
 
-type Converter struct {
-	otc converter.ObjectTreeCreator
-}
+type Converter struct{}
 
 func NewConverter() converter.Converter {
 	return &Converter{}

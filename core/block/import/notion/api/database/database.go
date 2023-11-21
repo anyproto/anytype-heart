@@ -338,7 +338,7 @@ func (ds *Service) AddObjectsToNotionCollection(notionContext *api.NotionImportC
 	allObjects := ds.filterObjects(notionContext, notionDB, notionPages)
 
 	rootCollection := converter.NewRootCollection(ds.collectionService)
-	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects)
+	rootCol, err := rootCollection.MakeRootCollection(rootCollectionName, allObjects, "", nil)
 	if err != nil {
 		return nil, err
 	}

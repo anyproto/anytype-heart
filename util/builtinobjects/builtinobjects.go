@@ -135,7 +135,7 @@ type BuiltinObjects interface {
 	app.Component
 
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-	CreateObjectsForExperience(ctx context.Context, spaceID, url string) (err error)
+	CreateObjectsForExperience(ctx context.Context, spaceID, url, title string) (err error)
 	InjectMigrationDashboard(spaceID string) error
 }
 
@@ -193,7 +193,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url string) (err error) {
+func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string) (err error) {
 	var (
 		path     string
 		progress process.Progress
@@ -214,7 +214,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}()
 	}
 
-	if err = b.importArchive(ctx, spaceID, path, progress); err != nil {
+	if err = b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress); err != nil {
 		return err
 	}
 
@@ -239,7 +239,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(context.Background(), spaceID, path, nil); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path, "", pb.RpcObjectImportRequestPbParams_SPACE, nil); err != nil {
 		return err
 	}
 
@@ -268,7 +268,12 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	return
 }
 
-func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path string, progress process.Progress) (err error) {
+func (b *builtinObjects) importArchive(ctx context.Context,
+	spaceID, path string,
+	title string,
+	importType pb.RpcObjectImportRequestPbParamsType,
+	progress process.Progress,
+) (err error) {
 	_, err = b.importer.Import(ctx, &pb.RpcObjectImportRequest{
 		SpaceId:               spaceID,
 		UpdateExistingObjects: false,
@@ -278,8 +283,10 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID string, path
 		IsMigration:           false,
 		Params: &pb.RpcObjectImportRequestParamsOfPbParams{
 			PbParams: &pb.RpcObjectImportRequestPbParams{
-				Path:         []string{path},
-				NoCollection: true,
+				Path:            []string{path},
+				NoCollection:    true,
+				CollectionTitle: title,
+				ImportType:      importType,
 			}},
 	}, model.ObjectOrigin_usecase, progress)
 
