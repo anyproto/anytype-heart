@@ -49,7 +49,6 @@ type Service interface {
 	RegisterStaticSource(s Source) error
 	NewStaticSource(id domain.FullID, sbType smartblock.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	RemoveStaticSource(id string)
-	GetStaticObjectsBySpaceID(spaceID string) []string
 
 	DetailsFromIdBasedSource(id string) (*types.Struct, error)
 	IDsListerBySmartblockType(spaceID string, blockType smartblock.SmartBlockType) (IDsLister, error)
@@ -208,17 +207,4 @@ func (s *service) RemoveStaticSource(id string) {
 	if err != nil {
 		log.Errorf("failed to delete objects details &s, err: %s", id, err)
 	}
-}
-
-func (s *service) GetStaticObjectsBySpaceID(spaceID string) []string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	staticIDs := make([]string, 0, len(s.staticIds))
-	for id, objectSource := range s.staticIds {
-		if objectSource.SpaceID() != spaceID {
-			continue
-		}
-		staticIDs = append(staticIDs, id)
-	}
-	return staticIDs
 }
