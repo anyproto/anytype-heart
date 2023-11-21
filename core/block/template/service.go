@@ -102,13 +102,15 @@ func (s *service) CreateTemplateStateWithDetails(
 }
 
 func extractTargetDetails(addedDetails *types.Struct, templateDetails *types.Struct) *types.Struct {
+	templateIsPreferableRelationKeys := []domain.RelationKey{bundle.RelationKeyFeaturedRelations, bundle.RelationKeyLayout}
 	targetDetails := pbtypes.CopyStruct(addedDetails)
 	for key := range addedDetails.GetFields() {
 		_, exists := templateDetails.Fields[key]
 		if exists {
 			inTemplateEmpty := pbtypes.IsEmptyValueOrAbsent(templateDetails, key)
 			inAddedEmpty := pbtypes.IsEmptyValueOrAbsent(addedDetails, key)
-			if !inTemplateEmpty && inAddedEmpty {
+			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, domain.RelationKey(key))
+			if !inTemplateEmpty && (inAddedEmpty || templateValueShouldBePreferred) {
 				delete(targetDetails.Fields, key)
 			}
 		}
