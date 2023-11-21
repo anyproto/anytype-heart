@@ -35,7 +35,7 @@ func (v *virtualSpaceService) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (v *virtualSpaceService) Name() (name string) {
+func (v *virtualSpaceService) Name() string {
 	return name
 }
 
