@@ -88,7 +88,7 @@ func (g *GalleryImport) addCollectionWidget(widgetSnapshot *common.Snapshot, col
 		Id:          widgetID,
 		ChildrenIds: []string{id},
 		Content: &model.BlockContentOfWidget{Widget: &model.BlockContentWidget{
-			Layout: 0,
+			Layout: model.BlockContentWidget_CompactList,
 			Limit:  0,
 			ViewId: "",
 		}},
