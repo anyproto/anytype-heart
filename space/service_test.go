@@ -109,10 +109,10 @@ func (fx *fixture) expectRun(newAccount bool) {
 	}
 	// startLoad
 	fx.techSpace.EXPECT().SpaceViewExists(mock.Anything, testPersonalSpaceID).Return(true, nil)
-	fx.techSpace.EXPECT().SetInfo(mock.Anything, mock.Anything).Return(nil)
+	fx.techSpace.EXPECT().SetLocalInfo(mock.Anything, mock.Anything).Return(nil)
 	// wait load
 	fx.spaceCore.EXPECT().Get(mock.Anything, testPersonalSpaceID).Return(&spacecore.AnySpace{Space: fx.personalSpace}, nil)
-	fx.techSpace.EXPECT().SetInfo(mock.Anything, spaceinfo.SpaceInfo{
+	fx.techSpace.EXPECT().SetLocalInfo(mock.Anything, spaceinfo.SpaceLocalInfo{
 		SpaceID:      testPersonalSpaceID,
 		LocalStatus:  spaceinfo.LocalStatusOk,
 		RemoteStatus: spaceinfo.RemoteStatusUnknown,

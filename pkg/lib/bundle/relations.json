@@ -1511,5 +1511,15 @@
     "name": "Target space id",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Last time object type was used",
+    "format": "date",
+    "hidden": true,
+    "key": "lastUsedDate",
+    "maxCount": 1,
+    "name": "Last Used date",
+    "readonly": true,
+    "source": "local"
   }
 ]

@@ -220,3 +220,13 @@ func (mw *Middleware) WorkspaceObjectListRemove(cctx context.Context, req *pb.Rp
 	}
 	return response(req.ObjectIds, 0, nil)
 }
+
+// WorkspaceExport is unused now, it must be fixed if someone wants to use it
+func (mw *Middleware) WorkspaceExport(cctx context.Context, req *pb.RpcWorkspaceExportRequest) *pb.RpcWorkspaceExportResponse {
+	return &pb.RpcWorkspaceExportResponse{
+		Error: &pb.RpcWorkspaceExportResponseError{
+			Code:        pb.RpcWorkspaceExportResponseError_NULL,
+			Description: "Not implemented",
+		},
+	}
+}

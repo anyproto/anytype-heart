@@ -107,21 +107,6 @@ func (s *service) Run(context.Context) (err error) {
 	return
 }
 
-func spaceIdFromFilters(filters []*model.BlockContentDataviewFilter) (spaceId string, err error) {
-	for _, f := range filters {
-		// todo: this doesn't support IN filters
-		if f.Condition != model.BlockContentDataviewFilter_Equal {
-			continue
-		}
-		if f.RelationKey == bundle.RelationKeySpaceId.String() {
-			spaceId = f.Value.GetStringValue()
-			return
-		}
-	}
-	err = fmt.Errorf("spaceId not found")
-	return
-}
-
 func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (*pb.RpcObjectSearchSubscribeResponse, error) {
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()

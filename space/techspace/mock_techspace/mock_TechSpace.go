@@ -114,12 +114,12 @@ func (_c *MockTechSpace_Run_Call) RunAndReturn(run func(commonspace.Space, objec
 	return _c
 }
 
-// SetInfo provides a mock function with given fields: ctx, info
-func (_m *MockTechSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) error {
+// SetLocalInfo provides a mock function with given fields: ctx, info
+func (_m *MockTechSpace) SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) error {
 	ret := _m.Called(ctx, info)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.SpaceInfo) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.SpaceLocalInfo) error); ok {
 		r0 = rf(ctx, info)
 	} else {
 		r0 = ret.Error(0)
@@ -128,31 +128,74 @@ func (_m *MockTechSpace) SetInfo(ctx context.Context, info spaceinfo.SpaceInfo) 
 	return r0
 }
 
-// MockTechSpace_SetInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetInfo'
-type MockTechSpace_SetInfo_Call struct {
+// MockTechSpace_SetLocalInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetLocalInfo'
+type MockTechSpace_SetLocalInfo_Call struct {
 	*mock.Call
 }
 
-// SetInfo is a helper method to define mock.On call
+// SetLocalInfo is a helper method to define mock.On call
 //   - ctx context.Context
-//   - info spaceinfo.SpaceInfo
-func (_e *MockTechSpace_Expecter) SetInfo(ctx interface{}, info interface{}) *MockTechSpace_SetInfo_Call {
-	return &MockTechSpace_SetInfo_Call{Call: _e.mock.On("SetInfo", ctx, info)}
+//   - info spaceinfo.SpaceLocalInfo
+func (_e *MockTechSpace_Expecter) SetLocalInfo(ctx interface{}, info interface{}) *MockTechSpace_SetLocalInfo_Call {
+	return &MockTechSpace_SetLocalInfo_Call{Call: _e.mock.On("SetLocalInfo", ctx, info)}
 }
 
-func (_c *MockTechSpace_SetInfo_Call) Run(run func(ctx context.Context, info spaceinfo.SpaceInfo)) *MockTechSpace_SetInfo_Call {
+func (_c *MockTechSpace_SetLocalInfo_Call) Run(run func(ctx context.Context, info spaceinfo.SpaceLocalInfo)) *MockTechSpace_SetLocalInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(spaceinfo.SpaceInfo))
+		run(args[0].(context.Context), args[1].(spaceinfo.SpaceLocalInfo))
 	})
 	return _c
 }
 
-func (_c *MockTechSpace_SetInfo_Call) Return(err error) *MockTechSpace_SetInfo_Call {
+func (_c *MockTechSpace_SetLocalInfo_Call) Return(err error) *MockTechSpace_SetLocalInfo_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockTechSpace_SetInfo_Call) RunAndReturn(run func(context.Context, spaceinfo.SpaceInfo) error) *MockTechSpace_SetInfo_Call {
+func (_c *MockTechSpace_SetLocalInfo_Call) RunAndReturn(run func(context.Context, spaceinfo.SpaceLocalInfo) error) *MockTechSpace_SetLocalInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetPersistentInfo provides a mock function with given fields: ctx, info
+func (_m *MockTechSpace) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
+	ret := _m.Called(ctx, info)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, spaceinfo.SpacePersistentInfo) error); ok {
+		r0 = rf(ctx, info)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_SetPersistentInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetPersistentInfo'
+type MockTechSpace_SetPersistentInfo_Call struct {
+	*mock.Call
+}
+
+// SetPersistentInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - info spaceinfo.SpacePersistentInfo
+func (_e *MockTechSpace_Expecter) SetPersistentInfo(ctx interface{}, info interface{}) *MockTechSpace_SetPersistentInfo_Call {
+	return &MockTechSpace_SetPersistentInfo_Call{Call: _e.mock.On("SetPersistentInfo", ctx, info)}
+}
+
+func (_c *MockTechSpace_SetPersistentInfo_Call) Run(run func(ctx context.Context, info spaceinfo.SpacePersistentInfo)) *MockTechSpace_SetPersistentInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(spaceinfo.SpacePersistentInfo))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_SetPersistentInfo_Call) Return(err error) *MockTechSpace_SetPersistentInfo_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTechSpace_SetPersistentInfo_Call) RunAndReturn(run func(context.Context, spaceinfo.SpacePersistentInfo) error) *MockTechSpace_SetPersistentInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

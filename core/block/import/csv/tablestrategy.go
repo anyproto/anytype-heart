@@ -5,7 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	te "github.com/anyproto/anytype-heart/core/block/editor/table"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
@@ -22,7 +22,7 @@ func NewTableStrategy(tableEditor te.TableEditor) *TableStrategy {
 	return &TableStrategy{tableEditor: tableEditor}
 }
 
-func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*converter.Snapshot, error) {
+func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*common.Snapshot, error) {
 	st := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Content: &model.BlockContentOfSmartblock{
@@ -38,7 +38,7 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 		}
 	}
 
-	details := converter.GetCommonDetails(path, "", "", model.ObjectType_basic)
+	details := common.GetCommonDetails(path, "", "", model.ObjectType_basic)
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
@@ -47,14 +47,14 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 		RelationLinks: st.GetRelationLinks(),
 	}
 
-	snapshot := &converter.Snapshot{
+	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		SbType:   smartblock.SmartBlockTypePage,
 		FileName: path,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},
 	}
 	progress.AddDone(1)
-	return snapshot.Id, []*converter.Snapshot{snapshot}, nil
+	return snapshot.Id, []*common.Snapshot{snapshot}, nil
 }
 
 func (c *TableStrategy) createTable(st *state.State, csvTable [][]string, useFirstRowForHeader bool) error {

@@ -63,7 +63,7 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 				return
 			}
 		}
-		timeout *= 2
+		timeout = timeout * 15 / 10
 		if timeout > ls.retryTimeout {
 			timeout = ls.retryTimeout
 		}

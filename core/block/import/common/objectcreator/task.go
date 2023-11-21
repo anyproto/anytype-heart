@@ -1,4 +1,4 @@
-package creator
+package objectcreator
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -44,11 +44,11 @@ func NewDataObject(ctx context.Context,
 
 type Task struct {
 	spaceID string
-	sn      *converter.Snapshot
+	sn      *common.Snapshot
 	oc      Service
 }
 
-func NewTask(spaceID string, sn *converter.Snapshot, oc Service) *Task {
+func NewTask(spaceID string, sn *common.Snapshot, oc Service) *Task {
 	return &Task{sn: sn, oc: oc, spaceID: spaceID}
 }
 

@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -126,27 +125,8 @@ func (s *Service) CreateLinkToTheNewObject(
 }
 
 func (s *Service) ObjectToSet(id string, source []string) error {
-	if err := Do(s, id, func(b smartblock.SmartBlock) error {
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return fmt.Errorf("invalid smartblock impmlementation: %T", b)
-		}
-		st := b.NewState()
+	return DoState(s, id, func(st *state.State, b basic.CommonOperations) error {
 		st.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		err := commonOperations.SetLayoutInStateAndIgnoreRestriction(st, model.ObjectType_set)
-		if err != nil {
-			return fmt.Errorf("set layout: %w", err)
-		}
-		st.SetObjectTypeKey(bundle.TypeKeySet)
-		flags := internalflag.NewFromState(st)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.Remove(model.InternalFlag_editorDeleteEmpty)
-		flags.AddToState(st)
-
-		return b.Apply(st)
-	}); err != nil {
-		return err
-	}
-
-	return nil
+		return b.SetObjectTypesInState(st, []domain.TypeKey{bundle.TypeKeySet}, true)
+	})
 }

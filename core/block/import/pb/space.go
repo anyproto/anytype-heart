@@ -6,7 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -22,19 +22,25 @@ func NewSpaceImport(service *collection.Service) *SpaceImport {
 	return &SpaceImport{service: service}
 }
 
-func (s *SpaceImport) ProvideCollection(snapshots []*converter.Snapshot, widgetSnapshot *converter.Snapshot, oldToNewID map[string]string, params *pb.RpcObjectImportRequestPbParams, workspaceSnapshot *converter.Snapshot) (*converter.Snapshot, error) {
+func (s *SpaceImport) ProvideCollection(
+	snapshots []*common.Snapshot,
+	widgetSnapshot *common.Snapshot,
+	oldToNewID map[string]string,
+	params *pb.RpcObjectImportRequestPbParams,
+	workspaceSnapshot *common.Snapshot,
+) (*common.Snapshot, error) {
 	if params.GetNoCollection() {
 		return nil, nil
 	}
 	var (
 		rootObjects        []string
 		widgetFlags        widget.ImportWidgetFlags
-		objectsNotInwidget []*converter.Snapshot
+		objectsNotInwidget []*common.Snapshot
 	)
 
 	if widgetSnapshot != nil {
 		widgetFlags, rootObjects = s.getObjectsFromwidget(widgetSnapshot, oldToNewID)
-		objectsNotInwidget = lo.Filter(snapshots, func(item *converter.Snapshot, index int) bool {
+		objectsNotInwidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
 	}
@@ -43,24 +49,24 @@ func (s *SpaceImport) ProvideCollection(snapshots []*converter.Snapshot, widgetS
 		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInwidget)...)
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
-		rootObjects = lo.FilterMap(snapshots, func(item *converter.Snapshot, index int) (string, bool) {
+		rootObjects = lo.FilterMap(snapshots, func(item *common.Snapshot, index int) (string, bool) {
 			if !s.objectShouldBeSkipped(item) {
 				return item.Id, true
 			}
 			return item.Id, false
 		})
 	}
-	rootCollection := converter.NewRootCollection(s.service)
+	rootCollection := common.NewRootCollection(s.service)
 	return rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil)
 }
 
-func (s *SpaceImport) objectShouldBeSkipped(item *converter.Snapshot) bool {
+func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
 	return item.SbType == smartblock.SmartBlockTypeSubObject || item.SbType == smartblock.SmartBlockTypeTemplate ||
 		item.SbType == smartblock.SmartBlockTypeRelation || item.SbType == smartblock.SmartBlockTypeObjectType ||
 		item.SbType == smartblock.SmartBlockTypeRelationOption
 }
 
-func (s *SpaceImport) getObjectsFromwidget(widgetnapshot *converter.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
+func (s *SpaceImport) getObjectsFromwidget(widgetnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
 	widgettate := state.NewDocFromSnapshot("", widgetnapshot.Snapshot).(*state.State)
 	var (
 		objectsInWidget     []string
@@ -83,7 +89,7 @@ func (s *SpaceImport) getObjectsFromwidget(widgetnapshot *converter.Snapshot, ol
 	return objectTypesToImport, objectsInWidget
 }
 
-func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags, objectsNotInWidget []*converter.Snapshot) []string {
+func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags, objectsNotInWidget []*common.Snapshot) []string {
 	var rootObjects []string
 	for _, snapshot := range objectsNotInWidget {
 		if s.objectShouldBeSkipped(snapshot) {
