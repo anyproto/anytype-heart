@@ -33,12 +33,14 @@ var whitelist = map[string]*regexp.Regexp{
 	"gallery.any.coop":          regexp.MustCompile(`.*`),
 }
 
+var errURLNotInWhitelist = "url %s is not in whitelist"
+
 func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
-	if !IsInWhitelist(url) {
-		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
+	if isInWhiteList, err := IsInWhitelist(url); !isInWhiteList {
+		return nil, err
 	}
 	raw, err := getRawManifest(url)
 	if err != nil {
@@ -61,8 +63,8 @@ func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestI
 	}
 
 	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
-		if !IsInWhitelist(urlToCheck) {
-			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
+		if isInWhitelist, err := IsInWhitelist(urlToCheck); !isInWhitelist {
+			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist: %s", urlToCheck, err)
 		}
 	}
 
@@ -70,18 +72,24 @@ func DownloadManifest(url string) (info *pb.RpcDownloadManifestResponseManifestI
 	return info, nil
 }
 
-func IsInWhitelist(url string) bool {
+func IsInWhitelist(url string) (isInWhitelist bool, err error) {
 	if len(whitelist) == 0 {
-		return true
+		return true, nil
 	}
-	// nolint:errcheck
-	parsedURL, _ := uri.ParseURI(url)
+	parsedURL, err := uri.ParseURI(url)
+	if err != nil {
+		return false, err
+	}
 	for host, pathRegexp := range whitelist {
 		if strings.Contains(parsedURL.Host, host) {
-			return pathRegexp.MatchString(parsedURL.Path)
+			isInWhitelist = pathRegexp.MatchString(parsedURL.Path)
+			if !isInWhitelist {
+				err = fmt.Errorf(errURLNotInWhitelist, url)
+			}
+			return
 		}
 	}
-	return false
+	return false, err
 }
 
 func getRawManifest(url string) ([]byte, error) {

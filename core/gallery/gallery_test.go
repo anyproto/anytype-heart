@@ -14,12 +14,20 @@ func TestStripTags(t *testing.T) {
 }
 
 func TestIsInWhitelist(t *testing.T) {
-	assert.True(t, IsInWhitelist("https://raw.githubusercontent.com/anyproto/secretrepo/blob/README.md"))
-	assert.False(t, IsInWhitelist("https://raw.githubusercontent.com/fakeany/anyproto/secretrepo/blob/README.md"))
-	assert.True(t, IsInWhitelist("ftp://raw.githubusercontent.com/anyproto/ftpserver/README.md"))
-	assert.True(t, IsInWhitelist("http://github.com/anyproto/othersecretrepo/virus.exe"))
-	assert.False(t, IsInWhitelist("ftp://github.com/anygroto/othersecretrepoclone/notAvirus.php?breakwhitelist=github.com/anyproto"))
-	assert.True(t, IsInWhitelist("http://community.anytype.io/localstorage/knowledge_base.zip"))
-	assert.True(t, IsInWhitelist("anytype://anytype.io/localstorage/knowledge_base.zip"))
-	assert.True(t, IsInWhitelist("anytype://gallery.any.coop/"))
+	assert.True(t, isInWhitelist(t, "https://raw.githubusercontent.com/anyproto/secretrepo/blob/README.md"))
+	assert.False(t, isInWhitelist(t, "https://raw.githubusercontent.com/fakeany/anyproto/secretrepo/blob/README.md"))
+	assert.True(t, isInWhitelist(t, "ftp://raw.githubusercontent.com/anyproto/ftpserver/README.md"))
+	assert.True(t, isInWhitelist(t, "http://github.com/anyproto/othersecretrepo/virus.exe"))
+	assert.False(t, isInWhitelist(t, "ftp://github.com/anygroto/othersecretrepoclone/notAvirus.php?breakwhitelist=github.com/anyproto"))
+	assert.True(t, isInWhitelist(t, "http://community.anytype.io/localstorage/knowledge_base.zip"))
+	assert.True(t, isInWhitelist(t, "anytype://anytype.io/localstorage/knowledge_base.zip"))
+	assert.True(t, isInWhitelist(t, "anytype://gallery.any.coop/"))
+}
+
+func isInWhitelist(t *testing.T, url string) bool {
+	isInWhitelist, err := IsInWhitelist(url)
+	if err != nil {
+		assert.Errorf(t, err, errURLNotInWhitelist, url)
+	}
+	return isInWhitelist
 }
