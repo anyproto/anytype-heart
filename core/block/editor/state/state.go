@@ -165,11 +165,25 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: NewObjectTypes(nil, nil)}
+	return &State{parent: s,
+		blocks: make(map[string]simple.Block),
+		rootId: s.rootId, migrationVersion: s.migrationVersion,
+		uniqueKeyInternal:        s.uniqueKeyInternal,
+		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		ObjectType:               NewObjectTypes(nil, s.ObjectType),
+	}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, ObjectType: NewObjectTypes(nil, nil)}
+	return &State{parent: s,
+		blocks:                   make(map[string]simple.Block),
+		rootId:                   s.rootId,
+		ctx:                      ctx,
+		migrationVersion:         s.migrationVersion,
+		uniqueKeyInternal:        s.uniqueKeyInternal,
+		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		ObjectType:               NewObjectTypes(nil, s.ObjectType),
+	}
 }
 
 func (s *State) Context() session.Context {
