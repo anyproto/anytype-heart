@@ -71,7 +71,7 @@ func DoContextFullID[t any](p ObjectGetter, ctx context.Context, id domain.FullI
 // It correctly handles the case when two ids are the same.
 func DoState2[t1, t2 any](s ObjectGetter, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
 	if firstID == secondID {
-		return DoStateAsync(s, firstID, func(st *state.State, b t1) error {
+		return DoState(s, firstID, func(st *state.State, b t1) error {
 			// Check that b satisfies t2
 			b2, ok := any(b).(t2)
 			if !ok {
@@ -82,20 +82,20 @@ func DoState2[t1, t2 any](s ObjectGetter, firstID, secondID string, f func(*stat
 		})
 	}
 	if firstID < secondID {
-		return DoStateAsync(s, firstID, func(firstState *state.State, firstBlock t1) error {
-			return DoStateAsync(s, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
+			return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
 				return f(firstState, secondState, firstBlock, secondBlock)
 			})
 		})
 	}
-	return DoStateAsync(s, secondID, func(secondState *state.State, secondBlock t2) error {
-		return DoStateAsync(s, firstID, func(firstState *state.State, firstBlock t1) error {
+	return DoState(s, secondID, func(secondState *state.State, secondBlock t2) error {
+		return DoState(s, firstID, func(firstState *state.State, firstBlock t1) error {
 			return f(firstState, secondState, firstBlock, secondBlock)
 		})
 	})
 }
 
-func DoStateAsync[t any](p ObjectGetter, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
+func DoState[t any](p ObjectGetter, id string, apply func(s *state.State, sb t) error, flags ...smartblock.ApplyFlag) error {
 	ctx := context.Background()
 	sb, err := p.GetObject(ctx, id)
 	if err != nil {

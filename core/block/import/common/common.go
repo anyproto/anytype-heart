@@ -335,8 +335,11 @@ func AddRelationsToDataView(collectionState *state.State, relationLink *model.Re
 func ConvertStringToTime(t string) int64 {
 	parsedTime, err := time.Parse(time.RFC3339, t)
 	if err != nil {
-		log.Errorf("failed to convert time %s", t)
-		return 0
+		parsedTime, err := time.Parse(time.DateOnly, t)
+		if err != nil {
+			return 0
+		}
+		return parsedTime.Unix()
 	}
 	return parsedTime.Unix()
 }

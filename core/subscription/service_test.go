@@ -945,6 +945,79 @@ func TestService_Search(t *testing.T) {
 		tagGroup = groups.Groups[1].Value.(*model.BlockContentDataviewGroupValueOfCheckbox)
 		assert.Equal(t, tagGroup.Checkbox.Checked, false)
 	})
+	t.Run("SubscribeIdsReq: 1 active records", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		id := "id"
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+		fx.store.AddObjects(t, []objectstore.TestObject{{bundle.RelationKeyId: pbtypes.String(id)}})
+
+		// when
+		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
+			Ids:   []string{id},
+			SubId: "subID",
+			Keys:  []string{bundle.RelationKeyId.String()},
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, sub)
+		assert.Equal(t, "subID", sub.SubId)
+		assert.Len(t, sub.Dependencies, 0)
+		assert.Len(t, sub.Records, 1)
+		assert.Equal(t, id, sub.Records[0].GetFields()[bundle.RelationKeyId.String()].GetStringValue())
+	})
+	t.Run("SubscribeIdsReq: active records with keys from request", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		id := "id"
+		relationValue := "value"
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		fx.store.AddObjects(t, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   pbtypes.String(id),
+				bundle.RelationKeyName: pbtypes.String(relationValue),
+			},
+		})
+
+		// when
+		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
+			Ids:  []string{id},
+			Keys: []string{bundle.RelationKeyName.String()},
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, sub)
+		assert.Len(t, sub.Dependencies, 0)
+		assert.Len(t, sub.Records, 1)
+		assert.Len(t, sub.Records[0].GetFields(), 1)
+		assert.Equal(t, relationValue, sub.Records[0].GetFields()[bundle.RelationKeyName.String()].GetStringValue())
+	})
+	t.Run("SubscribeIdsReq: no active records", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+
+		id := "id"
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		// when
+		sub, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
+			Ids: []string{id},
+		})
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, sub)
+		assert.Len(t, sub.Dependencies, 0)
+		assert.Len(t, sub.Records, 0)
+	})
 }
 
 func xTestNestedSubscription(t *testing.T) {

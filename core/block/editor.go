@@ -78,7 +78,7 @@ func (s *Service) DuplicateBlocks(
 	}
 
 	err = DoStateCtx(s, sctx, req.ContextId, func(srcState *state.State, sb basic.Duplicatable) error {
-		return DoStateAsync(s, req.TargetContextId, func(targetState *state.State, tb basic.Creatable) error {
+		return DoState(s, req.TargetContextId, func(targetState *state.State, tb basic.Creatable) error {
 			newIds, err = sb.Duplicate(srcState, targetState, req.TargetId, req.Position, req.BlockIds)
 			return err
 		})
@@ -130,7 +130,7 @@ func (s *Service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 		blocks = append(blocks, simple.New(b))
 	}
 
-	return DoStateAsync(s, contextId, func(s *state.State, b basic.CommonOperations) error {
+	return DoState(s, contextId, func(s *state.State, b basic.CommonOperations) error {
 		return b.PasteBlocks(s, "", model.Block_Inner, blocks)
 	})
 }
@@ -638,7 +638,7 @@ func (s *Service) SetObjectTypes(ctx session.Context, objectId string, objectTyp
 			}
 			objectTypeKeys = append(objectTypeKeys, objectTypeKey)
 		}
-		return b.SetObjectTypes(ctx, objectTypeKeys)
+		return b.SetObjectTypes(ctx, objectTypeKeys, false)
 	})
 }
 
@@ -685,8 +685,8 @@ func (s *Service) MoveBlocksToNewPage(
 
 	// 2. Move blocks to new page
 	// TODO Use DoState2
-	err = DoStateAsync(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
-		return DoStateAsync(s, objectID, func(destState *state.State, tb basic.Movable) error {
+	err = DoState(s, req.ContextId, func(srcState *state.State, sb basic.Movable) error {
+		return DoState(s, objectID, func(destState *state.State, tb basic.Movable) error {
 			return sb.Move(srcState, destState, "", model.Block_Inner, req.BlockIds)
 		})
 	})
