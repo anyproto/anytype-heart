@@ -1511,5 +1511,14 @@
     "name": "Target space id",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "fileHash",
+    "maxCount": 0,
+    "name": "Underlying file hash",
+    "readonly": false,
+    "source": "details"
   }
 ]

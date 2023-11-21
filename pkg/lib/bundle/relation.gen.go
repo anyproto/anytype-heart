@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d9bac6d7e7ac3918a327e29c65c2587817ac04a02098b4440e337d93a7ee5038"
+const RelationChecksum = "82630b9f07afc848cff7878a819908da685c789a85589a77e473c7d8fcc5105e"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -163,6 +163,7 @@ const (
 	RelationKeyIdentityProfileLink       domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
+	RelationKeyFileHash                  domain.RelationKey = "fileHash"
 )
 
 var (
@@ -728,6 +729,18 @@ var (
 			MaxCount:         1,
 			Name:             "File extension",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileHash: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Id:               "_brfileHash",
+			Key:              "fileHash",
+			Name:             "Underlying file hash",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -51,6 +52,7 @@ type service struct {
 	app               *app.App
 	spaceService      space.Service
 	templateService   TemplateService
+	fileService       files.Service
 }
 
 type CollectionService interface {
@@ -72,6 +74,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.collectionService = app.MustComponent[CollectionService](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
+	s.fileService = app.MustComponent[files.Service](a)
 	s.app = a
 	return nil
 }
@@ -111,6 +114,8 @@ func objectTypeKeysToSmartblockType(typeKeys []domain.TypeKey) (coresb.SmartBloc
 		return coresb.SmartBlockTypeRelation, nil
 	case bundle.TypeKeyRelationOption:
 		return coresb.SmartBlockTypeRelationOption, nil
+	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
+		return coresb.SmartBlockTypeFile, nil
 	default:
 		return coresb.SmartBlockTypePage, nil
 	}
@@ -259,6 +264,8 @@ func (s *service) CreateObjectInSpace(ctx context.Context, space space.Space, re
 		return s.createRelation(ctx, space, details)
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
+	case bundle.TypeKeyFile:
+		return s.createFile(ctx, space, details)
 	}
 
 	return s.createSmartBlockFromTemplate(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, details, req.TemplateId)

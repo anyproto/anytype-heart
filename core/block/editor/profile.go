@@ -4,24 +4,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -39,28 +34,28 @@ type Profile struct {
 	eventSender event.Sender
 }
 
-func NewProfile(sb smartblock.SmartBlock, objectStore objectstore.ObjectStore, fileBlockService file.BlockService, picker getblock.ObjectGetter, bookmarkService bookmark.BookmarkService, tempDirProvider core.TempDirProvider, layoutConverter converter.LayoutConverter, fileService files.Service, eventSender event.Sender) *Profile {
-	f := file.NewFile(sb, fileBlockService, tempDirProvider, fileService, picker)
+func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker, f.objectCreator)
 	return &Profile{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter),
+		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
-			objectStore,
-			eventSender,
+			f.objectStore,
+			f.eventSender,
 		),
-		File: f,
+		File: fileComponent,
 		Clipboard: clipboard.NewClipboard(
 			sb,
-			f,
-			tempDirProvider,
-			objectStore,
-			fileService,
+			fileComponent,
+			f.tempDirProvider,
+			f.objectStore,
+			f.fileService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, bookmarkService, objectStore),
+		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
 		TableEditor: table.NewEditor(sb),
-		eventSender: eventSender,
+		eventSender: f.eventSender,
 	}
 }
 

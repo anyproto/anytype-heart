@@ -14,17 +14,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/h2non/filetype"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -37,22 +40,6 @@ var (
 func init() {
 	for i := 0; i < cap(uploadFilesLimiter); i++ {
 		uploadFilesLimiter <- struct{}{}
-	}
-}
-
-func NewUploader(
-	spaceID string,
-	s BlockService,
-	fileService files.Service,
-	provider core.TempDirProvider,
-	picker getblock.ObjectGetter,
-) Uploader {
-	return &uploader{
-		spaceID:         spaceID,
-		service:         s,
-		picker:          picker,
-		fileService:     fileService,
-		tempDirProvider: provider,
 	}
 }
 
@@ -105,6 +92,7 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
+	objectCreator    objectcreator.Service
 	spaceID          string
 	service          BlockService
 	picker           getblock.ObjectGetter
@@ -123,6 +111,24 @@ type uploader struct {
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
 	origin          model.ObjectOrigin
+}
+
+func NewUploader(
+	spaceID string,
+	s BlockService,
+	fileService files.Service,
+	provider core.TempDirProvider,
+	picker getblock.ObjectGetter,
+	objectCreator objectcreator.Service,
+) Uploader {
+	return &uploader{
+		spaceID:         spaceID,
+		service:         s,
+		picker:          picker,
+		fileService:     fileService,
+		tempDirProvider: provider,
+		objectCreator:   objectCreator,
+	}
 }
 
 type bufioSeekClose struct {
@@ -412,13 +418,20 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		}
 	}
 
-	// Touch the file to activate indexing
-	derr := getblock.Do(u.picker, result.Hash, func(_ smartblock.SmartBlock) error {
-		return nil
+	fileId, fileDetails, err := u.objectCreator.CreateObject(ctx, u.spaceID, objectcreator.CreateObjectRequest{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyFileHash.String(): pbtypes.String(result.Hash),
+			},
+		},
+		ObjectTypeKey: bundle.TypeKeyFile,
 	})
-	if derr != nil {
-		log.Errorf("can't touch file object %s: %s", result.Hash, derr)
+	_ = fileId
+	_ = fileDetails
+	if err != nil {
+		return UploadResult{Err: err}
 	}
+
 	result.Type = u.fileType
 	result.Name = u.name
 	if u.block != nil {

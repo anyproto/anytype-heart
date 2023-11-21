@@ -123,8 +123,6 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	st, err := typeprovider.SmartblockTypeFromID(id)
 	if err == nil {
 		switch st {
-		case smartblock.SmartBlockTypeFile:
-			return NewFile(s.accountService, s.fileStore, s.fileService, space.Id(), id), nil
 		case smartblock.SmartBlockTypeDate:
 			return NewDate(space, id), nil
 		case smartblock.SmartBlockTypeBundledObjectType:
