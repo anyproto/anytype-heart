@@ -1,6 +1,9 @@
-package converter
+package common
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
@@ -24,8 +27,15 @@ func NewRootCollection(service *collection.Service) *RootCollection {
 	return &RootCollection{service: service}
 }
 
-func (r *RootCollection) MakeRootCollection(collectionName string, targetObjects []string, icon string, fileKeys []*pb.ChangeFileKeys) (*Snapshot, error) {
-	detailsStruct := r.getCreateCollectionRequest(collectionName, icon)
+func (r *RootCollection) MakeRootCollection(
+	collectionName string,
+	targetObjects []string,
+	icon string,
+	fileKeys []*pb.ChangeFileKeys,
+) (*Snapshot, error) {
+	importDate := time.Now().Format(time.RFC3339)
+	nameWithDate := fmt.Sprintf("%s %s", collectionName, importDate)
+	detailsStruct := r.getCreateCollectionRequest(nameWithDate, icon)
 	_, _, st, err := r.service.CreateCollection(detailsStruct, []*model.InternalFlag{{
 		Value: model.InternalFlag_collectionDontIndexLinks,
 	}})
@@ -41,10 +51,15 @@ func (r *RootCollection) MakeRootCollection(collectionName string, targetObjects
 	detailsStruct = pbtypes.StructMerge(st.CombinedDetails(), detailsStruct, false)
 	st.UpdateStoreSlice(template.CollectionStoreKey, targetObjects)
 
-	return r.getRootCollectionSnapshot(collectionName, st, detailsStruct, fileKeys), nil
+	return r.getRootCollectionSnapshot(nameWithDate, st, detailsStruct, fileKeys), nil
 }
 
-func (r *RootCollection) getRootCollectionSnapshot(collectionName string, st *state.State, detailsStruct *types.Struct, fileKeys []*pb.ChangeFileKeys) *Snapshot {
+func (r *RootCollection) getRootCollectionSnapshot(
+	collectionName string,
+	st *state.State,
+	detailsStruct *types.Struct,
+	fileKeys []*pb.ChangeFileKeys,
+) *Snapshot {
 	if detailsStruct.GetFields() == nil {
 		detailsStruct = &types.Struct{Fields: map[string]*types.Value{}}
 	}

@@ -117,6 +117,7 @@ func (p ChildPage) GetLinkToObjectBlock(importContext *api.NotionImportContext, 
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
 				TargetBlockId: targetBlockID,
+				IconSize:      model.BlockContentLink_SizeSmall,
 			},
 		}}
 }
@@ -160,6 +161,7 @@ func (c *ChildDatabase) GetBlock(importContext *api.NotionImportContext, pageID,
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
 				TargetBlockId: targetBlockID,
+				IconSize:      model.BlockContentLink_SizeSmall,
 			},
 		},
 	}
@@ -185,6 +187,7 @@ func (l *LinkToPageBlock) GetBlocks(req *api.NotionImportContext, _ string) *Map
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
 				TargetBlockId: anytypeID,
+				IconSize:      model.BlockContentLink_SizeSmall,
 			},
 		}}
 	return &MapResponse{

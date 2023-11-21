@@ -128,3 +128,110 @@ func TestPreprocessBlocksThreeCodeBlock(t *testing.T) {
 	assert.Equal(t, blocks[0].GetText().GetText(), bl.GetText().GetText())
 	assert.Equal(t, blocks[1].GetText().GetText(), bl2.GetText().GetText()+"\n"+bl3.GetText().GetText())
 }
+
+func TestCloseTextBlock(t *testing.T) {
+	t.Run("1 checkbox block is a child of another checkbox block", func(t *testing.T) {
+		// given
+		renderer := newBlocksRenderer("", nil)
+		renderer.openedTextBlocks = append(renderer.openedTextBlocks,
+			[]*textBlock{
+				{
+					Block: model.Block{
+						Id: "id1",
+						Content: &model.BlockContentOfText{
+							Text: &model.BlockContentText{
+								Style: model.BlockContentText_Marked,
+							},
+						},
+					},
+					textBuffer: "[] Level 1",
+				},
+				{
+					Block: model.Block{
+						Id: "id2",
+						Content: &model.BlockContentOfText{
+							Text: &model.BlockContentText{
+								Style: model.BlockContentText_Marked,
+							},
+						},
+					},
+					textBuffer: "[] Level 2",
+				},
+			}...)
+
+		// when
+		renderer.CloseTextBlock(model.BlockContentText_Marked) // handle first text block
+
+		// then
+		assert.Len(t, renderer.blocks, 1)
+
+		assert.NotNil(t, renderer.blocks[0].GetText())
+		assert.Equal(t, model.BlockContentText_Checkbox, renderer.blocks[0].GetText().Style)
+		assert.Equal(t, "Level 2", renderer.blocks[0].GetText().Text)
+		assert.Len(t, renderer.blocks[0].ChildrenIds, 0)
+
+		// when
+		renderer.CloseTextBlock(model.BlockContentText_Marked) // handle second text block
+
+		// then
+		assert.Len(t, renderer.blocks, 2)
+
+		assert.NotNil(t, renderer.blocks[1].GetText())
+		assert.Equal(t, model.BlockContentText_Checkbox, renderer.blocks[1].GetText().Style)
+		assert.Equal(t, "Level 1", renderer.blocks[1].GetText().Text)
+		assert.Len(t, renderer.blocks[1].ChildrenIds, 1)
+		assert.Equal(t, "id2", renderer.blocks[1].ChildrenIds[0])
+	})
+	t.Run("1 checkbox block is a child of another block", func(t *testing.T) {
+		// given
+		renderer := newBlocksRenderer("", nil)
+		renderer.openedTextBlocks = append(renderer.openedTextBlocks,
+			[]*textBlock{
+				{
+					Block: model.Block{
+						Id: "id1",
+						Content: &model.BlockContentOfText{
+							Text: &model.BlockContentText{
+								Style: model.BlockContentText_Numbered,
+							},
+						},
+					},
+					textBuffer: "1. Level 1",
+				},
+				{
+					Block: model.Block{
+						Id: "id2",
+						Content: &model.BlockContentOfText{
+							Text: &model.BlockContentText{
+								Style: model.BlockContentText_Marked,
+							},
+						},
+					},
+					textBuffer: "[] Level 2",
+				},
+			}...)
+
+		// when
+		renderer.CloseTextBlock(model.BlockContentText_Marked)
+
+		// then
+		assert.Len(t, renderer.blocks, 1)
+
+		assert.NotNil(t, renderer.blocks[0].GetText())
+		assert.Equal(t, model.BlockContentText_Checkbox, renderer.blocks[0].GetText().Style)
+		assert.Equal(t, "Level 2", renderer.blocks[0].GetText().Text)
+		assert.Len(t, renderer.blocks[0].ChildrenIds, 0)
+
+		// when
+		renderer.CloseTextBlock(model.BlockContentText_Marked)
+
+		// then
+		assert.Len(t, renderer.blocks, 2)
+
+		assert.NotNil(t, renderer.blocks[1].GetText())
+		assert.Equal(t, model.BlockContentText_Numbered, renderer.blocks[1].GetText().Style)
+		assert.Equal(t, "1. Level 1", renderer.blocks[1].GetText().Text)
+		assert.Len(t, renderer.blocks[1].ChildrenIds, 1)
+		assert.Equal(t, "id2", renderer.blocks[1].ChildrenIds[0])
+	})
+}

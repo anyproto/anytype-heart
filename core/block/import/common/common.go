@@ -1,4 +1,4 @@
-package converter
+package common
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/converter/filetime"
+	"github.com/anyproto/anytype-heart/core/block/import/common/filetime"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
@@ -335,8 +335,11 @@ func AddRelationsToDataView(collectionState *state.State, relationLink *model.Re
 func ConvertStringToTime(t string) int64 {
 	parsedTime, err := time.Parse(time.RFC3339, t)
 	if err != nil {
-		log.Errorf("failed to convert time %s", t)
-		return 0
+		parsedTime, err := time.Parse(time.DateOnly, t)
+		if err != nil {
+			return 0
+		}
+		return parsedTime.Unix()
 	}
 	return parsedTime.Unix()
 }

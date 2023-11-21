@@ -11,7 +11,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api"
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/client"
 	"github.com/anyproto/anytype-heart/pb"
@@ -47,8 +47,8 @@ type Response struct {
 func (s *Service) GetBlocksAndChildren(ctx context.Context,
 	pageID, apiKey string,
 	pageSize int64,
-	mode pb.RpcObjectImportRequestMode) ([]interface{}, *converter.ConvertError) {
-	converterError := converter.NewError(mode)
+	mode pb.RpcObjectImportRequestMode) ([]interface{}, *common.ConvertError) {
+	converterError := common.NewError(mode)
 	allBlocks := make([]interface{}, 0)
 	blocks, err := s.getBlocks(ctx, pageID, apiKey, pageSize)
 	if err != nil {
@@ -65,7 +65,7 @@ func (s *Service) GetBlocksAndChildren(ctx context.Context,
 		}
 		var (
 			children []interface{}
-			childErr *converter.ConvertError
+			childErr *common.ConvertError
 		)
 		if cs.HasChild() {
 			children, childErr = s.GetBlocksAndChildren(ctx, cs.GetID(), apiKey, pageSize, mode)

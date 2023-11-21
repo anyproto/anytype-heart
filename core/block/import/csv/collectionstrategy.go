@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -43,10 +43,10 @@ func NewCollectionStrategy(collectionService *collection.Service) *CollectionStr
 	return &CollectionStrategy{collectionService: collectionService}
 }
 
-func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*converter.Snapshot, error) {
-	snapshots := make([]*converter.Snapshot, 0)
+func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, params *pb.RpcObjectImportRequestCsvParams, progress process.Progress) (string, []*common.Snapshot, error) {
+	snapshots := make([]*common.Snapshot, 0)
 	allObjectsIDs := make([]string, 0)
-	details := converter.GetCommonDetails(path, "", "", model.ObjectType_collection)
+	details := common.GetCommonDetails(path, "", "", model.ObjectType_collection)
 	updateDetailsForTransposeCollection(details, params.TransposeRowsAndColumns)
 	_, _, st, err := c.collectionService.CreateCollection(details, nil)
 	if err != nil {
@@ -68,7 +68,7 @@ func (c *CollectionStrategy) CreateObjects(path string, csvTable [][]string, par
 	snapshots = append(snapshots, relationsSnapshots...)
 	progress.AddDone(1)
 	if errRelationLimit != nil || errRowLimit != nil {
-		return "", nil, converter.ErrLimitExceeded
+		return "", nil, common.ErrLimitExceeded
 	}
 	return snapshot.Id, snapshots, nil
 }
@@ -84,7 +84,7 @@ func updateDetailsForTransposeCollection(details *types.Struct, transpose bool) 
 	}
 }
 
-func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) ([]*model.Relation, []*converter.Snapshot, error) {
+func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) ([]*model.Relation, []*common.Snapshot, error) {
 	if len(csvTable) == 0 {
 		return nil, nil, nil
 	}
@@ -94,12 +94,12 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 		Format: model.RelationFormat_shorttext,
 		Key:    bundle.RelationKeyName.String(),
 	})
-	relationsSnapshots := make([]*converter.Snapshot, 0, len(csvTable[0]))
+	relationsSnapshots := make([]*common.Snapshot, 0, len(csvTable[0]))
 	allRelations := lo.Map(csvTable[0], func(item string, index int) string { return strings.TrimSpace(item) })
 	var err error
 	numberOfRelationsLimit := len(allRelations)
 	if numberOfRelationsLimit > limitForColumns {
-		err = converter.ErrLimitExceeded
+		err = common.ErrLimitExceeded
 		numberOfRelationsLimit = limitForColumns
 	}
 	allRelations = findUniqueRelationAndAddNumber(allRelations)
@@ -117,7 +117,7 @@ func getDetailsFromCSVTable(csvTable [][]string, useFirstRowForRelations bool) (
 			Name:   relationName,
 			Key:    id,
 		})
-		relationsSnapshots = append(relationsSnapshots, &converter.Snapshot{
+		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
 			Id:     id,
 			SbType: smartblock.SmartBlockTypeRelation,
 			Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
@@ -186,12 +186,12 @@ func getRelationDetails(name, key string, format float64) *types.Struct {
 	return details
 }
 
-func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.Relation, params *pb.RpcObjectImportRequestCsvParams) ([]*converter.Snapshot, error) {
-	snapshots := make([]*converter.Snapshot, 0, len(csvTable))
+func getObjectsFromCSVRows(path string, csvTable [][]string, relations []*model.Relation, params *pb.RpcObjectImportRequestCsvParams) ([]*common.Snapshot, error) {
+	snapshots := make([]*common.Snapshot, 0, len(csvTable))
 	numberOfObjectsLimit := len(csvTable)
 	var err error
 	if numberOfObjectsLimit > limitForRows {
-		err = converter.ErrLimitExceeded
+		err = common.ErrLimitExceeded
 		numberOfObjectsLimit = limitForRows
 		if params.UseFirstRowForRelations {
 			numberOfObjectsLimit++ // because first row is relations, so we need to add plus 1 row
@@ -252,8 +252,8 @@ func getDetailsForObject(relationsValues []string, relations []*model.Relation, 
 	return details, relationLinks
 }
 
-func provideObjectSnapshot(st *state.State, details *types.Struct) *converter.Snapshot {
-	snapshot := &converter.Snapshot{
+func provideObjectSnapshot(st *state.State, details *types.Struct) *common.Snapshot {
+	snapshot := &common.Snapshot{
 		Id:     uuid.New().String(),
 		SbType: smartblock.SmartBlockTypePage,
 		Snapshot: &pb.ChangeSnapshot{
@@ -268,12 +268,12 @@ func provideObjectSnapshot(st *state.State, details *types.Struct) *converter.Sn
 	return snapshot
 }
 
-func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *state.State, p string, relations []*model.Relation) *converter.Snapshot {
+func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *state.State, p string, relations []*model.Relation) *common.Snapshot {
 	details = pbtypes.StructMerge(st.CombinedDetails(), details, false)
 	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(model.ObjectType_collection))
 
 	for _, relation := range relations {
-		err := converter.AddRelationsToDataView(st, &model.RelationLink{
+		err := common.AddRelationsToDataView(st, &model.RelationLink{
 			Key:    relation.Key,
 			Format: relation.Format,
 		})
@@ -284,7 +284,7 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *types.Struct, st *st
 	return c.provideCollectionSnapshots(details, st, p)
 }
 
-func (c *CollectionStrategy) provideCollectionSnapshots(details *types.Struct, st *state.State, p string) *converter.Snapshot {
+func (c *CollectionStrategy) provideCollectionSnapshots(details *types.Struct, st *state.State, p string) *common.Snapshot {
 	sn := &model.SmartBlockSnapshotBase{
 		Blocks:        st.Blocks(),
 		Details:       details,
@@ -293,7 +293,7 @@ func (c *CollectionStrategy) provideCollectionSnapshots(details *types.Struct, s
 		RelationLinks: st.GetRelationLinks(),
 	}
 
-	snapshot := &converter.Snapshot{
+	snapshot := &common.Snapshot{
 		Id:       uuid.New().String(),
 		FileName: p,
 		Snapshot: &pb.ChangeSnapshot{Data: sn},

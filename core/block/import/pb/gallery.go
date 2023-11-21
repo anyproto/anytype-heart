@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	widgets "github.com/anyproto/anytype-heart/core/block/editor/widget"
-	"github.com/anyproto/anytype-heart/core/block/import/converter"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -23,12 +23,13 @@ func NewGalleryImport(service *collection.Service) *GalleryImport {
 	return &GalleryImport{service: service}
 }
 
-func (g *GalleryImport) ProvideCollection(_ []*converter.Snapshot,
-	widget *converter.Snapshot,
+func (g *GalleryImport) ProvideCollection(
+	_ []*common.Snapshot,
+	widget *common.Snapshot,
 	_ map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	workspaceSnapshot *converter.Snapshot,
-) (*converter.Snapshot, error) {
+	workspaceSnapshot *common.Snapshot,
+) (*common.Snapshot, error) {
 	var widgetObjects []string
 	if widget != nil {
 		widgetObjects = g.getObjectsFromWidgets(widget)
@@ -45,7 +46,7 @@ func (g *GalleryImport) ProvideCollection(_ []*converter.Snapshot,
 	if collectionName == "" {
 		collectionName = rootCollectionName
 	}
-	rootCollection := converter.NewRootCollection(g.service)
+	rootCollection := common.NewRootCollection(g.service)
 	collectionSnapshot, err := rootCollection.MakeRootCollection(collectionName, widgetObjects, icon, fileKeys)
 	if collectionSnapshot != nil && widget != nil {
 		g.addCollectionWidget(widget, collectionSnapshot.Id)
@@ -53,7 +54,7 @@ func (g *GalleryImport) ProvideCollection(_ []*converter.Snapshot,
 	return collectionSnapshot, err
 }
 
-func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *converter.Snapshot) []string {
+func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) []string {
 	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot).(*state.State)
 	var objectsInWidget []string
 	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
@@ -71,7 +72,7 @@ func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *converter.Snapshot
 	return objectsInWidget
 }
 
-func (g *GalleryImport) addCollectionWidget(widgetSnapshot *converter.Snapshot, collectionID string) {
+func (g *GalleryImport) addCollectionWidget(widgetSnapshot *common.Snapshot, collectionID string) {
 	id := bson.NewObjectId().Hex()
 	// create widget for import collection
 	linkBlock := &model.Block{

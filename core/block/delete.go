@@ -90,7 +90,7 @@ func (s *Service) OnDelete(id domain.FullID, workspaceRemove func() error) error
 		isFavorite bool
 	)
 
-	err := Do(s, id.ObjectID, func(b smartblock.SmartBlock) error {
+	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
