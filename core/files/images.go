@@ -58,7 +58,7 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, err
 	}, nil
 }
 
-func (s *service) ImageAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (Image, error) {
+func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, *FileKeys, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
@@ -66,47 +66,58 @@ func (s *service) ImageAdd(ctx context.Context, spaceID string, encryptionKey st
 
 	err := s.normalizeOptions(ctx, spaceID, &opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	hash, variants, err := s.imageAdd(ctx, spaceID, encryptionKey, opts)
+	res, err := s.imageAdd(ctx, spaceID, opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	img := &image{
 		spaceID:         spaceID,
-		hash:            hash,
-		variantsByWidth: variants,
+		hash:            res.fileHash,
+		variantsByWidth: res.variantsByWidth,
 		service:         s,
 	}
-	return img, nil
+	return img, res.keys, nil
 }
 
-func (s *service) imageAdd(ctx context.Context, spaceID string, encryptionKey string, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
-	dir, err := s.fileBuildDirectory(ctx, spaceID, encryptionKey, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
+type imageAddResult struct {
+	fileHash        string
+	variantsByWidth map[int]*storage.FileInfo
+	keys            *FileKeys
+}
+
+func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions) (*imageAddResult, error) {
+	dir, err := s.fileBuildDirectory(ctx, spaceID, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	node, keys, err := s.fileAddNodeFromDirs(ctx, spaceID, &storage.DirectoryList{Items: []*storage.Directory{dir}})
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	nodeHash := node.Cid().String()
-	err = s.fileStore.AddFileKeys(filestore.FileKeys{
+
+	fileKeys := &FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
+	}
+	err = s.fileStore.AddFileKeys(filestore.FileKeys{
+		Hash: fileKeys.Hash,
+		Keys: fileKeys.Keys,
 	})
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to save file keys: %w", err)
+		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
 	id := domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}
 	err = s.fileIndexData(ctx, node, id, s.isImported(opts.Origin))
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	var variantsByWidth = make(map[int]*storage.FileInfo, len(dir.Files))
@@ -121,7 +132,7 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, encryptionKey st
 
 	err = s.storeFileSize(spaceID, nodeHash)
 	if err != nil {
-		return "", nil, fmt.Errorf("store file size: %w", err)
+		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
 	err = s.fileStore.SetFileOrigin(nodeHash, opts.Origin)
@@ -129,7 +140,11 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, encryptionKey st
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
 
-	return nodeHash, variantsByWidth, nil
+	return &imageAddResult{
+		fileHash:        nodeHash,
+		variantsByWidth: variantsByWidth,
+		keys:            fileKeys,
+	}, nil
 }
 
 func (s *service) isImported(origin model.ObjectOrigin) bool {

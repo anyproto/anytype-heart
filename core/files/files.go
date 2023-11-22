@@ -53,7 +53,7 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
-	FileAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (File, error)
+	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, *FileKeys, error)
 	FileByHash(ctx context.Context, id domain.FullID) (File, error)
 	FileGetKeys(id domain.FullID) (*FileKeys, error)
 	FileListOffload(ctx context.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
@@ -61,7 +61,7 @@ type Service interface {
 	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
-	ImageAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (Image, error)
+	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, *FileKeys, error)
 	ImageByHash(ctx context.Context, id domain.FullID) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
 
@@ -113,39 +113,54 @@ var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
-func (s *service) fileAdd(ctx context.Context, spaceID string, encryptionKey string, opts AddOptions) (string, *storage.FileInfo, error) {
-	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, encryptionKey, opts)
+type fileAddResult struct {
+	fileHash string
+	info     *storage.FileInfo
+	keys     *FileKeys
+}
+
+func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) (*fileAddResult, error) {
+	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, opts)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	node, keys, err := s.fileAddNodeFromFiles(ctx, spaceID, []*storage.FileInfo{fileInfo})
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	nodeHash := node.Cid().String()
 	if err = s.fileIndexData(ctx, node, domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}, s.isImported(opts.Origin)); err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	if err = s.fileStore.AddFileKeys(filestore.FileKeys{
+	fileKeys := &FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
-	}); err != nil {
-		return "", nil, err
+	}
+	err = s.fileStore.AddFileKeys(filestore.FileKeys{
+		Hash: fileKeys.Hash,
+		Keys: fileKeys.Keys,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
 	err = s.storeFileSize(spaceID, nodeHash)
 	if err != nil {
-		return "", nil, fmt.Errorf("store file size: %w", err)
+		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
 	err = s.fileStore.SetFileOrigin(nodeHash, opts.Origin)
 	if err != nil {
 		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
 	}
-	return nodeHash, fileInfo, nil
+	return &fileAddResult{
+		fileHash: nodeHash,
+		info:     fileInfo,
+		keys:     fileKeys,
+	}, nil
 }
 
 func (s *service) storeFileSize(spaceId string, hash string) error {
@@ -537,7 +552,7 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 	return dec.DecryptReader(fd)
 }
 
-func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, encryptionKey string, conf AddOptions) (*storage.FileInfo, error) {
+func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -611,7 +626,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 		encryptor     symmetric.EncryptorDecryptor
 	)
 	if mill.Encrypt() && !conf.Plaintext {
-		key, err := symmetric.FromString(encryptionKey)
+		key, err := symmetric.NewRandom()
 		if err != nil {
 			return nil, err
 		}
@@ -706,7 +721,7 @@ func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.Fi
 	return helpers.AddLinkToDirectory(ctx, dagService, outerDir, link, node.Cid().String())
 }
 
-func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, encryptionKey string, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -728,7 +743,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, encryp
 			return nil, err
 		}
 
-		added, err := s.fileAddWithConfig(ctx, spaceID, mil, encryptionKey, opts)
+		added, err := s.fileAddWithConfig(ctx, spaceID, mil, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -780,7 +795,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, encryp
 				}
 			}
 
-			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, encryptionKey, *opts)
+			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
 			if err != nil {
 				return nil, err
 			}
@@ -975,7 +990,7 @@ func (s *service) isDeleted(fileID string) (bool, error) {
 	return pbtypes.GetBool(d.GetDetails(), bundle.RelationKeyIsDeleted.String()), nil
 }
 
-func (s *service) FileAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (File, error) {
+func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, *FileKeys, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
@@ -983,21 +998,14 @@ func (s *service) FileAdd(ctx context.Context, spaceID string, encryptionKey str
 
 	err := s.normalizeOptions(ctx, spaceID, &opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	hash, info, err := s.fileAdd(ctx, spaceID, encryptionKey, opts)
+	res, err := s.fileAdd(ctx, spaceID, opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	f := &file{
-		spaceID: spaceID,
-		hash:    hash,
-		info:    info,
-		node:    s,
-	}
-	return f, nil
+	return s.newFile(spaceID, res.fileHash, res.info), res.keys, nil
 }
 
 func (s *service) getFileOrigin(hash string) model.ObjectOrigin {

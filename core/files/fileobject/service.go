@@ -51,7 +51,7 @@ func (s *service) Init(a *app.App) error {
 	return nil
 }
 
-func (s *service) Create(ctx context.Context, space space.Space, fileHash string, encryptionKey string) (id string, object *types.Struct, err error) {
+func (s *service) Create(ctx context.Context, space space.Space, fileHash string, encryptionKeys map[string]string) (id string, object *types.Struct, err error) {
 	if fileHash == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
@@ -67,8 +67,8 @@ func (s *service) Create(ctx context.Context, space space.Space, fileHash string
 	createState := state.NewDoc("", nil).(*state.State)
 	createState.SetDetails(details)
 	createState.SetFileInfo(state.FileInfo{
-		FileHash:      fileHash,
-		EncryptionKey: encryptionKey,
+		Hash:           fileHash,
+		EncryptionKeys: encryptionKeys,
 	})
 
 	return s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)

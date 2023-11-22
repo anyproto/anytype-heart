@@ -1419,6 +1419,7 @@
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [FileInfo](#anytype-model-FileInfo)
+    - [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
@@ -22343,8 +22344,24 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| fileHash | [string](#string) |  |  |
-| encryptionKey | [string](#string) |  |  |
+| hash | [string](#string) |  |  |
+| encryptionKeys | [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-FileInfo-EncryptionKey"></a>
+
+### FileInfo.EncryptionKey
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 

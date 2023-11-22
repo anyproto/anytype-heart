@@ -891,6 +891,11 @@ message Metadata {
 }
 
 message FileInfo {
-  string fileHash = 1;
-  string encryptionKey = 2;
+  string hash = 1;
+  repeated EncryptionKey encryptionKeys = 2;
+
+  message EncryptionKey {
+    string path = 1;
+    string key = 2;
+  }
 }

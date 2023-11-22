@@ -36,11 +36,11 @@ const eventCreate eventKey = 0
 
 // TODO Temp
 type fileObjectService interface {
-	Create(ctx context.Context, space space.Space, fileHash string, encryptionKey string) (id string, object *types.Struct, err error)
+	Create(ctx context.Context, space space.Space, fileHash string, fileKeys map[string]string) (id string, object *types.Struct, err error)
 }
 
 type Service interface {
-	CreateFile(ctx context.Context, spaceId string, fileHash string, encryptionKey string) (id string, details *types.Struct, err error)
+	CreateFile(ctx context.Context, spaceId string, fileHash string, fileKeys map[string]string) (id string, details *types.Struct, err error)
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectInSpace(ctx context.Context, space space.Space, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
@@ -289,10 +289,10 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spac
 	return s.CreateObject(ctx, spaceID, req)
 }
 
-func (s *service) CreateFile(ctx context.Context, spaceId string, fileHash string, encryptionKey string) (id string, details *types.Struct, err error) {
+func (s *service) CreateFile(ctx context.Context, spaceId string, fileHash string, fileKeys map[string]string) (id string, details *types.Struct, err error) {
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
-	return s.fileObjectService.Create(ctx, space, fileHash, encryptionKey)
+	return s.fileObjectService.Create(ctx, space, fileHash, fileKeys)
 }

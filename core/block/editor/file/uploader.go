@@ -22,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
@@ -389,15 +388,10 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 
 	var (
 		fileHash string
+		fileKeys *files.FileKeys
 	)
-	key, err := symmetric.NewRandom()
-	if err != nil {
-		return
-	}
-	encryptionKey := key.String()
-
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.fileService.ImageAdd(ctx, u.spaceID, encryptionKey, opts...)
+		im, keys, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			e = nil
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
@@ -407,27 +401,27 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			return
 		}
 		fileHash = im.Hash()
+		fileKeys = keys
 		orig, _ := im.GetOriginalFile(ctx)
 		if orig != nil {
 			result.MIME = orig.Meta().Media
 			result.Size = orig.Meta().Size
-			encryptionKey = orig.Info().Key
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx, u.spaceID, encryptionKey, opts...)
+		fl, keys, e := u.fileService.FileAdd(ctx, u.spaceID, opts...)
 		if e != nil {
 			err = e
 			return
 		}
 		fileHash = fl.Hash()
-		encryptionKey = fl.Info().Key
+		fileKeys = keys
 		if meta := fl.Meta(); meta != nil {
 			result.MIME = meta.Media
 			result.Size = meta.Size
 		}
 	}
 
-	fileId, fileDetails, err := u.objectCreator.CreateFile(ctx, u.spaceID, fileHash, encryptionKey)
+	fileId, fileDetails, err := u.objectCreator.CreateFile(ctx, u.spaceID, fileHash, fileKeys.Keys)
 	result.Hash = fileId
 	_ = fileDetails
 	if err != nil {

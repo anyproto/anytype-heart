@@ -35,6 +35,16 @@ type file struct {
 	origin  model.ObjectOrigin
 }
 
+// TODO use this constructor everywhere
+func (s *service) newFile(spaceId string, fileHash string, info *storage.FileInfo) File {
+	return &file{
+		spaceID: spaceId,
+		hash:    fileHash,
+		info:    info,
+		node:    s,
+	}
+}
+
 type FileMeta struct {
 	Media            string
 	Name             string
