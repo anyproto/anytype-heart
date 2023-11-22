@@ -25,6 +25,23 @@ func (f FileInfo) Equals(other FileInfo) bool {
 	return true
 }
 
+func (f FileInfo) ToModel() *model.FileInfo {
+	if f.Hash == "" {
+		return nil
+	}
+	keys := make([]*model.FileInfoEncryptionKey, 0, len(f.EncryptionKeys))
+	for path, key := range f.EncryptionKeys {
+		keys = append(keys, &model.FileInfoEncryptionKey{
+			Path: path,
+			Key:  key,
+		})
+	}
+	return &model.FileInfo{
+		Hash:           f.Hash,
+		EncryptionKeys: keys,
+	}
+}
+
 func (s *State) GetFileInfo() FileInfo {
 	return s.fileInfo
 }
@@ -35,21 +52,11 @@ func (s *State) SetFileInfo(info FileInfo) {
 
 func (s *State) diffFileInfo() []*pb.ChangeContent {
 	if s.parent != nil && !s.parent.fileInfo.Equals(s.fileInfo) {
-		keys := make([]*model.FileInfoEncryptionKey, 0, len(s.fileInfo.EncryptionKeys))
-		for path, key := range s.fileInfo.EncryptionKeys {
-			keys = append(keys, &model.FileInfoEncryptionKey{
-				Path: path,
-				Key:  key,
-			})
-		}
 		return []*pb.ChangeContent{
 			{
 				Value: &pb.ChangeContentValueOfSetFileInfo{
 					SetFileInfo: &pb.ChangeSetFileInfo{
-						FileInfo: &model.FileInfo{
-							Hash:           s.fileInfo.Hash,
-							EncryptionKeys: keys,
-						},
+						FileInfo: s.fileInfo.ToModel(),
 					},
 				},
 			},
@@ -58,13 +65,16 @@ func (s *State) diffFileInfo() []*pb.ChangeContent {
 	return nil
 }
 
-func (s *State) changeSetFileInfo(ch *pb.ChangeSetFileInfo) {
-	keys := make(map[string]string, len(ch.FileInfo.EncryptionKeys))
-	for _, key := range ch.FileInfo.EncryptionKeys {
+func (s *State) setFileInfoFromModel(fileInfo *model.FileInfo) {
+	if fileInfo == nil {
+		return
+	}
+	keys := make(map[string]string, len(fileInfo.EncryptionKeys))
+	for _, key := range fileInfo.EncryptionKeys {
 		keys[key.Path] = key.Key
 	}
 	s.SetFileInfo(FileInfo{
-		Hash:           ch.FileInfo.Hash,
+		Hash:           fileInfo.Hash,
 		EncryptionKeys: keys,
 	})
 }

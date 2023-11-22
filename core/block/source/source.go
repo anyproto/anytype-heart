@@ -377,6 +377,7 @@ func (s *source) buildChange(params PushChangeParams) (c *pb.Change) {
 				RelationLinks:            params.State.PickRelationLinks(),
 				Key:                      params.State.UniqueKeyInternal(),
 				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),
+				FileInfo:                 params.State.GetFileInfo().ToModel(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}

@@ -1445,6 +1445,16 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(id))
 	}
 
+	if info := s.GetFileInfo(); info.Hash != "" {
+		err := sb.fileService.StoreFileKeys(files.FileKeys{
+			Hash: info.Hash,
+			Keys: info.EncryptionKeys,
+		})
+		if err != nil {
+			log.Errorf("failed to store file keys: %v", err)
+		}
+	}
+
 	if spaceID != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, pbtypes.String(spaceID))
 	} else {

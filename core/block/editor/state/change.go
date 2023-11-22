@@ -104,6 +104,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		uniqueKeyInternal:        snapshot.Data.Key,
 		originalCreatedTimestamp: snapshot.Data.OriginalCreatedTimestamp,
 	}
+	s.setFileInfoFromModel(snapshot.Data.FileInfo)
 
 	if sOpts.internalKey != "" {
 		s.uniqueKeyInternal = sOpts.internalKey
@@ -243,7 +244,7 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 			return
 		}
 	case ch.GetSetFileInfo() != nil:
-		s.changeSetFileInfo(ch.GetSetFileInfo())
+		s.setFileInfoFromModel(ch.GetSetFileInfo().GetFileInfo())
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
