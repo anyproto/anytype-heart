@@ -40,6 +40,17 @@ func init() {
 	}
 }
 
+func init() {
+	svgType := filetype.AddType("svg", "image/svg+xml")
+	filetype.AddMatcher(svgType, func(buf []byte) bool {
+		return len(buf) >= 4 &&
+			buf[0] == 0x3C &&
+			buf[1] == 0x73 &&
+			buf[2] == 0x76 &&
+			buf[3] == 0x67
+	})
+}
+
 func NewUploader(
 	spaceID string,
 	s BlockService,
