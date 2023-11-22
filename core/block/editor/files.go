@@ -5,43 +5,33 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func NewFiles(sb smartblock.SmartBlock) *Files {
-	return &Files{
-		SmartBlock: sb,
+func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
+	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
+	return &File{
+		SmartBlock:      sb,
+		DetailsSettable: basicComponent,
 	}
 }
 
-type Files struct {
+type File struct {
 	smartblock.SmartBlock
+	basic.DetailsSettable
 }
 
-func (p *Files) SetDetails(ctx session.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) error {
-	st := p.NewStateCtx(ctx)
-	det := pbtypes.CopyStruct(st.Details())
-	for _, d := range details {
-		if d.Key == bundle.RelationKeyFileSyncStatus.String() {
-			det.Fields[d.Key] = d.Value
-		}
-	}
-	st.SetDetails(det)
-	return p.Apply(st)
-}
-
-func (p *Files) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
+func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
 		Version: 1,
 		Proc: func(s *state.State) {
@@ -165,11 +155,11 @@ func (p *Files) CreationStateMigration(ctx *smartblock.InitContext) migration.Mi
 	}
 }
 
-func (p *Files) StateMigrations() migration.Migrations {
+func (p *File) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations(nil)
 }
 
-func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
+func (p *File) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.Source.Type() != coresb.SmartBlockTypeFile {
 		return fmt.Errorf("source type should be a file")
 	}

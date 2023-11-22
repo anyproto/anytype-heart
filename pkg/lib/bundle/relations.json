@@ -1384,6 +1384,16 @@
     "source": "derived"
   },
   {
+    "description": "File backup status",
+    "format": "number",
+    "hidden": true,
+    "key": "fileBackupStatus",
+    "maxCount": 1,
+    "name": "File backup status",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Last change ID",
     "format": "longtext",
     "hidden": true,

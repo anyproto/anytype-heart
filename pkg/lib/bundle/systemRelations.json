@@ -63,5 +63,6 @@
   "defaultTemplateId",
   "uniqueKey",
   "backlinks",
-  "profileOwnerIdentity"
+  "profileOwnerIdentity",
+  "fileBackupStatus"
 ]

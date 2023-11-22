@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "82630b9f07afc848cff7878a819908da685c789a85589a77e473c7d8fcc5105e"
+const RelationChecksum = "b49ff31f8fbbb8f40cf116c198ce334a3e973557e2cf0d9275123e1d3c966d94"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -150,6 +150,7 @@ const (
 	RelationKeySpaceAccessibility        domain.RelationKey = "spaceAccessibility"
 	RelationKeySourceFilePath            domain.RelationKey = "sourceFilePath"
 	RelationKeyFileSyncStatus            domain.RelationKey = "fileSyncStatus"
+	RelationKeyFileBackupStatus          domain.RelationKey = "fileBackupStatus"
 	RelationKeyLastChangeId              domain.RelationKey = "lastChangeId"
 	RelationKeyStarred                   domain.RelationKey = "starred"
 	RelationKeyDefaultTemplateId         domain.RelationKey = "defaultTemplateId"
@@ -716,6 +717,20 @@ var (
 			Name:             "Featured Relations",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileBackupStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "File backup status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileBackupStatus",
+			Key:              "fileBackupStatus",
+			MaxCount:         1,
+			Name:             "File backup status",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

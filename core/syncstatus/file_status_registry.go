@@ -90,10 +90,10 @@ func (r *fileStatusRegistry) setFileStatus(entry fileEntry, status fileStatus) (
 
 	prevStatus := r.files[entry.fileId]
 	if validStatusTransition(prevStatus.status, status.status) {
-		err := r.fileStore.SetSyncStatus(entry.fileHash, int(status.status))
-		if err != nil {
-			return FileStatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
-		}
+		//err := r.fileStore.SetSyncStatus(entry.fileHash, int(status.status))
+		//if err != nil {
+		//	return FileStatusUnknown, fmt.Errorf("failed to set file sync status: %w", err)
+		//}
 		r.files[entry.fileId] = status
 		go r.indexFileSyncStatus(entry.fileId, status.status)
 		return status.status, nil
@@ -106,8 +106,12 @@ func (r *fileStatusRegistry) getFileStatus(entry fileEntry) (fileStatus, error) 
 	defer r.Unlock()
 	status, ok := r.files[entry.fileId]
 	if !ok {
-		rawStatus, err := r.fileStore.GetSyncStatus(entry.fileHash)
-		if err != nil && err != localstore.ErrNotFound {
+		var rawStatus int64
+		err := getblock.Do(r.picker, entry.fileId, func(sb smartblock.SmartBlock) (err error) {
+			rawStatus = pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
+			return nil
+		})
+		if err != nil {
 			return fileStatus{status: FileStatusUnknown}, fmt.Errorf("failed to get file sync status: %w", err)
 		}
 		status = fileStatus{
@@ -180,7 +184,7 @@ func (r *fileStatusRegistry) updateFileStatus(ctx context.Context, status fileSt
 
 func (r *fileStatusRegistry) indexFileSyncStatus(fileId string, status FileStatus) {
 	err := getblock.Do(r.picker, fileId, func(sb smartblock.SmartBlock) (err error) {
-		prevStatus := pbtypes.GetFloat64(sb.LocalDetails(), bundle.RelationKeyFileSyncStatus.String())
+		prevStatus := pbtypes.GetFloat64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
 		newStatus := float64(status)
 		if prevStatus == newStatus {
 			return nil
@@ -192,7 +196,7 @@ func (r *fileStatusRegistry) indexFileSyncStatus(fileId string, status FileStatu
 		}
 		return detailsSetter.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 			{
-				Key:   bundle.RelationKeyFileSyncStatus.String(),
+				Key:   bundle.RelationKeyFileBackupStatus.String(),
 				Value: pbtypes.Float64(newStatus),
 			},
 		}, true)
