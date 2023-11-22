@@ -839,6 +839,16 @@
     - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
     - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
     - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
+    - [Rpc.Payments](#anytype-Rpc-Payments)
+    - [Rpc.Payments.Subscription](#anytype-Rpc-Payments-Subscription)
+    - [Rpc.Payments.Subscription.GetPaymentURL](#anytype-Rpc-Payments-Subscription-GetPaymentURL)
+    - [Rpc.Payments.Subscription.GetPaymentURL.Request](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Request)
+    - [Rpc.Payments.Subscription.GetPaymentURL.Response](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response)
+    - [Rpc.Payments.Subscription.GetPaymentURL.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error)
+    - [Rpc.Payments.Subscription.GetStatus](#anytype-Rpc-Payments-Subscription-GetStatus)
+    - [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request)
+    - [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response)
+    - [Rpc.Payments.Subscription.GetStatus.Response.Error](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -1149,6 +1159,11 @@
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
+    - [Rpc.Payments.Subscription.GetPaymentURL.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error-Code)
+    - [Rpc.Payments.Subscription.GetStatus.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code)
+    - [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod)
+    - [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus)
+    - [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
@@ -1706,6 +1721,8 @@
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
+| PaymentsSubscriptionGetStatus | [Rpc.Payments.Subscription.GetStatus.Request](#anytype-Rpc-Payments-Subscription-GetStatus-Request) | [Rpc.Payments.Subscription.GetStatus.Response](#anytype-Rpc-Payments-Subscription-GetStatus-Response) |  |
+| PaymentsSubscriptionGetPaymentURL | [Rpc.Payments.Subscription.GetPaymentURL.Request](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Request) | [Rpc.Payments.Subscription.GetPaymentURL.Response](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response) |  |
 
  
 
@@ -13918,6 +13935,152 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Payments"></a>
+
+### Rpc.Payments
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription"></a>
+
+### Rpc.Payments.Subscription
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL"></a>
+
+### Rpc.Payments.Subscription.GetPaymentURL
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Request"></a>
+
+### Rpc.Payments.Subscription.GetPaymentURL.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ownerAnyID | [string](#string) |  |  |
+| ownerEthAddress | [string](#string) |  | this is the owner&#39;s ETH main EOA (External Owned Account) address not AccountAbstraction&#39;s SCW (Smart Contract Wallet) address! 
+
+in the following format: &#34;0x7a250d5630b4cf539739df2c5dacb4c659f2488d&#34; this is required to reserve a name for the owner |
+| requestedTier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  |  |
+| paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Response"></a>
+
+### Rpc.Payments.Subscription.GetPaymentURL.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Payments.Subscription.GetPaymentURL.Response.Error](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error) |  |  |
+| paymentUrl | [string](#string) |  | will feature current billing ID stripe.com/?client_reference_id=1234 |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error"></a>
+
+### Rpc.Payments.Subscription.GetPaymentURL.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Payments.Subscription.GetPaymentURL.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetStatus"></a>
+
+### Rpc.Payments.Subscription.GetStatus
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetStatus-Request"></a>
+
+### Rpc.Payments.Subscription.GetStatus.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ownerAnyID | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetStatus-Response"></a>
+
+### Rpc.Payments.Subscription.GetStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Payments.Subscription.GetStatus.Response.Error](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error) |  |  |
+| tier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  |  |
+| status | [Rpc.Payments.Subscription.SubscriptionStatus](#anytype-Rpc-Payments-Subscription-SubscriptionStatus) |  |  |
+| dateStarted | [uint64](#uint64) |  |  |
+| dateEnds | [uint64](#uint64) |  |  |
+| isAutoRenew | [bool](#bool) |  |  |
+| nextTier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  | if client has &#34;downgraded&#34; - he is still able to use the service until the end of the period (dateEnds) but then he will be on nextTier until nextTierEnds if Tier0_Unknown -&gt; then no next tier |
+| nextTierEnds | [uint64](#uint64) |  |  |
+| paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetStatus-Response-Error"></a>
+
+### Rpc.Payments.Subscription.GetStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Payments.Subscription.GetStatus.Response.Error.Code](#anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Process"></a>
 
 ### Rpc.Process
@@ -18126,6 +18289,79 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | READONLY_OBJECT_TYPE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetPaymentURL-Response-Error-Code"></a>
+
+### Rpc.Payments.Subscription.GetPaymentURL.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-GetStatus-Response-Error-Code"></a>
+
+### Rpc.Payments.Subscription.GetStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-PaymentMethod"></a>
+
+### Rpc.Payments.Subscription.PaymentMethod
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Method_Card | 0 |  |
+| Method_Crypto | 1 |  |
+| Method_ApplePay | 2 |  |
+| Method_GooglePay | 3 |  |
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-SubscriptionStatus"></a>
+
+### Rpc.Payments.Subscription.SubscriptionStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Status_Unknown | 0 |  |
+| Status_Pending | 1 |  |
+| Status_Active | 2 |  |
+| Status_Expired | 3 |  |
+| Status_Canceled | 4 |  |
+
+
+
+<a name="anytype-Rpc-Payments-Subscription-SubscriptionTier"></a>
+
+### Rpc.Payments.Subscription.SubscriptionTier
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Tier_Unknown | 0 |  |
+| Tier_Friend | 1 |  |
+| Tier_Supporter1Year | 2 |  |
+| Tier_Patron1Year | 3 |  |
 
 
 
@@ -22715,7 +22951,7 @@ stored |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
-| originalCreatedTimestamp | [int64](#int64) |  | original user-side object creation timestamp, e.g. from the file stat |
+| originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
 
 
 

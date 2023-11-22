@@ -82,6 +82,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/unsplash"
 	"github.com/anyproto/anytype-heart/util/vcs"
+
+	ppclient "github.com/anyproto/any-pp-node/drpcclient"
 )
 
 var (
@@ -246,7 +248,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(account.New()).
 		Register(profiler.New()).
 		Register(identity.New()).
-		Register(templateservice.New())
+		Register(templateservice.New()).
+		Register(ppclient.New())
 }
 
 func MiddlewareVersion() string {

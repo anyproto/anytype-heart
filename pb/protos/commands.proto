@@ -5739,7 +5739,114 @@ message Rpc {
             }
         }
     }
+
+    message Payments {
+        message Subscription {
+            enum SubscriptionTier {
+                Tier_Unknown = 0;
+                
+                Tier_Friend = 1;
+                Tier_Supporter1Year = 2;
+                Tier_Patron1Year = 3;
+            }
+            
+            enum SubscriptionStatus {
+                Status_Unknown = 0;
+                Status_Pending = 1;
+                Status_Active = 2;
+                Status_Expired = 3;
+                Status_Canceled = 4;
+            }
+            
+            enum PaymentMethod {
+                Method_Card = 0;
+                Method_Crypto = 1;
+                Method_ApplePay = 2;
+                Method_GooglePay = 3;
+            }
+
+            message GetStatus {
+                message Request {
+                    string ownerAnyID = 1;
+                }
+    
+                message Response {
+                    Error error = 1;
+
+                    SubscriptionTier tier = 2;
+                    SubscriptionStatus status = 3;
+                  
+                    uint64 dateStarted = 4;
+                    uint64 dateEnds = 5;
+                    bool isAutoRenew = 6;
+                  
+                    // if client has "downgraded" - he is still able to use the service until the end of the period
+                    // (dateEnds) but then he will be on nextTier until nextTierEnds
+                    //  
+                    // if Tier0_Unknown -> then no next tier
+                    SubscriptionTier nextTier = 7;
+                    uint64 nextTierEnds = 8;
+                    PaymentMethod paymentMethod = 9;
+                  
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+    
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                        }
+                    }
+                }
+            }
+
+            message GetPaymentURL {
+                message Request {
+                    string ownerAnyID = 1;
+
+                    // this is the owner's ETH main EOA (External Owned Account) address
+                    //  not AccountAbstraction's SCW (Smart Contract Wallet) address! 
+                    // 
+                    // in the following format: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"
+                    // this is required to reserve a name for the owner
+                    string ownerEthAddress = 2;
+                  
+                    SubscriptionTier requestedTier = 3;
+                  
+                    PaymentMethod paymentMethod = 4;
+                }
+    
+                message Response {
+                    Error error = 1;
+
+                    // will feature current billing ID
+                    // stripe.com/?client_reference_id=1234
+                    string paymentUrl = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            NOT_LOGGED_IN = 3;
+                            PAYMENT_NODE_ERROR = 4;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
+
+
 
 message Empty {
 
