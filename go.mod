@@ -77,7 +77,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.10
 	github.com/stretchr/testify v1.8.4
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	github.com/vektra/mockery/v2 v2.35.2
+	github.com/vektra/mockery/v2 v2.38.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/goldmark v1.6.0
 	go.uber.org/mock v0.3.0
