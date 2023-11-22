@@ -569,7 +569,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 	})
 }
 
-func TestTextImpl_shouldKeepInternalFlags(t *testing.T) {
+func TestTextImpl_removeInternalFlags(t *testing.T) {
 	text := "text"
 	rootID := "root"
 	blockID := "block"
@@ -664,6 +664,8 @@ func TestTextImpl_shouldKeepInternalFlags(t *testing.T) {
 		// then
 		assert.NoError(t, err1)
 		assert.NoError(t, err2)
-		assert.Len(t, pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String()), 3)
+		flags := pbtypes.GetIntList(sb.Details(), bundle.RelationKeyInternalFlags.String())
+		assert.Len(t, flags, 2)
+		assert.NotContains(t, flags, model.InternalFlag_editorDeleteEmpty)
 	})
 }

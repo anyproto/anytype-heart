@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -712,37 +711,10 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		}
 		return resp
 	}
-	var (
-		err error
-	)
-	err = mw.doBlockService(func(bs *block.Service) error {
-		if err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
-			return err
-		}
-		return nil
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ObjectToSet(req.ContextId, req.Source)
 	})
 	return response(err)
-}
-
-func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
-		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
-	creator := getService[objectcreator.Service](mw)
-	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       req.Details,
-	}
-	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
-	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
-	}
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
