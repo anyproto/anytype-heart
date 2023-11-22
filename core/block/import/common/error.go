@@ -12,7 +12,7 @@ var ErrCancel = fmt.Errorf("import is canceled")
 var ErrFailedToReceiveListOfObjects = fmt.Errorf("failed to receive the list of objects")
 var ErrNoObjectsToImport = fmt.Errorf("source path doesn't contain objects to import")
 var ErrLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
-var ErrFileLoad = fmt.Errorf("file couldn't sync ")
+var ErrFileLoad = fmt.Errorf("file was not synced")
 
 type ConvertError struct {
 	errors []error
