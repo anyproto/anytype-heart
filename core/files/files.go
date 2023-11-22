@@ -68,19 +68,14 @@ type Service interface {
 	app.Component
 }
 
-type SyncStatusWatcher interface {
-	Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error)
-}
-
 type service struct {
-	fileStore         filestore.FileStore
-	commonFile        fileservice.FileService
-	fileSync          filesync.FileSync
-	dagService        ipld.DAGService
-	resolver          idresolver.Resolver
-	fileStorage       filestorage.FileStorage
-	syncStatusWatcher SyncStatusWatcher
-	objectStore       objectstore.ObjectStore
+	fileStore   filestore.FileStore
+	commonFile  fileservice.FileService
+	fileSync    filesync.FileSync
+	dagService  ipld.DAGService
+	resolver    idresolver.Resolver
+	fileStorage filestorage.FileStorage
+	objectStore objectstore.ObjectStore
 }
 
 func New() Service {
@@ -96,7 +91,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.syncStatusWatcher = app.MustComponent[SyncStatusWatcher](a)
 	return nil
 }
 
@@ -858,9 +852,6 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 func (s *service) addToSyncQueue(id domain.FullID, uploadedByUser bool, imported bool) error {
 	if err := s.fileSync.AddFile(id.SpaceID, id.ObjectID, uploadedByUser, imported); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
-	}
-	if _, err := s.syncStatusWatcher.Watch(id.SpaceID, id.ObjectID, nil); err != nil {
-		return fmt.Errorf("watch sync status: %w", err)
 	}
 	return nil
 }

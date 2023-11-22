@@ -85,12 +85,12 @@ func (w *linkedFilesWatcher) updateLinkedFilesSummary(spaceID string, parentObje
 
 	var pinStatus pb.EventStatusThreadCafePinStatus
 	for _, fileID := range fileIDs {
-		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), spaceID, fileID)
+		status, err := w.fileStatusRegistry.GetFileStatus(context.Background(), spaceID, fileID, fileID /*TODO File hash*/)
 		if errors.Is(err, domain.ErrFileNotFound) {
 			continue
 		}
 		if err != nil {
-			log.Desugar().Error("can't get status of dependent file", zap.String("fileID", fileID), zap.Error(err))
+			log.Desugar().Error("can't get status of dependent file", zap.String("fileHash", fileID), zap.Error(err))
 		}
 
 		switch status {

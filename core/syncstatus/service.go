@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -28,7 +29,8 @@ var log = logging.Logger("anytype-mw-status")
 const CName = "status"
 
 type Service interface {
-	Watch(spaceID string, id string, fileFunc func() []string) (new bool, err error)
+	WatchFile(spaceId string, fileId string, fileHash string) error
+	Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error)
 	Unwatch(spaceID string, id string)
 	OnFileUpload(spaceID string, fileID string) error
 	RegisterSpace(space commonspace.Space)
@@ -44,6 +46,7 @@ type service struct {
 	typeProvider              typeprovider.SmartBlockTypeProvider
 	fileSyncService           filesync.FileSync
 	fileWatcherUpdateInterval time.Duration
+	fileObjectService         fileobject.Service
 
 	fileWatcher        *fileWatcher
 	linkedFilesWatcher *linkedFilesWatcher
@@ -62,6 +65,7 @@ func New(fileWatcherUpdateInterval time.Duration) Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
+	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 
 	dbProvider := app.MustComponent[datastore.Datastore](a)
 	personalIDProvider := app.MustComponent[personalIDProvider](a)
@@ -111,36 +115,29 @@ func (s *service) UnregisterSpace(space commonspace.Space) {
 	delete(s.objectWatchers, space.Id())
 }
 
-func (s *service) Watch(spaceID string, id string, filesGetter func() []string) (new bool, err error) {
-	return s.watch(spaceID, id, filesGetter)
-}
-
 func (s *service) Unwatch(spaceID string, id string) {
 	s.unwatch(spaceID, id)
 }
 
-func (s *service) watch(spaceID string, id string, filesGetter func() []string) (new bool, err error) {
-	sbt, err := s.typeProvider.Type(spaceID, id)
-	if err != nil {
-		log.Debug("failed to get type of", zap.String("objectID", id))
-	}
+func (s *service) WatchFile(spaceId string, fileId string, fileHash string) error {
+	err := s.fileWatcher.Watch(spaceId, fileId, fileHash)
+	return err
+}
+
+func (s *service) Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error) {
 	s.updateReceiver.ClearLastObjectStatus(id)
-	switch sbt {
-	case smartblock.SmartBlockTypeFile:
-		err := s.fileWatcher.Watch(spaceID, id)
-		return false, err
-	default:
-		s.linkedFilesWatcher.WatchLinkedFiles(spaceID, id, filesGetter)
-		s.objectWatchersLock.Lock()
-		defer s.objectWatchersLock.Unlock()
-		objectWatcher := s.objectWatchers[spaceID]
-		if objectWatcher != nil {
-			if err = objectWatcher.Watch(id); err != nil {
-				return false, err
-			}
+
+	//s.linkedFilesWatcher.WatchLinkedFiles(space.Id(), id, filesGetter)
+	s.objectWatchersLock.Lock()
+	defer s.objectWatchersLock.Unlock()
+	objectWatcher := s.objectWatchers[spaceId]
+	if objectWatcher != nil {
+		if err = objectWatcher.Watch(id); err != nil {
+			return false, err
 		}
-		return true, nil
 	}
+	return true, nil
+
 }
 
 func (s *service) unwatch(spaceID string, id string) {
@@ -164,7 +161,7 @@ func (s *service) unwatch(spaceID string, id string) {
 }
 
 func (s *service) OnFileUpload(spaceID string, fileID string) error {
-	_, err := s.fileWatcher.registry.setFileStatus(fileWithSpace{spaceID: spaceID, fileID: fileID}, fileStatus{
+	_, err := s.fileWatcher.registry.setFileStatus(fileEntry{spaceId: spaceID, fileHash: fileID}, fileStatus{
 		status:    FileStatusSynced,
 		updatedAt: time.Now(),
 	})

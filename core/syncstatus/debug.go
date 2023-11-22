@@ -22,7 +22,7 @@ func (s *service) listFileWatchers(_ *http.Request) ([]*fileWatcherDebugInfo, er
 	result := make([]*fileWatcherDebugInfo, 0, len(files))
 	for _, file := range files {
 		result = append(result, &fileWatcherDebugInfo{
-			ID:        file.fileID,
+			ID:        file.fileHash,
 			IsLimited: file.isUploadLimited,
 		})
 	}

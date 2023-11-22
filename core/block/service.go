@@ -204,20 +204,24 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			return fmt.Errorf("show: %w", err)
 		}
 		afterShowTime := time.Now()
-		_, err = s.syncStatus.Watch(id.SpaceID, id.ObjectID, func() []string {
-			ob.Lock()
-			defer ob.Unlock()
-			bs := ob.NewState()
+		if ob.Type() == coresb.SmartBlockTypeFile {
+			err = s.syncStatus.WatchFile(id.SpaceID, id.ObjectID, pbtypes.GetString(ob.Details(), bundle.RelationKeyFileHash.String()))
+		} else {
+			_, err = s.syncStatus.Watch(id.SpaceID, id.ObjectID, func() []string {
+				ob.Lock()
+				defer ob.Unlock()
+				bs := ob.NewState()
 
-			return lo.Uniq(bs.GetAllFileHashes(ob.FileRelationKeys(bs)))
-		})
+				return lo.Uniq(bs.GetAllFileHashes(ob.FileRelationKeys(bs)))
+			})
+		}
 		if err == nil {
 			ob.AddHook(func(_ smartblock.ApplyInfo) error {
 				s.syncStatus.Unwatch(id.SpaceID, id.ObjectID)
 				return nil
 			}, smartblock.HookOnClose)
 		}
-		if err != nil && err != treestorage.ErrUnknownTreeId {
+		if err != nil && !errors.Is(err, treestorage.ErrUnknownTreeId) {
 			log.Errorf("failed to watch status for object %s: %s", id, err)
 		}
 

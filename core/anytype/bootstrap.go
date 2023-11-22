@@ -47,6 +47,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -217,6 +218,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
 		Register(files.New()).
+		Register(fileobject.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(core.New()).
