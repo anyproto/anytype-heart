@@ -293,9 +293,6 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 
 func (s *service) createBlankTemplateState(layout model.ObjectTypeLayout) (st *state.State) {
 	st = state.NewDoc(BlankTemplateId, nil).NewState()
-	if layout == model.ObjectType_set {
-		layout = model.ObjectType_basic
-	}
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithDefaultFeaturedRelations,
 		template.WithFeaturedRelations,
