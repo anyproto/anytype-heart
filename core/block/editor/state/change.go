@@ -242,6 +242,8 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeOriginalCreatedTimestampSet(ch.GetOriginalCreatedTimestampSet()); err != nil {
 			return
 		}
+	case ch.GetSetFileInfo() != nil:
+		s.changeSetFileInfo(ch.GetSetFileInfo())
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -578,7 +580,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
-
+	s.changes = append(s.changes, s.diffFileInfo()...)
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {

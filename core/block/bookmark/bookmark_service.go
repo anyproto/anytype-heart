@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -353,7 +354,11 @@ func loadImage(spaceID string, fileService files.Service, tempDir string, title,
 		fileName = title
 	}
 
-	im, err := fileService.ImageAdd(context.Background(), spaceID, files.WithReader(tmpFile), files.WithName(fileName))
+	key, err := symmetric.NewRandom()
+	if err != nil {
+		return "", fmt.Errorf("generate encryption key: %w", err)
+	}
+	im, err := fileService.ImageAdd(context.Background(), spaceID, key.String(), files.WithReader(tmpFile), files.WithName(fileName))
 	if err != nil {
 		return
 	}

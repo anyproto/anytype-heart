@@ -58,8 +58,7 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, err
 	}, nil
 }
 
-// TODO: Touch the file to fire indexing
-func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, error) {
+func (s *service) ImageAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (Image, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
@@ -70,7 +69,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOp
 		return nil, err
 	}
 
-	hash, variants, err := s.imageAdd(ctx, spaceID, opts)
+	hash, variants, err := s.imageAdd(ctx, spaceID, encryptionKey, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +83,8 @@ func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOp
 	return img, nil
 }
 
-func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
-	dir, err := s.fileBuildDirectory(ctx, spaceID, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
+func (s *service) imageAdd(ctx context.Context, spaceID string, encryptionKey string, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
+	dir, err := s.fileBuildDirectory(ctx, spaceID, encryptionKey, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
 	if err != nil {
 		return "", nil, err
 	}

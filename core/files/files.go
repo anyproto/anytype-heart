@@ -53,7 +53,7 @@ var log = logging.Logger("anytype-files")
 var _ Service = (*service)(nil)
 
 type Service interface {
-	FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, error)
+	FileAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (File, error)
 	FileByHash(ctx context.Context, id domain.FullID) (File, error)
 	FileGetKeys(id domain.FullID) (*FileKeys, error)
 	FileListOffload(ctx context.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error)
@@ -61,7 +61,7 @@ type Service interface {
 	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
 	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
 	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
-	ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, error)
+	ImageAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (Image, error)
 	ImageByHash(ctx context.Context, id domain.FullID) (Image, error)
 	StoreFileKeys(fileKeys ...FileKeys) error
 
@@ -113,8 +113,8 @@ var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
 
-func (s *service) fileAdd(ctx context.Context, spaceID string, opts AddOptions) (string, *storage.FileInfo, error) {
-	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, opts)
+func (s *service) fileAdd(ctx context.Context, spaceID string, encryptionKey string, opts AddOptions) (string, *storage.FileInfo, error) {
+	fileInfo, err := s.fileAddWithConfig(ctx, spaceID, &m.Blob{}, encryptionKey, opts)
 	if err != nil {
 		return "", nil, err
 	}
@@ -314,7 +314,7 @@ func (s *service) fileAddNodeFromFiles(ctx context.Context, spaceID string, file
 
 func (s *service) fileGetInfoForPath(ctx context.Context, spaceID string, pth string) (*storage.FileInfo, error) {
 	if !strings.HasPrefix(pth, "/ipfs/") {
-		return nil, fmt.Errorf("path should starts with '/dagService/...'")
+		return nil, fmt.Errorf("path should starts with '/ipfs/...'")
 	}
 
 	pthParts := strings.Split(pth, "/")
@@ -537,7 +537,7 @@ func (s *service) getContentReader(ctx context.Context, spaceID string, file *st
 	return dec.DecryptReader(fd)
 }
 
-func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.Mill, encryptionKey string, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
 	if conf.Use != "" {
 		source = conf.Use
@@ -611,7 +611,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
 		encryptor     symmetric.EncryptorDecryptor
 	)
 	if mill.Encrypt() && !conf.Plaintext {
-		key, err := symmetric.NewRandom()
+		key, err := symmetric.FromString(encryptionKey)
 		if err != nil {
 			return nil, err
 		}
@@ -706,7 +706,7 @@ func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.Fi
 	return helpers.AddLinkToDirectory(ctx, dagService, outerDir, link, node.Cid().String())
 }
 
-func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, encryptionKey string, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -728,7 +728,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 			return nil, err
 		}
 
-		added, err := s.fileAddWithConfig(ctx, spaceID, mil, opts)
+		added, err := s.fileAddWithConfig(ctx, spaceID, mil, encryptionKey, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -780,7 +780,7 @@ func (s *service) fileBuildDirectory(ctx context.Context, spaceID string, reader
 				}
 			}
 
-			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, *opts)
+			added, err := s.fileAddWithConfig(ctx, spaceID, stepMill, encryptionKey, *opts)
 			if err != nil {
 				return nil, err
 			}
@@ -975,7 +975,7 @@ func (s *service) isDeleted(fileID string) (bool, error) {
 	return pbtypes.GetBool(d.GetDetails(), bundle.RelationKeyIsDeleted.String()), nil
 }
 
-func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOption) (File, error) {
+func (s *service) FileAdd(ctx context.Context, spaceID string, encryptionKey string, options ...AddOption) (File, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
@@ -986,7 +986,7 @@ func (s *service) FileAdd(ctx context.Context, spaceID string, options ...AddOpt
 		return nil, err
 	}
 
-	hash, info, err := s.fileAdd(ctx, spaceID, opts)
+	hash, info, err := s.fileAdd(ctx, spaceID, encryptionKey, opts)
 	if err != nil {
 		return nil, err
 	}

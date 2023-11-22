@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
@@ -46,7 +45,6 @@ type service struct {
 	typeProvider              typeprovider.SmartBlockTypeProvider
 	fileSyncService           filesync.FileSync
 	fileWatcherUpdateInterval time.Duration
-	fileObjectService         fileobject.Service
 
 	fileWatcher        *fileWatcher
 	linkedFilesWatcher *linkedFilesWatcher
@@ -65,7 +63,6 @@ func New(fileWatcherUpdateInterval time.Duration) Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.typeProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
-	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 
 	dbProvider := app.MustComponent[datastore.Datastore](a)
 	personalIDProvider := app.MustComponent[personalIDProvider](a)

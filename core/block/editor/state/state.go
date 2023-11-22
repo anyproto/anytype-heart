@@ -80,7 +80,6 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
-	// todo: injectDerivedRelations has been removed, it shouldn't be here. Check if this produced any side effects
 	return s
 }
 
@@ -115,7 +114,8 @@ type State struct {
 	newIds            []string
 	changeId          string
 	changes           []*pb.ChangeContent
-	fileKeys          []pb.ChangeFileKeys
+	fileInfo          FileInfo
+	fileKeys          []pb.ChangeFileKeys // Deprecated
 	details           *types.Struct
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
@@ -164,11 +164,21 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return s.NewStateCtx(nil)
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return &State{
+		parent:                   s,
+		blocks:                   make(map[string]simple.Block),
+		rootId:                   s.rootId,
+		ctx:                      ctx,
+		noObjectType:             s.noObjectType,
+		migrationVersion:         s.migrationVersion,
+		uniqueKeyInternal:        s.uniqueKeyInternal,
+		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		fileInfo:                 s.fileInfo,
+	}
 }
 
 func (s *State) Context() session.Context {
@@ -628,6 +638,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}
 	}
 
+	if s.parent != nil {
+		s.parent.fileInfo = s.fileInfo
+	}
+
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -718,6 +732,7 @@ func (s *State) intermediateApply() {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
+	s.parent.fileInfo = s.fileInfo
 	return
 }
 
@@ -1271,6 +1286,7 @@ func (s *State) Copy() *State {
 		storeKeyRemoved:          storeKeyRemovedCopy,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		fileInfo:                 s.fileInfo,
 	}
 	return copy
 }

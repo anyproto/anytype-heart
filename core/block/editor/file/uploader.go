@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/h2non/filetype"
 
 	"github.com/anyproto/anytype-heart/core/block/getblock"
@@ -22,12 +21,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -389,9 +387,17 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		opts = append(opts, u.opts...)
 	}
 
-	var fileHash string
+	var (
+		fileHash string
+	)
+	key, err := symmetric.NewRandom()
+	if err != nil {
+		return
+	}
+	encryptionKey := key.String()
+
 	if u.fileType == model.BlockContentFile_Image {
-		im, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
+		im, e := u.fileService.ImageAdd(ctx, u.spaceID, encryptionKey, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			e = nil
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
@@ -405,28 +411,23 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		if orig != nil {
 			result.MIME = orig.Meta().Media
 			result.Size = orig.Meta().Size
+			encryptionKey = orig.Info().Key
 		}
 	} else {
-		fl, e := u.fileService.FileAdd(ctx, u.spaceID, opts...)
+		fl, e := u.fileService.FileAdd(ctx, u.spaceID, encryptionKey, opts...)
 		if e != nil {
 			err = e
 			return
 		}
 		fileHash = fl.Hash()
+		encryptionKey = fl.Info().Key
 		if meta := fl.Meta(); meta != nil {
 			result.MIME = meta.Media
 			result.Size = meta.Size
 		}
 	}
 
-	fileId, fileDetails, err := u.objectCreator.CreateObject(ctx, u.spaceID, objectcreator.CreateObjectRequest{
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyFileHash.String(): pbtypes.String(fileHash),
-			},
-		},
-		ObjectTypeKey: bundle.TypeKeyFile,
-	})
+	fileId, fileDetails, err := u.objectCreator.CreateFile(ctx, u.spaceID, fileHash, encryptionKey)
 	result.Hash = fileId
 	_ = fileDetails
 	if err != nil {

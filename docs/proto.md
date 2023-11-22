@@ -23,6 +23,7 @@
     - [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet)
     - [Change.RelationAdd](#anytype-Change-RelationAdd)
     - [Change.RelationRemove](#anytype-Change-RelationRemove)
+    - [Change.SetFileInfo](#anytype-Change-SetFileInfo)
     - [Change.Snapshot](#anytype-Change-Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype-Change-Snapshot-LogHeadsEntry)
     - [Change.StoreKeySet](#anytype-Change-StoreKeySet)
@@ -1417,6 +1418,7 @@
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [FileInfo](#anytype-model-FileInfo)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
@@ -1844,6 +1846,7 @@ the element of change tree used to store and internal apply smartBlock history
 | storeKeyUnset | [Change.StoreKeyUnset](#anytype-Change-StoreKeyUnset) |  |  |
 | storeSliceUpdate | [Change.StoreSliceUpdate](#anytype-Change-StoreSliceUpdate) |  |  |
 | originalCreatedTimestampSet | [Change.OriginalCreatedTimestampSet](#anytype-Change-OriginalCreatedTimestampSet) |  |  |
+| setFileInfo | [Change.SetFileInfo](#anytype-Change-SetFileInfo) |  |  |
 
 
 
@@ -1984,6 +1987,21 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | relationKey | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Change-SetFileInfo"></a>
+
+### Change.SetFileInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileInfo | [model.FileInfo](#anytype-model-FileInfo) |  |  |
 
 
 
@@ -22317,6 +22335,22 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-FileInfo"></a>
+
+### FileInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileHash | [string](#string) |  |  |
+| encryptionKey | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-InternalFlag"></a>
 
 ### InternalFlag
@@ -22715,7 +22749,8 @@ stored |
 | removedCollectionKeys | [string](#string) | repeated |  |
 | relationLinks | [RelationLink](#anytype-model-RelationLink) | repeated |  |
 | key | [string](#string) |  | only used for pb backup purposes, ignored in other cases |
-| originalCreatedTimestamp | [int64](#int64) |  | original user-side object creation timestamp, e.g. from the file stat |
+| originalCreatedTimestamp | [int64](#int64) |  | ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp |
+| fileInfo | [FileInfo](#anytype-model-FileInfo) |  |  |
 
 
 

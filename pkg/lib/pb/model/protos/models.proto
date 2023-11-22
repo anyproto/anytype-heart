@@ -16,6 +16,7 @@ message SmartBlockSnapshotBase {
   repeated RelationLink relationLinks = 7;
   string key = 9; // only used for pb backup purposes, ignored in other cases
   int64 originalCreatedTimestamp = 10; // ignored in import/export in favor of createdDate relation. Used to store original user-side object creation timestamp
+  FileInfo fileInfo = 11;
 }
 
 enum SmartBlockType {
@@ -887,4 +888,9 @@ message Metadata {
       bytes profileSymKey = 1;
     }
   }
+}
+
+message FileInfo {
+  string fileHash = 1;
+  string encryptionKey = 2;
 }
