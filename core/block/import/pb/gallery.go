@@ -47,7 +47,7 @@ func (g *GalleryImport) ProvideCollection(
 		collectionName = rootCollectionName
 	}
 	rootCollection := common.NewRootCollection(g.service)
-	collectionSnapshot, err := rootCollection.MakeRootCollection(collectionName, widgetObjects, icon, fileKeys)
+	collectionSnapshot, err := rootCollection.MakeRootCollection(collectionName, widgetObjects, icon, fileKeys, false)
 	if collectionSnapshot != nil && widget != nil {
 		g.addCollectionWidget(widget, collectionSnapshot.Id)
 	}
@@ -88,7 +88,7 @@ func (g *GalleryImport) addCollectionWidget(widgetSnapshot *common.Snapshot, col
 		Id:          widgetID,
 		ChildrenIds: []string{id},
 		Content: &model.BlockContentOfWidget{Widget: &model.BlockContentWidget{
-			Layout: 0,
+			Layout: model.BlockContentWidget_CompactList,
 			Limit:  0,
 			ViewId: "",
 		}},

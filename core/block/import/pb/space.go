@@ -57,7 +57,7 @@ func (s *SpaceImport) ProvideCollection(
 		})
 	}
 	rootCollection := common.NewRootCollection(s.service)
-	return rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil)
+	return rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true)
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
