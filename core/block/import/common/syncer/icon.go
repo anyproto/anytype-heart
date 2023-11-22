@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	oserror "github.com/anyproto/anytype-heart/util/os"
 )
 
 var log = logging.Logger("import")
@@ -49,7 +50,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	}
 	hash, err := is.service.UploadFile(context.Background(), spaceID, dto)
 	if err != nil {
-		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, oserror.TransformError(err).Error())
 	}
 
 	err = block.Do(is.service, id, func(sb smartblock.SmartBlock) error {
