@@ -5767,7 +5767,6 @@ message Rpc {
 
             message GetStatus {
                 message Request {
-                    string ownerAnyID = 1;
                 }
     
                 message Response {
@@ -5806,18 +5805,9 @@ message Rpc {
 
             message GetPaymentURL {
                 message Request {
-                    string ownerAnyID = 1;
-
-                    // this is the owner's ETH main EOA (External Owned Account) address
-                    //  not AccountAbstraction's SCW (Smart Contract Wallet) address! 
-                    // 
-                    // in the following format: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"
-                    // this is required to reserve a name for the owner
-                    string ownerEthAddress = 2;
+                    SubscriptionTier requestedTier = 1;
                   
-                    SubscriptionTier requestedTier = 3;
-                  
-                    PaymentMethod paymentMethod = 4;
+                    PaymentMethod paymentMethod = 2;
                 }
     
                 message Response {

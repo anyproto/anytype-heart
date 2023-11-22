@@ -82,7 +82,7 @@ func subscriptionGetStatus(ctx context.Context, pp ppclient.AnyPpClientService, 
 	// 1 - create request
 	gsr := aa.GetSubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyID: req.OwnerAnyID,
+		OwnerAnyID: w.Account().PeerId,
 	}
 
 	// 2 - sign it with the wallet
@@ -142,10 +142,14 @@ func getPaymentURL(ctx context.Context, pp ppclient.AnyPpClientService, w wallet
 	// 1 - create request
 	bsr := aa.BuySubscriptionRequest{
 		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyID:      req.OwnerAnyID,
-		OwnerEthAddress: req.OwnerEthAddress,
-		RequestedTier:   aa.SubscriptionTier(req.RequestedTier),
-		PaymentMethod:   aa.PaymentMethod(req.PaymentMethod),
+		OwnerAnyID: w.Account().PeerId,
+
+		// TODO: use real address
+		// for now we just use something that looks real
+		OwnerEthAddress: "0xc0B11AaB5184700b91a75e5f0C12D692922A079c",
+
+		RequestedTier: aa.SubscriptionTier(req.RequestedTier),
+		PaymentMethod: aa.PaymentMethod(req.PaymentMethod),
 	}
 
 	// 2 - sign it with the wallet

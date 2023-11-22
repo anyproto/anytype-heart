@@ -13973,10 +13973,6 @@ Available undo/redo operations
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| ownerAnyID | [string](#string) |  |  |
-| ownerEthAddress | [string](#string) |  | this is the owner&#39;s ETH main EOA (External Owned Account) address not AccountAbstraction&#39;s SCW (Smart Contract Wallet) address! 
-
-in the following format: &#34;0x7a250d5630b4cf539739df2c5dacb4c659f2488d&#34; this is required to reserve a name for the owner |
 | requestedTier | [Rpc.Payments.Subscription.SubscriptionTier](#anytype-Rpc-Payments-Subscription-SubscriptionTier) |  |  |
 | paymentMethod | [Rpc.Payments.Subscription.PaymentMethod](#anytype-Rpc-Payments-Subscription-PaymentMethod) |  |  |
 
@@ -14031,11 +14027,6 @@ in the following format: &#34;0x7a250d5630b4cf539739df2c5dacb4c659f2488d&#34; th
 
 ### Rpc.Payments.Subscription.GetStatus.Request
 
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| ownerAnyID | [string](#string) |  |  |
 
 
 

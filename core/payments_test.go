@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pb"
 
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
 )
 
@@ -40,14 +41,14 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+
 		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request
-		req := &pb.RpcPaymentsSubscriptionGetStatusRequest{
-			// Set the necessary fields of the request
-			// (it will not fail if OwnerAnyID format is bad)
-			OwnerAnyID: "test",
-		}
+		req := &pb.RpcPaymentsSubscriptionGetStatusRequest{}
 
 		// Call the function being tested
 		resp := subscriptionGetStatus(context.Background(), pp, w, req)
@@ -85,13 +86,14 @@ func TestPaymentsSubscriptionGetStatus(t *testing.T) {
 		assert.NoError(t, err)
 
 		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+
 		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request
-		req := &pb.RpcPaymentsSubscriptionGetStatusRequest{
-			// Set the necessary fields of the request
-			OwnerAnyID: "test",
-		}
+		req := &pb.RpcPaymentsSubscriptionGetStatusRequest{}
 
 		// Call the function being tested
 		resp := subscriptionGetStatus(context.Background(), pp, w, req)
@@ -126,16 +128,16 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		assert.NoError(t, err)
 
 		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+
 		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
-			// no checks on our side is made
-			OwnerAnyID: "test",
-			// no checks on our side is made
-			OwnerEthAddress: "0x1234567890",
-			RequestedTier:   pb.RpcPaymentsSubscription_Tier_Patron1Year,
-			PaymentMethod:   pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedTier: pb.RpcPaymentsSubscription_Tier_Patron1Year,
+			PaymentMethod: pb.RpcPaymentsSubscription_Method_Crypto,
 		}
 
 		// Call the function being tested
@@ -169,14 +171,16 @@ func TestPaymentsGetPaymentURL(t *testing.T) {
 		assert.NoError(t, err)
 
 		w := mock_wallet.NewMockWallet(t)
+		var ak accountdata.AccountKeys
+		ak.PeerId = "123"
+
 		w.EXPECT().GetDevicePrivkey().Return(decodedPeerKey)
+		w.EXPECT().Account().Return(&ak)
 
 		// Create a test request
 		req := &pb.RpcPaymentsSubscriptionGetPaymentURLRequest{
-			OwnerAnyID:      "test",
-			OwnerEthAddress: "0x1234567890",
-			RequestedTier:   pb.RpcPaymentsSubscription_Tier_Patron1Year,
-			PaymentMethod:   pb.RpcPaymentsSubscription_Method_Crypto,
+			RequestedTier: pb.RpcPaymentsSubscription_Tier_Patron1Year,
+			PaymentMethod: pb.RpcPaymentsSubscription_Method_Crypto,
 		}
 
 		// Call the function being tested
