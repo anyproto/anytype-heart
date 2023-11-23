@@ -176,7 +176,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 
 		if looksLikeFileNode(node) {
 			l := schema.LinkByName(node.Links(), ValidContentLinkNames)
-			info, err := s.fileStore.GetChild(filestore.ChildFileId(l.Cid.String()))
+			info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
 			if err == nil {
 				fileKeys["/"+index.Name+"/"] = info.Key
 			} else {
@@ -194,7 +194,7 @@ func (s *service) fileRestoreKeys(ctx context.Context, id domain.FullFileId) (ma
 					continue
 				}
 
-				info, err := s.fileStore.GetChild(filestore.ChildFileId(l.Cid.String()))
+				info, err := s.fileStore.GetChild(domain.ChildFileId(l.Cid.String()))
 
 				if err == nil {
 					fileKeys["/"+index.Name+"/"+link.Name+"/"] = info.Key
@@ -422,7 +422,7 @@ func (s *service) fileIndexLink(inode ipld.Node, id domain.FullFileId) error {
 		return ErrMissingContentLink
 	}
 	linkID := dlink.Cid.String()
-	if err := s.fileStore.AddChildId(id.FileId, filestore.ChildFileId(linkID)); err != nil {
+	if err := s.fileStore.AddChildId(id.FileId, domain.ChildFileId(linkID)); err != nil {
 		return fmt.Errorf("add target to %s: %w", linkID, err)
 	}
 	return nil
@@ -496,7 +496,7 @@ func (s *service) fileInfoFromPath(ctx context.Context, spaceId string, fileId d
 	return &file, nil
 }
 
-func (s *service) fileContent(ctx context.Context, spaceId string, childId filestore.ChildFileId) (io.ReadSeeker, *storage.FileInfo, error) {
+func (s *service) fileContent(ctx context.Context, spaceId string, childId domain.ChildFileId) (io.ReadSeeker, *storage.FileInfo, error) {
 	var err error
 	var file *storage.FileInfo
 	var reader io.ReadSeeker
@@ -669,7 +669,7 @@ func (s *service) fileAddWithConfig(ctx context.Context, spaceID string, mill m.
   		- content
 */
 func (s *service) fileNode(ctx context.Context, spaceID string, file *storage.FileInfo, outerDir uio.Directory, link string) error {
-	file, err := s.fileStore.GetChild(filestore.ChildFileId(file.Hash))
+	file, err := s.fileStore.GetChild(domain.ChildFileId(file.Hash))
 	if err != nil {
 		return err
 	}

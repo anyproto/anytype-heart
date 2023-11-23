@@ -154,7 +154,7 @@ func calculateCommonDetails(
 	lastModifiedDate int64,
 ) map[string]*types.Value {
 	return map[string]*types.Value{
-		bundle.RelationKeyFileHash.String():         pbtypes.String(fileId.String()),
+		bundle.RelationKeyFileId.String():           pbtypes.String(fileId.String()),
 		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(true),
 		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),

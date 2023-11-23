@@ -83,22 +83,16 @@ var log = logging.Logger("anytype-localstore")
 
 const CName = "filestore"
 
-type ChildFileId string
-
-func (id ChildFileId) String() string {
-	return string(id)
-}
-
 type FileStore interface {
 	app.ComponentRunnable
 	localstore.Indexable
 
 	Add(file *storage.FileInfo) error
 	AddMulti(upsert bool, files ...*storage.FileInfo) error
-	GetChild(fileId ChildFileId) (*storage.FileInfo, error)
+	GetChild(fileId domain.ChildFileId) (*storage.FileInfo, error)
 	GetChildBySource(mill string, source string, opts string) (*storage.FileInfo, error)
 	GetChildByChecksum(mill string, checksum string) (*storage.FileInfo, error)
-	AddChildId(target domain.FileId, childId ChildFileId) error
+	AddChildId(target domain.FileId, childId domain.ChildFileId) error
 	ListFileIds() ([]domain.FileId, error)
 	ListChildrenByFileId(fileId domain.FileId) ([]*storage.FileInfo, error)
 	ListChildren() ([]*storage.FileInfo, error)
@@ -305,7 +299,7 @@ func (m *dsFileStore) GetFileKeys(fileId domain.FileId) (map[string]string, erro
 	return fileKeys.KeysByPath, nil
 }
 
-func (m *dsFileStore) AddChildId(fileId domain.FileId, childId ChildFileId) error {
+func (m *dsFileStore) AddChildId(fileId domain.FileId, childId domain.ChildFileId) error {
 	return m.updateTxn(func(txn *badger.Txn) error {
 		file, err := m.getChild(txn, childId)
 		if err != nil {
@@ -335,13 +329,13 @@ func (m *dsFileStore) AddChildId(fileId domain.FileId, childId ChildFileId) erro
 	})
 }
 
-func (m *dsFileStore) GetChild(childId ChildFileId) (*storage.FileInfo, error) {
+func (m *dsFileStore) GetChild(childId domain.ChildFileId) (*storage.FileInfo, error) {
 	return badgerhelper.ViewTxnWithResult(m.db, func(txn *badger.Txn) (*storage.FileInfo, error) {
 		return m.getChild(txn, childId)
 	})
 }
 
-func (m *dsFileStore) getChild(txn *badger.Txn, childId ChildFileId) (*storage.FileInfo, error) {
+func (m *dsFileStore) getChild(txn *badger.Txn, childId domain.ChildFileId) (*storage.FileInfo, error) {
 	fileInfoKey := filesInfoBase.ChildString(childId.String())
 	file, err := badgerhelper.GetValueTxn(txn, fileInfoKey.Bytes(), unmarshalFileInfo)
 	if badgerhelper.IsNotFound(err) {
@@ -435,7 +429,7 @@ func (m *dsFileStore) ListChildren() ([]*storage.FileInfo, error) {
 
 		infos := make([]*storage.FileInfo, 0, len(childrenIds))
 		for _, childId := range childrenIds {
-			info, err := m.getChild(txn, ChildFileId(childId))
+			info, err := m.getChild(txn, domain.ChildFileId(childId))
 			if err != nil {
 				return nil, err
 			}

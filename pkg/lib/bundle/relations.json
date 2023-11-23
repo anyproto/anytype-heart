@@ -1525,9 +1525,9 @@
   {
     "format": "shorttext",
     "hidden": false,
-    "key": "fileHash",
+    "key": "fileId",
     "maxCount": 0,
-    "name": "Underlying file hash",
+    "name": "Underlying file id",
     "readonly": false,
     "source": "details"
   }

@@ -77,7 +77,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("get details for file or image: %w", err)
 	}
-	details.Fields[bundle.RelationKeyFileHash.String()] = pbtypes.String(req.FileId.String())
+	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
 
 	createState := state.NewDoc("", nil).(*state.State)
 	createState.SetDetails(details)
@@ -147,7 +147,7 @@ func (s *service) GetFileIdFromObject(ctx context.Context, objectId string) (dom
 func (s *service) getFileIdFromObjectInSpace(ctx context.Context, space smartblock.Space, objectId string) (domain.FullFileId, error) {
 	var fileId string
 	err := space.Do(objectId, func(sb smartblock.SmartBlock) error {
-		fileId = pbtypes.GetString(sb.Details(), bundle.RelationKeyFileHash.String())
+		fileId = pbtypes.GetString(sb.Details(), bundle.RelationKeyFileId.String())
 		if fileId == "" {
 			return fmt.Errorf("empty file hash")
 		}

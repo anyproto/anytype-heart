@@ -69,7 +69,7 @@ func (s *service) getObjectIdByFileId(fileId domain.FileId) (string, error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				RelationKey: bundle.RelationKeyFileHash.String(),
+				RelationKey: bundle.RelationKeyFileId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.String(fileId.String()),
 			},
