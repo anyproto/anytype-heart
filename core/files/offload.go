@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -84,19 +82,21 @@ func (s *service) checkIfPinned(fileID string, includeNotPinned bool) error {
 }
 
 func (s *service) isFilePinnedOrDeleted(fileID string) (bool, error) {
-	status, err := s.fileStore.GetSyncStatus(fileID)
-	if err != nil && err != localstore.ErrNotFound {
-		return false, fmt.Errorf("get sync status for file %s: %w", fileID, err)
-	}
-	if status == int(syncstatus.StatusSynced) {
-		return true, nil
-	}
-	isDeleted, err := s.isFileDeleted(fileID)
-	if err != nil {
-		log.With("fileID", fileID).Errorf("failed to check if file is deleted: %s", err)
-		return false, nil
-	}
-	return isDeleted, nil
+	return false, nil
+	// TODO Fix
+	//status, err := s.fileStore.GetSyncStatus(fileID)
+	//if err != nil && err != localstore.ErrNotFound {
+	//	return false, fmt.Errorf("get sync status for file %s: %w", fileID, err)
+	//}
+	//if status == int(syncstatus.StatusSynced) {
+	//	return true, nil
+	//}
+	//isDeleted, err := s.isFileDeleted(fileID)
+	//if err != nil {
+	//	log.With("fileID", fileID).Errorf("failed to check if file is deleted: %s", err)
+	//	return false, nil
+	//}
+	//return isDeleted, nil
 }
 
 func (s *service) fileOffload(ctx context.Context, id domain.FullID) (totalSize uint64, err error) {
@@ -120,7 +120,8 @@ func (s *service) fileOffload(ctx context.Context, id domain.FullID) (totalSize 
 
 func (s *service) FileListOffload(ctx context.Context, fileIDs []string, includeNotPinned bool) (totalBytesOffloaded uint64, totalFilesOffloaded uint64, err error) {
 	if len(fileIDs) == 0 {
-		fileIDs, err = s.fileStore.ListTargets()
+		// TODO Fix
+		// fileIDs, err = s.fileStore.ListFileIds()
 		if err != nil {
 			return 0, 0, fmt.Errorf("list all files: %w", err)
 		}
@@ -156,11 +157,13 @@ func (s *service) FileListOffload(ctx context.Context, fileIDs []string, include
 }
 
 func (s *service) isFileDeleted(fileID string) (bool, error) {
-	roots, err := s.fileStore.ListByTarget(fileID)
-	if err == localstore.ErrNotFound {
-		return true, nil
-	}
-	return len(roots) == 0, err
+	return false, nil
+	// TODO Fix
+	//roots, err := s.fileStore.ListChildrenByFileId(fileID)
+	//if err == localstore.ErrNotFound {
+	//	return true, nil
+	//}
+	//return len(roots) == 0, err
 }
 
 func (s *service) keepOnlyPinnedOrDeleted(fileIDs []string) ([]string, error) {

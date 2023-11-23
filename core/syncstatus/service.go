@@ -32,8 +32,6 @@ type Service interface {
 	WatchFile(spaceId string, fileId string, fileHash string) error
 	Watch(spaceId string, id string, filesGetter func() []string) (new bool, err error)
 	Unwatch(spaceID string, id string)
-	OnFileUploaded(fileHash string) error
-	OnFileLimited(fileHash string) error
 	RegisterSpace(space commonspace.Space)
 
 	app.ComponentRunnable

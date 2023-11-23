@@ -40,10 +40,11 @@ func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationN
 			filesToDelete = append(filesToDelete, hash)
 		}
 		if hash == "" {
-			if targets, err := fs.fileStore.ListByTarget(f); err == nil && len(targets) > 0 {
-				allFilesHashes = append(allFilesHashes, f)
-				continue
-			}
+			// TODO Fix
+			//if targets, err := fs.fileStore.ListChildrenByFileId(f); err == nil && len(targets) > 0 {
+			//	allFilesHashes = append(allFilesHashes, f)
+			//	continue
+			//}
 		}
 	}
 	fs.updateFileRelationsDetails(state, relationName, allFilesHashes)

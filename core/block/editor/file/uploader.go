@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -387,8 +388,8 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 
 	var (
-		fileHash string
-		fileKeys *files.FileKeys
+		fileId   domain.FileId
+		fileKeys *domain.FileKeys
 	)
 	if u.fileType == model.BlockContentFile_Image {
 		im, keys, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
@@ -400,7 +401,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			err = e
 			return
 		}
-		fileHash = im.Hash()
+		fileId = im.FileId()
 		fileKeys = keys
 		orig, _ := im.GetOriginalFile(ctx)
 		if orig != nil {
@@ -413,19 +414,19 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			err = e
 			return
 		}
-		fileHash = fl.Hash()
+		fileId = fl.FileId()
 		fileKeys = keys
 		if meta := fl.Meta(); meta != nil {
 			result.MIME = meta.Media
 			result.Size = meta.Size
 		}
 	}
-	fileId, fileDetails, err := u.fileObjectService.Create(ctx, u.spaceID, fileobject.CreateRequest{
-		FileHash:       fileHash,
-		EncryptionKeys: fileKeys.Keys,
+	fileObjectId, fileDetails, err := u.fileObjectService.Create(ctx, u.spaceID, fileobject.CreateRequest{
+		FileId:         fileId,
+		EncryptionKeys: fileKeys.EncryptionKeys,
 		IsImported:     u.origin == model.ObjectOrigin_import,
 	})
-	result.Hash = fileId
+	result.Hash = fileObjectId
 	_ = fileDetails
 	if err != nil {
 		return UploadResult{Err: err}

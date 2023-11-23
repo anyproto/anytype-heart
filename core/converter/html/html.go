@@ -170,7 +170,7 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
-		baseImg := h.getImageBase64(file.Hash)
+		baseImg := h.getImageBase64(domain.FileId(file.Hash))
 		fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
 		h.renderChildren(b)
 		h.buf.WriteString("</div>")
@@ -463,9 +463,9 @@ func (h *HTML) writeTextToBuf(text *model.BlockContentText) {
 	}
 }
 
-func (h *HTML) getImageBase64(hash string) (res string) {
+func (h *HTML) getImageBase64(fileId domain.FileId) (res string) {
 	ctx := context.Background()
-	im, err := h.fileService.ImageByHash(ctx, domain.FullID{SpaceID: h.spaceID, ObjectID: hash})
+	im, err := h.fileService.ImageByHash(ctx, domain.FullFileId{SpaceId: h.spaceID, FileId: fileId})
 	if err != nil {
 		return
 	}

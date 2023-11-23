@@ -22344,7 +22344,7 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| hash | [string](#string) |  |  |
+| fileId | [string](#string) |  |  |
 | encryptionKeys | [FileInfo.EncryptionKey](#anytype-model-FileInfo-EncryptionKey) | repeated |  |
 
 

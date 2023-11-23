@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -40,37 +41,37 @@ func (s FileStatus) ToSyncStatus() syncstatus.SyncStatus {
 	}
 }
 
-func (s *service) updateFileStatus(fileHash string, status FileStatus) error {
-	fileId, err := s.getFileIdByFileHash(fileHash)
+func (s *service) updateFileStatus(fileId domain.FileId, status FileStatus) error {
+	fileObjectId, err := s.getObjectIdByFileId(fileId)
 	if err != nil {
 		return fmt.Errorf("get file id by file hash: %w", err)
 	}
-	err = s.indexFileSyncStatus(fileId, status)
+	err = s.indexFileSyncStatus(fileObjectId, status)
 	if err != nil {
 		return fmt.Errorf("index file sync status: %w", err)
 	}
 	return nil
 }
 
-func (s *service) OnFileUploadStarted(fileHash string) error {
-	return s.updateFileStatus(fileHash, FileStatusSyncing)
+func (s *service) OnFileUploadStarted(fileId domain.FileId) error {
+	return s.updateFileStatus(fileId, FileStatusSyncing)
 }
 
-func (s *service) OnFileUploaded(fileHash string) error {
-	return s.updateFileStatus(fileHash, FileStatusSynced)
+func (s *service) OnFileUploaded(fileId domain.FileId) error {
+	return s.updateFileStatus(fileId, FileStatusSynced)
 }
 
-func (s *service) OnFileLimited(fileHash string) error {
-	return s.updateFileStatus(fileHash, FileStatusLimited)
+func (s *service) OnFileLimited(fileId domain.FileId) error {
+	return s.updateFileStatus(fileId, FileStatusLimited)
 }
 
-func (s *service) getFileIdByFileHash(fileHash string) (string, error) {
+func (s *service) getObjectIdByFileId(fileId domain.FileId) (string, error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyFileHash.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(fileHash),
+				Value:       pbtypes.String(fileId.String()),
 			},
 		},
 	})
@@ -83,13 +84,13 @@ func (s *service) getFileIdByFileHash(fileHash string) (string, error) {
 	return pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()), nil
 }
 
-func (s *service) indexFileSyncStatus(fileId string, status FileStatus) error {
-	err := s.updateReceiver.UpdateTree(context.Background(), fileId, status.ToSyncStatus())
+func (s *service) indexFileSyncStatus(fileObjectId string, status FileStatus) error {
+	err := s.updateReceiver.UpdateTree(context.Background(), fileObjectId, status.ToSyncStatus())
 	if err != nil {
 		return fmt.Errorf("update tree: %w", err)
 	}
 
-	err = getblock.Do(s.objectGetter, fileId, func(sb smartblock.SmartBlock) (err error) {
+	err = getblock.Do(s.objectGetter, fileObjectId, func(sb smartblock.SmartBlock) (err error) {
 		prevStatus := pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String())
 		newStatus := int64(status)
 		if prevStatus == newStatus {

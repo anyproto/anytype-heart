@@ -1251,11 +1251,11 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 	if len(keys) == 0 {
 		return
 	}
-	fileKeys := make([]files.FileKeys, len(keys))
+	fileKeys := make([]domain.FileKeys, len(keys))
 	for i, k := range keys {
-		fileKeys[i] = files.FileKeys{
-			Hash: k.Hash,
-			Keys: k.Keys,
+		fileKeys[i] = domain.FileKeys{
+			FileId:         domain.FileId(k.Hash),
+			EncryptionKeys: k.Keys,
 		}
 	}
 	if err := sb.fileService.StoreFileKeys(fileKeys...); err != nil {
@@ -1449,10 +1449,10 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 		s.SetDetailAndBundledRelation(bundle.RelationKeyFileSyncStatus, v)
 	}
 
-	if info := s.GetFileInfo(); info.Hash != "" {
-		err := sb.fileService.StoreFileKeys(files.FileKeys{
-			Hash: info.Hash,
-			Keys: info.EncryptionKeys,
+	if info := s.GetFileInfo(); info.FileId != "" {
+		err := sb.fileService.StoreFileKeys(domain.FileKeys{
+			FileId:         info.FileId,
+			EncryptionKeys: info.EncryptionKeys,
 		})
 		if err != nil {
 			log.Errorf("failed to store file keys: %v", err)

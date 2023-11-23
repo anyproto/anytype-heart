@@ -80,7 +80,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 }
 
 func (s *Service) getFileOrLargestImage(ctx context.Context, objectId string) (files.File, error) {
-	id, err := s.fileObjectService.GetFileHashFromObject(ctx, objectId)
+	id, err := s.fileObjectService.GetFileIdFromObject(ctx, objectId)
 	if err != nil {
 		return nil, fmt.Errorf("get file hash from object: %w", err)
 	}

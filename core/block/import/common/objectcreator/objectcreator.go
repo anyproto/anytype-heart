@@ -491,14 +491,15 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 		log.Errorf("failed to collect file hashes in state, %s", err)
 	}
 
-	for _, hash := range fileHashes {
-		err = oc.fileStore.SetIsFileImported(hash, true)
-		if err != nil {
-			log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
-		}
-		err = oc.fileStore.SetFileOrigin(hash, origin)
-		if err != nil {
-			log.Errorf("failed to set origin for file %s: %s", hash, err)
-		}
-	}
+	// TODO Fix
+	//for _, hash := range fileHashes {
+	//	err = oc.fileStore.SetIsFileImported(hash, true)
+	//	if err != nil {
+	//		log.Errorf("failed to set isFileImported for file %s: %s", hash, err)
+	//	}
+	//	err = oc.fileStore.SetFileOrigin(hash, origin)
+	//	if err != nil {
+	//		log.Errorf("failed to set origin for file %s: %s", hash, err)
+	//	}
+	//}
 }

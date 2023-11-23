@@ -104,7 +104,7 @@ func TestFileAdd(t *testing.T) {
 	got, err := s.FileAdd(context.Background(), spaceId, opts...)
 
 	require.NoError(t, err)
-	assert.NotEmpty(t, got.Hash())
+	assert.NotEmpty(t, got.FileId())
 
 	// TODO Check that file is in RpcStore (Cloud Storage)
 	// TODO Check that file is in BlockStore (DAG)

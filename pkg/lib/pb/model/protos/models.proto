@@ -891,7 +891,7 @@ message Metadata {
 }
 
 message FileInfo {
-  string hash = 1;
+  string fileId = 1;
   repeated EncryptionKey encryptionKeys = 2;
 
   message EncryptionKey {

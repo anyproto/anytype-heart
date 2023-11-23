@@ -50,19 +50,20 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
 	case coresb.SmartBlockTypeFile:
-		err = s.OnDelete(id, func() error {
-			if err := s.fileStore.DeleteFile(id.ObjectID); err != nil {
-				return err
-			}
-			if err := s.fileSync.RemoveFile(id.SpaceID, id.ObjectID); err != nil {
-				return fmt.Errorf("failed to remove file from sync: %w", err)
-			}
-			_, err = s.fileService.FileOffload(context.Background(), id.ObjectID, true)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
+		// TODO Fix
+		//err = s.OnDelete(id, func() error {
+		//	if err := s.fileStore.DeleteFile(id.ObjectID); err != nil {
+		//		return err
+		//	}
+		//	if err := s.fileSync.RemoveFile(id.SpaceID, id.ObjectID); err != nil {
+		//		return fmt.Errorf("failed to remove file from sync: %w", err)
+		//	}
+		//	_, err = s.fileService.FileOffload(context.Background(), id.ObjectID, true)
+		//	if err != nil {
+		//		return err
+		//	}
+		//	return nil
+		//})
 	default:
 		// this will call DeleteTree asynchronously in the end
 		return spc.DeleteTree(context.Background(), id.ObjectID)

@@ -19,7 +19,7 @@ func TestFileSyncStore_QueueUpload(t *testing.T) {
 	assert.Equal(t, 1, l)
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
-	assert.Equal(t, "spaceId1", it.SpaceID)
+	assert.Equal(t, "spaceId1", it.SpaceId)
 	assert.Equal(t, "fileId1", it.FileID)
 	assert.True(t, it.AddedByUser)
 }
@@ -33,7 +33,7 @@ func TestFileSyncStore_QueueRemove(t *testing.T) {
 	assert.Equal(t, 1, l)
 	it, err := fx.GetRemove()
 	require.NoError(t, err)
-	assert.Equal(t, "spaceId1", it.SpaceID)
+	assert.Equal(t, "spaceId1", it.SpaceId)
 	assert.Equal(t, "fileId1", it.FileID)
 }
 
@@ -63,9 +63,9 @@ func TestFileSyncStore_GetUpload(t *testing.T) {
 	require.NoError(t, fx.QueueUpload("spaceId1", "fileId1", true, false))
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
-	assert.Equal(t, "spaceId1", it.SpaceID)
+	assert.Equal(t, "spaceId1", it.SpaceId)
 	assert.Equal(t, "fileId1", it.FileID)
-	require.NoError(t, fx.DoneUpload(it.SpaceID, it.FileID))
+	require.NoError(t, fx.DoneUpload(it.SpaceId, it.FileID))
 	_, err = fx.GetUpload()
 	assert.EqualError(t, err, errQueueIsEmpty.Error())
 }
@@ -80,7 +80,7 @@ func TestFileSyncStore_PushBackToQueue(t *testing.T) {
 
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
-	assert.Equal(t, "spaceId1", it.SpaceID)
+	assert.Equal(t, "spaceId1", it.SpaceId)
 	assert.Equal(t, "fileId1", it.FileID)
 	assert.False(t, it.AddedByUser)
 
@@ -89,7 +89,7 @@ func TestFileSyncStore_PushBackToQueue(t *testing.T) {
 
 	it, err = fx.GetUpload()
 	require.NoError(t, err)
-	assert.Equal(t, "spaceId2", it.SpaceID)
+	assert.Equal(t, "spaceId2", it.SpaceId)
 	assert.Equal(t, "fileId2", it.FileID)
 	assert.False(t, it.AddedByUser)
 }
@@ -104,7 +104,7 @@ func TestFileSyncStore_CheckSorting(t *testing.T) {
 
 	it, err := fx.GetUpload()
 	require.NoError(t, err)
-	assert.Equal(t, "spaceId1", it.SpaceID)
+	assert.Equal(t, "spaceId1", it.SpaceId)
 	assert.Equal(t, "fileId1", it.FileID)
 	assert.False(t, it.AddedByUser)
 }
@@ -127,32 +127,32 @@ func TestMigration(t *testing.T) {
 	defer fx.Finish()
 
 	wantUploadItem := &QueueItem{
-		SpaceID:     "spaceId1",
+		SpaceId:     "spaceId1",
 		FileID:      "fileId1",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
 	wantDiscardedItem := &QueueItem{
-		SpaceID:     "spaceId1",
+		SpaceId:     "spaceId1",
 		FileID:      "fileId2",
 		Timestamp:   time.Now().UnixMilli(),
 		AddedByUser: false,
 	}
 	wantRemoveItem := &QueueItem{
-		SpaceID:   "spaceId1",
+		SpaceId:   "spaceId1",
 		FileID:    "fileId3",
 		Timestamp: time.Now().UnixMilli(),
 	}
 
 	t.Run("with old schema", func(t *testing.T) {
 		err := fx.db.Update(func(txn *badger.Txn) error {
-			if err := txn.Set(uploadKey(wantUploadItem.SpaceID, wantUploadItem.FileID), binTime(wantUploadItem.Timestamp)); err != nil {
+			if err := txn.Set(uploadKey(wantUploadItem.SpaceId, wantUploadItem.FileID), binTime(wantUploadItem.Timestamp)); err != nil {
 				return err
 			}
-			if err := txn.Set(discardedKey(wantDiscardedItem.SpaceID, wantDiscardedItem.FileID), binTime(wantDiscardedItem.Timestamp)); err != nil {
+			if err := txn.Set(discardedKey(wantDiscardedItem.SpaceId, wantDiscardedItem.FileID), binTime(wantDiscardedItem.Timestamp)); err != nil {
 				return err
 			}
-			if err := txn.Set(removeKey(wantRemoveItem.SpaceID, wantRemoveItem.FileID), binTime(wantRemoveItem.Timestamp)); err != nil {
+			if err := txn.Set(removeKey(wantRemoveItem.SpaceId, wantRemoveItem.FileID), binTime(wantRemoveItem.Timestamp)); err != nil {
 				return err
 			}
 			return nil

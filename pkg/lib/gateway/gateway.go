@@ -260,7 +260,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	parts := strings.Split(fileIdAndPath, "/")
 	fileId := parts[0]
 
-	id, err := g.fileObjectService.GetFileHashFromObject(ctx, fileId)
+	id, err := g.fileObjectService.GetFileIdFromObject(ctx, fileId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
 	}
@@ -312,7 +312,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (files.File, io
 	imageId := urlParts[2]
 	query := r.URL.Query()
 
-	id, err := g.fileObjectService.GetFileHashFromObject(ctx, imageId)
+	id, err := g.fileObjectService.GetFileIdFromObject(ctx, imageId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get file hash from object id: %w", err)
 	}

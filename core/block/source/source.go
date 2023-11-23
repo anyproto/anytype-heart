@@ -475,22 +475,24 @@ func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFil
 }
 
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
-	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
-	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FullID{
-			SpaceID:  s.spaceID,
-			ObjectID: h,
-		})
-		if err != nil {
-			log.Warnf("can't get file key for hash: %v: %v", h, err)
-			continue
-		}
-		fileKeys = append(fileKeys, &pb.ChangeFileKeys{
-			Hash: fk.Hash,
-			Keys: fk.Keys,
-		})
-	}
-	return fileKeys
+	// TODO Review
+	//fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
+	//for _, h := range hashes {
+	//	fk, err := s.fileService.FileGetKeys(domain.FullID{
+	//		SpaceID:  s.spaceID,
+	//		ObjectID: h,
+	//	})
+	//	if err != nil {
+	//		log.Warnf("can't get file key for hash: %v: %v", h, err)
+	//		continue
+	//	}
+	//	fileKeys = append(fileKeys, &pb.ChangeFileKeys{
+	//		Hash: fk.Hash,
+	//		Keys: fk.Keys,
+	//	})
+	//}
+	//return fileKeys
+	return nil
 }
 
 func (s *source) Heads() []string {

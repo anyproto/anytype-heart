@@ -152,9 +152,9 @@ func (mr *MockRpcStoreMockRecorder) AddToFile(arg0, arg1, arg2, arg3 any) *gomoc
 }
 
 // BindCids mocks base method.
-func (m *MockRpcStore) BindCids(arg0 context.Context, arg1, arg2 string, arg3 []cid.Cid) error {
+func (m *MockRpcStore) BindCids(ctx context.Context, spaceID string, fileId interface{}, cids []cid.Cid) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BindCids", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "BindCids", arg0, arg1, fileId, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }

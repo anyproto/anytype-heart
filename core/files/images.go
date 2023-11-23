@@ -5,22 +5,13 @@ import (
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
-func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, error) {
-	ok, err := s.isDeleted(id.ObjectID)
-	if err != nil {
-		return nil, fmt.Errorf("check if file is deleted: %w", err)
-	}
-	if ok {
-		return nil, domain.ErrFileNotFound
-	}
-
-	files, err := s.fileStore.ListByTarget(id.ObjectID)
+func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error) {
+	files, err := s.fileStore.ListChildrenByFileId(id.FileId)
 	if err != nil {
 		return nil, err
 	}
@@ -48,17 +39,23 @@ func (s *service) ImageByHash(ctx context.Context, id domain.FullID) (Image, err
 			variantsByWidth[int(v.GetNumberValue())] = f
 		}
 	}
-	origin := s.getFileOrigin(id.ObjectID)
+	origin := s.getFileOrigin(id.FileId)
 	return &image{
-		spaceID:         id.SpaceID,
-		hash:            id.ObjectID,
+		spaceID:         id.SpaceId,
+		fileId:          id.FileId,
 		variantsByWidth: variantsByWidth,
 		service:         s,
 		origin:          origin,
 	}, nil
 }
 
-func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, *FileKeys, error) {
+type imageAddResult struct {
+	fileId          domain.FileId
+	variantsByWidth map[int]*storage.FileInfo
+	keys            *domain.FileKeys
+}
+
+func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOption) (Image, *domain.FileKeys, error) {
 	opts := AddOptions{}
 	for _, opt := range options {
 		opt(&opts)
@@ -76,45 +73,37 @@ func (s *service) ImageAdd(ctx context.Context, spaceID string, options ...AddOp
 
 	img := &image{
 		spaceID:         spaceID,
-		hash:            res.fileHash,
+		fileId:          res.fileId,
 		variantsByWidth: res.variantsByWidth,
 		service:         s,
 	}
 	return img, res.keys, nil
 }
 
-type imageAddResult struct {
-	fileHash        string
-	variantsByWidth map[int]*storage.FileInfo
-	keys            *FileKeys
-}
-
-func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions) (*imageAddResult, error) {
-	dir, err := s.fileBuildDirectory(ctx, spaceID, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
+func (s *service) imageAdd(ctx context.Context, spaceId string, opts AddOptions) (*imageAddResult, error) {
+	dir, err := s.fileBuildDirectory(ctx, spaceId, opts.Reader, opts.Name, opts.Plaintext, schema.ImageNode())
 	if err != nil {
 		return nil, err
 	}
 
-	node, keys, err := s.fileAddNodeFromDirs(ctx, spaceID, &storage.DirectoryList{Items: []*storage.Directory{dir}})
+	node, keys, err := s.fileAddNodeFromDirs(ctx, spaceId, &storage.DirectoryList{Items: []*storage.Directory{dir}})
 	if err != nil {
 		return nil, err
 	}
 
 	nodeHash := node.Cid().String()
 
-	fileKeys := &FileKeys{
-		Hash: nodeHash,
-		Keys: keys.KeysByPath,
+	fileId := domain.FileId(nodeHash)
+	fileKeys := domain.FileKeys{
+		FileId:         fileId,
+		EncryptionKeys: keys.KeysByPath,
 	}
-	err = s.fileStore.AddFileKeys(filestore.FileKeys{
-		Hash: fileKeys.Hash,
-		Keys: fileKeys.Keys,
-	})
+	err = s.fileStore.AddFileKeys(fileKeys)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
-	id := domain.FullID{SpaceID: spaceID, ObjectID: nodeHash}
+	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
 	err = s.fileIndexData(ctx, node, id, s.isImported(opts.Origin))
 	if err != nil {
 		return nil, err
@@ -130,20 +119,20 @@ func (s *service) imageAdd(ctx context.Context, spaceID string, opts AddOptions)
 		}
 	}
 
-	err = s.storeFileSize(spaceID, nodeHash)
+	err = s.storeFileSize(spaceId, fileId)
 	if err != nil {
 		return nil, fmt.Errorf("store file size: %w", err)
 	}
 
-	err = s.fileStore.SetFileOrigin(nodeHash, opts.Origin)
+	err = s.fileStore.SetFileOrigin(fileId, opts.Origin)
 	if err != nil {
-		log.Errorf("failed to set file origin %s: %s", nodeHash, err)
+		log.Errorf("failed to set file origin %s: %s", fileId.String(), err)
 	}
 
 	return &imageAddResult{
-		fileHash:        nodeHash,
+		fileId:          fileId,
 		variantsByWidth: variantsByWidth,
-		keys:            fileKeys,
+		keys:            &fileKeys,
 	}, nil
 }
 

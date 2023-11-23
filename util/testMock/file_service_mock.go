@@ -351,7 +351,7 @@ func (mr *MockImageMockRecorder) GetOriginalFile(arg0 any) *gomock.Call {
 }
 
 // Hash mocks base method.
-func (m *MockImage) Hash() string {
+func (m *MockImage) FileId() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Hash")
 	ret0, _ := ret[0].(string)
@@ -404,7 +404,7 @@ func (mr *MockFileMockRecorder) Details(arg0 any) *gomock.Call {
 }
 
 // Hash mocks base method.
-func (m *MockFile) Hash() string {
+func (m *MockFile) FileId() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Hash")
 	ret0, _ := ret[0].(string)

@@ -41,7 +41,7 @@ func TestConflictResolution(t *testing.T) {
 
 		store.addMultiSameFileConcurrently(t, numberOfTimes, fileInfo)
 
-		got, err := store.GetByHash(fileInfo.Hash)
+		got, err := store.GetByFileId(fileInfo.Hash)
 		assert.NoError(t, err)
 		assert.Equal(t, fileInfo, got)
 	})
@@ -49,7 +49,7 @@ func TestConflictResolution(t *testing.T) {
 	t.Run("add same file key concurrently", func(t *testing.T) {
 		store := newFixture(t)
 		fileKeys := FileKeys{
-			Hash: "target",
+			FileId: "target",
 			Keys: map[string]string{
 				"foo": "bar",
 			},
@@ -58,7 +58,7 @@ func TestConflictResolution(t *testing.T) {
 
 		store.addSameFileKeyConcurrently(t, numberOfTimes, fileKeys)
 
-		got, err := store.GetFileKeys(fileKeys.Hash)
+		got, err := store.GetFileKeys(fileKeys.FileId)
 		assert.NoError(t, err)
 		assert.Equal(t, fileKeys.Keys, got)
 	})
@@ -70,7 +70,7 @@ func TestConflictResolution(t *testing.T) {
 		wantTargets := givenTargets(100)
 		store.addTargetsConcurrently(t, fileInfo, wantTargets)
 
-		got, err := store.GetByHash(fileInfo.Hash)
+		got, err := store.GetByFileId(fileInfo.Hash)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, wantTargets, got.Targets)
 	})
@@ -81,7 +81,7 @@ func TestConflictResolution(t *testing.T) {
 
 		store.deleteTargetsConcurrently(t, fileInfo.Targets)
 
-		_, err := store.GetByHash(fileInfo.Hash)
+		_, err := store.GetByFileId(fileInfo.Hash)
 		assert.Equal(t, localstore.ErrNotFound, err)
 	})
 
@@ -99,7 +99,7 @@ func TestConflictResolution(t *testing.T) {
 		}
 		store.deleteTargetsConcurrently(t, targetsToDelete)
 
-		got, err := store.GetByHash(fileInfo.Hash)
+		got, err := store.GetByFileId(fileInfo.Hash)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, targetsToKeep, got.Targets)
 	})
@@ -122,7 +122,7 @@ func TestConflictResolution(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := store.GetByHash(fileInfo.Hash)
+				_, err := store.GetByFileId(fileInfo.Hash)
 				assert.NoError(t, err)
 			}()
 		}
@@ -212,7 +212,7 @@ func (fx *fixture) givenFileWithTargets(t *testing.T, numberOfTargets int) *stor
 	targets := givenTargets(numberOfTargets)
 
 	for _, targetID := range targets {
-		err := fx.AddFileKeys(FileKeys{Hash: targetID, Keys: map[string]string{"foo": "bar"}})
+		err := fx.AddFileKeys(FileKeys{FileId: targetID, Keys: map[string]string{"foo": "bar"}})
 		assert.NoError(t, err)
 	}
 
@@ -234,7 +234,7 @@ func (fx *fixture) addTargetsConcurrently(t *testing.T, fileInfo *storage.FileIn
 		wg.Add(1)
 		go func(targetID string) {
 			defer wg.Done()
-			err := fx.AddFileKeys(FileKeys{Hash: targetID})
+			err := fx.AddFileKeys(FileKeys{FileId: targetID})
 			assert.NoError(t, err)
 
 			err = fx.AddTarget(fileInfo.Hash, targetID)

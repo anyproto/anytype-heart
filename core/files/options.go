@@ -11,7 +11,7 @@ import (
 	"github.com/h2non/filetype"
 	ipfspath "github.com/ipfs/boxo/path"
 
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
@@ -61,7 +61,7 @@ func (s *service) normalizeOptions(ctx context.Context, spaceID string, opts *Ad
 		hash := parts[len(parts)-1]
 		var file *storage.FileInfo
 
-		opts.Reader, file, err = s.fileContent(ctx, domain.FullID{SpaceID: spaceID, ObjectID: hash})
+		opts.Reader, file, err = s.fileContent(ctx, spaceID, filestore.ChildFileId(hash))
 		if err != nil {
 			/*if err == localstore.ErrNotFound{
 				// just cat the data from dagService

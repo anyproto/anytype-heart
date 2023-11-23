@@ -73,7 +73,7 @@ func (f *file) PushChange(params PushChangeParams) (id string, err error) {
 }
 
 func (f *file) ListIds() ([]string, error) {
-	return f.fileStore.ListTargets()
+	return nil, nil
 }
 
 func (f *file) Close() (err error) {

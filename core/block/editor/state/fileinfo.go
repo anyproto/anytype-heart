@@ -1,17 +1,18 @@
 package state
 
 import (
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type FileInfo struct {
-	Hash           string
+	FileId         domain.FileId
 	EncryptionKeys map[string]string
 }
 
 func (f FileInfo) Equals(other FileInfo) bool {
-	if f.Hash != other.Hash {
+	if f.FileId != other.FileId {
 		return false
 	}
 	if len(f.EncryptionKeys) != len(other.EncryptionKeys) {
@@ -26,7 +27,7 @@ func (f FileInfo) Equals(other FileInfo) bool {
 }
 
 func (f FileInfo) ToModel() *model.FileInfo {
-	if f.Hash == "" {
+	if f.FileId == "" {
 		return nil
 	}
 	keys := make([]*model.FileInfoEncryptionKey, 0, len(f.EncryptionKeys))
@@ -37,7 +38,7 @@ func (f FileInfo) ToModel() *model.FileInfo {
 		})
 	}
 	return &model.FileInfo{
-		Hash:           f.Hash,
+		FileId:         f.FileId.String(),
 		EncryptionKeys: keys,
 	}
 }
@@ -74,7 +75,7 @@ func (s *State) setFileInfoFromModel(fileInfo *model.FileInfo) {
 		keys[key.Path] = key.Key
 	}
 	s.SetFileInfo(FileInfo{
-		Hash:           fileInfo.Hash,
+		FileId:         domain.FileId(fileInfo.FileId),
 		EncryptionKeys: keys,
 	})
 }
