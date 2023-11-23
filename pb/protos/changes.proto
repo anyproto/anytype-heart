@@ -59,6 +59,9 @@ message Change {
 
             StoreSliceUpdate storeSliceUpdate = 109;
             OriginalCreatedTimestampSet originalCreatedTimestampSet = 110;
+
+            NotificationCreate notificationCreate = 111;
+            NotificationUpdate notificationUpdate = 112;
         }
         reserved 102,103,104; // old unsupported relation changes
     }
@@ -150,5 +153,16 @@ message Change {
 
     message OriginalCreatedTimestampSet {
         int64 ts = 1;
+    }
+
+    message NotificationCreate {
+        anytype.model.Notification notification = 1;
+    }
+
+    message NotificationUpdate {
+        string id = 1;
+        oneof update {
+           anytype.model.Notification.Status status = 2;
+        }
     }
 }

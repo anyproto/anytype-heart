@@ -45,6 +45,7 @@ enum SmartBlockType {
 
   Identity = 0x214;
   MissingObject = 0x207;
+  NotificationObject = 0x215;
 }
 
 message Block {

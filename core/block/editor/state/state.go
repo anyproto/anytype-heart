@@ -119,6 +119,7 @@ type State struct {
 	details           *types.Struct
 	localDetails      *types.Struct
 	relationLinks     pbtypes.RelationLinks
+	notifications     map[string]*model.Notification
 
 	migrationVersion uint32
 
@@ -678,6 +679,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 
 	if s.parent != nil && s.originalCreatedTimestamp > 0 {
 		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
+	}
+
+	if s.parent != nil {
+		s.parent.notifications = s.notifications
 	}
 
 	msgs = s.processTrailingDuplicatedEvents(msgs)
@@ -1271,6 +1276,7 @@ func (s *State) Copy() *State {
 		storeKeyRemoved:          storeKeyRemovedCopy,
 		uniqueKeyInternal:        s.uniqueKeyInternal,
 		originalCreatedTimestamp: s.originalCreatedTimestamp,
+		notifications:            s.notifications,
 	}
 	return copy
 }

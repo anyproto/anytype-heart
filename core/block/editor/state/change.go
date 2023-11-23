@@ -242,6 +242,10 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeOriginalCreatedTimestampSet(ch.GetOriginalCreatedTimestampSet()); err != nil {
 			return
 		}
+	case ch.GetNotificationCreate() != nil:
+		s.addNotification(ch.GetNotificationCreate().GetNotification())
+	case ch.GetNotificationUpdate() != nil:
+		s.updateNotification(ch.GetNotificationUpdate())
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -429,6 +433,25 @@ func (s *State) changeOriginalCreatedTimestampSet(set *pb.ChangeOriginalCreatedT
 	return nil
 }
 
+func (s *State) addNotification(notification *model.Notification) {
+	if s.notifications == nil {
+		s.notifications = map[string]*model.Notification{}
+	}
+	if _, ok := s.notifications[notification.Id]; ok {
+		return
+	}
+	s.notifications[notification.Id] = notification
+}
+
+func (s *State) updateNotification(update *pb.ChangeNotificationUpdate) {
+	if _, ok := s.notifications[update.Id]; ok {
+		return
+	}
+	if statusUpdate, ok := update.GetUpdate().(*pb.ChangeNotificationUpdateUpdateOfStatus); ok {
+		s.notifications[update.Id].Status = statusUpdate.Status
+	}
+}
+
 func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
@@ -578,6 +601,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
 	s.changes = append(s.changes, s.makeOriginalCreatedChanges()...)
+	s.changes = append(s.changes, s.makeNotificationChanges()...)
 
 }
 
@@ -757,6 +781,41 @@ func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
 	})
 
 	return
+}
+
+func (s *State) makeNotificationChanges() []*pb.ChangeContent {
+	var changes []*pb.ChangeContent
+	if s.parent == nil {
+		for _, notification := range s.notifications {
+			changes = append(changes, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfNotificationCreate{
+					NotificationCreate: &pb.ChangeNotificationCreate{Notification: notification},
+				},
+			})
+		}
+		return changes
+	}
+
+	for id, notification := range s.notifications {
+		if n, ok := s.parent.notifications[id]; ok {
+			if n.Status != notification.Status {
+				changes = append(changes, &pb.ChangeContent{
+					Value: &pb.ChangeContentValueOfNotificationUpdate{
+						NotificationUpdate: &pb.ChangeNotificationUpdate{Update: &pb.ChangeNotificationUpdateUpdateOfStatus{
+							Status: notification.Status,
+						}},
+					},
+				})
+			}
+		} else {
+			changes = append(changes, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfNotificationCreate{
+					NotificationCreate: &pb.ChangeNotificationCreate{Notification: notification},
+				},
+			})
+		}
+	}
+	return changes
 }
 
 type dstrings struct{ a, b []string }
