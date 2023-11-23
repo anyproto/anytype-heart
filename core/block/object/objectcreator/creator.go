@@ -34,13 +34,7 @@ type eventKey int
 
 const eventCreate eventKey = 0
 
-// TODO Temp
-type fileObjectService interface {
-	Create(ctx context.Context, space space.Space, fileHash string, fileKeys map[string]string) (id string, object *types.Struct, err error)
-}
-
 type Service interface {
-	CreateFile(ctx context.Context, spaceId string, fileHash string, fileKeys map[string]string) (id string, details *types.Struct, err error)
 	CreateObject(ctx context.Context, spaceID string, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectInSpace(ctx context.Context, space space.Space, req CreateObjectRequest) (id string, details *types.Struct, err error)
 	CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spaceID string, objectUniqueTypeKey string, req CreateObjectRequest) (id string, details *types.Struct, err error)
@@ -59,8 +53,6 @@ type service struct {
 	spaceService      space.Service
 	templateService   TemplateService
 	fileService       files.Service
-
-	fileObjectService fileObjectService
 }
 
 type CollectionService interface {
@@ -83,7 +75,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.templateService = app.MustComponent[TemplateService](a)
 	s.fileService = app.MustComponent[files.Service](a)
-	s.fileObjectService = app.MustComponent[fileObjectService](a)
 	s.app = a
 	return nil
 }
@@ -287,12 +278,4 @@ func (s *service) CreateObjectUsingObjectUniqueTypeKey(ctx context.Context, spac
 	}
 	req.ObjectTypeKey = objectTypeKey
 	return s.CreateObject(ctx, spaceID, req)
-}
-
-func (s *service) CreateFile(ctx context.Context, spaceId string, fileHash string, fileKeys map[string]string) (id string, details *types.Struct, err error) {
-	space, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return "", nil, fmt.Errorf("get space: %w", err)
-	}
-	return s.fileObjectService.Create(ctx, space, fileHash, fileKeys)
 }

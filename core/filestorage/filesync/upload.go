@@ -109,8 +109,11 @@ func (f *fileSync) tryToUpload() (string, error) {
 		log.Warn("file has been deleted from store, skip upload", zap.String("fileId", fileId))
 		return fileId, f.queue.DoneUpload(spaceId, fileId)
 	}
+	f.runOnUploadStartedHook(fileId, spaceId)
 	if err = f.uploadFile(f.loopCtx, spaceId, fileId); err != nil {
 		if isLimitReachedErr(err) {
+			f.runOnLimitedHook(fileId, spaceId)
+
 			if it.AddedByUser && !it.Imported {
 				f.sendLimitReachedEvent(spaceId, fileId)
 			}
@@ -129,8 +132,16 @@ func (f *fileSync) tryToUpload() (string, error) {
 		}
 		return fileId, err
 	}
-	if f.onUpload != nil {
-		err := f.onUpload(spaceId, fileId)
+	f.runOnUploadedHook(fileId, spaceId)
+
+	f.updateSpaceUsageInformation(spaceId)
+
+	return fileId, f.queue.DoneUpload(spaceId, fileId)
+}
+
+func (f *fileSync) runOnUploadedHook(fileId string, spaceId string) {
+	if f.onUploaded != nil {
+		err := f.onUploaded(fileId)
 		if err != nil {
 			log.Warn("on upload callback failed",
 				zap.String("fileID", fileId),
@@ -138,10 +149,30 @@ func (f *fileSync) tryToUpload() (string, error) {
 				zap.Error(err))
 		}
 	}
+}
 
-	f.updateSpaceUsageInformation(spaceId)
+func (f *fileSync) runOnUploadStartedHook(fileId string, spaceId string) {
+	if f.onUploadStarted != nil {
+		err := f.onUploadStarted(fileId)
+		if err != nil {
+			log.Warn("on upload started callback failed",
+				zap.String("fileID", fileId),
+				zap.String("spaceID", spaceId),
+				zap.Error(err))
+		}
+	}
+}
 
-	return fileId, f.queue.DoneUpload(spaceId, fileId)
+func (f *fileSync) runOnLimitedHook(fileId string, spaceId string) {
+	if f.onLimited != nil {
+		err := f.onLimited(fileId)
+		if err != nil {
+			log.Warn("on limited callback failed",
+				zap.String("fileID", fileId),
+				zap.String("spaceID", spaceId),
+				zap.Error(err))
+		}
+	}
 }
 
 func isLimitReachedErr(err error) bool {

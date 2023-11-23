@@ -2,61 +2,79 @@ package syncstatus
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/dgraph-io/badger/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 type updateReceiver struct {
 	eventSender event.Sender
 
-	linkedFilesWatcher *linkedFilesWatcher
-	nodeConfService    nodeconf.Service
+	nodeConfService nodeconf.Service
 	sync.Mutex
 	nodeConnected bool
 	lastStatus    map[string]pb.EventStatusThreadSyncStatus
+	badger        *badger.DB
 }
 
-func newUpdateReceiver(linkedFilesWatcher *linkedFilesWatcher, nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender) *updateReceiver {
+func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, badger *badger.DB) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}
 	return &updateReceiver{
-		linkedFilesWatcher: linkedFilesWatcher,
-		nodeConfService:    nodeConfService,
-		lastStatus:         make(map[string]pb.EventStatusThreadSyncStatus),
-		eventSender:        eventSender,
+		nodeConfService: nodeConfService,
+		lastStatus:      make(map[string]pb.EventStatusThreadSyncStatus),
+		eventSender:     eventSender,
+		badger:          badger,
 	}
 }
 
 func (r *updateReceiver) UpdateTree(_ context.Context, objId string, status syncstatus.SyncStatus) error {
-	filesSummary := r.linkedFilesWatcher.GetLinkedFilesSummary(objId)
-	objStatus := r.getObjectStatus(status)
+	objStatus := r.getObjectStatus(objId, status)
 
-	if !r.isStatusUpdated(objId, objStatus, filesSummary) {
+	if !r.isStatusUpdated(objId, objStatus) {
 		return nil
 	}
-	r.notify(objId, objStatus, filesSummary.pinStatus)
+	r.notify(objId, objStatus)
 
 	return nil
 }
 
-func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStatusThreadSyncStatus, filesSummary linkedFilesSummary) bool {
+func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStatusThreadSyncStatus) bool {
 	r.Lock()
 	defer r.Unlock()
-	if lastObjStatus, ok := r.lastStatus[objectID]; ok && objStatus == lastObjStatus && !filesSummary.isUpdated {
+	if lastObjStatus, ok := r.lastStatus[objectID]; ok && objStatus == lastObjStatus {
 		return false
 	}
 	r.lastStatus[objectID] = objStatus
 	return true
 }
 
-func (r *updateReceiver) getObjectStatus(status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+func (r *updateReceiver) getFileStatus(fileId string) (FileStatus, error) {
+	rawStatus, err := badgerhelper.GetValue(r.badger, []byte(fileStatusPrefix+fileId), badgerhelper.UnmarshalInt)
+	if err != nil {
+		return FileStatusUnknown, fmt.Errorf("get file status: %w", err)
+	}
+	return FileStatus(rawStatus), nil
+}
+
+func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {
+	fileStatus, err := r.getFileStatus(objectId)
+	if err == nil {
+		// Prefer file backup status
+		if fileStatus != FileStatusSynced {
+			status = fileStatus.ToSyncStatus()
+		}
+	}
+
 	if r.nodeConfService.NetworkCompatibilityStatus() == nodeconf.NetworkCompatibilityStatusIncompatible {
 		return pb.EventStatusThread_IncompatibleVersion
 	}
@@ -101,13 +119,12 @@ func (r *updateReceiver) UpdateNodeStatus(status syncstatus.ConnectionStatus) {
 func (r *updateReceiver) notify(
 	objId string,
 	objStatus pb.EventStatusThreadSyncStatus,
-	pinStatus pb.EventStatusThreadCafePinStatus,
 ) {
 	r.sendEvent(objId, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &pb.EventStatusThread{
 		Summary: &pb.EventStatusThreadSummary{Status: objStatus},
 		Cafe: &pb.EventStatusThreadCafe{
 			Status: objStatus,
-			Files:  &pinStatus,
+			Files:  &pb.EventStatusThreadCafePinStatus{},
 		},
 	}})
 }

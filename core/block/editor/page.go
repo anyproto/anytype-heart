@@ -36,7 +36,7 @@ type Page struct {
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
-	file := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker, f.objectCreator)
+	file := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker, f.fileObjectService)
 	return &Page{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),

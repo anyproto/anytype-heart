@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/space"
@@ -24,6 +25,7 @@ const CName = "fileobject"
 type Service interface {
 	app.Component
 
+	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileHashFromObject(ctx context.Context, objectId string) (domain.FullID, error)
 	GetFileHashFromObjectInSpace(ctx context.Context, space smartblock.Space, objectId string) (domain.FullID, error)
 }
@@ -33,6 +35,7 @@ type service struct {
 	resolver      idresolver.Resolver
 	objectCreator objectcreator.Service
 	fileService   files.Service
+	fileSync      filesync.FileSync
 }
 
 func New() Service {
@@ -48,30 +51,52 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.fileService = app.MustComponent[files.Service](a)
+	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	return nil
 }
 
-func (s *service) Create(ctx context.Context, space space.Space, fileHash string, encryptionKeys map[string]string) (id string, object *types.Struct, err error) {
-	if fileHash == "" {
+type CreateRequest struct {
+	FileHash       string
+	EncryptionKeys map[string]string
+	IsImported     bool
+}
+
+func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
+	if req.FileHash == "" {
 		return "", nil, fmt.Errorf("file hash is empty")
 	}
+
+	space, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", nil, fmt.Errorf("get space: %w", err)
+	}
+
 	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullID{
 		SpaceID:  space.Id(),
-		ObjectID: fileHash,
+		ObjectID: req.FileHash,
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("get details for file or image: %w", err)
 	}
-	details.Fields[bundle.RelationKeyFileHash.String()] = pbtypes.String(fileHash)
+	details.Fields[bundle.RelationKeyFileHash.String()] = pbtypes.String(req.FileHash)
 
 	createState := state.NewDoc("", nil).(*state.State)
 	createState.SetDetails(details)
 	createState.SetFileInfo(state.FileInfo{
-		Hash:           fileHash,
-		EncryptionKeys: encryptionKeys,
+		Hash:           req.FileHash,
+		EncryptionKeys: req.EncryptionKeys,
 	})
 
-	return s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
+	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
+	if err != nil {
+		return "", nil, fmt.Errorf("create object: %w", err)
+	}
+
+	err = s.addToSyncQueue(domain.FullID{SpaceID: space.Id(), ObjectID: req.FileHash}, true, req.IsImported)
+	if err != nil {
+		return "", nil, fmt.Errorf("add to sync queue: %w", err)
+	}
+	return id, object, nil
 }
 
 func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullID) (*types.Struct, domain.TypeKey, error) {
@@ -96,6 +121,14 @@ func (s *service) getDetailsForFileOrImage(ctx context.Context, id domain.FullID
 		return nil, "", err
 	}
 	return d, typeKey, nil
+}
+
+func (s *service) addToSyncQueue(id domain.FullID, uploadedByUser bool, imported bool) error {
+	if err := s.fileSync.AddFile(id.SpaceID, id.ObjectID, uploadedByUser, imported); err != nil {
+		return fmt.Errorf("add file to sync queue: %w", err)
+	}
+	// TODO Maybe we need a watcher here?
+	return nil
 }
 
 func (s *service) GetFileHashFromObject(ctx context.Context, objectId string) (domain.FullID, error) {

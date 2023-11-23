@@ -16,11 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -37,14 +37,14 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, fileSource BlockService, tempDirProvider core.TempDirProvider, fileService files.Service, picker getblock.ObjectGetter, objectCreator objectcreator.Service) File {
+func NewFile(sb smartblock.SmartBlock, fileSource BlockService, tempDirProvider core.TempDirProvider, fileService files.Service, picker getblock.ObjectGetter, fileObjectService fileobject.Service) File {
 	return &sfile{
-		SmartBlock:      sb,
-		fileSource:      fileSource,
-		tempDirProvider: tempDirProvider,
-		fileService:     fileService,
-		picker:          picker,
-		objectCreator:   objectCreator,
+		SmartBlock:        sb,
+		fileSource:        fileSource,
+		tempDirProvider:   tempDirProvider,
+		fileService:       fileService,
+		picker:            picker,
+		fileObjectService: fileObjectService,
 	}
 }
 
@@ -75,11 +75,11 @@ type FileSource struct {
 
 type sfile struct {
 	smartblock.SmartBlock
-	fileSource      BlockService
-	tempDirProvider core.TempDirProvider
-	fileService     files.Service
-	picker          getblock.ObjectGetter
-	objectCreator   objectcreator.Service
+	fileSource        BlockService
+	tempDirProvider   core.TempDirProvider
+	fileService       files.Service
+	picker            getblock.ObjectGetter
+	fileObjectService fileobject.Service
 }
 
 func (sf *sfile) Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error) {
@@ -173,7 +173,7 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 }
 
 func (sf *sfile) newUploader() Uploader {
-	return NewUploader(sf.SpaceID(), sf.fileSource, sf.fileService, sf.tempDirProvider, sf.picker, sf.objectCreator)
+	return NewUploader(sf.SpaceID(), sf.fileSource, sf.fileService, sf.tempDirProvider, sf.picker, sf.fileObjectService)
 }
 
 func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) (err error) {
@@ -191,12 +191,12 @@ func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) 
 
 func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	proc := &dropFilesProcess{
-		spaceID:         sf.SpaceID(),
-		s:               sf.fileSource,
-		fileService:     sf.fileService,
-		tempDirProvider: sf.tempDirProvider,
-		picker:          sf.picker,
-		objectCreator:   sf.objectCreator,
+		spaceID:           sf.SpaceID(),
+		s:                 sf.fileSource,
+		fileService:       sf.fileService,
+		tempDirProvider:   sf.tempDirProvider,
+		picker:            sf.picker,
+		fileObjectService: sf.fileObjectService,
 	}
 	if err = proc.Init(req.LocalFilePaths); err != nil {
 		return
@@ -316,19 +316,19 @@ type dropFilesHandler interface {
 }
 
 type dropFilesProcess struct {
-	id              string
-	spaceID         string
-	s               BlockService
-	picker          getblock.ObjectGetter
-	fileService     files.Service
-	tempDirProvider core.TempDirProvider
-	objectCreator   objectcreator.Service
-	root            *dropFileEntry
-	total, done     int64
-	cancel          chan struct{}
-	doneCh          chan struct{}
-	canceling       int32
-	groupId         string
+	id                string
+	spaceID           string
+	s                 BlockService
+	picker            getblock.ObjectGetter
+	fileService       files.Service
+	tempDirProvider   core.TempDirProvider
+	fileObjectService fileobject.Service
+	root              *dropFileEntry
+	total, done       int64
+	cancel            chan struct{}
+	doneCh            chan struct{}
+	canceling         int32
+	groupId           string
 }
 
 func (dp *dropFilesProcess) Id() string {
@@ -539,7 +539,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 }
 
 func (dp *dropFilesProcess) addFile(f *dropFileInfo) (err error) {
-	upl := NewUploader(dp.spaceID, dp.s, dp.fileService, dp.tempDirProvider, dp.picker, dp.objectCreator)
+	upl := NewUploader(dp.spaceID, dp.s, dp.fileService, dp.tempDirProvider, dp.picker, dp.fileObjectService)
 	res := upl.
 		SetName(f.name).
 		AutoType(true).

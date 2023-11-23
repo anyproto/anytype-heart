@@ -202,11 +202,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(coordinatorclient.New()).
 		Register(credentialprovider.New()).
 		Register(commonspace.New()).
-		Register(rpcstore.New()).
-		Register(filestore.New()).
-		Register(fileservice.New()).
-		Register(filestorage.New()).
-		Register(filesync.New()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
 		Register(localdiscovery.New()).
@@ -214,11 +209,18 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(typeprovider.New()).
 		Register(source.New()).
 		Register(space.New()).
+		// Files
+		Register(rpcstore.New()).
+		Register(filestore.New()).
+		Register(fileservice.New()).
+		Register(filestorage.New()).
+		Register(filesync.New()).
+		Register(files.New()).
+		Register(fileobject.New()).
+		// End files
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).
-		Register(files.New()).
-		Register(fileobject.New()).
 		Register(configfetcher.New()).
 		Register(process.New()).
 		Register(core.New()).

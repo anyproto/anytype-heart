@@ -35,7 +35,7 @@ type Profile struct {
 }
 
 func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
-	fileComponent := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker, f.objectCreator)
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker, f.fileObjectService)
 	return &Profile{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),

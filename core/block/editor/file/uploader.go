@@ -17,10 +17,10 @@ import (
 	"github.com/h2non/filetype"
 
 	"github.com/anyproto/anytype-heart/core/block/getblock"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -89,21 +89,21 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
-	objectCreator    objectcreator.Service
-	spaceID          string
-	service          BlockService
-	picker           getblock.ObjectGetter
-	block            file.Block
-	getReader        func(ctx context.Context) (*fileReader, error)
-	name             string
-	lastModifiedDate int64
-	typeDetect       bool
-	forceType        bool
-	smartBlockID     string
-	fileType         model.BlockContentFileType
-	fileStyle        model.BlockContentFileStyle
-	opts             []files.AddOption
-	groupID          string
+	fileObjectService fileobject.Service
+	spaceID           string
+	service           BlockService
+	picker            getblock.ObjectGetter
+	block             file.Block
+	getReader         func(ctx context.Context) (*fileReader, error)
+	name              string
+	lastModifiedDate  int64
+	typeDetect        bool
+	forceType         bool
+	smartBlockID      string
+	fileType          model.BlockContentFileType
+	fileStyle         model.BlockContentFileStyle
+	opts              []files.AddOption
+	groupID           string
 
 	tempDirProvider core.TempDirProvider
 	fileService     files.Service
@@ -116,15 +116,15 @@ func NewUploader(
 	fileService files.Service,
 	provider core.TempDirProvider,
 	picker getblock.ObjectGetter,
-	objectCreator objectcreator.Service,
+	fileObjectService fileobject.Service,
 ) Uploader {
 	return &uploader{
-		spaceID:         spaceID,
-		service:         s,
-		picker:          picker,
-		fileService:     fileService,
-		tempDirProvider: provider,
-		objectCreator:   objectCreator,
+		spaceID:           spaceID,
+		service:           s,
+		picker:            picker,
+		fileService:       fileService,
+		tempDirProvider:   provider,
+		fileObjectService: fileObjectService,
 	}
 }
 
@@ -420,8 +420,11 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.Size = meta.Size
 		}
 	}
-
-	fileId, fileDetails, err := u.objectCreator.CreateFile(ctx, u.spaceID, fileHash, fileKeys.Keys)
+	fileId, fileDetails, err := u.fileObjectService.Create(ctx, u.spaceID, fileobject.CreateRequest{
+		FileHash:       fileHash,
+		EncryptionKeys: fileKeys.Keys,
+		IsImported:     u.origin == model.ObjectOrigin_import,
+	})
 	result.Hash = fileId
 	_ = fileDetails
 	if err != nil {

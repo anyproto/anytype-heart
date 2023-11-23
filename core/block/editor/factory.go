@@ -13,11 +13,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -46,7 +46,7 @@ type ObjectFactory struct {
 	indexer            smartblock.Indexer
 	spaceService       spaceService
 	accountService     accountService
-	objectCreator      objectcreator.Service
+	fileObjectService  fileobject.Service
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -68,7 +68,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
 	f.accountService = app.MustComponent[accountService](a)
-	f.objectCreator = app.MustComponent[objectcreator.Service](a)
+	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 
 	return nil
 }

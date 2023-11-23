@@ -406,10 +406,6 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.
 		if err != nil {
 			return fmt.Errorf("index file %s link: %w", id.ObjectID, err)
 		}
-		err = s.addToSyncQueue(id, true, imported)
-		if err != nil {
-			return fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
-		}
 		return nil
 	}
 	dagService := s.dagServiceForSpace(id.SpaceID)
@@ -425,11 +421,6 @@ func (s *service) fileIndexNode(ctx context.Context, inode ipld.Node, id domain.
 			return err
 		}
 	}
-	err := s.addToSyncQueue(id, true, imported)
-	if err != nil {
-		return fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
-	}
-
 	return nil
 }
 
@@ -864,13 +855,6 @@ func (s *service) fileIndexInfo(ctx context.Context, id domain.FullID, updateIfE
 	return files, nil
 }
 
-func (s *service) addToSyncQueue(id domain.FullID, uploadedByUser bool, imported bool) error {
-	if err := s.fileSync.AddFile(id.SpaceID, id.ObjectID, uploadedByUser, imported); err != nil {
-		return fmt.Errorf("add file to sync queue: %w", err)
-	}
-	return nil
-}
-
 // looksLikeFileNode returns whether a node appears to
 // be a textile node. It doesn't inspect the actual data.
 func looksLikeFileNode(node ipld.Node) bool {
@@ -969,9 +953,6 @@ func (s *service) FileByHash(ctx context.Context, id domain.FullID) (File, error
 		}
 	}
 	origin := s.getFileOrigin(id.ObjectID)
-	if err := s.addToSyncQueue(id, false, false); err != nil {
-		return nil, fmt.Errorf("add file %s to sync queue: %w", id.ObjectID, err)
-	}
 	fileIndex := fileList[0]
 	return &file{
 		spaceID: id.SpaceID,
