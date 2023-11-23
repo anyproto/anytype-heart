@@ -7,12 +7,12 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/dgraph-io/badger/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
 type updateReceiver struct {
@@ -22,10 +22,10 @@ type updateReceiver struct {
 	sync.Mutex
 	nodeConnected bool
 	lastStatus    map[string]pb.EventStatusThreadSyncStatus
-	badger        *badger.DB
+	objectStore   objectstore.ObjectStore
 }
 
-func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, badger *badger.DB) *updateReceiver {
+func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eventSender event.Sender, objectStore objectstore.ObjectStore) *updateReceiver {
 	if cfg.DisableThreadsSyncEvents {
 		eventSender = nil
 	}
@@ -33,7 +33,7 @@ func newUpdateReceiver(nodeConfService nodeconf.Service, cfg *config.Config, eve
 		nodeConfService: nodeConfService,
 		lastStatus:      make(map[string]pb.EventStatusThreadSyncStatus),
 		eventSender:     eventSender,
-		badger:          badger,
+		objectStore:     objectStore,
 	}
 }
 
@@ -59,11 +59,14 @@ func (r *updateReceiver) isStatusUpdated(objectID string, objStatus pb.EventStat
 }
 
 func (r *updateReceiver) getFileStatus(fileId string) (FileStatus, error) {
-	rawStatus, err := badgerhelper.GetValue(r.badger, []byte(fileStatusPrefix+fileId), badgerhelper.UnmarshalInt)
+	details, err := r.objectStore.GetDetails(fileId)
 	if err != nil {
-		return FileStatusUnknown, fmt.Errorf("get file status: %w", err)
+		return FileStatusUnknown, fmt.Errorf("get file details: %w", err)
 	}
-	return FileStatus(rawStatus), nil
+	if v, ok := details.GetDetails().GetFields()[bundle.RelationKeyFileBackupStatus.String()]; ok {
+		return FileStatus(v.GetNumberValue()), nil
+	}
+	return FileStatusUnknown, fmt.Errorf("no backup status")
 }
 
 func (r *updateReceiver) getObjectStatus(objectId string, status syncstatus.SyncStatus) pb.EventStatusThreadSyncStatus {

@@ -13,11 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-const fileStatusPrefix = "/file_backup_status/"
 
 type FileStatus int
 
@@ -51,10 +48,6 @@ func (s *service) updateFileStatus(fileHash string, status FileStatus) error {
 	err = s.indexFileSyncStatus(fileId, status)
 	if err != nil {
 		return fmt.Errorf("index file sync status: %w", err)
-	}
-	err = badgerhelper.SetValue(s.badger, []byte(fileStatusPrefix+fileId), int(status))
-	if err != nil {
-		return fmt.Errorf("set file status: %w", err)
 	}
 	return nil
 }

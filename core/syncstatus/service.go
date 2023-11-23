@@ -78,7 +78,7 @@ func (s *service) Init(a *app.App) (err error) {
 	}
 	s.badger = db
 
-	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, db)
+	s.updateReceiver = newUpdateReceiver(nodeConfService, cfg, eventSender, s.objectStore)
 	s.objectGetter = app.MustComponent[getblock.ObjectGetter](a)
 
 	s.fileSyncService.OnUploaded(s.OnFileUploaded)
