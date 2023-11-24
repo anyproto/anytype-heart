@@ -150,7 +150,7 @@ func (s *service) IDsListerBySmartblockType(spaceID string, blockType smartblock
 		return &anytypeProfile{}, nil
 	case smartblock.SmartBlockTypeMissingObject:
 		return &missingObject{}, nil
-	case smartblock.SmartBlockTypeFile:
+	case smartblock.SmartBlockTypeFileObject:
 		return &file{accountService: s.accountService, fileStore: s.fileStore}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{}, nil

@@ -46,7 +46,7 @@ func (f *file) SpaceID() string {
 }
 
 func (f *file) Type() smartblock.SmartBlockType {
-	return smartblock.SmartBlockTypeFile
+	return smartblock.SmartBlockTypeFileObject
 }
 
 func (f *file) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {

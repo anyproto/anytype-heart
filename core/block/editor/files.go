@@ -160,7 +160,7 @@ func (p *File) StateMigrations() migration.Migrations {
 }
 
 func (p *File) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.Source.Type() != coresb.SmartBlockTypeFile {
+	if ctx.Source.Type() != coresb.SmartBlockTypeFileObject {
 		return fmt.Errorf("source type should be a file")
 	}
 

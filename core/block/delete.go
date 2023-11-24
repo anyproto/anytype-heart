@@ -49,7 +49,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) (err error) {
 		}
 	case coresb.SmartBlockTypeSubObject:
 		return fmt.Errorf("subobjects deprecated")
-	case coresb.SmartBlockTypeFile:
+	case coresb.SmartBlockTypeFileObject:
 		// TODO Fix
 		//err = s.OnDelete(id, func() error {
 		//	if err := s.fileStore.DeleteFile(id.ObjectID); err != nil {

@@ -124,7 +124,7 @@ var (
 			model.Restrictions_Template,
 			model.Restrictions_Duplicate,
 		},
-		smartblock.SmartBlockTypeFile:            objFileRestrictions,
+		smartblock.SmartBlockTypeFileObject:      objFileRestrictions,
 		smartblock.SmartBlockTypeArchive:         objRestrictAll,
 		smartblock.SmartBlockTypeBundledRelation: objRestrictAll,
 		smartblock.SmartBlockTypeSubObject: {

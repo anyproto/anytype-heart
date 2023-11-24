@@ -16,7 +16,8 @@ const (
 	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
 	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)
 	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive)
-	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File)
+	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File) // Deprecated
+	SmartBlockTypeFileObject        = SmartBlockType(model.SmartBlockType_FileObject)
 	SmartBlockTypeTemplate          = SmartBlockType(model.SmartBlockType_Template)
 	SmartBlockTypeBundledTemplate   = SmartBlockType(model.SmartBlockType_BundledTemplate)
 	SmartBlockTypeBundledRelation   = SmartBlockType(model.SmartBlockType_BundledRelation)

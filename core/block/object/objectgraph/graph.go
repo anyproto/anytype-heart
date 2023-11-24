@@ -186,7 +186,7 @@ func (gr *Builder) appendLinks(
 			log.Error("get smartblock type", zap.String("objectId", link), zap.Error(err))
 		}
 		// ignore files because we index all file blocks as outgoing links
-		if sbType != smartblock.SmartBlockTypeFile {
+		if sbType != smartblock.SmartBlockTypeFileObject {
 			if _, exists := outgoingRelationLink[link]; !exists {
 				if _, exists := existedNodes[link]; exists {
 					edges = append(edges, &pb.RpcObjectGraphEdge{

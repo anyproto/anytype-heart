@@ -115,7 +115,7 @@ func objectTypeKeysToSmartblockType(typeKeys []domain.TypeKey) (coresb.SmartBloc
 	case bundle.TypeKeyRelationOption:
 		return coresb.SmartBlockTypeRelationOption, nil
 	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
-		return coresb.SmartBlockTypeFile, nil
+		return coresb.SmartBlockTypeFileObject, nil
 	default:
 		return coresb.SmartBlockTypePage, nil
 	}

@@ -147,7 +147,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(sb), nil
-	case coresb.SmartBlockTypeFile:
+	case coresb.SmartBlockTypeFileObject:
 		return f.newFile(sb), nil
 	case coresb.SmartBlockTypeTemplate,
 		coresb.SmartBlockTypeBundledTemplate:

@@ -144,7 +144,7 @@ func (s *service) unwatch(spaceID string, id string) {
 	}
 	s.updateReceiver.ClearLastObjectStatus(id)
 	switch sbt {
-	case smartblock.SmartBlockTypeFile:
+	case smartblock.SmartBlockTypeFileObject:
 		// File watcher unwatches files automatically
 	default:
 		s.objectWatchersLock.Lock()

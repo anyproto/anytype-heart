@@ -171,7 +171,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	}
 
 	if flags.fileObjects {
-		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFile)
+		err = i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, smartblock2.SmartBlockTypeFileObject)
 		if err != nil {
 			return err
 		}
@@ -180,7 +180,7 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	if flags.fulltext {
 		ids, err := i.getIdsForTypes(space.Id(),
 			smartblock2.SmartBlockTypePage,
-			smartblock2.SmartBlockTypeFile,
+			smartblock2.SmartBlockTypeFileObject,
 			smartblock2.SmartBlockTypeBundledRelation,
 			smartblock2.SmartBlockTypeBundledObjectType,
 			smartblock2.SmartBlockTypeAnytypeProfile,
