@@ -182,6 +182,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(clientds.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
+		Register(filestore.New()).
 		// Services
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
@@ -207,17 +208,16 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
-		Register(source.New()).
-		Register(space.New()).
 		// Files
 		Register(rpcstore.New()).
-		Register(filestore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
 		Register(files.New()).
 		Register(fileobject.New()).
 		// End files
+		Register(source.New()).
+		Register(space.New()).
 		Register(builtintemplate.New()).
 		Register(converter.NewLayoutConverter()).
 		Register(recordsbatcher.New()).

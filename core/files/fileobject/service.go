@@ -15,10 +15,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+var log = logging.Logger("fileobject")
 
 const CName = "fileobject"
 
@@ -27,6 +33,8 @@ type Service interface {
 
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
+	GetObjectIdByFileId(fileId domain.FileId) (string, error)
+	Migrate(sb smartblock.SmartBlock, st *state.State) error
 }
 
 type service struct {
@@ -35,6 +43,7 @@ type service struct {
 	objectCreator objectcreator.Service
 	fileService   files.Service
 	fileSync      filesync.FileSync
+	objectStore   objectstore.ObjectStore
 }
 
 func New() Service {
@@ -51,6 +60,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -61,15 +71,17 @@ type CreateRequest struct {
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
-	if req.FileId == "" {
-		return "", nil, fmt.Errorf("file hash is empty")
-	}
-
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
+	return s.createInSpace(ctx, space, req)
+}
 
+func (s *service) createInSpace(ctx context.Context, space space.Space, req CreateRequest) (id string, object *types.Struct, err error) {
+	if req.FileId == "" {
+		return "", nil, fmt.Errorf("file hash is empty")
+	}
 	details, typeKey, err := s.getDetailsForFileOrImage(ctx, domain.FullFileId{
 		SpaceId: space.Id(),
 		FileId:  req.FileId,
@@ -130,6 +142,25 @@ func (s *service) addToSyncQueue(id domain.FullFileId, uploadedByUser bool, impo
 	return nil
 }
 
+func (s *service) GetObjectIdByFileId(fileId domain.FileId) (string, error) {
+	records, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(fileId.String()),
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("query objects by file hash: %w", err)
+	}
+	if len(records) == 0 {
+		return "", fmt.Errorf("file object not found")
+	}
+	return pbtypes.GetString(records[0].Details, bundle.RelationKeyId.String()), nil
+}
+
 func (s *service) GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error) {
 	spaceId, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
@@ -161,4 +192,41 @@ func (s *service) getFileIdFromObjectInSpace(ctx context.Context, space smartblo
 		SpaceId: space.Id(),
 		FileId:  domain.FileId(fileId),
 	}, nil
+}
+
+func (s *service) Migrate(sb smartblock.SmartBlock, st *state.State) error {
+	keys := sb.GetAndUnsetFileKeys()
+	st.UpdateFileHashes(st.FileRelationKeys(), func(hash string) string {
+		if hash == "" {
+			return hash
+		}
+
+		var fileKeys map[string]string
+		for _, k := range keys {
+			if k.Hash == hash {
+				fileKeys = k.Keys
+			}
+		}
+
+		fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(hash))
+		if err == nil {
+			fmt.Println("FILE OBJECT ID", hash, "->", fileObjectId)
+			return fileObjectId
+		}
+
+		fileObjectId, _, err = s.createInSpace(context.Background(), sb.Space().(space.Space), CreateRequest{
+			FileId:         domain.FileId(hash),
+			EncryptionKeys: fileKeys,
+			IsImported:     false, // TODO what to do?
+		})
+		if err != nil {
+			log.Errorf("create file object for hash %s: %v", hash, err)
+			return hash
+		}
+
+		fmt.Println("MIGRATED FILE OBJECT ID", hash, "->", fileObjectId)
+
+		return fileObjectId
+	})
+	return nil
 }

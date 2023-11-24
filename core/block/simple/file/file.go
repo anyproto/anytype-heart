@@ -201,6 +201,10 @@ func (f *File) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
+func (f *File) ReplaceFileHash(replacer func(oldHash string) (newHash string)) {
+	f.content.Hash = replacer(f.content.Hash)
+}
+
 func DetectTypeByMIME(mime string) model.BlockContentFileType {
 	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image

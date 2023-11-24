@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -32,7 +33,8 @@ type Page struct {
 	dataview.Dataview
 	table.TableEditor
 
-	objectStore objectstore.ObjectStore
+	objectStore       objectstore.ObjectStore
+	fileObjectService fileobject.Service
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
@@ -54,10 +56,11 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			f.objectStore,
 			f.fileService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
-		Dataview:    dataview.NewDataview(sb, f.objectStore),
-		TableEditor: table.NewEditor(sb),
-		objectStore: f.objectStore,
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		Dataview:          dataview.NewDataview(sb, f.objectStore),
+		TableEditor:       table.NewEditor(sb),
+		objectStore:       f.objectStore,
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -69,6 +72,9 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
+
+	p.fileObjectService.Migrate(p.SmartBlock, ctx.State)
+
 	return nil
 }
 

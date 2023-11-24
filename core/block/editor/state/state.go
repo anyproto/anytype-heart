@@ -1104,14 +1104,19 @@ func (s *State) FileRelationKeys() []string {
 }
 
 func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
-	hashes = s.getAllFileHashesOrTempLink(detailsKeys)
+	s.UpdateFileHashes(detailsKeys, func(hash string) string {
+		hashes = append(hashes, hash)
+		return hash
+	})
 	return slice.FilterCID(hashes)
 }
 
-func (s *State) getAllFileHashesOrTempLink(detailsKeys []string) (hashes []string) {
+// UpdateFileHashes iterates over all file hashes in the state and updates them with the provided function
+// Can be used just for iteration, if update return the same hash
+func (s *State) UpdateFileHashes(detailsKeys []string, update func(string) string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
-			hashes = fh.FillFileHashes(hashes)
+			fh.ReplaceFileHash(update)
 		}
 		return true
 	})
@@ -1129,14 +1134,20 @@ func (s *State) getAllFileHashesOrTempLink(detailsKeys []string) (hashes []strin
 				continue
 			}
 		}
-		if v := pbtypes.GetStringList(det, key); v != nil {
-			for _, hash := range v {
+		if hashes := pbtypes.GetStringList(det, key); hashes != nil {
+			var anyChanged bool
+			for i, hash := range hashes {
 				if hash == "" {
 					continue
 				}
-				if slice.FindPos(hashes, hash) == -1 {
-					hashes = append(hashes, hash)
+				newHash := update(hash)
+				if newHash != hash {
+					hashes[i] = newHash
+					anyChanged = true
 				}
+			}
+			if anyChanged {
+				s.SetDetail(key, pbtypes.StringList(hashes))
 			}
 		}
 	}

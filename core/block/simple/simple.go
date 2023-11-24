@@ -34,6 +34,7 @@ type Block interface {
 
 type FileHashes interface {
 	FillFileHashes(hashes []string) []string
+	ReplaceFileHash(replacer func(oldHash string) (newHash string))
 }
 
 type DetailsService interface {
