@@ -511,7 +511,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUpload
 	if res.Err != nil {
 		return "", res.Err
 	}
-	return res.Hash, nil
+	return res.FileObjectId, nil
 }
 
 func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
@@ -541,7 +541,7 @@ func (s *Service) UploadFileBlockWithHash(
 		if err != nil {
 			return err
 		}
-		hash = res.Hash
+		hash = res.FileObjectId
 		return nil
 	})
 

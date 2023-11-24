@@ -14,6 +14,7 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 	fileproto "github.com/anyproto/any-sync/commonfile/fileproto"
+	domain "github.com/anyproto/anytype-heart/core/domain"
 	rpcstore "github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -138,7 +139,7 @@ func (mr *MockRpcStoreMockRecorder) Add(arg0, arg1 any) *gomock.Call {
 }
 
 // AddToFile mocks base method.
-func (m *MockRpcStore) AddToFile(arg0 context.Context, arg1, arg2 string, arg3 []blocks.Block) error {
+func (m *MockRpcStore) AddToFile(arg0 context.Context, arg1 string, arg2 domain.FileId, arg3 []blocks.Block) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddToFile", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -152,9 +153,9 @@ func (mr *MockRpcStoreMockRecorder) AddToFile(arg0, arg1, arg2, arg3 any) *gomoc
 }
 
 // BindCids mocks base method.
-func (m *MockRpcStore) BindCids(ctx context.Context, spaceID string, fileId interface{}, cids []cid.Cid) error {
+func (m *MockRpcStore) BindCids(arg0 context.Context, arg1 string, arg2 domain.FileId, arg3 []cid.Cid) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BindCids", arg0, arg1, fileId, arg3)
+	ret := m.ctrl.Call(m, "BindCids", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -195,7 +196,7 @@ func (mr *MockRpcStoreMockRecorder) Delete(arg0, arg1 any) *gomock.Call {
 }
 
 // DeleteFiles mocks base method.
-func (m *MockRpcStore) DeleteFiles(arg0 context.Context, arg1 string, arg2 ...string) error {
+func (m *MockRpcStore) DeleteFiles(arg0 context.Context, arg1 string, arg2 ...domain.FileId) error {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
@@ -214,7 +215,7 @@ func (mr *MockRpcStoreMockRecorder) DeleteFiles(arg0, arg1 any, arg2 ...any) *go
 }
 
 // FilesInfo mocks base method.
-func (m *MockRpcStore) FilesInfo(arg0 context.Context, arg1 string, arg2 ...string) ([]*fileproto.FileInfo, error) {
+func (m *MockRpcStore) FilesInfo(arg0 context.Context, arg1 string, arg2 ...domain.FileId) ([]*fileproto.FileInfo, error) {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {

@@ -60,12 +60,12 @@ type Uploader interface {
 	UploadAsync(ctx context.Context) (ch chan UploadResult)
 }
 type UploadResult struct {
-	Name string
-	Type model.BlockContentFileType
-	Hash string
-	MIME string
-	Size int64
-	Err  error
+	Name         string
+	Type         model.BlockContentFileType
+	FileObjectId string
+	MIME         string
+	Size         int64
+	Err          error
 }
 
 func (ur UploadResult) ToBlock() file.Block {
@@ -77,7 +77,7 @@ func (ur UploadResult) ToBlock() file.Block {
 	return simple.New(&model.Block{
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				Hash:    ur.Hash,
+				Hash:    ur.FileObjectId,
 				Name:    ur.Name,
 				Type:    ur.Type,
 				Mime:    ur.MIME,
@@ -426,7 +426,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		EncryptionKeys: fileKeys.EncryptionKeys,
 		IsImported:     u.origin == model.ObjectOrigin_import,
 	})
-	result.Hash = fileObjectId
+	result.FileObjectId = fileObjectId
 	_ = fileDetails
 	if err != nil {
 		return UploadResult{Err: err}
@@ -438,7 +438,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		u.block.SetName(u.name).
 			SetState(model.BlockContentFile_Done).
 			SetType(u.fileType).
-			SetHash(result.Hash).
+			SetHash(result.FileObjectId).
 			SetSize(result.Size).
 			SetStyle(u.fileStyle).
 			SetMIME(result.MIME)

@@ -47,7 +47,7 @@ func TestUploader_Upload(t *testing.T) {
 		fx.file.EXPECT().Meta().Return(&files.FileMeta{Media: "image/jpg"}).AnyTimes()
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
-		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.FileObjectId, "123")
 		assert.Equal(t, res.Name, "unnamed.jpg")
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
 		assert.Equal(t, res.MIME, "image/jpg")
@@ -77,7 +77,7 @@ func TestUploader_Upload(t *testing.T) {
 		b := newBlock(model.BlockContentFile_Image)
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/test.txt").Upload(ctx)
 		require.NoError(t, res.Err)
-		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.FileObjectId, "123")
 		assert.Equal(t, res.Name, "test.txt")
 		assert.Equal(t, b.Model().GetFile().Name, "test.txt")
 		assert.Equal(t, b.Model().GetFile().Type, model.BlockContentFile_File)
@@ -98,7 +98,7 @@ func TestUploader_Upload(t *testing.T) {
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
-		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.FileObjectId, "123")
 		assert.Equal(t, res.Name, "unnamed.jpg")
 		res.Size = 1
 		b := res.ToBlock()
@@ -121,7 +121,7 @@ func TestUploader_Upload(t *testing.T) {
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)
-		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.FileObjectId, "123")
 		assert.Equal(t, res.Name, "filename")
 		res.Size = 1
 		b := res.ToBlock()
@@ -143,7 +143,7 @@ func TestUploader_Upload(t *testing.T) {
 		im.EXPECT().GetOriginalFile(gomock.Any())
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg?text=text").Upload(ctx)
 		require.NoError(t, res.Err)
-		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.FileObjectId, "123")
 		assert.Equal(t, res.Name, "unnamed.jpg")
 		res.Size = 1
 		b := res.ToBlock()
@@ -157,7 +157,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		res := fx.Uploader.SetBytes([]byte("my bytes")).SetName("filename").Upload(ctx)
 		require.NoError(t, res.Err)
-		assert.Equal(t, res.Hash, "123")
+		assert.Equal(t, res.FileObjectId, "123")
 		assert.Equal(t, res.Name, "filename")
 	})
 }

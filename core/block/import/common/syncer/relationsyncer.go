@@ -34,12 +34,12 @@ func (fs *FileRelationSyncer) Sync(spaceID string, state *state.State, relationN
 		if f == "" {
 			continue
 		}
-		var hash string
-		if hash = fs.uploadFile(spaceID, f, origin); hash != "" {
-			allFilesHashes = append(allFilesHashes, hash)
-			filesToDelete = append(filesToDelete, hash)
+		fileObjectId := fs.uploadFile(spaceID, f, origin)
+		if fileObjectId != "" {
+			allFilesHashes = append(allFilesHashes, fileObjectId)
+			filesToDelete = append(filesToDelete, fileObjectId)
 		}
-		if hash == "" {
+		if fileObjectId == "" {
 			// TODO Fix
 			//if targets, err := fs.fileStore.ListChildrenByFileId(f); err == nil && len(targets) > 0 {
 			//	allFilesHashes = append(allFilesHashes, f)
@@ -65,15 +65,15 @@ func (fs *FileRelationSyncer) getFilesFromRelations(st *state.State, name string
 
 func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin model.ObjectOrigin) string {
 	var (
-		hash string
-		err  error
+		fileObjectId string
+		err          error
 	)
 	if strings.HasPrefix(file, "http://") || strings.HasPrefix(file, "https://") {
 		req := block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: file},
 			Origin:               origin,
 		}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
+		fileObjectId, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}
@@ -86,12 +86,12 @@ func (fs *FileRelationSyncer) uploadFile(spaceID string, file string, origin mod
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: file},
 			Origin:               origin,
 		}
-		hash, err = fs.service.UploadFile(context.Background(), spaceID, req)
+		fileObjectId, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
 			log.Errorf("file uploading %s", err)
 		}
 	}
-	return hash
+	return fileObjectId
 }
 
 func (fs *FileRelationSyncer) updateFileRelationsDetails(st *state.State, name string, allFilesHashes []string) {
