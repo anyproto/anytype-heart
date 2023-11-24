@@ -280,6 +280,7 @@ message Block {
       string mime = 4;
       int64 size = 5;
       int64 addedAt = 6;
+      string targetObjectId = 9;
 
       State state = 7;
       Style style = 8;

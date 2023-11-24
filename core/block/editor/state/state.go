@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -1103,26 +1104,24 @@ func (s *State) FileRelationKeys() []string {
 	return keys
 }
 
-func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
-	s.UpdateFileHashes(detailsKeys, func(hash string) string {
-		hashes = append(hashes, hash)
-		return hash
-	})
+func (s *State) GetAllFileHashes(detailsKeys []string) []string {
+	hashes := s.GetFileHashes(detailsKeys)
 	return slice.FilterCID(hashes)
 }
 
-// UpdateFileHashes iterates over all file hashes in the state and updates them with the provided function
+// GetFileHashes iterates over all file hashes in the state and updates them with the provided function
 // Can be used just for iteration, if update return the same hash
-func (s *State) UpdateFileHashes(detailsKeys []string, update func(string) string) {
+func (s *State) GetFileHashes(detailsKeys []string) []string {
+	var hashes []string
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
-			fh.ReplaceFileHash(update)
+			hashes = fh.FillFileHashes(hashes)
 		}
 		return true
 	})
 	det := s.Details()
 	if det == nil || det.Fields == nil {
-		return
+		return hashes
 	}
 
 	for _, key := range detailsKeys {
@@ -1134,24 +1133,18 @@ func (s *State) UpdateFileHashes(detailsKeys []string, update func(string) strin
 				continue
 			}
 		}
-		if hashes := pbtypes.GetStringList(det, key); hashes != nil {
-			var anyChanged bool
-			for i, hash := range hashes {
+		if hashList := pbtypes.GetStringList(det, key); hashList != nil {
+			for _, hash := range hashList {
 				if hash == "" {
 					continue
 				}
-				newHash := update(hash)
-				if newHash != hash {
-					hashes[i] = newHash
-					anyChanged = true
+				if !slices.Contains(hashes, hash) {
+					hashes = append(hashes, hashList...)
 				}
-			}
-			if anyChanged {
-				s.SetDetail(key, pbtypes.StringList(hashes))
 			}
 		}
 	}
-	return
+	return hashes
 }
 
 func (s *State) blockInit(b simple.Block) {

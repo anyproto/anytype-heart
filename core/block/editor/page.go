@@ -73,8 +73,6 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	p.fileObjectService.Migrate(p.SmartBlock, ctx.State)
-
 	return nil
 }
 

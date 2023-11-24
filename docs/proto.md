@@ -22086,6 +22086,7 @@ Divider: block, that contains only one horizontal thin line
 | mime | [string](#string) |  |  |
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
+| targetObjectId | [string](#string) |  |  |
 | state | [Block.Content.File.State](#anytype-model-Block-Content-File-State) |  |  |
 | style | [Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 

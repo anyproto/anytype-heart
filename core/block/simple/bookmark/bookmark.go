@@ -179,7 +179,7 @@ func (b *Bookmark) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
-func (b *Bookmark) ReplaceFileHash(replacer func(oldHash string) (newHash string)) {
+func (b *Bookmark) MigrateFile(replacer func(oldHash string) (newHash string)) {
 	if b.content.ImageHash != "" {
 		b.content.ImageHash = replacer(b.content.ImageHash)
 	}

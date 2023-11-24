@@ -65,6 +65,7 @@ type service struct {
 	fileService        files.Service
 	identityService    identityService
 	objectStore        objectstore.ObjectStore
+	fileObjectMigrator fileObjectMigrator
 
 	mu        sync.Mutex
 	staticIds map[string]Source
@@ -83,6 +84,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
 	return
 }
 

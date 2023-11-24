@@ -158,11 +158,16 @@ func (s *service) newTreeSource(ctx context.Context, space Space, id string, bui
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
 		objectStore:        s.objectStore,
+		fileObjectMigrator: s.fileObjectMigrator,
 	}, nil
 }
 
 type ObjectTreeProvider interface {
 	Tree() objecttree.ObjectTree
+}
+
+type fileObjectMigrator interface {
+	Migrate(st *state.State, spc Space, keys []*pb.ChangeFileKeys) error
 }
 
 type source struct {
@@ -186,6 +191,7 @@ type source struct {
 	spaceService       spacecore.SpaceCoreService
 	sbtProvider        typeprovider.SmartBlockTypeProvider
 	objectStore        objectstore.ObjectStore
+	fileObjectMigrator fileObjectMigrator
 }
 
 var _ updatelistener.UpdateListener = (*source)(nil)
@@ -282,6 +288,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	// TODO: we can skip migration for non-personal spaces
 	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.objectStore)
 	migration.Migrate(st)
+
+	s.fileObjectMigrator.Migrate(st, s.space, s.GetFileKeysSnapshot())
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize

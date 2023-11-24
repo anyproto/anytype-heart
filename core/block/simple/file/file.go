@@ -201,8 +201,8 @@ func (f *File) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
-func (f *File) ReplaceFileHash(replacer func(oldHash string) (newHash string)) {
-	f.content.Hash = replacer(f.content.Hash)
+func (f *File) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	f.content.TargetObjectId = migrateFunc(f.content.Hash)
 }
 
 func DetectTypeByMIME(mime string) model.BlockContentFileType {

@@ -6,14 +6,18 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -34,7 +38,7 @@ type Service interface {
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectIdByFileId(fileId domain.FileId) (string, error)
-	Migrate(sb smartblock.SmartBlock, st *state.State) error
+	Migrate(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) error
 }
 
 type service struct {
@@ -194,39 +198,77 @@ func (s *service) getFileIdFromObjectInSpace(ctx context.Context, space smartblo
 	}, nil
 }
 
-func (s *service) Migrate(sb smartblock.SmartBlock, st *state.State) error {
-	keys := sb.GetAndUnsetFileKeys()
-	st.UpdateFileHashes(st.FileRelationKeys(), func(hash string) string {
-		if hash == "" {
-			return hash
+func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, hash string) string {
+	if hash == "" {
+		return hash
+	}
+	var fileKeys map[string]string
+	for _, k := range keys {
+		if k.Hash == hash {
+			fileKeys = k.Keys
 		}
+	}
 
-		var fileKeys map[string]string
-		for _, k := range keys {
-			if k.Hash == hash {
-				fileKeys = k.Keys
+	fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(hash))
+	if err == nil {
+		fmt.Println("FILE OBJECT ID", hash, "->", fileObjectId)
+		return fileObjectId
+	}
+
+	fileObjectId, _, err = s.createInSpace(context.Background(), space, CreateRequest{
+		FileId:         domain.FileId(hash),
+		EncryptionKeys: fileKeys,
+		IsImported:     false, // TODO what to do?
+	})
+	if err != nil {
+		log.Errorf("create file object for hash %s: %v", hash, err)
+		return hash
+	}
+
+	fmt.Println("MIGRATED FILE OBJECT ID", hash, "->", fileObjectId)
+
+	return fileObjectId
+}
+
+func (s *service) Migrate(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) error {
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		if fh, ok := b.(simple.FileHashes); ok {
+			fh.MigrateFile(func(oldHash string) (newHash string) {
+				return s.migrate(spc.(space.Space), keys, oldHash)
+			})
+		}
+		return true
+	})
+	det := st.Details()
+	if det == nil || det.Fields == nil {
+		return nil
+	}
+
+	for _, key := range st.FileRelationKeys() {
+		if key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(det, key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
 			}
 		}
-
-		fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(hash))
-		if err == nil {
-			fmt.Println("FILE OBJECT ID", hash, "->", fileObjectId)
-			return fileObjectId
+		if hashList := pbtypes.GetStringList(det, key); hashList != nil {
+			var anyChanges bool
+			for i, hash := range hashList {
+				if hash == "" {
+					continue
+				}
+				newHash := s.migrate(spc.(space.Space), keys, hash)
+				if hash != newHash {
+					hashList[i] = newHash
+					anyChanges = true
+				}
+			}
+			if anyChanges {
+				st.SetDetail(key, pbtypes.StringList(hashList))
+			}
 		}
-
-		fileObjectId, _, err = s.createInSpace(context.Background(), sb.Space().(space.Space), CreateRequest{
-			FileId:         domain.FileId(hash),
-			EncryptionKeys: fileKeys,
-			IsImported:     false, // TODO what to do?
-		})
-		if err != nil {
-			log.Errorf("create file object for hash %s: %v", hash, err)
-			return hash
-		}
-
-		fmt.Println("MIGRATED FILE OBJECT ID", hash, "->", fileObjectId)
-
-		return fileObjectId
-	})
+	}
 	return nil
 }
