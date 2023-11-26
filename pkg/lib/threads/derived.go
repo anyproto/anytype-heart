@@ -14,12 +14,14 @@ var (
 		smartblock.SmartBlockTypeWidget,
 		smartblock.SmartBlockTypeWorkspace,
 		smartblock.SmartBlockTypeProfilePage,
+		smartblock.SmartBlockTypeNotificationObject,
 	}
 	SpaceTypes = []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeHome,
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeWidget,
 		smartblock.SmartBlockTypeWorkspace,
+		smartblock.SmartBlockTypeNotificationObject,
 	}
 )
 
@@ -31,6 +33,7 @@ type DerivedSmartblockIds struct {
 	Widgets         string
 	SystemTypes     map[domain.TypeKey]string
 	SystemRelations map[domain.RelationKey]string
+	Notification    string
 }
 
 func (d DerivedSmartblockIds) IDs() []string {
@@ -39,6 +42,7 @@ func (d DerivedSmartblockIds) IDs() []string {
 		d.Home,
 		d.Archive,
 		d.Widgets,
+		d.Notification,
 	}
 	if d.Profile != "" {
 		allIds = append(allIds, d.Profile)
@@ -67,6 +71,8 @@ func (d DerivedSmartblockIds) HasID(sbt smartblock.SmartBlockType) bool {
 		return d.Archive != ""
 	case smartblock.SmartBlockTypeProfilePage:
 		return d.Profile != ""
+	case smartblock.SmartBlockTypeNotificationObject:
+		return d.Notification != ""
 	default:
 		panic(fmt.Sprintf("don't know %s", sbt.ToProto().String()))
 	}
@@ -84,6 +90,8 @@ func (d *DerivedSmartblockIds) InsertId(sbt smartblock.SmartBlockType, id string
 		d.Archive = id
 	case smartblock.SmartBlockTypeProfilePage:
 		d.Profile = id
+	case smartblock.SmartBlockTypeNotificationObject:
+		d.Notification = id
 	default:
 		panic(fmt.Sprintf("don't know %s/%s", sbt.ToProto().String(), id))
 	}
