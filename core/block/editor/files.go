@@ -54,13 +54,13 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				Id: "file",
 				Content: &model.BlockContentOfFile{
 					File: &model.BlockContentFile{
-						Name:    fname,
-						Mime:    pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
-						Hash:    p.Id(),
-						Type:    fileType,
-						Size_:   int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
-						State:   model.BlockContentFile_Done,
-						AddedAt: int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),
+						Name:           fname,
+						Mime:           pbtypes.GetString(details, bundle.RelationKeyFileMimeType.String()),
+						TargetObjectId: p.Id(),
+						Type:           fileType,
+						Size_:          int64(pbtypes.GetFloat64(details, bundle.RelationKeySizeInBytes.String())),
+						State:          model.BlockContentFile_Done,
+						AddedAt:        int64(pbtypes.GetFloat64(details, bundle.RelationKeyFileMimeType.String())),
 					},
 				}})
 
