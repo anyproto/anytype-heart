@@ -1104,6 +1104,7 @@ func (s *State) FileRelationKeys() []string {
 	return keys
 }
 
+// DEPRECATED, use only for backward compatibility and migration purposes
 func (s *State) GetAllFileHashes(detailsKeys []string) []string {
 	hashes := s.GetFileHashes(detailsKeys)
 	return slice.FilterCID(hashes)
@@ -1111,6 +1112,7 @@ func (s *State) GetAllFileHashes(detailsKeys []string) []string {
 
 // GetFileHashes iterates over all file hashes in the state and updates them with the provided function
 // Can be used just for iteration, if update return the same hash
+// DEPRECATED, use only for backward compatibility and migration purposes
 func (s *State) GetFileHashes(detailsKeys []string) []string {
 	var hashes []string
 	s.Iterate(func(b simple.Block) (isContinue bool) {
