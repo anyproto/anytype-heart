@@ -1,21 +1,54 @@
 package editor
 
-import "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+import (
+	"fmt"
+
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/notifications"
+)
 
 type NotificationObject struct {
+	notificationService notifications.Notifications
 	smartblock.SmartBlock
 }
 
-func NewNotificationObject(sb smartblock.SmartBlock) *NotificationObject {
+func NewNotificationObject(sb smartblock.SmartBlock, notificationService notifications.Notifications) *NotificationObject {
 	return &NotificationObject{
-		SmartBlock: sb,
+		notificationService: notificationService,
+		SmartBlock:          sb,
 	}
 }
 
-func (m *NotificationObject) Init(ctx *smartblock.InitContext) (err error) {
-	if err = m.SmartBlock.Init(ctx); err != nil {
+func (n *NotificationObject) Init(ctx *smartblock.InitContext) (err error) {
+	if err = n.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	// TODO hook after apply - send events to clients
+	n.AddHook(n.onNotificationChange, smartblock.HookAfterApply)
+	return nil
+}
+
+func (n *NotificationObject) onNotificationChange(info smartblock.ApplyInfo) (err error) {
+	state := n.NewState()
+	for _, change := range info.Changes {
+		if notificationChange := change.GetNotificationCreate(); notificationChange != nil && notificationChange.Notification != nil {
+			notification := state.GetNotificationByID(notificationChange.Notification.Id)
+			if !n.notificationService.IsNotificationRead(notification) {
+				err := n.notificationService.CreateAndSendLocal(notification)
+				if err != nil {
+					return fmt.Errorf("failed to send notification after state apply: %s", err)
+				}
+			}
+		}
+		if notificationChange := change.GetNotificationUpdate(); notificationChange != nil {
+			notification := state.GetNotificationByID(notificationChange.Id)
+			if notification == nil {
+				continue
+			}
+			err := n.notificationService.UpdateAndSend(notification)
+			if err != nil {
+				return fmt.Errorf("failed to send notification after state apply: %s", err)
+			}
+		}
+	}
 	return nil
 }

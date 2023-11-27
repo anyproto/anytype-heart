@@ -161,8 +161,6 @@ message Change {
 
     message NotificationUpdate {
         string id = 1;
-        oneof update {
-           anytype.model.Notification.Status status = 2;
-        }
+        anytype.model.Notification.Status status = 2;
     }
 }

@@ -17,6 +17,7 @@ var notificationsInfo = ds.NewKey("/" + notificationsPrefix + "/info")
 type NotificationStore interface {
 	SaveNotification(notification *model.Notification) error
 	ListNotifications() ([]*model.Notification, error)
+	GetNotificationByID(notificationID string) (*model.Notification, error)
 }
 
 func (d *dsObjectStore) SaveNotification(notification *model.Notification) error {
@@ -44,6 +45,10 @@ func (d *dsObjectStore) ListNotifications() ([]*model.Notification, error) {
 
 		return notifications, nil
 	})
+}
+
+func (d *dsObjectStore) GetNotificationByID(notificationID string) (*model.Notification, error) {
+	return badgerhelper.GetValue(d.db, notificationsInfo.ChildString(notificationID).Bytes(), unmarshalNotification)
 }
 
 func unmarshalNotification(raw []byte) (*model.Notification, error) {

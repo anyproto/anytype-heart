@@ -447,9 +447,7 @@ func (s *State) updateNotification(update *pb.ChangeNotificationUpdate) {
 	if _, ok := s.notifications[update.Id]; ok {
 		return
 	}
-	if statusUpdate, ok := update.GetUpdate().(*pb.ChangeNotificationUpdateUpdateOfStatus); ok {
-		s.notifications[update.Id].Status = statusUpdate.Status
-	}
+	s.notifications[update.Id].Status = update.Status
 }
 
 func (s *State) GetChanges() []*pb.ChangeContent {
@@ -785,7 +783,7 @@ func (s *State) makeOriginalCreatedChanges() (ch []*pb.ChangeContent) {
 
 func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 	var changes []*pb.ChangeContent
-	if s.parent == nil {
+	if s.parent == nil || s.parent.notifications == nil {
 		for _, notification := range s.notifications {
 			changes = append(changes, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfNotificationCreate{
@@ -801,9 +799,9 @@ func (s *State) makeNotificationChanges() []*pb.ChangeContent {
 			if n.Status != notification.Status {
 				changes = append(changes, &pb.ChangeContent{
 					Value: &pb.ChangeContentValueOfNotificationUpdate{
-						NotificationUpdate: &pb.ChangeNotificationUpdate{Update: &pb.ChangeNotificationUpdateUpdateOfStatus{
+						NotificationUpdate: &pb.ChangeNotificationUpdate{
 							Status: notification.Status,
-						}},
+						},
 					},
 				})
 			}

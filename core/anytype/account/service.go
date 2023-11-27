@@ -159,6 +159,7 @@ func (s *service) GetInfo(ctx context.Context, spaceID string) (*model.AccountIn
 		AnalyticsId:            analyticsId,
 		NetworkId:              s.getNetworkID(),
 		TechSpaceId:            techSpaceId,
+		NotificationId:         ids.Notification,
 	}, nil
 }
 

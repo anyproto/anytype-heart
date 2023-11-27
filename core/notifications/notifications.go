@@ -1,10 +1,13 @@
 package notifications
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 
+	//"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	//"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -13,25 +16,32 @@ import (
 
 const CName = "notificationService"
 
-type Notification interface {
+type Notifications interface {
 	app.Component
-	Send(notification *model.Notification) error
-	Update(notification *model.Notification) error
+	CreateAndSendLocal(notification *model.Notification) error
+	CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error
+	UpdateAndSend(notification *model.Notification) error
+	Reply(spaceID, notificationID string, notificationAction model.NotificationActionType) error
 	List(limit int, includeRead bool) ([]*model.Notification, error)
+	IsNotificationRead(notification *model.Notification) bool
 }
 
 type NotificationService struct {
 	eventSender       event.Sender
 	notificationStore objectstore.NotificationStore
+	//spaceService      space.Service
+	//picker            block.ObjectGetter
 }
 
-func New() Notification {
+func New() Notifications {
 	return &NotificationService{}
 }
 
 func (n NotificationService) Init(a *app.App) (err error) {
 	n.notificationStore = app.MustComponent[objectstore.ObjectStore](a)
 	n.eventSender = app.MustComponent[event.Sender](a)
+	//n.spaceService = app.MustComponent[space.Service](a)
+	//n.picker = app.MustComponent[block.ObjectGetter](a)
 	return nil
 }
 
@@ -39,7 +49,7 @@ func (n NotificationService) Name() (name string) {
 	return CName
 }
 
-func (n NotificationService) Send(notification *model.Notification) error {
+func (n NotificationService) CreateAndSendLocal(notification *model.Notification) error {
 	n.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -53,19 +63,81 @@ func (n NotificationService) Send(notification *model.Notification) error {
 	})
 	err := n.notificationStore.SaveNotification(notification)
 	if err != nil {
-		return fmt.Errorf("failed to add notification %s to cache: %s", notification.Id, err)
+		return fmt.Errorf("failed to add notification %s to cache: %w", notification.Id, err)
 	}
 	return nil
 }
 
-func (n NotificationService) Update(notification *model.Notification) error {
-	panic("implement me")
+func (n NotificationService) CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error {
+	err := n.CreateAndSendLocal(notification)
+	if err != nil {
+		return err
+	}
+
+	//spc, err := n.spaceService.Get(ctx, spaceID)
+	//if err != nil {
+	//	return fmt.Errorf("failed to get space for notification: %w", err)
+	//}
+	//err = block.DoState(n.picker, spc.DerivedIDs().Notifications, func(s *state.State, sb smartblock.SmartBlock) error {
+	//	s.AddNotification(notification)
+	//	return nil
+	//})
+	//if err != nil {
+	//	return fmt.Errorf("failed to update notification object: %w", err)
+	//}
+	return nil
+}
+
+func (n NotificationService) UpdateAndSend(notification *model.Notification) error {
+	n.eventSender.Broadcast(&pb.Event{
+		Messages: []*pb.EventMessage{
+			{
+				Value: &pb.EventMessageValueOfNotificationUpdate{
+					NotificationUpdate: &pb.EventNotificationUpdate{
+						Notification: notification,
+					},
+				},
+			},
+		},
+	})
+	err := n.notificationStore.SaveNotification(notification)
+	if err != nil {
+		return fmt.Errorf("failed to update notification %s: %s", notification.Id, err)
+	}
+	return nil
+}
+
+func (n NotificationService) Reply(contextID, notificationID string, notificationAction model.NotificationActionType) error {
+	status := model.Notification_Replied
+	if notificationAction == model.Notification_CLOSE {
+		status = model.Notification_Read
+	}
+
+	notification, err := n.notificationStore.GetNotificationByID(notificationID)
+	if err != nil {
+		return err
+	}
+	notification.Status = status
+	err = n.UpdateAndSend(notification)
+	if err != nil {
+		return fmt.Errorf("failed to update notification: %w", err)
+	}
+	//if !notification.IsLocal {
+	//	err := block.DoState(n.picker, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
+	//		s.AddNotification(notification)
+	//		return nil
+	//	})
+	//	if err != nil {
+	//		return fmt.Errorf("failed to update notification object: %w", err)
+	//	}
+	//}
+	return nil
 }
 
 func (n NotificationService) List(limit int, includeRead bool) ([]*model.Notification, error) {
 	notifications, err := n.notificationStore.ListNotifications()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list notifications: %s", err)
+		return nil, fmt.Errorf("failed to list notifications: %w", err)
 	}
 
 	var (
@@ -76,7 +148,7 @@ func (n NotificationService) List(limit int, includeRead bool) ([]*model.Notific
 		if addCount == limit {
 			break
 		}
-		if n.isNotificationRead(notification) && !includeRead {
+		if n.IsNotificationRead(notification) && !includeRead {
 			continue
 		}
 		result = append(result, notification)
@@ -85,6 +157,6 @@ func (n NotificationService) List(limit int, includeRead bool) ([]*model.Notific
 	return result, nil
 }
 
-func (n NotificationService) isNotificationRead(notification *model.Notification) bool {
+func (n NotificationService) IsNotificationRead(notification *model.Notification) bool {
 	return notification.GetStatus() == model.Notification_Read || notification.GetStatus() == model.Notification_Replied
 }

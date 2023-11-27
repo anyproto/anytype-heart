@@ -96,6 +96,7 @@ message Event {
             File.LocalUsage fileLocalUsage = 113;
 
             Notification.Send notificationSend = 114;
+            Notification.Update notificationUpdate = 115;
         }
     }
 
@@ -1015,6 +1016,9 @@ message Event {
     message Notification {
         message Send {
            anytype.model.Notification notification = 1;
+        }
+        message Update {
+            anytype.model.Notification notification = 1;
         }
     }
 }
