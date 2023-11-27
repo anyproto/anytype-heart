@@ -1282,6 +1282,7 @@
     - [Event.Block.Set.File.Size](#anytype-Event-Block-Set-File-Size)
     - [Event.Block.Set.File.State](#anytype-Event-Block-Set-File-State)
     - [Event.Block.Set.File.Style](#anytype-Event-Block-Set-File-Style)
+    - [Event.Block.Set.File.TargetObjectId](#anytype-Event-Block-Set-File-TargetObjectId)
     - [Event.Block.Set.File.Type](#anytype-Event-Block-Set-File-Type)
     - [Event.Block.Set.File.Width](#anytype-Event-Block-Set-File-Width)
     - [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex)
@@ -20042,6 +20043,7 @@ Precondition: user A opened a block
 | name | [Event.Block.Set.File.Name](#anytype-Event-Block-Set-File-Name) |  |  |
 | size | [Event.Block.Set.File.Size](#anytype-Event-Block-Set-File-Size) |  |  |
 | style | [Event.Block.Set.File.Style](#anytype-Event-Block-Set-File-Style) |  |  |
+| targetObjectId | [Event.Block.Set.File.TargetObjectId](#anytype-Event-Block-Set-File-TargetObjectId) |  |  |
 
 
 
@@ -20132,6 +20134,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-File-TargetObjectId"></a>
+
+### Event.Block.Set.File.TargetObjectId
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
 
 
 

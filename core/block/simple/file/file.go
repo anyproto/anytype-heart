@@ -39,6 +39,7 @@ type Block interface {
 	SetMIME(mime string) Block
 	SetTime(tm time.Time) Block
 	SetModel(m *model.BlockContentFile) Block
+	SetTargetObjectId(value string) Block
 	ApplyEvent(e *pb.EventBlockSetFile) error
 }
 
@@ -53,6 +54,11 @@ type File struct {
 
 func (f *File) SetHash(hash string) Block {
 	f.content.Hash = hash
+	return f
+}
+
+func (f *File) SetTargetObjectId(value string) Block {
+	f.content.TargetObjectId = value
 	return f
 }
 
@@ -100,6 +106,7 @@ func (f *File) SetModel(m *model.BlockContentFile) Block {
 	f.content.Style = m.Style
 	f.content.Size_ = m.Size_
 	f.content.State = m.State
+	f.content.TargetObjectId = m.TargetObjectId
 	return f
 }
 
@@ -159,6 +166,10 @@ func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 		hasChanges = true
 		changes.Style = &pb.EventBlockSetFileStyle{Value: file.content.Style}
 	}
+	if f.content.TargetObjectId != file.content.TargetObjectId {
+		hasChanges = true
+		changes.TargetObjectId = &pb.EventBlockSetFileTargetObjectId{Value: file.content.TargetObjectId}
+	}
 
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}}})
@@ -190,6 +201,9 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	}
 	if e.Size_ != nil {
 		f.content.Size_ = e.Size_.GetValue()
+	}
+	if e.TargetObjectId != nil {
+		f.content.TargetObjectId = e.TargetObjectId.GetValue()
 	}
 	return nil
 }

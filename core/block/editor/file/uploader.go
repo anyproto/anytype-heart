@@ -77,13 +77,13 @@ func (ur UploadResult) ToBlock() file.Block {
 	return simple.New(&model.Block{
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				Hash:    ur.FileObjectId,
-				Name:    ur.Name,
-				Type:    ur.Type,
-				Mime:    ur.MIME,
-				Size_:   ur.Size,
-				AddedAt: time.Now().Unix(),
-				State:   state,
+				TargetObjectId: ur.FileObjectId,
+				Name:           ur.Name,
+				Type:           ur.Type,
+				Mime:           ur.MIME,
+				Size_:          ur.Size,
+				AddedAt:        time.Now().Unix(),
+				State:          state,
 			},
 		},
 	}).(file.Block)
@@ -438,7 +438,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		u.block.SetName(u.name).
 			SetState(model.BlockContentFile_Done).
 			SetType(u.fileType).
-			SetHash(result.FileObjectId).
+			SetTargetObjectId(result.FileObjectId).
 			SetSize(result.Size).
 			SetStyle(u.fileStyle).
 			SetMIME(result.MIME)
