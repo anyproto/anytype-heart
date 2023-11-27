@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pb"
@@ -41,7 +42,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	}
 	spaceID, err := is.resolver.ResolveSpaceID(id)
 	if err != nil {
-		return fmt.Errorf("resolve spaceID: %w", err)
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: req,
@@ -49,7 +50,7 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 	}
 	hash, err := is.service.UploadFile(context.Background(), spaceID, dto)
 	if err != nil {
-		log.Errorf("failed uploading icon image file: %s", oserror.TransformError(err))
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, oserror.TransformError(err).Error())
 	}
 
 	err = block.Do(is.service, id, func(sb smartblock.SmartBlock) error {
@@ -59,12 +60,12 @@ func (is *IconSyncer) Sync(id string, b simple.Block, origin model.ObjectOrigin)
 			return nil
 		}, b.Model().Id)
 		if upErr != nil {
-			return fmt.Errorf("failed to update block: %w", err)
+			return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
 		}
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to update block: %w", err)
+		return fmt.Errorf("%w: %s", common.ErrFileLoad, err.Error())
 	}
 	return nil
 }

@@ -16,7 +16,7 @@ require (
 	github.com/cheggaaa/mb/v3 v3.0.2
 	github.com/dave/jennifer v1.7.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dgraph-io/badger/v3 v3.2103.5
+	github.com/dgraph-io/badger/v4 v4.2.0
 	github.com/dgraph-io/ristretto v0.1.1
 	github.com/dgtony/collections v0.1.6
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
@@ -31,6 +31,7 @@ require (
 	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
+	github.com/golang/mock v1.6.0
 	github.com/golang/snappy v0.0.4
 	github.com/google/uuid v1.4.0
 	github.com/gosimple/slug v1.13.1

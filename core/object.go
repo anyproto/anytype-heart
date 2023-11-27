@@ -803,6 +803,8 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
 	case errors.Is(err, common.ErrLimitExceeded):
 		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
+	case errors.Is(err, common.ErrFileLoad):
+		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, "", err)
 	default:
 		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
 	}
