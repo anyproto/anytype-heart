@@ -26,7 +26,7 @@ type Notifications interface {
 	IsNotificationRead(notification *model.Notification) bool
 }
 
-type NotificationService struct {
+type notificationService struct {
 	eventSender       event.Sender
 	notificationStore objectstore.NotificationStore
 	//spaceService      space.Service
@@ -34,10 +34,10 @@ type NotificationService struct {
 }
 
 func New() Notifications {
-	return &NotificationService{}
+	return &notificationService{}
 }
 
-func (n NotificationService) Init(a *app.App) (err error) {
+func (n *notificationService) Init(a *app.App) (err error) {
 	n.notificationStore = app.MustComponent[objectstore.ObjectStore](a)
 	n.eventSender = app.MustComponent[event.Sender](a)
 	//n.spaceService = app.MustComponent[space.Service](a)
@@ -45,11 +45,11 @@ func (n NotificationService) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (n NotificationService) Name() (name string) {
+func (n *notificationService) Name() (name string) {
 	return CName
 }
 
-func (n NotificationService) CreateAndSendLocal(notification *model.Notification) error {
+func (n *notificationService) CreateAndSendLocal(notification *model.Notification) error {
 	n.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -68,7 +68,7 @@ func (n NotificationService) CreateAndSendLocal(notification *model.Notification
 	return nil
 }
 
-func (n NotificationService) CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error {
+func (n *notificationService) CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error {
 	// TODO check if notification exist in notification object, if so - check status
 	//spc, err := n.spaceService.Get(ctx, spaceID)
 	//if err != nil {
@@ -88,7 +88,7 @@ func (n NotificationService) CreateAndSendCrossDevice(ctx context.Context, space
 	return nil
 }
 
-func (n NotificationService) UpdateAndSend(notification *model.Notification) error {
+func (n *notificationService) UpdateAndSend(notification *model.Notification) error {
 	n.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
@@ -107,7 +107,7 @@ func (n NotificationService) UpdateAndSend(notification *model.Notification) err
 	return nil
 }
 
-func (n NotificationService) Reply(contextID, notificationID string, notificationAction model.NotificationActionType) error {
+func (n *notificationService) Reply(contextID, notificationID string, notificationAction model.NotificationActionType) error {
 	status := model.Notification_Replied
 	if notificationAction == model.Notification_CLOSE {
 		status = model.Notification_Read
@@ -134,7 +134,7 @@ func (n NotificationService) Reply(contextID, notificationID string, notificatio
 	return nil
 }
 
-func (n NotificationService) List(limit int, includeRead bool) ([]*model.Notification, error) {
+func (n *notificationService) List(limit int, includeRead bool) ([]*model.Notification, error) {
 	notifications, err := n.notificationStore.ListNotifications()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list notifications: %w", err)
@@ -157,6 +157,6 @@ func (n NotificationService) List(limit int, includeRead bool) ([]*model.Notific
 	return result, nil
 }
 
-func (n NotificationService) IsNotificationRead(notification *model.Notification) bool {
+func (n *notificationService) IsNotificationRead(notification *model.Notification) bool {
 	return notification.GetStatus() == model.Notification_Read || notification.GetStatus() == model.Notification_Replied
 }

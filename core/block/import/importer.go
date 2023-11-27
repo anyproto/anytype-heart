@@ -422,7 +422,7 @@ func (i *Import) sendNotification(id string, spaceId string) {
 	i.notifications.CreateAndSendLocal(&model.Notification{
 		Id:         id,
 		CreateTime: time.Now().Unix(),
-		Status:     model.Notification_Delivered,
+		Status:     model.Notification_Send,
 		IsLocal:    true,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
 			ProcessId:  id,
