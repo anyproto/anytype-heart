@@ -38,7 +38,7 @@ type Service interface {
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectIdByFileId(fileId domain.FileId) (string, error)
-	Migrate(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) error
+	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 }
 
 type service struct {
@@ -209,6 +209,17 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, hash str
 		}
 	}
 
+	// Probably already migrated
+	if len(fileKeys) == 0 {
+		return hash
+	}
+
+	_, err := s.GetFileIdFromObject(context.Background(), hash)
+	// Already migrated
+	if err == nil {
+		return hash
+	}
+
 	fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(hash))
 	if err == nil {
 		fmt.Println("FILE OBJECT ID", hash, "->", fileObjectId)
@@ -230,7 +241,7 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, hash str
 	return fileObjectId
 }
 
-func (s *service) Migrate(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) error {
+func (s *service) MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			fh.MigrateFile(func(oldHash string) (newHash string) {
@@ -239,9 +250,12 @@ func (s *service) Migrate(st *state.State, spc source.Space, keys []*pb.ChangeFi
 		}
 		return true
 	})
+}
+
+func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys) {
 	det := st.Details()
 	if det == nil || det.Fields == nil {
-		return nil
+		return
 	}
 
 	for _, key := range st.FileRelationKeys() {
@@ -270,5 +284,4 @@ func (s *service) Migrate(st *state.State, spc source.Space, keys []*pb.ChangeFi
 			}
 		}
 	}
-	return nil
 }

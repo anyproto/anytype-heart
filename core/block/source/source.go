@@ -167,7 +167,7 @@ type ObjectTreeProvider interface {
 }
 
 type fileObjectMigrator interface {
-	Migrate(st *state.State, spc Space, keys []*pb.ChangeFileKeys) error
+	MigrateDetails(st *state.State, spc Space, keys []*pb.ChangeFileKeys)
 }
 
 type source struct {
@@ -289,7 +289,9 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	migration := NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.IdentityObjectId(), s.objectStore)
 	migration.Migrate(st)
 
-	s.fileObjectMigrator.Migrate(st, s.space, s.GetFileKeysSnapshot())
+	now := time.Now()
+	s.fileObjectMigrator.MigrateDetails(st, s.space, s.GetFileKeysSnapshot())
+	fmt.Println("DETAILS MIGRATED", time.Since(now))
 
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize

@@ -1,6 +1,9 @@
 package editor
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -14,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -156,5 +160,20 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.MakeMigrations(nil)
+	return migration.MakeMigrations([]migration.Migration{
+		{
+			Version: 2,
+			Proc: func(s *state.State) {
+				now := time.Now()
+				// TODO Replicate this migration for all types of objects
+				keys := p.GetAndUnsetFileKeys()
+				converted := make([]*pb.ChangeFileKeys, 0, len(keys))
+				for _, k := range keys {
+					converted = append(converted, &k)
+				}
+				p.fileObjectService.MigrateBlocks(s, p.Space(), converted)
+				fmt.Println("BLOCKS MIGRATED", time.Since(now))
+			},
+		},
+	})
 }
