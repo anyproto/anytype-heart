@@ -64,5 +64,7 @@
   "uniqueKey",
   "backlinks",
   "profileOwnerIdentity",
-  "fileBackupStatus"
+  "fileBackupStatus",
+  "fileId",
+  "origin"
 ]

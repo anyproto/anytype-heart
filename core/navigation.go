@@ -5,10 +5,8 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -75,31 +73,4 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(cctx context.Context, req
 	}
 
 	return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_NULL, page, nil)
-}
-
-func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateResponse {
-		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, Details: newDetails, ObjectId: id}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-			m.Details = newDetails
-		}
-		return m
-	}
-
-	creator := getService[objectcreator.Service](mw)
-	createReq := objectcreator.CreateObjectRequest{
-		Details:       req.Details,
-		InternalFlags: req.InternalFlags,
-		TemplateId:    req.TemplateId,
-	}
-	id, newDetails, err := creator.CreateObjectUsingObjectUniqueTypeKey(cctx, req.SpaceId, req.ObjectTypeUniqueKey, createReq)
-
-	if err != nil {
-		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
-	}
-	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails, nil)
 }

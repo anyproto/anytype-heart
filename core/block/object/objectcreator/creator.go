@@ -11,6 +11,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/editor/objecttype"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -196,6 +197,10 @@ func (s *service) CreateSmartBlockFromStateInSpace(ctx context.Context, spc spac
 		if err != nil {
 			return
 		}
+	}
+
+	if err = objecttype.UpdateLastUsedDate(spc, s.objectStore, objectTypeKeys); err != nil {
+		return "", nil, err
 	}
 
 	id = sb.Id()

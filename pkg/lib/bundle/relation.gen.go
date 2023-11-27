@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "af5897c3b72e5ace0814989ddbb0f144faf3ac16c68bb7e521ed7a04dbb31296"
+const RelationChecksum = "53b017d596d810ded9324ae9d0f6add39e0b89537a240c551b61b4fc20de70aa"
 const (
 	RelationKeyTag                       domain.RelationKey = "tag"
 	RelationKeyCamera                    domain.RelationKey = "camera"
@@ -165,6 +165,7 @@ const (
 	RelationKeyProfileOwnerIdentity      domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId             domain.RelationKey = "targetSpaceId"
 	RelationKeyFileId                    domain.RelationKey = "fileId"
+	RelationKeyLastUsedDate              domain.RelationKey = "lastUsedDate"
 )
 
 var (
@@ -1161,6 +1162,20 @@ var (
 			Key:              "lastOpenedDate",
 			MaxCount:         1,
 			Name:             "Last opened date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLastUsedDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Last time object type was used",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brlastUsedDate",
+			Key:              "lastUsedDate",
+			MaxCount:         1,
+			Name:             "Last Used date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

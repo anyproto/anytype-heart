@@ -146,22 +146,24 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 				}
 			}
 		}
+		tasks := make([]process.Task, 0, len(docs))
 		for docId := range docs {
 			did := docId
-			if err = queue.Wait(func() {
-				log.With("objectID", did).Debugf("write doc")
+			task := func() {
 				if werr := e.writeDoc(ctx, req.Format, wr, docs, queue, did, req.IncludeFiles, req.IsJson); werr != nil {
 					log.With("objectID", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
 				}
-			}); err != nil {
-				e.cleanupFile(wr)
-				return "", 0, nil
 			}
+			tasks = append(tasks, task)
+		}
+		err := queue.Wait(tasks...)
+		if err != nil {
+			e.cleanupFile(wr)
+			return "", 0, err
 		}
 	}
-	queue.SetMessage("export files")
 	if err = queue.Finalize(); err != nil {
 		e.cleanupFile(wr)
 		return "", 0, nil
@@ -385,13 +387,9 @@ func (e *export) saveFiles(ctx context.Context, spaceId string, b sb.SmartBlock,
 	fileHashes := b.GetAndUnsetFileKeys()
 	for _, fh := range fileHashes {
 		fh := fh
-		if err := queue.Add(func() {
-			id := domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fh.Hash)}
-			if werr := e.saveFile(ctx, wr, id); werr != nil {
-				log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
-			}
-		}); err != nil {
-			log.With("objectID", docID).Warnf("couldn't save object files: %v", err)
+		id := domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fh.Hash)}
+		if werr := e.saveFile(ctx, wr, id); werr != nil {
+			log.With("hash", fh.Hash).Warnf("can't save file: %v", werr)
 		}
 	}
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -712,37 +711,10 @@ func (mw *Middleware) ObjectToSet(cctx context.Context, req *pb.RpcObjectToSetRe
 		}
 		return resp
 	}
-	var (
-		err error
-	)
-	err = mw.doBlockService(func(bs *block.Service) error {
-		if err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
-			return err
-		}
-		return nil
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.ObjectToSet(req.ContextId, req.Source)
 	})
 	return response(err)
-}
-
-func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, details *types.Struct, err error) *pb.RpcObjectCreateBookmarkResponse {
-		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, ObjectId: id, Details: details}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-
-	creator := getService[objectcreator.Service](mw)
-	createReq := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details:       req.Details,
-	}
-	id, newDetails, err := creator.CreateObject(cctx, req.SpaceId, createReq)
-	if err != nil {
-		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", newDetails, err)
-	}
-	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails, nil)
 }
 
 func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjectBookmarkFetchRequest) *pb.RpcObjectBookmarkFetchResponse {
@@ -818,7 +790,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import)
+	rootCollectionID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
@@ -831,6 +803,8 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
 	case errors.Is(err, common.ErrLimitExceeded):
 		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
+	case errors.Is(err, common.ErrFileLoad):
+		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, "", err)
 	default:
 		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
 	}
@@ -922,7 +896,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Source, req.IsLocal); err != nil {
+	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title); err != nil {
 		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)

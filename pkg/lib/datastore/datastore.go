@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 )
 
 const CName = "datastore"
