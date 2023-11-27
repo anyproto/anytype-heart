@@ -52,6 +52,8 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
+		go bs.UpdateBundledObjects(cctx, req.SpaceId)
+
 		return block.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
 			return sv.UpdateLastOpenedDate()
 		})
