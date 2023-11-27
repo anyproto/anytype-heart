@@ -30,15 +30,6 @@ func (n *NotificationObject) Init(ctx *smartblock.InitContext) (err error) {
 func (n *NotificationObject) onNotificationChange(info smartblock.ApplyInfo) (err error) {
 	state := n.NewState()
 	for _, change := range info.Changes {
-		if notificationChange := change.GetNotificationCreate(); notificationChange != nil && notificationChange.Notification != nil {
-			notification := state.GetNotificationByID(notificationChange.Notification.Id)
-			if !n.notificationService.IsNotificationRead(notification) {
-				err := n.notificationService.CreateAndSendLocal(notification)
-				if err != nil {
-					return fmt.Errorf("failed to send notification after state apply: %s", err)
-				}
-			}
-		}
 		if notificationChange := change.GetNotificationUpdate(); notificationChange != nil {
 			notification := state.GetNotificationByID(notificationChange.Id)
 			if notification == nil {

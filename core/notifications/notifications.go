@@ -69,11 +69,7 @@ func (n NotificationService) CreateAndSendLocal(notification *model.Notification
 }
 
 func (n NotificationService) CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error {
-	err := n.CreateAndSendLocal(notification)
-	if err != nil {
-		return err
-	}
-
+	// TODO check if notification exist in notification object, if so - check status
 	//spc, err := n.spaceService.Get(ctx, spaceID)
 	//if err != nil {
 	//	return fmt.Errorf("failed to get space for notification: %w", err)
@@ -85,6 +81,10 @@ func (n NotificationService) CreateAndSendCrossDevice(ctx context.Context, space
 	//if err != nil {
 	//	return fmt.Errorf("failed to update notification object: %w", err)
 	//}
+	err := n.CreateAndSendLocal(notification)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
