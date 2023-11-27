@@ -152,6 +152,7 @@ var (
 		smartblock.SmartBlockTypeAccountOld: {
 			model.Restrictions_Template,
 		},
+		smartblock.SmartBlockTypeNotificationObject: objRestrictAll,
 	}
 )
 

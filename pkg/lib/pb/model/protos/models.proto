@@ -925,13 +925,10 @@ message Notification {
     };
   }
   enum Status {
-    Created = 0;
-    Processing = 1;
-    Delivered = 2;
-    Failed = 3;
-    Shown = 4;
-    Read = 5;
-    Replied = 6;
+    Send = 0;
+    Shown = 1;
+    Read = 2;
+    Replied = 3;
   }
   enum ActionType {
     RETRY = 0;
