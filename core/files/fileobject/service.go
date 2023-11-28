@@ -42,6 +42,7 @@ type Service interface {
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 
 	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
+	FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
 	FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
 }
 
@@ -339,6 +340,48 @@ func (s *service) fileOffload(ctx context.Context, space space.Space, objectId s
 	return s.fileService.FileOffload(ctx, id)
 }
 
+func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
+	if len(objectIds) == 0 {
+		ids, err := s.listAllFileObjectIds()
+		if err != nil {
+			return 0, 0, fmt.Errorf("list all file object ids: %w", err)
+		}
+		objectIds = ids
+	}
+
+	for _, objectId := range objectIds {
+		size, err := s.FileOffload(ctx, objectId, includeNotPinned)
+		if err != nil {
+			log.Errorf("failed to offload file %s: %v", objectId, err)
+			continue
+		}
+		totalSize += size
+		if size > 0 {
+			filesOffloaded++
+		}
+	}
+	return filesOffloaded, totalSize, nil
+}
+
+func (s *service) listAllFileObjectIds() ([]string, error) {
+	records, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query file objects by spaceId: %w", err)
+	}
+	ids := make([]string, 0, len(records))
+	for _, record := range records {
+		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+	}
+	return ids, nil
+}
+
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
@@ -349,8 +392,7 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 			},
 			{
 				RelationKey: bundle.RelationKeyFileId.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String(""),
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 		},
 	})

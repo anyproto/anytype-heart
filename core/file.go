@@ -52,20 +52,23 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
-	response := func(filesOffloaded uint64, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
-		m := &pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: code}, BytesOffloaded: bytesOffloaded, FilesOffloaded: int32(filesOffloaded)}
+	response := func(filesOffloaded int, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
+		m := &pb.RpcFileListOffloadResponse{
+			Error:          &pb.RpcFileListOffloadResponseError{Code: code},
+			BytesOffloaded: bytesOffloaded,
+			FilesOffloaded: int32(filesOffloaded),
+		}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
-
-	if mw.applicationService.GetApp() == nil {
-		return response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
+	fileObjectService := getService[fileobject.Service](mw)
+	filesOffloaded, bytesRemoved, err := fileObjectService.FilesOffload(cctx, req.OnlyIds, req.IncludeNotPinned)
+	if err != nil {
+		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
-
-	return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, fmt.Errorf("deprecated"))
+	return response(filesOffloaded, bytesRemoved, pb.RpcFileListOffloadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileOffload(cctx context.Context, req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
