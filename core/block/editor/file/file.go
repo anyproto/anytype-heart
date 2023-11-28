@@ -51,12 +51,11 @@ type BlockService interface {
 
 type File interface {
 	DropFiles(req pb.RpcFileDropRequest) (err error)
-	Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error)
+	Upload(ctx session.Context, id string, source FileSource, isSync bool) (fileObjectId string, err error)
 	UploadState(ctx session.Context, s *state.State, id string, source FileSource, isSync bool) (err error)
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
 	SetFileStyle(ctx session.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
-	UploadFileWithHash(blockID string, source FileSource) (string, error)
 	dropFilesHandler
 }
 
@@ -78,15 +77,16 @@ type sfile struct {
 	fileUploaderFactory fileuploader.Service
 }
 
-func (sf *sfile) Upload(ctx session.Context, id string, source FileSource, isSync bool) (err error) {
+func (sf *sfile) Upload(ctx session.Context, blockId string, source FileSource, isSync bool) (fileObjectId string, err error) {
 	if source.GroupID == "" {
 		source.GroupID = bson.NewObjectId().Hex()
 	}
 	s := sf.NewStateCtx(ctx).SetGroupId(source.GroupID)
-	if res := sf.upload(s, id, source, isSync); res.Err != nil {
-		return
+	res := sf.upload(s, blockId, source, isSync)
+	if res.Err != nil {
+		return "", res.Err
 	}
-	return sf.Apply(s)
+	return res.FileObjectId, sf.Apply(s)
 }
 
 func (sf *sfile) UploadState(_ session.Context, s *state.State, id string, source FileSource, isSync bool) (err error) {
@@ -199,19 +199,6 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	go proc.Start(sf.RootId(), req.DropTargetId, req.Position, ch)
 	err = <-ch
 	return
-}
-
-// TODO Why it called WithHash???
-func (sf *sfile) UploadFileWithHash(blockID string, source FileSource) (string, error) {
-	if source.GroupID == "" {
-		source.GroupID = bson.NewObjectId().Hex()
-	}
-	s := sf.NewState().SetGroupId(source.GroupID)
-	res := sf.upload(s, blockID, source, true)
-	if res.Err != nil {
-		return "", res.Err
-	}
-	return res.FileObjectId, sf.Apply(s)
 }
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {

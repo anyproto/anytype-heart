@@ -458,7 +458,7 @@ func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, 
 
 func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupID string) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, file.FileSource{
+		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: groupID,
@@ -470,7 +470,7 @@ func (s *Service) UploadBlockFile(ctx session.Context, req UploadRequest, groupI
 
 func (s *Service) UploadBlockFileSync(ctx session.Context, req UploadRequest) (err error) {
 	return Do(s, req.ContextId, func(b file.File) error {
-		err = b.Upload(ctx, req.BlockId, file.FileSource{
+		_, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:   req.FilePath,
 			Url:    req.Url,
 			Origin: req.Origin,
@@ -528,16 +528,16 @@ func (s *Service) SetFileStyle(
 	})
 }
 
-func (s *Service) UploadFileBlockWithHash(
+func (s *Service) UploadFileBlock(
 	contextID string, req UploadRequest,
 ) (fileObjectId string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
-		fileObjectId, err = b.UploadFileWithHash(req.BlockId, file.FileSource{
+		fileObjectId, err = b.Upload(nil, req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: "",
 			Origin:  req.Origin,
-		})
+		}, true)
 		if err != nil {
 			return err
 		}
