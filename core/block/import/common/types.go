@@ -16,7 +16,7 @@ type ObjectTreeCreator interface {
 
 // Converter incapsulate logic with transforming some data to smart blocks
 type Converter interface {
-	GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*Response, *ConvertError)
+	GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*Response, *ConvertError)
 	Name() string
 }
 

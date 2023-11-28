@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	widgetObject "github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/syncer"
@@ -106,6 +107,9 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*t
 		return nil, newID, nil
 	}
 
+	if sn.SbType == coresb.SmartBlockTypeWidget {
+		return oc.updateWidgetObject(st)
+	}
 	// TODO Fix this
 	// converter.UpdateObjectType(oldIDtoNew, st)
 	for _, link := range st.GetRelationLinks() {
@@ -501,4 +505,42 @@ func (oc *ObjectCreator) setFileImportedFlagAndOrigin(st *state.State, origin mo
 			log.Errorf("failed to set origin for file %s: %s", hash, err)
 		}
 	}
+}
+
+func (oc *ObjectCreator) updateWidgetObject(st *state.State) (*types.Struct, string, error) {
+	err := block.DoState(oc.service, st.RootId(), func(oldState *state.State, sb smartblock.SmartBlock) error {
+		blocks := st.Blocks()
+		blocksMap := make(map[string]*model.Block, len(blocks))
+		for _, block := range blocks {
+			blocksMap[block.Id] = block
+		}
+		for _, block := range blocks {
+			if widget := block.GetWidget(); widget != nil {
+				if len(block.ChildrenIds) > 0 {
+					err := oc.addWidgetBlock(oldState, block, blocksMap)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	})
+	return nil, "", err
+}
+
+func (oc *ObjectCreator) addWidgetBlock(oldState *state.State, block *model.Block, blocksMap map[string]*model.Block) error {
+	linkBlockID := block.ChildrenIds[0]
+	if linkBlock, ok := blocksMap[linkBlockID]; ok {
+		if widgetObject.IsPredefinedWidgetTargetId(linkBlock.GetLink().GetTargetBlockId()) {
+			return nil
+		}
+		oldState.Add(simple.New(block))
+		oldState.Add(simple.New(linkBlock))
+		err := oldState.InsertTo(oldState.RootId(), model.Block_Bottom, block.Id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

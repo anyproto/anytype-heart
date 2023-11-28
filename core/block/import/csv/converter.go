@@ -55,7 +55,7 @@ func (c *CSV) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportReque
 	return nil
 }
 
-func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*common.Response, *common.ConvertError) {
 	params := c.GetParams(req)
 	if params == nil {
 		return nil, nil

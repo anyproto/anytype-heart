@@ -30,7 +30,7 @@ func (*Converter) GetParser(url string) parsers.Parser {
 	return nil
 }
 
-func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (c *Converter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*common.Response, *common.ConvertError) {
 	we := common.NewError(0)
 	url, err := c.getParams(req.Params)
 	progress.SetTotal(1)

@@ -41,7 +41,7 @@ func New(c *collection.Service) common.Converter {
 	}
 }
 
-func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*common.Response, *common.ConvertError) {
 	ce := common.NewError(req.Mode)
 	apiKey := n.getParams(req)
 	if apiKey == "" {

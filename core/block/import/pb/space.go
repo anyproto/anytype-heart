@@ -22,31 +22,31 @@ func NewSpaceImport(service *collection.Service) *SpaceImport {
 	return &SpaceImport{service: service}
 }
 
-func (s *SpaceImport) ProvideCollection(
-	snapshots []*common.Snapshot,
+func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 	widgetSnapshot *common.Snapshot,
 	oldToNewID map[string]string,
 	params *pb.RpcObjectImportRequestPbParams,
-	workspaceSnapshot *common.Snapshot,
-) (*common.Snapshot, error) {
+	_ *common.Snapshot,
+	_ bool,
+) ([]*common.Snapshot, string, error) {
 	if params.GetNoCollection() {
-		return nil, nil
+		return nil, "", nil
 	}
 	var (
 		rootObjects        []string
 		widgetFlags        widget.ImportWidgetFlags
-		objectsNotInwidget []*common.Snapshot
+		objectsNotInWidget []*common.Snapshot
 	)
 
 	if widgetSnapshot != nil {
 		widgetFlags, rootObjects = s.getObjectsFromwidget(widgetSnapshot, oldToNewID)
-		objectsNotInwidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
+		objectsNotInWidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
 	}
 	if !widgetFlags.IsEmpty() || len(rootObjects) > 0 {
 		// add to root collection only objects from widget, dashboard and favorites
-		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInwidget)...)
+		rootObjects = append(rootObjects, s.filterObjects(widgetFlags, objectsNotInWidget)...)
 	} else {
 		// if we don't have any widget, we add everything (except sub objects and templates) to root collection
 		rootObjects = lo.FilterMap(snapshots, func(item *common.Snapshot, index int) (string, bool) {
@@ -57,7 +57,11 @@ func (s *SpaceImport) ProvideCollection(
 		})
 	}
 	rootCollection := common.NewRootCollection(s.service)
-	return rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true)
+	rootCollectionSnapshot, err := rootCollection.MakeRootCollection(rootCollectionName, rootObjects, "", nil, true)
+	if err != nil {
+		return nil, "", err
+	}
+	return []*common.Snapshot{rootCollectionSnapshot}, rootCollectionSnapshot.Id, nil
 }
 
 func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {

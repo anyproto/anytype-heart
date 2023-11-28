@@ -7,13 +7,13 @@ import (
 )
 
 type CollectionProvider interface {
-	ProvideCollection(
-		snapshots []*common.Snapshot,
+	ProvideCollection(snapshots []*common.Snapshot,
 		widget *common.Snapshot,
 		oldToNewID map[string]string,
 		params *pb.RpcObjectImportRequestPbParams,
 		workspaceSnapshot *common.Snapshot,
-	) (*common.Snapshot, error)
+		isNewSpace bool,
+	) ([]*common.Snapshot, string, error)
 }
 
 func GetProvider(importType pb.RpcObjectImportRequestPbParamsType, service *collection.Service) CollectionProvider {

@@ -28,7 +28,7 @@ func (_m *MockConverter) EXPECT() *MockConverter_Expecter {
 }
 
 // GetSnapshots provides a mock function with given fields: ctx, req, progress
-func (_m *MockConverter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (_m *MockConverter) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*common.Response, *common.ConvertError) {
 	ret := _m.Called(ctx, req, progress)
 
 	var r0 *common.Response

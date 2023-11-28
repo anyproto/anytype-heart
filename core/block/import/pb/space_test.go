@@ -24,12 +24,12 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: false}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
+		collection, _, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
-		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
+		assert.Len(t, collection, 1)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 0)
 	})
@@ -39,7 +39,7 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		params := &pb.RpcObjectImportRequestPbParams{NoCollection: true}
 
 		// when
-		collection, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil)
+		collection, _, err := collectionProvider.ProvideCollection(nil, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
@@ -70,12 +70,13 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, nil, nil, params, nil)
+		collection, _, err := p.ProvideCollection(allSnapshot, nil, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
+		assert.Len(t, collection, 1)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 2)
 		assert.Equal(t, objectsInCollection[0], "id1")
@@ -151,12 +152,13 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil)
+		collection, _, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
+		assert.Len(t, collection, 1)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "id5")
@@ -232,12 +234,13 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil)
+		collection, _, err := p.ProvideCollection(allSnapshot, widgetSnapshot, nil, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
+		assert.Len(t, collection, 1)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "id4")
@@ -328,12 +331,13 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		}
 
 		// when
-		collection, err := p.ProvideCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, nil)
+		collection, _, err := p.ProvideCollection(allSnapshot, widgetSnapshot, map[string]string{"oldObjectInWidget": "newObjectInWidget"}, params, nil, false)
 
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
-		rootCollectionState := state.NewDocFromSnapshot("", collection.Snapshot).(*state.State)
+		assert.Len(t, collection, 1)
+		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot).(*state.State)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 3)
 		assert.Equal(t, objectsInCollection[0], "newObjectInWidget")
