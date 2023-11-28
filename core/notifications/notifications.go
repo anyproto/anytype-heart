@@ -85,7 +85,7 @@ func (n *notificationService) UpdateAndSend(notification *model.Notification) er
 	})
 	err := n.notificationStore.SaveNotification(notification)
 	if err != nil {
-		return fmt.Errorf("failed to update notification %s: %s", notification.Id, err)
+		return fmt.Errorf("failed to update notification %s: %w", notification.Id, err)
 	}
 	return nil
 }
@@ -118,7 +118,7 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 	}
 
 	var (
-		result   []*model.Notification
+		result   = make([]*model.Notification, 0, len(notifications))
 		addCount int64
 	)
 	for _, notification := range notifications {

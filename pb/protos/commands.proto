@@ -5749,8 +5749,8 @@ message Rpc {
 
     message NotificationReply {
         message Request {
-            string contextID = 1;
-            repeated string id = 2; // в теории это может быть массовая операция
+            string contextID = 1; // notification object ID
+            repeated string id = 2;
             anytype.model.Notification.ActionType actionType = 3;
         }
         message Response {
