@@ -5,7 +5,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	//"github.com/anyproto/anytype-heart/core/notifications"
 )
 
 type NotificationObject struct {
