@@ -925,7 +925,7 @@ message Notification {
     };
   }
   enum Status {
-    Send = 0;
+    Created = 0;
     Shown = 1;
     Read = 2;
     Replied = 3;

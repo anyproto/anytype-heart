@@ -21,8 +21,8 @@ type Notifications interface {
 	CreateAndSendLocal(notification *model.Notification) error
 	CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error
 	UpdateAndSend(notification *model.Notification) error
-	Reply(spaceID, notificationID string, notificationAction model.NotificationActionType) error
-	List(limit int, includeRead bool) ([]*model.Notification, error)
+	Reply(contextID string, notificationID []string, notificationAction model.NotificationActionType) error
+	List(limit int64, includeRead bool) ([]*model.Notification, error)
 	IsNotificationRead(notification *model.Notification) bool
 }
 
@@ -102,35 +102,29 @@ func (n *notificationService) UpdateAndSend(notification *model.Notification) er
 	})
 	err := n.notificationStore.SaveNotification(notification)
 	if err != nil {
-		return fmt.Errorf("failed to update notification %s: %s", notification.Id, err)
+		return fmt.Errorf("failed to update notification %s: %w", notification.Id, err)
 	}
 	return nil
 }
 
-func (n *notificationService) Reply(contextID, notificationID string, notificationAction model.NotificationActionType) error {
-	status := model.Notification_Replied
-	if notificationAction == model.Notification_CLOSE {
-		status = model.Notification_Read
-	}
+func (n *notificationService) Reply(contextID string, notificationIDs []string, notificationAction model.NotificationActionType) error {
+	for _, id := range notificationIDs {
+		status := model.Notification_Replied
+		if notificationAction == model.Notification_CLOSE {
+			status = model.Notification_Read
+		}
 
-	notification, err := n.notificationStore.GetNotificationByID(notificationID)
-	if err != nil {
-		return err
+		notification, err := n.notificationStore.GetNotificationByID(id)
+		if err != nil {
+			return err
+		}
+		notification.Status = status
+		err = n.UpdateAndSend(notification)
+		if err != nil {
+			return fmt.Errorf("failed to update notification: %w", err)
+		}
 	}
-	notification.Status = status
-	err = n.UpdateAndSend(notification)
-	if err != nil {
-		return fmt.Errorf("failed to update notification: %w", err)
-	}
-	//if !notification.IsLocal {
-	//	err := block.DoState(n.picker, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
-	//		s.AddNotification(notification)
-	//		return nil
-	//	})
-	//	if err != nil {
-	//		return fmt.Errorf("failed to update notification object: %w", err)
-	//	}
-	//}
+	// TODO check notification in notification object and update it
 	return nil
 }
 
