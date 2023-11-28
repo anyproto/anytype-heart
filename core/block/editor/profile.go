@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -31,7 +32,8 @@ type Profile struct {
 	bookmark.Bookmark
 	table.TableEditor
 
-	eventSender event.Sender
+	eventSender       event.Sender
+	fileObjectService fileobject.Service
 }
 
 func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
@@ -53,9 +55,10 @@ func (f *ObjectFactory) newProfile(sb smartblock.SmartBlock) *Profile {
 			f.objectStore,
 			f.fileService,
 		),
-		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
-		TableEditor: table.NewEditor(sb),
-		eventSender: f.eventSender,
+		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService, f.objectStore),
+		TableEditor:       table.NewEditor(sb),
+		eventSender:       f.eventSender,
+		fileObjectService: f.fileObjectService,
 	}
 }
 
@@ -69,7 +72,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Profile) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 3,
+		Version: 4,
 		Proc: func(st *state.State) {
 			template.InitTemplate(st,
 				template.WithObjectTypesAndLayout([]domain.TypeKey{bundle.TypeKeyProfile}, model.ObjectType_profile),
@@ -117,6 +120,10 @@ func (p *Profile) StateMigrations() migration.Migrations {
 		{
 			Version: 3,
 			Proc:    migrationSetHidden,
+		},
+		{
+			Version: 4,
+			Proc:    migrateFilesToObjects(p, p.fileObjectService),
 		},
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	fileblock "github.com/anyproto/anytype-heart/core/block/simple/file"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -67,80 +68,28 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			switch fileType {
 			case model.BlockContentFile_Image:
 				if pbtypes.GetInt64(details, bundle.RelationKeyWidthInPixels.String()) != 0 {
-					blocks = append(blocks, &model.Block{
-						Id: "rel1",
-						Content: &model.BlockContentOfRelation{
-							Relation: &model.BlockContentRelation{
-								Key: bundle.RelationKeyWidthInPixels.String(),
-							},
-						},
-					})
+					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyWidthInPixels))
 				}
 
 				if pbtypes.GetInt64(details, bundle.RelationKeyHeightInPixels.String()) != 0 {
-					blocks = append(blocks, &model.Block{
-						Id: "rel2",
-						Content: &model.BlockContentOfRelation{
-							Relation: &model.BlockContentRelation{
-								Key: bundle.RelationKeyHeightInPixels.String(),
-							},
-						},
-					})
+					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyHeightInPixels))
 				}
 
 				if pbtypes.GetString(details, bundle.RelationKeyCamera.String()) != "" {
-					blocks = append(blocks, &model.Block{
-						Id: "rel3",
-						Content: &model.BlockContentOfRelation{
-							Relation: &model.BlockContentRelation{
-								Key: bundle.RelationKeyCamera.String(),
-							},
-						},
-					})
+					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyCamera))
 				}
 
 				if pbtypes.GetInt64(details, bundle.RelationKeySizeInBytes.String()) != 0 {
-					blocks = append(blocks, &model.Block{
-						Id: "rel4",
-						Content: &model.BlockContentOfRelation{
-							Relation: &model.BlockContentRelation{
-								Key: bundle.RelationKeySizeInBytes.String(),
-							},
-						},
-					})
+					blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
 				}
 				if pbtypes.GetString(details, bundle.RelationKeyMediaArtistName.String()) != "" {
-					blocks = append(blocks, &model.Block{
-						Id: "rel6",
-						Content: &model.BlockContentOfRelation{
-							Relation: &model.BlockContentRelation{
-								Key: bundle.RelationKeyMediaArtistName.String(),
-							},
-						},
-					})
+					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistName))
 				}
 				if pbtypes.GetString(details, bundle.RelationKeyMediaArtistURL.String()) != "" {
-					blocks = append(blocks, &model.Block{
-						Id: "rel7",
-						Content: &model.BlockContentOfRelation{
-							Relation: &model.BlockContentRelation{
-								Key: bundle.RelationKeyMediaArtistURL.String(),
-							},
-						},
-					})
+					blocks = append(blocks, makeRelationBlock(bundle.RelationKeyMediaArtistURL))
 				}
 			default:
-				blocks = append(blocks,
-					[]*model.Block{
-						{
-							Id: "rel4",
-							Content: &model.BlockContentOfRelation{
-								Relation: &model.BlockContentRelation{
-									Key: bundle.RelationKeySizeInBytes.String(),
-								},
-							},
-						},
-					}...)
+				blocks = append(blocks, makeRelationBlock(bundle.RelationKeySizeInBytes))
 			}
 
 			template.InitTemplate(s,
@@ -151,6 +100,17 @@ func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				template.WithRootBlocks(blocks),
 				template.WithAllBlocksEditsRestricted,
 			)
+		},
+	}
+}
+
+func makeRelationBlock(relationKey domain.RelationKey) *model.Block {
+	return &model.Block{
+		Id: relationKey.String(),
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: relationKey.String(),
+			},
 		},
 	}
 }
