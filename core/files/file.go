@@ -155,7 +155,7 @@ func calculateCommonDetails(
 ) map[string]*types.Value {
 	return map[string]*types.Value{
 		bundle.RelationKeyFileId.String():           pbtypes.String(fileId.String()),
-		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(true),
+		bundle.RelationKeyIsReadonly.String():       pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():           pbtypes.Float64(float64(layout)),
 		bundle.RelationKeyLastModifiedDate.String(): pbtypes.Int64(lastModifiedDate),
 	}
