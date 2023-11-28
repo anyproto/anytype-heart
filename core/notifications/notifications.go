@@ -27,7 +27,7 @@ type Notifications interface {
 	CreateAndSendLocal(notification *model.Notification) error
 	CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error
 	UpdateAndSend(notification *model.Notification) error
-	Reply(contextID string, notificationID []string, notificationAction model.NotificationActionType) error
+	Reply(notificationID []string, notificationAction model.NotificationActionType) error
 	List(limit int64, includeRead bool) ([]*model.Notification, error)
 }
 
@@ -150,7 +150,7 @@ func (n *notificationService) UpdateAndSend(notification *model.Notification) er
 	return nil
 }
 
-func (n *notificationService) Reply(contextID string, notificationIDs []string, notificationAction model.NotificationActionType) error {
+func (n *notificationService) Reply(notificationIDs []string, notificationAction model.NotificationActionType) error {
 	for _, id := range notificationIDs {
 		status := model.Notification_Replied
 		if notificationAction == model.Notification_CLOSE {

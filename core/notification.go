@@ -34,7 +34,7 @@ func (mw *Middleware) NotificationReply(cctx context.Context, req *pb.RpcNotific
 		}
 		return m
 	}
-	err := getService[notifications.Notifications](mw).Reply(req.ContextID, req.Id, req.ActionType)
+	err := getService[notifications.Notifications](mw).Reply(req.Id, req.ActionType)
 
 	if err != nil {
 		return response(pb.RpcNotificationReplyResponseError_INTERNAL_ERROR, err)
