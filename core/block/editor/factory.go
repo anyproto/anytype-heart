@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -32,21 +31,20 @@ type accountService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService     bookmark.BookmarkService
-	fileBlockService    file.BlockService
-	layoutConverter     converter.LayoutConverter
-	objectStore         objectstore.ObjectStore
-	sourceService       source.Service
-	tempDirProvider     core.TempDirProvider
-	fileService         files.Service
-	config              *config.Config
-	picker              getblock.ObjectGetter
-	eventSender         event.Sender
-	restrictionService  restriction.Service
-	indexer             smartblock.Indexer
-	spaceService        spaceService
-	accountService      accountService
-	notificationService notifications.Notifications
+	bookmarkService    bookmark.BookmarkService
+	fileBlockService   file.BlockService
+	layoutConverter    converter.LayoutConverter
+	objectStore        objectstore.ObjectStore
+	sourceService      source.Service
+	tempDirProvider    core.TempDirProvider
+	fileService        files.Service
+	config             *config.Config
+	picker             getblock.ObjectGetter
+	eventSender        event.Sender
+	restrictionService restriction.Service
+	indexer            smartblock.Indexer
+	spaceService       spaceService
+	accountService     accountService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -68,7 +66,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.eventSender = app.MustComponent[event.Sender](a)
 	f.spaceService = app.MustComponent[spaceService](a)
 	f.accountService = app.MustComponent[accountService](a)
-	f.notificationService = app.MustComponent[notifications.Notifications](a)
 	return nil
 }
 
@@ -163,7 +160,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeWidget:
 		return NewWidgetObject(sb, f.objectStore, f.layoutConverter), nil
 	case coresb.SmartBlockTypeNotificationObject:
-		return NewNotificationObject(sb, f.notificationService), nil
+		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
 		return nil, fmt.Errorf("subobject not supported via factory")
 	default:

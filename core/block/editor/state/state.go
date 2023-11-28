@@ -165,11 +165,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, notifications: s.CopyNotifications()}
 }
 
 func (s *State) NewStateCtx(ctx session.Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType, migrationVersion: s.migrationVersion, uniqueKeyInternal: s.uniqueKeyInternal, originalCreatedTimestamp: s.originalCreatedTimestamp, notifications: s.CopyNotifications()}
 }
 
 func (s *State) Context() session.Context {
@@ -681,7 +681,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.originalCreatedTimestamp = s.originalCreatedTimestamp
 	}
 
-	if s.parent != nil {
+	if s.parent != nil && s.notifications != nil {
 		s.parent.notifications = s.notifications
 	}
 
@@ -721,6 +721,9 @@ func (s *State) intermediateApply() {
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
+	if s.notifications != nil {
+		s.parent.notifications = s.notifications
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
 	return
@@ -1825,6 +1828,14 @@ func (s *State) AddNotification(notification *model.Notification) {
 		s.notifications = make(map[string]*model.Notification, 0)
 	}
 	s.notifications[notification.Id] = notification
+}
+
+func (s *State) CopyNotifications() map[string]*model.Notification {
+	notifications := make(map[string]*model.Notification, len(s.notifications))
+	for id, notification := range s.notifications {
+		notifications[id] = notification
+	}
+	return notifications
 }
 
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation

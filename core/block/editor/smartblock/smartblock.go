@@ -775,7 +775,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 				sb.undo.Add(act)
 			}
 		}
-	} else if hasStoreChanges(changes) || migrationVersionUpdated { // TODO: change to len(changes) > 0
+	} else if hasStoreChanges(changes) || migrationVersionUpdated || hasNotificationChanges(changes) { // TODO: change to len(changes) > 0
 		// log.Errorf("sb apply %s: store changes %s", sb.Id(), pbtypes.Sprint(&pb.Change{Content: changes}))
 		err = pushChange()
 		if err != nil {
@@ -1417,6 +1417,16 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 		if msg.Msg.GetObjectDetailsSet() != nil ||
 			msg.Msg.GetObjectDetailsUnset() != nil ||
 			msg.Msg.GetObjectDetailsAmend() != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func hasNotificationChanges(changes []*pb.ChangeContent) bool {
+	for _, ch := range changes {
+		if ch.GetNotificationCreate() != nil ||
+			ch.GetNotificationUpdate() != nil {
 			return true
 		}
 	}

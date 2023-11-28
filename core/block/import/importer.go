@@ -33,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -59,7 +58,6 @@ type Import struct {
 	idProvider      objectid.IDProvider
 	tempDirProvider core.TempDirProvider
 	fileSync        filesync.FileSync
-	notifications   notifications.Notifications
 	sync.Mutex
 }
 
@@ -96,7 +94,6 @@ func (i *Import) Init(a *app.App) (err error) {
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	i.oc = creator.New(i.s, factory, store, relationSyncer, fileStore, spaceService, objectCreator)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
-	i.notifications = app.MustComponent[notifications.Notifications](a)
 	return nil
 }
 
@@ -121,7 +118,6 @@ func (i *Import) Import(
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
-		i.sendNotification(progress.Id(), req.SpaceId)
 	}()
 	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
@@ -416,21 +412,6 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 		details[res.NewID] = res.Details
 	}
 	return details
-}
-
-func (i *Import) sendNotification(id string, spaceId string) {
-	i.notifications.CreateAndSendLocal(&model.Notification{
-		Id:         id,
-		CreateTime: time.Now().Unix(),
-		Status:     model.Notification_Send,
-		IsLocal:    true,
-		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
-			ProcessId:  id,
-			ErrorCode:  model.NotificationImport_FILE_LOAD_ERROR,
-			ImportType: model.NotificationImport_Notion,
-			SpaceId:    spaceId,
-		}},
-	})
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

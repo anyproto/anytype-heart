@@ -287,6 +287,5 @@ service ClientCommands {
     rpc ListenSessionEvents (anytype.StreamRequest) returns (stream anytype.Event);
 
     rpc NotificationList (anytype.Rpc.NotificationList.Request) returns (anytype.Rpc.NotificationList.Response);
-
     rpc NotificationReply (anytype.Rpc.NotificationReply.Request) returns (anytype.Rpc.NotificationReply.Response);
 }
