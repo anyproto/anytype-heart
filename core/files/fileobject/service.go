@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -38,6 +40,9 @@ type Service interface {
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectIdByFileId(fileId domain.FileId) (string, error)
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
+
+	FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error)
+	FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
 }
 
 type objectCreatorService interface {
@@ -287,4 +292,88 @@ func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.C
 			}
 		}
 	}
+}
+
+func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error) {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return 0, fmt.Errorf("resolve spaceId: %w", err)
+	}
+
+	space, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return 0, fmt.Errorf("get space: %w", err)
+	}
+
+	return s.fileOffload(ctx, space, objectId, includeNotPinned)
+}
+
+func (s *service) fileOffload(ctx context.Context, space space.Space, objectId string, includeNotPinned bool) (uint64, error) {
+	var (
+		id           domain.FullFileId
+		backupStatus syncstatus.SyncStatus
+	)
+	err := space.Do(objectId, func(sb smartblock.SmartBlock) error {
+		if sb.Type() != coresb.SmartBlockTypeFileObject {
+			return fmt.Errorf("not a file object")
+		}
+		fileId := pbtypes.GetString(sb.Details(), bundle.RelationKeyFileId.String())
+		if fileId == "" {
+			return fmt.Errorf("empty file hash")
+		}
+		backupStatus = syncstatus.SyncStatus(pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String()))
+		id = domain.FullFileId{
+			SpaceId: space.Id(),
+			FileId:  domain.FileId(fileId),
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, fmt.Errorf("get file object: %w", err)
+	}
+
+	if !includeNotPinned && backupStatus != syncstatus.StatusSynced {
+		return 0, nil
+	}
+
+	return s.fileService.FileOffload(ctx, id)
+}
+
+func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
+	records, _, err := s.objectStore.Query(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeySpaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(spaceId),
+			},
+			{
+				RelationKey: bundle.RelationKeyFileId.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.String(""),
+			},
+		},
+	})
+	if err != nil {
+		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
+	}
+
+	space, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return 0, 0, fmt.Errorf("get space: %w", err)
+	}
+
+	for _, record := range records {
+		objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+		size, err := s.fileOffload(ctx, space, objectId, includeNotPinned)
+		if err != nil {
+			log.Errorf("failed to offload file %s: %v", objectId, err)
+			continue
+		}
+		if size > 0 {
+			filesOffloaded++
+		}
+		totalSize += size
+	}
+	return filesOffloaded, totalSize, nil
 }

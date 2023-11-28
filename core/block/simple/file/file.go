@@ -219,6 +219,17 @@ func (f *File) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
 	f.content.TargetObjectId = migrateFunc(f.content.Hash)
 }
 
+func (f *File) FillSmartIds(ids []string) []string {
+	if f.content.TargetObjectId != "" {
+		return append(ids, f.content.TargetObjectId)
+	}
+	return ids
+}
+
+func (f *File) HasSmartIds() bool {
+	return f.content.TargetObjectId != ""
+}
+
 func DetectTypeByMIME(mime string) model.BlockContentFileType {
 	if mill.IsImage(mime) {
 		return model.BlockContentFile_Image

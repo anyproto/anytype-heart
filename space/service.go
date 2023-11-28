@@ -44,7 +44,7 @@ type spaceIndexer interface {
 }
 
 type fileOffloader interface {
-	FilesSpaceOffload(ctx context.Context, spaceID string) (err error)
+	FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error)
 }
 
 type isNewAccount interface {

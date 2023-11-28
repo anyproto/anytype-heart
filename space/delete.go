@@ -118,7 +118,7 @@ func (s *service) offload(ctx context.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
-	err = s.offloader.FilesSpaceOffload(ctx, id)
+	_, _, err = s.offloader.FileSpaceOffload(ctx, id, false)
 	if err != nil {
 		return err
 	}
