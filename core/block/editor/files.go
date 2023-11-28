@@ -22,14 +22,15 @@ import (
 func (f *ObjectFactory) newFile(sb smartblock.SmartBlock) *File {
 	basicComponent := basic.NewBasic(sb, f.objectStore, f.layoutConverter)
 	return &File{
-		SmartBlock:      sb,
-		DetailsSettable: basicComponent,
+		SmartBlock: sb,
+		// TODO TEMP
+		AllOperations: basicComponent,
 	}
 }
 
 type File struct {
 	smartblock.SmartBlock
-	basic.DetailsSettable
+	basic.AllOperations
 }
 
 func (p *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
