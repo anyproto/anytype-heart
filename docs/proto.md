@@ -1721,7 +1721,7 @@
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.NotificationList.Request](#anytype-Rpc-NotificationList-Request) | [Rpc.NotificationList.Response](#anytype-Rpc-NotificationList-Response) |  |
-| NotificationReply | [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response) | [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response) |  |
+| NotificationReply | [Rpc.NotificationReply.Request](#anytype-Rpc-NotificationReply-Request) | [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response) |  |
 
  
 
@@ -10501,8 +10501,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextID | [string](#string) |  |  |
-| id | [string](#string) | repeated | в теории это может быть массовая операция |
+| contextID | [string](#string) |  | notification object ID |
+| id | [string](#string) | repeated |  |
 | actionType | [model.Notification.ActionType](#anytype-model-Notification-ActionType) |  |  |
 
 
@@ -23385,7 +23385,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Send | 0 |  |
+| Created | 0 |  |
 | Shown | 1 |  |
 | Read | 2 |  |
 | Replied | 3 |  |
