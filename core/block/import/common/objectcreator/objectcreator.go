@@ -537,7 +537,7 @@ func (oc *ObjectCreator) addWidgetBlock(oldState *state.State, block *model.Bloc
 		}
 		oldState.Add(simple.New(block))
 		oldState.Add(simple.New(linkBlock))
-		err := oldState.InsertTo(oldState.RootId(), model.Block_Bottom, block.Id)
+		err := oldState.InsertTo("", model.Block_Inner, block.Id)
 		if err != nil {
 			return err
 		}

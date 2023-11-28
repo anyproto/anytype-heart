@@ -102,7 +102,6 @@ func (i *Import) Import(ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	origin model.ObjectOrigin,
 	progress process.Progress,
-	isNewSpace bool,
 ) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
@@ -124,7 +123,7 @@ func (i *Import) Import(ctx context.Context,
 	}
 	var rootCollectionID string
 	if c, ok := i.converters[req.Type.String()]; ok {
-		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin, isNewSpace)
+		rootCollectionID, returnedErr = i.importFromBuiltinConverter(ctx, req, c, progress, origin)
 		return rootCollectionID, returnedErr
 	}
 	if req.Type == pb.RpcObjectImportRequest_External {
@@ -147,10 +146,9 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context,
 	c common.Converter,
 	progress process.Progress,
 	origin model.ObjectOrigin,
-	isNewSpace bool,
 ) (string, error) {
 	allErrors := common.NewError(req.Mode)
-	res, err := c.GetSnapshots(ctx, req, progress, isNewSpace)
+	res, err := c.GetSnapshots(ctx, req, progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req) {
@@ -254,7 +252,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *pb.RpcObjectImportRequest) 
 
 	progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(ctx, req, progress, false)
+	res, err := w.GetSnapshots(ctx, req, progress)
 
 	if err != nil {
 		return "", nil, err.Error()

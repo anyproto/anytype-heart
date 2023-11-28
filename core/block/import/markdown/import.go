@@ -61,7 +61,7 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 	return nil, 0, 0, nil
 }
 
-func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*common.Response, *common.ConvertError) {
+func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
 	paths := m.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil

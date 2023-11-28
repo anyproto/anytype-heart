@@ -35,7 +35,7 @@ func TestHTML_GetSnapshots(t *testing.T) {
 		},
 		Type: pb.RpcObjectImportRequest_Txt,
 		Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
-	}, p, false)
+	}, p)
 
 	assert.NotNil(t, sn)
 	assert.Len(t, sn.Snapshots, 2)

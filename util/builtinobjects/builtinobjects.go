@@ -283,7 +283,8 @@ func (b *builtinObjects) importArchive(ctx context.Context, spaceID, path, title
 				CollectionTitle: title,
 				ImportType:      importType,
 			}},
-	}, model.ObjectOrigin_usecase, progress, isNewSpace)
+		IsNewSpace: isNewSpace,
+	}, model.ObjectOrigin_usecase, progress)
 
 	return err
 }

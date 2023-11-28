@@ -24,7 +24,7 @@ func TestTXT_GetSnapshots(t *testing.T) {
 		},
 		Type: 4,
 		Mode: 1,
-	}, p, false)
+	}, p)
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.Is(err.GetResultError(pb.RpcObjectImportRequest_Txt), common.ErrNoObjectsToImport))

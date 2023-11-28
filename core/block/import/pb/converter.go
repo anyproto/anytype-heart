@@ -52,7 +52,7 @@ func New(service *collection.Service, accountService account.Service) common.Con
 	}
 }
 
-func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*common.Response, *common.ConvertError) {
+func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
 	params, e := p.getParams(req.Params)
 	if e != nil || params == nil {
 		return nil, common.NewFromError(fmt.Errorf("wrong parameters"), req.Mode)
@@ -66,7 +66,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 	}
 	collectionProvider := GetProvider(params.GetImportType(), p.service)
 	var rootCollectionID string
-	rootCollections, rootCollectionID, colErr := collectionProvider.ProvideCollection(allSnapshots, widgetSnapshot, oldToNewID, params, workspaceSnapshot, isNewSpace)
+	rootCollections, rootCollectionID, colErr := collectionProvider.ProvideCollection(allSnapshots, widgetSnapshot, oldToNewID, params, workspaceSnapshot, req.IsNewSpace)
 	if colErr != nil {
 		allErrors.Add(colErr)
 		if allErrors.ShouldAbortImport(len(params.GetPath()), req.Type) {

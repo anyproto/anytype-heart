@@ -44,7 +44,7 @@ func (t *TXT) GetParams(req *pb.RpcObjectImportRequest) []string {
 	return nil
 }
 
-func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress, isNewSpace bool) (*common.Response, *common.ConvertError) {
+func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
 	paths := t.GetParams(req)
 	if len(paths) == 0 {
 		return nil, nil
