@@ -13,8 +13,8 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/import/common/mock_converter"
-	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_creator"
+	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
@@ -30,7 +30,7 @@ import (
 func Test_ImportSuccess(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -76,7 +76,7 @@ func Test_ImportSuccess(t *testing.T) {
 func Test_ImportErrorFromConverter(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
@@ -106,7 +106,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -153,7 +153,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -200,7 +200,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -467,7 +467,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 
 func Test_ImportCancelError(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewCancelError(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
@@ -491,7 +491,7 @@ func Test_ImportCancelError(t *testing.T) {
 
 func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
@@ -515,7 +515,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -555,7 +555,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
 	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -601,7 +601,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 
 func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -641,7 +641,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 
 func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -755,7 +755,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		expectedRootCollectionID := "id"
 		originalRootCollectionID := "rootCollectionID"
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
@@ -801,7 +801,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionID"
 		creatorError := errors.New("creator error")
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
@@ -847,7 +847,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionID"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
@@ -885,7 +885,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionID"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{

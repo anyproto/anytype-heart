@@ -39,7 +39,7 @@ func (s *SpaceImport) ProvideCollection(snapshots []*common.Snapshot,
 	)
 
 	if widgetSnapshot != nil {
-		widgetFlags, rootObjects = s.getObjectsFromwidget(widgetSnapshot, oldToNewID)
+		widgetFlags, rootObjects = s.getObjectsFromWidget(widgetSnapshot, oldToNewID)
 		objectsNotInWidget = lo.Filter(snapshots, func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
@@ -70,13 +70,13 @@ func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
 		item.SbType == smartblock.SmartBlockTypeRelationOption
 }
 
-func (s *SpaceImport) getObjectsFromwidget(widgetnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
-	widgettate := state.NewDocFromSnapshot("", widgetnapshot.Snapshot).(*state.State)
+func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
+	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot).(*state.State)
 	var (
 		objectsInWidget     []string
 		objectTypesToImport widget.ImportWidgetFlags
 	)
-	err := widgettate.Iterate(func(b simple.Block) (isContinue bool) {
+	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId != "" {
 			if builtinWidget := widget.FillImportFlags(link, &objectTypesToImport); builtinWidget {
 				return true
