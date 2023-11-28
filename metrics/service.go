@@ -20,41 +20,21 @@ var (
 	bufferSize       = 500
 )
 
-type MetricsBackend int
-
 // First constants must repeat syncstatus.SyncStatus constants for
 // avoiding inconsistency with data stored in filestore
 const (
-	ampl MetricsBackend = iota
+	ampl amplitude.MetricsBackend = iota
 	inhouse
 )
 
 const amplEndpoint = "https://amplitude.anytype.io/2/httpapi"
 const inhouseEndpoint = "https://inhouse.anytype.io/2/httpapi" //todo change to inhouse
 
-type Event interface {
-	getBackend() MetricsBackend
-	get() *anyEvent
-}
-
 type SamplableEvent interface {
-	Event
+	amplitude.Event
 
 	Key() string
 	Aggregate(other SamplableEvent) SamplableEvent
-}
-
-type anyEvent struct {
-	eventType string
-	eventData map[string]interface{}
-}
-
-type appInfoProvider interface {
-	getAppVersion() string
-	getStartVersion() string
-	getDeviceId() string
-	getPlatform() string
-	getUserId() string
 }
 
 type MetricsService interface {
@@ -64,12 +44,12 @@ type MetricsService interface {
 	SetDeviceId(t string)
 	SetPlatform(p string)
 	SetUserId(id string)
-	Send(ev Event)
+	Send(ev amplitude.Event)
 	SendSampled(ev SamplableEvent)
 
 	Run()
 	Close()
-	appInfoProvider
+	amplitude.AppInfoProvider
 }
 
 type service struct {
@@ -79,21 +59,21 @@ type service struct {
 	userId       string
 	deviceId     string
 	platform     string
-	clients      map[MetricsBackend]*client
+	clients      [2]*client
 }
 
 func (s *service) SendSampled(ev SamplableEvent) {
 	if ev == nil {
 		return
 	}
-	s.getBackend(ev.getBackend()).sendSampled(ev)
+	s.getBackend(ev.GetBackend()).sendSampled(ev)
 }
 
 func NewService() MetricsService {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	return &service{
-		clients: map[MetricsBackend]*client{
+		clients: [2]*client{
 			ampl: {
 				aggregatableMap:  make(map[string]SamplableEvent),
 				aggregatableChan: make(chan SamplableEvent, bufferSize),
@@ -123,7 +103,7 @@ func (s *service) SetDeviceId(t string) {
 	s.deviceId = t
 }
 
-func (s *service) getDeviceId() string {
+func (s *service) GetDeviceId() string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.deviceId
@@ -135,7 +115,7 @@ func (s *service) SetPlatform(p string) {
 	s.platform = p
 }
 
-func (s *service) getPlatform() string {
+func (s *service) GetPlatform() string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.platform
@@ -147,7 +127,7 @@ func (s *service) SetUserId(id string) {
 	s.userId = id
 }
 
-func (s *service) getUserId() string {
+func (s *service) GetUserId() string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.userId
@@ -159,7 +139,7 @@ func (s *service) SetAppVersion(version string) {
 	s.appVersion = version
 }
 
-func (s *service) getAppVersion() string {
+func (s *service) GetAppVersion() string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.appVersion
@@ -172,7 +152,7 @@ func (s *service) SetStartVersion(version string) {
 	s.startVersion = version
 }
 
-func (s *service) getStartVersion() string {
+func (s *service) GetStartVersion() string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.startVersion
@@ -185,7 +165,7 @@ func (s *service) Run() {
 		c.ctx, c.cancel = context.WithCancel(context.Background())
 		c.batcher = mb.New[amplitude.Event](0)
 		c.closeChannel = make(chan struct{})
-		go c.startAggregating(s)
+		go c.startAggregating()
 		go c.startSendingBatchMessages(s)
 	}
 }
@@ -198,14 +178,14 @@ func (s *service) Close() {
 	defer s.lock.Unlock()
 }
 
-func (s *service) Send(ev Event) {
+func (s *service) Send(ev amplitude.Event) {
 	if ev == nil {
 		return
 	}
-	s.getBackend(ev.getBackend()).send(s, ev)
+	s.getBackend(ev.GetBackend()).send(ev)
 }
 
-func (s *service) getBackend(backend MetricsBackend) *client {
+func (s *service) getBackend(backend amplitude.MetricsBackend) *client {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 

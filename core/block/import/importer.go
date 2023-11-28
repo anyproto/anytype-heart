@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/metrics/amplitude"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -414,8 +415,9 @@ func (i *Import) readResultFromPool(pool *workerpool.WorkerPool,
 	}
 	return details
 }
-func (i *Import) recordEvent(event metrics.EventRepresentable) {
-	metrics.SharedClient.RecordEvent(event)
+
+func (i *Import) recordEvent(event amplitude.Event) {
+	metrics.Service.Send(event)
 }
 
 func convertType(cType string) pb.RpcObjectImportListImportResponseType {

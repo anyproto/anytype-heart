@@ -3,9 +3,10 @@ package amplitude
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/valyala/fastjson"
 )
 
 // Client manages the communication to the Amplitude API
@@ -13,31 +14,26 @@ type Client struct {
 	eventEndpoint string
 	key           string
 	client        *http.Client
+	arenaPool     *fastjson.ArenaPool
 }
 
-type Event struct {
-	AppVersion      string                 `json:"app_version,omitempty"`
-	DeviceID        string                 `json:"device_id,omitempty"`
-	EventID         int                    `json:"event_id,omitempty"`
-	EventProperties map[string]interface{} `json:"event_properties,omitempty"`
-	EventType       string                 `json:"event_type,omitempty"`
-	Groups          map[string]interface{} `json:"groups,omitempty"`
-	OsName          string                 `json:"os_name,omitempty"`
-	OsVersion       string                 `json:"os_version,omitempty"`
-	Platform        string                 `json:"platform,omitempty"`
-	ProductID       string                 `json:"productId,omitempty"`
-	Quantity        int                    `json:"quantity,omitempty"`
-	SessionID       int64                  `json:"session_id,omitempty"`
-	StartVersion    string                 `json:"start_version,omitempty"`
-	Time            int64                  `json:"time,omitempty"`
-	UserID          string                 `json:"user_id,omitempty"`
-	UserProperties  map[string]interface{} `json:"user_properties,omitempty"`
+type AppInfoProvider interface {
+	GetAppVersion() string
+	GetStartVersion() string
+	GetDeviceId() string
+	GetPlatform() string
+	GetUserId() string
 }
 
-type EventRequest struct {
-	APIKey string  `json:"api_key,omitempty"`
-	Events []Event `json:"events,omitempty"`
+type Event interface {
+	GetBackend() MetricsBackend
+	MarshalFastJson(arena *fastjson.Arena) JsonEvent
+	SetTimestamp()
+	GetTimestamp() int64
 }
+
+type MetricsBackend int
+type JsonEvent *fastjson.Value
 
 // New client with API key
 func New(eventEndpoint string, key string) *Client {
@@ -45,6 +41,7 @@ func New(eventEndpoint string, key string) *Client {
 		eventEndpoint: eventEndpoint,
 		key:           key,
 		client:        new(http.Client),
+		arenaPool:     &fastjson.ArenaPool{},
 	}
 }
 
@@ -52,18 +49,41 @@ func (c *Client) SetClient(client *http.Client) {
 	c.client = client
 }
 
-func (c *Client) Events(events []Event) error {
-	req := EventRequest{
-		APIKey: c.key,
-		Events: events,
-	}
-	evJSON, err := json.Marshal(req)
-	if err != nil {
-		return err
+func (c *Client) SendEvents(amplEvents []Event, info AppInfoProvider) error {
+	arena := c.arenaPool.Get()
+	appVersion := arena.NewString(info.GetAppVersion())
+	deviceId := arena.NewString(info.GetDeviceId())
+	platform := arena.NewString(info.GetPlatform())
+	startVersion := arena.NewString(info.GetStartVersion())
+	userId := arena.NewString(info.GetUserId())
+
+	req := arena.NewObject()
+	req.Set("api_key", arena.NewString(c.key))
+
+	events := arena.NewArray()
+	for i, ev := range amplEvents {
+		ampEvent := *ev.MarshalFastJson(arena)
+		ampEvent.Set("app_version", appVersion)
+		ampEvent.Set("device_id", deviceId)
+		ampEvent.Set("platform", platform)
+		ampEvent.Set("start_version", startVersion)
+		ampEvent.Set("user_id", userId)
+		ampEvent.Set("time", arena.NewNumberInt(int(ev.GetTimestamp())))
+
+		events.SetArrayItem(i, &ampEvent)
 	}
 
+	req.Set("events", events)
+
+	evJSON := req.MarshalTo(nil)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	defer func() {
+		cancel()
+		//flush arena
+		arena.Reset()
+		c.arenaPool.Put(arena)
+	}()
 	r, err := http.NewRequestWithContext(ctx, "POST", c.eventEndpoint, bytes.NewReader(evJSON))
 	if err != nil {
 		return err
@@ -76,8 +96,4 @@ func (c *Client) Events(events []Event) error {
 	}
 
 	return err
-}
-
-func (c *Client) Event(msg Event) error {
-	return c.Events([]Event{msg})
 }

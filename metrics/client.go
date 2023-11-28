@@ -21,16 +21,14 @@ type client struct {
 	closeChannel     chan struct{}
 }
 
-func (c *client) startAggregating(info appInfoProvider) {
-	c.lock.RLock()
+func (c *client) startAggregating() {
 	ctx := c.ctx
-	c.lock.RUnlock()
 	go func() {
 		ticker := time.NewTicker(sendInterval)
 		for {
 			select {
 			case <-ticker.C:
-				c.recordAggregatedData(info)
+				c.recordAggregatedData()
 			case ev := <-c.aggregatableChan:
 				c.lock.Lock()
 
@@ -45,7 +43,7 @@ func (c *client) startAggregating(info appInfoProvider) {
 
 				c.lock.Unlock()
 			case <-ctx.Done():
-				c.recordAggregatedData(info)
+				c.recordAggregatedData()
 				// we close here so that we are sure that we don't lose the aggregated data
 				err := c.batcher.Close()
 				if err != nil {
@@ -57,10 +55,8 @@ func (c *client) startAggregating(info appInfoProvider) {
 	}()
 }
 
-func (c *client) startSendingBatchMessages(info appInfoProvider) {
-	c.lock.RLock()
+func (c *client) startSendingBatchMessages(info amplitude.AppInfoProvider) {
 	ctx := c.ctx
-	c.lock.RUnlock()
 	attempt := 0
 	for {
 		c.lock.Lock()
@@ -112,16 +108,12 @@ func (c *client) Close() {
 	c.batcher = nil
 }
 
-func (c *client) sendNextBatch(info appInfoProvider, b *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
+func (c *client) sendNextBatch(info amplitude.AppInfoProvider, b *mb.MB[amplitude.Event], msgs []amplitude.Event) (err error) {
 	if len(msgs) == 0 {
 		return
 	}
 
-	var events []amplitude.Event
-	for _, ev := range msgs {
-		events = append(events, ev)
-	}
-	err = c.amplitude.Events(events)
+	err = c.amplitude.SendEvents(msgs, info)
 	if err != nil {
 		clientMetricsLog.
 			With("unsent messages", len(msgs)+c.batcher.Len()).
@@ -131,23 +123,21 @@ func (c *client) sendNextBatch(info appInfoProvider, b *mb.MB[amplitude.Event], 
 		}
 	} else {
 		clientMetricsLog.
-			With("user-id", info.getUserId()).
+			With("user-id", info.GetUserId()).
 			With("messages sent", len(msgs)).
 			Debug("events sent to amplitude")
 	}
 	return
 }
 
-func (c *client) recordAggregatedData(info appInfoProvider) {
-	var events []SamplableEvent
+func (c *client) recordAggregatedData() {
 	c.lock.RLock()
-	for k, ev := range c.aggregatableMap {
-		events = append(events, ev)
-		delete(c.aggregatableMap, k)
-	}
+	toSend := c.aggregatableMap
+	c.aggregatableMap = make(map[string]SamplableEvent)
 	c.lock.RUnlock()
-	for _, ev := range events {
-		c.send(info, ev)
+	// итерейтим сразу старую мапу и скармливаем ГЦ
+	for _, ev := range toSend {
+		c.send(ev)
 	}
 }
 
@@ -158,34 +148,17 @@ func (c *client) sendSampled(ev SamplableEvent) {
 	}
 }
 
-func (c *client) send(info appInfoProvider, e Event) {
-	ev := e.get()
-	if ev == nil {
+func (c *client) send(e amplitude.Event) {
+	c.lock.RLock()
+	if e == nil {
+		c.lock.RUnlock()
 		return
 	}
-	c.lock.RLock()
-	ampEvent := amplitude.Event{
-		UserID:          info.getUserId(),
-		Platform:        info.getPlatform(),
-		DeviceID:        info.getDeviceId(),
-		EventType:       ev.eventType,
-		EventProperties: ev.eventData,
-		AppVersion:      info.getAppVersion(),
-		StartVersion:    info.getStartVersion(),
-		Time:            time.Now().Unix() * 1000,
-	}
-
+	e.SetTimestamp()
 	b := c.batcher
 	c.lock.RUnlock()
 	if b == nil {
 		return
 	}
-	b.Add(c.ctx, ampEvent)
-	clientMetricsLog.
-		With("event-type", ev.eventType).
-		With("event-data", ev.eventData).
-		With("user-id", info.getUserId()).
-		With("platform", info.getPlatform()).
-		With("device-id", info.getDeviceId()).
-		Debug("event added to batcher")
+	b.Add(c.ctx, e)
 }
