@@ -1,6 +1,6 @@
 //go:generate mockgen -package file_test -destination block_service_mock_test.go github.com/anyproto/anytype-heart/core/block/editor/file BlockService
 
-package file_test
+package fileuploader_test
 
 import (
 	"context"

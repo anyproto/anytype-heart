@@ -48,6 +48,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
@@ -209,6 +210,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
 		// Files
+		Register(fileuploader.New()).
 		Register(rpcstore.New()).
 		Register(fileservice.New()).
 		Register(filestorage.New()).

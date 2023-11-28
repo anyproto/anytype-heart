@@ -38,7 +38,7 @@ type Page struct {
 }
 
 func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
-	file := file.NewFile(sb, f.fileBlockService, f.tempDirProvider, f.fileService, f.picker, f.fileObjectService)
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService)
 	return &Page{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, f.objectStore, f.layoutConverter),
@@ -48,10 +48,10 @@ func (f *ObjectFactory) newPage(sb smartblock.SmartBlock) *Page {
 			f.objectStore,
 			f.eventSender,
 		),
-		File: file,
+		File: fileComponent,
 		Clipboard: clipboard.NewClipboard(
 			sb,
-			file,
+			fileComponent,
 			f.tempDirProvider,
 			f.objectStore,
 			f.fileService,

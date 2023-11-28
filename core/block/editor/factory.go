@@ -13,11 +13,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/getblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -32,21 +34,23 @@ type accountService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService    bookmark.BookmarkService
-	fileBlockService   file.BlockService
-	layoutConverter    converter.LayoutConverter
-	objectStore        objectstore.ObjectStore
-	sourceService      source.Service
-	tempDirProvider    core.TempDirProvider
-	fileService        files.Service
-	config             *config.Config
-	picker             getblock.ObjectGetter
-	eventSender        event.Sender
-	restrictionService restriction.Service
-	indexer            smartblock.Indexer
-	spaceService       spaceService
-	accountService     accountService
-	fileObjectService  fileobject.Service
+	bookmarkService     bookmark.BookmarkService
+	fileBlockService    file.BlockService
+	layoutConverter     converter.LayoutConverter
+	objectStore         objectstore.ObjectStore
+	sourceService       source.Service
+	tempDirProvider     core.TempDirProvider
+	fileService         files.Service
+	config              *config.Config
+	picker              getblock.ObjectGetter
+	eventSender         event.Sender
+	restrictionService  restriction.Service
+	indexer             smartblock.Indexer
+	spaceService        spaceService
+	accountService      accountService
+	fileObjectService   fileobject.Service
+	processService      process.Service
+	fileUploaderService fileuploader.Service
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -69,6 +73,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.spaceService = app.MustComponent[spaceService](a)
 	f.accountService = app.MustComponent[accountService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
+	f.processService = app.MustComponent[process.Service](a)
+	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 
 	return nil
 }

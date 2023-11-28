@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -57,13 +57,13 @@ type DetailsSetter interface {
 }
 
 type service struct {
-	detailsSetter  DetailsSetter
-	creator        ObjectCreator
-	store          objectstore.ObjectStore
-	linkPreview    linkpreview.LinkPreview
-	tempDirService core.TempDirProvider
-	fileService    files.Service
-	spaceService   space.Service
+	detailsSetter       DetailsSetter
+	creator             ObjectCreator
+	store               objectstore.ObjectStore
+	linkPreview         linkpreview.LinkPreview
+	tempDirService      core.TempDirProvider
+	spaceService        space.Service
+	fileUploaderFactory fileuploader.Service
 }
 
 func New() Service {
@@ -76,8 +76,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.fileService = app.MustComponent[files.Service](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
+	s.fileUploaderFactory = app.MustComponent[fileuploader.Service](a)
 	return nil
 }
 
@@ -251,7 +251,7 @@ func (s *service) ContentUpdaters(spaceID string, url string) (chan func(content
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(spaceID, s.fileService, s.tempDirService.TempDir(), data.Title, data.ImageUrl)
+			hash, err := s.loadImage(spaceID, data.Title, data.ImageUrl)
 			if err != nil {
 				log.Errorf("load image: %s", err)
 				return
@@ -265,7 +265,7 @@ func (s *service) ContentUpdaters(spaceID string, url string) (chan func(content
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(spaceID, s.fileService, s.tempDirService.TempDir(), "", data.FaviconUrl)
+			hash, err := s.loadImage(spaceID, "", data.FaviconUrl)
 			if err != nil {
 				log.Errorf("load favicon: %s", err)
 				return
@@ -306,7 +306,10 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 	return nil
 }
 
-func loadImage(spaceID string, fileService files.Service, tempDir string, title, url string) (hash string, err error) {
+func (s *service) loadImage(spaceId string, title, url string) (hash string, err error) {
+	uploader := s.fileUploaderFactory.NewUploader(spaceId)
+
+	tempDir := s.tempDirService.TempDir()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
@@ -352,12 +355,6 @@ func loadImage(spaceID string, fileService files.Service, tempDir string, title,
 	if title != "" {
 		fileName = title
 	}
-	_ = fileName
-	// TODO Create object properly
-	//im, err := fileService.ImageAdd(context.Background(), spaceID, files.WithReader(tmpFile), files.WithName(fileName))
-	//if err != nil {
-	//	return
-	//}
-	//return im.Hash(), nil
-	return "", fmt.Errorf("not implemented")
+	res := uploader.SetName(fileName).SetFile(tmpFile.Name()).Upload(ctx)
+	return res.FileObjectId, res.Err
 }

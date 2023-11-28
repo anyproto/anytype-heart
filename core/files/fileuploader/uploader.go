@@ -1,4 +1,4 @@
-package file
+package fileuploader
 
 import (
 	"bufio"
@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/h2non/filetype"
 
 	"github.com/anyproto/anytype-heart/core/block/getblock"
@@ -23,11 +24,49 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	oserror "github.com/anyproto/anytype-heart/util/os"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
+
+var log = logging.Logger("file-uploader")
+
+type Service interface {
+	app.Component
+
+	NewUploader(spaceId string) Uploader
+}
+
+type service struct {
+	fileService       files.Service
+	tempDirProvider   core.TempDirProvider
+	picker            getblock.ObjectGetter
+	fileObjectService fileobject.Service
+}
+
+func New() Service {
+	return &service{}
+}
+
+func (f *service) NewUploader(spaceId string) Uploader {
+	return NewUploader(spaceId, f.fileService, f.tempDirProvider, f.picker, f.fileObjectService)
+}
+
+const CName = "file-uploader"
+
+func (f *service) Name() string {
+	return CName
+}
+
+func (f *service) Init(a *app.App) error {
+	f.fileService = app.MustComponent[files.Service](a)
+	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	f.picker = app.MustComponent[getblock.ObjectGetter](a)
+	f.fileObjectService = app.MustComponent[fileobject.Service](a)
+	return nil
+}
 
 var (
 	// limiting overall file upload goroutines
@@ -59,6 +98,7 @@ type Uploader interface {
 	Upload(ctx context.Context) (result UploadResult)
 	UploadAsync(ctx context.Context) (ch chan UploadResult)
 }
+
 type UploadResult struct {
 	Name         string
 	Type         model.BlockContentFileType
@@ -90,9 +130,8 @@ func (ur UploadResult) ToBlock() file.Block {
 }
 
 type uploader struct {
+	spaceId           string
 	fileObjectService fileobject.Service
-	spaceID           string
-	service           BlockService
 	picker            getblock.ObjectGetter
 	block             file.Block
 	getReader         func(ctx context.Context) (*fileReader, error)
@@ -113,15 +152,13 @@ type uploader struct {
 
 func NewUploader(
 	spaceID string,
-	s BlockService,
 	fileService files.Service,
 	provider core.TempDirProvider,
 	picker getblock.ObjectGetter,
 	fileObjectService fileobject.Service,
 ) Uploader {
 	return &uploader{
-		spaceID:           spaceID,
-		service:           s,
+		spaceId:           spaceID,
 		picker:            picker,
 		fileService:       fileService,
 		tempDirProvider:   provider,
@@ -392,7 +429,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		fileKeys *domain.FileKeys
 	)
 	if u.fileType == model.BlockContentFile_Image {
-		im, keys, e := u.fileService.ImageAdd(ctx, u.spaceID, opts...)
+		im, keys, e := u.fileService.ImageAdd(ctx, u.spaceId, opts...)
 		if e == image.ErrFormat || e == mill.ErrFormatSupportNotEnabled {
 			e = nil
 			return u.SetType(model.BlockContentFile_File).Upload(ctx)
@@ -409,7 +446,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.Size = orig.Meta().Size
 		}
 	} else {
-		fl, keys, e := u.fileService.FileAdd(ctx, u.spaceID, opts...)
+		fl, keys, e := u.fileService.FileAdd(ctx, u.spaceId, opts...)
 		if e != nil {
 			err = e
 			return
@@ -421,7 +458,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			result.Size = meta.Size
 		}
 	}
-	fileObjectId, fileDetails, err := u.fileObjectService.Create(ctx, u.spaceID, fileobject.CreateRequest{
+	fileObjectId, fileDetails, err := u.fileObjectService.Create(ctx, u.spaceId, fileobject.CreateRequest{
 		FileId:         fileId,
 		EncryptionKeys: fileKeys.EncryptionKeys,
 		IsImported:     u.origin == model.ObjectOrigin_import,
@@ -456,9 +493,13 @@ func (u *uploader) detectType(buf *fileReader) model.BlockContentFileType {
 	return file.DetectTypeByMIME(tp.MIME.Value)
 }
 
+type FileComponent interface {
+	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
+}
+
 func (u *uploader) updateBlock() {
 	if u.smartBlockID != "" && u.block != nil {
-		err := getblock.Do(u.picker, u.smartBlockID, func(f File) error {
+		err := getblock.Do(u.picker, u.smartBlockID, func(f FileComponent) error {
 			return f.UpdateFile(u.block.Model().Id, u.groupID, func(b file.Block) error {
 				b.SetModel(u.block.Copy().Model().GetFile())
 				return nil

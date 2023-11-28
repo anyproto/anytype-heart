@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -41,10 +40,14 @@ type Service interface {
 	MigrateBlocks(st *state.State, spc source.Space, keys []*pb.ChangeFileKeys)
 }
 
+type objectCreatorService interface {
+	CreateSmartBlockFromStateInSpace(ctx context.Context, space space.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *types.Struct, err error)
+}
+
 type service struct {
 	spaceService  space.Service
 	resolver      idresolver.Resolver
-	objectCreator objectcreator.Service
+	objectCreator objectCreatorService
 	fileService   files.Service
 	fileSync      filesync.FileSync
 	objectStore   objectstore.ObjectStore
@@ -61,7 +64,7 @@ func (s *service) Name() string {
 func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.resolver = app.MustComponent[idresolver.Resolver](a)
-	s.objectCreator = app.MustComponent[objectcreator.Service](a)
+	s.objectCreator = app.MustComponent[objectCreatorService](a)
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)

@@ -489,8 +489,8 @@ func (s *Service) CreateAndUploadFile(
 	return
 }
 
-func (s *Service) UploadFile(ctx context.Context, spaceID string, req FileUploadRequest) (hash string, err error) {
-	upl := file.NewUploader(spaceID, s, s.fileService, s.tempDirProvider, s, s.fileObjectService)
+func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (hash string, err error) {
+	upl := s.fileUploaderService.NewUploader(spaceId)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
@@ -530,9 +530,9 @@ func (s *Service) SetFileStyle(
 
 func (s *Service) UploadFileBlockWithHash(
 	contextID string, req UploadRequest,
-) (hash string, err error) {
+) (fileObjectId string, err error) {
 	err = Do(s, contextID, func(b file.File) error {
-		res, err := b.UploadFileWithHash(req.BlockId, file.FileSource{
+		fileObjectId, err = b.UploadFileWithHash(req.BlockId, file.FileSource{
 			Path:    req.FilePath,
 			Url:     req.Url,
 			GroupID: "",
@@ -541,11 +541,9 @@ func (s *Service) UploadFileBlockWithHash(
 		if err != nil {
 			return err
 		}
-		hash = res.FileObjectId
 		return nil
 	})
-
-	return hash, err
+	return fileObjectId, err
 }
 
 func (s *Service) Undo(
