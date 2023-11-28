@@ -288,5 +288,5 @@ service ClientCommands {
 
     rpc NotificationList (anytype.Rpc.NotificationList.Request) returns (anytype.Rpc.NotificationList.Response);
 
-    rpc NotificationReply (anytype.Rpc.NotificationReply.Response) returns (anytype.Rpc.NotificationReply.Response);
+    rpc NotificationReply (anytype.Rpc.NotificationReply.Request) returns (anytype.Rpc.NotificationReply.Response);
 }
