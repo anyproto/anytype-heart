@@ -601,6 +601,14 @@
     - [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request)
     - [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype-Rpc-Navigation-ListObjects-Response-Error)
+    - [Rpc.NotificationList](#anytype-Rpc-NotificationList)
+    - [Rpc.NotificationList.Request](#anytype-Rpc-NotificationList-Request)
+    - [Rpc.NotificationList.Response](#anytype-Rpc-NotificationList-Response)
+    - [Rpc.NotificationList.Response.Error](#anytype-Rpc-NotificationList-Response-Error)
+    - [Rpc.NotificationReply](#anytype-Rpc-NotificationReply)
+    - [Rpc.NotificationReply.Request](#anytype-Rpc-NotificationReply-Request)
+    - [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response)
+    - [Rpc.NotificationReply.Response.Error](#anytype-Rpc-NotificationReply-Response-Error)
     - [Rpc.Object](#anytype-Rpc-Object)
     - [Rpc.Object.ApplyTemplate](#anytype-Rpc-Object-ApplyTemplate)
     - [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request)
@@ -881,11 +889,6 @@
     - [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response)
     - [Rpc.Unsplash.Search.Response.Error](#anytype-Rpc-Unsplash-Search-Response-Error)
     - [Rpc.Unsplash.Search.Response.Picture](#anytype-Rpc-Unsplash-Search-Response-Picture)
-    - [Rpc.UserData](#anytype-Rpc-UserData)
-    - [Rpc.UserData.Dump](#anytype-Rpc-UserData-Dump)
-    - [Rpc.UserData.Dump.Request](#anytype-Rpc-UserData-Dump-Request)
-    - [Rpc.UserData.Dump.Response](#anytype-Rpc-UserData-Dump-Response)
-    - [Rpc.UserData.Dump.Response.Error](#anytype-Rpc-UserData-Dump-Response-Error)
     - [Rpc.Wallet](#anytype-Rpc-Wallet)
     - [Rpc.Wallet.CloseSession](#anytype-Rpc-Wallet-CloseSession)
     - [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request)
@@ -1087,6 +1090,8 @@
     - [Rpc.Navigation.Context](#anytype-Rpc-Navigation-Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
+    - [Rpc.NotificationList.Response.Error.Code](#anytype-Rpc-NotificationList-Response-Error-Code)
+    - [Rpc.NotificationReply.Response.Error.Code](#anytype-Rpc-NotificationReply-Response-Error-Code)
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
@@ -1159,7 +1164,6 @@
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype-Rpc-Unsplash-Download-Response-Error-Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
-    - [Rpc.UserData.Dump.Response.Error.Code](#anytype-Rpc-UserData-Dump-Response-Error-Code)
     - [Rpc.Wallet.CloseSession.Response.Error.Code](#anytype-Rpc-Wallet-CloseSession-Response-Error-Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype-Rpc-Wallet-Convert-Response-Error-Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype-Rpc-Wallet-Create-Response-Error-Code)
@@ -1317,6 +1321,9 @@
     - [Event.File.LocalUsage](#anytype-Event-File-LocalUsage)
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Message](#anytype-Event-Message)
+    - [Event.Notification](#anytype-Event-Notification)
+    - [Event.Notification.Send](#anytype-Event-Notification-Send)
+    - [Event.Notification.Update](#anytype-Event-Notification-Update)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
@@ -1424,6 +1431,8 @@
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
+    - [Notification](#anytype-model-Notification)
+    - [Notification.Import](#anytype-model-Notification-Import)
     - [Object](#anytype-model-Object)
     - [Object.ChangePayload](#anytype-model-Object-ChangePayload)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1470,6 +1479,10 @@
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
+    - [Notification.ActionType](#anytype-model-Notification-ActionType)
+    - [Notification.Import.Code](#anytype-model-Notification-Import-Code)
+    - [Notification.Import.Type](#anytype-model-Notification-Import-Type)
+    - [Notification.Status](#anytype-model-Notification-Status)
     - [ObjectOrigin](#anytype-model-ObjectOrigin)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
@@ -1707,6 +1720,8 @@
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
 | MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype-Rpc-Metrics-SetParameters-Request) | [Rpc.Metrics.SetParameters.Response](#anytype-Rpc-Metrics-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
+| NotificationList | [Rpc.NotificationList.Request](#anytype-Rpc-NotificationList-Request) | [Rpc.NotificationList.Response](#anytype-Rpc-NotificationList-Response) |  |
+| NotificationReply | [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response) | [Rpc.NotificationReply.Response](#anytype-Rpc-NotificationReply-Response) |  |
 
  
 
@@ -10410,6 +10425,122 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-NotificationList"></a>
+
+### Rpc.NotificationList
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NotificationList-Request"></a>
+
+### Rpc.NotificationList.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| includeRead | [bool](#bool) |  |  |
+| limit | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NotificationList-Response"></a>
+
+### Rpc.NotificationList.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NotificationList.Response.Error](#anytype-Rpc-NotificationList-Response-Error) |  |  |
+| notifications | [model.Notification](#anytype-model-Notification) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NotificationList-Response-Error"></a>
+
+### Rpc.NotificationList.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NotificationList.Response.Error.Code](#anytype-Rpc-NotificationList-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NotificationReply"></a>
+
+### Rpc.NotificationReply
+
+
+
+
+
+
+
+<a name="anytype-Rpc-NotificationReply-Request"></a>
+
+### Rpc.NotificationReply.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextID | [string](#string) |  |  |
+| id | [string](#string) | repeated | в теории это может быть массовая операция |
+| actionType | [model.Notification.ActionType](#anytype-model-Notification-ActionType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NotificationReply-Response"></a>
+
+### Rpc.NotificationReply.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.NotificationReply.Response.Error](#anytype-Rpc-NotificationReply-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-NotificationReply-Response-Error"></a>
+
+### Rpc.NotificationReply.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.NotificationReply.Response.Error.Code](#anytype-Rpc-NotificationReply-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object"></a>
 
 ### Rpc.Object
@@ -14505,72 +14636,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-UserData"></a>
-
-### Rpc.UserData
-
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump"></a>
-
-### Rpc.UserData.Dump
-
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Request"></a>
-
-### Rpc.UserData.Dump.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Response"></a>
-
-### Rpc.UserData.Dump.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.UserData.Dump.Response.Error](#anytype-Rpc-UserData-Dump-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Response-Error"></a>
-
-### Rpc.UserData.Dump.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.UserData.Dump.Response.Error.Code](#anytype-Rpc-UserData-Dump-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Wallet"></a>
 
 ### Rpc.Wallet
@@ -17299,6 +17364,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-NotificationList-Response-Error-Code"></a>
+
+### Rpc.NotificationList.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
+<a name="anytype-Rpc-NotificationReply-Response-Error-Code"></a>
+
+### Rpc.NotificationReply.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+
+
+
 <a name="anytype-Rpc-Object-ApplyTemplate-Response-Error-Code"></a>
 
 ### Rpc.Object.ApplyTemplate.Response.Error.Code
@@ -18264,19 +18357,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | RATE_LIMIT_EXCEEDED | 100 | ... |
-
-
-
-<a name="anytype-Rpc-UserData-Dump-Response-Error-Code"></a>
-
-### Rpc.UserData.Dump.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
 
 
 
@@ -20732,6 +20812,48 @@ Precondition: user A opened a block
 | fileLimitReached | [Event.File.LimitReached](#anytype-Event-File-LimitReached) |  |  |
 | fileSpaceUsage | [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage) |  |  |
 | fileLocalUsage | [Event.File.LocalUsage](#anytype-Event-File-LocalUsage) |  |  |
+| notificationSend | [Event.Notification.Send](#anytype-Event-Notification-Send) |  |  |
+| notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Notification"></a>
+
+### Event.Notification
+
+
+
+
+
+
+
+<a name="anytype-Event-Notification-Send"></a>
+
+### Event.Notification.Send
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| notification | [model.Notification](#anytype-model-Notification) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Notification-Update"></a>
+
+### Event.Notification.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| notification | [model.Notification](#anytype-model-Notification) |  |  |
 
 
 
@@ -22425,6 +22547,43 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-Notification"></a>
+
+### Notification
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| createTime | [int64](#int64) |  |  |
+| status | [Notification.Status](#anytype-model-Notification-Status) |  |  |
+| isLocal | [bool](#bool) |  |  |
+| import | [Notification.Import](#anytype-model-Notification-Import) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Notification-Import"></a>
+
+### Notification.Import
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processId | [string](#string) |  |  |
+| errorCode | [Notification.Import.Code](#anytype-model-Notification-Import-Code) |  |  |
+| importType | [Notification.Import.Type](#anytype-model-Notification-Import-Type) |  |  |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Object"></a>
 
 ### Object
@@ -23166,6 +23325,70 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype-model-Notification-ActionType"></a>
+
+### Notification.ActionType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| RETRY | 0 |  |
+| REPORT | 1 |  |
+| OPEN_OBJECT | 2 |  |
+| OPEN_SPACE | 3 |  |
+| CLOSE | 4 |  |
+
+
+
+<a name="anytype-model-Notification-Import-Code"></a>
+
+### Notification.Import.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| INTERNAL_ERROR | 3 |  |
+| NO_OBJECTS_TO_IMPORT | 5 |  |
+| IMPORT_IS_CANCELED | 6 |  |
+| LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED | 7 |  |
+| FILE_LOAD_ERROR | 8 |  |
+
+
+
+<a name="anytype-model-Notification-Import-Type"></a>
+
+### Notification.Import.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Notion | 0 |  |
+| Markdown | 1 |  |
+| External | 2 | external developers use it |
+| Pb | 3 |  |
+| Html | 4 |  |
+| Txt | 5 |  |
+| Csv | 6 |  |
+
+
+
+<a name="anytype-model-Notification-Status"></a>
+
+### Notification.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Send | 0 |  |
+| Shown | 1 |  |
+| Read | 2 |  |
+| Replied | 3 |  |
 
 
 

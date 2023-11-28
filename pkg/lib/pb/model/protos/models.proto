@@ -888,3 +888,51 @@ message Metadata {
     }
   }
 }
+
+message Notification {
+  string id = 1;
+  int64 createTime = 2;
+  Status status = 4;
+  bool isLocal = 5;
+  oneof payload {
+    Import import = 6;
+  }
+  message Import {
+    string processId = 1;
+    Code errorCode = 2;
+    Type importType = 3;
+    string spaceId = 4;
+    enum Code {
+      NULL = 0;
+      UNKNOWN_ERROR = 1;
+      BAD_INPUT = 2;
+      INTERNAL_ERROR = 3;
+      NO_OBJECTS_TO_IMPORT = 5;
+      IMPORT_IS_CANCELED = 6;
+      LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED = 7;
+      FILE_LOAD_ERROR = 8;
+    }
+    enum Type {
+      Notion = 0;
+      Markdown = 1;
+      External = 2; // external developers use it
+      Pb = 3;
+      Html = 4;
+      Txt = 5;
+      Csv = 6;
+    };
+  }
+  enum Status {
+    Send = 0;
+    Shown = 1;
+    Read = 2;
+    Replied = 3;
+  }
+  enum ActionType {
+    RETRY = 0;
+    REPORT = 1;
+    OPEN_OBJECT = 2;
+    OPEN_SPACE = 3;
+    CLOSE = 4;
+  }
+}
