@@ -5749,9 +5749,8 @@ message Rpc {
 
     message NotificationReply {
         message Request {
-            string contextID = 1; // notification object ID
-            repeated string id = 2;
-            anytype.model.Notification.ActionType actionType = 3;
+            repeated string id = 1;
+            anytype.model.Notification.ActionType actionType = 2;
         }
         message Response {
             Error error = 1;

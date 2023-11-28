@@ -19,9 +19,8 @@ type Notifications interface {
 	CreateAndSendLocal(notification *model.Notification) error
 	CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error
 	UpdateAndSend(notification *model.Notification) error
-	Reply(contextID string, notificationID []string, notificationAction model.NotificationActionType) error
+	Reply(notificationID []string, notificationAction model.NotificationActionType) error
 	List(limit int64, includeRead bool) ([]*model.Notification, error)
-	IsNotificationRead(notification *model.Notification) bool
 }
 
 type notificationService struct {
@@ -90,7 +89,7 @@ func (n *notificationService) UpdateAndSend(notification *model.Notification) er
 	return nil
 }
 
-func (n *notificationService) Reply(contextID string, notificationIDs []string, notificationAction model.NotificationActionType) error {
+func (n *notificationService) Reply(notificationIDs []string, notificationAction model.NotificationActionType) error {
 	for _, id := range notificationIDs {
 		status := model.Notification_Replied
 		if notificationAction == model.Notification_CLOSE {
@@ -125,7 +124,7 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 		if addCount == limit {
 			break
 		}
-		if n.IsNotificationRead(notification) && !includeRead {
+		if n.isNotificationRead(notification) && !includeRead {
 			continue
 		}
 		result = append(result, notification)
@@ -134,6 +133,6 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 	return result, nil
 }
 
-func (n *notificationService) IsNotificationRead(notification *model.Notification) bool {
+func (n *notificationService) isNotificationRead(notification *model.Notification) bool {
 	return notification.GetStatus() == model.Notification_Read || notification.GetStatus() == model.Notification_Replied
 }
