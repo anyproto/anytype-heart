@@ -21,7 +21,6 @@ var (
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeWidget,
 		smartblock.SmartBlockTypeWorkspace,
-		smartblock.SmartBlockTypeNotificationObject,
 	}
 )
 
@@ -42,10 +41,12 @@ func (d DerivedSmartblockIds) IDs() []string {
 		d.Home,
 		d.Archive,
 		d.Widgets,
-		d.Notification,
 	}
 	if d.Profile != "" {
 		allIds = append(allIds, d.Profile)
+	}
+	if d.Notification != "" {
+		allIds = append(allIds, d.Notification)
 	}
 	return allIds
 }

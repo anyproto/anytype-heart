@@ -1838,6 +1838,16 @@ func (s *State) CopyNotifications() map[string]*model.Notification {
 	return notifications
 }
 
+func (s *State) ListNotifications() map[string]*model.Notification {
+	if s.notifications != nil {
+		return s.notifications
+	}
+	if s.parent != nil {
+		return s.parent.notifications
+	}
+	return nil
+}
+
 // UniqueKeyInternal is the second part of uniquekey.UniqueKey. It used together with smartblock type for the ID derivation
 // which will be unique and reproducible within the same space
 func (s *State) UniqueKeyInternal() string {

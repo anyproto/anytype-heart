@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -17,16 +18,17 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+var log = logging.Logger("notifications")
+
 const CName = "notificationService"
 
 type Notifications interface {
-	app.Component
+	app.ComponentRunnable
 	CreateAndSendLocal(notification *model.Notification) error
 	CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error
 	UpdateAndSend(notification *model.Notification) error
 	Reply(contextID string, notificationID []string, notificationAction model.NotificationActionType) error
 	List(limit int64, includeRead bool) ([]*model.Notification, error)
-	IsNotificationRead(notification *model.Notification) bool
 }
 
 type notificationService struct {
@@ -52,6 +54,36 @@ func (n *notificationService) Name() (name string) {
 	return CName
 }
 
+func (n *notificationService) Run(ctx context.Context) (err error) {
+	go n.indexNotifications(ctx)
+	return nil
+}
+
+func (n *notificationService) indexNotifications(ctx context.Context) {
+	personalSpace, err := n.spaceService.GetPersonalSpace(ctx)
+	if err != nil {
+		log.Errorf("failed to get notification object: %s", err)
+	}
+	var notifications map[string]*model.Notification
+	err = block.DoState(n.picker, personalSpace.DerivedIDs().Notification, func(s *state.State, sb smartblock.SmartBlock) error {
+		notifications = s.ListNotifications()
+		return nil
+	})
+	if err != nil {
+		log.Errorf("failed to get notifications from object: %s", err)
+	}
+	for _, notification := range notifications {
+		err := n.notificationStore.SaveNotification(notification)
+		if err != nil {
+			log.Errorf("failed to save notification %s: %s", notification.Id, err)
+		}
+	}
+}
+
+func (n *notificationService) Close(ctx context.Context) (err error) {
+	return nil
+}
+
 func (n *notificationService) CreateAndSendLocal(notification *model.Notification) error {
 	n.eventSender.Broadcast(&pb.Event{
 		Messages: []*pb.EventMessage{
@@ -72,7 +104,7 @@ func (n *notificationService) CreateAndSendLocal(notification *model.Notificatio
 }
 
 func (n *notificationService) CreateAndSendCrossDevice(ctx context.Context, spaceID string, notification *model.Notification) error {
-	spc, err := n.spaceService.Get(ctx, spaceID)
+	spc, err := n.spaceService.GetPersonalSpace(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get space for notification: %w", err)
 	}
@@ -136,7 +168,11 @@ func (n *notificationService) Reply(contextID string, notificationIDs []string, 
 		}
 
 		if !notification.IsLocal {
-			err = block.DoState(n.picker, contextID, func(s *state.State, sb smartblock.SmartBlock) error {
+			spc, err := n.spaceService.GetPersonalSpace(context.Background())
+			if err != nil {
+				return err
+			}
+			err = block.DoState(n.picker, spc.DerivedIDs().Notification, func(s *state.State, sb smartblock.SmartBlock) error {
 				s.AddNotification(notification)
 				return nil
 			})
@@ -162,7 +198,7 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 		if addCount == limit {
 			break
 		}
-		if n.IsNotificationRead(notification) && !includeRead {
+		if n.isNotificationRead(notification) && !includeRead {
 			continue
 		}
 		result = append(result, notification)
@@ -171,6 +207,6 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 	return result, nil
 }
 
-func (n *notificationService) IsNotificationRead(notification *model.Notification) bool {
+func (n *notificationService) isNotificationRead(notification *model.Notification) bool {
 	return notification.GetStatus() == model.Notification_Read || notification.GetStatus() == model.Notification_Replied
 }
