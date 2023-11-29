@@ -216,8 +216,8 @@ func (m *subObjectsAndProfileLinksMigration) migrateFilter(filter *model.BlockCo
 func (m *subObjectsAndProfileLinksMigration) canRelationContainObjectValues(format model.RelationFormat) bool {
 	switch format {
 	case
-		model.RelationFormat_status,
-		model.RelationFormat_tag,
+		model.RelationFormat_select,
+		model.RelationFormat_multiselect,
 		model.RelationFormat_object:
 		return true
 	default:
