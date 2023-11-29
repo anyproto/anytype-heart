@@ -115,7 +115,7 @@ func TestNotificationService_Reply(t *testing.T) {
 	t.Run("action = close - status == read", func(t *testing.T) {
 		//given
 		storeFixture := NewTestStore(t)
-		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created})
+		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
 
 		sender := mock_event.NewMockSender(t)
@@ -138,7 +138,7 @@ func TestNotificationService_Reply(t *testing.T) {
 	t.Run("action != close - status == replied", func(t *testing.T) {
 		//given
 		storeFixture := NewTestStore(t)
-		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created})
+		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
 
 		sender := mock_event.NewMockSender(t)
@@ -162,9 +162,9 @@ func TestNotificationService_Reply(t *testing.T) {
 	t.Run("close multiple notifications", func(t *testing.T) {
 		//given
 		storeFixture := NewTestStore(t)
-		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created})
+		err := storeFixture.SaveNotification(&model.Notification{Id: "id", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
-		err = storeFixture.SaveNotification(&model.Notification{Id: "id1", Status: model.Notification_Created})
+		err = storeFixture.SaveNotification(&model.Notification{Id: "id1", Status: model.Notification_Created, IsLocal: true})
 		assert.Nil(t, err)
 
 		sender := mock_event.NewMockSender(t)
