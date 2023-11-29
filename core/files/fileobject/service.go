@@ -91,7 +91,17 @@ func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest)
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
-	return s.createInSpace(ctx, space, req)
+
+	id, object, err = s.createInSpace(ctx, space, req)
+	if err != nil {
+		return "", nil, fmt.Errorf("create in space: %w", err)
+	}
+	err = s.addToSyncQueue(domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.IsImported)
+	if err != nil {
+		return "", nil, fmt.Errorf("add to sync queue: %w", err)
+	}
+
+	return id, object, nil
 }
 
 func (s *service) createInSpace(ctx context.Context, space space.Space, req CreateRequest) (id string, object *types.Struct, err error) {
@@ -117,11 +127,6 @@ func (s *service) createInSpace(ctx context.Context, space space.Space, req Crea
 	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{typeKey}, createState)
 	if err != nil {
 		return "", nil, fmt.Errorf("create object: %w", err)
-	}
-
-	err = s.addToSyncQueue(domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.IsImported)
-	if err != nil {
-		return "", nil, fmt.Errorf("add to sync queue: %w", err)
 	}
 	return id, object, nil
 }
