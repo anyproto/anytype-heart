@@ -188,10 +188,10 @@ func (s *service) GetFileIdFromObject(ctx context.Context, objectId string) (dom
 		return domain.FullFileId{}, fmt.Errorf("get space: %w", err)
 	}
 
-	return s.getFileIdFromObjectInSpace(ctx, space, objectId)
+	return s.getFileIdFromObjectInSpace(space, objectId)
 }
 
-func (s *service) getFileIdFromObjectInSpace(ctx context.Context, space smartblock.Space, objectId string) (domain.FullFileId, error) {
+func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId string) (domain.FullFileId, error) {
 	var fileId string
 	err := space.Do(objectId, func(sb smartblock.SmartBlock) error {
 		fileId = pbtypes.GetString(sb.Details(), bundle.RelationKeyFileId.String())
@@ -226,7 +226,7 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, hash str
 		return hash
 	}
 
-	_, err := s.GetFileIdFromObject(context.Background(), hash)
+	_, err := s.getFileIdFromObjectInSpace(space, hash)
 	// Already migrated
 	if err == nil {
 		return hash
@@ -403,7 +403,7 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 }
 
 func (s *service) DeleteFileData(ctx context.Context, space space.Space, objectId string) error {
-	fullId, err := s.getFileIdFromObjectInSpace(ctx, space, objectId)
+	fullId, err := s.getFileIdFromObjectInSpace(space, objectId)
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}

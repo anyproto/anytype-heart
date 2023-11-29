@@ -119,14 +119,16 @@ func (i *indexer) ReindexSpace(space space.Space) (err error) {
 	// ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if flags.objects {
 		types := []smartblock2.SmartBlockType{
+			// System types first
+			smartblock2.SmartBlockTypeObjectType,
+			smartblock2.SmartBlockTypeRelation,
+			smartblock2.SmartBlockTypeRelationOption,
+
 			smartblock2.SmartBlockTypePage,
 			smartblock2.SmartBlockTypeTemplate,
 			smartblock2.SmartBlockTypeArchive,
 			smartblock2.SmartBlockTypeHome,
 			smartblock2.SmartBlockTypeWorkspace,
-			smartblock2.SmartBlockTypeObjectType,
-			smartblock2.SmartBlockTypeRelation,
-			smartblock2.SmartBlockTypeRelationOption,
 			smartblock2.SmartBlockTypeSpaceView,
 			smartblock2.SmartBlockTypeProfilePage,
 		}
