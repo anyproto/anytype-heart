@@ -81,9 +81,10 @@ func (s *service) Init(a *app.App) error {
 }
 
 type CreateRequest struct {
-	FileId         domain.FileId
-	EncryptionKeys map[string]string
-	IsImported     bool
+	FileId            domain.FileId
+	EncryptionKeys    map[string]string
+	IsImported        bool
+	AdditionalDetails *types.Struct
 }
 
 func (s *service) Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error) {
@@ -116,6 +117,10 @@ func (s *service) createInSpace(ctx context.Context, space space.Space, req Crea
 		return "", nil, fmt.Errorf("get details for file or image: %w", err)
 	}
 	details.Fields[bundle.RelationKeyFileId.String()] = pbtypes.String(req.FileId.String())
+
+	if req.AdditionalDetails != nil {
+		details = pbtypes.StructMerge(details, req.AdditionalDetails, false)
+	}
 
 	createState := state.NewDoc("", nil).(*state.State)
 	createState.SetDetails(details)
@@ -242,6 +247,11 @@ func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId s
 	}
 
 	fileObjectId, _, err = s.createInSpace(context.Background(), space, CreateRequest{
+		AdditionalDetails: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyFileBackupStatus.String(): pbtypes.Int64(int64(syncstatus.StatusSynced)),
+			},
+		},
 		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
 		IsImported:     false, // TODO what to do? Probably need to copy origin detail
