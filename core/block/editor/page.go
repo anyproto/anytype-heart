@@ -127,6 +127,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithDescription,
 					template.WithAddedFeaturedRelation(bundle.RelationKeyType),
+					template.WithAddedFeaturedRelation(bundle.RelationKeyBacklinks),
 					template.WithBookmarkBlocks,
 				)
 			case model.ObjectType_relation:
