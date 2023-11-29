@@ -210,45 +210,43 @@ func (s *service) getFileIdFromObjectInSpace(space smartblock.Space, objectId st
 	}, nil
 }
 
-func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, hash string) string {
-	if hash == "" {
-		return hash
+func (s *service) migrate(space space.Space, keys []*pb.ChangeFileKeys, fileId string) string {
+	if fileId == "" {
+		return fileId
 	}
 	var fileKeys map[string]string
 	for _, k := range keys {
-		if k.Hash == hash {
+		if k.Hash == fileId {
 			fileKeys = k.Keys
 		}
 	}
-
-	// Probably already migrated
-	if len(fileKeys) == 0 {
-		return hash
-	}
-
-	_, err := s.getFileIdFromObjectInSpace(space, hash)
+	_, err := s.getFileIdFromObjectInSpace(space, fileId)
 	// Already migrated
 	if err == nil {
-		return hash
+		return fileId
 	}
 
-	fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(hash))
+	if len(fileKeys) == 0 {
+		log.Warnf("no encryption keys for fileId %s", fileId)
+	}
+
+	fileObjectId, err := s.GetObjectIdByFileId(domain.FileId(fileId))
 	if err == nil {
-		fmt.Println("FILE OBJECT ID", hash, "->", fileObjectId)
+		fmt.Println("FILE OBJECT ID", fileId, "->", fileObjectId)
 		return fileObjectId
 	}
 
 	fileObjectId, _, err = s.createInSpace(context.Background(), space, CreateRequest{
-		FileId:         domain.FileId(hash),
+		FileId:         domain.FileId(fileId),
 		EncryptionKeys: fileKeys,
-		IsImported:     false, // TODO what to do?
+		IsImported:     false, // TODO what to do? Probably need to copy origin detail
 	})
 	if err != nil {
-		log.Errorf("create file object for hash %s: %v", hash, err)
-		return hash
+		log.Errorf("create file object for fileId %s: %v", fileId, err)
+		return fileId
 	}
 
-	fmt.Println("MIGRATED FILE OBJECT ID", hash, "->", fileObjectId)
+	fmt.Println("MIGRATED FILE OBJECT ID", fileId, "->", fileObjectId)
 
 	return fileObjectId
 }
