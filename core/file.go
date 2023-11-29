@@ -118,23 +118,23 @@ func (mw *Middleware) FileSpaceOffload(cctx context.Context, req *pb.RpcFileSpac
 }
 
 func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
-	response := func(hash string, code pb.RpcFileUploadResponseErrorCode, err error) *pb.RpcFileUploadResponse {
-		m := &pb.RpcFileUploadResponse{Error: &pb.RpcFileUploadResponseError{Code: code}, Hash: hash}
+	response := func(objectId string, code pb.RpcFileUploadResponseErrorCode, err error) *pb.RpcFileUploadResponse {
+		m := &pb.RpcFileUploadResponse{Error: &pb.RpcFileUploadResponseError{Code: code}, ObjectId: objectId}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
-	var hash string
+	var objectId string
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		dto := block.FileUploadRequest{RpcFileUploadRequest: *req}
-		hash, err = bs.UploadFile(cctx, req.SpaceId, dto)
+		objectId, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		return
 	})
 	if err != nil {
 		return response("", pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(hash, pb.RpcFileUploadResponseError_NULL, nil)
+	return response(objectId, pb.RpcFileUploadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {

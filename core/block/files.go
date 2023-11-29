@@ -53,7 +53,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 		}
 	}()
 
-	f, err := s.getFileOrLargestImage(ctx, req.Hash)
+	f, err := s.getFileOrLargestImage(ctx, req.ObjectId)
 	if err != nil {
 		return "", fmt.Errorf("get file by hash: %w", err)
 	}

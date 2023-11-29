@@ -9432,7 +9432,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| hash | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | path | [string](#string) |  | path to save file. Temp directory is used if empty |
 
 
@@ -9914,7 +9914,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.File.Upload.Response.Error](#anytype-Rpc-File-Upload-Response-Error) |  |  |
-| hash | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 
@@ -14490,7 +14490,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Unsplash.Download.Response.Error](#anytype-Rpc-Unsplash-Download-Response-Error) |  |  |
-| hash | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 
