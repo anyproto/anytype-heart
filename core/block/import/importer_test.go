@@ -13,8 +13,8 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
-	"github.com/anyproto/anytype-heart/core/block/import/common/mock_converter"
-	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_creator"
+	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
+	"github.com/anyproto/anytype-heart/core/block/import/common/objectcreator/mock_objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
 	pbc "github.com/anyproto/anytype-heart/core/block/import/pb"
 	"github.com/anyproto/anytype-heart/core/block/import/web"
@@ -30,7 +30,7 @@ import (
 func Test_ImportSuccess(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -68,7 +68,7 @@ func Test_ImportSuccess(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.Nil(t, err)
 }
@@ -76,7 +76,7 @@ func Test_ImportSuccess(t *testing.T) {
 func Test_ImportErrorFromConverter(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
@@ -97,7 +97,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "converter error")
@@ -106,7 +106,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 func Test_ImportErrorFromObjectCreator(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -144,7 +144,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 		Type:                  0,
 		Mode:                  0,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	// assert.Contains(t, res.Error(), "creator error")
@@ -153,7 +153,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 func Test_ImportIgnoreErrorMode(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -191,7 +191,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), "converter error")
@@ -200,7 +200,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 	i := Import{}
 
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -240,7 +240,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 		Type:                  0,
 		Mode:                  1,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), "converter error")
@@ -292,7 +292,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 	assert.Nil(t, res)
 }
 
@@ -317,7 +317,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 		Type:                  pb.RpcObjectImportRequest_External,
 		Mode:                  2,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 	assert.NotNil(t, res)
 	assert.Contains(t, res.Error(), common.ErrNoObjectsToImport.Error())
 }
@@ -467,7 +467,7 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 
 func Test_ImportCancelError(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewCancelError(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
@@ -483,7 +483,7 @@ func Test_ImportCancelError(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrCancel))
@@ -491,7 +491,7 @@ func Test_ImportCancelError(t *testing.T) {
 
 func Test_ImportNoObjectToImportError(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
 	i.converters = make(map[string]common.Converter, 0)
@@ -507,7 +507,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
@@ -515,7 +515,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -546,7 +546,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
@@ -555,7 +555,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 	i := Import{}
 	e := common.NewFromError(common.ErrNoObjectsToImport, pb.RpcObjectImportRequest_IGNORE_ERRORS)
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
@@ -593,7 +593,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrNoObjectsToImport))
@@ -601,7 +601,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 
 func Test_ImportErrLimitExceeded(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -633,7 +633,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
@@ -641,7 +641,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 
 func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	i := Import{}
-	converter := mock_converter.NewMockConverter(t)
+	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
 		Snapshot: &pb.ChangeSnapshot{
@@ -673,7 +673,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 		Type:                  0,
 		Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		SpaceId:               "space1",
-	}, model.ObjectOrigin_import)
+	}, model.ObjectOrigin_import, nil)
 
 	assert.NotNil(t, res)
 	assert.True(t, errors.Is(res, common.ErrLimitExceeded))
@@ -755,7 +755,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		expectedRootCollectionID := "id"
 		originalRootCollectionID := "rootCollectionID"
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
@@ -787,7 +787,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import)
+		}, model.ObjectOrigin_import, nil)
 
 		// then
 		assert.Nil(t, err)
@@ -801,7 +801,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionID"
 		creatorError := errors.New("creator error")
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
@@ -833,7 +833,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import)
+		}, model.ObjectOrigin_import, nil)
 
 		// then
 		assert.NotNil(t, err)
@@ -847,7 +847,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionID"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
@@ -871,7 +871,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import)
+		}, model.ObjectOrigin_import, nil)
 
 		// then
 		assert.NotNil(t, err)
@@ -885,7 +885,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionID"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
-		converter := mock_converter.NewMockConverter(t)
+		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
@@ -917,7 +917,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
-		}, model.ObjectOrigin_import)
+		}, model.ObjectOrigin_import, nil)
 
 		// then
 		assert.NotNil(t, err)

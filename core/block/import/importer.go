@@ -99,20 +99,29 @@ func (i *Import) Init(a *app.App) (err error) {
 }
 
 // Import get snapshots from converter or external api and create smartblocks from them
-func (i *Import) Import(ctx context.Context, req *pb.RpcObjectImportRequest, origin model.ObjectOrigin) (string, error) {
+func (i *Import) Import(
+	ctx context.Context,
+	req *pb.RpcObjectImportRequest,
+	origin model.ObjectOrigin,
+	progress process.Progress,
+) (string, error) {
 	if req.SpaceId == "" {
 		return "", fmt.Errorf("spaceId is empty")
 	}
 	i.Lock()
 	defer i.Unlock()
-	progress := i.setupProgressBar(req)
+	isNewProgress := false
+	if progress == nil {
+		progress = i.setupProgressBar(req)
+		isNewProgress = true
+	}
 	var returnedErr error
 	defer func() {
 		i.finishImportProcess(returnedErr, progress)
 		i.sendFileEvents(returnedErr)
 		i.recordEvent(&metrics.ImportFinishedEvent{ID: progress.Id(), ImportType: req.Type.String()})
 	}()
-	if i.s != nil && !req.GetNoProgress() {
+	if i.s != nil && !req.GetNoProgress() && isNewProgress {
 		i.s.ProcessAdd(progress)
 	}
 	i.recordEvent(&metrics.ImportStartedEvent{ID: progress.Id(), ImportType: req.Type.String()})
@@ -136,7 +145,8 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(ctx context.Context,
+func (i *Import) importFromBuiltinConverter(
+	ctx context.Context,
 	req *pb.RpcObjectImportRequest,
 	c common.Converter,
 	progress process.Progress,

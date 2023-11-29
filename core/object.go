@@ -790,7 +790,7 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return m
 	}
 
-	rootCollectionID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import)
+	rootCollectionID, err := getService[importer.Importer](mw).Import(cctx, req, model.ObjectOrigin_import, nil)
 
 	if err == nil {
 		return response(pb.RpcObjectImportResponseError_NULL, rootCollectionID, nil)
@@ -803,6 +803,8 @@ func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImport
 		return response(pb.RpcObjectImportResponseError_IMPORT_IS_CANCELED, "", err)
 	case errors.Is(err, common.ErrLimitExceeded):
 		return response(pb.RpcObjectImportResponseError_LIMIT_OF_ROWS_OR_RELATIONS_EXCEEDED, "", err)
+	case errors.Is(err, common.ErrFileLoad):
+		return response(pb.RpcObjectImportResponseError_FILE_LOAD_ERROR, "", err)
 	default:
 		return response(pb.RpcObjectImportResponseError_INTERNAL_ERROR, "", err)
 	}
@@ -894,7 +896,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := getService[builtinobjects.BuiltinObjects](mw)
-	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Source, req.IsLocal); err != nil {
+	if err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title); err != nil {
 		return response(pb.RpcObjectImportExperienceResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectImportExperienceResponseError_NULL, nil)
