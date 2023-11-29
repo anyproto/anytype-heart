@@ -6255,6 +6255,7 @@ type NotificationImport struct {
 	ErrorCode  NotificationImportCode `protobuf:"varint,2,opt,name=errorCode,proto3,enum=anytype.model.NotificationImportCode" json:"errorCode,omitempty"`
 	ImportType NotificationImportType `protobuf:"varint,3,opt,name=importType,proto3,enum=anytype.model.NotificationImportType" json:"importType,omitempty"`
 	SpaceId    string                 `protobuf:"bytes,4,opt,name=spaceId,proto3" json:"spaceId,omitempty"`
+	Name       string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 }
 
 func (m *NotificationImport) Reset()         { *m = NotificationImport{} }
@@ -6314,6 +6315,13 @@ func (m *NotificationImport) GetImportType() NotificationImportType {
 func (m *NotificationImport) GetSpaceId() string {
 	if m != nil {
 		return m.SpaceId
+	}
+	return ""
+}
+
+func (m *NotificationImport) GetName() string {
+	if m != nil {
+		return m.Name
 	}
 	return ""
 }
@@ -10871,6 +10879,13 @@ func (m *NotificationImport) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintModels(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0x2a
+	}
 	if len(m.SpaceId) > 0 {
 		i -= len(m.SpaceId)
 		copy(dAtA[i:], m.SpaceId)
@@ -12743,6 +12758,10 @@ func (m *NotificationImport) Size() (n int) {
 		n += 1 + sovModels(uint64(m.ImportType))
 	}
 	l = len(m.SpaceId)
+	if l > 0 {
+		n += 1 + l + sovModels(uint64(l))
+	}
+	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + sovModels(uint64(l))
 	}
@@ -23612,6 +23631,38 @@ func (m *NotificationImport) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.SpaceId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowModels
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthModels
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthModels
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

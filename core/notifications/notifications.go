@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -33,7 +32,7 @@ type Notifications interface {
 
 type notificationService struct {
 	eventSender       event.Sender
-	notificationStore objectstore.NotificationStore
+	notificationStore NotificationStore
 	spaceService      space.Service
 	picker            block.ObjectGetter
 }
@@ -43,7 +42,7 @@ func New() Notifications {
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
-	n.notificationStore = app.MustComponent[objectstore.ObjectStore](a)
+	n.notificationStore = app.MustComponent[NotificationStore](a)
 	n.eventSender = app.MustComponent[event.Sender](a)
 	n.spaceService = app.MustComponent[space.Service](a)
 	n.picker = app.MustComponent[block.ObjectGetter](a)
