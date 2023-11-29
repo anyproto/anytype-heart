@@ -107,7 +107,6 @@ type ObjectStore interface {
 	app.ComponentRunnable
 	IndexerStore
 	AccountStore
-	NotificationStore
 	VirtualSpacesStore
 
 	SubscribeForAll(callback func(rec database.Record))

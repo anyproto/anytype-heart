@@ -902,6 +902,7 @@ message Notification {
     Code errorCode = 2;
     Type importType = 3;
     string spaceId = 4;
+    string name = 5;
     enum Code {
       NULL = 0;
       UNKNOWN_ERROR = 1;

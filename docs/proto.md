@@ -22577,6 +22577,7 @@ Used to decode block meta only, without the content itself
 | errorCode | [Notification.Import.Code](#anytype-model-Notification-Import-Code) |  |  |
 | importType | [Notification.Import.Type](#anytype-model-Notification-Import-Type) |  |  |
 | spaceId | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 
 
 
