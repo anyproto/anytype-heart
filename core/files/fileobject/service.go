@@ -19,8 +19,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -36,6 +36,7 @@ const CName = "fileobject"
 type Service interface {
 	app.Component
 
+	DeleteFileData(ctx context.Context, space space.Space, objectId string) error
 	Create(ctx context.Context, spaceId string, req CreateRequest) (id string, object *types.Struct, err error)
 	GetFileIdFromObject(ctx context.Context, objectId string) (domain.FullFileId, error)
 	GetObjectIdByFileId(fileId domain.FileId) (string, error)
@@ -56,6 +57,7 @@ type service struct {
 	objectCreator objectCreatorService
 	fileService   files.Service
 	fileSync      filesync.FileSync
+	fileStore     filestore.FileStore
 	objectStore   objectstore.ObjectStore
 }
 
@@ -74,6 +76,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.fileStore = app.MustComponent[filestore.FileStore](a)
 	return nil
 }
 
@@ -296,41 +299,22 @@ func (s *service) MigrateDetails(st *state.State, spc source.Space, keys []*pb.C
 }
 
 func (s *service) FileOffload(ctx context.Context, objectId string, includeNotPinned bool) (totalSize uint64, err error) {
-	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	details, err := s.objectStore.GetDetails(objectId)
 	if err != nil {
-		return 0, fmt.Errorf("resolve spaceId: %w", err)
+		return 0, fmt.Errorf("get object details: %w", err)
 	}
-
-	space, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return 0, fmt.Errorf("get space: %w", err)
-	}
-
-	return s.fileOffload(ctx, space, objectId, includeNotPinned)
+	return s.fileOffload(ctx, details.GetDetails(), includeNotPinned)
 }
 
-func (s *service) fileOffload(ctx context.Context, space space.Space, objectId string, includeNotPinned bool) (uint64, error) {
-	var (
-		id           domain.FullFileId
-		backupStatus syncstatus.SyncStatus
-	)
-	err := space.Do(objectId, func(sb smartblock.SmartBlock) error {
-		if sb.Type() != coresb.SmartBlockTypeFileObject {
-			return fmt.Errorf("not a file object")
-		}
-		fileId := pbtypes.GetString(sb.Details(), bundle.RelationKeyFileId.String())
-		if fileId == "" {
-			return fmt.Errorf("empty file hash")
-		}
-		backupStatus = syncstatus.SyncStatus(pbtypes.GetInt64(sb.Details(), bundle.RelationKeyFileBackupStatus.String()))
-		id = domain.FullFileId{
-			SpaceId: space.Id(),
-			FileId:  domain.FileId(fileId),
-		}
-		return nil
-	})
-	if err != nil {
-		return 0, fmt.Errorf("get file object: %w", err)
+func (s *service) fileOffload(ctx context.Context, fileDetails *types.Struct, includeNotPinned bool) (uint64, error) {
+	fileId := pbtypes.GetString(fileDetails, bundle.RelationKeyFileId.String())
+	if fileId == "" {
+		return 0, fmt.Errorf("empty file hash")
+	}
+	backupStatus := syncstatus.SyncStatus(pbtypes.GetInt64(fileDetails, bundle.RelationKeyFileBackupStatus.String()))
+	id := domain.FullFileId{
+		SpaceId: pbtypes.GetString(fileDetails, bundle.RelationKeySpaceId.String()),
+		FileId:  domain.FileId(fileId),
 	}
 
 	if !includeNotPinned && backupStatus != syncstatus.StatusSynced {
@@ -342,11 +326,7 @@ func (s *service) fileOffload(ctx context.Context, space space.Space, objectId s
 
 func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
 	if len(objectIds) == 0 {
-		ids, err := s.listAllFileObjectIds()
-		if err != nil {
-			return 0, 0, fmt.Errorf("list all file object ids: %w", err)
-		}
-		objectIds = ids
+		return s.offloadAllFiles(ctx, includeNotPinned)
 	}
 
 	for _, objectId := range objectIds {
@@ -363,7 +343,7 @@ func (s *service) FilesOffload(ctx context.Context, objectIds []string, includeN
 	return filesOffloaded, totalSize, nil
 }
 
-func (s *service) listAllFileObjectIds() ([]string, error) {
+func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
 	records, _, err := s.objectStore.Query(database.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -373,13 +353,21 @@ func (s *service) listAllFileObjectIds() ([]string, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query file objects by spaceId: %w", err)
+		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
 	}
-	ids := make([]string, 0, len(records))
 	for _, record := range records {
-		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
+		size, err := s.fileOffload(ctx, record.Details, includeNotPinned)
+		if err != nil {
+			objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
+			log.Errorf("failed to offload file %s: %v", objectId, err)
+			continue
+		}
+		totalSize += size
+		if size > 0 {
+			filesOffloaded++
+		}
 	}
-	return ids, nil
+	return filesOffloaded, totalSize, nil
 }
 
 func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeNotPinned bool) (filesOffloaded int, totalSize uint64, err error) {
@@ -399,16 +387,10 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 	if err != nil {
 		return 0, 0, fmt.Errorf("query file objects by spaceId: %w", err)
 	}
-
-	space, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return 0, 0, fmt.Errorf("get space: %w", err)
-	}
-
 	for _, record := range records {
-		objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
-		size, err := s.fileOffload(ctx, space, objectId, includeNotPinned)
+		size, err := s.fileOffload(ctx, record.Details, includeNotPinned)
 		if err != nil {
+			objectId := pbtypes.GetString(record.Details, bundle.RelationKeyId.String())
 			log.Errorf("failed to offload file %s: %v", objectId, err)
 			continue
 		}
@@ -418,4 +400,23 @@ func (s *service) FileSpaceOffload(ctx context.Context, spaceId string, includeN
 		totalSize += size
 	}
 	return filesOffloaded, totalSize, nil
+}
+
+func (s *service) DeleteFileData(ctx context.Context, space space.Space, objectId string) error {
+	fullId, err := s.getFileIdFromObjectInSpace(ctx, space, objectId)
+	if err != nil {
+		return fmt.Errorf("get file id from object: %w", err)
+	}
+
+	if err := s.fileStore.DeleteFile(fullId.FileId); err != nil {
+		return err
+	}
+	if err := s.fileSync.RemoveFile(fullId.SpaceId, fullId.FileId); err != nil {
+		return fmt.Errorf("failed to remove file from sync: %w", err)
+	}
+	_, err = s.FileOffload(context.Background(), objectId, true)
+	if err != nil {
+		return err
+	}
+	return nil
 }
