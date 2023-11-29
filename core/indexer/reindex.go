@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/util/slice"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
 	"github.com/samber/lo"
 	"go.uber.org/zap"

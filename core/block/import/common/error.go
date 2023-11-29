@@ -12,6 +12,7 @@ var ErrCancel = fmt.Errorf("import is canceled")
 var ErrFailedToReceiveListOfObjects = fmt.Errorf("failed to receive the list of objects")
 var ErrNoObjectsToImport = fmt.Errorf("source path doesn't contain objects to import")
 var ErrLimitExceeded = fmt.Errorf("Limit of relations or objects are exceeded ")
+var ErrFileLoad = fmt.Errorf("file was not synced")
 
 type ConvertError struct {
 	errors []error
@@ -74,6 +75,8 @@ func (ce *ConvertError) GetResultError(importType pb.RpcObjectImportRequestType)
 			return fmt.Errorf("import type: %s: %w", importType.String(), ErrLimitExceeded)
 		case errors.Is(e, ErrFailedToReceiveListOfObjects):
 			return ErrFailedToReceiveListOfObjects
+		case errors.Is(e, ErrFileLoad):
+			return e
 		case errors.Is(e, ErrNoObjectsToImport):
 			countNoObjectsToImport++
 		}

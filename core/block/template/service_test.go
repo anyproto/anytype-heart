@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -100,7 +101,7 @@ func NewTemplateTest(templateName, typeKey string) smartblock.SmartBlock {
 	return sb
 }
 
-func TestService_StateFromTemplate(t *testing.T) {
+func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -129,7 +130,7 @@ func TestService_StateFromTemplate(t *testing.T) {
 				"when template is %s and target detail is %s", templateName, addedDetail), func(t *testing.T) {
 				// given
 				tmpl := NewTemplateTest(templateName, "")
-				s := service{picker: &testPicker{sb: tmpl}}
+				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := &types.Struct{Fields: map[string]*types.Value{}}
 				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(addedDetail)
 				details.Fields[bundle.RelationKeyDescription.String()] = pbtypes.String(addedDetail)
@@ -155,7 +156,7 @@ func TestService_StateFromTemplate(t *testing.T) {
 		t.Run("create blank template in case "+testCase[0], func(t *testing.T) {
 			// given
 			tmpl := NewTemplateTest(testCase[1], "")
-			s := service{picker: &testPicker{sb: tmpl}}
+			s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 
 			// when
 			st, err := s.CreateTemplateStateWithDetails(testCase[1], nil)
@@ -191,4 +192,75 @@ func TestService_StateFromTemplate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, bundle.TypeKeyWeeklyPlan, st.ObjectTypeKey())
 	})
+
+	for _, layout := range []model.ObjectTypeLayout{
+		model.ObjectType_note,
+		model.ObjectType_basic,
+		model.ObjectType_profile,
+		model.ObjectType_todo,
+		model.ObjectType_date,
+		model.ObjectType_bookmark,
+	} {
+		t.Run("blank template should correspond "+model.ObjectTypeLayout_name[int32(layout)]+" layout", func(t *testing.T) {
+			// given
+			s := service{converter: converter.NewLayoutConverter()}
+			details := &types.Struct{Fields: map[string]*types.Value{}}
+			details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Int64(int64(layout))
+
+			// when
+			st, err := s.CreateTemplateStateWithDetails(BlankTemplateId, details)
+
+			// then
+			assert.NoError(t, err)
+			assert.Equal(t, layout, model.ObjectTypeLayout(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())))
+			assertLayoutBlocks(t, st, layout)
+		})
+	}
+}
+
+func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLayout) {
+	switch layout {
+	case model.ObjectType_bookmark:
+		foundDescription, foundTag, foundSource := false, false, false
+		st.Iterate(func(b simple.Block) (isContinue bool) {
+			switch b.Model().Id {
+			case template.DescriptionBlockId:
+				foundDescription = true
+			case bundle.RelationKeyTag.String():
+				foundTag = true
+			case bundle.RelationKeySource.String():
+				foundSource = true
+			}
+			return true
+		})
+		assert.True(t, foundDescription && foundTag && foundSource)
+	case model.ObjectType_note:
+		foundTitle, foundDescription := false, false
+		st.Iterate(func(b simple.Block) (isContinue bool) {
+			switch b.Model().Id {
+			case template.DescriptionBlockId:
+				foundDescription = true
+				return false
+			case template.TitleBlockId:
+				foundTitle = true
+				return false
+			}
+			return true
+		})
+		assert.False(t, foundTitle || foundDescription)
+	default:
+		foundTitle, foundDescription := false, false
+		st.Iterate(func(b simple.Block) (isContinue bool) {
+			switch b.Model().Id {
+			case template.DescriptionBlockId:
+				foundDescription = true
+				return false
+			case template.TitleBlockId:
+				foundTitle = true
+			}
+			return true
+		})
+		assert.True(t, foundTitle)
+		assert.False(t, foundDescription)
+	}
 }
