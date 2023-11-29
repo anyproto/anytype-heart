@@ -304,21 +304,6 @@ func (mr *MockObjectStoreMockRecorder) GetLastIndexedHeadsHash(arg0 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).GetLastIndexedHeadsHash), arg0)
 }
 
-// GetNotificationByID mocks base method.
-func (m *MockObjectStore) GetNotificationByID(arg0 string) (*model.Notification, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNotificationByID", arg0)
-	ret0, _ := ret[0].(*model.Notification)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetNotificationByID indicates an expected call of GetNotificationByID.
-func (mr *MockObjectStoreMockRecorder) GetNotificationByID(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNotificationByID", reflect.TypeOf((*MockObjectStore)(nil).GetNotificationByID), arg0)
-}
-
 // GetObjectByUniqueKey mocks base method.
 func (m *MockObjectStore) GetObjectByUniqueKey(arg0 string, arg1 domain.UniqueKey) (*model.ObjectDetails, error) {
 	m.ctrl.T.Helper()
@@ -547,21 +532,6 @@ func (mr *MockObjectStoreMockRecorder) ListIdsBySpace(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIdsBySpace", reflect.TypeOf((*MockObjectStore)(nil).ListIdsBySpace), arg0)
 }
 
-// ListNotifications mocks base method.
-func (m *MockObjectStore) ListNotifications() ([]*model.Notification, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListNotifications")
-	ret0, _ := ret[0].([]*model.Notification)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListNotifications indicates an expected call of ListNotifications.
-func (mr *MockObjectStoreMockRecorder) ListNotifications() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotifications", reflect.TypeOf((*MockObjectStore)(nil).ListNotifications))
-}
-
 // ListVirtualSpaces mocks base method.
 func (m *MockObjectStore) ListVirtualSpaces() ([]string, error) {
 	m.ctrl.T.Helper()
@@ -735,20 +705,6 @@ func (m *MockObjectStore) SaveLastIndexedHeadsHash(arg0, arg1 string) error {
 func (mr *MockObjectStoreMockRecorder) SaveLastIndexedHeadsHash(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveLastIndexedHeadsHash", reflect.TypeOf((*MockObjectStore)(nil).SaveLastIndexedHeadsHash), arg0, arg1)
-}
-
-// SaveNotification mocks base method.
-func (m *MockObjectStore) SaveNotification(arg0 *model.Notification) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveNotification", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SaveNotification indicates an expected call of SaveNotification.
-func (mr *MockObjectStoreMockRecorder) SaveNotification(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveNotification", reflect.TypeOf((*MockObjectStore)(nil).SaveNotification), arg0)
 }
 
 // SaveVirtualSpace mocks base method.
