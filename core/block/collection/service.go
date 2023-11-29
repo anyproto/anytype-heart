@@ -99,6 +99,7 @@ func (s *Service) updateCollection(ctx session.Context, contextID string, modifi
 		lst := s.GetStoreSlice(template.CollectionStoreKey)
 		lst = modifier(lst)
 		s.UpdateStoreSlice(template.CollectionStoreKey, lst)
+		internalflag.Set{}.AddToState(s)
 		return nil
 	})
 }
