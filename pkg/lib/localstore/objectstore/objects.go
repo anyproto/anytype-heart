@@ -49,6 +49,9 @@ var (
 	accountPrefix = "account"
 	accountStatus = ds.NewKey("/" + accountPrefix + "/status")
 
+	spacePrefix   = "space"
+	virtualSpaces = ds.NewKey("/" + spacePrefix + "/virtual")
+
 	ErrObjectNotFound = errors.New("object not found")
 
 	_ ObjectStore = (*dsObjectStore)(nil)
@@ -105,6 +108,7 @@ type ObjectStore interface {
 	IndexerStore
 	AccountStore
 	NotificationStore
+	VirtualSpacesStore
 
 	SubscribeForAll(callback func(rec database.Record))
 
@@ -170,6 +174,12 @@ type IndexerStore interface {
 type AccountStore interface {
 	GetAccountStatus() (status *coordinatorproto.SpaceStatusPayload, err error)
 	SaveAccountStatus(status *coordinatorproto.SpaceStatusPayload) (err error)
+}
+
+type VirtualSpacesStore interface {
+	SaveVirtualSpace(id string) error
+	ListVirtualSpaces() ([]string, error)
+	DeleteVirtualSpace(spaceID string) error
 }
 
 var ErrNotAnObject = fmt.Errorf("not an object")

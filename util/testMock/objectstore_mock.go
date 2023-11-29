@@ -107,6 +107,20 @@ func (mr *MockObjectStoreMockRecorder) DeleteObject(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteObject", reflect.TypeOf((*MockObjectStore)(nil).DeleteObject), arg0)
 }
 
+// DeleteVirtualSpace mocks base method.
+func (m *MockObjectStore) DeleteVirtualSpace(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteVirtualSpace", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteVirtualSpace indicates an expected call of DeleteVirtualSpace.
+func (mr *MockObjectStoreMockRecorder) DeleteVirtualSpace(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).DeleteVirtualSpace), arg0)
+}
+
 // EraseIndexes mocks base method.
 func (m *MockObjectStore) EraseIndexes(arg0 string) error {
 	m.ctrl.T.Helper()
@@ -548,6 +562,21 @@ func (mr *MockObjectStoreMockRecorder) ListNotifications() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotifications", reflect.TypeOf((*MockObjectStore)(nil).ListNotifications))
 }
 
+// ListVirtualSpaces mocks base method.
+func (m *MockObjectStore) ListVirtualSpaces() ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListVirtualSpaces")
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListVirtualSpaces indicates an expected call of ListVirtualSpaces.
+func (mr *MockObjectStoreMockRecorder) ListVirtualSpaces() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVirtualSpaces", reflect.TypeOf((*MockObjectStore)(nil).ListVirtualSpaces))
+}
+
 // Name mocks base method.
 func (m *MockObjectStore) Name() string {
 	m.ctrl.T.Helper()
@@ -720,6 +749,20 @@ func (m *MockObjectStore) SaveNotification(arg0 *model.Notification) error {
 func (mr *MockObjectStoreMockRecorder) SaveNotification(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveNotification", reflect.TypeOf((*MockObjectStore)(nil).SaveNotification), arg0)
+}
+
+// SaveVirtualSpace mocks base method.
+func (m *MockObjectStore) SaveVirtualSpace(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveVirtualSpace", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveVirtualSpace indicates an expected call of SaveVirtualSpace.
+func (mr *MockObjectStoreMockRecorder) SaveVirtualSpace(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveVirtualSpace", reflect.TypeOf((*MockObjectStore)(nil).SaveVirtualSpace), arg0)
 }
 
 // SubscribeForAll mocks base method.

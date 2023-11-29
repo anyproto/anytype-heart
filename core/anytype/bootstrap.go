@@ -207,6 +207,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(fileservice.New()).
 		Register(filestorage.New()).
 		Register(filesync.New()).
+		Register(space.NewVirtualSpaceService()).
 		Register(spacecore.New()).
 		Register(idresolver.New()).
 		Register(localdiscovery.New()).

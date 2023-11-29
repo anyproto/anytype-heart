@@ -236,6 +236,48 @@ func (_c *MockObjectStore_DeleteObject_Call) RunAndReturn(run func(string) error
 	return _c
 }
 
+// DeleteVirtualSpace provides a mock function with given fields: spaceID
+func (_m *MockObjectStore) DeleteVirtualSpace(spaceID string) error {
+	ret := _m.Called(spaceID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(spaceID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_DeleteVirtualSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteVirtualSpace'
+type MockObjectStore_DeleteVirtualSpace_Call struct {
+	*mock.Call
+}
+
+// DeleteVirtualSpace is a helper method to define mock.On call
+//   - spaceID string
+func (_e *MockObjectStore_Expecter) DeleteVirtualSpace(spaceID interface{}) *MockObjectStore_DeleteVirtualSpace_Call {
+	return &MockObjectStore_DeleteVirtualSpace_Call{Call: _e.mock.On("DeleteVirtualSpace", spaceID)}
+}
+
+func (_c *MockObjectStore_DeleteVirtualSpace_Call) Run(run func(spaceID string)) *MockObjectStore_DeleteVirtualSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_DeleteVirtualSpace_Call) Return(_a0 error) *MockObjectStore_DeleteVirtualSpace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_DeleteVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_DeleteVirtualSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EraseIndexes provides a mock function with given fields: spaceId
 func (_m *MockObjectStore) EraseIndexes(spaceId string) error {
 	ret := _m.Called(spaceId)
@@ -1911,6 +1953,59 @@ func (_c *MockObjectStore_ListNotifications_Call) RunAndReturn(run func() ([]*mo
 	return _c
 }
 
+// ListVirtualSpaces provides a mock function with given fields:
+func (_m *MockObjectStore) ListVirtualSpaces() ([]string, error) {
+	ret := _m.Called()
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectStore_ListVirtualSpaces_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListVirtualSpaces'
+type MockObjectStore_ListVirtualSpaces_Call struct {
+	*mock.Call
+}
+
+// ListVirtualSpaces is a helper method to define mock.On call
+func (_e *MockObjectStore_Expecter) ListVirtualSpaces() *MockObjectStore_ListVirtualSpaces_Call {
+	return &MockObjectStore_ListVirtualSpaces_Call{Call: _e.mock.On("ListVirtualSpaces")}
+}
+
+func (_c *MockObjectStore_ListVirtualSpaces_Call) Run(run func()) *MockObjectStore_ListVirtualSpaces_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_ListVirtualSpaces_Call) Return(_a0 []string, _a1 error) *MockObjectStore_ListVirtualSpaces_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectStore_ListVirtualSpaces_Call) RunAndReturn(run func() ([]string, error)) *MockObjectStore_ListVirtualSpaces_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Name provides a mock function with given fields:
 func (_m *MockObjectStore) Name() string {
 	ret := _m.Called()
@@ -2487,6 +2582,48 @@ func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) Return(err error) *Mock
 }
 
 func (_c *MockObjectStore_SaveLastIndexedHeadsHash_Call) RunAndReturn(run func(string, string) error) *MockObjectStore_SaveLastIndexedHeadsHash_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveVirtualSpace provides a mock function with given fields: id
+func (_m *MockObjectStore) SaveVirtualSpace(id string) error {
+	ret := _m.Called(id)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectStore_SaveVirtualSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveVirtualSpace'
+type MockObjectStore_SaveVirtualSpace_Call struct {
+	*mock.Call
+}
+
+// SaveVirtualSpace is a helper method to define mock.On call
+//   - id string
+func (_e *MockObjectStore_Expecter) SaveVirtualSpace(id interface{}) *MockObjectStore_SaveVirtualSpace_Call {
+	return &MockObjectStore_SaveVirtualSpace_Call{Call: _e.mock.On("SaveVirtualSpace", id)}
+}
+
+func (_c *MockObjectStore_SaveVirtualSpace_Call) Run(run func(id string)) *MockObjectStore_SaveVirtualSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectStore_SaveVirtualSpace_Call) Return(_a0 error) *MockObjectStore_SaveVirtualSpace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectStore_SaveVirtualSpace_Call) RunAndReturn(run func(string) error) *MockObjectStore_SaveVirtualSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }
